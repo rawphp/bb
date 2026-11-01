@@ -23,4 +23,10 @@ final readonly class Phase
         public float $targetRatePercentPerWeek,
         public ?DateTimeImmutable $eventDate = null,
     ) {}
+
+    /** The same phase on new dates: the one place that copies the other fields. */
+    public function withDates(DateTimeImmutable $start, ?DateTimeImmutable $end): self
+    {
+        return new self($this->id, $this->type, $start, $end, $this->targetRatePercentPerWeek, $this->eventDate);
+    }
 }
