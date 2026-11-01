@@ -85,20 +85,40 @@ it('CAP-012 keeps messages the server wrote itself', function () {
         ->and(ErrorWording::apply($conflict))->toBe($conflict);
 });
 
-it('CAP-012 words the package\'s own refusals plainly', function (string $code, string $plain) {
-    $result = ErrorWording::apply(CapabilityResult::failure($code, 'Not authorized to invoke "tally_add".'));
+it('CAP-012 words the package\'s own refusals plainly', function (string $code, string $message, string $plain) {
+    $result = ErrorWording::apply(CapabilityResult::failure($code, $message));
 
     expect($result->errorCode())->toBe($code)
         ->and($result->error['message'])->toBe($plain);
 })->with([
-    ['forbidden', 'You can\'t do that.'],
-    ['capability_not_in_profile', 'You can\'t do that.'],
-    ['not_found', 'We couldn\'t find that.'],
-    ['internal', 'Something went wrong. Try again later.'],
-    ['output_invalid', 'Something went wrong. Try again later.'],
-    ['audit_failed', 'Something went wrong. Try again later.'],
-    ['not_configured', 'Something went wrong. Try again later.'],
-    ['not_runnable', 'Something went wrong. Try again later.'],
+    ['forbidden', 'Not authorized to invoke "tally_add".', 'You can\'t do that.'],
+    ['forbidden', 'SystemActor "nightly" is not allowed for capability "tally_add".', 'You can\'t do that.'],
+    ['forbidden', 'Capability "tally_add" is not invokable via surface "mcp".', 'You can\'t do that.'],
+    ['forbidden', 'Original actor no longer authorized.', 'You can\'t do that.'],
+    ['forbidden', 'Original requester could not be resolved; approved request was not run.', 'You can\'t do that.'],
+    ['capability_not_in_profile', 'Capability "tally_add" is not in the selected profile.', 'You can\'t do that.'],
+    ['not_found', 'Not found.', 'We couldn\'t find that.'],
+    ['not_found', 'Unknown capability "tally_ad".', 'We couldn\'t find that.'],
+    ['not_found', 'Approval not found.', 'We couldn\'t find that.'],
+    ['internal', 'Internal error.', 'Something went wrong. Try again later.'],
+    ['output_invalid', 'Output failed schema validation.', 'Something went wrong. Try again later.'],
+    ['audit_failed', 'Audit failed.', 'Something went wrong. Try again later.'],
+    ['not_configured', 'No approval executor bound; capability was not run.', 'Something went wrong. Try again later.'],
+    ['not_runnable', 'Capability "tally_add" has no run handler.', 'Something went wrong. Try again later.'],
+    ['validation_failed', 'Invalid idempotency key format (D-005).', 'The Idempotency-Key header is not a valid key.'],
+    ['validation_failed', 'Idempotency key is required for this capability (D-005).', 'This change needs an Idempotency-Key header.'],
+]);
+
+it('CAP-012 keeps a host-written message under a code the package also uses', function (string $code, string $message) {
+    $hostWritten = CapabilityResult::failure($code, $message);
+
+    expect(ErrorWording::apply($hostWritten))->toBe($hostWritten);
+})->with([
+    ['forbidden', 'Your subscription has lapsed. Renew it to log workouts.'],
+    ['forbidden', 'Not authorized to invoke "tally_add". Ask the owner.'],
+    ['not_found', 'That workout was deleted.'],
+    ['internal', 'The food database is down. Try again in an hour.'],
+    ['conflict', 'Idempotency key is already processing (D-005). Really.'],
 ]);
 
 it('CAP-012 leaves successes and their meta alone', function () {

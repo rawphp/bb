@@ -5,12 +5,13 @@ namespace App\Capabilities\Support;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Str;
-use InvalidArgumentException;
 
 /**
  * Writes that create a row take its ULID from the client, so the offline
  * outbox can queue a create and then an edit of the same row (CAP-019).
+ *
+ * The input DTO declares the ID with Laravel's `ulid` rule, so a malformed ID
+ * is a 422 that names the field before run() is reached.
  */
 trait UsesClientUlid
 {
@@ -27,10 +28,6 @@ trait UsesClientUlid
      */
     protected function ownedOrNew(string $model, string $ulid, Authenticatable $user): ?Model
     {
-        if (! Str::isUlid($ulid)) {
-            throw new InvalidArgumentException('That ID is not valid.');
-        }
-
         $row = $model::query()->find($ulid);
 
         if ($row !== null && (string) $row->getAttribute('user_id') !== (string) $user->getAuthIdentifier()) {

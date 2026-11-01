@@ -11,6 +11,9 @@ use Rawphp\Capabilities\Support\CapabilityContext;
  *
  * Step 1 only: a signed-in actor must exist. Resource ownership, token scope,
  * billing and the agent policy are added here as later steps.
+ *
+ * A create's client-made ULID is checked by UsesClientUlid instead: this
+ * contract can only deny (403), and CAP-019 answers another user's ULID with 404.
  */
 final class HostAuthorizer implements Authorizer
 {

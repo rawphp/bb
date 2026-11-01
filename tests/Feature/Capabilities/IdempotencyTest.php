@@ -44,3 +44,19 @@ it('CAP-014 answers 422 for the same Idempotency-Key with different input', func
 
     expect(TallyAddCapability::$runs)->toBe(1);
 });
+
+it('CAP-014 keeps one user\'s Idempotency-Key from replaying another user\'s write', function () {
+    [$owner, $other] = User::factory()->count(2)->create();
+    $key = ['Idempotency-Key' => '01JBX8Z6Q7M0V2K3N4P5R6S7T8'];
+
+    $this->actingAs($owner)->postJson('/capabilities/tally_add', ['amount' => 3], $key)
+        ->assertOk()
+        ->assertJsonPath('data.toast', 'Tally is 3');
+
+    $second = $this->actingAs($other)->postJson('/capabilities/tally_add', ['amount' => 3], $key)
+        ->assertOk()
+        ->assertJsonPath('data.toast', 'Tally is 6');
+
+    expect($second->json('meta.idempotent_replay'))->toBeFalse()
+        ->and(TallyAddCapability::$runs)->toBe(2);
+});

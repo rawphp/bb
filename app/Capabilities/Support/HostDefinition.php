@@ -6,6 +6,7 @@ use InvalidArgumentException;
 use Rawphp\Capabilities\Capability;
 use Rawphp\Capabilities\Registry\CapabilityDefinition;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
+use Rawphp\Capabilities\Registry\CapabilityRegistry;
 
 /**
  * The start of every capability definition. A read is read-only; a write
@@ -13,6 +14,8 @@ use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
  *
  * The package catalog has no `affects` field, so each entry is the tag
  * `affects:<read name>`. Clients read it from the catalog's `tags`.
+ * A read may register after the write that names it, so {@see unknownAffects()}
+ * checks the names against the whole registry once it is built (a freeze test).
  */
 final class HostDefinition
 {
@@ -61,5 +64,25 @@ final class HostDefinition
         }
 
         return $affects;
+    }
+
+    /**
+     * Every affects entry that does not name a registered read, as `<write> affects <name>`.
+     *
+     * @return list<string>
+     */
+    public static function unknownAffects(CapabilityRegistry $registry): array
+    {
+        $definitions = $registry->all();
+        $unknown = [];
+        foreach ($definitions as $definition) {
+            foreach (self::affects($definition) as $read) {
+                if (! ($definitions[$read]->readOnly ?? false)) {
+                    $unknown[] = "{$definition->name} affects {$read}";
+                }
+            }
+        }
+
+        return $unknown;
     }
 }

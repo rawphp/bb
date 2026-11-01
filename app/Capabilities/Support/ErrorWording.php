@@ -8,32 +8,61 @@ use Rawphp\Capabilities\Support\CapabilityResult;
  * Puts the package's own error messages into plain words (CAP-012), and
  * answers an Idempotency-Key reused with different input with 422 (CAP-014).
  *
- * Messages the host wrote (a domain refusal, a Laravel rule message) pass
- * through unchanged. Only package wording is replaced.
+ * Messages the host wrote (a domain refusal, a tenant resolver's refusal, a
+ * Laravel rule message) pass through unchanged. Only package wording is
+ * replaced: by code for codes only the package emits, else by its exact message.
  */
 final class ErrorWording
 {
     private const KEY_REUSED = 'Idempotency key reused with a different request body (D-005).';
 
-    /** @var array<string, string> package message => plain message */
-    private const MESSAGES = [
-        'Idempotency key is already processing (D-005).' => 'This change is still being saved. Try again in a moment.',
-        'Invalid idempotency key format (D-005).' => 'The Idempotency-Key header is not a valid key.',
-        'Idempotency key is required for this capability (D-005).' => 'This change needs an Idempotency-Key header.',
-        'JSON Schema validation failed.' => 'Some details need fixing.',
-        'Server-only validation failed.' => 'Some details need fixing.',
+    private const TRY_LATER = 'Something went wrong. Try again later.';
+
+    /**
+     * Codes only the package emits: a capability cannot throw them
+     * (CapabilityFailure has no constructor for them), so every message is the package's.
+     *
+     * @var array<string, string> code => plain message
+     */
+    private const PACKAGE_CODES = [
+        'capability_not_in_profile' => 'You can\'t do that.',
+        'output_invalid' => self::TRY_LATER,
+        'audit_failed' => self::TRY_LATER,
+        'not_configured' => self::TRY_LATER,
+        'not_runnable' => self::TRY_LATER,
     ];
 
-    /** @var array<string, string> package-only error code => plain message */
-    private const CODES = [
-        'forbidden' => 'You can\'t do that.',
-        'capability_not_in_profile' => 'You can\'t do that.',
-        'not_found' => 'We couldn\'t find that.',
-        'internal' => 'Something went wrong. Try again later.',
-        'output_invalid' => 'Something went wrong. Try again later.',
-        'audit_failed' => 'Something went wrong. Try again later.',
-        'not_configured' => 'Something went wrong. Try again later.',
-        'not_runnable' => 'Something went wrong. Try again later.',
+    /**
+     * The package's own messages under codes the host can also use (a tenant
+     * resolver's refusal is a host-written `forbidden`), matched in full.
+     *
+     * @var array<string, array<string, string>> code => [message pattern => plain message]
+     */
+    private const PACKAGE_MESSAGES = [
+        'conflict' => [
+            '/^Idempotency key is already processing \(D-005\)\.$/' => 'This change is still being saved. Try again in a moment.',
+        ],
+        'validation_failed' => [
+            '/^Invalid idempotency key format \(D-005\)\.$/' => 'The Idempotency-Key header is not a valid key.',
+            '/^Idempotency key is required for this capability \(D-005\)\.$/' => 'This change needs an Idempotency-Key header.',
+            '/^JSON Schema validation failed\.$/' => 'Some details need fixing.',
+            '/^Server-only validation failed\.$/' => 'Some details need fixing.',
+        ],
+        'forbidden' => [
+            '/^Not authorized to invoke ".+"\.$/' => 'You can\'t do that.',
+            '/^SystemActor ".+" is not allowed for capability ".+"\.$/' => 'You can\'t do that.',
+            '/^Capability ".+" is not invokable via surface ".+"\.$/' => 'You can\'t do that.',
+            '/^Original actor no longer authorized\.$/' => 'You can\'t do that.',
+            '/^Original requester could not be resolved; approved request was not run\.$/' => 'You can\'t do that.',
+        ],
+        'not_found' => [
+            '/^Not found\.$/' => 'We couldn\'t find that.',
+            '/^Unknown capability ".+"\.$/' => 'We couldn\'t find that.',
+            '/^Approval not found\.$/' => 'We couldn\'t find that.',
+        ],
+        'internal' => [
+            '/^Internal error\.$/' => self::TRY_LATER,
+        ],
     ];
 
     /** @var array<string, string> package violation pattern => plain message */
@@ -72,7 +101,7 @@ final class ErrorWording
             );
         }
 
-        $plain = self::CODES[$code] ?? self::MESSAGES[$message] ?? null;
+        $plain = self::PACKAGE_CODES[$code] ?? self::packageMessage($code, $message);
         $violations = self::violations($error['violations'] ?? []);
 
         if ($plain === null && $violations === ($error['violations'] ?? [])) {
@@ -84,6 +113,17 @@ final class ErrorWording
         $extra['violations'] = $violations;
 
         return CapabilityResult::failure($code, $plain ?? $message, $extra, $result->meta);
+    }
+
+    private static function packageMessage(string $code, string $message): ?string
+    {
+        foreach (self::PACKAGE_MESSAGES[$code] ?? [] as $pattern => $plain) {
+            if (preg_match($pattern, $message) === 1) {
+                return $plain;
+            }
+        }
+
+        return null;
     }
 
     /**

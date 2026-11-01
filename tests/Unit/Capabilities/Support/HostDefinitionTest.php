@@ -55,6 +55,26 @@ it('CAP-011 gives a read no affects', function () {
         ->and(HostDefinition::affects($definition))->toBe([]);
 });
 
+it('CAP-011 names each affects entry that is not a registered read', function () {
+    $registry = new CapabilityRegistry;
+    HostDefinition::read('weigh_ins_show')->description('List weigh-ins.')->cli('weigh-in', 'list')->input(TallyInput::class)->run(fn () => null)->register($registry);
+    HostDefinition::write('weigh_in_log', affects: ['weigh_ins_show', 'weigh_in_show'])
+        ->description('Log a weigh-in.')->cli('weigh-in', 'log')->input(TallyInput::class)
+        ->run(fn () => new WriteResult(invalidates: []))->register($registry);
+    HostDefinition::write('weigh_in_delete', affects: ['weigh_in_log'])
+        ->description('Delete a weigh-in.')->cli('weigh-in', 'delete')->input(TallyInput::class)
+        ->run(fn () => new WriteResult(invalidates: []))->register($registry);
+
+    expect(HostDefinition::unknownAffects($registry))->toBe([
+        'weigh_in_log affects weigh_in_show',
+        'weigh_in_delete affects weigh_in_log',
+    ]);
+});
+
+it('CAP-011 has every registered affects entry name a registered read', function () {
+    expect(HostDefinition::unknownAffects(app(CapabilityRegistry::class)))->toBe([]);
+});
+
 it('CAP-011 has every registered write declare what it affects', function () {
     $silent = array_keys(array_filter(
         app(CapabilityRegistry::class)->all(),
