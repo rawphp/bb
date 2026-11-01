@@ -40,7 +40,7 @@ export async function generate(schemaDir = SCHEMAS) {
         const parts = [];
         for (const [side, schema] of list) {
             const type = studly(name) + (side === 'input' ? 'Input' : 'Output');
-            parts.push(await compile(normalise(schema), type, { bannerComment: '', additionalProperties: false }));
+            parts.push(await compile(normalise(schema), type, { bannerComment: '', additionalProperties: false, maxItems: -1 }));
         }
         files.set(`${name}.ts`, BANNER + '\n' + parts.join('\n'));
     }

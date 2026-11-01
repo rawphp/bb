@@ -1,0 +1,6 @@
+{
+    "barcode": "0123456789012",
+    "status": "not_found",
+    "food": null,
+    "message": "We couldn't find 0123456789012. Scan the label, or create a custom food with this barcode."
+}

@@ -24,6 +24,18 @@ describe('npm run contracts', () => {
         expect(source).toMatch(/export interface MealShowOutput \{\s+title: string;\s+kcal: string \| null;\s+\}/);
     });
 
+    it('CAP-001 types a bounded list as a list, not a tuple of every length', async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'contracts-'));
+        writeFileSync(
+            join(dir, 'recipe_generate.input.json'),
+            JSON.stringify({ type: 'object', additionalProperties: false, properties: { ingredients: { type: 'array', items: { type: 'string' }, maxItems: 20 } }, required: ['ingredients'] }),
+        );
+
+        const source = (await generate(dir)).get('recipe_generate.ts')!;
+
+        expect(source).toMatch(/ingredients: string\[\];/);
+    });
+
     it('CAP-001 keeps the committed contracts in step with the schema snapshots', async () => {
         const files: Map<string, string> = await generate(schemaDir);
         const committed = readdirSync(contractsDir).filter((file) => file.endsWith('.ts'));

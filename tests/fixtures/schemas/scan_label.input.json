@@ -1,0 +1,21 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "image": {
+            "type": "string",
+            "description": "A JPEG as a base64 data URL, downscaled on the device"
+        },
+        "barcode": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The barcode that found nothing, carried into the draft (FOOD-041)"
+        }
+    },
+    "required": [
+        "image"
+    ]
+}
