@@ -30,10 +30,15 @@ Edit `.env` (see [Environment](#environment)), then:
 ```bash
 php artisan migrate --force
 php artisan db:seed --force
-npm ci
-npm run build
 php artisan config:cache
 php artisan route:cache
+```
+
+Once the repo has a `package.json` (the front end lands in a later milestone), build it too:
+
+```bash
+npm ci
+npm run build
 ```
 
 Run `config:cache` again after every change to `.env`.
@@ -102,12 +107,12 @@ With the keys empty, the app offers no notifications.
 
 ### Agent (optional)
 
-The in-app Coach runs on Anthropic. It is on only when both keys below are set (AGT-002). Leave them as they are to run without it; no screen mentions the Coach then.
+The in-app Coach runs on Anthropic. It is on only when the driver is `anthropic` and the API key is set (AGT-002). To run without it, set the driver and leave the key empty; no screen mentions the Coach then.
 
 | Key | Value |
 |---|---|
-| `CAPABILITIES_AI_LLM_DRIVER` | `anthropic` to turn the Coach on. `fake` is for tests only; never run production with it. |
-| `ANTHROPIC_API_KEY` | Your Anthropic API key. Every user's Coach turns are billed to it. |
+| `CAPABILITIES_AI_LLM_DRIVER` | `anthropic`. `.env.example` ships `fake`, which answers with canned replies for local development and tests; never run production with it. |
+| `ANTHROPIC_API_KEY` | Your Anthropic API key to turn the Coach on, or empty to leave it off. Every user's Coach turns are billed to it. |
 
 ### Billing (optional)
 
@@ -124,13 +129,13 @@ With billing on, add a webhook endpoint in Stripe pointing at the app's Stripe w
 
 ## Queue workers
 
-Two queues, each with its own worker:
+Two workers:
 
-- `default`: notifications, mail and other background jobs.
+- `default`: the `default` queue (notifications, mail and other background jobs) and the `capabilities-audit` queue, which writes the audit log.
 - `agent`: the Coach's turns. Only needed with the agent on, but harmless without it.
 
 ```bash
-php artisan queue:work redis --queue=default --tries=3
+php artisan queue:work redis --queue=default,capabilities-audit --tries=3
 php artisan queue:work redis --queue=agent --tries=1
 ```
 
@@ -144,7 +149,7 @@ After=network.target mysql.service redis.service
 [Service]
 User=www-data
 WorkingDirectory=/var/www/bodybuilder
-ExecStart=/usr/bin/php artisan queue:work redis --queue=default --tries=3
+ExecStart=/usr/bin/php artisan queue:work redis --queue=default,capabilities-audit --tries=3
 Restart=always
 
 [Install]
@@ -182,9 +187,9 @@ Imports stream the file and upsert in batches, so re-running one leaves the same
 git pull
 composer install --no-dev --optimize-autoloader
 php artisan migrate --force
-npm ci
-npm run build
 php artisan config:cache
 php artisan route:cache
 php artisan queue:restart
 ```
+
+With a `package.json` in the repo, rebuild the front end too (`npm ci`, then `npm run build`).
