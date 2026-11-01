@@ -12,6 +12,7 @@
 .env.production
 .phpunit.result.cache
 .phpunit.cache/
+/.phpstan.cache/
 /.warp/
 
 # Front end and tests
