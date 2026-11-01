@@ -3,6 +3,7 @@
 use App\Capabilities\Meal\Data\MealCheckInInput;
 use App\Capabilities\Reads\Data\CopyShowInput;
 use App\Capabilities\Reads\Data\DayRedistributeShowInput;
+use App\Capabilities\Reads\Data\TodayShowInput;
 use App\Capabilities\Today\Data\AwayWeekSetInput;
 use App\Capabilities\Today\Data\BusyPeriodSetInput;
 use App\Capabilities\Today\Data\DayAdjustInput;
@@ -16,6 +17,7 @@ use App\Capabilities\Today\Data\OtherActivityDeleteInput;
 use App\Capabilities\Today\Data\OtherActivitySaveInput;
 use App\Capabilities\Today\Data\ScheduleUpdateInput;
 use App\Capabilities\Today\Data\TrainingWeekdaysChangeInput;
+use App\Capabilities\Today\Data\WorkoutMoveInput;
 use App\Capabilities\Today\Data\WorkoutTimeSetInput;
 use Rawphp\Capabilities\Registry\CapabilityDefinition;
 use Rawphp\Capabilities\Schema\IlluminateServerRuleChecker;
@@ -72,6 +74,8 @@ function todayValidInputs(): array
         'schedule_update' => [ScheduleUpdateInput::class, ['date' => '2026-09-19', 'apply_to' => 'this_day', 'window_start' => '08:00', 'window_end' => '20:00', 'meal_count' => 4, 'busy_periods' => [['label' => 'Team meeting', 'start' => '09:00', 'end' => '10:30']], 'training_start' => '17:30']],
         'day_copy' => [DayCopyInput::class, ['source_date' => '2026-09-19', 'target_dates' => ['2026-09-20']]],
         'away_week_set' => [AwayWeekSetInput::class, ['week_starts' => ['2026-09-21'], 'away' => true]],
+        'workout_move' => [WorkoutMoveInput::class, ['mesocycle_id' => ULID, 'week' => 1, 'day' => 2, 'date' => '2026-09-20']],
+        'today_show' => [TodayShowInput::class, ['date' => '2026-09-19']],
     ];
 }
 
@@ -112,6 +116,13 @@ it('CAP-012 refuses a Today input and names the field', function (string $case, 
     'training at 5:30 PM' => ['schedule_update', ['training_start' => '5:30 PM'], [], 'training_start'],
     'a schedule busy period from 9' => ['schedule_update', ['busy_periods' => [['label' => 'Team meeting', 'start' => '9', 'end' => '10:30']]], [], 'busy_periods.0.start'],
     'a schedule busy period to 10.30' => ['schedule_update', ['busy_periods' => [['label' => 'Team meeting', 'start' => '09:00', 'end' => '10.30']]], [], 'busy_periods.0.end'],
+    'a missed day moved to 20 Sep' => ['missed_session_resolve', ['date' => '20 Sep'], [], 'date'],
+    'a days adjust with 2026-02-30' => ['day_adjust days', ['other_date' => '2026-02-30'], [], 'other_date'],
+    'an adjust of 2026-9-19' => ['day_adjust meals', ['date' => '2026-9-19'], [], 'date'],
+    'a meal added on 19/09/2026' => ['meal_add', ['date' => '19/09/2026'], [], 'date'],
+    'a copy sheet from tomorrow' => ['copy_show day', ['source_date' => 'tomorrow'], [], 'source_date'],
+    'a workout moved to 2026-02-30' => ['workout_move', ['date' => '2026-02-30'], [], 'date'],
+    'Today for tomorrow' => ['today_show', ['date' => 'tomorrow'], [], 'date'],
     'a copy to 20 Sep' => ['day_copy', ['target_dates' => ['20 Sep']], [], 'target_dates.0'],
     'an away week of 2026-02-30' => ['away_week_set', ['week_starts' => ['2026-02-30']], [], 'week_starts.0'],
 ]);
