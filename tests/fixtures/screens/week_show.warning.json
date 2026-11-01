@@ -1,0 +1,111 @@
+{
+    "week_start": "2026-09-19",
+    "heading": null,
+    "pills": [
+        {
+            "text": "Deload",
+            "tone": "neutral"
+        },
+        {
+            "text": "Away",
+            "tone": "info"
+        }
+    ],
+    "days": [
+        {
+            "date": "2026-09-19",
+            "letter": "S",
+            "number": "19",
+            "calories_text": "2200",
+            "is_today": false,
+            "is_selected": false,
+            "is_complete": true,
+            "has_training": false,
+            "is_before_plan": false
+        },
+        {
+            "date": "2026-09-20",
+            "letter": "S",
+            "number": "20",
+            "calories_text": "2200",
+            "is_today": false,
+            "is_selected": false,
+            "is_complete": true,
+            "has_training": false,
+            "is_before_plan": false
+        },
+        {
+            "date": "2026-09-21",
+            "letter": "M",
+            "number": "21",
+            "calories_text": "2400",
+            "is_today": false,
+            "is_selected": false,
+            "is_complete": false,
+            "has_training": true,
+            "is_before_plan": false
+        },
+        {
+            "date": "2026-09-22",
+            "letter": "T",
+            "number": "22",
+            "calories_text": "2200",
+            "is_today": false,
+            "is_selected": false,
+            "is_complete": true,
+            "has_training": false,
+            "is_before_plan": false
+        },
+        {
+            "date": "2026-09-23",
+            "letter": "W",
+            "number": "23",
+            "calories_text": "2600",
+            "is_today": true,
+            "is_selected": true,
+            "is_complete": false,
+            "has_training": true,
+            "is_before_plan": false
+        },
+        {
+            "date": "2026-09-24",
+            "letter": "T",
+            "number": "24",
+            "calories_text": "2200",
+            "is_today": false,
+            "is_selected": false,
+            "is_complete": false,
+            "has_training": false,
+            "is_before_plan": false
+        },
+        {
+            "date": "2026-09-25",
+            "letter": "F",
+            "number": "25",
+            "calories_text": "2400",
+            "is_today": false,
+            "is_selected": false,
+            "is_complete": false,
+            "has_training": true,
+            "is_before_plan": false
+        }
+    ],
+    "previous_week": "2026-09-12",
+    "next_week": "2026-09-26",
+    "calendar": {
+        "first": "2026-09-05",
+        "last": "2026-12-18"
+    },
+    "actions": [
+        {
+            "action": "edit_away",
+            "label": "Edit away week"
+        }
+    ],
+    "warnings": [
+        {
+            "text": "More than 4 hard sessions this week. Too much cardio hurts your recovery from lifting.",
+            "tone": "warning"
+        }
+    ]
+}

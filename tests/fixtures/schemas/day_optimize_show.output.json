@@ -1,0 +1,63 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "date": {
+            "type": "string",
+            "format": "date"
+        },
+        "rows": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "meal_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "before_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "null for a meal the result adds (an intra-workout shake)."
+                    },
+                    "after_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "null for a meal the result drops."
+                    },
+                    "changed": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "meal_id",
+                    "name",
+                    "changed"
+                ]
+            }
+        },
+        "message": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "\"Your meals are already in the best places.\" or the refusal."
+        },
+        "can_save": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "date",
+        "rows",
+        "can_save"
+    ]
+}
