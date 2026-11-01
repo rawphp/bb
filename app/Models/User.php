@@ -84,4 +84,40 @@ class User extends Authenticatable
     {
         return $this->hasMany(Step::class);
     }
+
+    /** @return HasMany<DayTarget, $this> */
+    public function dayTargets(): HasMany
+    {
+        return $this->hasMany(DayTarget::class);
+    }
+
+    /** @return HasMany<Phase, $this> */
+    public function phases(): HasMany
+    {
+        return $this->hasMany(Phase::class);
+    }
+
+    /** @return HasMany<Mesocycle, $this> */
+    public function mesocycles(): HasMany
+    {
+        return $this->hasMany(Mesocycle::class);
+    }
+
+    /** @return HasMany<WorkoutSession, $this> */
+    public function workoutSessions(): HasMany
+    {
+        return $this->hasMany(WorkoutSession::class);
+    }
+
+    /** @return HasMany<Food, $this> */
+    public function foods(): HasMany
+    {
+        return $this->hasMany(Food::class);
+    }
+
+    /** @return HasMany<Recipe, $this> */
+    public function recipes(): HasMany
+    {
+        return $this->hasMany(Recipe::class);
+    }
 }

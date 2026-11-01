@@ -7,10 +7,12 @@ use App\Domain\Model\PhaseType;
 use App\Models\DayTarget;
 use App\Models\DayTargetMeal;
 use App\Models\Exercise;
+use App\Models\ExerciseFeedback;
 use App\Models\Food;
 use App\Models\MealCheckIn;
 use App\Models\MealPlanningState;
 use App\Models\Mesocycle;
+use App\Models\MuscleFeedback;
 use App\Models\OffPlanEntry;
 use App\Models\Phase;
 use App\Models\PlannedFood;
@@ -18,6 +20,7 @@ use App\Models\PlannedRecipe;
 use App\Models\Recipe;
 use App\Models\User;
 use App\Models\WorkoutSession;
+use App\Models\WorkoutSet;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -240,4 +243,40 @@ it('stores the shared domain enums\' values', function () {
         ->toBe(['muscle_group' => 'sideDelts', 'equipment' => 'ezBar', 'load_type' => 'bodyweightPlusLoad'])
         ->and(DB::table('phases')->where('id', $phase->id)->value('type'))->toBe('miniCut')
         ->and($exercise->fresh()->muscle_group)->toBe(MuscleGroup::SideDelts);
+});
+
+it('reaches a user\'s, session\'s, exercise\'s and recipe\'s rows from the parent, and eager-loads them', function () {
+    [$user, $other] = User::factory()->count(2)->create();
+    $rows = fn (User $owner) => [
+        'dayTargets' => DayTarget::factory()->for($owner)->create(),
+        'phases' => Phase::factory()->for($owner)->create(),
+        'mesocycles' => Mesocycle::factory()->for($owner)->create(),
+        'workoutSessions' => WorkoutSession::factory()->for($owner)->create(),
+        'foods' => Food::factory()->custom($owner)->create(),
+        'recipes' => Recipe::factory()->for($owner)->create(),
+    ];
+    $mine = $rows($user);
+    $rows($other);
+
+    $loaded = User::with(array_keys($mine))->findOrFail($user->id);
+    foreach ($mine as $relation => $row) {
+        expect($loaded->relationLoaded($relation))->toBeTrue()
+            ->and($loaded->{$relation}->modelKeys())->toBe([$row->getKey()], "{$relation} is not the user's own rows");
+    }
+
+    $session = $mine['workoutSessions'];
+    $exercise = Exercise::factory()->create();
+    $muscle = MuscleFeedback::factory()->create(['workout_session_id' => $session->id]);
+    $feedback = ExerciseFeedback::factory()->create(['workout_session_id' => $session->id, 'exercise_id' => $exercise->id]);
+    $set = WorkoutSet::factory()->create(['workout_session_id' => $session->id, 'exercise_id' => $exercise->id]);
+    $planned = PlannedRecipe::factory()->create(['recipe_id' => $mine['recipes']->id]);
+    MuscleFeedback::factory()->create();
+    ExerciseFeedback::factory()->create();
+    WorkoutSet::factory()->create();
+    PlannedRecipe::factory()->create();
+
+    expect($session->muscleFeedback->modelKeys())->toBe([$muscle->id])
+        ->and($session->exerciseFeedback->modelKeys())->toBe([$feedback->id])
+        ->and($exercise->sets->modelKeys())->toBe([$set->id])
+        ->and($mine['recipes']->plannedRecipes->modelKeys())->toBe([$planned->id]);
 });

@@ -35,6 +35,18 @@ class WorkoutSession extends Model
         return $this->hasMany(WorkoutSet::class);
     }
 
+    /** @return HasMany<MuscleFeedback, $this> */
+    public function muscleFeedback(): HasMany
+    {
+        return $this->hasMany(MuscleFeedback::class);
+    }
+
+    /** @return HasMany<ExerciseFeedback, $this> */
+    public function exerciseFeedback(): HasMany
+    {
+        return $this->hasMany(ExerciseFeedback::class);
+    }
+
     /**
      * A timestamp with an offset is shifted to the app timezone before it is stored,
      * so a time sent as +10:00 lands as the same instant.

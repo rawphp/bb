@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /** A library exercise, or a user's custom one when it has a user. */
 #[Fillable([
@@ -36,6 +37,12 @@ class Exercise extends Model
             'rep_range_max' => 'integer',
             'is_compound' => 'boolean',
         ];
+    }
+
+    /** @return HasMany<WorkoutSet, $this> */
+    public function sets(): HasMany
+    {
+        return $this->hasMany(WorkoutSet::class);
     }
 
     /**

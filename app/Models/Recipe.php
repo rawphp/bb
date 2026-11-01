@@ -31,6 +31,12 @@ class Recipe extends Model
         return $this->hasMany(RecipeIngredient::class)->orderBy('position');
     }
 
+    /** @return HasMany<PlannedRecipe, $this> */
+    public function plannedRecipes(): HasMany
+    {
+        return $this->hasMany(PlannedRecipe::class);
+    }
+
     /**
      * The library, or one user's own recipes.
      *
