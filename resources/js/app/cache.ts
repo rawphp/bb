@@ -5,7 +5,17 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
 export const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
-export type CachedRead = { key: string; data: unknown; fetchedAt: number };
+export type CachedRead = { key: string; data: unknown; fetchedAt: number; version?: string };
+
+// Each read's output schema version, from its generated contract. A copy cached
+// under another version was written for an older output shape and counts as missing.
+const versions = import.meta.glob<string>('../contracts/*.ts', { eager: true, import: 'outputVersion' });
+
+export function versionOf(key: string): string | undefined {
+    const brace = key.indexOf('{');
+
+    return versions[`../contracts/${brace < 0 ? key : key.slice(0, brace)}.ts`];
+}
 
 interface Schema extends DBSchema {
     reads: { key: string; value: CachedRead };
@@ -40,11 +50,18 @@ function sorted(value: unknown): unknown {
 }
 
 export async function cached(key: string): Promise<CachedRead | undefined> {
-    return (await open()).get('reads', key);
+    const hit = await (await open()).get('reads', key);
+
+    return hit?.version === versionOf(key) ? hit : undefined;
 }
 
-export async function store(key: string, data: unknown, fetchedAt = Date.now()): Promise<void> {
-    await (await open()).put('reads', { key, data, fetchedAt });
+export async function store(key: string, data: unknown, fetchedAt = Date.now(), version = versionOf(key)): Promise<void> {
+    await (await open()).put('reads', { key, data, fetchedAt, version });
+}
+
+export async function drop(keys: readonly string[]): Promise<void> {
+    const tx = (await open()).transaction('reads', 'readwrite');
+    await Promise.all([...keys.map((key) => tx.store.delete(key)), tx.done]);
 }
 
 /** OFF-005: drop cached reads that are not in the current manifest and are older than 30 days. */

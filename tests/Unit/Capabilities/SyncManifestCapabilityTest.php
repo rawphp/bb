@@ -33,7 +33,17 @@ it('OFF-004 sync_manifest returns the keys of every capability that implements P
     $result = app(CapabilityRegistry::class)->invoke('sync_manifest', [], ['actor' => tap(new User, fn (User $u) => $u->id = 1)]);
 
     expect($result->isOk())->toBeTrue()
-        ->and($result->data->toArray())->toBe(['keys' => ['today_show{"date":"2026-11-02"}', 'mesocycle_show{}', 'week_show{}']]);
+        ->and($result->data->toArray())->toBe(['keys' => ['today_show{"date":"2026-11-02","user":1}', 'mesocycle_show{}', 'week_show{}']]);
+});
+
+it('OFF-004 sync_manifest asks each prefetching read for the signed-in user\'s keys', function () {
+    registerPrefetchFixtures();
+    $manifest = fn (int $id) => app(CapabilityRegistry::class)
+        ->invoke('sync_manifest', [], ['actor' => tap(new User, fn (User $u) => $u->id = $id)])
+        ->data->toArray()['keys'][0];
+
+    expect($manifest(7))->toBe('today_show{"date":"2026-11-02","user":7}')
+        ->and($manifest(8))->toBe('today_show{"date":"2026-11-02","user":8}');
 });
 
 it('OFF-004 sync_manifest answers the same on http, job, mcp and cli, with no keys while no read prefetches', function () {

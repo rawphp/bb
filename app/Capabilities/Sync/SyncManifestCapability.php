@@ -20,7 +20,7 @@ final class SyncManifestCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::read('sync_manifest')
-            ->description('List the read keys the app should keep cached for offline use: the coming days, their workouts and meals, the current mesocycle and the weigh-in screen. It changes nothing.')
+            ->description('List the read keys the app should keep cached for offline use, as named by the reads that prefetch. It changes nothing.')
             ->cli('sync', 'manifest')
             ->input(SyncManifestInput::class)
             ->output(SyncManifestOutput::class)

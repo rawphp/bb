@@ -1,11 +1,14 @@
 import type { SyncManifestOutput } from '@/contracts/sync_manifest';
-import { cached, evict, readKey, requestPersistentStorage, store } from './cache';
+import { cached, clearReads, drop, evict, readKey, requestPersistentStorage, store } from './cache';
 
 // The only way the app talks to the server (CAP-004): POST /capabilities/{name}
 // with Sanctum SPA cookie auth. read() goes through the IndexedDB cache (OFF-003),
 // and OUTBOX (#58) puts write() behind the outbox.
 
 export type CapabilityInput = Record<string, unknown>;
+
+// How many manifest reads a warm sends at once (OFF-004).
+export const WARM_CONCURRENCY = 4;
 
 // One deadline per call, CSRF cookie fetch and response body included, so a
 // stalled server ends in a CapabilityError instead of a screen stuck on loading.
@@ -26,6 +29,8 @@ export class CapabilityError extends Error {
  * Stale-while-revalidate (OFF-003). With a cached copy, it resolves with that at
  * once, refreshes it in the background and hands the fresh copy to onUpdate.
  * Without one, it waits for the server; offline, that is a CapabilityError with status 0.
+ * A failed refresh keeps the cached copy only when the network or the server failed:
+ * a 401 or 419 clears the whole cache (forget()), and a 403 or 404 drops this read.
  */
 export async function read<T = unknown>(name: string, input: CapabilityInput = {}, onUpdate?: (data: T) => void): Promise<T> {
     const key = readKey(name, input);
@@ -45,21 +50,58 @@ export async function read<T = unknown>(name: string, input: CapabilityInput = {
  * OFF-004: fetch every read key the server's sync_manifest lists into the cache,
  * then drop what OFF-005 says to. Persistent storage is asked for once the
  * manifest lists something, which is after onboarding (OFF-005).
+ * A call while a warm runs queues one more warm after it, so a reconnect or a
+ * replay is never answered by a fetch that started before it, and warms never pile up.
  */
-export async function warm(): Promise<void> {
+export function warm(): Promise<void> {
+    if (warming === undefined) {
+        warming = warmOnce().finally(() => (warming = undefined));
+
+        return warming;
+    }
+
+    queued ??= warming
+        .catch(() => undefined)
+        .then(() => {
+            queued = undefined;
+
+            return warm();
+        });
+
+    return queued;
+}
+
+let warming: Promise<void> | undefined;
+let queued: Promise<void> | undefined;
+
+async function warmOnce(): Promise<void> {
     // The schema can't type array items as strings, so the contract says unknown[].
     const keys = (await invoke<SyncManifestOutput>('sync_manifest', {})).keys.filter((key) => typeof key === 'string');
 
-    await Promise.allSettled(
-        keys.map((key) => {
-            const brace = key.indexOf('{');
+    await inBatches(keys, WARM_CONCURRENCY, async (key) => {
+        const brace = key.indexOf('{');
+        // A malformed key fails on its own; the rest still warm.
+        if (brace < 1) throw new Error(`Not a read key: ${key}`);
 
-            return fetchRead(key.slice(0, brace), JSON.parse(key.slice(brace)) as CapabilityInput, key);
-        }),
-    );
+        await fetchRead(key.slice(0, brace), JSON.parse(key.slice(brace)) as CapabilityInput, key);
+    });
     await evict(new Set(keys));
 
     if (keys.length > 0) await requestPersistentStorage();
+}
+
+/** Runs task over items, at most `limit` at a time, and waits for all of them whether they fail or not. */
+async function inBatches<T>(items: readonly T[], limit: number, task: (item: T) => Promise<void>): Promise<void> {
+    let next = 0;
+    const worker = async () => {
+        while (next < items.length) {
+            await task(items[next++]!).catch(() => {
+                // One read failing doesn't stop the others.
+            });
+        }
+    };
+
+    await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
 }
 
 /** Warm the cache now and on every reconnect (OFF-004). OUTBOX warms it after each replay. */
@@ -75,7 +117,13 @@ export function keepWarm(target: Window = window): void {
 }
 
 async function fetchRead<T>(name: string, input: CapabilityInput, key: string): Promise<T> {
-    const data = await invoke<T>(name, input);
+    const data = await invoke<T>(name, input).catch(async (error: unknown) => {
+        if (error instanceof CapabilityError && (error.status === 403 || error.status === 404)) {
+            await drop([key]).catch(() => undefined);
+        }
+
+        throw error;
+    });
     await store(key, data).catch(() => {
         // No IndexedDB (a private window, say): the read still answers.
     });
@@ -83,8 +131,16 @@ async function fetchRead<T>(name: string, input: CapabilityInput, key: string): 
     return data;
 }
 
-export function write<T = unknown>(name: string, input: CapabilityInput = {}): Promise<T> {
-    return invoke<T>(name, input);
+/** A write drops the cached reads its WriteResult invalidates (CAP-010), so the next read of them waits for the server. */
+export async function write<T = unknown>(name: string, input: CapabilityInput = {}): Promise<T> {
+    const data = await invoke<T>(name, input);
+    const invalidates = (data as { invalidates?: unknown } | null)?.invalidates;
+
+    if (Array.isArray(invalidates)) {
+        await drop(invalidates.filter((key) => typeof key === 'string')).catch(() => undefined);
+    }
+
+    return data;
 }
 
 async function invoke<T>(name: string, input: CapabilityInput): Promise<T> {
@@ -93,8 +149,19 @@ async function invoke<T>(name: string, input: CapabilityInput): Promise<T> {
 
     try {
         return await send<T>(name, input, deadline.signal);
+    } catch (error) {
+        await forget(error);
+        throw error;
     } finally {
         clearTimeout(timer);
+    }
+}
+
+// 401 (signed out) and 419 (session expired): the cached reads may be another
+// user's, so none of them may be shown again. A sign-out or user switch clears it too.
+async function forget(error: unknown): Promise<void> {
+    if (error instanceof CapabilityError && (error.status === 401 || error.status === 419)) {
+        await clearReads().catch(() => undefined);
     }
 }
 

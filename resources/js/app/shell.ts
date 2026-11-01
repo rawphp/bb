@@ -4,7 +4,9 @@
 
 export const SHELL_URL = '/';
 
-// Paths the server answers itself; a navigation to one never gets the shell.
+// Paths the server answers itself; a navigation to one never gets the shell. It must
+// cover the paths routes/web.php keeps from the shell (shell.test.ts checks), plus
+// build, which the web server serves as files.
 export const SERVER_PATHS = /^\/(capabilities|sanctum|mcp|api|build)(\/|$)/;
 
 type ManifestEntry = string | { url: string; revision?: string | null };

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { SERVER_PATHS, shellEntry } from './shell';
 
@@ -27,4 +28,15 @@ describe('shell', () => {
             expect(SERVER_PATHS.test(path)).toBe(true);
         },
     );
+
+    it('OFF-002 leaves to the server every path routes/web.php keeps from the shell', () => {
+        const fallback = /\(\?!\(([a-z|]+)\)\(\/\|\$\)\)/.exec(readFileSync('routes/web.php', 'utf8'));
+        const paths = fallback?.[1]?.split('|') ?? [];
+
+        expect(paths.length).toBeGreaterThan(0);
+        for (const path of paths) {
+            expect(SERVER_PATHS.test(`/${path}`), `/${path}`).toBe(true);
+            expect(SERVER_PATHS.test(`/${path}/x`), `/${path}/x`).toBe(true);
+        }
+    });
 });

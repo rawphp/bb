@@ -5,3 +5,5 @@ export interface SyncManifestInput {}
 export interface SyncManifestOutput {
   keys: unknown[];
 }
+
+export const outputVersion = '774d63d16164';

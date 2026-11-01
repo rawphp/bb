@@ -20,6 +20,7 @@ final class TodayFixtureCapability implements HostCapability, PrefetchesKeys
 
     public function prefetchKeys(User $user): array
     {
-        return ['today_show{"date":"2026-11-02"}', 'mesocycle_show{}'];
+        // Keyed by the user, so a test can tell whose manifest it got.
+        return ['today_show{"date":"2026-11-02","user":'.$user->id.'}', 'mesocycle_show{}'];
     }
 }

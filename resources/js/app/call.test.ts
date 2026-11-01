@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cached, clearReads, MAX_AGE_MS, store } from './cache';
-import { CapabilityError, keepWarm, read, TIMEOUT_MS, warm, write } from './call';
+import { CapabilityError, keepWarm, read, TIMEOUT_MS, WARM_CONCURRENCY, warm, write } from './call';
 
 function json(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -208,6 +208,121 @@ describe('call', () => {
             await warm();
 
             expect(persist).not.toHaveBeenCalled();
+        });
+
+        // Answers each capability with the given status and body.
+        function answer(replies: Record<string, [number, unknown]>): void {
+            document.cookie = 'XSRF-TOKEN=t; path=/';
+            fetchMock.mockImplementation(async (url) => {
+                const [status, body] = replies[String(url).replace('/capabilities/', '')] ?? [500, null];
+                return json(body, status);
+            });
+        }
+
+        // Lets every pending promise and IndexedDB request run.
+        const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+        it.each([401, 419])('OFF-003 clears every cached read when a refresh answers %s, so no one else sees them', async (status) => {
+            await store('account_show{}', { name: 'A' });
+            await store('today_show{}', { title: 'A' });
+            answer({ account_show: [status, { message: 'Unauthenticated.' }] });
+
+            await read('account_show');
+            await settle();
+
+            expect(await cached('account_show{}')).toBeUndefined();
+            expect(await cached('today_show{}')).toBeUndefined();
+        });
+
+        it.each([403, 404])('OFF-003 drops only the read whose refresh answers %s', async (status) => {
+            await store('workout_show{"id":"01J"}', { id: '01J' });
+            await store('today_show{}', { title: 'Today' });
+            answer({ workout_show: [status, { message: 'Not found.' }] });
+
+            await read('workout_show', { id: '01J' });
+            await settle();
+
+            expect(await cached('workout_show{"id":"01J"}')).toBeUndefined();
+            expect(await cached('today_show{}')).toBeDefined();
+        });
+
+        it('OFF-003 keeps the cached copy when the server fails with a 5xx', async () => {
+            await store('today_show{}', { title: 'cached' });
+            answer({ today_show: [503, null] });
+
+            await read('today_show');
+            await settle();
+
+            expect((await cached('today_show{}'))?.data).toEqual({ title: 'cached' });
+        });
+
+        it('OFF-004 clears the cache when the warm finds the session gone', async () => {
+            await store('today_show{}', { title: 'A' });
+            answer({ sync_manifest: [401, { message: 'Unauthenticated.' }] });
+
+            await expect(warm()).rejects.toMatchObject({ status: 401 });
+
+            expect(await cached('today_show{}')).toBeUndefined();
+        });
+
+        it('CAP-010 a write drops the cached reads it invalidates, so the next read waits for the server', async () => {
+            await store('today_show{}', { sets: 1 });
+            await store('week_show{}', { sets: 1 });
+            answer({
+                workout_set_log: [200, { ok: true, data: { invalidates: ['today_show{}', 7], toast: null, undo: null } }],
+                today_show: [200, { ok: true, data: { sets: 2 } }],
+            });
+
+            await write('workout_set_log', { reps: 8 });
+
+            expect(await cached('week_show{}')).toBeDefined();
+            expect(await read('today_show')).toEqual({ sets: 2 });
+        });
+
+        it('OFF-004 still warms the valid keys when the manifest lists a malformed or non-string one', async () => {
+            const old = Date.now() - MAX_AGE_MS - 1;
+            await store('stale_show{}', {}, old);
+            serve({
+                sync_manifest: { keys: ['week_show', 'x{bad', 42, 'today_show{}'] },
+                today_show: { title: 'Today' },
+            });
+            vi.stubGlobal('navigator', { storage: { persist: vi.fn(async () => true), persisted: async () => false } });
+
+            await warm();
+
+            expect((await cached('today_show{}'))?.data).toEqual({ title: 'Today' });
+            expect(await cached('stale_show{}')).toBeUndefined();
+            expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/capabilities/sync_manifest', '/capabilities/today_show']);
+        });
+
+        it(`OFF-004 sends at most ${WARM_CONCURRENCY} manifest reads at once`, async () => {
+            const keys = Array.from({ length: 10 }, (_, i) => `day_show{"day":${i}}`);
+            let open = 0;
+            let most = 0;
+            document.cookie = 'XSRF-TOKEN=t; path=/';
+            fetchMock.mockImplementation(async (url) => {
+                if (url === '/capabilities/sync_manifest') return json({ ok: true, data: { keys } });
+                most = Math.max(most, ++open);
+                await new Promise((resolve) => setTimeout(resolve, 5));
+                open--;
+                return json({ ok: true, data: {} });
+            });
+            vi.stubGlobal('navigator', {});
+
+            await warm();
+
+            expect(most).toBe(WARM_CONCURRENCY);
+            expect(fetchMock).toHaveBeenCalledTimes(11);
+            for (const key of keys) expect(await cached(key)).toBeDefined();
+        });
+
+        it('OFF-004 a warm asked for while one runs queues one more after it, however often it is asked', async () => {
+            serve({ sync_manifest: { keys: [] } });
+            const manifestCalls = () => fetchMock.mock.calls.filter(([url]) => url === '/capabilities/sync_manifest').length;
+
+            await Promise.all([warm(), warm(), warm(), warm()]);
+
+            expect(manifestCalls()).toBe(2);
         });
 
         it('OFF-004 warms the cache on open and again on reconnect', async () => {
