@@ -1,9 +1,11 @@
 import type { SyncManifestOutput } from '@/contracts/sync_manifest';
 import { cached, clearReads, drop, evict, isCurrent, readKey, requestPersistentStorage, stamp, store } from './cache';
+import { isWalked, now } from './clock';
 
 // The only way the app talks to the server (CAP-004): POST /capabilities/{name}
-// with Sanctum SPA cookie auth. read() goes through the IndexedDB cache (OFF-003),
-// and OUTBOX (#58) puts write() behind the outbox.
+// with Sanctum SPA cookie auth, plus X-BB-Now while the clock is walked (SET-011).
+// read() goes through the IndexedDB cache (OFF-003), and OUTBOX (#58) puts write()
+// behind the outbox.
 
 export type CapabilityInput = Record<string, unknown>;
 
@@ -200,6 +202,7 @@ async function send<T>(name: string, input: CapabilityInput, signal: AbortSignal
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-XSRF-TOKEN': await csrfToken(signal),
+                ...(isWalked() ? { 'X-BB-Now': now().toISOString() } : {}),
             },
             body: JSON.stringify(input),
             signal,

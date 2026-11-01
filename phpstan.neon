@@ -3,7 +3,8 @@ includes:
 
 parameters:
     level: 6
-    # Per checkout: the shared /tmp/phpstan cache can point at another worktree's deleted files.
+    # Per checkout: the default /tmp/phpstan is shared by every worktree on a machine,
+    # and a cache written by one checkout's vendor breaks analysis in another.
     tmpDir: storage/framework/cache/phpstan
     paths:
         - app
