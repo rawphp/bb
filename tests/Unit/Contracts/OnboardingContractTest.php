@@ -2,9 +2,23 @@
 
 use App\Capabilities\Onboarding\Data\OnboardingAnswerInput;
 use App\Capabilities\Onboarding\Data\OnboardingAnswers;
+use App\Capabilities\Onboarding\Data\OnboardingBodyFatSection;
+use App\Capabilities\Onboarding\Data\OnboardingHeight;
+use App\Capabilities\Onboarding\Data\OnboardingHeightAnswer;
 use App\Capabilities\Onboarding\Data\OnboardingScreeningAnswer;
 use App\Capabilities\Onboarding\Data\OnboardingStatus;
+use App\Capabilities\Onboarding\Data\OnboardingTargetWeight;
+use App\Capabilities\Onboarding\Data\OnboardingWeight;
+use App\Capabilities\Onboarding\Data\OnboardingWeightAnswer;
 use App\Capabilities\Support\Tone;
+use App\Domain\Model\BodyFatBucket;
+use App\Domain\Model\ExperienceLevel;
+use App\Domain\Model\HeightUnit;
+use App\Domain\Model\PhaseType;
+use App\Domain\Model\Sex;
+use App\Domain\Model\WeightUnit;
+use App\Domain\Safety\Screening;
+use App\Domain\Safety\ScreeningItem;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 
 $names = ['onboarding_show', 'onboarding_answer', 'onboarding_complete'];
@@ -31,17 +45,43 @@ it('CAP-018 lets a status carry only the tones the server picks from', function 
 });
 
 it('SAFE-001 takes only the screening items a person ticks; age, height, weight and BMI come from step 2', function () {
-    expect(OnboardingScreeningAnswer::jsonSchema()['properties']['item']['enum'])->toBe([
-        'pregnantOrBreastfeeding',
-        'tryingToConceive',
-        'transgenderOnHormoneTherapy',
-        'heartThyroidOrPCOS',
-        'weightLossSurgery',
-        'gallbladderDisease',
-        'autoimmuneDisease',
-        'diabetes',
-        'eatingDisorderHistory',
-    ]);
+    $measured = array_column(Screening::MEASURED_KINDS, 'value');
+    $ticked = array_values(array_diff(array_column(ScreeningItem::cases(), 'value'), $measured));
+
+    expect(OnboardingScreeningAnswer::jsonSchema()['properties']['item']['enum'])->toBe($ticked);
+});
+
+it('SAFE-001 lists every screening item in the spec\'s order, in every state of the screen', function () {
+    foreach (glob(base_path('tests/fixtures/screens/onboarding_show*.json')) ?: [] as $path) {
+        $rows = json_decode((string) file_get_contents($path), true)['screening']['rows'];
+
+        expect(array_column($rows, 'item'))->toBe(array_column(ScreeningItem::cases(), 'value'), basename($path));
+    }
+});
+
+// The Field attribute takes only literals, so each copied list is pinned to its domain enum here.
+it('ONB-003 ONB-004 ONB-007 ONB-010 CAP-015 keep every copied choice list equal to its domain enum', function (string $dto, string $field, array $values) {
+    $schema = $dto::jsonSchema()['properties'][$field];
+
+    expect($schema['enum'])->toBe($values);
+})->with([
+    'goal' => [OnboardingAnswers::class, 'goal', ['fatLoss', 'muscleGain', 'maintenance']],
+    'sex' => [OnboardingAnswers::class, 'sex', array_column(Sex::cases(), 'value')],
+    'body fat' => [OnboardingAnswers::class, 'body_fat', array_column(BodyFatBucket::cases(), 'value')],
+    'experience' => [OnboardingAnswers::class, 'experience', array_column(ExperienceLevel::cases(), 'value')],
+    'body fat sex' => [OnboardingBodyFatSection::class, 'sex', array_column(Sex::cases(), 'value')],
+    'height unit' => [OnboardingHeight::class, 'unit', array_column(HeightUnit::cases(), 'value')],
+    'height answer unit' => [OnboardingHeightAnswer::class, 'unit', array_column(HeightUnit::cases(), 'value')],
+    'weight unit' => [OnboardingWeight::class, 'unit', array_column(WeightUnit::cases(), 'value')],
+    'weight answer unit' => [OnboardingWeightAnswer::class, 'unit', array_column(WeightUnit::cases(), 'value')],
+    'target weight unit' => [OnboardingTargetWeight::class, 'unit', array_column(WeightUnit::cases(), 'value')],
+]);
+
+it('ONB-003 offers every phase type as a goal except the Mini-cut', function () {
+    $goals = OnboardingAnswers::jsonSchema()['properties']['goal']['enum'];
+    $phases = array_column(PhaseType::cases(), 'value');
+
+    expect($goals)->toEqualCanonicalizing(array_values(array_diff($phases, [PhaseType::MiniCut->value])));
 });
 
 it('SAFE-001 locks every screening row the answer cannot send, in every state of the screen', function () {

@@ -5,7 +5,11 @@ namespace App\Capabilities\Onboarding\Data;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
-/** Step 5, body fat (ONB-007, TBL-001): the photo buckets for `sex`, leanest first. */
+/**
+ * Step 5, body fat (ONB-007, TBL-001): the photo buckets for `sex`, leanest
+ * first. `sex` is step 2's answer, and `female` until step 2 has one, as in
+ * rp-clone (`draft.sex ?? .female`): the step always has buckets to show.
+ */
 final class OnboardingBodyFatSection extends CapabilityData
 {
     /** @param  list<OnboardingChoice>  $options  values are body-fat buckets */
