@@ -33,13 +33,4 @@ final class CopyShowOutput extends CapabilityData
         #[Field(items: CopyWorkout::class)] public readonly array $workouts,
         public readonly CopyOptionDefaults $options,
     ) {}
-
-    public static function rules(): array
-    {
-        return [
-            'shown_date' => ['date_format:Y-m-d'],
-            'previous_week' => ['nullable', 'date_format:Y-m-d'],
-            'next_week' => ['nullable', 'date_format:Y-m-d'],
-        ];
-    }
 }

@@ -70,11 +70,11 @@ export interface TodayShowOutput {
     };
     calories: {
       /**
-       * "Calories"
+       * "Cal" or "P"
        */
       label: string;
       /**
-       * "1,850 / 2,400 kcal"
+       * "780/2600" or "51/170"
        */
       value_text: string;
       /**
@@ -85,11 +85,11 @@ export interface TodayShowOutput {
     };
     protein: {
       /**
-       * "Calories"
+       * "Cal" or "P"
        */
       label: string;
       /**
-       * "1,850 / 2,400 kcal"
+       * "780/2600" or "51/170"
        */
       value_text: string;
       /**
@@ -295,6 +295,9 @@ export interface TodayShowOutput {
     weight_text?: string | null;
   }[];
   other_activities: {
+    /**
+     * The stored ULID; other_activity_save and other_activity_delete take it.
+     */
     id: string;
     name: string;
     /**

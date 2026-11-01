@@ -29,13 +29,4 @@ final class WeekShowOutput extends CapabilityData
         #[Field(items: WeekAction::class)] public readonly array $actions,
         #[Field(description: 'SCH-062 "Too much cardio".', items: Status::class)] public readonly array $warnings,
     ) {}
-
-    public static function rules(): array
-    {
-        return [
-            'week_start' => ['date_format:Y-m-d'],
-            'previous_week' => ['nullable', 'date_format:Y-m-d'],
-            'next_week' => ['nullable', 'date_format:Y-m-d'],
-        ];
-    }
 }

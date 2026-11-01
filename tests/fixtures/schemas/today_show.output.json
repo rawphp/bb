@@ -176,11 +176,11 @@
                     "properties": {
                         "label": {
                             "type": "string",
-                            "description": "\"Calories\""
+                            "description": "\"Cal\" or \"P\""
                         },
                         "value_text": {
                             "type": "string",
-                            "description": "\"1,850 / 2,400 kcal\""
+                            "description": "\"780/2600\" or \"51/170\""
                         },
                         "fraction": {
                             "type": "number",
@@ -209,11 +209,11 @@
                     "properties": {
                         "label": {
                             "type": "string",
-                            "description": "\"Calories\""
+                            "description": "\"Cal\" or \"P\""
                         },
                         "value_text": {
                             "type": "string",
-                            "description": "\"1,850 / 2,400 kcal\""
+                            "description": "\"780/2600\" or \"51/170\""
                         },
                         "fraction": {
                             "type": "number",
@@ -756,7 +756,8 @@
                 "additionalProperties": false,
                 "properties": {
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The stored ULID; other_activity_save and other_activity_delete take it."
                     },
                     "name": {
                         "type": "string"

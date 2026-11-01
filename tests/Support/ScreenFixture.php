@@ -6,7 +6,9 @@ namespace Tests\Support;
  * Compares a read capability's payload with its screen fixture by shape:
  * the same keys and the same JSON types at every depth. Values are free.
  * Every item of a list is compared with the fixture's first item.
- * Null matches any type, as nullable fields differ between items and states.
+ * Null matches any type, as nullable fields differ between items and states;
+ * assertMatchesScreenFixture also validates the payload against the output
+ * schema, which decides where null may stand.
  */
 final class ScreenFixture
 {
@@ -22,6 +24,18 @@ final class ScreenFixture
         return json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
     }
 
+    /** @return array<mixed> */
+    public static function outputSchema(string $name): array
+    {
+        $path = base_path("tests/fixtures/schemas/{$name}.output.json");
+
+        if (! is_file($path)) {
+            throw new \InvalidArgumentException("No output schema at tests/fixtures/schemas/{$name}.output.json");
+        }
+
+        return json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+    }
+
     /** @return list<string> one line per difference, empty when the shapes match */
     public static function differences(mixed $fixture, mixed $payload, string $path = '$'): array
     {
@@ -29,7 +43,7 @@ final class ScreenFixture
         $actual = self::type($payload);
 
         // A nullable field holds null on one side and a value on the other.
-        // The schema snapshot decides which fields may be null.
+        // The output schema decides which fields may be null.
         if ($expected === 'null' || $actual === 'null') {
             return [];
         }

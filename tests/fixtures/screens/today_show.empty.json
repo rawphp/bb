@@ -73,8 +73,14 @@
     ],
     "add_meal_time": "14:00",
     "add_workout": {
-        "session": null,
-        "session_message": "No session left to move this week",
+        "session": {
+            "mesocycle_id": "01JBWZK7Q8R9S0T1V2W3X4Y5Z6",
+            "week": 1,
+            "day": 1,
+            "title": "Week 1 · Day 1 · Upper A",
+            "time_text": "5:30 PM"
+        },
+        "session_message": null,
         "activity": null
     },
     "schedule": {

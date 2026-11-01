@@ -4,8 +4,17 @@ export interface DayAdjustInput {
   date: string;
   mode: "meals" | "days";
   kcal: number;
+  /**
+   * Required when mode is meals.
+   */
   from_meal_id?: string | null;
+  /**
+   * Required when mode is meals.
+   */
   to_meal_id?: string | null;
+  /**
+   * Required when mode is days.
+   */
   other_date?: string | null;
   direction?: "give" | "take";
 }

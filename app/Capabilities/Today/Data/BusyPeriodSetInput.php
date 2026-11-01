@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Today\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -23,9 +24,9 @@ final class BusyPeriodSetInput extends CapabilityData
     {
         return [
             'id' => ['ulid'],
-            'start' => ['date_format:H:i'],
-            'end' => ['date_format:H:i'],
-            'weekdays.*' => ['integer', 'between:1,7'],
+            'start' => [Rule::date()->format('H:i')],
+            'end' => [Rule::date()->format('H:i')],
+            'weekdays.*' => [Rule::numeric()->integer(strict: true)->between(1, 7)],
         ];
     }
 }

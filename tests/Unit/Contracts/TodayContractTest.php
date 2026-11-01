@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Str;
 use Rawphp\Capabilities\Schema\JsonSchemaValidator;
 use Rawphp\Capabilities\Support\SchemaSnapshot;
 use Tests\Support\ScreenFixture;
@@ -108,6 +109,66 @@ it('SCH-001 points each timeline entry at an item of its kind', function () {
         $fixture = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
         foreach ($fixture['timeline'] as $entry) {
             expect(array_column($fixture[$lists[$entry['kind']]], 'id'))->toContain($entry['id']);
+        }
+    }
+});
+
+/**
+ * @param  array<mixed>  $schema
+ * @return list<string> paths of the objects and lists the schema lets be null, list items as []
+ */
+function todayNullableObjectPaths(array $schema, string $path = '$'): array
+{
+    $types = (array) ($schema['type'] ?? []);
+    $paths = in_array('null', $types, true) && array_intersect(['object', 'array'], $types) !== [] ? [$path] : [];
+
+    foreach ($schema['properties'] ?? [] as $key => $property) {
+        array_push($paths, ...todayNullableObjectPaths($property, "{$path}.{$key}"));
+    }
+    if (isset($schema['items']) && is_array($schema['items'])) {
+        array_push($paths, ...todayNullableObjectPaths($schema['items'], "{$path}[]"));
+    }
+
+    return $paths;
+}
+
+/** @return list<string> paths of the objects and lists a fixture fills in, list items as [] */
+function todayFilledPaths(mixed $value, string $path = '$'): array
+{
+    if (! is_array($value)) {
+        return [];
+    }
+
+    $paths = [$path];
+    foreach ($value as $key => $item) {
+        array_push($paths, ...todayFilledPaths($item, array_is_list($value) ? "{$path}[]" : "{$path}.{$key}"));
+    }
+
+    return $paths;
+}
+
+it('CAP-002 fills in every nullable object of a Today read in at least one of its fixtures', function () {
+    // A null in the full fixture leaves the shape below it unchecked, and the
+    // views have no example of it, so some state must show each one filled in.
+    foreach (todayReads() as $name) {
+        $filled = [];
+        foreach (todayFixtureFiles($name) as $path) {
+            array_push($filled, ...todayFilledPaths(json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR)));
+        }
+
+        expect(array_values(array_diff(todayNullableObjectPaths(todaySchema($name, 'output')), $filled)))->toBe([], "{$name}: no fixture fills these in");
+    }
+});
+
+it('CAP-019 gives an Other activity card the stored ULID that its writes take', function () {
+    foreach (todayFixtureFiles('today_show') as $path) {
+        $fixture = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+
+        foreach ($fixture['other_activities'] as $activity) {
+            expect(Str::isUlid($activity['id']))->toBeTrue(basename($path).": {$activity['id']} is not a ULID");
+        }
+        if ($fixture['add_workout']['activity'] !== null) {
+            expect(array_column($fixture['other_activities'], 'id'))->toContain($fixture['add_workout']['activity']['id']);
         }
     }
 });

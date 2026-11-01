@@ -10,4 +10,11 @@ final class OtherActivityDeleteInput extends CapabilityData
     public function __construct(
         public readonly string $id,
     ) {}
+
+    public static function rules(): array
+    {
+        return [
+            'id' => ['ulid'],
+        ];
+    }
 }

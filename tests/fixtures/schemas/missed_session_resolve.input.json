@@ -25,7 +25,7 @@
                 "string",
                 "null"
             ],
-            "description": "The day it moves to, from the prompt's choice.",
+            "description": "The day it moves to, from the prompt's choice; required unless the choice is skip.",
             "format": "date"
         }
     },

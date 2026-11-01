@@ -14,11 +14,4 @@ final class WorkoutMoveInput extends CapabilityData
         public readonly int $day,
         #[Field(description: 'The day it moves to.', format: 'date')] public readonly string $date,
     ) {}
-
-    public static function rules(): array
-    {
-        return [
-            'date' => ['date_format:Y-m-d'],
-        ];
-    }
 }

@@ -12,7 +12,7 @@ final class TodayOtherActivity extends CapabilityData
      * @param  list<ActivityMenuItem>  $menu
      */
     public function __construct(
-        public readonly string $id,
+        #[Field(description: 'The stored ULID; other_activity_save and other_activity_delete take it.')] public readonly string $id,
         public readonly string $name,
         #[Field(description: '"6:00 PM · 45 min"')] public readonly string $time_text,
         #[Field(description: '"Moderate"')] public readonly string $intensity_text,

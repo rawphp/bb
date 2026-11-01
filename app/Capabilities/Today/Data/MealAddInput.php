@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Today\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -18,8 +19,7 @@ final class MealAddInput extends CapabilityData
     {
         return [
             'id' => ['ulid'],
-            'date' => ['date_format:Y-m-d'],
-            'time' => ['date_format:H:i'],
+            'time' => [Rule::date()->format('H:i')],
         ];
     }
 }

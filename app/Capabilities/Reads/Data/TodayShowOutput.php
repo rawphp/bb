@@ -57,11 +57,4 @@ final class TodayShowOutput extends CapabilityData
         public readonly ?MissedSession $missed_session,
         public readonly ?MissedWeeks $missed_weeks,
     ) {}
-
-    public static function rules(): array
-    {
-        return [
-            'date' => ['date_format:Y-m-d'],
-        ];
-    }
 }

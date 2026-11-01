@@ -17,12 +17,4 @@ final class DayAdjustShowInput extends CapabilityData
         #[Field(description: 'Between days: the day gives calories to the other day or takes them.', enum: ['give', 'take'])] public readonly string $direction = 'give',
         public readonly ?int $kcal = null,
     ) {}
-
-    public static function rules(): array
-    {
-        return [
-            'date' => ['date_format:Y-m-d'],
-            'other_date' => ['nullable', 'date_format:Y-m-d'],
-        ];
-    }
 }

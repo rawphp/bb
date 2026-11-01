@@ -19,7 +19,7 @@ final class MealRedistributeInput extends CapabilityData
     public static function rules(): array
     {
         return [
-            'date' => ['date_format:Y-m-d'],
+            'meal_ids.*' => ['ulid'],
         ];
     }
 }

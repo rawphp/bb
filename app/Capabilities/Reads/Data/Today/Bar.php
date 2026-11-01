@@ -10,8 +10,8 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class Bar extends CapabilityData
 {
     public function __construct(
-        #[Field(description: '"Calories"')] public readonly string $label,
-        #[Field(description: '"1,850 / 2,400 kcal"')] public readonly string $value_text,
+        #[Field(description: '"Cal" or "P"')] public readonly string $label,
+        #[Field(description: '"780/2600" or "51/170"')] public readonly string $value_text,
         #[Field(description: '0 to 1.')] public readonly float $fraction,
         #[Field(enum: [Tone::Good->value, Tone::Neutral->value, Tone::Warning->value, Tone::Info->value])] public readonly string $tone,
     ) {}

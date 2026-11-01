@@ -13,13 +13,13 @@ final class MissedSessionResolveInput extends CapabilityData
         public readonly int $week,
         public readonly int $day,
         #[Field(enum: ['do_it_today', 'next_rest_day', 'skip'])] public readonly string $choice,
-        #[Field(description: 'The day it moves to, from the prompt\'s choice.', format: 'date')] public readonly ?string $date = null,
+        #[Field(description: 'The day it moves to, from the prompt\'s choice; required unless the choice is skip.', format: 'date')] public readonly ?string $date = null,
     ) {}
 
     public static function rules(): array
     {
         return [
-            'date' => ['nullable', 'date_format:Y-m-d'],
+            'date' => ['required_unless:choice,skip'],
         ];
     }
 }

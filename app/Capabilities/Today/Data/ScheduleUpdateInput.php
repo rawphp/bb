@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Today\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -24,10 +25,11 @@ final class ScheduleUpdateInput extends CapabilityData
     public static function rules(): array
     {
         return [
-            'date' => ['date_format:Y-m-d'],
-            'window_start' => ['date_format:H:i'],
-            'window_end' => ['date_format:H:i'],
-            'training_start' => ['nullable', 'date_format:H:i'],
+            'window_start' => [Rule::date()->format('H:i')],
+            'window_end' => [Rule::date()->format('H:i')],
+            'training_start' => ['nullable', Rule::date()->format('H:i')],
+            'busy_periods.*.start' => [Rule::date()->format('H:i')],
+            'busy_periods.*.end' => [Rule::date()->format('H:i')],
         ];
     }
 }

@@ -82,7 +82,7 @@
         },
         {
             "kind": "other_activity",
-            "id": "other-01JBX0A1B2C3D4E5F6G7H8J9K0"
+            "id": "01JBX0A1B2C3D4E5F6G7H8J9K0"
         },
         {
             "kind": "meal",
@@ -491,7 +491,7 @@
     ],
     "other_activities": [
         {
-            "id": "other-01JBX0A1B2C3D4E5F6G7H8J9K0",
+            "id": "01JBX0A1B2C3D4E5F6G7H8J9K0",
             "name": "Tennis",
             "time_text": "6:45 PM · 45 min",
             "intensity_text": "Moderate",

@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Today\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -22,7 +23,7 @@ final class AwayWeekSetInput extends CapabilityData
     public static function rules(): array
     {
         return [
-            'week_starts.*' => ['date_format:Y-m-d'],
+            'week_starts.*' => [Rule::date()->format('Y-m-d')],
         ];
     }
 }

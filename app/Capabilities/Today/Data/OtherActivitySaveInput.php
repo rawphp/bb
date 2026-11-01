@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Today\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -21,8 +22,7 @@ final class OtherActivitySaveInput extends CapabilityData
     {
         return [
             'id' => ['ulid'],
-            'date' => ['date_format:Y-m-d'],
-            'start' => ['date_format:H:i'],
+            'start' => [Rule::date()->format('H:i')],
         ];
     }
 }

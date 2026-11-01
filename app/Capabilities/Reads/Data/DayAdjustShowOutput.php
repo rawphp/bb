@@ -32,11 +32,4 @@ final class DayAdjustShowOutput extends CapabilityData
         #[Field(items: Status::class)] public readonly array $warnings,
         public readonly bool $can_save,
     ) {}
-
-    public static function rules(): array
-    {
-        return [
-            'date' => ['date_format:Y-m-d'],
-        ];
-    }
 }

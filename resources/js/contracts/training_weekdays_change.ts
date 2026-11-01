@@ -6,7 +6,7 @@ export interface TrainingWeekdaysChangeInput {
    */
   weekdays: unknown[];
   /**
-   * "restructure" or "extend" when there are fewer days; the server asks for it with a validation error.
+   * Null until the server asks for it with a validation error, when there are fewer days.
    */
-  fewer_days?: string | null;
+  fewer_days?: "restructure" | "extend" | null;
 }

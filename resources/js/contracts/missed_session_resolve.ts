@@ -6,7 +6,7 @@ export interface MissedSessionResolveInput {
   day: number;
   choice: "do_it_today" | "next_rest_day" | "skip";
   /**
-   * The day it moves to, from the prompt's choice.
+   * The day it moves to, from the prompt's choice; required unless the choice is skip.
    */
   date?: string | null;
 }

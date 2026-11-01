@@ -18,11 +18,4 @@ final class DayOptimizeShowOutput extends CapabilityData
         #[Field(description: '"Your meals are already in the best places." or the refusal.')] public readonly ?string $message,
         public readonly bool $can_save,
     ) {}
-
-    public static function rules(): array
-    {
-        return [
-            'date' => ['date_format:Y-m-d'],
-        ];
-    }
 }

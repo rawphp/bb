@@ -12,11 +12,4 @@ final class RoughWeekSetInput extends CapabilityData
         #[Field(format: 'date')] public readonly string $week_start,
         public readonly bool $rough,
     ) {}
-
-    public static function rules(): array
-    {
-        return [
-            'week_start' => ['date_format:Y-m-d'],
-        ];
-    }
 }

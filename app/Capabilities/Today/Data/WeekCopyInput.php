@@ -11,11 +11,4 @@ final class WeekCopyInput extends CapabilityData
     public function __construct(
         #[Field(format: 'date')] public readonly string $week_start,
     ) {}
-
-    public static function rules(): array
-    {
-        return [
-            'week_start' => ['date_format:Y-m-d'],
-        ];
-    }
 }

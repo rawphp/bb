@@ -11,11 +11,4 @@ final class DayOptimizeInput extends CapabilityData
     public function __construct(
         #[Field(format: 'date')] public readonly string $date,
     ) {}
-
-    public static function rules(): array
-    {
-        return [
-            'date' => ['date_format:Y-m-d'],
-        ];
-    }
 }

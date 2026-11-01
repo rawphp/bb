@@ -11,11 +11,4 @@ final class WeekShowInput extends CapabilityData
     public function __construct(
         #[Field(description: 'Defaults to today.', format: 'date')] public readonly ?string $date = null,
     ) {}
-
-    public static function rules(): array
-    {
-        return [
-            'date' => ['nullable', 'date_format:Y-m-d'],
-        ];
-    }
 }

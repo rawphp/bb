@@ -19,7 +19,7 @@ final class DayRedistributeShowInput extends CapabilityData
     public static function rules(): array
     {
         return [
-            'date' => ['date_format:Y-m-d'],
+            'excluded_meal_ids.*' => ['ulid'],
         ];
     }
 }

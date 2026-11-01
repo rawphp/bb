@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Today\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -13,13 +14,22 @@ final class TrainingWeekdaysChangeInput extends CapabilityData
      */
     public function __construct(
         #[Field(description: 'ISO weekdays; 1 is Monday.')] public readonly array $weekdays,
-        #[Field(description: '"restructure" or "extend" when there are fewer days; the server asks for it with a validation error.')] public readonly ?string $fewer_days = null,
+        #[Field(description: 'Null until the server asks for it with a validation error, when there are fewer days.', enum: ['restructure', 'extend'])] public readonly ?string $fewer_days = null,
     ) {}
+
+    /** Field's enum cannot list null, and without it an explicit null fails the enum check. */
+    public static function jsonSchema(): array
+    {
+        $schema = parent::jsonSchema();
+        $schema['properties']['fewer_days']['enum'][] = null;
+
+        return $schema;
+    }
 
     public static function rules(): array
     {
         return [
-            'weekdays.*' => ['integer', 'between:1,7'],
+            'weekdays.*' => [Rule::numeric()->integer(strict: true)->between(1, 7)],
         ];
     }
 }

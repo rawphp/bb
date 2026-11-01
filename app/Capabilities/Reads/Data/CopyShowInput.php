@@ -17,8 +17,8 @@ final class CopyShowInput extends CapabilityData
     public static function rules(): array
     {
         return [
-            'source_date' => ['nullable', 'date_format:Y-m-d'],
-            'shown_date' => ['nullable', 'date_format:Y-m-d'],
+            'meal_id' => ['required_without:source_date'],
+            'source_date' => ['required_without:meal_id'],
         ];
     }
 }

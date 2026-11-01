@@ -21,19 +21,22 @@
             "type": [
                 "string",
                 "null"
-            ]
+            ],
+            "description": "Required when mode is meals."
         },
         "to_meal_id": {
             "type": [
                 "string",
                 "null"
-            ]
+            ],
+            "description": "Required when mode is meals."
         },
         "other_date": {
             "type": [
                 "string",
                 "null"
             ],
+            "description": "Required when mode is days.",
             "format": "date"
         },
         "direction": {

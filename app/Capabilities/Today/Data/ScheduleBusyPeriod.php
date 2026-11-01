@@ -5,7 +5,7 @@ namespace App\Capabilities\Today\Data;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
-/** A busy period of Edit schedule. */
+/** A busy period of Edit schedule. ScheduleUpdateInput holds its rules: the pipeline runs only the top-level input's. */
 final class ScheduleBusyPeriod extends CapabilityData
 {
     public function __construct(
@@ -13,12 +13,4 @@ final class ScheduleBusyPeriod extends CapabilityData
         #[Field(description: '24-hour "HH:MM".')] public readonly string $start,
         public readonly string $end,
     ) {}
-
-    public static function rules(): array
-    {
-        return [
-            'start' => ['date_format:H:i'],
-            'end' => ['date_format:H:i'],
-        ];
-    }
 }

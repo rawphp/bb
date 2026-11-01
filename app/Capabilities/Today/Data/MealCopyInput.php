@@ -17,4 +17,11 @@ final class MealCopyInput extends CapabilityData
         public readonly bool $update_meal_times = false,
         public readonly bool $copy_locked_state = false,
     ) {}
+
+    public static function rules(): array
+    {
+        return [
+            'target_meal_ids.*' => ['ulid'],
+        ];
+    }
 }

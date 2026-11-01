@@ -12,7 +12,12 @@
                 "string",
                 "null"
             ],
-            "description": "\"restructure\" or \"extend\" when there are fewer days; the server asks for it with a validation error."
+            "description": "Null until the server asks for it with a validation error, when there are fewer days.",
+            "enum": [
+                "restructure",
+                "extend",
+                null
+            ]
         }
     },
     "required": [

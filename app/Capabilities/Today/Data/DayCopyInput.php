@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Today\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -22,8 +23,7 @@ final class DayCopyInput extends CapabilityData
     public static function rules(): array
     {
         return [
-            'source_date' => ['date_format:Y-m-d'],
-            'target_dates.*' => ['date_format:Y-m-d'],
+            'target_dates.*' => [Rule::date()->format('Y-m-d')],
         ];
     }
 }
