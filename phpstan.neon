@@ -3,6 +3,8 @@ includes:
 
 parameters:
     level: 6
+    # Per checkout, not the shared /tmp/phpstan: several worktrees run the gate on one machine.
+    tmpDir: %currentWorkingDirectory%/storage/framework/cache/phpstan
     paths:
         - app
         - bootstrap/app.php
