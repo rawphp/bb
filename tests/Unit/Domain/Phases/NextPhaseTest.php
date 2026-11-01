@@ -108,7 +108,8 @@ it('PH-034 warns when maintenance is under sixty percent of the cut', function (
     expect(PhaseWarnings::shortMaintenanceWarning(maintenanceWeeks: 7, previousFatLossWeeks: 12))
         ->toEqual(PhaseWarning::shortMaintenanceBeforeFatLoss())
         ->and(PhaseWarnings::shortMaintenanceWarning(maintenanceWeeks: 8, previousFatLossWeeks: 12))->toBeNull()
-        ->and(PhaseWarnings::shortMaintenanceWarning(maintenanceWeeks: 6, previousFatLossWeeks: 10))->toBeNull();
+        ->and(PhaseWarnings::shortMaintenanceWarning(maintenanceWeeks: 6, previousFatLossWeeks: 10))->toBeNull()
+        ->and(PhaseWarning::shortMaintenanceBeforeFatLoss()->message())->toBe('Maintenance was under 60% of the last fat-loss phase');
 });
 
 it('PH-041 final review options', function () {

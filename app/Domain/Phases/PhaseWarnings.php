@@ -167,7 +167,8 @@ final class PhaseWarnings
 
     /**
      * PH-045: suggest a low-volume maintenance phase when the plan is at least 5 months old and none overlaps the
-     * last 5 months.
+     * last 5 months. Every date counts as its calendar day in $timeZone, so the time of day of $today or a phase
+     * date never moves the window. (Swift compares the raw instants; its tests only use midnights, where the two agree.)
      *
      * @param  list<Phase>  $phases
      */
@@ -177,15 +178,17 @@ final class PhaseWarnings
         if ($phases === []) {
             return null;
         }
+        $today = self::startOfDay($today, $timeZone);
         $windowStart = self::monthsBefore($today, self::MONTHS_WITHOUT_MAINTENANCE, $timeZone);
-        $planStart = min(array_map(fn (Phase $phase) => $phase->start, $phases));
+        $planStart = min(array_map(fn (Phase $phase) => self::startOfDay($phase->start, $timeZone), $phases));
         if ($planStart > $windowStart) {
             return null;
         }
 
         foreach ($phases as $phase) {
-            // A maintenance with no end (PH-005) is still running.
-            if ($phase->type === PhaseType::Maintenance && $phase->start <= $today
+            // A maintenance with no end (PH-005) is still running. $windowStart is a local midnight, so the raw end
+            // instant compares the same as its day would.
+            if ($phase->type === PhaseType::Maintenance && self::startOfDay($phase->start, $timeZone) <= $today
                 && ($phase->end === null || $phase->end >= $windowStart)) {
                 return null;
             }
