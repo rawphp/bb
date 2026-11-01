@@ -7,3 +7,4 @@ parameters:
         - app
         - bootstrap/app.php
         - routes
+        - tests/Support
