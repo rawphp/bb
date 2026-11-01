@@ -1,6 +1,7 @@
 <?php
 
 use App\Capabilities\Onboarding\Data\OnboardingAnswerInput;
+use App\Capabilities\Onboarding\Data\OnboardingAnswers;
 use App\Capabilities\Onboarding\Data\OnboardingScreeningAnswer;
 use App\Capabilities\Onboarding\Data\OnboardingStatus;
 use App\Capabilities\Support\Tone;
@@ -41,6 +42,30 @@ it('SAFE-001 takes only the screening items a person ticks; age, height, weight 
         'diabetes',
         'eatingDisorderHistory',
     ]);
+});
+
+it('SAFE-001 locks every screening row the answer cannot send, in every state of the screen', function () {
+    $sendable = OnboardingScreeningAnswer::jsonSchema()['properties']['item']['enum'];
+
+    foreach (glob(base_path('tests/fixtures/screens/onboarding_show*.json')) ?: [] as $path) {
+        $rows = json_decode((string) file_get_contents($path), true)['screening']['rows'];
+
+        expect(array_column($rows, 'item'))->toContain(...$sendable);
+        foreach ($rows as $row) {
+            expect($row['is_locked'])->toBe(! in_array($row['item'], $sendable, true), basename($path).' '.$row['item']);
+        }
+    }
+});
+
+it('ONB-016 takes the review day back as the value of the review_days choice the show returned', function () {
+    $accepted = OnboardingAnswers::jsonSchema()['properties']['review_weekday']['enum'] ?? [];
+
+    foreach (glob(base_path('tests/fixtures/screens/onboarding_show*.json')) ?: [] as $path) {
+        $values = array_column(json_decode((string) file_get_contents($path), true)['weigh_ins']['review_days'], 'value');
+
+        expect($values)->toHaveCount(7)
+            ->and($accepted)->toBe($values, basename($path));
+    }
 });
 
 it('AGT-031 records an answer without moving, so the agent can answer a few at a time', function () {

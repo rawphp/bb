@@ -75,8 +75,9 @@ final class OnboardingAnswers extends CapabilityData
         // Step 12 (ONB-015, ONB-016)
         #[Field(items: OnboardingWeighInAnswer::class)]
         public readonly ?array $weigh_ins = null,
-        #[Field(minimum: 1, maximum: 7)]
-        public readonly ?int $review_weekday = null,
+        // An ISO weekday as text: the value of one of the show's review_days.
+        #[Field(enum: ['1', '2', '3', '4', '5', '6', '7'])]
+        public readonly ?string $review_weekday = null,
         // Step 13 (ONB-017)
         #[Field(enum: ['recommendation', 'own'])]
         public readonly ?string $calories = null,

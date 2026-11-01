@@ -198,7 +198,7 @@ export interface OnboardingShowOutput {
     };
     target_weight: {
       value?: number | null;
-      unit: string;
+      unit: "kg" | "lb";
       text: string;
       can_edit: boolean;
       note: string;

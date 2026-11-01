@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Onboarding\Data;
 
+use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
 /**
@@ -12,6 +13,7 @@ final class OnboardingTargetWeight extends CapabilityData
 {
     public function __construct(
         public readonly ?float $value,
+        #[Field(enum: ['kg', 'lb'])]
         public readonly string $unit,
         public readonly string $text,
         public readonly bool $can_edit,

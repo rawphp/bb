@@ -88,7 +88,7 @@ export interface OnboardingAnswerInput {
           minutes?: number | null;
         }[]
       | null;
-    review_weekday?: number | null;
+    review_weekday?: ("1" | "2" | "3" | "4" | "5" | "6" | "7") | null;
     calories?: ("recommendation" | "own") | null;
     own_kcal?: number | null;
   };

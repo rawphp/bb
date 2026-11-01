@@ -918,7 +918,11 @@
                             ]
                         },
                         "unit": {
-                            "type": "string"
+                            "type": "string",
+                            "enum": [
+                                "kg",
+                                "lb"
+                            ]
                         },
                         "text": {
                             "type": "string"

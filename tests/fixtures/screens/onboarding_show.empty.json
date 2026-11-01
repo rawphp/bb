@@ -141,28 +141,28 @@
                 "label": "Under 18 or over 65",
                 "detail": "",
                 "is_on": false,
-                "is_locked": false
+                "is_locked": true
             },
             {
                 "item": "heightOutOfRange",
                 "label": "Height under 54 in (137 cm) or over 84 in (213 cm)",
                 "detail": "",
                 "is_on": false,
-                "is_locked": false
+                "is_locked": true
             },
             {
                 "item": "weightOverLimit",
                 "label": "Weight over 350 lb (159 kg)",
                 "detail": "",
                 "is_on": false,
-                "is_locked": false
+                "is_locked": true
             },
             {
                 "item": "bmiUnderLimit",
                 "label": "BMI under 17",
                 "detail": "",
                 "is_on": false,
-                "is_locked": false
+                "is_locked": true
             },
             {
                 "item": "pregnantOrBreastfeeding",

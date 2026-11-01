@@ -5,7 +5,8 @@ namespace Tests\Support;
 /**
  * Checks a decoded JSON value against the JSON Schema subset that
  * CapabilityData::jsonSchema() writes: type, enum, properties, required,
- * additionalProperties: false, and items.
+ * additionalProperties: false, items, minimum, maximum, minLength,
+ * maxLength, minItems, maxItems and the date format.
  */
 final class SchemaCheck
 {
@@ -22,8 +23,18 @@ final class SchemaCheck
             return ["{$path}: expected ".implode('|', $types).", got {$type}"];
         }
 
+        // A nullable enum lists its values without null (see the PR notes on the package).
+        if ($value === null) {
+            return [];
+        }
+
         if (isset($schema['enum']) && ! in_array($value, $schema['enum'], true)) {
             return ["{$path}: ".json_encode($value).' is not one of '.json_encode($schema['enum'])];
+        }
+
+        $bound = self::boundViolation($schema, $value, $type);
+        if ($bound !== null) {
+            return ["{$path}: {$bound}"];
         }
 
         $violations = [];
@@ -52,6 +63,48 @@ final class SchemaCheck
         }
 
         return $violations;
+    }
+
+    /** @param  array<string, mixed>  $schema */
+    private static function boundViolation(array $schema, mixed $value, string $type): ?string
+    {
+        if ($type === 'integer' || $type === 'number') {
+            return match (true) {
+                isset($schema['minimum']) && $value < $schema['minimum'] => "{$value} is below the minimum {$schema['minimum']}",
+                isset($schema['maximum']) && $value > $schema['maximum'] => "{$value} is above the maximum {$schema['maximum']}",
+                default => null,
+            };
+        }
+
+        if ($type === 'string') {
+            $length = mb_strlen($value);
+
+            return match (true) {
+                isset($schema['minLength']) && $length < $schema['minLength'] => "{$length} characters, under the minLength {$schema['minLength']}",
+                isset($schema['maxLength']) && $length > $schema['maxLength'] => "{$length} characters, over the maxLength {$schema['maxLength']}",
+                ($schema['format'] ?? null) === 'date' && ! self::isDate($value) => json_encode($value).' is not a date (Y-m-d)',
+                default => null,
+            };
+        }
+
+        if ($type === 'array') {
+            $count = count($value);
+
+            return match (true) {
+                isset($schema['minItems']) && $count < $schema['minItems'] => "{$count} items, under the minItems {$schema['minItems']}",
+                isset($schema['maxItems']) && $count > $schema['maxItems'] => "{$count} items, over the maxItems {$schema['maxItems']}",
+                default => null,
+            };
+        }
+
+        return null;
+    }
+
+    private static function isDate(string $value): bool
+    {
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+
+        return $date !== false && $date->format('Y-m-d') === $value;
     }
 
     private static function type(mixed $value): string
