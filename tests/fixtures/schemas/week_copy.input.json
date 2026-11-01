@@ -1,0 +1,14 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "week_start": {
+            "type": "string",
+            "format": "date"
+        }
+    },
+    "required": [
+        "week_start"
+    ]
+}

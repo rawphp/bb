@@ -1,0 +1,47 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "string",
+            "description": "A client-made ULID (CAP-019)."
+        },
+        "date": {
+            "type": "string",
+            "format": "date"
+        },
+        "time": {
+            "type": "string",
+            "description": "24-hour \"HH:MM\"."
+        },
+        "kcal": {
+            "type": "number"
+        },
+        "protein_g": {
+            "type": "number"
+        },
+        "fat_g": {
+            "type": "number"
+        },
+        "carbs_g": {
+            "type": "number"
+        },
+        "name": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Defaults to \"Off-plan food\"."
+        }
+    },
+    "required": [
+        "id",
+        "date",
+        "time",
+        "kcal",
+        "protein_g",
+        "fat_g",
+        "carbs_g"
+    ]
+}

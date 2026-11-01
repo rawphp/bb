@@ -1,0 +1,26 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "meal_id": {
+            "type": "string"
+        },
+        "target_meal_ids": {
+            "type": "array"
+        },
+        "update_target_macros": {
+            "type": "boolean"
+        },
+        "update_meal_times": {
+            "type": "boolean"
+        },
+        "copy_locked_state": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "meal_id",
+        "target_meal_ids"
+    ]
+}
