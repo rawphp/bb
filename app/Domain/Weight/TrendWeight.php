@@ -21,6 +21,9 @@ final readonly class TrendWeight
     /** @var list<TrendPoint> */
     public array $points;
 
+    /** @var array<int, float> the trend keyed by the day's start timestamp */
+    private array $trendByDay;
+
     /** @param list<WeighIn> $weighIns */
     public function __construct(array $weighIns, private DateTimeZone $timeZone)
     {
@@ -37,6 +40,7 @@ final readonly class TrendWeight
         ksort($earliestPerDay);
 
         $points = [];
+        $trendByDay = [];
         if ($earliestPerDay !== []) {
             $first = reset($earliestPerDay);
             $day = $this->startOfDay($first->date);
@@ -52,11 +56,13 @@ final readonly class TrendWeight
                     $trendKg += self::SMOOTHING_FACTOR * ($weightKg - $trendKg);
                 }
                 $points[] = new TrendPoint($day, $weightKg, $trendKg, $reading !== null);
+                $trendByDay[$day->getTimestamp()] = $trendKg;
                 // Wall-clock arithmetic, so a DST change at midnight still lands on the next day.
                 $day = $this->startOfDay($day->modify('+1 day'));
             }
         }
         $this->points = $points;
+        $this->trendByDay = $trendByDay;
     }
 
     /** The latest trend weight (WT-011). */
@@ -79,14 +85,7 @@ final readonly class TrendWeight
      */
     public function trendKg(DateTimeImmutable $date): ?float
     {
-        $day = $this->startOfDay($date);
-        foreach ($this->points as $point) {
-            if ($point->day == $day) {
-                return $point->trendKg;
-            }
-        }
-
-        return null;
+        return $this->trendByDay[$this->startOfDay($date)->getTimestamp()] ?? null;
     }
 
     /**
