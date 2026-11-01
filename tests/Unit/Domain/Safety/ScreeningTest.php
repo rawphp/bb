@@ -108,6 +108,32 @@ it('SAFE-001 item: under 18 or over 65, from date of birth', function () {
         ->and(screeningItems(screeningProfile(born: screeningDate(1960, 6, 16))))->toBe([]); // still 65
 });
 
+it('SAFE-001 item: age compares calendar dates, whatever the time zone or time of day', function () {
+    $at = fn (string $value) => new DateTimeImmutable($value);
+
+    // Born 16 June at midnight in +10:00 (15 June 14:00 UTC): still 17 on 15 June.
+    expect(Screening::measuredItemsFrom($at('2008-06-16T00:00:00+10:00'), 175, 80, $at('2026-06-15T15:00:00Z')))
+        ->toBe([ScreeningItem::AgeOutOfRange])
+        // Born late on 15 June: 18 all day on 15 June.
+        ->and(Screening::measuredItemsFrom($at('2008-06-15T23:00:00Z'), 175, 80, $at('2026-06-15T10:00:00Z')))
+        ->toBe([])
+        // Today is 15 June at local midnight in +10:00 (14 June 14:00 UTC): 18 today.
+        ->and(Screening::measuredItemsFrom(screeningDate(2008, 6, 15), 175, 80, $at('2026-06-15T00:00:00+10:00')))
+        ->toBe([]);
+});
+
+it('SAFE-001 item: a zero height is out of range and does not crash the BMI check', function () {
+    expect(Screening::measuredItemsFrom(screeningDate(1990, 1, 1), 0, 70, screeningToday()))
+        ->toBe([ScreeningItem::HeightOutOfRange]);
+});
+
+it('SAFE-003 the measured reasons state the limits the checks use', function () {
+    expect(ScreeningItem::AgeOutOfRange->reason())->toBe('You are under 18 or over 65')
+        ->and(ScreeningItem::HeightOutOfRange->reason())->toBe('Your height is under 54 in (137 cm) or over 84 in (213 cm)')
+        ->and(ScreeningItem::WeightOverLimit->reason())->toBe('Your weight is over 350 lb (159 kg)')
+        ->and(ScreeningItem::BmiUnderLimit->reason())->toBe('Your BMI is under 17');
+});
+
 it('SAFE-001 item: height under 54 in or over 84 in', function () {
     expect(screeningItems(screeningProfile(heightCm: 54 * 2.54 - 0.01, weightKg: 40)))->toBe([ScreeningItem::HeightOutOfRange])
         ->and(screeningItems(screeningProfile(heightCm: 54 * 2.54, weightKg: 40)))->toBe([])

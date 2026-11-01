@@ -46,7 +46,8 @@ final class Screening
 
     /**
      * The same, from the raw answers, for setup (ONB-005) before a Profile exists. Age is counted
-     * in whole years on the UTC calendar, so it does not depend on the device.
+     * in whole years between two calendar dates, each read in its own time zone, so neither a
+     * time of day nor a UTC offset can move a birthday.
      *
      * @return list<ScreeningItem> in the spec's order
      */
@@ -54,7 +55,8 @@ final class Screening
         DateTimeImmutable $birthDate, float $heightCm, float $weightKg, DateTimeImmutable $today,
     ): array {
         $utc = new DateTimeZone('UTC');
-        $interval = $birthDate->setTimezone($utc)->diff($today->setTimezone($utc));
+        $interval = (new DateTimeImmutable($birthDate->format('Y-m-d'), $utc))
+            ->diff(new DateTimeImmutable($today->format('Y-m-d'), $utc));
         $age = $interval->invert === 1 ? -$interval->y : $interval->y;
         $heightM = $heightCm / 100;
 
@@ -68,7 +70,8 @@ final class Screening
         if ($weightKg > UnitConversion::lbToKg(self::MAXIMUM_WEIGHT_LB)) {
             $items[] = ScreeningItem::WeightOverLimit;
         }
-        if ($weightKg / ($heightM * $heightM) < self::MINIMUM_BMI) {
+        // A zero height is already out of range; Swift's division gives +inf there and adds nothing.
+        if ($heightM !== 0.0 && $weightKg / ($heightM * $heightM) < self::MINIMUM_BMI) {
             $items[] = ScreeningItem::BmiUnderLimit;
         }
 

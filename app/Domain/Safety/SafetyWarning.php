@@ -45,14 +45,23 @@ final readonly class SafetyWarning
         return new self(SafetyWarningKind::MaintenanceFirst);
     }
 
+    /** The limits in the text come from the `SafetyWarnings` constants the checks use. */
     public function message(): string
     {
+        $mealMinimumG = SafetyWarnings::MEAL_MINIMUM_G;
+
         return match ($this->kind) {
-            SafetyWarningKind::Glp1MuscleLoss => "You've eaten under 80% of your target for 2 weeks. On a GLP-1 that risks losing muscle. Try to eat to your target.",
-            SafetyWarningKind::HighStepTarget => 'More than 12,000 steps a day can hurt your recovery from lifting.',
-            SafetyWarningKind::DayFatBelowFloor => "Fat is under 15% of today's calories. Raise fat to at least {$this->minimumG} g.",
-            SafetyWarningKind::MealFatBelowMinimum => "{$this->meal} has under 5 g fat. Add fat to this meal.",
-            SafetyWarningKind::MealCarbsBelowMinimum => "{$this->meal} has under 5 g carbs. Add carbs to this meal.",
+            SafetyWarningKind::Glp1MuscleLoss => sprintf(
+                "You've eaten under %d%% of your target for %d weeks. On a GLP-1 that risks losing muscle. Try to eat to your target.",
+                round(SafetyWarnings::GLP1_LOW_INTAKE_SHARE * 100), SafetyWarnings::GLP1_LOW_WEEKS_RUNNING),
+            SafetyWarningKind::HighStepTarget => sprintf(
+                'More than %s steps a day can hurt your recovery from lifting.',
+                number_format(SafetyWarnings::MAX_STEP_TARGET_WITHOUT_WARNING)),
+            SafetyWarningKind::DayFatBelowFloor => sprintf(
+                "Fat is under %d%% of today's calories. Raise fat to at least %d g.",
+                round(SafetyWarnings::FAT_FLOOR_SHARE_OF_CALORIES * 100), $this->minimumG),
+            SafetyWarningKind::MealFatBelowMinimum => "{$this->meal} has under {$mealMinimumG} g fat. Add fat to this meal.",
+            SafetyWarningKind::MealCarbsBelowMinimum => "{$this->meal} has under {$mealMinimumG} g carbs. Add carbs to this meal.",
             SafetyWarningKind::MaintenanceFirst => 'You finished a diet in the last 8 weeks. Start with Maintenance so your body and hunger can recover before cutting again. You can still choose Fat loss.',
         };
     }
