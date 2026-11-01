@@ -89,15 +89,16 @@ Parallel issues rely on these names. They are written into architecture.md by SK
 2. For each write the area's views send, an input DTO with its schema snapshot.
 3. Values follow CAP-015 (display-ready, with units) and CAP-018 (statuses carry text and tone).
 4. `npm run contracts` regenerates the TS types, and they are committed.
-5. Nothing is registered. API issues register.
-6. Shape sources: the rp-clone view models named in the unit and their published state.
+5. `tests/fixtures/schemas/<area>.owners.json` maps every read and write name in the area to the issue number of the API unit that registers it, using the API rows of `docs/plan/build-plan.md` (requirements and sources). Every name has exactly one owner.
+6. Nothing is registered. API issues register.
+7. Shape sources: the rp-clone view models named in the unit and their published state.
 
 **API** (capabilities for one slice):
-1. Each capability named in the unit is registered from its own class file, with surfaces `http`, `job`, `mcp`, `cli`, a CLI domain and verb, a CAP-005 description, `affects` (CAP-011), and `reversible` or `destructive` where the spec says (CAP-013, AGT-010).
+1. Every capability that `tests/fixtures/schemas/<area>.owners.json` assigns to this issue is registered from its own class file, with surfaces `http`, `job`, `mcp`, `cli`, a CLI domain and verb, a CAP-005 description, `affects` (CAP-011), and `reversible` or `destructive` where the spec says (CAP-013, AGT-010).
 2. Each `*_show` passes `assertMatchesScreenFixture` against its CONTRACT fixture for a seeded scenario, with the clock fixed.
 3. Each requirement ID listed has a test named after it. Rules are unit tests on Actions with I/O mocked. Each capability has one feature test for the seam: 401 signed out, 404 for another user's ID, 422 shape for one bad input.
-4. The logic in the rp-clone view models listed moves here. The Vue side gets nothing to compute.
-5. The unit's capability names come off the PARITY exemption list.
+4. The logic in the rp-clone view models listed moves here, and their tests in `ios/Tests/RPCoreTests/Features/<Folder>/` that cover it become Pest unit tests with the same requirement IDs. The Vue side gets nothing to compute.
+5. PARITY passes with these capabilities registered.
 6. Gate passes.
 
 **VIEW** (Vue components for one slice):
@@ -204,7 +205,7 @@ Key, title (`type: outcome`), blockers, requirements, and what is specific to th
 - **TOKENS:** the authorizer runs CAP-020's five checks in order, and the billing and agent steps call interfaces BILLING_API and COACH_CTX fill in (no-op by default). It adds `token_create`, `token_list`, `token_revoke` and the scopes "Everything", "Read only", "Health bridge" and custom (CAP-021, CAP-023). It has feature tests for cross-user 404 and an out-of-scope 403.
 - **AUDIT:** every invoke records actor, channel (`ui`, `agent`, `mcp`, `cli`, `bridge`, derived on the server), time, input and result, and `activity_show` returns the last 100 writes. A daily pruning keeps 90 days.
 - **AI_SETUP:** the published config uses the values in 17-agent.md, "Setup defaults". The `agent` queue is defined, `capabilities-ai:reap-stale-turns` is scheduled once, and `capabilities:integration-health` passes. The tool catalog comes from the registry minus the CAP-031 exclusion list, with schemas normalised for Anthropic. Tools invoke with `caller=job` and the conversation user as actor, with a test that a tool call from a turn reaches the authorizer as that user (AGT-004). AGT-002 on/off is a capability `agent_status_show`. AGT-005 caps come from config, with tests for near-cap and at-cap. Chat routes stay the package's.
-- **PARITY:** the CAP-030 test reads capability names used in `resources/js`, and the CAP-032 tests (schema snapshot and registered surfaces for every capability). The exemption list starts with every capability name in `docs/spec/15-capabilities.md`'s inventory, and fails on a stale entry, so each API issue removes its own lines.
+- **PARITY:** the CAP-030 test reads every capability name passed to `read(` or `write(` in `resources/js`. Each must be registered and in the agent profile, or else not registered yet and present in a schema snapshot under `tests/fixtures/schemas/` (a contract waiting for its API issue). A name in neither fails. A registered name missing from the agent profile fails unless it is on the CAP-031 exclusion list in `app/Agent/Exclusions.php`, which holds a reason per entry. It also adds the CAP-032 tests: a schema snapshot and the declared surfaces for every registered capability.
 - **MCP:** `/mcp/bodybuilder` serves the same profile as the agent, behind personal access tokens. `capabilities:mcp-status` reports it. A test lists tools over MCP with a token.
 - **PUSH:** VAPID keys from env, `push_subscribe` and `push_unsubscribe` capabilities, a sender job, and a Vue composable that asks permission only after the user opts in (NOTIF-010). It shows the home-screen hint on iOS. Notification clicks open the URL in the payload (NOTIF-011).
 - **BILLING_API:** everything is off unless `BILLING_ENABLED=true` (SUB-020, with a test that no billing capability registers when off). Stripe Checkout and customer portal session capabilities, a host webhook route that verifies signatures, a trial after onboarding (SUB-003), and the authorizer's billing step: lapsed users are read-only except for the SUB-022 exemptions. Agent included on the plan (SUB-024).
@@ -252,13 +253,17 @@ Offline, AI food, agent:
 
 - **OUTBOX:** `write()` stores the entry first and replays in order, as one path online or offline. It covers OFF-006 to OFF-012, the `affects`-driven pending state (OFF-008), the row overlay API views use for their own pending input (OFF-009), `OutboxView.vue`, and the sync line component (ACC-003). OFF-051 replays one outbox twice against a feature-test server.
 - **AI_FOOD:** ports rp-clone's `server/app/Ai/*` onto the package's `LlmClient` (not a second Anthropic client). Results are drafts, and nothing is saved until the user confirms. With no key, these capabilities deny with a clear message.
+- **V_SIGNIN:** `features/account/SignInView.vue` ports rp-clone's `SignInView` without Sign in with Apple: email and password, or "Email me a code" then a 6-digit code field with resend after 30 seconds, plus Forgot password. It calls AUTH's host routes, not capabilities, so in place of VIEW criterion 2 its Vitest test covers signed-out, wrong password, wrong code, expired code and rate-limited states with the routes mocked.
+- **V_COACH:** `app/CoachButton.vue` in the shell's Coach slot, shown only when `agent_status_show` says on (AGT-002). `features/coach/CoachChat.vue` is a full-height sheet: it streams the package's turn events over SSE, shows each tool call as a line while it runs, and cancels a turn (AGT-021). It attaches a photo from the camera or library through a host upload route (AGT-022). Offline it shows cached history with the input disabled (AGT-023). `features/coach/ChangeCard.vue` renders each agent write with a link to its screen and Undo (AGT-013). Vitest tests use a recorded event stream. There is no rp-clone source, so the PR includes 390 × 844 screenshots in light and dark.
+- **ONB_CHAT:** the onboarding doors (AGT-030) lead to the chat. The agent records answers with `onboarding_answer` (AGT-031). Screening opens `ScreeningStep` as a sheet inside the chat, and its answers are sent from the sheet, not the model. The review summary renders `ReviewStep`'s content as a card, and the user confirms it before `onboarding_complete` (AGT-032). Leaving the chat resumes the stepper with every answer kept (AGT-033). Tested with the fake LLM driver scripted through a full onboarding.
+- **BRIDGE:** API and view in one issue. The health bridge read and the `weigh_in_log` and `steps_log` scope come from TOKENS. Settings → Health bridge creates the scoped token, shows it once, and links the shared Shortcut. Its import URL is a config value, with the Shortcut's steps written out on the page so a user can build it by hand. It shows the last post and what it carried (INT-004). A feature test posts a weigh-in and steps with a bridge token and gets 403 on any other capability.
 - **COACH_CTX:** ports the behaviour rules from mesoprep's `server/resources/coach/AGENTS.md` that fit 17-agent.md, and drops its MesoPrep-only commands. The context prefix is cached and the suffix is per turn (AGT-024). The authorizer's agent step refuses a `destructive` capability without a confirmation marker in the turn (AGT-010).
 
 Screens. Each API row follows the API template and each V_ row the VIEW template. "Sources" are rp-clone `ios/Sources/RPCore/Features/<Folder>/` files for API rows, and the view types in `docs/spec/19-views.md` for V_ rows.
 
 | Key | Title | Depends on | Requirements | Sources |
 |---|---|---|---|---|
-| A_ONB1 | feat: onboarding answers, goal, body fat and screening | C_ONB, D_SAFETY, D_PHASES, TOKENS | ONB-001 to ONB-012, SAFE | Onboarding: OnboardingModel, Choices, Draft, DraftStore, Intro, +Health |
+| A_ONB1 | feat: onboarding answers, goal, body fat and screening | C_ONB, D_SAFETY, D_PHASES, TOKENS | ONB-001 to ONB-012, SAFE | Onboarding: OnboardingModel, OnboardingChoices, OnboardingDraft, OnboardingDraftStore, OnboardingIntro, +Health |
 | A_ONB2 | feat: onboarding lifestyle, training, rate and plan creation | C_ONB, D_PLAN, D_MESOCYCLE, D_WEEKBUILDER, TOKENS | ONB-013 to ONB-021, ONB-030 to ONB-033 | Onboarding: +Lifestyle, +Training, +RateLength, +Review, +Plan, +Start, OnboardingService, SetupGate |
 | A_TODAY1 | feat: Today, week strip and the day timeline | C_TODAY, D_WEEKBUILDER, D_PLACEMENT, D_DAYBALANCE, TOKENS | SCH-001 to SCH-023, MESO-060 | Today: TodayModel, TodayItems, +Timeline, +Meals, +ScheduleMeals, +MealScreen, +Review, +NextMesocycle, TodayTour |
 | A_TODAY2 | feat: move, time and add workouts; edit the schedule | C_TODAY, D_WEEKBUILDER, D_RETARGET, UNDO, TOKENS | SCH-030 to SCH-039 | Today: ScheduleSheetModels, ScheduleSnapshot+Pauses, +AddWorkout, +EditSchedule, +WeekdayChange |
@@ -327,13 +332,21 @@ Screens. Each API row follows the API template and each V_ row the VIEW template
 | EVALS | test: agent eval set | COACH_CTX, ONB_CHAT, A_TODAY2, A_TODAY3, A_WO3, A_MEAL, UNDO | AGT-050 |
 | AUDIT_UI | test: Lighthouse and installability on Today, Workout and Meal | V_TODAY1, V_WO1, V_NUTRITION, SHELL_PWA | PWA-051 |
 
-Playwright runs on a 390 × 844 viewport, with the seeders and the clock fixed. E2E_OFFLINE follows OFF-050 step by step.
+Playwright runs on a 390 × 844 viewport, with the seeders and the clock fixed (CLOCK), in `tests/e2e/`.
+
+- **E2E_ONB:** a new account completes stepper onboarding, sees Today, starts today's workout, logs every set, answers the feedback and finishes. The test asserts the sets saved and Today's meals re-targeted.
+- **E2E_OFFLINE:** OFF-050 step by step, with the browser context set offline after the workout starts and back online at the end. It asserts each set is stored exactly once, with the offline `occurred_at` times.
+- **E2E_CHAT:** chat onboarding against the fake LLM driver, scripted through every step, ending at Today with the same plan the stepper would build from the same answers.
+- **EVALS:** `tests/Agent/` holds at least 30 scripted requests, each with the tool calls and arguments it must produce, including every case AGT-050 lists. They run against the fake driver in the gate. `php artisan agent:eval --live` runs them against the real model and writes the pass rate to `tests/Agent/results/<date>.json`; it is not part of the gate.
+- **AUDIT_UI:** Lighthouse runs in CI mode on Today, Workout and Meal against seeded data, failing on any accessibility or best-practices failure. A Playwright check confirms the manifest has no installability errors (PWA-051).
 
 ### Parked
 
 | Key | Title | Why parked |
 |---|---|---|
 | CONTENT_LEARN | docs: rewrite the Learn articles in Bodybuilder's own words | Postponed. Do not mark factory:ready. rp-clone's 37 articles paraphrase RP material. Un-park before the repo is promoted publicly. |
+
+- **CONTENT_LEARN:** depends on A_LEARN. Each article under `resources/learn/` is rewritten in plain words of Bodybuilder's own, covering the same topic list (LRN-001, LRN-002), with no sentence carried over from rp-clone's copy, and no RP product names except where the spec's methods need the source named. The PR lists each article with a one-line summary.
 
 Not issues: PWA-050 (walking each milestone on a real iPhone and Android phone) is Tom's checklist, not a build. The licence decision in architecture.md, "Open questions", is Tom's call.
 
