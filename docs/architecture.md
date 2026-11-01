@@ -43,6 +43,26 @@ docs/                     spec, architecture, personas, screenshots
 
 `app/Domain` is where rp-clone's `RPCore/Domain` Swift moves (19-views.md, "Rules that move to the server"). A Domain class takes values and returns values, so its tests need no database.
 
+## Conventions
+
+Parallel issues rely on these names.
+
+| Thing | Path or name |
+|---|---|
+| Rule module | `app/Domain/<Folder>/` (rp-clone folder name), tests in `tests/Unit/Domain/<Folder>/` |
+| Action | `app/Actions/<Module>/<Verb><Object>.php` |
+| Capability | `app/Capabilities/<Module>/<StudlyName>Capability.php`, one per capability, loaded by `CapabilitiesHostProvider` from `app/Capabilities/*/*Capability.php` |
+| DTOs | `app/Capabilities/<Module>/Data/<StudlyName>Input.php`, `...Output.php` |
+| Screen payload fixture | `tests/fixtures/screens/<capability_name>.json` |
+| Schema snapshot | `tests/fixtures/schemas/<capability_name>.input.json` and `.output.json` |
+| TS types | generated into `resources/js/contracts/` from the schema snapshots by `npm run contracts` |
+| Fixture check | Pest helper `assertMatchesScreenFixture($name, $payload)`: same keys and types at every depth, values free |
+| Feature routes | `resources/js/features/<feature>/routes.ts`, loaded by glob |
+| Dev screens | `/dev/screens/<capability_name>` renders the screen from its fixture (local and testing only) |
+| Gallery entries | `resources/js/design/gallery/<Component>.gallery.vue`, loaded by glob at `/dev/gallery` |
+| Seeds | `database/seeders/<Area>Seeder.php`, all called from `DatabaseSeeder` by glob |
+| Requirement test names | `it('NUT-003 …')` in Pest and Vitest |
+
 ## Server
 
 - Laravel 13, PHP 8.5, MySQL 8, Redis (cache, queues, the AI progress store).

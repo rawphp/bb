@@ -4,7 +4,9 @@ One open-source app for training and nutrition, with one plan driving both. Your
 
 It is a phone-first web app you install to your home screen. It works offline in the gym. An optional agent can do anything the app can, so you can set up a whole mesocycle by describing it.
 
-> **Status:** spec only. There is no code yet. Start at [docs/spec/00-overview.md](docs/spec/00-overview.md).
+> **Status:** early build. The Laravel app runs one capability, `account_show`, end to end. Start at [docs/spec/00-overview.md](docs/spec/00-overview.md).
+>
+> Set up a checkout with `bash scripts/provision.sh` and run the gate with `bash scripts/check.sh`.
 
 ## How it works
 
