@@ -71,6 +71,25 @@ final class MacroRules
         return self::KCAL_PER_GRAM_PROTEIN * $proteinG + self::KCAL_PER_GRAM_CARBS * $carbsG + self::KCAL_PER_GRAM_FAT * $fatG;
     }
 
+    /** SAFE-009: the fewest grams of fat that are 15% of $kcal. */
+    public static function fatShareFloorG(float $kcal): float
+    {
+        return self::FAT_FLOOR_SHARE_OF_CALORIES * $kcal / self::KCAL_PER_GRAM_FAT;
+    }
+
+    /**
+     * NUT-012, SAFE-009, SAFE-010: the week's fat floor, the largest of 15% of the biggest day, 0.66 g per kg of
+     * lean mass and the per-meal minimum.
+     */
+    public static function fatFloorG(float $maxDayKcal, float $leanMassKg, int $mealsPerDay): float
+    {
+        return max(
+            self::fatShareFloorG($maxDayKcal),
+            self::FAT_FLOOR_G_PER_KG_LEAN * $leanMassKg,
+            self::MEAL_MINIMUM_G * $mealsPerDay,
+        );
+    }
+
     /** NUT-010: body fat at or below this uses bodyweight; above it uses lean mass x LEAN_ADJUST_FACTOR. */
     public static function leanAdjustThresholdPercent(Sex $sex): float
     {

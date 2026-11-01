@@ -67,11 +67,7 @@ final class MacroTargets
 
         // NUT-012, SAFE-009, SAFE-010: same fat grams every day.
         $minimumMealG = MacroRules::MEAL_MINIMUM_G * $mealsPerDay;
-        $fatFloor = max(
-            MacroRules::FAT_FLOOR_SHARE_OF_CALORIES * max($dayKcal) / MacroRules::KCAL_PER_GRAM_FAT,
-            MacroRules::FAT_FLOOR_G_PER_KG_LEAN * $leanMass,
-            $minimumMealG,
-        );
+        $fatFloor = MacroRules::fatFloorG(max($dayKcal), $leanMass, $mealsPerDay);
         $fat = max(MacroRules::FAT_SHARE_OF_CALORIES * $average / MacroRules::KCAL_PER_GRAM_FAT, $fatFloor);
 
         // NUT-013, NUT-014: carbs take the rest; SAFE-012: refuse instead of going below the carb minimum.

@@ -16,3 +16,13 @@ it('NUT-018 a day target asks the rule', function () {
     expect($day->kcal())->toEqual(MacroRules::kcal(proteinG: 150, carbsG: 250, fatG: 60))
         ->and($day->kcal())->toEqual(2140);
 });
+
+it('SAFE-009 fat share floor is 15% of the calories in fat grams', function () {
+    expect(MacroRules::fatShareFloorG(3000))->toEqualWithDelta(50, 0.001); // 450 kcal / 9
+});
+
+it('NUT-012 fat floor is the largest of the share, lean-mass and meal-minimum arms', function () {
+    expect(MacroRules::fatFloorG(maxDayKcal: 3000, leanMassKg: 60, mealsPerDay: 4))->toEqualWithDelta(50, 0.001) // 15% of 3000
+        ->and(MacroRules::fatFloorG(maxDayKcal: 1800, leanMassKg: 79.2, mealsPerDay: 4))->toEqualWithDelta(52.272, 0.001) // 0.66 x 79.2
+        ->and(MacroRules::fatFloorG(maxDayKcal: 300, leanMassKg: 10, mealsPerDay: 6))->toEqualWithDelta(30, 0.001); // 5 g x 6 meals
+});

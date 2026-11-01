@@ -293,6 +293,18 @@ it('SAFE-011 cut allowed at BMI seventeen point five', function () {
     expect($week->days[0]->kcal())->toEqualWithDelta(2115, F::ACC);
 });
 
+it('SAFE-011 a profile with no height has no BMI, so the floor cannot stop its cuts', function () {
+    // ONB-004 refuses a height of 0, so only a profile built outside onboarding reaches this.
+    $noHeight = F::profile(heightCm: 0, weightKg: 60);
+    $cut = F::targets(profile: $noHeight, phase: F::phase(PhaseType::FatLoss, ratePercent: -0.5), days: F::uniformDays(2500, DayType::Rest));
+
+    expect(MacroTargets::bmi($noHeight))->toBeNull()
+        ->and($cut->days)->toHaveCount(7)
+        // -0.5% x 60 x 7700 / 7 = -330 per day
+        ->and($cut->days[0]->kcal())->toEqualWithDelta(2170, F::ACC)
+        ->and($cut->adjusted(-100, $noHeight)->days[0]->kcal())->toEqualWithDelta(2070, F::ACC);
+});
+
 it('SAFE-011 floor only stops cuts', function () {
     $thin = F::profile(heightCm: 200, weightKg: 68);
     $days = F::uniformDays(2500, DayType::Rest);

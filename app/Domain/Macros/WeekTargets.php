@@ -85,7 +85,7 @@ final readonly class WeekTargets
             if ($moved->kcal() < $low || $moved->kcal() > $high) {
                 throw MoveRefusal::outsideBand($index);
             }
-            if ($moved->fatG * MacroRules::KCAL_PER_GRAM_FAT < MacroRules::FAT_FLOOR_SHARE_OF_CALORIES * $moved->kcal() - $tolerance
+            if ($moved->fatG < MacroRules::fatShareFloorG($moved->kcal()) - $tolerance
                 || $carbs < $minimumMealG) {
                 throw MoveRefusal::breaksFloor($index); // SAFE-009, SAFE-010
             }
@@ -101,12 +101,7 @@ final readonly class WeekTargets
      */
     private function fatCutG(float $cut): float
     {
-        $newMaxKcal = $this->maxDayKcal() - $cut;
-        $newFloor = max(
-            MacroRules::FAT_FLOOR_SHARE_OF_CALORIES * $newMaxKcal / MacroRules::KCAL_PER_GRAM_FAT,
-            MacroRules::FAT_FLOOR_G_PER_KG_LEAN * $this->leanMassKg,
-            MacroRules::MEAL_MINIMUM_G * $this->mealsPerDay,
-        );
+        $newFloor = MacroRules::fatFloorG($this->maxDayKcal() - $cut, $this->leanMassKg, $this->mealsPerDay);
 
         return min($cut / MacroRules::KCAL_PER_GRAM_FAT, max(0, $this->days[0]->fatG - $newFloor));
     }
@@ -145,7 +140,7 @@ final readonly class WeekTargets
             + $remainder * (1 - MacroRules::INCREASE_FAT_SHARE_AFTER_CAP) / MacroRules::KCAL_PER_GRAM_CARBS;
         // SAFE-009: the biggest day grew, so fat may now sit under 15% of it. Raise fat to the floor and take
         // those calories back out of carbs, so every day still gains exactly $extra.
-        $requiredFatG = MacroRules::FAT_FLOOR_SHARE_OF_CALORIES * ($this->maxDayKcal() + $extra) / MacroRules::KCAL_PER_GRAM_FAT;
+        $requiredFatG = MacroRules::fatShareFloorG($this->maxDayKcal() + $extra);
 
         $result = array_map(function (DayTarget $day) use ($fatAddG, $carbsAddG, $requiredFatG) {
             $fat = $day->fatG + $fatAddG;
