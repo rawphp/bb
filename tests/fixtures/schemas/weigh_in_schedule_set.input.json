@@ -1,0 +1,31 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "entries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "weekdays": {
+                        "type": "array",
+                        "description": "ISO weekdays, 1 is Monday."
+                    },
+                    "time": {
+                        "type": "string",
+                        "description": "Reminder time, \"HH:MM\"."
+                    }
+                },
+                "required": [
+                    "weekdays",
+                    "time"
+                ]
+            }
+        }
+    },
+    "required": [
+        "entries"
+    ]
+}

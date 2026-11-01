@@ -1,0 +1,347 @@
+{
+    "state": "ready",
+    "message": null,
+    "week_start": "2026-10-05",
+    "week_label": "5 Oct to 11 Oct",
+    "steps": [
+        {
+            "key": "weigh_ins",
+            "title": "Weigh-ins"
+        },
+        {
+            "key": "meals",
+            "title": "Meals"
+        },
+        {
+            "key": "training",
+            "title": "Training"
+        },
+        {
+            "key": "progress",
+            "title": "Progress"
+        },
+        {
+            "key": "goal",
+            "title": "Goal"
+        },
+        {
+            "key": "calories",
+            "title": "Calories"
+        },
+        {
+            "key": "preview",
+            "title": "Preview"
+        }
+    ],
+    "weigh_ins": {
+        "rows": [
+            {
+                "date": "2026-10-05",
+                "date_label": "Mon, 5 Oct",
+                "value_label": "82.9 kg",
+                "is_missing": false,
+                "add_at": "2026-10-05T07:00:00+01:00"
+            },
+            {
+                "date": "2026-10-07",
+                "date_label": "Wed, 7 Oct",
+                "value_label": "",
+                "is_missing": true,
+                "add_at": "2026-10-07T07:00:00+01:00"
+            },
+            {
+                "date": "2026-10-09",
+                "date_label": "Fri, 9 Oct",
+                "value_label": "",
+                "is_missing": true,
+                "add_at": "2026-10-09T07:00:00+01:00"
+            },
+            {
+                "date": "2026-10-10",
+                "date_label": "Sat, 10 Oct",
+                "value_label": "82.5 kg",
+                "is_missing": false,
+                "add_at": "2026-10-10T07:00:00+01:00"
+            }
+        ],
+        "empty_message": null,
+        "missing": {
+            "text": "Missing · Add",
+            "tone": "warning"
+        },
+        "add_title": "Add a weigh-in"
+    },
+    "meals": {
+        "message": {
+            "text": "You checked in 24 of 28 meals.",
+            "tone": "neutral"
+        },
+        "unchecked": [
+            {
+                "meal_id": "01JA0000000000000000MEAL01",
+                "name": "Meal 3",
+                "date_label": "Tue, 6 Oct"
+            },
+            {
+                "meal_id": "01JA0000000000000000MEAL02",
+                "name": "Meal 4",
+                "date_label": "Thu, 8 Oct"
+            }
+        ],
+        "check_in_title": "Check in now"
+    },
+    "training": {
+        "lines": [
+            {
+                "label": "Sessions done",
+                "value": "2",
+                "tone": "neutral"
+            },
+            {
+                "label": "Skipped",
+                "value": "1",
+                "tone": "neutral"
+            },
+            {
+                "label": "Missed",
+                "value": "1",
+                "tone": "warning"
+            },
+            {
+                "label": "Sets done",
+                "value": "13 of 20 planned",
+                "tone": "neutral"
+            }
+        ],
+        "notes": [
+            {
+                "text": "Missed rep targets 2 sessions running: Chest",
+                "tone": "warning"
+            },
+            {
+                "text": "At the volume ceiling: Back",
+                "tone": "info"
+            },
+            {
+                "text": "Bench Press: Moderate pain",
+                "tone": "warning"
+            }
+        ],
+        "next_week_label": "Next week",
+        "next_week": {
+            "text": "Last hard week",
+            "tone": "neutral"
+        }
+    },
+    "progress": {
+        "lines": [
+            {
+                "label": "Trend weight",
+                "value": "82.7 kg",
+                "tone": "neutral"
+            },
+            {
+                "label": "Goal range",
+                "value": "82.1 kg to 82.9 kg",
+                "tone": "neutral"
+            },
+            {
+                "label": "This week's rate",
+                "value": "-0.42% a week",
+                "tone": "neutral"
+            },
+            {
+                "label": "Target rate",
+                "value": "-0.50% a week",
+                "tone": "neutral"
+            }
+        ],
+        "pills": [
+            {
+                "text": "Inside the goal range",
+                "tone": "good"
+            },
+            {
+                "text": "On target",
+                "tone": "good"
+            }
+        ],
+        "empty_message": null
+    },
+    "goal": {
+        "notes": [],
+        "options": [
+            {
+                "id": "keep_goal",
+                "title": "Keep current goal",
+                "detail": "",
+                "is_recommended": true,
+                "is_selected": true,
+                "is_enabled": true
+            },
+            {
+                "id": "choose_new_goal",
+                "title": "Choose a new goal",
+                "detail": "",
+                "is_recommended": false,
+                "is_selected": false,
+                "is_enabled": true
+            },
+            {
+                "id": "end_plan",
+                "title": "End the plan",
+                "detail": "",
+                "is_recommended": false,
+                "is_selected": false,
+                "is_enabled": true
+            }
+        ]
+    },
+    "calories": {
+        "lines": [
+            {
+                "label": "Last week's target",
+                "value": "2400 kcal",
+                "tone": "neutral"
+            },
+            {
+                "label": "Last week's average",
+                "value": "2239 kcal",
+                "tone": "neutral"
+            }
+        ],
+        "notes": [
+            {
+                "text": "You are on target, so calories stay as they are.",
+                "tone": "info"
+            }
+        ],
+        "options": [
+            {
+                "id": "recommendation",
+                "title": "Take the recommendation",
+                "detail": "Next week: 2400 kcal · P 195 · F 54 · C 283",
+                "is_recommended": true,
+                "is_selected": true,
+                "is_enabled": true
+            },
+            {
+                "id": "repeat_this_week",
+                "title": "Repeat this week",
+                "detail": "Next week: 2400 kcal · P 195 · F 54 · C 283",
+                "is_recommended": false,
+                "is_selected": false,
+                "is_enabled": true
+            },
+            {
+                "id": "choose_own",
+                "title": "Choose my own calories",
+                "detail": "Next week: 2400 kcal · P 195 · F 54 · C 283\nAverage daily calories, within safety limits",
+                "is_recommended": false,
+                "is_selected": false,
+                "is_enabled": true
+            },
+            {
+                "id": "drop_fatigue",
+                "title": "Drop fatigue",
+                "detail": "Next week: 2424 kcal · P 195 · F 67 · C 259\nTake a break. Eating closer to maintenance will drop fatigue and may let you judge your progress better",
+                "is_recommended": false,
+                "is_selected": false,
+                "is_enabled": true
+            }
+        ],
+        "own": {
+            "label": "Calories a day",
+            "unit_label": "kcal a day",
+            "value": 2400
+        },
+        "deload": {
+            "kind": "ask",
+            "question": "Make this your deload week too?",
+            "answer": true,
+            "note": "The mesocycle ends a week early.",
+            "rir_label": "Target RIR by week: 3, 2, 1, 0"
+        },
+        "step_offer": {
+            "label": "Update my step plan to 6,100 steps a day",
+            "accepted": false
+        }
+    },
+    "preview": {
+        "days": [
+            {
+                "index": 0,
+                "date": "2026-10-12",
+                "date_label": "Mon, 12 Oct",
+                "detail": "Training · Push A",
+                "kcal_label": "2500 kcal",
+                "can_move": true,
+                "is_locked": false
+            },
+            {
+                "index": 1,
+                "date": "2026-10-13",
+                "date_label": "Tue, 13 Oct",
+                "detail": "Training · Pull A",
+                "kcal_label": "2500 kcal",
+                "can_move": true,
+                "is_locked": false
+            },
+            {
+                "index": 2,
+                "date": "2026-10-14",
+                "date_label": "Wed, 14 Oct",
+                "detail": "Rest",
+                "kcal_label": "2250 kcal",
+                "can_move": true,
+                "is_locked": false
+            },
+            {
+                "index": 3,
+                "date": "2026-10-15",
+                "date_label": "Thu, 15 Oct",
+                "detail": "Training · Legs A",
+                "kcal_label": "2500 kcal",
+                "can_move": true,
+                "is_locked": false
+            },
+            {
+                "index": 4,
+                "date": "2026-10-16",
+                "date_label": "Fri, 16 Oct",
+                "detail": "Training · Push B",
+                "kcal_label": "2500 kcal",
+                "can_move": true,
+                "is_locked": false
+            },
+            {
+                "index": 5,
+                "date": "2026-10-17",
+                "date_label": "Sat, 17 Oct",
+                "detail": "Rest",
+                "kcal_label": "2250 kcal",
+                "can_move": true,
+                "is_locked": false
+            },
+            {
+                "index": 6,
+                "date": "2026-10-18",
+                "date_label": "Sun, 18 Oct",
+                "detail": "Training · Pull B",
+                "kcal_label": "2500 kcal",
+                "can_move": true,
+                "is_locked": false
+            }
+        ],
+        "hint": "Tap a day to move calories between days. The week's total stays the same.",
+        "error": null,
+        "move": {
+            "title": "Move calories",
+            "min_kcal": 25,
+            "max_kcal": 500,
+            "step_kcal": 25
+        }
+    },
+    "can_save": true,
+    "save_title": "Save"
+}
