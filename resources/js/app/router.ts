@@ -1,10 +1,17 @@
 import { createRouter, createWebHistory, type RouteRecordRaw, type RouterHistory } from 'vue-router';
 import NotFound from './NotFound.vue';
 
+type RoutesModule = { default: RouteRecordRaw[] };
+
 // Each feature owns resources/js/features/<feature>/routes.ts, loaded here by glob,
 // so a new feature never edits this file. Routes with meta.dev are the dev screens
 // and gallery; the server flags them on in local and testing only.
-const modules = import.meta.glob<{ default: RouteRecordRaw[] }>('../features/*/routes.ts', { eager: true });
+// features/dev is loaded only under the Vite dev server and Vitest, so a production
+// `vite build` never emits the screen fixtures or the gallery.
+const modules: Record<string, RoutesModule> = {
+    ...import.meta.glob<RoutesModule>(['../features/*/routes.ts', '!../features/dev/routes.ts'], { eager: true }),
+    ...(import.meta.env.DEV ? import.meta.glob<RoutesModule>('../features/dev/routes.ts', { eager: true }) : {}),
+};
 
 export const featureRoutes: RouteRecordRaw[] = Object.keys(modules)
     .sort()

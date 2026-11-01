@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from './call';
+import { CapabilityError, read, TIMEOUT_MS, write } from './call';
 
 function json(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -84,5 +84,37 @@ describe('call', () => {
         fetchMock.mockResolvedValueOnce(json({ ok: false, error: { code: 'nope' } }));
 
         await expect(write('account_show', {})).rejects.toMatchObject({ status: 200, body: { ok: false } });
+    });
+
+    it.each([
+        ['the capability call', true],
+        ['the CSRF cookie fetch', false],
+    ])('CAP-004 gives up on a stalled server when %s never answers', async (_, hasCookie) => {
+        vi.useFakeTimers();
+        if (hasCookie) document.cookie = 'XSRF-TOKEN=t; path=/';
+        fetchMock.mockImplementation(
+            (_url, init) =>
+                new Promise<Response>((_resolve, reject) => {
+                    init?.signal?.addEventListener('abort', () => reject(init.signal!.reason));
+                }),
+        );
+
+        let settled = false;
+        const error = read('account_show').catch((e: unknown) => e).finally(() => (settled = true));
+        await vi.advanceTimersByTimeAsync(TIMEOUT_MS - 1);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+
+        expect(await error).toBeInstanceOf(CapabilityError);
+        expect(await error).toMatchObject({ capability: 'account_show', status: 0, body: { reason: 'timeout' } });
+        expect(fetchMock.mock.calls[0]![1]?.signal).toBeInstanceOf(AbortSignal);
+        vi.useRealTimers();
+    });
+
+    it('CAP-004 throws a CapabilityError with status 0 when the network fails', async () => {
+        document.cookie = 'XSRF-TOKEN=t; path=/';
+        fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+        await expect(write('account_show', {})).rejects.toMatchObject({ status: 0, body: { reason: 'network' } });
     });
 });

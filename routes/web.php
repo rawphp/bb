@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppShellController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\SignInController;
 use Illuminate\Support\Facades\Route;
@@ -12,15 +13,6 @@ Route::middleware(['guest', 'throttle:10,1'])->group(function (): void {
 });
 
 // The Vue app shell answers every other GET, so the client router owns the path.
-// Capability, Sanctum and MCP paths are left to their own routes and 404s.
-// The dev screens and gallery exist in local and testing only.
-$shell = function (?string $path = null) {
-    $devRoutes = app()->environment('local', 'testing');
-
-    abort_if(! $devRoutes && preg_match('~^dev(/|$)~', (string) $path) === 1, 404);
-
-    return view('app', ['devRoutes' => $devRoutes]);
-};
-
-Route::get('/', $shell);
-Route::fallback($shell)->where('fallbackPlaceholder', '^(?!(capabilities|sanctum|mcp|api)(/|$)).*');
+// Capability, Sanctum, MCP and API paths are left to their own routes and 404s.
+Route::get('/', AppShellController::class);
+Route::fallback(AppShellController::class)->where('fallbackPlaceholder', '^(?!(capabilities|sanctum|mcp|api)(/|$)).*');
