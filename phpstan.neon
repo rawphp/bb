@@ -3,7 +3,8 @@ includes:
 
 parameters:
     level: 6
-    # Per checkout: the default sys_get_temp_dir() cache is shared by every worktree on a machine.
+    # Per checkout: the default /tmp/phpstan is shared by every worktree on a machine,
+    # and a cache written by one checkout's vendor breaks analysis in another.
     tmpDir: storage/framework/cache/phpstan
     paths:
         - app
