@@ -176,3 +176,26 @@ it('PLAN-008 a lengthened transition week is a long plan week', function () {
     expect($week->dayCount)->toBe(8)
         ->and($week->days())->toHaveCount(8);
 });
+
+it('PLAN-008 a date from another zone is read on the calendar of the plan start', function () {
+    $newYork = fn (int $day) => F::date(2026, 3, $day, zone: 'America/New_York');
+    $utc = fn (int $day, int $hour) => F::date(2026, 3, $day, $hour);
+    $grid = new PlanWeekGrid($newYork(2), F::MONDAY);
+
+    // 02:00 UTC on Monday 9 March is 22:00 on Sunday 8 March in New York; 14:00 UTC is 10:00 on the Monday.
+    expect($grid->weekIndexContaining($utc(2, 4)))->toBeNull()
+        ->and($grid->weekIndexContaining($utc(9, 2)))->toBe(0)
+        ->and($grid->weekIndexContaining($utc(9, 14)))->toBe(1)
+        ->and($grid->isBoundary($utc(9, 2)))->toBeFalse()
+        ->and($grid->isBoundary($utc(9, 14)))->toBeTrue();
+
+    // Requested on Sunday 15 March local: the change applies from Monday 16 March.
+    $sunday = $grid->changingReviewDay(F::FRIDAY, $utc(16, 2));
+    expect($sunday->start(2))->toEqual($newYork(16))
+        ->and($sunday->start(3))->toEqual($newYork(20));
+
+    // Requested on Monday 16 March local, a boundary day: the change starts from Monday 23 March.
+    $monday = $grid->changingReviewDay(F::FRIDAY, $utc(16, 14));
+    expect($monday->start(3))->toEqual($newYork(23))
+        ->and($monday->start(4))->toEqual($newYork(27));
+});

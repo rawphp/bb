@@ -18,8 +18,9 @@ final class MesocycleSpan
         if ($endedOn === null) {
             return $lastOfWeeks;
         }
+        $ended = $endedOn->setTimezone($first->getTimezone());
         $dayBeforeEnd = $first
-            ->setDate((int) $endedOn->format('Y'), (int) $endedOn->format('n'), (int) $endedOn->format('j'))
+            ->setDate((int) $ended->format('Y'), (int) $ended->format('n'), (int) $ended->format('j'))
             ->modify('-1 day');
 
         return min($lastOfWeeks, $dayBeforeEnd);

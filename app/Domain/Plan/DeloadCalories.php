@@ -66,13 +66,6 @@ final class DeloadCalories
             return $phase;
         }
 
-        return new Phase(
-            id: $phase->id,
-            type: $phase->type,
-            start: $phase->start,
-            end: $grid->start($weeks->upper + count($breaks)),
-            targetRatePercentPerWeek: $phase->targetRatePercentPerWeek,
-            eventDate: $phase->eventDate,
-        );
+        return $phase->withDates($phase->start, $grid->start($weeks->upper + count($breaks)));
     }
 }

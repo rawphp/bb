@@ -57,6 +57,13 @@ it('PLAN-006 cannot append after an open-ended phase', function () {
         ->toEqual(PhaseRefusal::previousPhaseHasNoEnd());
 });
 
+it('PLAN-006 cannot append after a phase that ends mid-week', function () {
+    $last = new Phase(id: 'last', type: PhaseType::Maintenance, start: F::grid()->start(0), end: F::date(2026, 1, 28), targetRatePercentPerWeek: 0);
+
+    expect(F::refusal(fn () => appendPhase(PhaseType::FatLoss, 8, -0.75, F::plan([$last]))))
+        ->toEqual(PhaseRefusal::notOnWeekBoundary());
+});
+
 it('PLAN-006 appending applies the phase limits', function () {
     $plan = F::plan([]);
 
@@ -90,6 +97,19 @@ it('PLAN-002 weeks of a phase', function () {
 
 it('PLAN-002 an open-ended phase runs without end', function () {
     expect(PlanRules::weeks(F::phase(PhaseType::Maintenance, 4, null), F::grid()))->toEqual(new WeekRange(4, PHP_INT_MAX));
+});
+
+it('PLAN-002 a phase ending mid-week takes in that week', function () {
+    // Week 3 runs Monday 26 January to Sunday 1 February; an end on Wednesday 28 January still covers it.
+    $phase = new Phase(id: 'phase', type: PhaseType::Maintenance, start: F::grid()->start(2), end: F::date(2026, 1, 28), targetRatePercentPerWeek: 0);
+
+    expect(PlanRules::weeks($phase, F::grid()))->toEqual(new WeekRange(2, 4));
+});
+
+it('PLAN-002 a phase ending before it starts has no weeks', function () {
+    $phase = new Phase(id: 'phase', type: PhaseType::Maintenance, start: F::grid()->start(2), end: F::date(2026, 1, 7), targetRatePercentPerWeek: 0);
+
+    expect(PlanRules::weeks($phase, F::grid()))->toEqual(new WeekRange(2, 2));
 });
 
 it('PLAN-002 a phase not starting on a boundary has no weeks', function () {

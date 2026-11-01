@@ -67,13 +67,6 @@ final class PhaseRules
             throw new PhaseRefused($refusal);
         }
 
-        return new Phase(
-            id: $phase->id,
-            type: $phase->type,
-            start: $phase->start,
-            end: $weeks === null ? null : $grid->start($startWeek + $weeks),
-            targetRatePercentPerWeek: $phase->targetRatePercentPerWeek,
-            eventDate: $phase->eventDate,
-        );
+        return $phase->withDates($phase->start, $weeks === null ? null : $grid->start($startWeek + $weeks));
     }
 }

@@ -80,14 +80,7 @@ final class PlanRules
                 return $phase;
             }
 
-            return new Phase(
-                id: $phase->id,
-                type: $phase->type,
-                start: $new->start($range->lower),
-                end: $phase->end === null ? null : $new->start($range->upper),
-                targetRatePercentPerWeek: $phase->targetRatePercentPerWeek,
-                eventDate: $phase->eventDate,
-            );
+            return $phase->withDates($new->start($range->lower), $phase->end === null ? null : $new->start($range->upper));
         }, $plan->phases);
 
         return new Plan($plan->id, $plan->start, $new->startReviewWeekday(), $phases, $new->reviewDayChanges());
