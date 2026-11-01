@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityError, read, TIMEOUT_MS, write } from './call';
+import { clearWalk, walkDays } from './clock';
 
 function json(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -45,6 +46,29 @@ describe('call', () => {
             'X-Requested-With': 'XMLHttpRequest',
             'X-XSRF-TOKEN': 'abc==',
         });
+    });
+
+    it('SET-011 sends X-BB-Now only while the clock is walked', async () => {
+        document.cookie = 'XSRF-TOKEN=t; path=/';
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-11-02T09:30:00.000Z'));
+        fetchMock.mockImplementation(async () => json({ ok: true, data: {} }));
+
+        try {
+            await read('account_show');
+            walkDays(7);
+            await write('account_show');
+            clearWalk();
+            await read('account_show');
+        } finally {
+            clearWalk();
+            vi.useRealTimers();
+        }
+
+        const headers = fetchMock.mock.calls.map(([, init]) => init?.headers as Record<string, string>);
+        expect(headers[0]).not.toHaveProperty('X-BB-Now');
+        expect(headers[1]).toMatchObject({ 'X-BB-Now': '2026-11-09T09:30:00.000Z' });
+        expect(headers[2]).not.toHaveProperty('X-BB-Now');
     });
 
     it('CAP-004 fetches the CSRF cookie first when it is missing', async () => {
