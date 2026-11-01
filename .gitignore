@@ -27,3 +27,5 @@
 /.fleet/
 /.zed/
 *.swp
+*.log
+/auth.json

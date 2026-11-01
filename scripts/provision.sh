@@ -1,14 +1,12 @@
 #!/usr/bin/env bash
 # Prepare a fresh checkout. Safe to run more than once.
-# Each step runs only once its project file exists, so this works before the app is scaffolded.
+# The front-end step runs once package.json exists.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-if [ -f composer.json ]; then
-  composer install --no-interaction --no-progress
-  [ -f .env ] || cp .env.example .env
-  grep -q '^APP_KEY=base64' .env || php artisan key:generate --no-interaction
-fi
+composer install --no-interaction --no-progress
+[ -f .env ] || cp .env.example .env
+grep -q '^APP_KEY=base64' .env || php artisan key:generate --no-interaction
 
 if [ -f package.json ]; then
   npm ci
