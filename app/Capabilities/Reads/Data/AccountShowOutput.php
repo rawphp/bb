@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Capabilities\Account\Data;
+namespace App\Capabilities\Reads\Data;
 
 use Rawphp\Capabilities\Support\CapabilityData;
 

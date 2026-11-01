@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Capabilities\Account;
+namespace App\Capabilities\Reads;
 
-use App\Capabilities\Account\Data\AccountShowInput;
-use App\Capabilities\Account\Data\AccountShowOutput;
 use App\Capabilities\HostCapability;
+use App\Capabilities\Reads\Data\AccountShowInput;
+use App\Capabilities\Reads\Data\AccountShowOutput;
 use App\Models\User;
 use Rawphp\Capabilities\Capability;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;

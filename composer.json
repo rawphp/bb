@@ -1,11 +1,12 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "rawphp/bodybuilder",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "An open-source training and nutrition PWA.",
     "keywords": [
-        "laravel",
-        "framework"
+        "training",
+        "nutrition",
+        "pwa"
     ],
     "license": "MIT",
     "require": {
@@ -43,12 +44,7 @@
     },
     "scripts": {
         "setup": [
-            "composer install",
-            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-            "@php artisan key:generate",
-            "@php artisan migrate --force",
-            "npm install --ignore-scripts",
-            "npm run build"
+            "bash scripts/provision.sh"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",

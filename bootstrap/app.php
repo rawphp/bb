@@ -14,9 +14,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Sanctum SPA cookie auth for the PWA on the same domain.
         $middleware->statefulApi();
+        // There is no login page: the PWA shows sign-in itself, so a signed-out
+        // request gets a 401, never a redirect.
+        $middleware->redirectGuestsTo(null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Capability calls always answer in JSON, whatever the Accept header.
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request) => $request->is('api/*', config('capabilities.surfaces.http.prefix').'/*')
+                || $request->expectsJson(),
         );
     })->create();

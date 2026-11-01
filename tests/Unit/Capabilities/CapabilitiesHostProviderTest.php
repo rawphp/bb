@@ -15,8 +15,8 @@ it('CAP-003 registers every app/Capabilities/*/*Capability.php class', function 
 
 it('CAP-003 fails on a duplicate capability name', function () {
     CapabilitiesHostProvider::registerFrom(
-        base_path('tests/Fixtures/DuplicateCapabilities'),
-        'Tests\\Fixtures\\DuplicateCapabilities',
+        base_path('tests/Support/Fixtures/DuplicateCapabilities'),
+        'Tests\\Support\\Fixtures\\DuplicateCapabilities',
         new CapabilityRegistry,
         app(),
     );

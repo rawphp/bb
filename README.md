@@ -18,7 +18,7 @@ It is a phone-first web app you install to your home screen. It works offline in
 
 ## Stack
 
-Laravel 13 (PHP 8.5), MySQL 8, Redis, Vue 3 with TypeScript, Tailwind CSS 4, vite-plugin-pwa. Tests: Pest, Vitest, Playwright.
+Laravel 13 (PHP 8.4), MySQL 8, Redis, Vue 3 with TypeScript, Tailwind CSS 4, vite-plugin-pwa. Tests: Pest, Vitest, Playwright.
 
 ## Docs
 

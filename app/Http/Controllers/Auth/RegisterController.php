@@ -3,22 +3,20 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\Account\RegisterUser;
-use Illuminate\Http\Request;
+use App\Http\Requests\Auth\RegisterRequest;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules\Password;
 
 final class RegisterController
 {
-    public function __invoke(Request $request, RegisterUser $register): Response
+    public function __invoke(RegisterRequest $request, RegisterUser $register): Response
     {
-        $input = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'confirmed', Password::defaults()],
-        ]);
-
-        Auth::login($register($input['name'], $input['email'], $input['password']));
+        Auth::login($register(
+            $request->string('name')->value(),
+            $request->string('email')->value(),
+            $request->string('password')->value(),
+        ));
+        // Belt and braces: SessionGuard::login() already regenerated the session.
         $request->session()->regenerate();
 
         return response()->noContent();

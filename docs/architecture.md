@@ -65,7 +65,7 @@ Parallel issues rely on these names.
 
 ## Server
 
-- Laravel 13, PHP 8.5, MySQL 8, Redis (cache, queues, the AI progress store).
+- Laravel 13, PHP 8.4 (raise to 8.5 once the gate host has it), MySQL 8, Redis (cache, queues, the AI progress store).
 - Auth: Sanctum. The PWA uses SPA cookie auth on the same domain. Tokens (CAP-021) are Sanctum personal access tokens whose abilities are capability names.
 - Queues: `default` and `agent` (AGT setup defaults), each with its own worker.
 - Scheduler: the Web Push sender (NOTIF), the package's stale-turn reaper, and pruning of the idempotency and audit tables.
@@ -78,7 +78,7 @@ Parallel issues rely on these names.
 - Packages: `rawphp/laravel-capabilities` and `rawphp/laravel-capabilities-ai`, the same version (lockstep), required from the package repos by VCS at a tag, with exact versions in `composer.lock`. Never a path repo or `dev-main` in the committed `composer.json`. Switch to Packagist once the packages are published.
 - `laravel/mcp` for product MCP (AGT-040). `laravel/ai` is not installed, and the package's `agent` surface stays off.
 - Messaging (`rawphp/laravel-capabilities-messaging`) is not installed.
-- One host provider, registered last. It binds the authorizer (CAP-020), the tool catalog (AGT-003) and the conversation context provider (AGT-011), and calls each module's registrar.
+- One host provider, registered last. It binds the authorizer (CAP-020) and loads every capability class (below); there are no module registrars. The tool catalog (AGT-003) and the conversation context provider (AGT-011) are bound here too once they exist: AI_SETUP (#13) and COACH_CTX (#61) add them.
 - Registration has one path: one class per capability, `app/Capabilities/<Module>/<StudlyName>Capability.php`, which returns its fluent definition. The host provider loads every such file, sorted, and fails boot on a duplicate name. No attributes and no second discovery path. A new capability is a new file, so parallel work never edits a shared registrar. Each definition names its input DTO (the only schema source), its `run()` (which calls an Action), its surfaces, its CLI domain and verb, `affects` (CAP-011), and the flags `reversible` and `destructive`.
 - Enabled surfaces: `http`, `job`, `mcp`, `cli`. The Vue app uses `http`.
 - Package defaults are overridden on day one, per `mesoprep/docs/capabilities-host-lessons-learned.md` section 3, item 14: see 17-agent.md, "Setup defaults". Published config files use no `env()` calls inside closures, so `config:cache` works (lessons item 15).

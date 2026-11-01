@@ -1,12 +1,12 @@
 <?php
 
-namespace Tests\Fixtures\DuplicateCapabilities\Second;
+namespace Tests\Support\Fixtures\DuplicateCapabilities\First;
 
 use App\Capabilities\HostCapability;
 use Rawphp\Capabilities\Capability;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 
-final class SecondCapability implements HostCapability
+final class FirstCapability implements HostCapability
 {
     public function definition(): CapabilityDefinitionBuilder
     {
