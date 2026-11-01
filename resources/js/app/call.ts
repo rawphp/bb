@@ -181,9 +181,9 @@ async function invoke<T>(name: string, input: CapabilityInput): Promise<T> {
     }
 }
 
-// 401 (signed out) and 419 (session expired): the cached reads may be another
-// user's, so none of them may be shown again. Sign-out and a user switch (#129,
-// OFF-012) are expected to call clearReads() as well; nothing here does that yet.
+// 401 (signed out) and 419 (session expired): none of the cached reads may be shown
+// again. The server also drops the bb_cache_owner cookie then, as on sign-out, and
+// a sign-in names the new owner, so cache.ts opens no other user's reads.
 async function forget(error: unknown): Promise<void> {
     if (error instanceof CapabilityError && (error.status === 401 || error.status === 419)) {
         await clearReads().catch(() => undefined);

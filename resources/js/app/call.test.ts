@@ -19,8 +19,10 @@ describe('call', () => {
     const fetchMock = vi.fn<typeof fetch>();
 
     beforeEach(async () => {
-        await clearReads();
         clearCookies();
+        // Signed in: the server's bb_cache_owner cookie names whose cache to open.
+        document.cookie = 'bb_cache_owner=a1; path=/';
+        await clearReads();
         fetchMock.mockReset();
         vi.stubGlobal('fetch', fetchMock);
     });

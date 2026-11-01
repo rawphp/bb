@@ -1,12 +1,26 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { outputVersion as accountShowVersion } from '@/contracts/account_show';
-import { cached, clearReads, drop, evict, MAX_AGE_MS, readKey, requestPersistentStorage, store, versionOf } from './cache';
+import { cached, clearReads, drop, evict, isCurrent, MAX_AGE_MS, readKey, requestPersistentStorage, stamp, store, versionOf } from './cache';
 
 const DAY = 24 * 60 * 60 * 1000;
 
+// The bb_cache_owner cookie the server sets on sign-in (NameCacheOwner).
+function signIn(owner: string | null): void {
+    document.cookie = owner === null ? 'bb_cache_owner=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/' : `bb_cache_owner=${owner}; path=/`;
+}
+
+const readDatabases = async () =>
+    (await indexedDB.databases())
+        .map(({ name }) => name)
+        .filter((name) => name?.startsWith('bodybuilder-reads-'))
+        .sort();
+
 describe('cache', () => {
-    beforeEach(() => clearReads());
+    beforeEach(() => {
+        signIn('a1');
+        return clearReads();
+    });
 
     afterEach(() => vi.unstubAllGlobals());
 
@@ -47,6 +61,39 @@ describe('cache', () => {
         expect(await cached('today_show{}')).toBeUndefined();
         expect(await cached('meal_show{}')).toBeUndefined();
         expect(await cached('week_show{}')).toBeDefined();
+    });
+
+    it("OFF-003 keeps each user's reads apart, and deletes the last user's when another signs in", async () => {
+        await store('account_show{}', { name: 'A' });
+        expect(await readDatabases()).toContain('bodybuilder-reads-a1');
+
+        signIn('b2');
+        expect(await cached('account_show{}')).toBeUndefined();
+        await store('account_show{}', { name: 'B' });
+
+        await vi.waitFor(async () => expect(await readDatabases()).toEqual(['bodybuilder-reads-b2']));
+        expect((await cached('account_show{}'))?.data).toEqual({ name: 'B' });
+    });
+
+    it("OFF-003 caches nothing and keeps no one's reads while no one is signed in", async () => {
+        await store('account_show{}', { name: 'A' });
+
+        signIn(null);
+        await store('today_show{}', { title: 'Today' });
+
+        expect(await cached('account_show{}')).toBeUndefined();
+        expect(await cached('today_show{}')).toBeUndefined();
+        await vi.waitFor(async () => expect(await readDatabases()).toEqual([]));
+    });
+
+    it('OFF-003 an answer fetched for one user is not stored once another has signed in', () => {
+        const since = stamp();
+        expect(isCurrent('account_show{}', since)).toBe(true);
+
+        signIn('b2');
+
+        expect(isCurrent('account_show{}', since)).toBe(false);
+        expect(isCurrent('account_show{}', stamp())).toBe(true);
     });
 
     it('OFF-005 drops cached reads that are not in the manifest and older than 30 days', async () => {
