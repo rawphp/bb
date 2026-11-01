@@ -101,7 +101,9 @@ Carried over from rp-clone so a tester can live through weeks in minutes. Local 
 - The client has one clock: the device clock plus an offset kept in local storage, set from Settings → Developer (SET-011): a date picker, "+1 day", "+7 days", "Clear".
 - With an offset set, every request sends `X-BB-Now: <ISO 8601>`, and outbox entries use the shifted time for `occurred_at` (OFF-007).
 - `App\Http\Middleware\UseRequestClock`, first in the `api` and capability route groups, calls `Carbon::setTestNow` for that request when `APP_ENV` is `local` or `testing`. Every other environment ignores the header.
+- The clock walks forward only. The server ignores an `X-BB-Now` earlier than its own clock, and the picker starts at today: a past instant would date the session and XSRF cookies in the past and sign the user out.
 - The in-app agent's turns run on the queue, so the turn records the request's clock and the job sets it before running tools.
+- The queue keeps real time: a job queued from a walked request, delayed or not, becomes available on the clock from before the walk. Two cases are stamped with the walked clock and wait for real time to catch up: a job that releases itself while it runs walked (its own `release()`, or `RateLimited` and `WithoutOverlapping`), and a `database` queue bulk push such as `Bus::batch`. A job meant to run walked must not do either; the agent's turn does neither.
 
 ## Tests
 
