@@ -3,6 +3,8 @@ includes:
 
 parameters:
     level: 6
+    # Per checkout, so worktrees never share a result cache.
+    tmpDir: storage/framework/cache/phpstan
     paths:
         - app
         - bootstrap/app.php
