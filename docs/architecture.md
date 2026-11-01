@@ -30,7 +30,7 @@ One Laravel app at the repo root. There is no `server/` folder and no separate f
 app/
   Domain/<Module>/        rules: plain PHP, no Eloquent, no facades; unit tested
   Actions/<Module>/       one class per write: loads models, calls Domain, saves, returns the result
-  Capabilities/<Module>/  input DTOs (schema) and the module's registrar
+  Capabilities/<Module>/  one class per capability, and its DTOs under Data/
   Capabilities/Reads/     the *_show read capabilities and their payload builders
   Agent/                  tool catalog, conversation context provider, eval fixtures
   Providers/CapabilitiesHostProvider.php   registered last
@@ -59,11 +59,11 @@ docs/                     spec, architecture, personas, screenshots
 - `laravel/mcp` for product MCP (AGT-040). `laravel/ai` is not installed, and the package's `agent` surface stays off.
 - Messaging (`rawphp/laravel-capabilities-messaging`) is not installed.
 - One host provider, registered last. It binds the authorizer (CAP-020), the tool catalog (AGT-003) and the conversation context provider (AGT-011), and calls each module's registrar.
-- Registration is fluent and explicit: each module's registrar lists its capabilities. No attribute scanning, no second discovery path. Each definition names its input DTO (the only schema source), its `run()` (which calls an Action), its surfaces, its CLI domain and verb, `affects` (CAP-011), and the flags `reversible` and `destructive`.
+- Registration has one path: one class per capability, `app/Capabilities/<Module>/<StudlyName>Capability.php`, which returns its fluent definition. The host provider loads every such file, sorted, and fails boot on a duplicate name. No attributes and no second discovery path. A new capability is a new file, so parallel work never edits a shared registrar. Each definition names its input DTO (the only schema source), its `run()` (which calls an Action), its surfaces, its CLI domain and verb, `affects` (CAP-011), and the flags `reversible` and `destructive`.
 - Enabled surfaces: `http`, `job`, `mcp`, `cli`. The Vue app uses `http`.
 - Package defaults are overridden on day one, per `mesoprep/docs/capabilities-host-lessons-learned.md` section 3, item 14: see 17-agent.md, "Setup defaults". Published config files use no `env()` calls inside closures, so `config:cache` works (lessons item 15).
 - Freeze tests from day one: registration smoke (every capability registers on its declared surfaces), schema snapshots, the UI and agent parity test (CAP-030), CLI map completeness, and `php artisan capabilities:integration-health` passing in CI.
-- Adding a capability: the DTO, the Action with its unit tests, the registrar line, a schema snapshot. Nothing else.
+- Adding a capability: the DTO, the Action with its unit tests, the capability class, a schema snapshot. Nothing else.
 
 ## Client
 

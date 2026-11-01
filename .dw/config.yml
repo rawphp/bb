@@ -1,0 +1,9 @@
+# Read by the t3fac factory. One GitHub issue in, one pull request out.
+factory:
+  instructors: [tomkaczocha, rawphp]
+  base: main
+  provision: [bash scripts/provision.sh]
+  gate:
+    - bash scripts/check.sh
+  limits: { minutes: 120, gate_retries: 2 }
+  autonomy: pr
