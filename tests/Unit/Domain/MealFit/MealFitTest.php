@@ -143,6 +143,18 @@ it('MEAL-002 food order and ids never change', function () {
         ->and(array_map(fn (MealFood $f) => $f->food, $result->foods))->toEqual(array_map(fn (MealFood $f) => $f->food, $foods));
 });
 
+it('MEAL-002 two foods sharing an id are refused', function () {
+    // The id names one food in this meal: locks and edits are keyed on it.
+    $beef = new MealFood('beef', mealFitBeef(), 100);
+    $twice = [$beef, $beef->withGrams(50)];
+    $fit = new MealFit;
+
+    expect(fn () => $fit->fit($twice, mealFitTarget()))
+        ->toThrow(InvalidArgumentException::class, 'beef')
+        ->and(fn () => $fit->setAmount(80, 'beef', $twice, mealFitTarget()))
+        ->toThrow(InvalidArgumentException::class, 'beef');
+});
+
 it('MEAL-002 redundant foods share the load', function () {
     // Two identical proteins: neither is zeroed.
     $foods = [mealFitFood(mealFitBeef(), 100), mealFitFood(mealFitBeef(), 100)];
@@ -464,6 +476,18 @@ it('FOOD-006 a food without a cooked ratio treats cooked as raw', function () {
         ->and($bread->weighedAs(Weighing::Raw)->grams)->toBe(100.0);
 });
 
+it('FOOD-006 a cooked ratio of zero or less treats cooked as raw', function (float $ratio) {
+    $food = new Food(id: 'odd', name: 'Odd ratio', kcal: 137, proteinG: 21.4, fatG: 5.0, carbsG: 0, cookedRatio: $ratio);
+    $cooked = mealFitFood($food, 200, Weighing::Cooked);
+    $result = (new MealFit)->fit([$cooked], mealFitTargetOf(274, 42.8, 10, 0));
+
+    expect($cooked->rawGrams())->toBe(200.0)
+        ->and(MealFood::gramsForRaw(200, $food, Weighing::Cooked))->toBe(200.0)
+        ->and($cooked->weighedAs(Weighing::Raw)->grams)->toBe(200.0)
+        ->and($result->foods[0]->grams)->toEqualWithDelta(200, 1)
+        ->and($result->totals->proteinG)->toEqualWithDelta(42.8, 0.5);
+})->with([0.0, -0.5]);
+
 // Rounding and household units (FOOD-004, FOOD-005)
 
 it('MEAL-002 every fitted amount is a whole number of grams', function () {
@@ -515,6 +539,15 @@ it('FOOD-005 the household amount uses raw grams for cooked foods', function () 
 it('FOOD-005 no servings means no household amount', function () {
     expect(mealFitFood(mealFitOil(), 10)->household())->toBeNull();
 });
+
+it('FOOD-005 a first serving of zero grams or less means no household amount', function (float $grams) {
+    $food = new Food(
+        id: 'odd', name: 'Odd serving', kcal: 272, proteinG: 10.8, fatG: 2.4, carbsG: 51.9,
+        servings: [new Serving('slice', $grams), new Serving('loaf', 800)],
+    );
+
+    expect(mealFitFood($food, 105)->household())->toBeNull();
+})->with([0.0, -40.0]);
 
 it('MEAL-003 MealFit is the MealFitRules that Model checks a meal against', function () {
     expect(new MealFit)->toBeInstanceOf(MealFitRules::class);

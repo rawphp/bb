@@ -24,9 +24,13 @@ final readonly class MealFit implements MealFitRules
      * exact grams (MEAL-005). Never adds or removes a food (MEAL-007).
      *
      * @param  list<MealFood>  $foods
+     *
+     * @throws \InvalidArgumentException when two foods share an id
      */
     public function fit(array $foods, MealTarget $target): MealFitResult
     {
+        $this->assertUniqueIds($foods);
+
         return $this->solve($foods, $this->lockedIds($foods), $target);
     }
 
@@ -35,9 +39,12 @@ final readonly class MealFit implements MealFitRules
      * foods rebalance. Its lock flag is untouched. An unknown id is a plain fit.
      *
      * @param  list<MealFood>  $foods
+     *
+     * @throws \InvalidArgumentException when two foods share an id
      */
     public function setAmount(float $grams, string $id, array $foods, MealTarget $target): MealFitResult
     {
+        $this->assertUniqueIds($foods);
         $held = $this->lockedIds($foods);
 
         foreach ($foods as $i => $food) {
@@ -78,6 +85,24 @@ final readonly class MealFit implements MealFitRules
     private function within(float $total, float $target): bool
     {
         return abs($total - $target) <= self::TOLERANCE + self::EPSILON;
+    }
+
+    /**
+     * Locks and edits are keyed on the id, so two foods sharing one cannot be told apart.
+     *
+     * @param  list<MealFood>  $foods
+     */
+    private function assertUniqueIds(array $foods): void
+    {
+        $seen = [];
+
+        foreach ($foods as $food) {
+            if (isset($seen[$food->id])) {
+                throw new \InvalidArgumentException("Two foods in the meal share the id '{$food->id}'.");
+            }
+
+            $seen[$food->id] = true;
+        }
     }
 
     /**
