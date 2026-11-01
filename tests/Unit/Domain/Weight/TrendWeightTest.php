@@ -127,6 +127,19 @@ it('WT-010 days are local days in the given zone, not the readings\' zone', func
         ->and($trend->weeklyRatePercent($utc('2026-03-08 16:00')))->toEqualWithDelta(0.9551, 0.0005);
 });
 
+it('WT-011 the weekly rate counts back 7 local days across a daylight saving change', function () {
+    // Chile moves clocks forward at midnight on 2026-09-06: UTC-4 before, UTC-3 after.
+    $zone = new DateTimeZone('America/Santiago');
+    $reading = fn (int $day, float $kg) => new WeighIn("s{$day}", new DateTimeImmutable("2026-09-0{$day} 07:00", $zone), $kg);
+    $trend = new TrendWeight([$reading(2, 70.0), $reading(3, 71.0), new WeighIn('s10', new DateTimeImmutable('2026-09-10 07:00', $zone), 72.0)], $zone);
+
+    // 03:30 UTC is 00:30 on 10 September in Santiago, so 7 days back is 3 September,
+    // not 2 September as counting back in UTC would give.
+    // (70.6695 - 70.1) / 70.1 * 100
+    expect($trend->weeklyRatePercent(new DateTimeImmutable('2026-09-10 03:30', new DateTimeZone('UTC'))))
+        ->toEqualWithDelta(0.8125, 0.0005);
+});
+
 it('WT-011 the current weight is the latest trend, not the last reading', function () {
     $trend = trendOf(trendFixture());
 
