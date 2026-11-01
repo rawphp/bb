@@ -75,6 +75,13 @@ it('PH-031 default rounds to whole mesocycles and is at least one', function () 
         fatLossWeeks: 3, fatLossPhasesInPast12Months: 1, trendStillFallingOnMaintenance: false, mesocycleWeeks: 5,
     );
     expect($tiny->defaultWeeks)->toBe(5);
+
+    // 2x a 1-week cut is 2 weeks, under the one-mesocycle default, so the range widens to hold the default.
+    $short = NextPhase::maintenanceAfterFatLoss(
+        fatLossWeeks: 1, fatLossPhasesInPast12Months: 1, trendStillFallingOnMaintenance: false, mesocycleWeeks: 4,
+    );
+    expect($short->defaultWeeks)->toBe(4)
+        ->and($short->allowedWeeks)->toEqual(new ClosedRange(1, 4));
 });
 
 it('PH-032 gain first is offered after maintenance', function () {

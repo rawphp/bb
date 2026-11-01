@@ -142,14 +142,18 @@ final class PhaseWarnings
             ? PhaseWarning::shortMaintenanceBeforeFatLoss() : null;
     }
 
-    /** PH-042: the phase ends after its event date. A phase with no end (PH-005) has no end date to check. */
+    /**
+     * PH-042: the phase's last day is after its event date. end is exclusive (the day after the last week), so its
+     * last day is the day before; Swift compares end itself and so warns for a phase that finishes on the event day.
+     * A phase with no end (PH-005) has no end date to check.
+     */
     public static function runsPastEvent(Phase $phase, DateTimeZone $timeZone = new DateTimeZone('UTC')): ?PhaseWarning
     {
         if ($phase->eventDate === null || $phase->end === null) {
             return null;
         }
 
-        return self::startOfDay($phase->end, $timeZone) > self::startOfDay($phase->eventDate, $timeZone)
+        return self::startOfDay($phase->end, $timeZone)->modify('-1 day') > self::startOfDay($phase->eventDate, $timeZone)
             ? PhaseWarning::runsPastEvent() : null;
     }
 
@@ -186,10 +190,10 @@ final class PhaseWarnings
         }
 
         foreach ($phases as $phase) {
-            // A maintenance with no end (PH-005) is still running. $windowStart is a local midnight, so the raw end
-            // instant compares the same as its day would.
+            // A maintenance with no end (PH-005) is still running. end is exclusive, so a maintenance is inside the
+            // window when the day before its end is on or after the window's first day.
             if ($phase->type === PhaseType::Maintenance && self::startOfDay($phase->start, $timeZone) <= $today
-                && ($phase->end === null || $phase->end >= $windowStart)) {
+                && ($phase->end === null || self::startOfDay($phase->end, $timeZone) > $windowStart)) {
                 return null;
             }
         }

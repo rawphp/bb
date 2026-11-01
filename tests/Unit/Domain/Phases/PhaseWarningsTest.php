@@ -102,10 +102,21 @@ it('PH-042 phase running past its event warns', function () {
         ->and(PhaseWarning::runsPastEvent()->message())->toBe('This phase ends after your event date');
 });
 
+it('PH-042 reads end as the day after the last week, so finishing on the event day does not warn', function () {
+    // Eight weeks from Mon 5 Jan 2026: the last day is Sun 1 Mar, so end is Mon 2 Mar.
+    $phase = fn (DateTimeImmutable $event) => new Phase(
+        id: 'p', type: PhaseType::FatLoss, start: utcDate(2026, 1, 5), end: utcDate(2026, 3, 2), targetRatePercentPerWeek: -0.5,
+        eventDate: $event,
+    );
+    expect(PhaseWarnings::runsPastEvent($phase(utcDate(2026, 3, 1))))->toBeNull()
+        ->and(PhaseWarnings::runsPastEvent($phase(utcDate(2026, 2, 28))))->toEqual(PhaseWarning::runsPastEvent());
+});
+
 it('PH-042 compares the end and event days in the given zone', function () {
-    // 1 June 13:00 UTC is 2 June in Auckland (UTC+12); the event, 1 June 00:00 UTC, is still 1 June there.
+    // end 2 June 13:00 UTC is 3 June in Auckland (UTC+12), so the last day there is 2 June; the event, 1 June
+    // 00:00 UTC, is still 1 June there. In UTC the last day is 1 June, the event's own day.
     $phase = new Phase(
-        id: 'p', type: PhaseType::FatLoss, start: utcDate(2026, 1, 1), end: utcDate(2026, 6, 1, 13), targetRatePercentPerWeek: -0.5,
+        id: 'p', type: PhaseType::FatLoss, start: utcDate(2026, 1, 1), end: utcDate(2026, 6, 2, 13), targetRatePercentPerWeek: -0.5,
         eventDate: utcDate(2026, 6, 1),
     );
     expect(PhaseWarnings::runsPastEvent($phase, new DateTimeZone('Pacific/Auckland')))->toEqual(PhaseWarning::runsPastEvent())
@@ -183,9 +194,14 @@ it('PH-045 compares calendar days, so the time of day moves nothing', function (
         id: 'p', type: $type, start: $s, end: $e, targetRatePercentPerWeek: 0,
     );
     $gain = $phase(PhaseType::MuscleGain, utcDate(2026, 1, 1), utcDate(2026, 9, 1));
-    // A maintenance that ended at 00:00 on the window's first day is inside it, even when today is read at 14:00.
-    $maintenance = $phase(PhaseType::Maintenance, utcDate(2026, 3, 1), utcDate(2026, 5, 10));
+    // A maintenance whose last day is the window's first day (end 11 May, exclusive) is inside it, even when today
+    // is read at 14:00.
+    $maintenance = $phase(PhaseType::Maintenance, utcDate(2026, 3, 1), utcDate(2026, 5, 11));
     expect(PhaseWarnings::maintenanceSuggestion([$gain, $maintenance], utcDate(2026, 10, 10, 14)))->toBeNull()
+        // One whose end is 10 May, so its last day is 9 May, is outside it, whatever the end's time of day.
+        ->and(PhaseWarnings::maintenanceSuggestion(
+            [$gain, $phase(PhaseType::Maintenance, utcDate(2026, 3, 1), utcDate(2026, 5, 10, 5))], utcDate(2026, 10, 10, 14),
+        ))->not->toBeNull()
         // A plan that began later in the day exactly 5 months ago still qualifies on a morning today.
         ->and(PhaseWarnings::maintenanceSuggestion(
             [$phase(PhaseType::MuscleGain, utcDate(2026, 5, 10, 15), utcDate(2026, 10, 30))], utcDate(2026, 10, 10, 9),
