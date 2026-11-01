@@ -119,10 +119,11 @@ The `~/EA/projects/AGENTS.md` testing rules apply: unit first, thin feature test
   2. `pint --test`;
   3. `phpstan`;
   4. `pest --parallel`;
-  5. `vue-tsc --noEmit`;
-  6. `vitest run`;
-  7. `vite build`;
-  8. Playwright.
+  5. `eslint resources/js` (the CAP-001 rule `no-business-rules`, `eslint/no-business-rules/README.md`);
+  6. `vue-tsc --noEmit`;
+  7. `vitest run`;
+  8. `vite build`;
+  9. Playwright.
 
 ## Deployment
 
