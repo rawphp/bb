@@ -1,0 +1,66 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "date": {
+            "type": "string",
+            "format": "date"
+        },
+        "apply_to": {
+            "type": "string",
+            "enum": [
+                "this_day",
+                "all_future_days"
+            ]
+        },
+        "window_start": {
+            "type": "string",
+            "description": "24-hour \"HH:MM\"."
+        },
+        "window_end": {
+            "type": "string"
+        },
+        "meal_count": {
+            "type": "integer"
+        },
+        "busy_periods": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "label": {
+                        "type": "string"
+                    },
+                    "start": {
+                        "type": "string",
+                        "description": "24-hour \"HH:MM\"."
+                    },
+                    "end": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "label",
+                    "start",
+                    "end"
+                ]
+            }
+        },
+        "training_start": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "date",
+        "apply_to",
+        "window_start",
+        "window_end",
+        "meal_count",
+        "busy_periods"
+    ]
+}

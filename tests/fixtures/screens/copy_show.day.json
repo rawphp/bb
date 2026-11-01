@@ -1,0 +1,100 @@
+{
+    "mode": "day",
+    "title": "Copy day",
+    "source": {
+        "name": "Wednesday, Sep 23",
+        "time_text": null,
+        "foods_text": "4 meals · 9 foods",
+        "status": null
+    },
+    "shown_date": "2026-09-24",
+    "strip": [
+        {
+            "date": "2026-09-19",
+            "letter": "S",
+            "number": "19",
+            "calories_text": "2200",
+            "is_today": false,
+            "is_shown": false,
+            "has_training": false,
+            "is_before_plan": false,
+            "enabled": false
+        },
+        {
+            "date": "2026-09-20",
+            "letter": "S",
+            "number": "20",
+            "calories_text": "2200",
+            "is_today": false,
+            "is_shown": false,
+            "has_training": false,
+            "is_before_plan": false,
+            "enabled": false
+        },
+        {
+            "date": "2026-09-21",
+            "letter": "M",
+            "number": "21",
+            "calories_text": "2400",
+            "is_today": false,
+            "is_shown": false,
+            "has_training": true,
+            "is_before_plan": false,
+            "enabled": false
+        },
+        {
+            "date": "2026-09-22",
+            "letter": "T",
+            "number": "22",
+            "calories_text": "2200",
+            "is_today": false,
+            "is_shown": false,
+            "has_training": false,
+            "is_before_plan": false,
+            "enabled": false
+        },
+        {
+            "date": "2026-09-23",
+            "letter": "W",
+            "number": "23",
+            "calories_text": "2600",
+            "is_today": true,
+            "is_shown": false,
+            "has_training": true,
+            "is_before_plan": false,
+            "enabled": true
+        },
+        {
+            "date": "2026-09-24",
+            "letter": "T",
+            "number": "24",
+            "calories_text": "2200",
+            "is_today": false,
+            "is_shown": true,
+            "has_training": false,
+            "is_before_plan": false,
+            "enabled": true
+        },
+        {
+            "date": "2026-09-25",
+            "letter": "F",
+            "number": "25",
+            "calories_text": "2400",
+            "is_today": false,
+            "is_shown": false,
+            "has_training": true,
+            "is_before_plan": false,
+            "enabled": true
+        }
+    ],
+    "previous_week": "2026-09-17",
+    "next_week": "2026-10-01",
+    "timeline": [],
+    "meals": [],
+    "workouts": [],
+    "options": {
+        "update_target_macros": true,
+        "update_meal_times": false,
+        "copy_locked_state": false
+    }
+}
