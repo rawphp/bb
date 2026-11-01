@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cached, clearReads, MAX_AGE_MS, store } from './cache';
-import { CapabilityError, keepWarm, read, TIMEOUT_MS, WARM_CONCURRENCY, warm, write } from './call';
+import { CapabilityError, keepWarm, read, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, write } from './call';
 
 function json(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -244,6 +244,67 @@ describe('call', () => {
 
             expect(await cached('workout_show{"id":"01J"}')).toBeUndefined();
             expect(await cached('today_show{}')).toBeDefined();
+        });
+
+        it.each([401, 403, 404, 419])('OFF-003 tells the screen when a refresh answers %i, so it stops showing the cached copy', async (status) => {
+            await store('account_show{}', { name: 'A' });
+            answer({ account_show: [status, null] });
+            const onUpdate = vi.fn();
+            const onError = vi.fn();
+
+            expect(await read('account_show', {}, onUpdate, onError)).toEqual({ name: 'A' });
+            await vi.waitFor(() => expect(onError).toHaveBeenCalledWith(expect.objectContaining({ status })));
+            expect(onUpdate).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            ['the network fails', 0],
+            ['the server fails', 503],
+        ])('OFF-003 does not report a refresh failure when %s', async (_, status) => {
+            await store('account_show{}', { name: 'A' });
+            if (status === 0) serve({});
+            else answer({ account_show: [status, null] });
+            const onError = vi.fn();
+
+            await read('account_show', {}, undefined, onError);
+            await settle();
+
+            expect(onError).not.toHaveBeenCalled();
+        });
+
+        it.each([
+            ['a write drops it', () => write('workout_set_log', {})],
+            ['the session ends', () => clearReads()],
+        ])('OFF-003 a refresh that started before %s does not put the old answer back', async (_, removeIt) => {
+            await store('today_show{}', { sets: 1 });
+            let answerRefresh: (response: Response) => void = () => {};
+            document.cookie = 'XSRF-TOKEN=t; path=/';
+            fetchMock.mockImplementation(async (url) => {
+                if (url === '/capabilities/today_show') return new Promise<Response>((resolve) => (answerRefresh = resolve));
+                return json({ ok: true, data: { invalidates: ['today_show{}'] } });
+            });
+            const onUpdate = vi.fn();
+
+            await read('today_show', {}, onUpdate);
+            await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/capabilities/today_show', expect.anything()));
+            await removeIt();
+            answerRefresh(json({ ok: true, data: { sets: 1 } }));
+            await vi.waitFor(() => expect(onUpdate).toHaveBeenCalled());
+            await settle();
+
+            expect(await cached('today_show{}')).toBeUndefined();
+        });
+
+        it(`OFF-004 skips a read cached less than ${WARM_FRESH_MS / 1000} s ago and refetches an older one`, async () => {
+            await store('today_show{}', { title: 'just now' });
+            await store('week_show{}', { title: 'old' }, Date.now() - WARM_FRESH_MS - 1);
+            serve({ sync_manifest: { keys: ['today_show{}', 'week_show{}'] }, today_show: { title: 'new' }, week_show: { title: 'new' } });
+            vi.stubGlobal('navigator', {});
+
+            await warm();
+
+            expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/capabilities/sync_manifest', '/capabilities/week_show']);
+            expect((await cached('week_show{}'))?.data).toEqual({ title: 'new' });
         });
 
         it('OFF-003 keeps the cached copy when the server fails with a 5xx', async () => {

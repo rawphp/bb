@@ -8,6 +8,7 @@ use App\Capabilities\Support\PrefetchesKeys;
 use App\Capabilities\Sync\Data\SyncManifestInput;
 use App\Capabilities\Sync\Data\SyncManifestOutput;
 use App\Models\User;
+use Illuminate\Contracts\Container\Container;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -17,6 +18,9 @@ use Rawphp\Capabilities\Support\CapabilityContext;
  */
 final class SyncManifestCapability implements HostCapability
 {
+    /** The container that built this class, which is the one registerFrom tags the prefetchers on. */
+    public function __construct(private readonly Container $container) {}
+
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::read('sync_manifest')
@@ -33,9 +37,14 @@ final class SyncManifestCapability implements HostCapability
         $user = $context->user();
 
         $keys = [];
-        // Resolved per call from the current container, which may not be the one this class was built in.
+        $asked = [];
         /** @var PrefetchesKeys $capability */
-        foreach (app()->tagged(PrefetchesKeys::class) as $capability) {
+        foreach ($this->container->tagged(PrefetchesKeys::class) as $capability) {
+            // A class tagged twice (registerFrom run again on this container) is asked once.
+            if (isset($asked[$capability::class])) {
+                continue;
+            }
+            $asked[$capability::class] = true;
             array_push($keys, ...$capability->prefetchKeys($user));
         }
 

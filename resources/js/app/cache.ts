@@ -49,6 +49,21 @@ function sorted(value: unknown): unknown {
     );
 }
 
+// Bumped by every drop and clear. A fetch takes a stamp() before it starts and stores
+// its answer only if isCurrent(), so a request answered before a write or a sign-out
+// can't put the data that write or sign-out removed back.
+let generation = 0;
+let clearedAt = 0;
+const droppedAt = new Map<string, number>();
+
+export function stamp(): number {
+    return generation;
+}
+
+export function isCurrent(key: string, since: number): boolean {
+    return clearedAt <= since && (droppedAt.get(key) ?? 0) <= since;
+}
+
 export async function cached(key: string): Promise<CachedRead | undefined> {
     const hit = await (await open()).get('reads', key);
 
@@ -60,6 +75,8 @@ export async function store(key: string, data: unknown, fetchedAt = Date.now(), 
 }
 
 export async function drop(keys: readonly string[]): Promise<void> {
+    generation++;
+    for (const key of keys) droppedAt.set(key, generation);
     const tx = (await open()).transaction('reads', 'readwrite');
     await Promise.all([...keys.map((key) => tx.store.delete(key)), tx.done]);
 }
@@ -78,6 +95,8 @@ export async function evict(manifest: ReadonlySet<string>, now = Date.now()): Pr
 }
 
 export async function clearReads(): Promise<void> {
+    clearedAt = ++generation;
+    droppedAt.clear();
     await (await open()).clear('reads');
 }
 

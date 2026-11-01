@@ -10,6 +10,8 @@ use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 
 final class TodayFixtureCapability implements HostCapability, PrefetchesKeys
 {
+    public static int $asked = 0;
+
     public function definition(): CapabilityDefinitionBuilder
     {
         return Capability::define('fixture_today_show')
@@ -20,6 +22,8 @@ final class TodayFixtureCapability implements HostCapability, PrefetchesKeys
 
     public function prefetchKeys(User $user): array
     {
+        self::$asked++;
+
         // Keyed by the user, so a test can tell whose manifest it got.
         return ['today_show{"date":"2026-11-02","user":'.$user->id.'}', 'mesocycle_show{}'];
     }

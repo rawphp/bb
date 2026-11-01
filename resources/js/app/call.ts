@@ -1,5 +1,5 @@
 import type { SyncManifestOutput } from '@/contracts/sync_manifest';
-import { cached, clearReads, drop, evict, readKey, requestPersistentStorage, store } from './cache';
+import { cached, clearReads, drop, evict, isCurrent, readKey, requestPersistentStorage, stamp, store } from './cache';
 
 // The only way the app talks to the server (CAP-004): POST /capabilities/{name}
 // with Sanctum SPA cookie auth. read() goes through the IndexedDB cache (OFF-003),
@@ -9,6 +9,11 @@ export type CapabilityInput = Record<string, unknown>;
 
 // How many manifest reads a warm sends at once (OFF-004).
 export const WARM_CONCURRENCY = 4;
+
+// A warm skips a read cached this recently, so a flapping connection doesn't refetch
+// everything on each `online`. A write drops the reads it changes, so after a replay
+// those are missing and fetched again whatever their age.
+export const WARM_FRESH_MS = 60_000;
 
 // One deadline per call, CSRF cookie fetch and response body included, so a
 // stalled server ends in a CapabilityError instead of a screen stuck on loading.
@@ -29,22 +34,33 @@ export class CapabilityError extends Error {
  * Stale-while-revalidate (OFF-003). With a cached copy, it resolves with that at
  * once, refreshes it in the background and hands the fresh copy to onUpdate.
  * Without one, it waits for the server; offline, that is a CapabilityError with status 0.
- * A failed refresh keeps the cached copy only when the network or the server failed:
- * a 401 or 419 clears the whole cache (forget()), and a 403 or 404 drops this read.
+ * A refresh that fails because the network or the server failed keeps the cached copy.
+ * One that answers 401 or 419 clears the whole cache (forget()), and one that answers
+ * 403 or 404 drops this read; either way onError gets the error, so the screen can stop
+ * showing the copy it was given.
  */
-export async function read<T = unknown>(name: string, input: CapabilityInput = {}, onUpdate?: (data: T) => void): Promise<T> {
+export async function read<T = unknown>(
+    name: string,
+    input: CapabilityInput = {},
+    onUpdate?: (data: T) => void,
+    onError?: (error: CapabilityError) => void,
+): Promise<T> {
     const key = readKey(name, input);
     const hit = await cached(key).catch(() => undefined);
     const fresh = fetchRead<T>(name, input, key);
 
     if (hit === undefined) return fresh;
 
-    fresh.then(onUpdate, () => {
-        // Keep showing the cached copy.
+    fresh.then(onUpdate, (error: unknown) => {
+        if (error instanceof CapabilityError && REMOVES_COPY.includes(error.status)) onError?.(error);
+        // Otherwise keep showing the cached copy.
     });
 
     return hit.data as T;
 }
+
+// Refresh answers after which the cached copy may not be shown.
+const REMOVES_COPY = [401, 403, 404, 419];
 
 /**
  * OFF-004: fetch every read key the server's sync_manifest lists into the cache,
@@ -79,6 +95,9 @@ async function warmOnce(): Promise<void> {
     const keys = (await invoke<SyncManifestOutput>('sync_manifest', {})).keys.filter((key) => typeof key === 'string');
 
     await inBatches(keys, WARM_CONCURRENCY, async (key) => {
+        const hit = await cached(key).catch(() => undefined);
+        if (hit !== undefined && Date.now() - hit.fetchedAt < WARM_FRESH_MS) return;
+
         const brace = key.indexOf('{');
         // A malformed key fails on its own; the rest still warm.
         if (brace < 1) throw new Error(`Not a read key: ${key}`);
@@ -117,6 +136,7 @@ export function keepWarm(target: Window = window): void {
 }
 
 async function fetchRead<T>(name: string, input: CapabilityInput, key: string): Promise<T> {
+    const since = stamp();
     const data = await invoke<T>(name, input).catch(async (error: unknown) => {
         if (error instanceof CapabilityError && (error.status === 403 || error.status === 404)) {
             await drop([key]).catch(() => undefined);
@@ -124,6 +144,8 @@ async function fetchRead<T>(name: string, input: CapabilityInput, key: string): 
 
         throw error;
     });
+    if (!isCurrent(key, since)) return data;
+
     await store(key, data).catch(() => {
         // No IndexedDB (a private window, say): the read still answers.
     });
@@ -158,7 +180,8 @@ async function invoke<T>(name: string, input: CapabilityInput): Promise<T> {
 }
 
 // 401 (signed out) and 419 (session expired): the cached reads may be another
-// user's, so none of them may be shown again. A sign-out or user switch clears it too.
+// user's, so none of them may be shown again. Sign-out and a user switch (#129,
+// OFF-012) are expected to call clearReads() as well; nothing here does that yet.
 async function forget(error: unknown): Promise<void> {
     if (error instanceof CapabilityError && (error.status === 401 || error.status === 419)) {
         await clearReads().catch(() => undefined);
