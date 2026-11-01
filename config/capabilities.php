@@ -32,9 +32,11 @@ return [
 
     'surfaces' => [
         'agent' => [
-            // Off: laravel/ai is not installed. The in-app agent runs on capabilities-ai.
-            'enabled' => false,
-            'require_package' => true,
+            // The in-app agent's tool calls run as caller=agent (capabilities-ai TurnRunner, D-022).
+            // laravel/ai is not installed, so its tool adapter stays unregistered; false here
+            // stops every agent tool call.
+            'enabled' => $env('CAPABILITIES_SURFACE_AGENT', true),
+            'require_package' => false,
             'on_incompatible' => $env('CAPABILITIES_AGENT_ON_INCOMPATIBLE', 'fail'),
             'profiles' => [],
             'require_profile' => true,
