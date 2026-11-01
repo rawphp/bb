@@ -6,7 +6,6 @@ use App\Domain\Model\PhaseType;
 use App\Domain\Model\Profile;
 use App\Domain\Model\UnitConversion;
 use DateTimeImmutable;
-use DateTimeZone;
 
 /** Health screening (SAFE-001) and re-checking it from Settings (SAFE-017). */
 final class Screening
@@ -47,17 +46,18 @@ final class Screening
     /**
      * The same, from the raw answers, for setup (ONB-005) before a Profile exists. Age is counted
      * in whole years between two calendar dates, each read in its own time zone, so neither a
-     * time of day nor a UTC offset can move a birthday.
+     * time of day nor a UTC offset can move a birthday. It builds no date of its own, so it never
+     * reads the clock.
      *
      * @return list<ScreeningItem> in the spec's order
      */
     public static function measuredItemsFrom(
         DateTimeImmutable $birthDate, float $heightCm, float $weightKg, DateTimeImmutable $today,
     ): array {
-        $utc = new DateTimeZone('UTC');
-        $interval = (new DateTimeImmutable($birthDate->format('Y-m-d'), $utc))
-            ->diff(new DateTimeImmutable($today->format('Y-m-d'), $utc));
-        $age = $interval->invert === 1 ? -$interval->y : $interval->y;
+        $age = (int) $today->format('Y') - (int) $birthDate->format('Y');
+        if ($today->format('md') < $birthDate->format('md')) {
+            $age--;
+        }
         $heightM = $heightCm / 100;
 
         $items = [];
