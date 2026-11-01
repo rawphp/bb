@@ -1,0 +1,90 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "workout_id": {
+            "type": "string"
+        },
+        "muscle_group": {
+            "type": "string",
+            "enum": [
+                "chest",
+                "back",
+                "quads",
+                "hamstrings",
+                "glutes",
+                "sideDelts",
+                "rearDelts",
+                "frontDelts",
+                "biceps",
+                "triceps",
+                "calves",
+                "abs",
+                "traps",
+                "forearms"
+            ]
+        },
+        "joint_pain": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "exercise_id": {
+                        "type": "string"
+                    },
+                    "answer": {
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "low",
+                            "moderate",
+                            "a_lot"
+                        ]
+                    }
+                },
+                "required": [
+                    "exercise_id",
+                    "answer"
+                ]
+            }
+        },
+        "pump": {
+            "type": "string",
+            "enum": [
+                "low",
+                "moderate",
+                "amazing"
+            ]
+        },
+        "volume": {
+            "type": "string",
+            "enum": [
+                "not_enough",
+                "just_right",
+                "pushed_limits",
+                "too_much"
+            ]
+        },
+        "soreness": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "enum": [
+                "never_sore",
+                "healed_a_while_ago",
+                "healed_on_time",
+                "still_sore"
+            ]
+        }
+    },
+    "required": [
+        "workout_id",
+        "muscle_group",
+        "joint_pain",
+        "pump",
+        "volume"
+    ]
+}

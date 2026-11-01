@@ -1,0 +1,43 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "mesocycle_id": {
+            "type": "string"
+        },
+        "muscle": {
+            "type": "string",
+            "enum": [
+                "chest",
+                "back",
+                "quads",
+                "hamstrings",
+                "glutes",
+                "side_delts",
+                "rear_delts",
+                "front_delts",
+                "biceps",
+                "triceps",
+                "calves",
+                "abs",
+                "traps",
+                "forearms"
+            ]
+        },
+        "priority": {
+            "type": "string",
+            "enum": [
+                "emphasize",
+                "grow",
+                "maintain",
+                "off"
+            ]
+        }
+    },
+    "required": [
+        "mesocycle_id",
+        "muscle",
+        "priority"
+    ]
+}

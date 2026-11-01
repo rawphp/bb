@@ -1,0 +1,631 @@
+{
+    "id": "01JBA7X1Y3Z5A7B9C1D3E5F7G9",
+    "name": "Hypertrophy Block 3",
+    "priority_options": [
+        {
+            "priority": "emphasize",
+            "title": "Emphasize"
+        },
+        {
+            "priority": "grow",
+            "title": "Grow"
+        },
+        {
+            "priority": "maintain",
+            "title": "Maintain"
+        }
+    ],
+    "saved": null,
+    "build": {
+        "route": "builder",
+        "resume_step": "slots",
+        "weeks": 5,
+        "weeks_options": [
+            {
+                "value": 5,
+                "text": "5 weeks"
+            },
+            {
+                "value": 6,
+                "text": "6 weeks"
+            },
+            {
+                "value": 7,
+                "text": "7 weeks"
+            },
+            {
+                "value": 8,
+                "text": "8 weeks"
+            }
+        ],
+        "start_date": "2026-10-12",
+        "start_text": "12 Oct 2026",
+        "label_style": "weekdays",
+        "weekdays_available": true,
+        "phase_title": "Muscle gain",
+        "rep_range_text": "Mixed rep ranges, with more 5–10",
+        "phase_warning": null,
+        "days_per_week": 4,
+        "days_per_week_options": [
+            {
+                "value": 2,
+                "text": "2 days"
+            },
+            {
+                "value": 3,
+                "text": "3 days"
+            },
+            {
+                "value": 4,
+                "text": "4 days"
+            },
+            {
+                "value": 5,
+                "text": "5 days"
+            },
+            {
+                "value": 6,
+                "text": "6 days"
+            }
+        ],
+        "priorities": [
+            {
+                "muscle": "chest",
+                "muscle_title": "Chest",
+                "priority": "emphasize",
+                "priority_title": "Emphasize",
+                "bars": 3
+            },
+            {
+                "muscle": "back",
+                "muscle_title": "Back",
+                "priority": "emphasize",
+                "priority_title": "Emphasize",
+                "bars": 3
+            },
+            {
+                "muscle": "quads",
+                "muscle_title": "Quads",
+                "priority": "emphasize",
+                "priority_title": "Emphasize",
+                "bars": 3
+            },
+            {
+                "muscle": "hamstrings",
+                "muscle_title": "Hamstrings",
+                "priority": "emphasize",
+                "priority_title": "Emphasize",
+                "bars": 3
+            },
+            {
+                "muscle": "glutes",
+                "muscle_title": "Glutes",
+                "priority": "emphasize",
+                "priority_title": "Emphasize",
+                "bars": 3
+            },
+            {
+                "muscle": "side_delts",
+                "muscle_title": "Side delts",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "rear_delts",
+                "muscle_title": "Rear delts",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "front_delts",
+                "muscle_title": "Front delts",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "biceps",
+                "muscle_title": "Biceps",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "triceps",
+                "muscle_title": "Triceps",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "calves",
+                "muscle_title": "Calves",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "abs",
+                "muscle_title": "Abs",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "traps",
+                "muscle_title": "Traps",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "forearms",
+                "muscle_title": "Forearms",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            }
+        ],
+        "warnings": [
+            {
+                "text": "Emphasizing more than 2 muscles at once spreads your recovery thin",
+                "tone": "warning"
+            }
+        ],
+        "priority_notice": null,
+        "days": [
+            {
+                "id": "01JBA8D0000000000000000000",
+                "label": "Monday",
+                "slots": [
+                    {
+                        "id": "01JBA8S0000000000000000000",
+                        "muscle": "chest",
+                        "muscle_title": "Chest",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": "01JA0EX0100000000000000000",
+                        "exercise_name": "Assisted Chest Dip"
+                    },
+                    {
+                        "id": "01JBA8S0100000000000000000",
+                        "muscle": "quads",
+                        "muscle_title": "Quads",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": "01JA0EX0400000000000000000",
+                        "exercise_name": "Barbell Back Squat"
+                    },
+                    {
+                        "id": "01JBA8S0200000000000000000",
+                        "muscle": "glutes",
+                        "muscle_title": "Glutes",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": "01JA0EX0600000000000000000",
+                        "exercise_name": "Banded Hip Thrust"
+                    },
+                    {
+                        "id": "01JBA8S0300000000000000000",
+                        "muscle": "rear_delts",
+                        "muscle_title": "Rear delts",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": "01JA0EX0800000000000000000",
+                        "exercise_name": "Band Pull-Apart"
+                    },
+                    {
+                        "id": "01JBA8S0400000000000000000",
+                        "muscle": "front_delts",
+                        "muscle_title": "Front delts",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": "01JA0EX1000000000000000000",
+                        "exercise_name": "Alternating Dumbbell Front Raise"
+                    },
+                    {
+                        "id": "01JBA8S0500000000000000000",
+                        "muscle": "triceps",
+                        "muscle_title": "Triceps",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": "01JA0EX1100000000000000000",
+                        "exercise_name": "Bench Dip"
+                    }
+                ]
+            },
+            {
+                "id": "01JBA8D1000000000000000000",
+                "label": "Tuesday",
+                "slots": [
+                    {
+                        "id": "01JBA8S1000000000000000000",
+                        "muscle": "chest",
+                        "muscle_title": "Chest",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S1100000000000000000",
+                        "muscle": "quads",
+                        "muscle_title": "Quads",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S1200000000000000000",
+                        "muscle": "glutes",
+                        "muscle_title": "Glutes",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S1300000000000000000",
+                        "muscle": "rear_delts",
+                        "muscle_title": "Rear delts",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S1400000000000000000",
+                        "muscle": "front_delts",
+                        "muscle_title": "Front delts",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S1500000000000000000",
+                        "muscle": "triceps",
+                        "muscle_title": "Triceps",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    }
+                ]
+            },
+            {
+                "id": "01JBA8D2000000000000000000",
+                "label": "Thursday",
+                "slots": [
+                    {
+                        "id": "01JBA8S2000000000000000000",
+                        "muscle": "chest",
+                        "muscle_title": "Chest",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S2100000000000000000",
+                        "muscle": "quads",
+                        "muscle_title": "Quads",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S2200000000000000000",
+                        "muscle": "glutes",
+                        "muscle_title": "Glutes",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S2300000000000000000",
+                        "muscle": "rear_delts",
+                        "muscle_title": "Rear delts",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S2400000000000000000",
+                        "muscle": "front_delts",
+                        "muscle_title": "Front delts",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S2500000000000000000",
+                        "muscle": "triceps",
+                        "muscle_title": "Triceps",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    }
+                ]
+            },
+            {
+                "id": "01JBA8D3000000000000000000",
+                "label": "Friday",
+                "slots": [
+                    {
+                        "id": "01JBA8S3000000000000000000",
+                        "muscle": "chest",
+                        "muscle_title": "Chest",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S3100000000000000000",
+                        "muscle": "quads",
+                        "muscle_title": "Quads",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S3200000000000000000",
+                        "muscle": "glutes",
+                        "muscle_title": "Glutes",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S3300000000000000000",
+                        "muscle": "rear_delts",
+                        "muscle_title": "Rear delts",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S3400000000000000000",
+                        "muscle": "front_delts",
+                        "muscle_title": "Front delts",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    },
+                    {
+                        "id": "01JBA8S3500000000000000000",
+                        "muscle": "triceps",
+                        "muscle_title": "Triceps",
+                        "sets": 2,
+                        "sets_text": "2 sets",
+                        "exercise_id": null,
+                        "exercise_name": null
+                    }
+                ]
+            }
+        ],
+        "sets_options": [
+            {
+                "value": 1,
+                "text": "1 set"
+            },
+            {
+                "value": 2,
+                "text": "2 sets"
+            },
+            {
+                "value": 3,
+                "text": "3 sets"
+            },
+            {
+                "value": 4,
+                "text": "4 sets"
+            },
+            {
+                "value": 5,
+                "text": "5 sets"
+            },
+            {
+                "value": 6,
+                "text": "6 sets"
+            },
+            {
+                "value": 7,
+                "text": "7 sets"
+            },
+            {
+                "value": 8,
+                "text": "8 sets"
+            },
+            {
+                "value": 9,
+                "text": "9 sets"
+            },
+            {
+                "value": 10,
+                "text": "10 sets"
+            },
+            {
+                "value": 11,
+                "text": "11 sets"
+            },
+            {
+                "value": 12,
+                "text": "12 sets"
+            },
+            {
+                "value": 13,
+                "text": "13 sets"
+            },
+            {
+                "value": 14,
+                "text": "14 sets"
+            },
+            {
+                "value": 15,
+                "text": "15 sets"
+            },
+            {
+                "value": 16,
+                "text": "16 sets"
+            },
+            {
+                "value": 17,
+                "text": "17 sets"
+            },
+            {
+                "value": 18,
+                "text": "18 sets"
+            },
+            {
+                "value": 19,
+                "text": "19 sets"
+            },
+            {
+                "value": 20,
+                "text": "20 sets"
+            }
+        ],
+        "exercise_options": [
+            {
+                "muscle": "chest",
+                "muscle_title": "Chest",
+                "exercises": [
+                    {
+                        "id": "01JA0EX0100000000000000000",
+                        "name": "Assisted Chest Dip"
+                    },
+                    {
+                        "id": "01JA0EX0200000000000000000",
+                        "name": "Barbell Bench Press"
+                    },
+                    {
+                        "id": "01JA0EX0300000000000000000",
+                        "name": "Cable Fly"
+                    }
+                ]
+            },
+            {
+                "muscle": "back",
+                "muscle_title": "Back",
+                "exercises": []
+            },
+            {
+                "muscle": "quads",
+                "muscle_title": "Quads",
+                "exercises": [
+                    {
+                        "id": "01JA0EX0400000000000000000",
+                        "name": "Barbell Back Squat"
+                    },
+                    {
+                        "id": "01JA0EX0500000000000000000",
+                        "name": "Leg Press"
+                    }
+                ]
+            },
+            {
+                "muscle": "hamstrings",
+                "muscle_title": "Hamstrings",
+                "exercises": []
+            },
+            {
+                "muscle": "glutes",
+                "muscle_title": "Glutes",
+                "exercises": [
+                    {
+                        "id": "01JA0EX0600000000000000000",
+                        "name": "Banded Hip Thrust"
+                    },
+                    {
+                        "id": "01JA0EX0700000000000000000",
+                        "name": "Barbell Hip Thrust"
+                    }
+                ]
+            },
+            {
+                "muscle": "side_delts",
+                "muscle_title": "Side delts",
+                "exercises": []
+            },
+            {
+                "muscle": "rear_delts",
+                "muscle_title": "Rear delts",
+                "exercises": [
+                    {
+                        "id": "01JA0EX0800000000000000000",
+                        "name": "Band Pull-Apart"
+                    },
+                    {
+                        "id": "01JA0EX0900000000000000000",
+                        "name": "Reverse Pec Deck"
+                    }
+                ]
+            },
+            {
+                "muscle": "front_delts",
+                "muscle_title": "Front delts",
+                "exercises": [
+                    {
+                        "id": "01JA0EX1000000000000000000",
+                        "name": "Alternating Dumbbell Front Raise"
+                    }
+                ]
+            },
+            {
+                "muscle": "biceps",
+                "muscle_title": "Biceps",
+                "exercises": []
+            },
+            {
+                "muscle": "triceps",
+                "muscle_title": "Triceps",
+                "exercises": [
+                    {
+                        "id": "01JA0EX1100000000000000000",
+                        "name": "Bench Dip"
+                    },
+                    {
+                        "id": "01JA0EX1200000000000000000",
+                        "name": "Triceps Pushdown"
+                    }
+                ]
+            },
+            {
+                "muscle": "calves",
+                "muscle_title": "Calves",
+                "exercises": []
+            },
+            {
+                "muscle": "abs",
+                "muscle_title": "Abs",
+                "exercises": []
+            },
+            {
+                "muscle": "traps",
+                "muscle_title": "Traps",
+                "exercises": []
+            },
+            {
+                "muscle": "forearms",
+                "muscle_title": "Forearms",
+                "exercises": []
+            }
+        ],
+        "can_pick_for_me": true,
+        "can_finish": false
+    }
+}

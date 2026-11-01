@@ -1,0 +1,27 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "phase_id": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string",
+            "enum": [
+                "fat_loss",
+                "muscle_gain",
+                "maintenance",
+                "mini_cut"
+            ]
+        },
+        "new_phase_id": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "phase_id",
+        "type",
+        "new_phase_id"
+    ]
+}

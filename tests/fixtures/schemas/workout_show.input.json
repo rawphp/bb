@@ -1,0 +1,21 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "mesocycle_id": {
+            "type": "string"
+        },
+        "week": {
+            "type": "integer"
+        },
+        "day": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "mesocycle_id",
+        "week",
+        "day"
+    ]
+}

@@ -1,0 +1,236 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "filters": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "enum": [
+                            "days",
+                            "sex",
+                            "focus",
+                            "phase"
+                        ]
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "active": {
+                        "type": "boolean"
+                    },
+                    "options": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "value": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "label": {
+                                    "type": "string"
+                                },
+                                "selected": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "label",
+                                "selected"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "key",
+                    "label",
+                    "active",
+                    "options"
+                ]
+            }
+        },
+        "has_active_filters": {
+            "type": "boolean"
+        },
+        "rows": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "summary": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "summary"
+                ]
+            }
+        },
+        "empty_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "detail": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "label": {
+                                "type": "string"
+                            },
+                            "slots": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "exercise_name": {
+                                            "type": "string"
+                                        },
+                                        "muscle_title": {
+                                            "type": "string"
+                                        },
+                                        "sets_text": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "exercise_name",
+                                        "muscle_title",
+                                        "sets_text"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "label",
+                            "slots"
+                        ]
+                    }
+                },
+                "priorities": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "muscle": {
+                                "type": "string",
+                                "enum": [
+                                    "chest",
+                                    "back",
+                                    "quads",
+                                    "hamstrings",
+                                    "glutes",
+                                    "side_delts",
+                                    "rear_delts",
+                                    "front_delts",
+                                    "biceps",
+                                    "triceps",
+                                    "calves",
+                                    "abs",
+                                    "traps",
+                                    "forearms"
+                                ]
+                            },
+                            "muscle_title": {
+                                "type": "string"
+                            },
+                            "priority": {
+                                "type": "string",
+                                "enum": [
+                                    "emphasize",
+                                    "grow",
+                                    "maintain",
+                                    "off"
+                                ]
+                            },
+                            "priority_title": {
+                                "type": "string"
+                            },
+                            "bars": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "muscle",
+                            "muscle_title",
+                            "priority",
+                            "priority_title",
+                            "bars"
+                        ]
+                    }
+                },
+                "weekly_sets": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "muscle_title": {
+                                "type": "string"
+                            },
+                            "sets_text": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "muscle_title",
+                            "sets_text"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "summary",
+                "days",
+                "priorities",
+                "weekly_sets"
+            ]
+        }
+    },
+    "required": [
+        "filters",
+        "has_active_filters",
+        "rows"
+    ]
+}

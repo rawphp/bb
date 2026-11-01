@@ -1,0 +1,60 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "phase_id": {
+            "type": "string"
+        },
+        "next_phase_id": {
+            "type": "string"
+        },
+        "choice": {
+            "type": "string",
+            "enum": [
+                "fat_loss",
+                "muscle_gain",
+                "maintenance",
+                "mini_cut",
+                "gain_first"
+            ]
+        },
+        "weeks": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 1
+        },
+        "template": {
+            "type": "string",
+            "enum": [
+                "standard",
+                "resensitization",
+                "balanced"
+            ]
+        },
+        "calorie_mode": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "enum": [
+                "step_up",
+                "straight"
+            ]
+        },
+        "step_kcal": {
+            "type": [
+                "integer",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "phase_id",
+        "next_phase_id",
+        "choice",
+        "template"
+    ]
+}

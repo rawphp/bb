@@ -1,0 +1,116 @@
+{
+    "filters": [
+        {
+            "key": "days",
+            "label": "Days: 6",
+            "active": true,
+            "options": [
+                {
+                    "value": null,
+                    "label": "All",
+                    "selected": false
+                },
+                {
+                    "value": "2",
+                    "label": "2 days/week",
+                    "selected": false
+                },
+                {
+                    "value": "3",
+                    "label": "3 days/week",
+                    "selected": false
+                },
+                {
+                    "value": "4",
+                    "label": "4 days/week",
+                    "selected": false
+                },
+                {
+                    "value": "5",
+                    "label": "5 days/week",
+                    "selected": false
+                },
+                {
+                    "value": "6",
+                    "label": "6 days/week",
+                    "selected": true
+                }
+            ]
+        },
+        {
+            "key": "sex",
+            "label": "Sex: All",
+            "active": false,
+            "options": [
+                {
+                    "value": null,
+                    "label": "All",
+                    "selected": true
+                },
+                {
+                    "value": "female",
+                    "label": "Female",
+                    "selected": false
+                },
+                {
+                    "value": "male",
+                    "label": "Male",
+                    "selected": false
+                }
+            ]
+        },
+        {
+            "key": "focus",
+            "label": "Focus: All",
+            "active": false,
+            "options": [
+                {
+                    "value": null,
+                    "label": "All",
+                    "selected": true
+                },
+                {
+                    "value": "whole_body",
+                    "label": "Whole body",
+                    "selected": false
+                },
+                {
+                    "value": "emphasis",
+                    "label": "Emphasis",
+                    "selected": false
+                }
+            ]
+        },
+        {
+            "key": "phase",
+            "label": "Cut",
+            "active": true,
+            "options": [
+                {
+                    "value": "all",
+                    "label": "All",
+                    "selected": false
+                },
+                {
+                    "value": "cut",
+                    "label": "Cut",
+                    "selected": true
+                },
+                {
+                    "value": "gain",
+                    "label": "Gain",
+                    "selected": false
+                },
+                {
+                    "value": "maintain",
+                    "label": "Maintain",
+                    "selected": false
+                }
+            ]
+        }
+    ],
+    "has_active_filters": true,
+    "rows": [],
+    "empty_text": "No templates match these filters.",
+    "detail": null
+}

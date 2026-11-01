@@ -1,0 +1,389 @@
+{
+    "week_count": 1,
+    "today_position": 0.14,
+    "phases": [],
+    "mesocycles": [],
+    "deloads": [],
+    "current": null,
+    "event_countdown": null,
+    "maintenance_suggestion": null,
+    "diet_break_off_warning": "Deloading in a deficit is one of the biggest mistakes RP warns about. Keep this deload at maintenance calories?",
+    "add_phase": {
+        "starts_text": "Starts 2 Nov",
+        "refusal": null,
+        "default_type": "fat_loss",
+        "types": [
+            {
+                "type": "fat_loss",
+                "title": "Fat loss",
+                "is_recommended": true,
+                "lengths": [
+                    {
+                        "weeks": 4,
+                        "label": "4 weeks",
+                        "ends_text": "Ends 17 Jan",
+                        "is_selected": false,
+                        "warnings": [
+                            {
+                                "text": "Under 6 weeks, a Mini-cut is a better fit than Fat loss.",
+                                "tone": "warning"
+                            }
+                        ],
+                        "mesocycles": [
+                            {
+                                "label": "Mesocycle 1",
+                                "weeks_text": "4 weeks",
+                                "dates_text": "21 Dec – 17 Jan"
+                            }
+                        ],
+                        "fixes": []
+                    },
+                    {
+                        "weeks": 10,
+                        "label": "10 weeks",
+                        "ends_text": "Ends 28 Feb",
+                        "is_selected": true,
+                        "warnings": [],
+                        "mesocycles": [
+                            {
+                                "label": "Mesocycle 1",
+                                "weeks_text": "5 weeks",
+                                "dates_text": "21 Dec – 24 Jan"
+                            },
+                            {
+                                "label": "Mesocycle 2",
+                                "weeks_text": "5 weeks",
+                                "dates_text": "25 Jan – 28 Feb"
+                            }
+                        ],
+                        "fixes": []
+                    },
+                    {
+                        "weeks": 15,
+                        "label": "15 weeks",
+                        "ends_text": "Ends 4 Apr",
+                        "is_selected": false,
+                        "warnings": [
+                            {
+                                "text": "Fat loss over 12 weeks is a long diet. Consider a shorter phase.",
+                                "tone": "warning"
+                            },
+                            {
+                                "text": "This phase plans to lose more than 10% of your starting bodyweight.",
+                                "tone": "warning"
+                            }
+                        ],
+                        "mesocycles": [
+                            {
+                                "label": "Mesocycle 1",
+                                "weeks_text": "5 weeks",
+                                "dates_text": "21 Dec – 24 Jan"
+                            },
+                            {
+                                "label": "Mesocycle 2",
+                                "weeks_text": "5 weeks",
+                                "dates_text": "25 Jan – 28 Feb"
+                            },
+                            {
+                                "label": "Mesocycle 3",
+                                "weeks_text": "5 weeks",
+                                "dates_text": "1 Mar – 4 Apr"
+                            }
+                        ],
+                        "fixes": []
+                    }
+                ],
+                "rates": [
+                    {
+                        "label": "Highest success",
+                        "rate": {
+                            "value": -0.75,
+                            "unit": "%/wk",
+                            "text": "Lose 0.75% a week"
+                        },
+                        "is_selected": true
+                    },
+                    {
+                        "label": "Slow & steady",
+                        "rate": {
+                            "value": -0.5,
+                            "unit": "%/wk",
+                            "text": "Lose 0.5% a week"
+                        },
+                        "is_selected": false
+                    }
+                ],
+                "custom_rate_min": {
+                    "value": -1.0,
+                    "unit": "%/wk",
+                    "text": "Lose 1% a week"
+                },
+                "custom_rate_max": {
+                    "value": -0.25,
+                    "unit": "%/wk",
+                    "text": "Lose 0.25% a week"
+                },
+                "training_lines": [
+                    {
+                        "text": "All muscles Emphasize"
+                    },
+                    {
+                        "text": "Volume starts at MEV +2 sets"
+                    },
+                    {
+                        "text": "Volume ceiling: MRV -2 sets"
+                    },
+                    {
+                        "text": "Up to 1 set added per session each week"
+                    },
+                    {
+                        "text": "Loads go up 1% a week, at least the smallest plate"
+                    },
+                    {
+                        "text": "Each muscle at least 2x a week"
+                    },
+                    {
+                        "text": "Deload weeks at maintenance calories"
+                    }
+                ]
+            },
+            {
+                "type": "muscle_gain",
+                "title": "Muscle gain",
+                "is_recommended": true,
+                "lengths": [
+                    {
+                        "weeks": 10,
+                        "label": "10 weeks",
+                        "ends_text": "Ends 28 Feb",
+                        "is_selected": true,
+                        "warnings": [],
+                        "mesocycles": [
+                            {
+                                "label": "Mesocycle 1",
+                                "weeks_text": "5 weeks",
+                                "dates_text": "21 Dec – 24 Jan"
+                            },
+                            {
+                                "label": "Mesocycle 2",
+                                "weeks_text": "5 weeks",
+                                "dates_text": "25 Jan – 28 Feb"
+                            }
+                        ],
+                        "fixes": []
+                    },
+                    {
+                        "weeks": 16,
+                        "label": "16 weeks",
+                        "ends_text": "Ends 11 Apr",
+                        "is_selected": false,
+                        "warnings": [],
+                        "mesocycles": [
+                            {
+                                "label": "Mesocycle 1",
+                                "weeks_text": "6 weeks",
+                                "dates_text": "21 Dec – 31 Jan"
+                            },
+                            {
+                                "label": "Mesocycle 2",
+                                "weeks_text": "5 weeks",
+                                "dates_text": "1 Feb – 7 Mar"
+                            },
+                            {
+                                "label": "Mesocycle 3",
+                                "weeks_text": "5 weeks",
+                                "dates_text": "8 Mar – 11 Apr"
+                            }
+                        ],
+                        "fixes": []
+                    }
+                ],
+                "rates": [
+                    {
+                        "label": "Recommended",
+                        "rate": {
+                            "value": 0.375,
+                            "unit": "%/wk",
+                            "text": "Gain 0.375% a week"
+                        },
+                        "is_selected": true
+                    }
+                ],
+                "custom_rate_min": {
+                    "value": 0.125,
+                    "unit": "%/wk",
+                    "text": "Gain 0.125% a week"
+                },
+                "custom_rate_max": {
+                    "value": 0.5,
+                    "unit": "%/wk",
+                    "text": "Gain 0.5% a week"
+                },
+                "training_lines": [
+                    {
+                        "text": "Up to 2 muscles Emphasize, the rest Grow or Maintain"
+                    },
+                    {
+                        "text": "Volume starts at MEV -1 sets"
+                    },
+                    {
+                        "text": "Volume ceiling: MRV +2 sets"
+                    },
+                    {
+                        "text": "Up to 2 sets added per session each week"
+                    },
+                    {
+                        "text": "Loads go up 2% a week"
+                    },
+                    {
+                        "text": "Each muscle at least 2x a week"
+                    },
+                    {
+                        "text": "Deload weeks at maintenance calories"
+                    }
+                ]
+            },
+            {
+                "type": "maintenance",
+                "title": "Maintenance",
+                "is_recommended": false,
+                "lengths": [
+                    {
+                        "weeks": 4,
+                        "label": "4 weeks",
+                        "ends_text": "Ends 17 Jan",
+                        "is_selected": true,
+                        "warnings": [],
+                        "mesocycles": [
+                            {
+                                "label": "Mesocycle 1",
+                                "weeks_text": "4 weeks",
+                                "dates_text": "21 Dec – 17 Jan"
+                            }
+                        ],
+                        "fixes": []
+                    },
+                    {
+                        "weeks": null,
+                        "label": "No end",
+                        "ends_text": "No end date",
+                        "is_selected": false,
+                        "warnings": [],
+                        "mesocycles": [
+                            {
+                                "label": "Mesocycle 1",
+                                "weeks_text": "5 weeks",
+                                "dates_text": "21 Dec – 24 Jan"
+                            }
+                        ],
+                        "fixes": []
+                    }
+                ],
+                "rates": [
+                    {
+                        "label": "Hold",
+                        "rate": {
+                            "value": 0.0,
+                            "unit": "%/wk",
+                            "text": "Hold weight"
+                        },
+                        "is_selected": true
+                    }
+                ],
+                "custom_rate_min": {
+                    "value": -0.25,
+                    "unit": "%/wk",
+                    "text": "Lose 0.25% a week"
+                },
+                "custom_rate_max": {
+                    "value": 0.25,
+                    "unit": "%/wk",
+                    "text": "Gain 0.25% a week"
+                },
+                "training_lines": [
+                    {
+                        "text": "All muscles Grow"
+                    },
+                    {
+                        "text": "Volume starts at MEV sets"
+                    },
+                    {
+                        "text": "Volume ceiling: MRV sets"
+                    },
+                    {
+                        "text": "Up to 2 sets added per session each week"
+                    },
+                    {
+                        "text": "Loads go up 2% a week"
+                    },
+                    {
+                        "text": "Each muscle at least 2x a week"
+                    },
+                    {
+                        "text": "Deload weeks at maintenance calories"
+                    }
+                ]
+            },
+            {
+                "type": "mini_cut",
+                "title": "Mini-cut",
+                "is_recommended": false,
+                "lengths": [
+                    {
+                        "weeks": 4,
+                        "label": "4 weeks",
+                        "ends_text": "Ends 17 Jan",
+                        "is_selected": true,
+                        "warnings": [],
+                        "mesocycles": [
+                            {
+                                "label": "Mesocycle 1",
+                                "weeks_text": "4 weeks",
+                                "dates_text": "21 Dec – 17 Jan"
+                            }
+                        ],
+                        "fixes": []
+                    }
+                ],
+                "rates": [
+                    {
+                        "label": "Default",
+                        "rate": {
+                            "value": -1.0,
+                            "unit": "%/wk",
+                            "text": "Lose 1% a week"
+                        },
+                        "is_selected": true
+                    }
+                ],
+                "custom_rate_min": null,
+                "custom_rate_max": null,
+                "training_lines": [
+                    {
+                        "text": "All muscles Emphasize"
+                    },
+                    {
+                        "text": "Volume starts at MEV sets"
+                    },
+                    {
+                        "text": "Volume ceiling: MEV +2 sets"
+                    },
+                    {
+                        "text": "Up to 1 set added per session each week"
+                    },
+                    {
+                        "text": "Loads go up 1% a week"
+                    },
+                    {
+                        "text": "Each muscle at least 2x a week"
+                    },
+                    {
+                        "text": "Deload weeks at maintenance calories"
+                    }
+                ]
+            }
+        ]
+    },
+    "prebuilt_plans": [],
+    "transition": null
+}

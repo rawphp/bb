@@ -1,0 +1,863 @@
+{
+    "id": "01JB6Q3V8T2K9WZ4M5N7P1R3S5",
+    "name": "Meso 2",
+    "priority_options": [
+        {
+            "priority": "emphasize",
+            "title": "Emphasize"
+        },
+        {
+            "priority": "grow",
+            "title": "Grow"
+        },
+        {
+            "priority": "maintain",
+            "title": "Maintain"
+        },
+        {
+            "priority": "off",
+            "title": "Off"
+        }
+    ],
+    "saved": {
+        "phase_title": "Fat loss",
+        "length_text": "6 weeks · week 4 now",
+        "weeks_count": 6,
+        "can_shorten": true,
+        "can_lengthen": true,
+        "can_add_day": true,
+        "end": {
+            "warning": "Skipping the deload is not recommended for intermediate and advanced lifters.",
+            "diet_break_offer": "You are in fat loss. Start a diet break next week?"
+        },
+        "weeks": [
+            {
+                "number": 1,
+                "title": "Week 1",
+                "now": null,
+                "diet_break": null,
+                "calories_text": "2,350 kcal/day",
+                "muscle_sets": [
+                    {
+                        "muscle_title": "Chest",
+                        "sets": 6
+                    },
+                    {
+                        "muscle_title": "Back",
+                        "sets": 6
+                    },
+                    {
+                        "muscle_title": "Quads",
+                        "sets": 4
+                    },
+                    {
+                        "muscle_title": "Hamstrings",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Side delts",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Biceps",
+                        "sets": 2
+                    },
+                    {
+                        "muscle_title": "Triceps",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Calves",
+                        "sets": 3
+                    }
+                ],
+                "days": [
+                    {
+                        "day": 1,
+                        "title": "Day 1 · Upper A",
+                        "label": "Upper A",
+                        "state": "done",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q400A2B3C4D5E6F7G8H9J",
+                                "name": "Bench Press",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q401A2B3C4D5E6F7G8H9J",
+                                "name": "Barbell Row",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q402A2B3C4D5E6F7G8H9J",
+                                "name": "Lateral Raise",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q403A2B3C4D5E6F7G8H9J",
+                                "name": "Dumbbell Curl",
+                                "sets": 2
+                            }
+                        ]
+                    },
+                    {
+                        "day": 2,
+                        "title": "Day 2 · Lower A",
+                        "label": "Lower A",
+                        "state": "done",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q410A2B3C4D5E6F7G8H9J",
+                                "name": "Back Squat",
+                                "sets": 4
+                            },
+                            {
+                                "slot_id": "01JB6Q411A2B3C4D5E6F7G8H9J",
+                                "name": "Romanian Deadlift",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q412A2B3C4D5E6F7G8H9J",
+                                "name": "Standing Calf Raise",
+                                "sets": 3
+                            }
+                        ]
+                    },
+                    {
+                        "day": 3,
+                        "title": "Day 3 · Upper B",
+                        "label": "Upper B",
+                        "state": "done",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q420A2B3C4D5E6F7G8H9J",
+                                "name": "Incline Dumbbell Press",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q421A2B3C4D5E6F7G8H9J",
+                                "name": "Pull-up",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q422A2B3C4D5E6F7G8H9J",
+                                "name": "Triceps Pushdown",
+                                "sets": 3
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "number": 2,
+                "title": "Week 2",
+                "now": null,
+                "diet_break": null,
+                "calories_text": "2,350 kcal/day",
+                "muscle_sets": [
+                    {
+                        "muscle_title": "Chest",
+                        "sets": 6
+                    },
+                    {
+                        "muscle_title": "Back",
+                        "sets": 6
+                    },
+                    {
+                        "muscle_title": "Quads",
+                        "sets": 4
+                    },
+                    {
+                        "muscle_title": "Hamstrings",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Side delts",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Biceps",
+                        "sets": 2
+                    },
+                    {
+                        "muscle_title": "Triceps",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Calves",
+                        "sets": 3
+                    }
+                ],
+                "days": [
+                    {
+                        "day": 1,
+                        "title": "Day 1 · Upper A",
+                        "label": "Upper A",
+                        "state": "done",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q400A2B3C4D5E6F7G8H9J",
+                                "name": "Bench Press",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q401A2B3C4D5E6F7G8H9J",
+                                "name": "Barbell Row",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q402A2B3C4D5E6F7G8H9J",
+                                "name": "Lateral Raise",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q403A2B3C4D5E6F7G8H9J",
+                                "name": "Dumbbell Curl",
+                                "sets": 2
+                            }
+                        ]
+                    },
+                    {
+                        "day": 2,
+                        "title": "Day 2 · Lower A",
+                        "label": "Lower A",
+                        "state": "done",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q410A2B3C4D5E6F7G8H9J",
+                                "name": "Back Squat",
+                                "sets": 4
+                            },
+                            {
+                                "slot_id": "01JB6Q411A2B3C4D5E6F7G8H9J",
+                                "name": "Romanian Deadlift",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q412A2B3C4D5E6F7G8H9J",
+                                "name": "Standing Calf Raise",
+                                "sets": 3
+                            }
+                        ]
+                    },
+                    {
+                        "day": 3,
+                        "title": "Day 3 · Upper B",
+                        "label": "Upper B",
+                        "state": "done",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q420A2B3C4D5E6F7G8H9J",
+                                "name": "Incline Dumbbell Press",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q421A2B3C4D5E6F7G8H9J",
+                                "name": "Pull-up",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q422A2B3C4D5E6F7G8H9J",
+                                "name": "Triceps Pushdown",
+                                "sets": 3
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "number": 3,
+                "title": "Week 3",
+                "now": null,
+                "diet_break": null,
+                "calories_text": "2,350 kcal/day",
+                "muscle_sets": [
+                    {
+                        "muscle_title": "Chest",
+                        "sets": 6
+                    },
+                    {
+                        "muscle_title": "Back",
+                        "sets": 6
+                    },
+                    {
+                        "muscle_title": "Quads",
+                        "sets": 4
+                    },
+                    {
+                        "muscle_title": "Hamstrings",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Side delts",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Biceps",
+                        "sets": 2
+                    },
+                    {
+                        "muscle_title": "Triceps",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Calves",
+                        "sets": 3
+                    }
+                ],
+                "days": [
+                    {
+                        "day": 1,
+                        "title": "Day 1 · Upper A",
+                        "label": "Upper A",
+                        "state": "done",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q400A2B3C4D5E6F7G8H9J",
+                                "name": "Bench Press",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q401A2B3C4D5E6F7G8H9J",
+                                "name": "Barbell Row",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q402A2B3C4D5E6F7G8H9J",
+                                "name": "Lateral Raise",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q403A2B3C4D5E6F7G8H9J",
+                                "name": "Dumbbell Curl",
+                                "sets": 2
+                            }
+                        ]
+                    },
+                    {
+                        "day": 2,
+                        "title": "Day 2 · Lower A",
+                        "label": "Lower A",
+                        "state": "done",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q410A2B3C4D5E6F7G8H9J",
+                                "name": "Back Squat",
+                                "sets": 4
+                            },
+                            {
+                                "slot_id": "01JB6Q411A2B3C4D5E6F7G8H9J",
+                                "name": "Romanian Deadlift",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q412A2B3C4D5E6F7G8H9J",
+                                "name": "Standing Calf Raise",
+                                "sets": 3
+                            }
+                        ]
+                    },
+                    {
+                        "day": 3,
+                        "title": "Day 3 · Upper B",
+                        "label": "Upper B",
+                        "state": "skipped",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q420A2B3C4D5E6F7G8H9J",
+                                "name": "Incline Dumbbell Press",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q421A2B3C4D5E6F7G8H9J",
+                                "name": "Pull-up",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q422A2B3C4D5E6F7G8H9J",
+                                "name": "Triceps Pushdown",
+                                "sets": 3
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "number": 4,
+                "title": "Week 4",
+                "now": {
+                    "text": "Now",
+                    "tone": "info"
+                },
+                "diet_break": null,
+                "calories_text": "2,350 kcal/day",
+                "muscle_sets": [
+                    {
+                        "muscle_title": "Chest",
+                        "sets": 6
+                    },
+                    {
+                        "muscle_title": "Back",
+                        "sets": 6
+                    },
+                    {
+                        "muscle_title": "Quads",
+                        "sets": 4
+                    },
+                    {
+                        "muscle_title": "Hamstrings",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Side delts",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Biceps",
+                        "sets": 2
+                    },
+                    {
+                        "muscle_title": "Triceps",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Calves",
+                        "sets": 3
+                    }
+                ],
+                "days": [
+                    {
+                        "day": 1,
+                        "title": "Day 1 · Upper A",
+                        "label": "Upper A",
+                        "state": "done",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q400A2B3C4D5E6F7G8H9J",
+                                "name": "Bench Press",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q401A2B3C4D5E6F7G8H9J",
+                                "name": "Barbell Row",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q402A2B3C4D5E6F7G8H9J",
+                                "name": "Lateral Raise",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q403A2B3C4D5E6F7G8H9J",
+                                "name": "Dumbbell Curl",
+                                "sets": 2
+                            }
+                        ]
+                    },
+                    {
+                        "day": 2,
+                        "title": "Day 2 · Lower A",
+                        "label": "Lower A",
+                        "state": "upcoming",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q410A2B3C4D5E6F7G8H9J",
+                                "name": "Back Squat",
+                                "sets": 4
+                            },
+                            {
+                                "slot_id": "01JB6Q411A2B3C4D5E6F7G8H9J",
+                                "name": "Romanian Deadlift",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q412A2B3C4D5E6F7G8H9J",
+                                "name": "Standing Calf Raise",
+                                "sets": 3
+                            }
+                        ]
+                    },
+                    {
+                        "day": 3,
+                        "title": "Day 3 · Upper B",
+                        "label": "Upper B",
+                        "state": "upcoming",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q420A2B3C4D5E6F7G8H9J",
+                                "name": "Incline Dumbbell Press",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q421A2B3C4D5E6F7G8H9J",
+                                "name": "Pull-up",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q422A2B3C4D5E6F7G8H9J",
+                                "name": "Triceps Pushdown",
+                                "sets": 3
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "number": 5,
+                "title": "Week 5",
+                "now": null,
+                "diet_break": {
+                    "text": "Diet break",
+                    "tone": "info"
+                },
+                "calories_text": "2,600 kcal/day",
+                "muscle_sets": [
+                    {
+                        "muscle_title": "Chest",
+                        "sets": 6
+                    },
+                    {
+                        "muscle_title": "Back",
+                        "sets": 6
+                    },
+                    {
+                        "muscle_title": "Quads",
+                        "sets": 4
+                    },
+                    {
+                        "muscle_title": "Hamstrings",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Side delts",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Biceps",
+                        "sets": 2
+                    },
+                    {
+                        "muscle_title": "Triceps",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Calves",
+                        "sets": 3
+                    }
+                ],
+                "days": [
+                    {
+                        "day": 1,
+                        "title": "Day 1 · Upper A",
+                        "label": "Upper A",
+                        "state": "upcoming",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q400A2B3C4D5E6F7G8H9J",
+                                "name": "Bench Press",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q401A2B3C4D5E6F7G8H9J",
+                                "name": "Barbell Row",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q402A2B3C4D5E6F7G8H9J",
+                                "name": "Lateral Raise",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q403A2B3C4D5E6F7G8H9J",
+                                "name": "Dumbbell Curl",
+                                "sets": 2
+                            }
+                        ]
+                    },
+                    {
+                        "day": 2,
+                        "title": "Day 2 · Lower A",
+                        "label": "Lower A",
+                        "state": "upcoming",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q410A2B3C4D5E6F7G8H9J",
+                                "name": "Back Squat",
+                                "sets": 4
+                            },
+                            {
+                                "slot_id": "01JB6Q411A2B3C4D5E6F7G8H9J",
+                                "name": "Romanian Deadlift",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q412A2B3C4D5E6F7G8H9J",
+                                "name": "Standing Calf Raise",
+                                "sets": 3
+                            }
+                        ]
+                    },
+                    {
+                        "day": 3,
+                        "title": "Day 3 · Upper B",
+                        "label": "Upper B",
+                        "state": "upcoming",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q420A2B3C4D5E6F7G8H9J",
+                                "name": "Incline Dumbbell Press",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q421A2B3C4D5E6F7G8H9J",
+                                "name": "Pull-up",
+                                "sets": 3
+                            },
+                            {
+                                "slot_id": "01JB6Q422A2B3C4D5E6F7G8H9J",
+                                "name": "Triceps Pushdown",
+                                "sets": 3
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "number": 6,
+                "title": "Deload",
+                "now": null,
+                "diet_break": null,
+                "calories_text": "2,350 kcal/day",
+                "muscle_sets": [
+                    {
+                        "muscle_title": "Chest",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Back",
+                        "sets": 3
+                    },
+                    {
+                        "muscle_title": "Quads",
+                        "sets": 2
+                    },
+                    {
+                        "muscle_title": "Hamstrings",
+                        "sets": 1
+                    },
+                    {
+                        "muscle_title": "Side delts",
+                        "sets": 1
+                    },
+                    {
+                        "muscle_title": "Biceps",
+                        "sets": 1
+                    },
+                    {
+                        "muscle_title": "Triceps",
+                        "sets": 1
+                    },
+                    {
+                        "muscle_title": "Calves",
+                        "sets": 1
+                    }
+                ],
+                "days": [
+                    {
+                        "day": 1,
+                        "title": "Day 1 · Upper A",
+                        "label": "Upper A",
+                        "state": "upcoming",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q400A2B3C4D5E6F7G8H9J",
+                                "name": "Bench Press",
+                                "sets": 1
+                            },
+                            {
+                                "slot_id": "01JB6Q401A2B3C4D5E6F7G8H9J",
+                                "name": "Barbell Row",
+                                "sets": 1
+                            },
+                            {
+                                "slot_id": "01JB6Q402A2B3C4D5E6F7G8H9J",
+                                "name": "Lateral Raise",
+                                "sets": 1
+                            },
+                            {
+                                "slot_id": "01JB6Q403A2B3C4D5E6F7G8H9J",
+                                "name": "Dumbbell Curl",
+                                "sets": 1
+                            }
+                        ]
+                    },
+                    {
+                        "day": 2,
+                        "title": "Day 2 · Lower A",
+                        "label": "Lower A",
+                        "state": "upcoming",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q410A2B3C4D5E6F7G8H9J",
+                                "name": "Back Squat",
+                                "sets": 2
+                            },
+                            {
+                                "slot_id": "01JB6Q411A2B3C4D5E6F7G8H9J",
+                                "name": "Romanian Deadlift",
+                                "sets": 1
+                            },
+                            {
+                                "slot_id": "01JB6Q412A2B3C4D5E6F7G8H9J",
+                                "name": "Standing Calf Raise",
+                                "sets": 1
+                            }
+                        ]
+                    },
+                    {
+                        "day": 3,
+                        "title": "Day 3 · Upper B",
+                        "label": "Upper B",
+                        "state": "upcoming",
+                        "can_open": true,
+                        "exercises": [
+                            {
+                                "slot_id": "01JB6Q420A2B3C4D5E6F7G8H9J",
+                                "name": "Incline Dumbbell Press",
+                                "sets": 1
+                            },
+                            {
+                                "slot_id": "01JB6Q421A2B3C4D5E6F7G8H9J",
+                                "name": "Pull-up",
+                                "sets": 1
+                            },
+                            {
+                                "slot_id": "01JB6Q422A2B3C4D5E6F7G8H9J",
+                                "name": "Triceps Pushdown",
+                                "sets": 1
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "priorities": [
+            {
+                "muscle": "chest",
+                "muscle_title": "Chest",
+                "priority": "emphasize",
+                "priority_title": "Emphasize",
+                "bars": 3
+            },
+            {
+                "muscle": "back",
+                "muscle_title": "Back",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "quads",
+                "muscle_title": "Quads",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "hamstrings",
+                "muscle_title": "Hamstrings",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "glutes",
+                "muscle_title": "Glutes",
+                "priority": "maintain",
+                "priority_title": "Maintain",
+                "bars": 1
+            },
+            {
+                "muscle": "side_delts",
+                "muscle_title": "Side delts",
+                "priority": "emphasize",
+                "priority_title": "Emphasize",
+                "bars": 3
+            },
+            {
+                "muscle": "rear_delts",
+                "muscle_title": "Rear delts",
+                "priority": "maintain",
+                "priority_title": "Maintain",
+                "bars": 1
+            },
+            {
+                "muscle": "front_delts",
+                "muscle_title": "Front delts",
+                "priority": "maintain",
+                "priority_title": "Maintain",
+                "bars": 1
+            },
+            {
+                "muscle": "biceps",
+                "muscle_title": "Biceps",
+                "priority": "maintain",
+                "priority_title": "Maintain",
+                "bars": 1
+            },
+            {
+                "muscle": "triceps",
+                "muscle_title": "Triceps",
+                "priority": "maintain",
+                "priority_title": "Maintain",
+                "bars": 1
+            },
+            {
+                "muscle": "calves",
+                "muscle_title": "Calves",
+                "priority": "maintain",
+                "priority_title": "Maintain",
+                "bars": 1
+            },
+            {
+                "muscle": "abs",
+                "muscle_title": "Abs",
+                "priority": "maintain",
+                "priority_title": "Maintain",
+                "bars": 1
+            },
+            {
+                "muscle": "traps",
+                "muscle_title": "Traps",
+                "priority": "maintain",
+                "priority_title": "Maintain",
+                "bars": 1
+            },
+            {
+                "muscle": "forearms",
+                "muscle_title": "Forearms",
+                "priority": "maintain",
+                "priority_title": "Maintain",
+                "bars": 1
+            }
+        ]
+    },
+    "build": null
+}

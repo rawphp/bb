@@ -1,0 +1,985 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "week_count": {
+            "type": "integer"
+        },
+        "today_position": {
+            "type": [
+                "number",
+                "null"
+            ]
+        },
+        "phases": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "fat_loss",
+                            "muscle_gain",
+                            "maintenance",
+                            "mini_cut"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "start_week": {
+                        "type": "integer"
+                    },
+                    "weeks": {
+                        "type": "integer"
+                    },
+                    "dates_text": {
+                        "type": "string"
+                    },
+                    "rate_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "event_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "state": {
+                        "type": "string",
+                        "enum": [
+                            "past",
+                            "current",
+                            "future",
+                            "outline"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "type",
+                    "title",
+                    "start_week",
+                    "weeks",
+                    "dates_text",
+                    "state"
+                ]
+            }
+        },
+        "mesocycles": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "start_week": {
+                        "type": "integer"
+                    },
+                    "weeks": {
+                        "type": "integer"
+                    },
+                    "is_current": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "start_week",
+                    "weeks",
+                    "is_current"
+                ]
+            }
+        },
+        "deloads": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "week": {
+                        "type": "integer"
+                    },
+                    "start_date": {
+                        "type": "string"
+                    },
+                    "dates_text": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "marker": {
+                        "type": "string",
+                        "enum": [
+                            "deload",
+                            "deficit_deload"
+                        ]
+                    },
+                    "diet_break_action": {
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "turn_off",
+                            "turn_on"
+                        ]
+                    }
+                },
+                "required": [
+                    "week",
+                    "start_date",
+                    "dates_text",
+                    "label",
+                    "marker",
+                    "diet_break_action"
+                ]
+            }
+        },
+        "current": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "phase_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "dates_text": {
+                    "type": "string"
+                },
+                "progress_text": {
+                    "type": "string"
+                },
+                "progress": {
+                    "type": [
+                        "number",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "phase_id",
+                "title",
+                "dates_text",
+                "progress_text"
+            ]
+        },
+        "event_countdown": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "maintenance_suggestion": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "weeks": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "text",
+                "weeks"
+            ]
+        },
+        "diet_break_off_warning": {
+            "type": "string"
+        },
+        "add_phase": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "starts_text": {
+                    "type": "string"
+                },
+                "refusal": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "default_type": {
+                    "type": "string",
+                    "enum": [
+                        "fat_loss",
+                        "muscle_gain",
+                        "maintenance",
+                        "mini_cut"
+                    ]
+                },
+                "types": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "fat_loss",
+                                    "muscle_gain",
+                                    "maintenance",
+                                    "mini_cut"
+                                ]
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "is_recommended": {
+                                "type": "boolean"
+                            },
+                            "lengths": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "weeks": {
+                                            "type": [
+                                                "integer",
+                                                "null"
+                                            ]
+                                        },
+                                        "label": {
+                                            "type": "string"
+                                        },
+                                        "ends_text": {
+                                            "type": "string"
+                                        },
+                                        "is_selected": {
+                                            "type": "boolean"
+                                        },
+                                        "warnings": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "text": {
+                                                        "type": "string"
+                                                    },
+                                                    "tone": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "good",
+                                                            "neutral",
+                                                            "warning",
+                                                            "info"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "text",
+                                                    "tone"
+                                                ]
+                                            }
+                                        },
+                                        "mesocycles": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "label": {
+                                                        "type": "string"
+                                                    },
+                                                    "weeks_text": {
+                                                        "type": "string"
+                                                    },
+                                                    "dates_text": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "label",
+                                                    "weeks_text",
+                                                    "dates_text"
+                                                ]
+                                            }
+                                        },
+                                        "fixes": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "fix": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "move_end_to_deload",
+                                                            "change_mesocycle_length",
+                                                            "keep_end"
+                                                        ]
+                                                    },
+                                                    "text": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "fix",
+                                                    "text"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "label",
+                                        "ends_text",
+                                        "is_selected",
+                                        "warnings",
+                                        "mesocycles",
+                                        "fixes"
+                                    ]
+                                }
+                            },
+                            "rates": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "label": {
+                                            "type": "string"
+                                        },
+                                        "rate": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "value": {
+                                                    "type": "number"
+                                                },
+                                                "unit": {
+                                                    "type": "string"
+                                                },
+                                                "text": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "value",
+                                                "unit",
+                                                "text"
+                                            ]
+                                        },
+                                        "is_selected": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "label",
+                                        "rate",
+                                        "is_selected"
+                                    ]
+                                }
+                            },
+                            "custom_rate_min": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "value": {
+                                        "type": "number"
+                                    },
+                                    "unit": {
+                                        "type": "string"
+                                    },
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "unit",
+                                    "text"
+                                ]
+                            },
+                            "custom_rate_max": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "value": {
+                                        "type": "number"
+                                    },
+                                    "unit": {
+                                        "type": "string"
+                                    },
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "unit",
+                                    "text"
+                                ]
+                            },
+                            "training_lines": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "text"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "title",
+                            "is_recommended",
+                            "lengths",
+                            "rates",
+                            "training_lines"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "starts_text",
+                "default_type",
+                "types"
+            ]
+        },
+        "prebuilt_plans": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "plan": {
+                        "type": "string",
+                        "enum": [
+                            "muscle_gain",
+                            "fat_loss"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "summary": {
+                        "type": "string"
+                    },
+                    "starts_text": {
+                        "type": "string"
+                    },
+                    "refusal": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "phases": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "fat_loss",
+                                        "muscle_gain",
+                                        "maintenance",
+                                        "mini_cut"
+                                    ]
+                                },
+                                "title": {
+                                    "type": "string"
+                                },
+                                "weeks_text": {
+                                    "type": "string"
+                                },
+                                "dates_text": {
+                                    "type": "string"
+                                },
+                                "rate_text": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "type",
+                                "title",
+                                "weeks_text",
+                                "dates_text"
+                            ]
+                        }
+                    },
+                    "segments": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                        "mesocycle",
+                                        "active_rest"
+                                    ]
+                                },
+                                "label": {
+                                    "type": "string"
+                                },
+                                "start_week": {
+                                    "type": "integer"
+                                },
+                                "weeks": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "kind",
+                                "label",
+                                "start_week",
+                                "weeks"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "plan",
+                    "title",
+                    "summary",
+                    "starts_text",
+                    "phases",
+                    "segments"
+                ]
+            }
+        },
+        "transition": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "phase_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "length_text": {
+                    "type": "string"
+                },
+                "weight_change_text": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "rate_text": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "adherence_text": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "mesocycles_text": {
+                    "type": "string"
+                },
+                "next_from_text": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "choice": {
+                                "type": "string",
+                                "enum": [
+                                    "fat_loss",
+                                    "muscle_gain",
+                                    "maintenance",
+                                    "mini_cut",
+                                    "gain_first"
+                                ]
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string"
+                            },
+                            "is_recommended": {
+                                "type": "boolean"
+                            },
+                            "is_selected": {
+                                "type": "boolean"
+                            },
+                            "lengths": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "weeks": {
+                                            "type": [
+                                                "integer",
+                                                "null"
+                                            ]
+                                        },
+                                        "label": {
+                                            "type": "string"
+                                        },
+                                        "ends_text": {
+                                            "type": "string"
+                                        },
+                                        "is_selected": {
+                                            "type": "boolean"
+                                        },
+                                        "warnings": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "text": {
+                                                        "type": "string"
+                                                    },
+                                                    "tone": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "good",
+                                                            "neutral",
+                                                            "warning",
+                                                            "info"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "text",
+                                                    "tone"
+                                                ]
+                                            }
+                                        },
+                                        "mesocycles": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "label": {
+                                                        "type": "string"
+                                                    },
+                                                    "weeks_text": {
+                                                        "type": "string"
+                                                    },
+                                                    "dates_text": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "label",
+                                                    "weeks_text",
+                                                    "dates_text"
+                                                ]
+                                            }
+                                        },
+                                        "fixes": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "fix": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "move_end_to_deload",
+                                                            "change_mesocycle_length",
+                                                            "keep_end"
+                                                        ]
+                                                    },
+                                                    "text": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "fix",
+                                                    "text"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "label",
+                                        "ends_text",
+                                        "is_selected",
+                                        "warnings",
+                                        "mesocycles",
+                                        "fixes"
+                                    ]
+                                }
+                            },
+                            "note": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "starting_calories_text": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "templates": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "template": {
+                                            "type": "string",
+                                            "enum": [
+                                                "standard",
+                                                "resensitization",
+                                                "balanced"
+                                            ]
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "detail": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "training_lines": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "text": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "text"
+                                                ]
+                                            }
+                                        },
+                                        "is_selected": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "template",
+                                        "title",
+                                        "training_lines",
+                                        "is_selected"
+                                    ]
+                                }
+                            },
+                            "corridor_text": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "step_up": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "explanation": {
+                                        "type": "string"
+                                    },
+                                    "steps": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "step": {
+                                                    "type": "object",
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "value": {
+                                                            "type": "number"
+                                                        },
+                                                        "unit": {
+                                                            "type": "string"
+                                                        },
+                                                        "text": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "value",
+                                                        "unit",
+                                                        "text"
+                                                    ]
+                                                },
+                                                "is_selected": {
+                                                    "type": "boolean"
+                                                },
+                                                "schedule": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "additionalProperties": false,
+                                                        "properties": {
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "kcal_text": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "label",
+                                                            "kcal_text"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "step",
+                                                "is_selected",
+                                                "schedule"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "explanation",
+                                    "steps"
+                                ]
+                            },
+                            "warnings": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        },
+                                        "tone": {
+                                            "type": "string",
+                                            "enum": [
+                                                "good",
+                                                "neutral",
+                                                "warning",
+                                                "info"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "text",
+                                        "tone"
+                                    ]
+                                }
+                            },
+                            "readiness": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        },
+                                        "warning": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "text",
+                                        "warning"
+                                    ]
+                                }
+                            },
+                            "refusal": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "choice",
+                            "title",
+                            "detail",
+                            "is_recommended",
+                            "is_selected",
+                            "lengths",
+                            "templates",
+                            "warnings",
+                            "readiness"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "phase_id",
+                "title",
+                "length_text",
+                "mesocycles_text",
+                "next_from_text",
+                "options"
+            ]
+        }
+    },
+    "required": [
+        "week_count",
+        "phases",
+        "mesocycles",
+        "deloads",
+        "diet_break_off_warning",
+        "add_phase",
+        "prebuilt_plans"
+    ]
+}
