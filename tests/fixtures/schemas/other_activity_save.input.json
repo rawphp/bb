@@ -1,0 +1,41 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "string",
+            "description": "A client-made ULID (CAP-019)."
+        },
+        "date": {
+            "type": "string",
+            "format": "date"
+        },
+        "name": {
+            "type": "string"
+        },
+        "start": {
+            "type": "string",
+            "description": "24-hour \"HH:MM\"."
+        },
+        "minutes": {
+            "type": "integer"
+        },
+        "intensity": {
+            "type": "string",
+            "enum": [
+                "light",
+                "moderate",
+                "hard"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "date",
+        "name",
+        "start",
+        "minutes",
+        "intensity"
+    ]
+}

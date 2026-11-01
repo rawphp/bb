@@ -3,12 +3,13 @@ import { computed, ref, watchEffect } from 'vue';
 import { featureRoutes } from '@/app/router';
 import { findScreen } from './screens';
 
-// Renders a capability screen from tests/fixtures/screens/<name>.json.
+// Renders a capability screen from tests/fixtures/screens/<name>.json, or
+// one of its other states from <name>.<state>.json.
 const props = defineProps<{ name: string }>();
 
 const fixtures = import.meta.glob<unknown>('/tests/fixtures/screens/*.json', { import: 'default' });
 
-const screen = computed(() => findScreen(props.name, featureRoutes));
+const screen = computed(() => findScreen(props.name.replace(/\..*$/, ''), featureRoutes));
 const payload = ref<unknown>();
 const missing = ref(false);
 
