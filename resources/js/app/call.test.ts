@@ -1,5 +1,7 @@
+import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, TIMEOUT_MS, write } from './call';
+import { cached, clearReads, MAX_AGE_MS, store } from './cache';
+import { CapabilityError, keepWarm, read, TIMEOUT_MS, warm, write } from './call';
 
 function json(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -15,7 +17,8 @@ function clearCookies(): void {
 describe('call', () => {
     const fetchMock = vi.fn<typeof fetch>();
 
-    beforeEach(() => {
+    beforeEach(async () => {
+        await clearReads();
         clearCookies();
         fetchMock.mockReset();
         vi.stubGlobal('fetch', fetchMock);
@@ -116,5 +119,107 @@ describe('call', () => {
         fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
         await expect(write('account_show', {})).rejects.toMatchObject({ status: 0, body: { reason: 'network' } });
+    });
+
+    describe('stale-while-revalidate reads', () => {
+        // Answers each capability from `data`; a capability missing from it fails like the network.
+        function serve(data: Record<string, unknown>): void {
+            document.cookie = 'XSRF-TOKEN=t; path=/';
+            fetchMock.mockImplementation(async (url) => {
+                const name = String(url).replace('/capabilities/', '');
+                if (!(name in data)) throw new TypeError('Failed to fetch');
+                return json({ ok: true, data: data[name] });
+            });
+        }
+
+        it('OFF-003 shows the cached copy at once and hands the refreshed one to onUpdate', async () => {
+            await store('today_show{"date":"2026-11-01"}', { title: 'cached' });
+            serve({ today_show: { title: 'fresh' } });
+            const onUpdate = vi.fn();
+
+            const data = await read('today_show', { date: '2026-11-01' }, onUpdate);
+
+            expect(data).toEqual({ title: 'cached' });
+            await vi.waitFor(() => expect(onUpdate).toHaveBeenCalledWith({ title: 'fresh' }));
+            expect((await cached('today_show{"date":"2026-11-01"}'))?.data).toEqual({ title: 'fresh' });
+        });
+
+        it('OFF-003 waits for the server when nothing is cached, and caches the answer under its read key', async () => {
+            serve({ meal_show: { meal: 2 } });
+
+            expect(await read('meal_show', { meal: 2, date: '2026-11-01' })).toEqual({ meal: 2 });
+            expect(await cached('meal_show{"date":"2026-11-01","meal":2}')).toMatchObject({ data: { meal: 2 } });
+        });
+
+        it('OFF-003 keeps the cached copy when the refresh fails offline', async () => {
+            await store('today_show{}', { title: 'cached' }, 5);
+            serve({});
+            const onUpdate = vi.fn();
+
+            expect(await read('today_show', {}, onUpdate)).toEqual({ title: 'cached' });
+            await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+            await new Promise((resolve) => setTimeout(resolve, 0));
+
+            expect(onUpdate).not.toHaveBeenCalled();
+            expect(await cached('today_show{}')).toEqual({ key: 'today_show{}', data: { title: 'cached' }, fetchedAt: 5 });
+        });
+
+        it('OFF-003 fails with status 0 when nothing is cached and there is no network', async () => {
+            serve({});
+
+            await expect(read('today_show')).rejects.toMatchObject({ status: 0, body: { reason: 'network' } });
+        });
+
+        it('OFF-004 fetches every read key sync_manifest lists into the cache', async () => {
+            serve({
+                sync_manifest: { keys: ['today_show{"date":"2026-11-01"}', 'workout_show{"id":"01J"}'] },
+                today_show: { title: 'Today' },
+                workout_show: { id: '01J' },
+            });
+            vi.stubGlobal('navigator', { storage: { persist: vi.fn(async () => true), persisted: async () => false } });
+
+            await warm();
+
+            expect(fetchMock.mock.calls.find(([url]) => url === '/capabilities/workout_show')?.[1]?.body).toBe('{"id":"01J"}');
+            expect((await cached('today_show{"date":"2026-11-01"}'))?.data).toEqual({ title: 'Today' });
+            expect((await cached('workout_show{"id":"01J"}'))?.data).toEqual({ id: '01J' });
+        });
+
+        it('OFF-005 warming drops old reads the manifest no longer lists, and asks for persistent storage', async () => {
+            const old = Date.now() - MAX_AGE_MS - 1;
+            await store('today_show{"date":"2026-09-01"}', {}, old);
+            await store('mesocycle_show{}', {}, old);
+            serve({ sync_manifest: { keys: ['mesocycle_show{}'] } });
+            const persist = vi.fn(async () => true);
+            vi.stubGlobal('navigator', { storage: { persist, persisted: async () => false } });
+
+            await warm();
+
+            expect(await cached('today_show{"date":"2026-09-01"}')).toBeUndefined();
+            expect(await cached('mesocycle_show{}')).toBeDefined();
+            expect(persist).toHaveBeenCalledTimes(1);
+        });
+
+        it('OFF-005 does not ask for persistent storage before onboarding, while the manifest is empty', async () => {
+            serve({ sync_manifest: { keys: [] } });
+            const persist = vi.fn(async () => true);
+            vi.stubGlobal('navigator', { storage: { persist, persisted: async () => false } });
+
+            await warm();
+
+            expect(persist).not.toHaveBeenCalled();
+        });
+
+        it('OFF-004 warms the cache on open and again on reconnect', async () => {
+            serve({ sync_manifest: { keys: [] } });
+            const target = new EventTarget() as Window;
+            const manifestCalls = () => fetchMock.mock.calls.filter(([url]) => url === '/capabilities/sync_manifest').length;
+
+            keepWarm(target);
+            await vi.waitFor(() => expect(manifestCalls()).toBe(1));
+
+            target.dispatchEvent(new Event('online'));
+            await vi.waitFor(() => expect(manifestCalls()).toBe(2));
+        });
     });
 });
