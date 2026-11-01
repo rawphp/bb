@@ -8,8 +8,6 @@ use Closure;
 use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
-use Illuminate\Queue\Events\JobQueued;
-use Illuminate\Queue\Events\JobQueueing;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
@@ -23,10 +21,7 @@ use Throwable;
  * so an agent turn sees the same "today" as the request that started it.
  * Every other environment ignores the header and the recorded instant.
  *
- * The queue itself keeps the clock from before the walk: a job queued from a
- * walked request, delayed or not, becomes available on that clock. A job that
- * releases itself while it runs at a walked instant, or a database-queue
- * bulk push, is the exception: the queue stamps those with the walked clock.
+ * The queue itself keeps the clock from before the walk; see App\Queue\StampsUnwalkedTime.
  */
 final class RequestClock
 {
@@ -36,9 +31,6 @@ final class RequestClock
 
     /** @var list<CarbonInterface|Closure|null> clocks to restore, innermost last */
     private static array $previous = [];
-
-    /** @var list<CarbonImmutable> the walks applied, innermost last */
-    private static array $walks = [];
 
     public static function honoured(): bool
     {
@@ -62,21 +54,27 @@ final class RequestClock
     public static function apply(CarbonImmutable $at): void
     {
         self::$previous[] = Carbon::getTestNow();
-        self::$walks[] = $at;
         Carbon::setTestNow($at);
     }
 
     public static function release(): void
     {
         if (self::$previous !== []) {
-            array_pop(self::$walks);
             Carbon::setTestNow(array_pop(self::$previous));
         }
     }
 
     public static function walking(): bool
     {
-        return self::$walks !== [];
+        return self::$previous !== [];
+    }
+
+    /** The clock from before the outermost walk. */
+    public static function unwalked(): CarbonImmutable
+    {
+        return self::walking()
+            ? Carbon::withTestNow(self::$previous[0], fn () => CarbonImmutable::now())
+            : CarbonImmutable::now();
     }
 
     /**
@@ -85,18 +83,6 @@ final class RequestClock
     public static function carryIntoQueue(): void
     {
         self::recordInPayloads();
-
-        // The queue stamps availability between these two events: give it the clock from before the walk.
-        Event::listen(function (JobQueueing $event): void {
-            if (self::walking()) {
-                Carbon::setTestNow(self::$previous[0]);
-            }
-        });
-        Event::listen(function (JobQueued $event): void {
-            if (self::walking()) {
-                Carbon::setTestNow(self::$walks[array_key_last(self::$walks)]);
-            }
-        });
 
         Event::listen(function (JobProcessing $event): void {
             $at = self::parse($event->job->payload()[self::PAYLOAD_KEY] ?? null);
