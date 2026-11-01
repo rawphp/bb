@@ -2,6 +2,7 @@
 
 use App\Domain\Macros\CarbBoundsWarning;
 use App\Domain\Macros\DayTarget;
+use App\Domain\Macros\MacroTargets;
 use App\Domain\Macros\PlannedDay;
 use App\Domain\Macros\TargetRecommendation;
 use App\Domain\Macros\TargetRefusal;
@@ -97,6 +98,15 @@ it('NUT-012 fat floor per kg lean mass binds', function () {
 
     expect($week->leanMassKg)->toEqualWithDelta(79.2, F::ACC)
         ->and($week->days[0]->fatG)->toEqualWithDelta(52.272, F::ACC);
+});
+
+it('NUT-010 leanMassKg is the bucket lean mass week() works from, whatever body fat was measured', function () {
+    expect(MacroTargets::leanMassKg(F::profile()))->toEqualWithDelta(F::base()->leanMassKg, F::ACC)
+        ->and(MacroTargets::leanMassKg(F::profile()))->toEqualWithDelta(73.35, F::ACC) // 90 x (1 - 0.185)
+        ->and(MacroTargets::leanMassKg(F::profile(bucket: BodyFatBucket::Lowest)))->toEqualWithDelta(79.2, F::ACC);
+    // A measured 15% gives week() 90 x 0.85 = 76.5 kg; leanMassKg() takes no measurement and stays on the bucket.
+    expect(F::targets(bodyFatPercent: 15)->leanMassKg)->toEqualWithDelta(76.5, F::ACC)
+        ->and(MacroTargets::leanMassKg(F::profile()))->toEqualWithDelta(73.35, F::ACC);
 });
 
 // NUT-013 carbs take the remainder

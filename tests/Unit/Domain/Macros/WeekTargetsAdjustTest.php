@@ -208,3 +208,13 @@ it('NUT-016 zero change leaves the week alone', function () {
     $base = F::base();
     expect($base->adjusted(byKcalPerDay: 0, profile: F::profile()))->toEqual($base);
 });
+
+it('NUT-020 an empty week has no targets and adjusts to itself', function () {
+    $empty = F::targets(days: []);
+
+    expect($empty->days)->toBe([])
+        ->and($empty->weeklyKcal())->toEqualWithDelta(0, F::ACC)
+        ->and($empty->dailyAverageKcal())->toEqualWithDelta(0, F::ACC)
+        ->and($empty->adjusted(-100, F::profile()))->toBe($empty)
+        ->and($empty->adjusted(100, F::profile()))->toBe($empty);
+});

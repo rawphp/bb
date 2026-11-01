@@ -120,7 +120,10 @@ final class MacroTargets
         return null;
     }
 
-    /** The lean mass week() works from: weight less the bucket's body fat. */
+    /**
+     * The lean mass week() works from when no body fat was measured: weight less the bucket's body fat.
+     * It takes no measurement, so it differs from week(bodyFatPercent: ...)'s lean mass when one was given.
+     */
     public static function leanMassKg(Profile $profile): float
     {
         return $profile->weightKg * (1 - self::bucketBodyFatPercent($profile) / 100);
