@@ -229,3 +229,28 @@ it('PLAN-008 a plan week keeps its own day count, and an empty week has no days'
         ->and($empty->days())->toBe([])
         ->and($empty->end())->toBeNull();
 });
+
+it('PLAN-008 a plan week across a daylight-saving change keeps its zone, one day per calendar date at local midnight', function () {
+    $zone = new DateTimeZone('America/New_York');
+    $week = new PlanWeek(start: new DateTimeImmutable('2026-03-08 12:00', $zone));
+
+    expect(array_map(fn (DateTimeImmutable $day) => $day->format('Y-m-d H:i e'), $week->days()))->toBe([
+        '2026-03-08 00:00 America/New_York',
+        '2026-03-09 00:00 America/New_York',
+        '2026-03-10 00:00 America/New_York',
+        '2026-03-11 00:00 America/New_York',
+        '2026-03-12 00:00 America/New_York',
+        '2026-03-13 00:00 America/New_York',
+        '2026-03-14 00:00 America/New_York',
+    ]);
+});
+
+it('PLAN-008 the current review day is the last change chosen, even before its first day', function () {
+    $later = modelDate()->modify('+14 days');
+    $plan = new Plan(
+        id: 'plan-1', start: modelDate(), reviewWeekday: 2, phases: [],
+        reviewDayChanges: [new ReviewDayChange(from: modelDate(), weekday: 6), new ReviewDayChange(from: $later, weekday: 3)],
+    );
+
+    expect($plan->currentReviewWeekday())->toBe(3);
+});

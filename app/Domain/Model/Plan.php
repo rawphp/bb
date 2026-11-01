@@ -21,7 +21,11 @@ final readonly class Plan
         public array $reviewDayChanges = [],
     ) {}
 
-    /** The review day now in force. */
+    /**
+     * The review day the user chose last: the last change's weekday, even before that change's `from` date, as
+     * rp-clone's PLAN-008 rules expect straight after a change. Which day starts a given week is the plan-week grid's
+     * answer, from each change's `from`.
+     */
     public function currentReviewWeekday(): int
     {
         $changes = $this->reviewDayChanges;

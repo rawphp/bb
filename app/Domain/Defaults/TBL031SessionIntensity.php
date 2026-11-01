@@ -29,6 +29,6 @@ final class TBL031SessionIntensity
     /** This many working sets make it Moderate. */
     public static function moderateSets(): ClosedRange
     {
-        return new ClosedRange(10, 19);
+        return new ClosedRange(self::LIGHT_BELOW_SETS, self::HARD_FROM_SETS - 1);
     }
 }

@@ -64,6 +64,7 @@ it('MEAL-047 off target, calories decide under or over', function (float $kcal, 
     [1100, 60, 30, 150, MealCheckInState::Over],
     'protein over and carbs under, calories under' => [700, 70, 21, 60, MealCheckInState::Under],
     'protein under and carbs over, calories over' => [850, 40, 21, 130, MealCheckInState::Over],
+    'calories exactly on target with a macro off is over' => [780, 40, 21, 130, MealCheckInState::Over],
 ]);
 
 it('MEAL-047 each state has its own label', function () {
