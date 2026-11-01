@@ -1,0 +1,1763 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "step": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "number": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 14
+                },
+                "key": {
+                    "type": "string",
+                    "enum": [
+                        "goal",
+                        "about_you",
+                        "screening",
+                        "glp1",
+                        "body_fat",
+                        "rate_length",
+                        "experience",
+                        "training_days",
+                        "training_plan",
+                        "steps",
+                        "meals",
+                        "weigh_ins",
+                        "calories",
+                        "review"
+                    ]
+                },
+                "title": {
+                    "type": "string"
+                },
+                "counter": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "next_title": {
+                    "type": "string"
+                },
+                "can_continue": {
+                    "type": "boolean"
+                },
+                "continue_hint": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "can_go_back": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "number",
+                "key",
+                "title",
+                "counter",
+                "position",
+                "total",
+                "next_title",
+                "can_continue",
+                "can_go_back"
+            ]
+        },
+        "training_only": {
+            "type": "boolean"
+        },
+        "notices": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "tone": {
+                        "type": "string",
+                        "enum": [
+                            "good",
+                            "neutral",
+                            "warning",
+                            "info"
+                        ]
+                    }
+                },
+                "required": [
+                    "text",
+                    "tone"
+                ]
+            }
+        },
+        "goal": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "help": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string"
+                            },
+                            "is_selected": {
+                                "type": "boolean"
+                            },
+                            "is_enabled": {
+                                "type": "boolean"
+                            },
+                            "badges": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        },
+                                        "tone": {
+                                            "type": "string",
+                                            "enum": [
+                                                "good",
+                                                "neutral",
+                                                "warning",
+                                                "info"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "text",
+                                        "tone"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "title",
+                            "detail",
+                            "is_selected",
+                            "is_enabled",
+                            "badges"
+                        ]
+                    }
+                },
+                "recent_diet": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "question": {
+                            "type": "string"
+                        },
+                        "detail": {
+                            "type": "string"
+                        },
+                        "answer": {
+                            "type": [
+                                "boolean",
+                                "null"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "question",
+                        "detail"
+                    ]
+                },
+                "advice": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        },
+                        "action_title": {
+                            "type": "string"
+                        },
+                        "action_goal": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "action_title",
+                        "action_goal"
+                    ]
+                }
+            },
+            "required": [
+                "help",
+                "options",
+                "recent_diet"
+            ]
+        },
+        "about_you": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "sex_options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string"
+                            },
+                            "is_selected": {
+                                "type": "boolean"
+                            },
+                            "is_enabled": {
+                                "type": "boolean"
+                            },
+                            "badges": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        },
+                                        "tone": {
+                                            "type": "string",
+                                            "enum": [
+                                                "good",
+                                                "neutral",
+                                                "warning",
+                                                "info"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "text",
+                                        "tone"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "title",
+                            "detail",
+                            "is_selected",
+                            "is_enabled",
+                            "badges"
+                        ]
+                    }
+                },
+                "birth_date": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "date": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date"
+                        },
+                        "text": {
+                            "type": "string"
+                        },
+                        "initial": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "min": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date"
+                        },
+                        "max": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date"
+                        },
+                        "is_locked": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "initial",
+                        "is_locked"
+                    ]
+                },
+                "height": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "unit": {
+                            "type": "string",
+                            "enum": [
+                                "cm",
+                                "feetInches"
+                            ]
+                        },
+                        "unit_options": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "detail": {
+                                        "type": "string"
+                                    },
+                                    "is_selected": {
+                                        "type": "boolean"
+                                    },
+                                    "is_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "badges": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "text": {
+                                                    "type": "string"
+                                                },
+                                                "tone": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "good",
+                                                        "neutral",
+                                                        "warning",
+                                                        "info"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "text",
+                                                "tone"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "title",
+                                    "detail",
+                                    "is_selected",
+                                    "is_enabled",
+                                    "badges"
+                                ]
+                            }
+                        },
+                        "cm": {
+                            "type": [
+                                "number",
+                                "null"
+                            ]
+                        },
+                        "feet": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "inches": {
+                            "type": [
+                                "number",
+                                "null"
+                            ]
+                        },
+                        "text": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "unit",
+                        "unit_options",
+                        "text"
+                    ]
+                },
+                "weight": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "unit": {
+                            "type": "string",
+                            "enum": [
+                                "kg",
+                                "lb"
+                            ]
+                        },
+                        "unit_options": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "title": {
+                                        "type": "string"
+                                    },
+                                    "detail": {
+                                        "type": "string"
+                                    },
+                                    "is_selected": {
+                                        "type": "boolean"
+                                    },
+                                    "is_enabled": {
+                                        "type": "boolean"
+                                    },
+                                    "badges": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "text": {
+                                                    "type": "string"
+                                                },
+                                                "tone": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "good",
+                                                        "neutral",
+                                                        "warning",
+                                                        "info"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "text",
+                                                "tone"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "title",
+                                    "detail",
+                                    "is_selected",
+                                    "is_enabled",
+                                    "badges"
+                                ]
+                            }
+                        },
+                        "value": {
+                            "type": [
+                                "number",
+                                "null"
+                            ]
+                        },
+                        "text": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "unit",
+                        "unit_options",
+                        "text"
+                    ]
+                }
+            },
+            "required": [
+                "name",
+                "sex_options",
+                "birth_date",
+                "height",
+                "weight"
+            ]
+        },
+        "screening": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "prompt": {
+                    "type": "string"
+                },
+                "clearance_note": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        },
+                        "tone": {
+                            "type": "string",
+                            "enum": [
+                                "good",
+                                "neutral",
+                                "warning",
+                                "info"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "tone"
+                    ]
+                },
+                "medical_diets_note": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        },
+                        "tone": {
+                            "type": "string",
+                            "enum": [
+                                "good",
+                                "neutral",
+                                "warning",
+                                "info"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "tone"
+                    ]
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "item": {
+                                "type": "string"
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string"
+                            },
+                            "is_on": {
+                                "type": "boolean"
+                            },
+                            "is_locked": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "item",
+                            "label",
+                            "detail",
+                            "is_on",
+                            "is_locked"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "prompt",
+                "clearance_note",
+                "medical_diets_note",
+                "rows"
+            ]
+        },
+        "glp1": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "question": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": "string"
+                },
+                "answer": {
+                    "type": [
+                        "boolean",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "question",
+                "detail"
+            ]
+        },
+        "body_fat": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "help": {
+                    "type": "string"
+                },
+                "sex": {
+                    "type": "string",
+                    "enum": [
+                        "male",
+                        "female"
+                    ]
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string"
+                            },
+                            "is_selected": {
+                                "type": "boolean"
+                            },
+                            "is_enabled": {
+                                "type": "boolean"
+                            },
+                            "badges": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        },
+                                        "tone": {
+                                            "type": "string",
+                                            "enum": [
+                                                "good",
+                                                "neutral",
+                                                "warning",
+                                                "info"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "text",
+                                        "tone"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "title",
+                            "detail",
+                            "is_selected",
+                            "is_enabled",
+                            "badges"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "help",
+                "sex",
+                "options"
+            ]
+        },
+        "rate_length": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string"
+                            },
+                            "is_selected": {
+                                "type": "boolean"
+                            },
+                            "is_enabled": {
+                                "type": "boolean"
+                            },
+                            "badges": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        },
+                                        "tone": {
+                                            "type": "string",
+                                            "enum": [
+                                                "good",
+                                                "neutral",
+                                                "warning",
+                                                "info"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "text",
+                                        "tone"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "title",
+                            "detail",
+                            "is_selected",
+                            "is_enabled",
+                            "badges"
+                        ]
+                    }
+                },
+                "is_custom": {
+                    "type": "boolean"
+                },
+                "custom_rate": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "value": {
+                            "type": "number"
+                        },
+                        "min": {
+                            "type": "number"
+                        },
+                        "max": {
+                            "type": "number"
+                        },
+                        "step": {
+                            "type": "number"
+                        },
+                        "text": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "min",
+                        "max",
+                        "step",
+                        "text"
+                    ]
+                },
+                "weeks": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "value": {
+                            "type": "number"
+                        },
+                        "min": {
+                            "type": "number"
+                        },
+                        "max": {
+                            "type": "number"
+                        },
+                        "step": {
+                            "type": "number"
+                        },
+                        "text": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "min",
+                        "max",
+                        "step",
+                        "text"
+                    ]
+                },
+                "recommended_text": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "date": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date"
+                        },
+                        "text": {
+                            "type": "string"
+                        },
+                        "initial": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "min": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date"
+                        },
+                        "max": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date"
+                        },
+                        "is_locked": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "initial",
+                        "is_locked"
+                    ]
+                },
+                "last_day": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "date": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date"
+                        },
+                        "text": {
+                            "type": "string"
+                        },
+                        "initial": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "min": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date"
+                        },
+                        "max": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "format": "date"
+                        },
+                        "is_locked": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "initial",
+                        "is_locked"
+                    ]
+                },
+                "target_weight": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "value": {
+                            "type": [
+                                "number",
+                                "null"
+                            ]
+                        },
+                        "unit": {
+                            "type": "string"
+                        },
+                        "text": {
+                            "type": "string"
+                        },
+                        "can_edit": {
+                            "type": "boolean"
+                        },
+                        "note": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "unit",
+                        "text",
+                        "can_edit",
+                        "note"
+                    ]
+                }
+            },
+            "required": [
+                "options",
+                "is_custom",
+                "custom_rate",
+                "weeks",
+                "recommended_text",
+                "start_date",
+                "last_day",
+                "target_weight"
+            ]
+        },
+        "experience": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string"
+                            },
+                            "is_selected": {
+                                "type": "boolean"
+                            },
+                            "is_enabled": {
+                                "type": "boolean"
+                            },
+                            "badges": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        },
+                                        "tone": {
+                                            "type": "string",
+                                            "enum": [
+                                                "good",
+                                                "neutral",
+                                                "warning",
+                                                "info"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "text",
+                                        "tone"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "title",
+                            "detail",
+                            "is_selected",
+                            "is_enabled",
+                            "badges"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "options"
+            ]
+        },
+        "training_days": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "help": {
+                    "type": "string"
+                },
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "weekday": {
+                                "type": "integer"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "full_name": {
+                                "type": "string"
+                            },
+                            "is_on": {
+                                "type": "boolean"
+                            },
+                            "start": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "minutes": {
+                                        "type": "integer"
+                                    },
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "minutes",
+                                    "text"
+                                ]
+                            },
+                            "length_minutes": {
+                                "type": "integer"
+                            },
+                            "length_text": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "weekday",
+                            "name",
+                            "full_name",
+                            "is_on",
+                            "start",
+                            "length_minutes",
+                            "length_text"
+                        ]
+                    }
+                },
+                "length_min": {
+                    "type": "integer"
+                },
+                "length_max": {
+                    "type": "integer"
+                },
+                "length_step": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "help",
+                "days",
+                "length_min",
+                "length_max",
+                "length_step"
+            ]
+        },
+        "training_plan": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "note": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string"
+                            },
+                            "is_selected": {
+                                "type": "boolean"
+                            },
+                            "is_enabled": {
+                                "type": "boolean"
+                            },
+                            "badges": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        },
+                                        "tone": {
+                                            "type": "string",
+                                            "enum": [
+                                                "good",
+                                                "neutral",
+                                                "warning",
+                                                "info"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "text",
+                                        "tone"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "title",
+                            "detail",
+                            "is_selected",
+                            "is_enabled",
+                            "badges"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "note",
+                "options"
+            ]
+        },
+        "steps": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "note": {
+                    "type": "string"
+                },
+                "presets": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "min": {
+                                "type": "integer"
+                            },
+                            "max": {
+                                "type": "integer"
+                            },
+                            "title": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "min",
+                            "max",
+                            "title"
+                        ]
+                    }
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "key": {
+                                "type": "string",
+                                "enum": [
+                                    "weekdays",
+                                    "weekends"
+                                ]
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "weekdays": {
+                                "type": "array"
+                            },
+                            "is_mixed": {
+                                "type": "boolean"
+                            },
+                            "min": {
+                                "type": "integer"
+                            },
+                            "max": {
+                                "type": "integer"
+                            },
+                            "text": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "key",
+                            "title",
+                            "weekdays",
+                            "is_mixed",
+                            "min",
+                            "max",
+                            "text"
+                        ]
+                    }
+                },
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "weekday": {
+                                "type": "integer"
+                            },
+                            "full_name": {
+                                "type": "string"
+                            },
+                            "min": {
+                                "type": "integer"
+                            },
+                            "max": {
+                                "type": "integer"
+                            },
+                            "text": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "weekday",
+                            "full_name",
+                            "min",
+                            "max",
+                            "text"
+                        ]
+                    }
+                },
+                "increment": {
+                    "type": "integer"
+                },
+                "max_steps": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "note",
+                "presets",
+                "groups",
+                "days",
+                "increment",
+                "max_steps"
+            ]
+        },
+        "meals": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "first_meal": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "minutes": {
+                            "type": "integer"
+                        },
+                        "text": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "minutes",
+                        "text"
+                    ]
+                },
+                "last_meal": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "minutes": {
+                            "type": "integer"
+                        },
+                        "text": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "minutes",
+                        "text"
+                    ]
+                },
+                "window_note": {
+                    "type": "string"
+                },
+                "meal_count": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "value": {
+                            "type": "number"
+                        },
+                        "min": {
+                            "type": "number"
+                        },
+                        "max": {
+                            "type": "number"
+                        },
+                        "step": {
+                            "type": "number"
+                        },
+                        "text": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "min",
+                        "max",
+                        "step",
+                        "text"
+                    ]
+                },
+                "busy_note": {
+                    "type": "string"
+                },
+                "busy_periods": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "start": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "minutes": {
+                                        "type": "integer"
+                                    },
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "minutes",
+                                    "text"
+                                ]
+                            },
+                            "end": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "minutes": {
+                                        "type": "integer"
+                                    },
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "minutes",
+                                    "text"
+                                ]
+                            },
+                            "weekdays": {
+                                "type": "array"
+                            },
+                            "weekdays_text": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "label",
+                            "start",
+                            "end",
+                            "weekdays",
+                            "weekdays_text"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "first_meal",
+                "last_meal",
+                "window_note",
+                "meal_count",
+                "busy_note",
+                "busy_periods"
+            ]
+        },
+        "weigh_ins": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "weekday": {
+                                "type": "integer"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "full_name": {
+                                "type": "string"
+                            },
+                            "is_on": {
+                                "type": "boolean"
+                            },
+                            "time": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "minutes": {
+                                        "type": "integer"
+                                    },
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "minutes",
+                                    "text"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "weekday",
+                            "name",
+                            "full_name",
+                            "is_on",
+                            "time"
+                        ]
+                    }
+                },
+                "time_note": {
+                    "type": "string"
+                },
+                "hint": {
+                    "type": "string"
+                },
+                "review_note": {
+                    "type": "string"
+                },
+                "review_days": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string"
+                            },
+                            "is_selected": {
+                                "type": "boolean"
+                            },
+                            "is_enabled": {
+                                "type": "boolean"
+                            },
+                            "badges": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        },
+                                        "tone": {
+                                            "type": "string",
+                                            "enum": [
+                                                "good",
+                                                "neutral",
+                                                "warning",
+                                                "info"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "text",
+                                        "tone"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "title",
+                            "detail",
+                            "is_selected",
+                            "is_enabled",
+                            "badges"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "days",
+                "time_note",
+                "hint",
+                "review_note",
+                "review_days"
+            ]
+        },
+        "calories": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string"
+                            },
+                            "is_selected": {
+                                "type": "boolean"
+                            },
+                            "is_enabled": {
+                                "type": "boolean"
+                            },
+                            "badges": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        },
+                                        "tone": {
+                                            "type": "string",
+                                            "enum": [
+                                                "good",
+                                                "neutral",
+                                                "warning",
+                                                "info"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "text",
+                                        "tone"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "title",
+                            "detail",
+                            "is_selected",
+                            "is_enabled",
+                            "badges"
+                        ]
+                    }
+                },
+                "own_kcal": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "own_kcal_max": {
+                    "type": "integer"
+                },
+                "own_unit": {
+                    "type": "string"
+                },
+                "week_note": {
+                    "type": "string"
+                },
+                "week": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "kcal_text": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "kcal_text"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "options",
+                "own_kcal_max",
+                "own_unit",
+                "week_note",
+                "week"
+            ]
+        },
+        "review": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "sections": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "title": {
+                                "type": "string"
+                            },
+                            "can_edit": {
+                                "type": "boolean"
+                            },
+                            "edit_step": {
+                                "type": "integer"
+                            },
+                            "rows": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "label": {
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "type": "string"
+                                        },
+                                        "badges": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "text": {
+                                                        "type": "string"
+                                                    },
+                                                    "tone": {
+                                                        "type": "string",
+                                                        "enum": [
+                                                            "good",
+                                                            "neutral",
+                                                            "warning",
+                                                            "info"
+                                                        ]
+                                                    }
+                                                },
+                                                "required": [
+                                                    "text",
+                                                    "tone"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "label",
+                                        "value",
+                                        "badges"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "title",
+                            "can_edit",
+                            "edit_step",
+                            "rows"
+                        ]
+                    }
+                },
+                "note": {
+                    "type": "string"
+                },
+                "starting_title": {
+                    "type": "string"
+                },
+                "starting_text": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "sections",
+                "note",
+                "starting_title",
+                "starting_text"
+            ]
+        }
+    },
+    "required": [
+        "step",
+        "training_only",
+        "notices",
+        "goal",
+        "about_you",
+        "screening",
+        "glp1",
+        "body_fat",
+        "rate_length",
+        "experience",
+        "training_days",
+        "training_plan",
+        "steps",
+        "meals",
+        "weigh_ins",
+        "calories",
+        "review"
+    ]
+}
