@@ -8,3 +8,6 @@ parameters:
         - bootstrap/app.php
         - routes
         - tests/Support
+    # Per checkout: a shared /tmp/phpstan cache made by another (since removed)
+    # checkout breaks analysis with "stub is not a file".
+    tmpDir: storage/framework/cache/phpstan
