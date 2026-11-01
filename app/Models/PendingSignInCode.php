@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * The one live emailed sign-in code for a user (ACC-001). Sending a new code replaces it.
@@ -25,5 +26,11 @@ class PendingSignInCode extends Model
             'failed_tries' => 'integer',
             'issued_at' => 'immutable_datetime',
         ];
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

@@ -41,3 +41,10 @@ it('ACC-001 makes six-digit codes, keeping leading zeros', function () {
         expect(SignInCodeCheck::newCode())->toMatch('/^\d{6}$/');
     }
 });
+
+it('ACC-001 sends a new code only a minute after the last one', function () {
+    $issuedAt = CarbonImmutable::parse('2026-11-01 09:00:00');
+
+    expect(SignInCodeCheck::canResend($issuedAt, $issuedAt->addSeconds(59)))->toBeFalse()
+        ->and(SignInCodeCheck::canResend($issuedAt, $issuedAt->addSeconds(60)))->toBeTrue();
+});

@@ -14,7 +14,9 @@ final class CodeSignInController
         Auth::login($redeem(
             $request->string('email')->value(),
             $request->string('code')->value(),
+            (string) $request->ip(),
         ));
+        // Belt and braces: SessionGuard::login() already regenerated the session.
         $request->session()->regenerate();
 
         return response()->noContent();

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domain\Account\EmailAddress;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -23,9 +24,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // The sign-in code and reset routes send mail: three per address in ten minutes.
-        RateLimiter::for('auth-mail', fn (Request $request) => Limit::perMinutes(10, 3)
-            ->by('auth-mail|'.mb_strtolower((string) $request->input('email'))));
+        // The sign-in code and reset routes send mail: three per route, address and IP in ten minutes.
+        // No count is shared across IPs, so a stranger cannot use up the owner's sends. The inbox is
+        // kept from floods by one code a minute (SendSignInCode) and the broker's one link a minute.
+        RateLimiter::for('auth-mail', fn (Request $request) => Limit::perMinutes(10, 3)->by(
+            $request->route()?->getName().'|'.EmailAddress::normalise((string) $request->input('email')).'|'.$request->ip(),
+        ));
 
         // The reset link opens the PWA, which posts the token to /reset-password.
         ResetPassword::createUrlUsing(fn (object $user, string $token) => config('app.url').'/reset-password?'

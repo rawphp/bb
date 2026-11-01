@@ -2,14 +2,12 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Http\Requests\Auth\Concerns\NormalisesEmail;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class CodeSignInRequest extends FormRequest
 {
-    protected function prepareForValidation(): void
-    {
-        $this->merge(['email' => mb_strtolower((string) $this->input('email'))]);
-    }
+    use NormalisesEmail;
 
     /** @return array<string, list<string>> */
     public function rules(): array
