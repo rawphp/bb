@@ -24,6 +24,17 @@ it('matches an empty list against a list of items', function () use ($fixture) {
     expect(ScreenFixture::differences($fixture, [...$fixture, 'meals' => []]))->toBe([]);
 });
 
+it('matches null against any type, in either direction', function () use ($fixture) {
+    $payload = [
+        'title' => null,
+        'calories' => ['value' => 2400, 'unit' => 'kcal'],
+        'meals' => [['name' => 'A', 'done' => null]],
+        'note' => 'Plan this meal before you eat it',
+    ];
+
+    expect(ScreenFixture::differences($fixture, $payload))->toBe([]);
+});
+
 it('names each key that is missing, extra or of another type', function () use ($fixture) {
     $payload = [
         'title' => 7,

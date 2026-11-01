@@ -1,0 +1,38 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "mesocycle_id": {
+            "type": "string"
+        },
+        "week": {
+            "type": "integer"
+        },
+        "day": {
+            "type": "integer"
+        },
+        "choice": {
+            "type": "string",
+            "enum": [
+                "do_it_today",
+                "next_rest_day",
+                "skip"
+            ]
+        },
+        "date": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The day it moves to, from the prompt's choice.",
+            "format": "date"
+        }
+    },
+    "required": [
+        "mesocycle_id",
+        "week",
+        "day",
+        "choice"
+    ]
+}

@@ -1,0 +1,28 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "meal_id": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "source_date": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "date"
+        },
+        "shown_date": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The destination day shown; defaults to the source's day.",
+            "format": "date"
+        }
+    }
+}

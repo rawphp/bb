@@ -1,0 +1,1292 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "date": {
+            "type": "string",
+            "format": "date"
+        },
+        "title": {
+            "type": "string",
+            "description": "\"Monday, Nov 2\""
+        },
+        "banners": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "tone": {
+                        "type": "string",
+                        "enum": [
+                            "good",
+                            "neutral",
+                            "warning",
+                            "info"
+                        ]
+                    }
+                },
+                "required": [
+                    "text",
+                    "tone"
+                ]
+            },
+            "description": "ONB-031 \"Your plan starts Thu, Apr 23\"."
+        },
+        "review_available": {
+            "type": "boolean",
+            "description": "REV-001: the review card shows."
+        },
+        "next_mesocycle": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "mesocycle_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string",
+                    "description": "\"Build your next mesocycle\""
+                },
+                "start_text": {
+                    "type": "string",
+                    "description": "\"Starts Monday, Nov 9\""
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "route": {
+                                "type": "string",
+                                "enum": [
+                                    "copy_previous",
+                                    "template",
+                                    "builder"
+                                ]
+                            },
+                            "label": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "route",
+                            "label"
+                        ]
+                    }
+                },
+                "active_rest": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        },
+                        "start_text": {
+                            "type": "string",
+                            "description": "The start once active rest is on: \"Starts Monday, Nov 16\"."
+                        },
+                        "start_date": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "start_text",
+                        "start_date"
+                    ],
+                    "description": "Offered when a week of active rest is recommended."
+                }
+            },
+            "required": [
+                "mesocycle_id",
+                "title",
+                "start_text",
+                "options"
+            ]
+        },
+        "totals": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "day_type": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        },
+                        "tone": {
+                            "type": "string",
+                            "enum": [
+                                "good",
+                                "neutral",
+                                "warning",
+                                "info"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "tone"
+                    ],
+                    "description": "\"Hard\", \"Deload\"…"
+                },
+                "status": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        },
+                        "tone": {
+                            "type": "string",
+                            "enum": [
+                                "good",
+                                "neutral",
+                                "warning",
+                                "info"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "tone"
+                    ],
+                    "description": "\"On track\", \"315 under\""
+                },
+                "calories": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "label": {
+                            "type": "string",
+                            "description": "\"Calories\""
+                        },
+                        "value_text": {
+                            "type": "string",
+                            "description": "\"1,850 / 2,400 kcal\""
+                        },
+                        "fraction": {
+                            "type": "number",
+                            "description": "0 to 1."
+                        },
+                        "tone": {
+                            "type": "string",
+                            "enum": [
+                                "good",
+                                "neutral",
+                                "warning",
+                                "info"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "label",
+                        "value_text",
+                        "fraction",
+                        "tone"
+                    ]
+                },
+                "protein": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "label": {
+                            "type": "string",
+                            "description": "\"Calories\""
+                        },
+                        "value_text": {
+                            "type": "string",
+                            "description": "\"1,850 / 2,400 kcal\""
+                        },
+                        "fraction": {
+                            "type": "number",
+                            "description": "0 to 1."
+                        },
+                        "tone": {
+                            "type": "string",
+                            "enum": [
+                                "good",
+                                "neutral",
+                                "warning",
+                                "info"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "label",
+                        "value_text",
+                        "fraction",
+                        "tone"
+                    ]
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ]
+                    },
+                    "description": "SAFE-018 nutrient warnings."
+                },
+                "can_redistribute": {
+                    "type": "boolean",
+                    "description": "DAY-002: the wand is on."
+                }
+            },
+            "required": [
+                "day_type",
+                "status",
+                "calories",
+                "protein",
+                "warnings",
+                "can_redistribute"
+            ],
+            "description": "null on a day with no target."
+        },
+        "steps": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "target_text": {
+                    "type": "string",
+                    "description": "\"Step count target 6-8k\""
+                },
+                "actual_text": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "\"5,432 steps\""
+                }
+            },
+            "required": [
+                "target_text"
+            ]
+        },
+        "timeline": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "weigh_in",
+                            "meal",
+                            "workout",
+                            "other_activity",
+                            "busy"
+                        ]
+                    },
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "kind",
+                    "id"
+                ]
+            }
+        },
+        "meals": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "time": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "24-hour \"HH:MM\"; null for a meal with no time."
+                    },
+                    "time_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "\"12:30 PM\""
+                    },
+                    "condensed_time_text": {
+                        "type": "string",
+                        "description": "The condensed card's line (SCH-007): \"12:30 PM · 512 kcal\"."
+                    },
+                    "macros": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "kcal": {
+                                "type": "string",
+                                "description": "\"512 kcal\""
+                            },
+                            "protein": {
+                                "type": "string",
+                                "description": "\"P 40\""
+                            },
+                            "fat": {
+                                "type": "string",
+                                "description": "\"F 12\""
+                            },
+                            "carbs": {
+                                "type": "string",
+                                "description": "\"C 60\""
+                            },
+                            "label": {
+                                "type": "string",
+                                "description": "The line read aloud: \"512 kcal, 40 grams protein, 12 grams fat, 60 grams carbs\"."
+                            }
+                        },
+                        "required": [
+                            "kcal",
+                            "protein",
+                            "fat",
+                            "carbs",
+                            "label"
+                        ]
+                    },
+                    "planned_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "\"Oats 80 g · Chili 1.5 servings\"; null when nothing is planned."
+                    },
+                    "eaten_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "\"Eaten: 500 kcal, 40 g protein\"; null before a check-in."
+                    },
+                    "plan_banner": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "SCH-008: \"Plan this meal before you eat it\"."
+                    },
+                    "badges": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                },
+                                "tone": {
+                                    "type": "string",
+                                    "enum": [
+                                        "good",
+                                        "neutral",
+                                        "warning",
+                                        "info"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "text",
+                                "tone"
+                            ]
+                        },
+                        "description": "DAY-003 \"Adjust foods\", shown on the condensed card too."
+                    },
+                    "check_in": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "state": {
+                                "type": "string",
+                                "enum": [
+                                    "not_checked_in",
+                                    "on_track",
+                                    "under",
+                                    "over"
+                                ]
+                            },
+                            "label": {
+                                "type": "string",
+                                "description": "\"Checked in, on track\"."
+                            },
+                            "blocked_message": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "Why the box cannot be ticked yet (MEAL-045); null when it can."
+                            },
+                            "manual": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "time": {
+                                        "type": "string",
+                                        "description": "24-hour \"HH:MM\"."
+                                    },
+                                    "kcal": {
+                                        "type": "number"
+                                    },
+                                    "protein_g": {
+                                        "type": "number"
+                                    },
+                                    "fat_g": {
+                                        "type": "number"
+                                    },
+                                    "carbs_g": {
+                                        "type": "number"
+                                    }
+                                },
+                                "required": [
+                                    "time",
+                                    "kcal",
+                                    "protein_g",
+                                    "fat_g",
+                                    "carbs_g"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "state",
+                            "label",
+                            "manual"
+                        ]
+                    },
+                    "menu": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "action": {
+                                    "type": "string",
+                                    "enum": [
+                                        "edit_macros_time",
+                                        "load_saved_meal",
+                                        "save_as_saved_meal",
+                                        "copy_foods",
+                                        "remove_foods",
+                                        "check_in_meal",
+                                        "check_in_manual",
+                                        "remove_check_in",
+                                        "still_planning",
+                                        "done_planning",
+                                        "delete_meal"
+                                    ]
+                                },
+                                "label": {
+                                    "type": "string"
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "action",
+                                "label",
+                                "enabled"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "condensed_time_text",
+                    "macros",
+                    "badges",
+                    "check_in",
+                    "menu"
+                ]
+            }
+        },
+        "workouts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The timeline entry's id; a day holds one session (SCH-038)."
+                    },
+                    "mesocycle_id": {
+                        "type": "string"
+                    },
+                    "week": {
+                        "type": "integer"
+                    },
+                    "day": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "\"Week 3 · Day 2 · Upper A\""
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "\"Upper A\", the condensed card's title."
+                    },
+                    "time": {
+                        "type": "string",
+                        "description": "24-hour \"HH:MM\", what the time sheet opens with."
+                    },
+                    "time_text": {
+                        "type": "string",
+                        "description": "\"5:30 PM\""
+                    },
+                    "condensed_time_text": {
+                        "type": "string",
+                        "description": "\"5:30 PM · 55 min\""
+                    },
+                    "summary_text": {
+                        "type": "string",
+                        "description": "\"55 min · 5 exercises · 18 sets\""
+                    },
+                    "exercises": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "sets_text": {
+                                    "type": "string",
+                                    "description": "\"4 sets\""
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "sets_text"
+                            ]
+                        }
+                    },
+                    "state": {
+                        "type": "string",
+                        "enum": [
+                            "planned",
+                            "started",
+                            "done",
+                            "skipped"
+                        ]
+                    },
+                    "status_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "\"Done\" or \"Skipped\"; null while Start shows."
+                    },
+                    "completed": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ],
+                        "description": "\"16 of 18 sets completed\" once done."
+                    },
+                    "menu": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "action": {
+                                    "type": "string",
+                                    "enum": [
+                                        "change_time",
+                                        "move_day"
+                                    ]
+                                },
+                                "label": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "action",
+                                "label"
+                            ]
+                        }
+                    },
+                    "move_days": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "date": {
+                                    "type": "string",
+                                    "format": "date"
+                                },
+                                "label": {
+                                    "type": "string",
+                                    "description": "\"Thu, Nov 5\""
+                                },
+                                "enabled": {
+                                    "type": "boolean"
+                                },
+                                "note": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "Why the day is not offered."
+                                }
+                            },
+                            "required": [
+                                "date",
+                                "label",
+                                "enabled"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "mesocycle_id",
+                    "week",
+                    "day",
+                    "title",
+                    "name",
+                    "time",
+                    "time_text",
+                    "condensed_time_text",
+                    "summary_text",
+                    "exercises",
+                    "state",
+                    "menu",
+                    "move_days"
+                ]
+            }
+        },
+        "weigh_ins": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "time_text": {
+                        "type": "string"
+                    },
+                    "weight_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "\"82.4 kg\" in the user's unit; null shows \"Add weigh-in\"."
+                    }
+                },
+                "required": [
+                    "id",
+                    "time_text"
+                ]
+            }
+        },
+        "other_activities": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "time_text": {
+                        "type": "string",
+                        "description": "\"6:00 PM · 45 min\""
+                    },
+                    "intensity_text": {
+                        "type": "string",
+                        "description": "\"Moderate\""
+                    },
+                    "menu": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "action": {
+                                    "type": "string",
+                                    "enum": [
+                                        "edit",
+                                        "delete"
+                                    ]
+                                },
+                                "label": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "action",
+                                "label"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "time_text",
+                    "intensity_text",
+                    "menu"
+                ]
+            }
+        },
+        "busy_periods": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "time_text": {
+                        "type": "string",
+                        "description": "\"9:00 AM – 5:00 PM\""
+                    }
+                },
+                "required": [
+                    "id",
+                    "label",
+                    "time_text"
+                ]
+            }
+        },
+        "off_plan": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "time_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "macros": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "kcal": {
+                                "type": "string",
+                                "description": "\"512 kcal\""
+                            },
+                            "protein": {
+                                "type": "string",
+                                "description": "\"P 40\""
+                            },
+                            "fat": {
+                                "type": "string",
+                                "description": "\"F 12\""
+                            },
+                            "carbs": {
+                                "type": "string",
+                                "description": "\"C 60\""
+                            },
+                            "label": {
+                                "type": "string",
+                                "description": "The line read aloud: \"512 kcal, 40 grams protein, 12 grams fat, 60 grams carbs\"."
+                            }
+                        },
+                        "required": [
+                            "kcal",
+                            "protein",
+                            "fat",
+                            "carbs",
+                            "label"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "macros"
+                ]
+            }
+        },
+        "schedule_menu": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": [
+                            "add_meal",
+                            "add_workout",
+                            "add_busy_period",
+                            "copy_day",
+                            "copy_week",
+                            "optimize_schedule",
+                            "edit_schedule"
+                        ]
+                    },
+                    "label": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "action",
+                    "label"
+                ]
+            }
+        },
+        "add_meal_time": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "SCH-031: the time Add meal opens at, 24-hour \"HH:MM\"; null on a past day."
+        },
+        "add_workout": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "session": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "mesocycle_id": {
+                            "type": "string"
+                        },
+                        "week": {
+                            "type": "integer"
+                        },
+                        "day": {
+                            "type": "integer"
+                        },
+                        "title": {
+                            "type": "string"
+                        },
+                        "time_text": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "mesocycle_id",
+                        "week",
+                        "day",
+                        "title",
+                        "time_text"
+                    ]
+                },
+                "session_message": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Why no session is offered: \"No session left to move this week\"."
+                },
+                "activity": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "start": {
+                            "type": "string",
+                            "description": "24-hour \"HH:MM\"."
+                        },
+                        "minutes": {
+                            "type": "integer"
+                        },
+                        "intensity": {
+                            "type": "string",
+                            "enum": [
+                                "light",
+                                "moderate",
+                                "hard"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "id",
+                        "name",
+                        "start",
+                        "minutes",
+                        "intensity"
+                    ]
+                }
+            },
+            "description": "null on a past day (NUT-024)."
+        },
+        "schedule": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "apply_to": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "string",
+                                "enum": [
+                                    "this_day",
+                                    "all_future_days"
+                                ]
+                            },
+                            "label": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "label"
+                        ]
+                    }
+                },
+                "this_day": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "window_start": {
+                            "type": "string",
+                            "description": "24-hour \"HH:MM\"."
+                        },
+                        "window_end": {
+                            "type": "string"
+                        },
+                        "meal_count": {
+                            "type": "integer"
+                        },
+                        "busy_periods": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "label": {
+                                        "type": "string"
+                                    },
+                                    "start": {
+                                        "type": "string",
+                                        "description": "24-hour \"HH:MM\"."
+                                    },
+                                    "end": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "label",
+                                    "start",
+                                    "end"
+                                ]
+                            }
+                        },
+                        "training_start": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "description": "null on a day without training."
+                        }
+                    },
+                    "required": [
+                        "window_start",
+                        "window_end",
+                        "meal_count",
+                        "busy_periods"
+                    ]
+                },
+                "all_future_days": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "window_start": {
+                            "type": "string",
+                            "description": "24-hour \"HH:MM\"."
+                        },
+                        "window_end": {
+                            "type": "string"
+                        },
+                        "meal_count": {
+                            "type": "integer"
+                        },
+                        "busy_periods": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "label": {
+                                        "type": "string"
+                                    },
+                                    "start": {
+                                        "type": "string",
+                                        "description": "24-hour \"HH:MM\"."
+                                    },
+                                    "end": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "label",
+                                    "start",
+                                    "end"
+                                ]
+                            }
+                        },
+                        "training_start": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "description": "null on a day without training."
+                        }
+                    },
+                    "required": [
+                        "window_start",
+                        "window_end",
+                        "meal_count",
+                        "busy_periods"
+                    ]
+                },
+                "training_weekdays": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "iso": {
+                                "type": "integer",
+                                "description": "1 is Monday."
+                            },
+                            "label": {
+                                "type": "string",
+                                "description": "\"Mon\""
+                            },
+                            "selected": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "iso",
+                            "label",
+                            "selected"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "apply_to",
+                "this_day",
+                "all_future_days",
+                "training_weekdays"
+            ],
+            "description": "null before the profile exists."
+        },
+        "missed_session": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "mesocycle_id": {
+                    "type": "string"
+                },
+                "week": {
+                    "type": "integer"
+                },
+                "day": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "choices": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "choice": {
+                                "type": "string",
+                                "enum": [
+                                    "do_it_today",
+                                    "next_rest_day",
+                                    "skip"
+                                ]
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "date": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "The day the session moves to; null for Skip.",
+                                "format": "date"
+                            }
+                        },
+                        "required": [
+                            "choice",
+                            "label"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "mesocycle_id",
+                "week",
+                "day",
+                "title",
+                "text",
+                "choices"
+            ]
+        },
+        "missed_weeks": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "mesocycle_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "can_restart": {
+                    "type": "boolean"
+                },
+                "end_warning": {
+                    "type": "string"
+                },
+                "offers_diet_break": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "mesocycle_id",
+                "title",
+                "text",
+                "can_restart",
+                "end_warning",
+                "offers_diet_break"
+            ]
+        }
+    },
+    "required": [
+        "date",
+        "title",
+        "banners",
+        "review_available",
+        "timeline",
+        "meals",
+        "workouts",
+        "weigh_ins",
+        "other_activities",
+        "busy_periods",
+        "off_plan",
+        "schedule_menu"
+    ]
+}

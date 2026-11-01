@@ -6,6 +6,7 @@ namespace Tests\Support;
  * Compares a read capability's payload with its screen fixture by shape:
  * the same keys and the same JSON types at every depth. Values are free.
  * Every item of a list is compared with the fixture's first item.
+ * Null matches any type, as nullable fields differ between items and states.
  */
 final class ScreenFixture
 {
@@ -26,6 +27,12 @@ final class ScreenFixture
     {
         $expected = self::type($fixture);
         $actual = self::type($payload);
+
+        // A nullable field holds null on one side and a value on the other.
+        // The schema snapshot decides which fields may be null.
+        if ($expected === 'null' || $actual === 'null') {
+            return [];
+        }
 
         if ($expected !== $actual) {
             return ["{$path}: expected {$expected}, got {$actual}"];

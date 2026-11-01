@@ -1,0 +1,52 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "date": {
+            "type": "string",
+            "format": "date"
+        },
+        "mode": {
+            "type": "string",
+            "enum": [
+                "meals",
+                "days"
+            ]
+        },
+        "kcal": {
+            "type": "integer"
+        },
+        "from_meal_id": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "to_meal_id": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "other_date": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "date"
+        },
+        "direction": {
+            "type": "string",
+            "enum": [
+                "give",
+                "take"
+            ]
+        }
+    },
+    "required": [
+        "date",
+        "mode",
+        "kcal"
+    ]
+}
