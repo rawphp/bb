@@ -8,3 +8,5 @@ parameters:
         - bootstrap/app.php
         - routes
         - tests/Support
+    # Per checkout: the shared system temp cache leaks between worktrees.
+    tmpDir: %currentWorkingDirectory%/storage/framework/cache/phpstan
