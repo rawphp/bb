@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\MuscleGroup;
+use App\Domain\Model\MuscleGroup;
 use App\Models\MuscleFeedback;
 use App\Models\WorkoutSession;
 use Illuminate\Database\Eloquent\Factories\Factory;

@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\DayType;
+use App\Domain\Model\DayType;
 use App\Models\DayTarget;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;

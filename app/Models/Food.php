@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\FoodFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
@@ -15,7 +16,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 /**
  * A food, per 100 g (raw for foods that change weight when cooked). Imported foods have no user;
  * a custom food (FOOD-060) belongs to the user who made it, with source and kind `custom`.
+ * The owner, source and curation columns are not fillable: whoever creates the row sets them by name.
  */
+#[Fillable([
+    'name', 'brand', 'barcode', 'kcal', 'protein', 'fat', 'carbs', 'fiber', 'cooked_ratio', 'custom_serving',
+    ...self::DIETS,
+])]
 class Food extends Model
 {
     /** @use HasFactory<FoodFactory> */
@@ -28,8 +34,6 @@ class Food extends Model
 
     /** FOOD-060: the units a custom food's serving can be measured in. */
     public const SERVING_UNITS = ['g', 'cup', 'tbsp', 'tsp', 'piece'];
-
-    protected $guarded = [];
 
     /** @return HasMany<FoodServing, $this> */
     public function servings(): HasMany

@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\MuscleGroup;
+use App\Domain\Model\MuscleGroup;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\MuscleFeedbackFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;

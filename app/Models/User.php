@@ -36,6 +36,12 @@ class User extends Authenticatable
         });
     }
 
+    /** The early deletes and the user row go together, or neither does. */
+    public function delete(): ?bool
+    {
+        return DB::transaction(fn () => parent::delete());
+    }
+
     /**
      * Get the attributes that should be cast.
      *

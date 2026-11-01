@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use App\Enums\Equipment;
-use App\Enums\LoadType;
-use App\Enums\MuscleGroup;
+use App\Domain\Model\Equipment;
+use App\Domain\Model\ExerciseLoadType;
+use App\Domain\Model\MuscleGroup;
 use App\Enums\SfrRating;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\ExerciseFactory;
@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 
 /** A library exercise, or a user's custom one when it has a user. */
 #[Fillable([
-    'user_id', 'name', 'muscle_group', 'equipment', 'load_type', 'sfr_rating',
+    'name', 'muscle_group', 'equipment', 'load_type', 'sfr_rating',
     'rep_range_min', 'rep_range_max', 'is_compound', 'video_url',
 ])]
 class Exercise extends Model
@@ -30,7 +30,7 @@ class Exercise extends Model
         return [
             'muscle_group' => MuscleGroup::class,
             'equipment' => Equipment::class,
-            'load_type' => LoadType::class,
+            'load_type' => ExerciseLoadType::class,
             'sfr_rating' => SfrRating::class,
             'rep_range_min' => 'integer',
             'rep_range_max' => 'integer',

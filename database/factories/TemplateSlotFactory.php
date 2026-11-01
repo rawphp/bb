@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\MuscleGroup;
+use App\Domain\Model\MuscleGroup;
 use App\Models\Exercise;
 use App\Models\Template;
 use App\Models\TemplateSlot;

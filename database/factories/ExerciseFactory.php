@@ -2,9 +2,9 @@
 
 namespace Database\Factories;
 
-use App\Enums\Equipment;
-use App\Enums\LoadType;
-use App\Enums\MuscleGroup;
+use App\Domain\Model\Equipment;
+use App\Domain\Model\ExerciseLoadType;
+use App\Domain\Model\MuscleGroup;
 use App\Enums\SfrRating;
 use App\Models\Exercise;
 use App\Models\User;
@@ -20,7 +20,7 @@ class ExerciseFactory extends Factory
             'name' => fake()->unique()->words(3, true),
             'muscle_group' => fake()->randomElement(MuscleGroup::cases()),
             'equipment' => fake()->randomElement(Equipment::cases()),
-            'load_type' => fake()->randomElement(LoadType::cases()),
+            'load_type' => fake()->randomElement(ExerciseLoadType::cases()),
             'sfr_rating' => fake()->randomElement(SfrRating::cases()),
             'rep_range_min' => 10,
             'rep_range_max' => 20,

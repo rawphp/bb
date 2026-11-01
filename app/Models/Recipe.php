@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * A recipe built from foods (RCP-001); a library recipe when it has no user (RCP-020).
  * A deleted recipe is only hidden: the meals it was planned in keep their copy (PlannedRecipe).
  */
-#[Fillable(['user_id', 'slug', 'name', 'servings', 'meal_type', 'instructions'])]
+#[Fillable(['slug', 'name', 'servings', 'meal_type', 'instructions'])]
 class Recipe extends Model
 {
     /** @use HasFactory<RecipeFactory> */

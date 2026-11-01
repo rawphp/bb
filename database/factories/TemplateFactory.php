@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Enums\MuscleGroup;
-use App\Enums\MusclePriority;
+use App\Domain\Model\MuscleGroup;
+use App\Domain\Model\Priority;
 use App\Enums\PhaseFit;
 use App\Enums\SexFit;
 use App\Enums\Split;
@@ -22,7 +22,7 @@ class TemplateFactory extends Factory
             'sex' => SexFit::Any,
             'phase_fit' => [PhaseFit::Maintain],
             'priorities' => collect(MuscleGroup::cases())
-                ->mapWithKeys(fn (MuscleGroup $muscle) => [$muscle->value => MusclePriority::Maintain->value])
+                ->mapWithKeys(fn (MuscleGroup $muscle) => [$muscle->value => Priority::Maintain->value])
                 ->all(),
             'day_labels' => ['Day 1', 'Day 2', 'Day 3'],
         ];

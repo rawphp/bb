@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\MuscleGroup;
+use App\Domain\Model\MuscleGroup;
 use Database\Factories\TemplateSlotFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

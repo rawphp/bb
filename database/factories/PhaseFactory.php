@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Enums\PhaseType;
+use App\Domain\Model\PhaseType;
 use App\Models\Phase;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;

@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\PhaseType;
+use App\Domain\Model\PhaseType;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\PhaseFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,18 +12,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-/** A phase on the plan timeline (PLAN-001). */
+/**
+ * A phase on the plan timeline (PLAN-001). A soft-deleted phase keeps its mesocycles' phase_id, so a restore
+ * re-links them; `Mesocycle::phase` hides a trashed phase meanwhile. A force delete nulls phase_id
+ * through the foreign key.
+ */
 #[Fillable(['type', 'start_date', 'end_date', 'target_rate_percent_per_week', 'event_date'])]
 class Phase extends Model
 {
     /** @use HasFactory<PhaseFactory> */
     use BelongsToUser, HasFactory, HasUuids, SoftDeletes;
-
-    /** A deleted phase leaves its mesocycles, as the foreign key's nullOnDelete would. */
-    protected static function booted(): void
-    {
-        static::deleted(fn (Phase $phase) => Mesocycle::where('phase_id', $phase->id)->update(['phase_id' => null]));
-    }
 
     /** @return HasMany<Mesocycle, $this> */
     public function mesocycles(): HasMany
