@@ -1,0 +1,61 @@
+{
+    "slug": "rir",
+    "title": "Reps in reserve (RIR)",
+    "blocks": [
+        {
+            "kind": "paragraph",
+            "spans": [
+                {
+                    "text": "RIR means reps in reserve: how many more good reps you could have done when you stopped a set. The app lowers your target RIR week by week, so you work harder as the block goes on.",
+                    "bold": false,
+                    "italic": false
+                }
+            ]
+        },
+        {
+            "kind": "heading",
+            "spans": [
+                {
+                    "text": "What the numbers mean",
+                    "bold": false,
+                    "italic": false
+                }
+            ]
+        },
+        {
+            "kind": "bullet",
+            "spans": [
+                {
+                    "text": "3 RIR:",
+                    "bold": true,
+                    "italic": false
+                },
+                {
+                    "text": " you stopped with 3 reps left in the tank.",
+                    "bold": false,
+                    "italic": false
+                }
+            ]
+        },
+        {
+            "kind": "bullet",
+            "spans": [
+                {
+                    "text": "0 RIR:",
+                    "bold": true,
+                    "italic": false
+                },
+                {
+                    "text": " you hit your limit. ",
+                    "bold": false,
+                    "italic": false
+                },
+                {
+                    "text": "No more clean reps.",
+                    "bold": false,
+                    "italic": true
+                }
+            ]
+        }
+    ]
+}

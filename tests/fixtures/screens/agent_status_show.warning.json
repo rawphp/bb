@@ -1,0 +1,14 @@
+{
+    "available": true,
+    "on": true,
+    "status": {
+        "text": "On",
+        "tone": "good"
+    },
+    "usage": {
+        "text": "3 of 50 messages left today",
+        "tone": "warning"
+    },
+    "note": "The Coach can read your plan, meals, workouts and progress, and make the same changes you can, showing each one with Undo. It asks before anything it cannot undo. It cannot delete your account, make access tokens or change your subscription.",
+    "has_conversation": true
+}
