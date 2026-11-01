@@ -3,6 +3,9 @@ includes:
 
 parameters:
     level: 6
+    # Each checkout keeps its own cache, so a cache left by a deleted
+    # checkout cannot point PHPStan at files that are gone.
+    tmpDir: storage/framework/cache/phpstan
     paths:
         - app
         - bootstrap/app.php
