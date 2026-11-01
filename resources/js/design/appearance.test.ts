@@ -1,7 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyStoredAppearance, setAppearance, storedAppearance } from './appearance';
 
 const root = document.documentElement;
+
+// The page head sets the stored appearance before the first paint (app.blade.php).
+const layout = readFileSync(join(import.meta.dirname, '../../views/app.blade.php'), 'utf8');
+const headScript = layout.match(/<script>([\s\S]*?)<\/script>/)?.[1] ?? '';
 
 describe('appearance', () => {
     afterEach(() => {
@@ -60,6 +66,28 @@ describe('appearance', () => {
         expect(root.dataset.appearance).toBe('dark');
 
         setAppearance('system');
+        expect(root.dataset.appearance).toBeUndefined();
+    });
+
+    it('PLT-005 the page head applies the stored override before the app script loads', () => {
+        expect(layout.indexOf(headScript)).toBeLessThan(layout.indexOf('@vite'));
+
+        localStorage.setItem('appearance', 'dark');
+        new Function(headScript)();
+        expect(root.dataset.appearance).toBe('dark');
+
+        delete root.dataset.appearance;
+        localStorage.setItem('appearance', 'sepia');
+        new Function(headScript)();
+        expect(root.dataset.appearance).toBeUndefined();
+    });
+
+    it('PLT-005 the page head script survives blocked site storage', () => {
+        vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
+            throw new DOMException('The operation is insecure.', 'SecurityError');
+        });
+
+        expect(() => new Function(headScript)()).not.toThrow();
         expect(root.dataset.appearance).toBeUndefined();
     });
 });

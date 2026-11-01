@@ -3,6 +3,9 @@
  * Macro.swift, StatusTone.swift and Tokens+SwiftUI.swift. Each colour is
  * light-dark(light, dark): the page follows the system, and the stored
  * appearance (SET-002, design/appearance.ts) pins it through data-appearance.
+ * The production build lowers light-dark() to --lightningcss-light/-dark
+ * fallbacks, so browsers without it keep the colours and the switch
+ * (tokens.build.test.ts).
  */
 :root {
     color-scheme: light dark;
