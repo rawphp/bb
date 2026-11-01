@@ -8,3 +8,6 @@ parameters:
         - bootstrap/app.php
         - routes
         - tests/Support
+    # Per checkout: the default /tmp/phpstan is shared by every worktree on a host, and a cache
+    # left by a removed worktree breaks analysis with "…stub is not a file".
+    tmpDir: storage/framework/cache/phpstan
