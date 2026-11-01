@@ -3,11 +3,11 @@ includes:
 
 parameters:
     level: 6
+    # Per checkout: the default /tmp/phpstan is shared by every worktree on a machine,
+    # and a cache written by one checkout's vendor breaks analysis in another.
+    tmpDir: storage/framework/cache/phpstan
     paths:
         - app
         - bootstrap/app.php
         - routes
         - tests/Support
-    # Per checkout: a shared /tmp/phpstan cache made by another (since removed)
-    # checkout breaks analysis with "stub is not a file".
-    tmpDir: storage/framework/cache/phpstan
