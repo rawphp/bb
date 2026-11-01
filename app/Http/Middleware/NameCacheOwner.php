@@ -34,12 +34,15 @@ final class NameCacheOwner
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Read before $next: EncryptCookies, further in, can't decrypt this plain
+        // cookie and sets it to null on the same request.
+        $sent = $request->cookies->get(self::COOKIE);
         $response = $next($request);
 
         $user = $request->user();
         $owner = $user instanceof User ? self::owner($user) : null;
 
-        if ($owner !== $request->cookies->get(self::COOKIE)) {
+        if ($owner !== $sent) {
             $response->headers->setCookie($owner === null
                 ? Cookie::create(self::COOKIE)->withExpires(1)->withHttpOnly(false)
                 : Cookie::create(self::COOKIE, $owner, now()->addDays(self::DAYS))
