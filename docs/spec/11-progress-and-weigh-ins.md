@@ -4,11 +4,18 @@
 
 - **WT-001** [D] The weigh-in schedule must be days of the week with a time each, at least 2 days a week. The time sets the reminder only.
 - **WT-002** [D] Users must be able to log a weigh-in from Today, the Weigh-ins screen, or the reminder notification.
-- **WT-003** [D] Weigh-ins from a smart scale through Apple Health or Health Connect must import automatically with their time.
+- **WT-003** [D][B] Weigh-ins posted by the Shortcuts bridge (INT-001) must import with their time and the source `shortcut`. *Bodybuilder: a PWA cannot read Apple Health or Health Connect directly.*
 - **WT-004** [D] The Weigh-ins screen (More menu) must list every weigh-in by date, mark missed scheduled weigh-ins in orange, and allow editing and deleting.
 - **WT-005** [D] Help text must say to weigh first thing in the morning, after the bathroom, in minimal clothing, and that single readings bounce around and only the trend matters.
 - **WT-006** [D] Users must be able to log weigh-ins on unscheduled days. Extra readings improve the trend.
 - **WT-007** [D] The weigh-in schedule must allow several entries, each a set of weekdays with a time. The entry sheet has Select all days and Delete schedule. Delete is blocked when it would leave fewer than 2 weigh-in days a week.
+
+## Steps and waist (WT)
+
+From mesoprep. rp-clone read steps only from Apple Health.
+
+- **WT-020** [B] Users must be able to log a day's step count by hand, from Today (the step row, SCH-011) and the Weigh-ins screen. Today offers yesterday's steps by default, since the day's count isn't final until it ends. A typed value (source `manual`) is never overwritten by the Shortcuts bridge; a bridge value (source `shortcut`) is replaced by a newer bridge value for the same day.
+- **WT-021** [B] A weigh-in may carry an optional waist measurement (cm, shown in the height unit's family: cm or in). Waist has its own line on the Progress chart once 4 readings exist. It never changes a target.
 
 ## Trend weight (WT)
 

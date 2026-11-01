@@ -12,7 +12,7 @@ It is a phone-first web app you install to your home screen. It works offline in
 - **Every action is a capability.** Built on [`rawphp/laravel-capabilities`](https://github.com/rawphp/laravel-capabilities). The app, the in-app agent, MCP clients and the `capabilities` CLI all call the same operations under the same rules.
 - **Offline by design.** Screens are cached; actions queue in an outbox and replay when you're back online.
 - **Agent optional.** Add an Anthropic API key to turn on the Coach ([`rawphp/laravel-capabilities-ai`](https://github.com/rawphp/laravel-capabilities-ai)). Without one, the app is complete.
-- **Self-hosted and free.** Billing is an optional Stripe module for anyone running a paid instance.
+- **Self-host it free, or use the hosted version.** Both run the same public code. Billing is a Stripe module that only the hosted version turns on.
 
 ## Stack
 

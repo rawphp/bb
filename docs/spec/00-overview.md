@@ -17,7 +17,7 @@ Neither old app's code is copied. The rules are ported and the screens are rebui
 | Rules in Swift (`RPCore/Domain`, about 9,000 lines) with a thin API | Every rule on the server. The client only displays | 15-capabilities.md, architecture.md |
 | Offline out of scope | Offline in scope: cached screens plus a write outbox | 16-offline.md |
 | No AI coach | Optional agent that can do everything the user can | 17-agent.md |
-| App Store subscription | No billing by default. Optional Stripe module for a hosted instance | SUB |
+| App Store subscription | Self-hosted: no billing. Hosted version: Stripe | SUB |
 | Sign in with Apple, Google, email and password | Email and password, plus email one-time code | ACC-001 |
 | Apple Health reads and writes | Manual entry, plus an optional iOS Shortcut that posts weight and steps | INT |
 | Steps only from Apple Health | Steps can be typed in (from mesoprep) | WT-020 |
@@ -79,7 +79,12 @@ Plan (one per user, a timeline)
                  └─ Meals  (targets, foods, check-ins)
 ```
 
-The four integration rules (the phase sets both halves, workouts feed nutrition, deloads and diet breaks are the same week, one weekly review reads both halves) are in rp-clone's overview and stay in force. Each one is a requirement in files 03 to 10.
+Four rules, from rp-clone, hold the two halves together. Each one is a requirement later in the spec.
+
+1. **The phase sets both halves.** Fat loss sets every muscle to Emphasize, raises MEV, lowers the MRV ceiling and makes load steps smaller. Muscle gain allows specialisation. Maintenance means low-volume resensitization training. (PH, MESO, PROG)
+2. **Workouts feed nutrition.** Planned workouts, with their times and lengths, appear on the day's schedule. How hard a day is comes from the session's planned sets. That sets the day's calories and puts carbs before and after the session. Moving, skipping or finishing a workout re-targets the meals still to come. (SCH, NUT)
+3. **Deloads and diet breaks are the same week.** Every deload week runs at maintenance calories, and in a cut that makes it a diet break. Choosing a diet break in the weekly review offers to turn that week into a deload. (PLAN, REV)
+4. **One weekly review reads both halves.** Weight trend, food adherence, training performance and recovery feedback are judged together. When lifts fall during a cut, the app asks about diet fatigue before it cuts volume. (REV)
 
 Bodybuilder adds three rules of its own:
 
@@ -115,10 +120,10 @@ Each milestone ships something usable. The agent comes after the capabilities it
 
 | # | Ships | Requirements |
 |---|---|---|
-| M0 | Laravel 13 app, auth, the capability rail, screen cache and outbox, app shell (tabs, sheets, transitions), design system gallery, time-walk clock | ACC, CAP, OFF-001 to OFF-012, PWA, UI, NAV, VIEW design rows |
+| M0 | Laravel 13 app, auth, the capability rail, screen cache and outbox, app shell (tabs, sheets, transitions), design system gallery, time-walk clock, self-hosting guide | ACC, CAP, OFF-002 to OFF-012, OFF-051, PWA, UI, NAV, VIEW (design system and shell rows) |
 | M1 | Onboarding (stepper), screening, plan and phases, Today with week strip | SAFE, ONB, PLAN, PH, SCH (placement only) |
-| M2 | Training: templates, Meso Builder, workouts, feedback, progression, offline workout | MESO, EX, WO, FB, PROG, OFF-020 to OFF-024 |
-| M3 | Nutrition: targets, food search and scan, meals, check-ins, Day Balance, recipes, shopping | NUT, FOOD, MEAL, DAY, RCP, SHOP, rest of SCH |
+| M2 | Training: templates, Meso Builder, workouts, feedback, progression, offline workout | MESO, EX, WO, FB, PROG, OFF-020 to OFF-023, OFF-050 |
+| M3 | Nutrition: targets, food search and scan, meals, check-ins, Day Balance, recipes, shopping | NUT, FOOD, MEAL, DAY, RCP, SHOP, rest of SCH, OFF-030, OFF-031 |
 | M4 | Weekly review, weigh-ins, steps, Progress tab, notifications, Learn | REV, WT, ANA, NOTIF, LRN, SET |
 | M5 | The agent: chat, agent onboarding, MCP | AGT |
 | M6 | Optional modules: Stripe billing, Shortcuts bridge | SUB, INT |
@@ -134,7 +139,8 @@ Bodybuilder (decided by Tom, 2026-11-01). Repo folder `~/EA/projects/bb`. No Git
 | Client | Vue 3 single-page app served by Laravel, not Inertia | Inertia needs a server round trip on every page visit, which rules out offline |
 | Where rules live | Only on the server | Tom's brief. It also means the agent, MCP and the UI can never disagree |
 | Offline model | Cached screens plus an outbox of capability calls. Offline, derived numbers show as pending | The only offline model with no rules in the browser (decided by Tom, 2026-11-01) |
-| Billing | None by default; optional Stripe module | OSS and self-hosted; a hosted instance may charge (decided by Tom, 2026-11-01) |
+| Distribution | Free to self-host, plus a paid hosted version run by the project, from the same public code | Decided by Tom, 2026-11-01. Hosted-only behaviour is configuration (SUB-023) |
+| Billing | Stripe module, off by default, on for the hosted version | Self-hosters pay nothing and see no paywall |
 | Health data | Typed in, or posted by an iOS Shortcut | A PWA cannot read HealthKit |
-| Agent | Optional; needs the instance's Anthropic key | The app must be fully usable without an LLM bill |
+| Agent | Optional; needs the instance's Anthropic key. Capped per user on the hosted version (AGT-005) | The app must be fully usable without an LLM bill |
 | Existing data | Fresh start | Decided by Tom, 2026-11-01 |

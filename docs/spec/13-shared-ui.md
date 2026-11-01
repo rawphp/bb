@@ -4,14 +4,14 @@ The two RP apps look and behave differently. Here, training and nutrition use th
 
 ## Navigation (NAV)
 
-- **NAV-001** [I] The bottom bar must have five tabs: Today, Train, Nutrition, Progress, More.
+- **NAV-001** [I][B] The bottom bar must have five tabs: Today, Train, Nutrition, Progress, More. When the agent is enabled (AGT-002), a Coach button sits above the tab bar on every tab and opens the chat as a full-height sheet. It is not a sixth tab.
   - **Today**: the day timeline (04-schedule.md). Home screen.
   - **Train**: Plan timeline at the top, then the current mesocycle, Mesocycles, Templates and Exercises.
   - **Nutrition**: today's meals in a list, the Pantry, Saved meals, Recipes and the Shopping list.
   - **Progress**: weight, phases, mesocycles and the review card.
   - **More**: the menu in SET-020.
 - **NAV-002** [I] Tapping a workout card on Today and opening today's session from Train must reach the same workout screen. Tapping a meal on Today or Nutrition must reach the same meal screen.
-- **NAV-003** Deferred, not in v1 (iPhone only). [H] On wide screens (web, iPad), the bottom bar becomes a left rail.
+- **NAV-003** Deferred. [H] On wide screens (web, iPad), the bottom bar becomes a left rail.
 - **NAV-004** [G] An active workout must show a pinned bar above the tab bar ("Upper A · 4 of 6 exercises") so the user can leave the workout and come back.
 
 ## Shared components (UI)
@@ -32,11 +32,11 @@ Where a component is shared, both meals and workouts must use it.
 
 ## Where the UI differs on purpose (UI)
 
-- **UI-020** [H] The workout screen must be optimised for the gym: large tap targets (at least 48 pt), numeric keypad for weight and reps, no swipe gestures that could fire by accident while holding weights.
+- **UI-020** [H] The workout screen must be optimised for the gym: large tap targets (at least 48 CSS px), numeric keypad for weight and reps, no swipe gestures that could fire by accident while holding weights.
 - **UI-021** [D] The meal screen keeps food search and the camera button at the top, since adding foods is the main task.
 - **UI-022** [H] The Feedback sheet must not close on a tap outside it, so answers aren't lost.
 
 ## Accessibility (UI)
 
-- **UI-030** [G] All text must support Dynamic Type and Android font scaling. All controls must have screen-reader labels. Colour must never be the only signal, so pills and bars also carry text.
+- **UI-030** [G][B] All text must scale with the browser's text size setting and page zoom up to 200% without clipping. On iPhone the root font size follows the system text size through `-apple-system-body`. All controls must have screen-reader labels. Colour must never be the only signal, so pills and bars also carry text.
 - **UI-031** [G] Contrast must meet WCAG AA in light and dark mode.

@@ -76,4 +76,4 @@ RP has a nutrition review in the Diet app and nothing weekly in Hypertrophy. Her
 
 ## Steps (REV)
 
-- **REV-050** [I][G] When Apple Health or Health Connect step data is available, the review must compare actual steps with the step plan. If the week's average differs by more than 2,000 a day, the review must offer to update the step plan, which changes future expenditure.
+- **REV-050** [I][G] When the week has step data (WT-020, INT-001), the review must compare actual steps with the step plan. If the week's average differs by more than 2,000 a day, the review must offer to update the step plan, which changes future expenditure.

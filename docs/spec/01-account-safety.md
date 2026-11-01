@@ -1,36 +1,47 @@
-# 01. Account, subscription, platforms and safety
+# 01. Account, billing, platforms and safety
 
 ## Account (ACC)
 
-- **ACC-001** [D][H] Users must be able to sign up and sign in with Apple, Google, or email and password.
+- **ACC-001** [D][H][B] Users must be able to sign up and sign in with email and password, or with a 6-digit one-time code sent by email. *Bodybuilder: Sign in with Apple and Google are dropped; both need an app-store identity or an OAuth app per self-hosted instance. Passkeys are a v2 candidate.*
 - **ACC-002** [I] One account must hold both nutrition and training data. Differs from RP: RP keeps the two apps on separate logins.
-- **ACC-003** [D] The account must sync across the user's devices. The More menu must show sync status, for example "Synced a few seconds ago".
+- **ACC-003** [D][B] The account must sync across the user's devices. The More menu must show sync status, for example "Synced a few seconds ago", or "3 changes waiting to sync" while the outbox is not empty (OFF-010).
 - **ACC-004** [G] Users must be able to reset a forgotten password by email.
 - **ACC-005** [G] Users must be able to delete their account and all data from Settings, with a typed confirmation.
 - **ACC-006** [D] Users must be able to sign out from Settings.
 
-## Subscription (SUB)
+## Billing (SUB)
+
+Bodybuilder ships two ways from one codebase: free to self-host, and a paid hosted version run by the project. Billing is a module, off unless `BILLING_ENABLED=true`. The hosted instance turns it on; a self-hosted instance leaves it off. With the module off, SUB-001 to SUB-011 do not apply and no paywall, price or banner appears anywhere (SUB-020). Hosted-only behaviour must be configuration, never a fork or a private branch (SUB-023).
+
+- **SUB-020** [B] With billing off, every feature must be available to every signed-in user, and no screen may mention a subscription.
+- **SUB-021** [B] With billing on, payments must go through Stripe Checkout and the Stripe customer portal. The server learns subscription state only from verified Stripe webhooks, never from the browser.
+- **SUB-022** [B] Lapsed-user write blocking (SUB-010) must be enforced once, in the capability authorizer (CAP-020), so it covers the UI, the agent, MCP and the CLI alike. Deleting the account, signing in and out, and billing actions stay allowed.
+- **SUB-023** [B] Everything the hosted version needs must be in the public repo behind configuration: billing, agent usage limits (AGT-005), the instance's Anthropic key, Web Push keys, mail. A self-hosted instance with the same settings behaves the same.
+- **SUB-024** [B] With billing on, the agent is part of the paid plan, and trial users get it too, within the trial's usage limit (AGT-005).
+
+With billing on, these apply:
+
 
 - **SUB-001** [I] One subscription must unlock every feature in the app. Differs from RP: RP sells Diet and Hypertrophy separately.
 - **SUB-002** [D][H] The app must offer monthly and yearly plans, and a 6-month plan. Prices are a business decision; draft 1 suggests $34.99 per month, $179.99 per 6 months and $299.99 per year [G].
 - **SUB-003** [G] New users must get a 7-day free trial, started after onboarding and before the first plan is generated.
 - **SUB-004** [D][G] The paywall must appear at the end of onboarding, showing the plan preview behind it, so the user sees what they are paying for.
-- **SUB-005** [D][H] Purchases must work through the App Store (StoreKit 2). Subscriptions are managed and refunded through the App Store. Google Play and website purchases are deferred.
-- **SUB-006** Deferred, not in v1 (iPhone only). [D][H] Website purchases must carry a 30-day money-back guarantee, limited to one refund per customer.
-- **SUB-007** [D] Users must be able to switch plans and cancel from Settings, which opens the App Store's manage-subscription sheet.
-- **SUB-008** [G] Users must be able to restore store purchases from Settings.
-- **SUB-009** [D] The app must support promo pricing (seasonal sale prices, referral and gym codes) without an app release.
+- **SUB-005** [D][H][B] Purchases must work through Stripe (SUB-021). *Bodybuilder: replaces the App Store. A PWA cannot use StoreKit.*
+- **SUB-006** Deferred. [D][H] Purchases must carry a 30-day money-back guarantee, limited to one refund per customer. *Bodybuilder: a business policy for whoever runs a hosted instance, handled in Stripe, not in code.*
+- **SUB-007** [D][B] Users must be able to switch plans and cancel from Settings, which opens the Stripe customer portal.
+- **SUB-008** Dropped. [G] Restore purchases is an App Store concept. A Stripe subscription belongs to the account, so there is nothing to restore.
+- **SUB-009** [D][B] The app must support promo pricing (seasonal sale prices, referral and gym codes) without a release, using Stripe coupons and promotion codes entered in Checkout.
 - **SUB-010** [G] When a subscription lapses, the app must keep all data and show it read-only until the user resubscribes.
-- **SUB-011** Deferred, not in v1 (iPhone only). [D][G] A website purchase must be matched to an account by the purchase email. When the signed-in email differs, the app must offer to link the purchase to the signed-in account.
+- **SUB-011** Dropped. [D][G] Checkout always starts from a signed-in account, so every purchase already belongs to one.
 
 ## Platforms (PLT)
 
-- **PLT-001** [D][H] The app must run on iPhone, iOS 17.6 or later. v1 is iPhone only. A small Laravel API holds accounts, sync, food search and the AI calls.
-- **PLT-002** Deferred, not in v1 (iPhone only). [H] The app must also run in a web browser, installable to the home screen, with full training and planning features.
-- **PLT-003** Deferred, not in v1 (iPhone only). [G] The web version must support food logging by search and custom food. Camera scanning (barcode, label, photo) is mobile only.
-- **PLT-004** [D] The iPhone app must also run on Apple-silicon Macs and on Apple Vision Pro as a compatible iPhone app.
+- **PLT-001** [B] The app must be a PWA that installs to the home screen and runs in standalone mode on iPhone (iOS 17.4 or later, Safari) and Android (Chrome 120 or later). The phone is the primary target. A Laravel 13 server holds every rule, all data, food search and the AI calls.
+- **PLT-002** [H][B] The same app must run in a desktop browser with full features. On wide screens the phone layout sits in a centred column up to 480 px wide (NAV-003 stays Deferred).
+- **PLT-003** [G][B] Food logging by search and custom food must work everywhere. Camera scanning (barcode, label, photo) uses the device camera where there is one, and otherwise offers a photo upload.
+- **PLT-004** Dropped. [D] Covered by PLT-002: any device with a modern browser runs the app.
 - **PLT-005** [D] The app must support light and dark mode, following the system setting with a manual override.
-- **PLT-006** Deferred, not in v1 (iPhone only). [G] Layouts must scale to iPad and wide browser windows without a separate tablet design. Differs from RP: RP has no iPad layout and users ask for one.
+- **PLT-006** Deferred. [G] Layouts must scale to iPad and wide browser windows without a separate tablet design. Differs from RP: RP has no iPad layout and users ask for one.
 
 ## Health screening (SAFE)
 
