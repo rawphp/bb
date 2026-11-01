@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppShellController;
 use App\Http\Controllers\Auth\CodeSignInController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\RegisterController;
@@ -25,3 +26,8 @@ Route::middleware(['guest', 'throttle:10,1'])->group(function (): void {
 });
 
 Route::post('/sign-out', SignOutController::class)->middleware('auth')->name('sign-out');
+
+// The Vue app shell answers every other GET, so the client router owns the path.
+// Capability, Sanctum, MCP and API paths are left to their own routes and 404s.
+Route::get('/', AppShellController::class);
+Route::fallback(AppShellController::class)->where('fallbackPlaceholder', '^(?!(capabilities|sanctum|mcp|api)(/|$)).*');

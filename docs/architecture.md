@@ -84,12 +84,14 @@ Parallel issues rely on these names.
 - Package defaults are overridden on day one, per `mesoprep/docs/capabilities-host-lessons-learned.md` section 3, item 14: see 17-agent.md, "Setup defaults". Published config files use no `env()` calls inside closures, so `config:cache` works (lessons item 15).
 - Freeze tests from day one: registration smoke (every capability registers on its declared surfaces), schema snapshots, the UI and agent parity test (CAP-030), CLI map completeness, and `php artisan capabilities:integration-health` passing in CI.
 - Adding a capability: the DTO, the Action with its unit tests, the capability class, a schema snapshot. Nothing else.
+- Rails live in `app/Capabilities/Support/`. A definition starts from `HostDefinition::read($name)` or `HostDefinition::write($name, affects: [...])`. A write returns `WriteResult` (CAP-010), with read keys from `ReadKey` (CAP-017). The package catalog has no `affects` field, so each entry is a catalog tag `affects:<read name>` (CAP-011). Statuses use the `Tone` enum (CAP-018). Creates take the row's ULID through `UsesClientUlid`, and their input DTO declares it with Laravel's `ulid` rule (CAP-019). A freeze test checks that every `affects` entry names a registered read.
+- `HostBus` replaces the package's `CapabilityBus`. It rewords the package's own error messages in plain words (CAP-012) and answers an `Idempotency-Key` reused with different input with 422 instead of the package's 409 (CAP-014).
 
 ## Client
 
 - Vue 3, TypeScript, Vue Router, Tailwind CSS 4, Vite, `vite-plugin-pwa` (Workbox, `injectManifest`), `idb` for IndexedDB. No Pinia. App state is the read cache plus the outbox, both behind one module.
 - `app/call.ts` is the only way the app talks to the server. `read(name, input)` is stale-while-revalidate through the cache (OFF-003). `write(name, input)` adds to the outbox and returns once the entry is stored (OFF-006). Components never call `fetch`.
-- The CAP-001 boundary is checked in review and by a lint rule: `resources/js` may not import date math beyond formatting, and no component may compute a value from two server numbers.
+- The CAP-001 boundary: `resources/js` may not import date math beyond formatting, and no component may compute a value from two server numbers. The lint rule `no-business-rules` (`eslint/no-business-rules/README.md`) checks part of it: `fetch` outside `app/call.ts`, and arithmetic between two capability payload values inside `features/`. Review checks the rest, including date-math imports and arithmetic outside `features/`.
 - Vite dev server port **5283**, recorded in `~/EA/projects/AGENTS.md`. Local site `bodybuilder.test` through Herd.
 
 ## Walking through time
@@ -119,10 +121,11 @@ The `~/EA/projects/AGENTS.md` testing rules apply: unit first, thin feature test
   2. `pint --test`;
   3. `phpstan`;
   4. `pest --parallel`;
-  5. `vue-tsc --noEmit`;
-  6. `vitest run`;
-  7. `vite build`;
-  8. Playwright.
+  5. `eslint resources/js` (the CAP-001 rule `no-business-rules`, `eslint/no-business-rules/README.md`);
+  6. `vue-tsc --noEmit`;
+  7. `vitest run`;
+  8. `vite build`;
+  9. Playwright.
 
 ## Deployment
 

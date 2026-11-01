@@ -12,6 +12,7 @@ step ./vendor/bin/phpstan analyse --no-progress
 step ./vendor/bin/pest --parallel
 
 if [ -f package.json ]; then
+  step npx eslint resources/js
   step npx vue-tsc --noEmit
   step npx vitest run
   step npx vite build
