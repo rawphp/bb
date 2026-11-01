@@ -1,0 +1,65 @@
+<?php
+
+use App\Capabilities\Support\HostDefinition;
+use App\Capabilities\Support\WriteResult;
+use Rawphp\Capabilities\Registry\CapabilityRegistry;
+use Tests\Support\Fixtures\Rail\TallyInput;
+
+it('CAP-011 records a write\'s affects in its catalog entry', function () {
+    $definition = HostDefinition::write('workout_set_log', affects: ['workout_show', 'today_show', 'train_show'])
+        ->description('Log a set.')
+        ->cli('workout', 'set-log')
+        ->input(TallyInput::class)
+        ->run(fn () => new WriteResult(invalidates: []))
+        ->toDefinition();
+
+    expect(HostDefinition::affects($definition))->toBe(['workout_show', 'today_show', 'train_show'])
+        ->and($definition->tags)->toBe(['affects:workout_show', 'affects:today_show', 'affects:train_show']);
+});
+
+it('CAP-011 lists affects in the catalog the client reads', function () {
+    $registry = new CapabilityRegistry;
+    HostDefinition::write('weigh_in_log', affects: ['weigh_ins_show'])
+        ->description('Log a weigh-in.')
+        ->cli('weigh-in', 'log')
+        ->input(TallyInput::class)
+        ->run(fn () => new WriteResult(invalidates: []))
+        ->register($registry);
+
+    $entry = collect($registry->catalog()->listEnvelope()['capabilities'])->firstWhere('name', 'weigh_in_log');
+
+    expect($entry['tags'])->toBe(['affects:weigh_ins_show']);
+});
+
+it('CAP-011 refuses a write that affects no read', function () {
+    HostDefinition::write('weigh_in_log', affects: []);
+})->throws(InvalidArgumentException::class, 'weigh_in_log must list the reads it affects (CAP-011).');
+
+it('CAP-011 refuses an affects entry that is not a capability name', function () {
+    HostDefinition::write('weigh_in_log', affects: ['Weigh-ins']);
+})->throws(InvalidArgumentException::class, 'weigh_in_log affects "Weigh-ins", which is not a capability name.');
+
+it('CAP-010 gives a write the WriteResult output and every surface', function () {
+    $definition = HostDefinition::write('weigh_in_log', affects: ['weigh_ins_show'])->input(TallyInput::class)->toDefinition();
+
+    expect($definition->output)->toBe(WriteResult::class)
+        ->and($definition->readOnly)->toBeFalse()
+        ->and($definition->surfaces)->toBe(['http', 'job', 'mcp', 'cli']);
+});
+
+it('CAP-011 gives a read no affects', function () {
+    $definition = HostDefinition::read('weigh_ins_show')->toDefinition();
+
+    expect($definition->readOnly)->toBeTrue()
+        ->and($definition->surfaces)->toBe(['http', 'job', 'mcp', 'cli'])
+        ->and(HostDefinition::affects($definition))->toBe([]);
+});
+
+it('CAP-011 has every registered write declare what it affects', function () {
+    $silent = array_keys(array_filter(
+        app(CapabilityRegistry::class)->all(),
+        fn ($definition) => ! $definition->readOnly && HostDefinition::affects($definition) === [],
+    ));
+
+    expect($silent)->toBe([]);
+});
