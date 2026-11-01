@@ -3,6 +3,8 @@ includes:
 
 parameters:
     level: 6
+    # Per checkout, so a cache left in /tmp by another worktree's phpstan.phar cannot break this run.
+    tmpDir: storage/framework/cache/phpstan
     paths:
         - app
         - bootstrap/app.php
