@@ -67,6 +67,16 @@ describe('design tokens', () => {
         expect(css).toMatch(/:root\[data-appearance='dark'\]\s*\{\s*color-scheme:\s*dark;\s*\}/);
     });
 
+    it('PWA-040 every token is a Tailwind utility through @theme inline', () => {
+        const theme = css.match(/@theme inline\s*\{([^}]*)\}/)?.[1] ?? '';
+
+        for (const key of Object.keys(RP_CLONE)) {
+            expect(theme).toContain(`--color-${key}: var(--bb-${key});`);
+        }
+        expect(theme).toContain('--spacing-tap: var(--bb-min-tap);');
+        expect(theme).toContain('--font-sans: var(--bb-font);');
+    });
+
     it('PWA-040 the type stack is the system font', () => {
         expect(css).toMatch(/--bb-font:\s*-apple-system,\s*system-ui,/);
     });

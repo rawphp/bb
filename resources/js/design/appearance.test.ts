@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { applyStoredAppearance, setAppearance, storedAppearance } from './appearance';
 
 const root = document.documentElement;
 
 describe('appearance', () => {
     afterEach(() => {
+        vi.restoreAllMocks();
         localStorage.clear();
         delete root.dataset.appearance;
     });
@@ -43,6 +44,22 @@ describe('appearance', () => {
 
         expect(storedAppearance()).toBe('system');
         applyStoredAppearance();
+        expect(root.dataset.appearance).toBeUndefined();
+    });
+
+    it('SET-002 blocked site storage follows the system and still switches the page', () => {
+        vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
+            throw new DOMException('The operation is insecure.', 'SecurityError');
+        });
+
+        expect(storedAppearance()).toBe('system');
+        expect(() => applyStoredAppearance()).not.toThrow();
+        expect(root.dataset.appearance).toBeUndefined();
+
+        setAppearance('dark');
+        expect(root.dataset.appearance).toBe('dark');
+
+        setAppearance('system');
         expect(root.dataset.appearance).toBeUndefined();
     });
 });

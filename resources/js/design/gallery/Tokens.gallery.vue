@@ -11,9 +11,28 @@ function choose(value: Appearance): void {
     setAppearance(value);
 }
 
-const text = ['primary-text', 'secondary-text', 'accent'];
-const macros = ['calories', 'protein', 'fat', 'carbs'];
-const tones = ['good', 'neutral', 'warning', 'info'];
+// Whole class names, so Tailwind finds every token utility in this file.
+const grounds = [
+    { name: 'background', class: 'bg-background' },
+    { name: 'surface', class: 'bg-surface' },
+];
+const text = [
+    { name: 'primary-text', class: 'text-primary-text' },
+    { name: 'secondary-text', class: 'text-secondary-text' },
+    { name: 'accent', class: 'text-accent' },
+];
+const macros = [
+    { name: 'calories', class: 'text-macro-calories' },
+    { name: 'protein', class: 'text-macro-protein' },
+    { name: 'fat', class: 'text-macro-fat' },
+    { name: 'carbs', class: 'text-macro-carbs' },
+];
+const tones = [
+    { name: 'good', class: 'text-tone-good bg-tone-good-bg' },
+    { name: 'neutral', class: 'text-tone-neutral bg-tone-neutral-bg' },
+    { name: 'warning', class: 'text-tone-warning bg-tone-warning-bg' },
+    { name: 'info', class: 'text-tone-info bg-tone-info-bg' },
+];
 </script>
 
 <template>
@@ -33,10 +52,10 @@ const tones = ['good', 'neutral', 'warning', 'info'];
             </button>
         </div>
 
-        <div v-for="ground in ['background', 'surface']" :key="ground" class="rounded-lg p-4" :style="{ background: `var(--bb-${ground})` }">
-            <p v-for="name in text" :key="name" :style="{ color: `var(--bb-${name})` }">{{ name }} on {{ ground }}</p>
-            <p v-for="macro in macros" :key="macro" class="font-semibold" :style="{ color: `var(--bb-macro-${macro})` }">
-                {{ macro }}
+        <div v-for="ground in grounds" :key="ground.name" class="rounded-lg p-4" :class="ground.class">
+            <p v-for="t in text" :key="t.name" :class="t.class">{{ t.name }} on {{ ground.name }}</p>
+            <p v-for="macro in macros" :key="macro.name" class="font-semibold" :class="macro.class">
+                {{ macro.name }}
             </p>
         </div>
 
@@ -44,11 +63,11 @@ const tones = ['good', 'neutral', 'warning', 'info'];
             <span class="min-h-tap inline-flex items-center rounded-lg bg-accent px-4 text-on-accent">on-accent</span>
             <span
                 v-for="tone in tones"
-                :key="tone"
+                :key="tone.name"
                 class="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold"
-                :style="{ color: `var(--bb-tone-${tone})`, background: `var(--bb-tone-${tone}-bg)` }"
+                :class="tone.class"
             >
-                {{ tone }}
+                {{ tone.name }}
             </span>
         </div>
     </div>
