@@ -8,6 +8,7 @@ arch('app/Domain/Safety is plain PHP: no Eloquent, facades, clock or config')
         'Illuminate\Support\Carbon',
         'Carbon\Carbon',
         'now',
+        'today',
         'config',
         // Every PHP function that reads the clock when it is not handed a timestamp.
         'time',
