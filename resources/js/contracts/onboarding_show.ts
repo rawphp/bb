@@ -139,7 +139,7 @@ export interface OnboardingShowOutput {
   };
   body_fat: {
     help: string;
-    sex: "male" | "female";
+    sex?: ("male" | "female") | null;
     options: {
       value: string;
       title: string;

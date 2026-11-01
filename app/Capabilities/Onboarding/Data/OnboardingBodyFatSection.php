@@ -7,8 +7,8 @@ use Rawphp\Capabilities\Support\CapabilityData;
 
 /**
  * Step 5, body fat (ONB-007, TBL-001): the photo buckets for `sex`, leanest
- * first. `sex` is step 2's answer, and `female` until step 2 has one, as in
- * rp-clone (`draft.sex ?? .female`): the step always has buckets to show.
+ * first. `sex` is step 2's answer, null until there is one; the buckets are
+ * then the female ones, as in rp-clone (`draft.sex ?? .female`).
  */
 final class OnboardingBodyFatSection extends CapabilityData
 {
@@ -16,7 +16,7 @@ final class OnboardingBodyFatSection extends CapabilityData
     public function __construct(
         public readonly string $help,
         #[Field(enum: ['male', 'female'])]
-        public readonly string $sex,
+        public readonly ?string $sex,
         #[Field(items: OnboardingChoice::class)]
         public readonly array $options,
     ) {}

@@ -630,7 +630,10 @@
                     "type": "string"
                 },
                 "sex": {
-                    "type": "string",
+                    "type": [
+                        "string",
+                        "null"
+                    ],
                     "enum": [
                         "male",
                         "female"
@@ -696,7 +699,6 @@
             },
             "required": [
                 "help",
-                "sex",
                 "options"
             ]
         },
@@ -1671,7 +1673,9 @@
                                 "type": "boolean"
                             },
                             "edit_step": {
-                                "type": "integer"
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 13
                             },
                             "rows": {
                                 "type": "array",

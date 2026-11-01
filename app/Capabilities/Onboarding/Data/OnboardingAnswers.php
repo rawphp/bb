@@ -81,7 +81,7 @@ final class OnboardingAnswers extends CapabilityData
         // Step 13 (ONB-017)
         #[Field(enum: ['recommendation', 'own'])]
         public readonly ?string $calories = null,
-        #[Field(minimum: 0)]
+        #[Field(minimum: 0, maximum: 10000)]
         public readonly ?int $own_kcal = null,
     ) {}
 }

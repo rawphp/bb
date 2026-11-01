@@ -236,7 +236,7 @@
     },
     "body_fat": {
         "help": "Pick the photo that looks most like you. Accuracy isn't critical. Don't use body-fat readings from a smart scale.",
-        "sex": "female",
+        "sex": null,
         "options": [
             {
                 "value": "lowest",

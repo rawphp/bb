@@ -5,8 +5,10 @@ use App\Capabilities\Onboarding\Data\OnboardingAnswers;
 use App\Capabilities\Onboarding\Data\OnboardingBodyFatSection;
 use App\Capabilities\Onboarding\Data\OnboardingHeight;
 use App\Capabilities\Onboarding\Data\OnboardingHeightAnswer;
+use App\Capabilities\Onboarding\Data\OnboardingReviewBlock;
 use App\Capabilities\Onboarding\Data\OnboardingScreeningAnswer;
 use App\Capabilities\Onboarding\Data\OnboardingStatus;
+use App\Capabilities\Onboarding\Data\OnboardingStepRangeAnswer;
 use App\Capabilities\Onboarding\Data\OnboardingTargetWeight;
 use App\Capabilities\Onboarding\Data\OnboardingWeight;
 use App\Capabilities\Onboarding\Data\OnboardingWeightAnswer;
@@ -114,4 +116,33 @@ it('AGT-031 records an answer without moving, so the agent can answer a few at a
     expect($input->move)->toBe('stay')
         ->and($input->answers->goal)->toBe('fatLoss')
         ->and($input->answers->name)->toBeNull();
+});
+
+it('ONB-013 ONB-017 ONB-018 accepts back every bound the show advertises, in every state of the screen', function () {
+    $answers = OnboardingAnswers::jsonSchema()['properties'];
+    $range = OnboardingStepRangeAnswer::jsonSchema()['properties'];
+    $editStep = OnboardingAnswerInput::jsonSchema()['properties']['edit_step'];
+
+    foreach (glob(base_path('tests/fixtures/screens/onboarding_show*.json')) ?: [] as $path) {
+        $show = json_decode((string) file_get_contents($path), true);
+
+        expect($answers['own_kcal']['maximum'] ?? null)->toBe($show['calories']['own_kcal_max'], basename($path))
+            ->and($range['min']['maximum'] ?? null)->toBe($show['steps']['max_steps'], basename($path))
+            ->and($range['max']['maximum'] ?? null)->toBe($show['steps']['max_steps'], basename($path));
+        foreach ($show['review']['sections'] as $block) {
+            expect($block['edit_step'])->toBeGreaterThanOrEqual($editStep['minimum'])->toBeLessThanOrEqual($editStep['maximum']);
+        }
+    }
+
+    expect(OnboardingReviewBlock::jsonSchema()['properties']['edit_step'])
+        ->toMatchArray(['minimum' => $editStep['minimum'], 'maximum' => $editStep['maximum']]);
+});
+
+it('ONB-007 leaves body_fat.sex null until step 2 has one, while the step shows the female buckets', function () {
+    $empty = json_decode((string) file_get_contents(base_path('tests/fixtures/screens/onboarding_show.empty.json')), true);
+
+    expect(array_filter(array_column($empty['about_you']['sex_options'], 'is_selected')))->toBe([])
+        ->and($empty['body_fat']['sex'])->toBeNull()
+        ->and($empty['body_fat']['options'])->not->toBeEmpty()
+        ->and(OnboardingBodyFatSection::jsonSchema()['properties']['sex']['type'])->toBe(['string', 'null']);
 });

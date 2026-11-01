@@ -15,6 +15,7 @@ final class OnboardingReviewBlock extends CapabilityData
     public function __construct(
         public readonly string $title,
         public readonly bool $can_edit,
+        #[Field(minimum: 1, maximum: 13)]
         public readonly int $edit_step,
         #[Field(items: OnboardingReviewRow::class)]
         public readonly array $rows,

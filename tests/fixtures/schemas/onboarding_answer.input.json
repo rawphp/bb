@@ -292,11 +292,13 @@
                             },
                             "min": {
                                 "type": "integer",
-                                "minimum": 0
+                                "minimum": 0,
+                                "maximum": 40000
                             },
                             "max": {
                                 "type": "integer",
-                                "minimum": 0
+                                "minimum": 0,
+                                "maximum": 40000
                             }
                         },
                         "required": [
@@ -431,7 +433,8 @@
                         "integer",
                         "null"
                     ],
-                    "minimum": 0
+                    "minimum": 0,
+                    "maximum": 10000
                 }
             }
         },
