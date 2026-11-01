@@ -3,6 +3,9 @@ includes:
 
 parameters:
     level: 6
+    # Per checkout: the default /tmp/phpstan is shared by every worktree on a machine,
+    # and its cache points into whichever checkout's phar wrote it.
+    tmpDir: storage/framework/cache/phpstan
     paths:
         - app
         - bootstrap/app.php
