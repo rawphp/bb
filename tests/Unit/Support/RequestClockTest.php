@@ -44,6 +44,12 @@ it('SET-011 ignores X-BB-Now in every other environment', function (string $env)
     expect(nowInsideRequest(walkedRequest('2031-03-04T05:06:07.000Z')))->toBe('2026-11-01T09:00:00Z');
 })->with(['production', 'staging']);
 
+it('SET-011 ignores an X-BB-Now in the past', function () {
+    Carbon::setTestNow('2026-11-01 09:00:00');
+
+    expect(nowInsideRequest(walkedRequest('2026-10-25T09:00:00Z')))->toBe('2026-11-01T09:00:00Z');
+});
+
 it('SET-011 ignores a missing or unreadable X-BB-Now', function (?string $header) {
     Carbon::setTestNow('2026-11-01 09:00:00');
 

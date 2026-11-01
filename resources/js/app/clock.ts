@@ -3,6 +3,7 @@ import { ref } from 'vue';
 // The client's one clock (SET-011, architecture.md "Walking through time"):
 // the device clock plus an offset kept in local storage. With an offset set,
 // call.ts sends X-BB-Now, which the server honours in local and testing only.
+// The clock walks forward only: the server ignores an X-BB-Now in the past.
 
 const KEY = 'bb.clock-offset';
 const DAY_MS = 86_400_000;
@@ -22,6 +23,7 @@ export function walkDays(days: number): void {
 }
 
 // A date picker value, yyyy-mm-dd, kept at the current time of day.
+// A date before the device's today goes back to device time.
 export function walkToDate(value: string): void {
     const [year, month, day] = value.split('-').map(Number);
     if (!year || !month || !day) return;
@@ -35,7 +37,8 @@ export function clearWalk(): void {
     save(0);
 }
 
-function save(ms: number): void {
+function save(offset: number): void {
+    const ms = Math.max(0, offset);
     offsetMs.value = ms;
     if (ms === 0) localStorage.removeItem(KEY);
     else localStorage.setItem(KEY, String(ms));
@@ -44,5 +47,5 @@ function save(ms: number): void {
 function stored(): number {
     const ms = Number(localStorage.getItem(KEY));
 
-    return Number.isFinite(ms) ? ms : 0;
+    return Number.isFinite(ms) ? Math.max(0, ms) : 0;
 }

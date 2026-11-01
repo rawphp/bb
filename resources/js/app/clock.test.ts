@@ -55,4 +55,19 @@ describe('clock', () => {
 
         expect(isWalked()).toBe(false);
     });
+
+    it('SET-011 never walks into the past', async () => {
+        walkDays(-1);
+        expect(isWalked()).toBe(false);
+
+        walkDays(7);
+        walkToDate('2026-10-01');
+        expect(isWalked()).toBe(false);
+        expect(now()).toEqual(new Date(2026, 10, 2, 9, 30));
+
+        localStorage.setItem('bb.clock-offset', String(-DAY));
+        vi.resetModules();
+        expect((await import('./clock')).isWalked()).toBe(false);
+        localStorage.removeItem('bb.clock-offset');
+    });
 });

@@ -54,4 +54,16 @@ describe('DeveloperSection', () => {
         expect(isWalked()).toBe(false);
         expect(wrapper.get<HTMLInputElement>('input[type="date"]').element.value).toBe('2026-11-02');
     });
+
+    it('SET-011 offers no date before the device date', async () => {
+        const wrapper = mount(DeveloperSection);
+        const input = wrapper.get<HTMLInputElement>('input[type="date"]');
+
+        expect(input.attributes('min')).toBe('2026-11-02');
+
+        await input.setValue('2026-10-01');
+
+        expect(isWalked()).toBe(false);
+        expect(input.element.value).toBe('2026-11-02');
+    });
 });

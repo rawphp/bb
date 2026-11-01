@@ -52,12 +52,52 @@ it('SET-011 ignores X-BB-Now in production', function () {
 it('SET-011 runs work queued by a walked request at the request clock', function () {
     $this->postJson('/api/_clock_probe', [], ['X-BB-Now' => '2031-03-04T05:06:07.000Z'])->assertOk();
 
-    // The database queue stamps available_at with the walked clock, so the worker runs later.
-    Carbon::setTestNow('2032-01-01 00:00:00');
+    // The worker runs on the unwalked clock and still finds the job.
     Artisan::call('queue:work', ['connection' => 'database', '--once' => true]);
 
     expect(Cache::get('job_now'))->toBe('2031-03-04T05:06:07Z')
-        ->and(now()->toIso8601ZuluString())->toBe('2032-01-01T00:00:00Z');
+        ->and(now()->toIso8601ZuluString())->toBe('2026-11-01T09:00:00Z');
+});
+
+it('SET-011 keeps queue timing on the clock from before the walk', function () {
+    Route::middleware('api')->post('/api/_delay_probe', function () {
+        dispatch(fn () => null)->onConnection('database');
+        dispatch(fn () => null)->onConnection('database')->delay(30);
+
+        return ['now' => now()->toIso8601ZuluString()];
+    });
+
+    $this->postJson('/api/_delay_probe', [], ['X-BB-Now' => '2031-03-04T05:06:07.000Z'])
+        ->assertJsonPath('now', '2031-03-04T05:06:07Z');
+
+    $start = Carbon::parse('2026-11-01 09:00:00')->getTimestamp();
+    expect(DB::table('jobs')->orderBy('id')->pluck('available_at')->all())->toBe([$start, $start + 30]);
+});
+
+it('SET-011 hands the clock back when walked work throws', function () {
+    Route::middleware('api')->post('/api/_throw_probe', function () {
+        dispatch(fn () => throw new RuntimeException('boom'))->onConnection('database');
+
+        return [];
+    });
+
+    $this->postJson('/api/_throw_probe', [], ['X-BB-Now' => '2031-03-04T05:06:07.000Z'])->assertOk();
+    dispatch(fn () => Cache::put('job_now', now()->toIso8601ZuluString()))->onConnection('database');
+
+    // One worker runs both jobs: the throwing one at 2031, then the plain one.
+    Artisan::call('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--tries' => 1]);
+
+    expect(DB::table('failed_jobs')->count())->toBe(1)
+        ->and(Cache::get('job_now'))->toBe('2026-11-01T09:00:00Z')
+        ->and(now()->toIso8601ZuluString())->toBe('2026-11-01T09:00:00Z');
+});
+
+it('SET-011 records no clock on work queued outside a walk', function () {
+    // Carbon::setTestNow in beforeEach freezes time but does not walk it.
+    dispatch(fn () => null)->onConnection('database');
+
+    $payload = json_decode((string) DB::table('jobs')->value('payload'), true);
+    expect($payload)->not->toHaveKey('bb_now');
 });
 
 it('SET-011 records the request clock on a queued agent turn', function () {
