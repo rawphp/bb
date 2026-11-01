@@ -2,7 +2,10 @@
 
 namespace Tests\Support;
 
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use RuntimeException;
+use SplFileInfo;
 
 /**
  * The plain-PHP rules every app/Domain folder's ArchTest applies, kept in one place so the folders cannot drift.
@@ -43,19 +46,41 @@ final class DomainArch
     public const BUILDS_DATE = '/new\s+\\\\?Date(Time(Immutable)?|Period)\b|\bDate(Time(Immutable)?|Period)::/i';
 
     /**
-     * The files in app/Domain/<folder> that build a date.
+     * The files in app/Domain/<folder>, subfolders included, that build a date.
      *
-     * @return list<string> file basenames
+     * @return list<string> paths relative to the folder, sorted
      */
     public static function filesThatBuildDates(string $folder): array
     {
-        $files = glob(dirname(__DIR__, 2)."/app/Domain/{$folder}/*.php") ?: [];
-        if ($files === []) {
-            throw new RuntimeException("app/Domain/{$folder} has no PHP files to check");
+        return self::filesThatBuildDatesIn(dirname(__DIR__, 2)."/app/Domain/{$folder}");
+    }
+
+    /**
+     * @return list<string> paths relative to $root, sorted
+     */
+    public static function filesThatBuildDatesIn(string $root): array
+    {
+        if (! is_dir($root)) {
+            throw new RuntimeException("{$root} does not exist");
         }
 
-        return array_values(array_map('basename', array_filter(
-            $files, fn (string $file) => preg_match(self::BUILDS_DATE, (string) file_get_contents($file)) === 1,
-        )));
+        $checked = 0;
+        $building = [];
+        /** @var SplFileInfo $file */
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, RecursiveDirectoryIterator::SKIP_DOTS)) as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+            $checked++;
+            if (preg_match(self::BUILDS_DATE, (string) file_get_contents($file->getPathname())) === 1) {
+                $building[] = substr($file->getPathname(), strlen($root) + 1);
+            }
+        }
+        if ($checked === 0) {
+            throw new RuntimeException("{$root} has no PHP files to check");
+        }
+        sort($building);
+
+        return $building;
     }
 }

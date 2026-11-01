@@ -31,6 +31,16 @@ it('PH-030 the summary holds weight change and the signed weekly rate', function
     );
     expect($gain->weeklyRatePercent())->toEqualWithDelta(0.5, 1e-9)
         ->and(NextPhase::transition($gain)->alternatives)->toBe([PhaseType::FatLoss, PhaseType::MuscleGain]);
+
+    // No weeks, or no start weight, has no rate rather than a division by zero.
+    $noWeeks = new PhaseSummary(
+        type: PhaseType::FatLoss, startTrendWeightKg: 80, endTrendWeightKg: 76, weeks: 0, adherence: 1, mesocyclesCompleted: 0,
+    );
+    $noStart = new PhaseSummary(
+        type: PhaseType::MuscleGain, startTrendWeightKg: 0, endTrendWeightKg: 2, weeks: 8, adherence: 1, mesocyclesCompleted: 2,
+    );
+    expect($noWeeks->weeklyRatePercent())->toBe(0.0)
+        ->and($noStart->weeklyRatePercent())->toBe(0.0);
 });
 
 it('PH-031 maintenance follows fat loss', function () {

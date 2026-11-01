@@ -60,6 +60,8 @@ it('PH-012 low volume plan in muscle gain warns', function () {
         ->and(PhaseWarnings::lowVolumePlan(PhaseType::MuscleGain, $allMaintain))->toEqual($warn)
         ->and(PhaseWarnings::lowVolumePlan(PhaseType::MuscleGain, warningsMeso(PhaseType::MuscleGain)))->toBeNull()
         ->and(PhaseWarnings::lowVolumePlan(PhaseType::FatLoss, warningsMeso(PhaseType::Maintenance, resensitization: true)))->toBeNull()
+        // No priorities set is not "every muscle at Maintain".
+        ->and(PhaseWarnings::lowVolumePlan(PhaseType::MuscleGain, warningsMeso(PhaseType::MuscleGain, priorities: [])))->toBeNull()
         ->and($warn->message())->toBe('A surplus with a low-volume plan wastes the phase');
 });
 
@@ -67,6 +69,7 @@ it('PH-038 mini-cut too long for the previous gain warns', function () {
     expect(PhaseWarnings::miniCutLength(previousMuscleGainWeeks: 7, miniCutWeeks: 4))->toEqual(PhaseWarning::miniCutTooLong())
         ->and(PhaseWarnings::miniCutLength(previousMuscleGainWeeks: 8, miniCutWeeks: 4))->toBeNull()
         ->and(PhaseWarnings::miniCutLength(previousMuscleGainWeeks: 12, miniCutWeeks: 4))->toBeNull()
+        ->and(PhaseWarnings::miniCutLength(previousMuscleGainWeeks: 8, miniCutWeeks: 0))->toBeNull()
         ->and(PhaseWarning::miniCutTooLong()->message())
         ->toBe('This mini-cut is long for the gain before it. Aim for at least 2:1 gain to mini-cut');
 });
