@@ -101,6 +101,32 @@ it('WT-010 days stay whole across a midnight daylight saving change', function (
         ->and($trend->trendKg($reading(9, 0)->date))->not->toBeNull();
 });
 
+it('WT-010 days are local days in the given zone, not the readings\' zone', function () {
+    // Tokyo is UTC+9, so local midnight is 15:00 UTC. The readings are stored in UTC.
+    $tokyo = new DateTimeZone('Asia/Tokyo');
+    $utc = fn (string $at) => new DateTimeImmutable($at, new DateTimeZone('UTC'));
+
+    $trend = new TrendWeight([
+        new WeighIn('a', $utc('2026-03-01 14:00'), 70.0), // 23:00 on 1 March in Tokyo
+        new WeighIn('c', $utc('2026-03-02 02:00'), 72.0), // 11:00 on 2 March, listed first
+        new WeighIn('b', $utc('2026-03-01 16:00'), 71.0), // 01:00 on 2 March, the day's earliest
+        new WeighIn('d', $utc('2026-03-08 16:00'), 73.0), // 01:00 on 9 March
+    ], $tokyo);
+
+    expect($trend->points)->toHaveCount(9)
+        ->and($trend->points[0]->day)->toEqual(new DateTimeImmutable('2026-03-01 00:00', $tokyo))
+        ->and($trend->points[1]->day)->toEqual(new DateTimeImmutable('2026-03-02 00:00', $tokyo))
+        ->and($trend->points[8]->day)->toEqual(new DateTimeImmutable('2026-03-09 00:00', $tokyo))
+        ->and(array_map(fn ($p) => $p->weightKg, $trend->points))
+        ->toBe([70.0, 71.0, 71.0, 71.0, 71.0, 71.0, 71.0, 71.0, 73.0])
+        ->and($trend->trendKg($utc('2026-03-01 14:00')))->toBe(70.0)
+        ->and($trend->trendKg($utc('2026-03-01 16:00')))->toEqualWithDelta(70.1, 0.0001)
+        // 70.1 + 0.9 * 0.9^6 toward 71 by 8 March, then a tenth of the way to 73.
+        ->and($trend->currentKg())->toEqualWithDelta(70.7695, 0.0001)
+        // (70.7695 - 70.1) / 70.1 * 100, with the end date given in UTC.
+        ->and($trend->weeklyRatePercent($utc('2026-03-08 16:00')))->toEqualWithDelta(0.9551, 0.0005);
+});
+
 it('WT-011 the current weight is the latest trend, not the last reading', function () {
     $trend = trendOf(trendFixture());
 

@@ -8,7 +8,9 @@ use DateTimeZone;
 /**
  * WT-011: the weight everything works from is the trend weight; before any weigh-in it is the
  * profile's weight, the one entered at onboarding. Every "current weight" comes from here, never
- * a single reading. $trendKg is the trend at the moment asked about: now, or a past day.
+ * a single reading. For now, $trendKg is TrendWeight::currentKg(), the last day's trend. A past
+ * day's trend comes from TrendWeight::trendKg(), which is null after the last weigh-in, so today's
+ * date never goes there.
  */
 final class CurrentWeight
 {

@@ -73,6 +73,10 @@ final readonly class TrendWeight
         return count($weighIns) >= self::MINIMUM_WEIGH_INS_FOR_CHART;
     }
 
+    /**
+     * The trend on $date's day, or null when that day is before the first weigh-in or after
+     * the last one (as in the Swift original). For the current weight use currentKg().
+     */
     public function trendKg(DateTimeImmutable $date): ?float
     {
         $day = $this->startOfDay($date);
