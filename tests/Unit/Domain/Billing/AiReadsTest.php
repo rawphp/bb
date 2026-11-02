@@ -19,8 +19,8 @@ it('SUB-003 no free tier: a user who has never subscribed gets no AI scan', func
     expect(BillingRule::allows(Access::None, $scan, readOnly: true))->toBeFalse();
 })->with(BillingRule::AI_READS);
 
-it('SUB-001 the AI scans are scan_photo, scan_describe and scan_label', function () {
-    expect(BillingRule::AI_READS)->toEqualCanonicalizing(['scan_photo', 'scan_describe', 'scan_label']);
+it('SUB-001 RCP-003 RCP-010 the AI reads are the scans, generating a recipe and importing one', function () {
+    expect(BillingRule::AI_READS)->toEqualCanonicalizing(['scan_photo', 'scan_describe', 'scan_label', 'recipe_generate', 'recipe_import']);
 });
 
 it('SUB-010 SUB-022 a capability needs no plan when it is a read other than an AI scan, or billing itself', function () {
