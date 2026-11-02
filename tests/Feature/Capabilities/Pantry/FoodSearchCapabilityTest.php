@@ -13,6 +13,7 @@ use App\Models\SavedMeal;
 use App\Models\SavedMealFood;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event;
 use Tests\Support\ScreenFixture;
 
 // The HTTP seam of food_search, its screen fixtures, and what it reads from the database.
@@ -25,6 +26,27 @@ afterEach(fn () => Carbon::setTestNow());
 function pantryCurated(string $name, string $group, array $attributes = []): Food
 {
     return Food::factory()->create(['name' => $name, 'source' => 'curated', 'curated' => true, 'curated_group' => $group] + $attributes);
+}
+
+/**
+ * How many foods one food_search hydrates: the Pantry loads only the rows it shows.
+ *
+ * @param  array<string, mixed>  $input
+ */
+function foodsLoaded(User $user, array $input): int
+{
+    $loaded = 0;
+    $event = 'eloquent.retrieved: '.Food::class;
+    Event::listen($event, function () use (&$loaded) {
+        $loaded++;
+    });
+    try {
+        pantrySearch($user, $input)->assertOk();
+    } finally {
+        Event::forget($event);
+    }
+
+    return $loaded;
 }
 
 function pantrySearch(?User $user, array $input = []): mixed
@@ -201,4 +223,87 @@ it('FOOD-020 the Saved Meals filter lists the user\'s saved meals by name with t
     expect(array_column($meals, 'detail', 'name'))->toBe(['Breakfast' => '0 foods', 'Bulk dinner' => '3 foods'])
         ->and(array_column(pantrySearch($user, ['collection' => 'saved_meals', 'query' => 'bulk'])->json('data.saved_meals'), 'name'))->toBe(['Bulk dinner'])
         ->and(pantrySearch($user, ['collection' => 'saved_meals', 'query' => '%'])->json('data'))->toMatchArray(['saved_meals' => [], 'empty_text' => 'No saved meals match %.']);
+});
+
+it('FOOD-026 a group filter narrows the Curated and Recents tabs to that group', function () {
+    $user = User::factory()->create();
+    $rice = pantryCurated('Rice', 'carbs_recommended');
+    $cakes = pantryCurated('Rice cakes', 'carbs_sparingly');
+    pantryCurated('Broccoli', 'veggies');
+    foreach ([$rice, $cakes, Food::factory()->create(['name' => 'Rice pudding'])] as $food) {
+        FoodRecent::factory()->create(['user_id' => $user->id, 'food_id' => $food->id]);
+    }
+
+    $curated = pantrySearch($user, ['group' => 'carbs_sparingly'])->json('data.sections');
+    $recents = pantrySearch($user, ['tab' => 'recents', 'group' => 'carbs_sparingly'])->json('data.sections');
+
+    expect(array_column($curated, 'id'))->toBe(['carbs_sparingly'])
+        ->and(array_column($curated[0]['rows'], 'name'))->toBe(['Rice cakes'])
+        ->and(array_column($recents[0]['rows'], 'name'))->toBe(['Rice cakes']);
+});
+
+it('FOOD-027 diet filters hide the foods that do not match all of them, in every tab, and say so when they hid them all', function () {
+    $user = User::factory()->create();
+    Profile::factory()->for($user)->create(['diet_filters' => ['dairy_free', 'vegan']]);
+    $tofu = Food::factory()->custom($user)->create(['name' => 'Tofu', 'dairy_free' => true, 'vegan' => true]);
+    $chicken = Food::factory()->custom($user)->create(['name' => 'Chicken', 'dairy_free' => true]);
+    $yogurt = Food::factory()->custom($user)->create(['name' => 'Coconut yogurt', 'vegan' => true]);
+    foreach ([$tofu, $chicken, $yogurt] as $food) {
+        FoodFavorite::factory()->create(['user_id' => $user->id, 'food_id' => $food->id]);
+    }
+    $milk = Food::factory()->create(['name' => 'Milk']);
+    FoodRecent::factory()->create(['user_id' => $user->id, 'food_id' => $milk->id]);
+
+    $names = fn (string $tab) => array_column(pantrySearch($user, ['tab' => $tab])->json('data.sections.0.rows') ?? [], 'name');
+
+    expect($names('custom'))->toBe(['Tofu'])
+        ->and($names('favorites'))->toBe(['Tofu'])
+        ->and($names('recents'))->toBe([])
+        ->and(pantrySearch($user, ['tab' => 'recents'])->json('data.empty_text'))->toBe('No recent foods match your filters.')
+        ->and(pantrySearch(User::factory()->create(), ['tab' => 'recents'])->json('data.empty_text'))->toBe('No recent foods yet.');
+});
+
+it('FOOD-020 the Custom and Favorites tabs list the first 100 foods by name', function () {
+    $user = User::factory()->create();
+    foreach (range(1, 101) as $n) {
+        $food = Food::factory()->custom($user)->create(['name' => sprintf('Food %03d', $n)]);
+        FoodFavorite::factory()->create(['user_id' => $user->id, 'food_id' => $food->id]);
+    }
+
+    foreach (['custom', 'favorites'] as $tab) {
+        $names = array_column(pantrySearch($user, ['tab' => $tab])->json('data.sections.0.rows'), 'name');
+        expect($names)->toHaveCount(100)
+            ->and($names[0])->toBe('Food 001')
+            ->and($names)->not->toContain('Food 101');
+    }
+});
+
+it('FOOD-020 the Recipes filter lists the user\'s own recipes, then the library\'s, up to 100', function () {
+    $user = User::factory()->create();
+    Recipe::factory()->for($user)->create(['name' => 'Zz my recipe']);
+    foreach (range(1, 100) as $n) {
+        Recipe::factory()->create(['name' => sprintf('Library %03d', $n)]);
+    }
+
+    $names = array_column(pantrySearch($user, ['collection' => 'recipes'])->json('data.recipes'), 'name');
+
+    expect($names)->toHaveCount(100)
+        ->and($names[0])->toBe('Zz my recipe')
+        ->and($names[99])->toBe('Library 099');
+});
+
+it('FOOD-021 FOOD-027 the Pantry loads only the foods it shows', function () {
+    $user = User::factory()->create();
+    Profile::factory()->for($user)->create(['diet_filters' => ['vegan']]);
+    foreach (range(1, 40) as $n) {
+        pantryCurated(sprintf('Veg %02d', $n), 'veggies', ['vegan' => true]);
+        pantryCurated(sprintf('Meat %02d', $n), 'protein_recommended');
+    }
+    foreach (range(1, 20) as $n) {
+        Food::factory()->custom($user)->create(['name' => "Cheese {$n}"]);
+    }
+
+    expect(foodsLoaded($user, []))->toBe(6)
+        ->and(foodsLoaded($user, ['expanded_groups' => ['veggies']]))->toBe(30)
+        ->and(foodsLoaded($user, ['tab' => 'custom']))->toBe(0);
 });

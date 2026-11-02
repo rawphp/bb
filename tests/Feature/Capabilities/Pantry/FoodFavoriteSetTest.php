@@ -1,5 +1,7 @@
 <?php
 
+use App\Capabilities\Support\ReadKey;
+use App\Domain\Pantry\PantryTab;
 use App\Models\Food;
 use App\Models\FoodFavorite;
 use App\Models\User;
@@ -44,6 +46,13 @@ it('FOOD-022 stars a food, takes the star back, and says which Pantry lists chan
             'food_search{"tab":"custom"}',
         ]);
     expect(FoodFavorite::query()->where('user_id', $user->id)->pluck('food_id')->all())->toBe([$food->id]);
+
+    // The keys the Pantry reads as it opens and on each tab, built the way the read cache builds them (CAP-017).
+    $invalidates = favoriteOver($user, ['food_id' => $food->id, 'favorite' => true])->json('data.invalidates');
+    expect($invalidates)->toContain(ReadKey::for('food_search'));
+    foreach (PantryTab::cases() as $tab) {
+        expect($invalidates)->toContain(ReadKey::for('food_search', ['tab' => $tab->value]));
+    }
 
     favoriteOver($user, ['food_id' => $food->id, 'favorite' => false])->assertOk();
     expect(FoodFavorite::query()->where('user_id', $user->id)->count())->toBe(0);

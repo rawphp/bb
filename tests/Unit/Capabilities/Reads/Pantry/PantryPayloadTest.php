@@ -96,18 +96,6 @@ it('FOOD-020 the Recents, Favorites and Custom tabs each list their own foods in
     }
 });
 
-it('FOOD-026 FOOD-027 a tab list hides the foods the group and diet filters leave out', function () {
-    $foods = [
-        payloadFood('yogurt', 'Yogurt', group: CuratedGroup::ProteinRecommended, diets: [DietFilter::Vegetarian]),
-        payloadFood('tofu', 'Tofu', group: CuratedGroup::ProteinRecommended, diets: [DietFilter::Vegetarian, DietFilter::Vegan]),
-        payloadFood('bread', 'Bread', diets: [DietFilter::Vegetarian, DietFilter::Vegan]),
-    ];
-    $snapshot = new PantrySnapshot(diets: [DietFilter::Vegan], foods: $foods);
-
-    expect(sectionNames(pantryPayload(['tab' => 'recents'], $snapshot)))->toBe([['Tofu', 'Bread']])
-        ->and(sectionNames(pantryPayload(['tab' => 'recents', 'group' => 'protein_recommended'], $snapshot)))->toBe([['Tofu']]);
-});
-
 it('FOOD-027 lists the seven diet filters in order and says which are on', function () {
     $payload = pantryPayload([], new PantrySnapshot(diets: [DietFilter::Vegan, DietFilter::GlutenFree]));
 
@@ -177,7 +165,7 @@ it('FOOD-009 in ounces each row reads per 3.5 oz', function () {
 
 it('FOOD-020 an empty tab says so, and says when the filters hid its foods', function () {
     $empty = pantryPayload(['tab' => 'custom'], new PantrySnapshot);
-    $hidden = pantryPayload(['tab' => 'recents'], new PantrySnapshot(diets: [DietFilter::Vegan], foods: [payloadFood('egg', 'Egg')]));
+    $hidden = pantryPayload(['tab' => 'recents'], new PantrySnapshot(diets: [DietFilter::Vegan], hidden: true));
 
     assertMatchesScreenFixture('food_search', $empty);
     expect(ScreenFixture::differences(ScreenFixture::load('food_search.empty'), $empty))->toBe([]);
@@ -209,7 +197,7 @@ it('FOOD-020 the Recipes filter lists the recipes read, each with a serving\'s m
         ->and($payload['empty_text'])->toBeNull()
         ->and(pantryPayload(['collection' => 'recipes', 'query' => 'pie'], new PantrySnapshot)['empty_text'])->toBe('No recipes match pie.')
         ->and(pantryPayload(['collection' => 'recipes'], new PantrySnapshot)['empty_text'])->toBe('No recipes yet.')
-        ->and(pantryPayload(['collection' => 'recipes'], new PantrySnapshot(recipesHidden: true))['empty_text'])->toBe('No recipes match your filters.');
+        ->and(pantryPayload(['collection' => 'recipes'], new PantrySnapshot(hidden: true))['empty_text'])->toBe('No recipes match your filters.');
 });
 
 it('FOOD-020 the Saved Meals filter lists the saved meals read, with how many foods each holds', function () {

@@ -100,48 +100,6 @@ it('FOOD-021 leaves out a group with no foods, and keeps each group\'s own order
         ->and(pantryNames($sections[0]->foods))->toBe(['Spinach', 'Broccoli']);
 });
 
-it('FOOD-026 a group filter narrows the Curated tab to that group', function () {
-    $foods = curatedFoods(['veggies' => 7, 'carbs_recommended' => 7]);
-
-    expect(sectionCounts(Pantry::curated($foods, group: CuratedGroup::CarbsRecommended)))->toBe(['carbs_recommended' => 5])
-        ->and(Pantry::curated($foods))->toHaveCount(2);
-});
-
-it('FOOD-026 a group filter narrows a list to curated foods of that group', function () {
-    $foods = [
-        pantryFood('1', 'Rice', CuratedGroup::CarbsRecommended),
-        pantryFood('2', 'Rice cakes', CuratedGroup::CarbsSparingly),
-        pantryFood('3', 'Rice pudding'),
-    ];
-
-    expect(pantryNames(Pantry::filter($foods, group: CuratedGroup::CarbsSparingly)))->toBe(['Rice cakes'])
-        ->and(pantryNames(Pantry::filter($foods)))->toBe(['Rice', 'Rice cakes', 'Rice pudding']);
-});
-
-it('FOOD-027 diet filters hide the foods that do not match, in lists and curated groups', function () {
-    $foods = [
-        pantryFood('1', 'Chicken breast', CuratedGroup::ProteinRecommended, [DietFilter::DairyFree, DietFilter::GlutenFree, DietFilter::Paleo]),
-        pantryFood('2', 'Tofu', CuratedGroup::ProteinRecommended, [DietFilter::DairyFree, DietFilter::GlutenFree, DietFilter::Vegan, DietFilter::Vegetarian]),
-        pantryFood('3', 'Yogurt', CuratedGroup::ProteinRecommended, [DietFilter::GlutenFree, DietFilter::Vegetarian]),
-        pantryFood('4', 'Bread'),
-    ];
-
-    expect(pantryNames(Pantry::filter($foods, [DietFilter::DairyFree])))->toBe(['Chicken breast', 'Tofu'])
-        ->and(pantryNames(Pantry::curated($foods, [DietFilter::Vegetarian])[0]->foods))->toBe(['Tofu', 'Yogurt']);
-});
-
-it('FOOD-027 with several diet filters on, a food must match all of them', function () {
-    $foods = [
-        pantryFood('1', 'Chicken breast', diets: [DietFilter::DairyFree, DietFilter::Paleo]),
-        pantryFood('2', 'Tofu', diets: [DietFilter::DairyFree, DietFilter::Vegan]),
-        pantryFood('3', 'Coconut yogurt', diets: [DietFilter::Vegan]),
-    ];
-
-    expect(pantryNames(Pantry::filter($foods, [DietFilter::DairyFree, DietFilter::Vegan])))->toBe(['Tofu'])
-        ->and(Pantry::passesDiets([DietFilter::Vegan], []))->toBeTrue()
-        ->and(Pantry::passesDiets([], [DietFilter::Vegan]))->toBeFalse();
-});
-
 it('FOOD-023 search shows the user\'s own and curated matches first, then the rest as More results', function () {
     $found = [
         pantryFood('soup', 'Chicken noodle soup'),
