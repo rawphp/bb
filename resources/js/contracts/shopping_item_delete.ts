@@ -2,4 +2,12 @@
 
 export interface ShoppingItemDeleteInput {
   id: string;
+  /**
+   * The first day of the list shown, so the write refreshes it
+   */
+  from?: string | null;
+  /**
+   * The last day of the list shown
+   */
+  to?: string | null;
 }
