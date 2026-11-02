@@ -125,7 +125,8 @@ it('CAP-019 refuses an id that is not a ULID in every train ULID rule, nested on
         'mesocycle_build.days.*.slots.*.slot_id',
         'workout_set_add.after_set_id',
         'exercise_swap.new_workout_exercise_id',
-    )->and(count($checked))->toBeGreaterThanOrEqual(30);
+    // workout_show's mesocycle_id has no ULID rule: mesocycle ids are UUIDs, as in mesocycle_show.
+    )->and(count($checked))->toBeGreaterThanOrEqual(29);
 });
 
 it('CAP-012 lets a train input send null for a nullable enum, and leave it out only when it has a default', function () {
