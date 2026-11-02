@@ -32,11 +32,40 @@ describe('useRetryKey', () => {
     });
 
     it.each([
+        ['the throttle in front of the app', new CapabilityError('token_create', 429, { message: 'Too Many Attempts.' })],
+        ["the app's limit, before the write ran", new CapabilityError('token_create', 429, { ok: false, error: { code: 'rate_limited', retryable: true, retry_after: 30 } })],
+    ])('CAP-014 keeps the key after %s, so a retry after a lost answer gets the stored one and never runs twice', (_label, error) => {
+        const retry = useRetryKey('token_create');
+        const first = retry.key.value;
+        retry.settle(new CapabilityError('token_create', 0, { reason: 'timeout' }));
+
+        retry.settle(error);
+
+        expect(retry.key.value).toBe(first);
+        expect(retry.unsure.value).toBe(true);
+    });
+
+    it.each([
+        ['the throttle in front of the app', new CapabilityError('token_create', 429, { message: 'Too Many Attempts.' })],
+        ["the app's limit, before the write ran", new CapabilityError('token_create', 429, { ok: false, error: { code: 'rate_limited', retryable: true } })],
+    ])('CAP-014 a first try refused by %s keeps its key and is not unsure, since nothing ran', (_label, error) => {
+        const retry = useRetryKey('token_create');
+        const first = retry.key.value;
+
+        retry.settle(error);
+
+        expect(retry.key.value).toBe(first);
+        expect(retry.unsure.value).toBe(false);
+    });
+
+    it.each([
         ['a success', undefined],
         ['a refusal', new CapabilityError('account_delete', 422, { ok: false, error: { code: 'validation_failed' } })],
         ['a conflict the server keeps', new CapabilityError('account_delete', 409, { ok: false, error: { code: 'conflict', retryable: false } })],
         ['the app\'s own server error', new CapabilityError('account_delete', 500, { ok: false, error: { code: 'internal' } })],
         ['a gone session', new CapabilityError('account_delete', 401, { message: 'Unauthenticated.' })],
+        ["the app's limit, after the write ran", new CapabilityError('account_delete', 429, { ok: false, error: { code: 'rate_limited', retryable: false } })],
+        ['a write the outbox held back, so it was never sent', new CapabilityError('account_delete', 0, { reason: 'waiting' })],
     ])('CAP-014 ends the key after %s, since the server keeps that answer under it', (_label, error) => {
         const retry = useRetryKey('account_delete');
         const first = retry.key.value;

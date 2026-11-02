@@ -1,7 +1,7 @@
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { expect, vi } from 'vitest';
 import type { Component } from 'vue';
-import { write } from '@/app/call';
+import { writeNow } from '@/app/call';
 import type { TodayShowOutput } from '@/contracts/today_show';
 import type { WeekShowOutput } from '@/contracts/week_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
@@ -18,7 +18,7 @@ export function sheet(component: Component, props: Record<string, unknown> = {})
 
 /** Each write sent, as [name, input], checked against that write's schema snapshot. */
 export function sent(): [string, Record<string, unknown>][] {
-    return vi.mocked(write).mock.calls.map(([name, input]) => {
+    return vi.mocked(writeNow).mock.calls.map(([name, input]) => {
         expect(inputViolations(name, input), name).toEqual([]);
         return [name, input as Record<string, unknown>];
     });

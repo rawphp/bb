@@ -1,6 +1,7 @@
 import { onMounted, onUnmounted, ref, type Ref } from 'vue';
 import { cached, readKey } from './cache';
 import { WARM_FRESH_MS, type CapabilityInput } from './call';
+import { onReplayed } from './outbox';
 import { readFailure, screenRead, SupersededRead, type ReadFailure } from './screenRead';
 import { onScreenReturn } from './screenTop';
 
@@ -14,7 +15,8 @@ import { onScreenReturn } from './screenTop';
  * copy (CAP-010) or that screen's re-read stores a newer one. load() reads again, for
  * Try again and after a write. load({ fresh: true }) reads the server's copy (see
  * screenRead) and rejects when it did not get it. Offline with nothing cached it reads
- * again when the device reconnects (OFF-004).
+ * again when the device reconnects (OFF-004), and it reads again when a replayed outbox
+ * entry's answer invalidates it (CAP-010), so the pending numbers give way to the server's.
  */
 export function useRead<T>(
     name: string,
@@ -55,17 +57,28 @@ export function useRead<T>(
         if (failure.value?.offline) void load();
     };
 
+    const key = readKey(name, input);
+    let stopListening = () => {};
+
     onMounted(() => {
         window.addEventListener('online', reconnected);
+        if (!fixture) {
+            stopListening = onReplayed((keys) => {
+                if (keys.includes(key)) void load().catch(() => undefined);
+            });
+        }
         if (data.value === undefined) void load();
     });
     onScreenReturn(async () => {
         if (fixture) return;
-        const hit = await cached(readKey(name, input)).catch(() => undefined);
+        const hit = await cached(key).catch(() => undefined);
         if (hit !== undefined && hit.fetchedAt <= shownAt && Date.now() - hit.fetchedAt < WARM_FRESH_MS) return;
         void load();
     });
-    onUnmounted(() => window.removeEventListener('online', reconnected));
+    onUnmounted(() => {
+        window.removeEventListener('online', reconnected);
+        stopListening();
+    });
 
     return { data, failure, load };
 }

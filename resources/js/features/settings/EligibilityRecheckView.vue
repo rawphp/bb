@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { write } from '@/app/call';
+import { writeNow } from '@/app/call';
 import { findNavigation } from '@/app/navigation';
 import { useRetryKey } from '@/app/retryKey';
 import { failureMessage } from '@/app/errors';
@@ -57,7 +57,7 @@ async function check(): Promise<void> {
             : { answers: screening.value.questions.map((q) => ({ item: q.item, applies: ticked.value[q.item] ?? q.applies })) };
     sent = input;
     try {
-        outcome.value = await write<EligibilityRecheckOutput>('eligibility_recheck', { ...input }, { idempotencyKey: retry.key.value });
+        outcome.value = await writeNow<EligibilityRecheckOutput>('eligibility_recheck', { ...input }, { idempotencyKey: retry.key.value });
         retry.settle();
     } catch (failed) {
         retry.settle(failed);

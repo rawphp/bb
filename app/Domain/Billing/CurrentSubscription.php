@@ -22,6 +22,25 @@ final class CurrentSubscription
         return $subscriptions[0] ?? null;
     }
 
+    /**
+     * Whether Stripe may charge the customer again (ACC-005, SUB-007): a trial, a paid subscription, or a first payment
+     * still being taken, which becomes one once it goes through, unless it is set to end at its period's end.
+     *
+     * @param  list<array<string, mixed>>  $subscriptions  Stripe subscription objects of one customer
+     */
+    public static function anyRenews(array $subscriptions): bool
+    {
+        foreach ($subscriptions as $subscription) {
+            $status = isset($subscription['status']) ? (string) $subscription['status'] : null;
+            $charges = $status === 'incomplete' || in_array(Access::fromStripeStatus($status), [Access::Trial, Access::Active], true);
+            if ($charges && ! ($subscription['cancel_at_period_end'] ?? false)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** @param  array<string, mixed>  $subscription */
     private static function rank(array $subscription): int
     {
