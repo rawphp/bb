@@ -21,8 +21,10 @@ use App\Models\WeighInScheduleEntry;
 use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Plan\PlanSnapshot;
 use App\Support\Today\TodaySnapshot;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Rawphp\Capabilities\Support\CapabilityFailure;
 use Tests\Unit\Actions\Onboarding\StartWorld as W;
 
@@ -31,7 +33,10 @@ use Tests\Unit\Actions\Onboarding\StartWorld as W;
 uses(RefreshDatabase::class);
 
 beforeEach(fn () => Carbon::setTestNow('2026-10-10 09:00:00'));
-afterEach(fn () => Carbon::setTestNow());
+afterEach(function () {
+    Carbon::setTestNow();
+    WeighInScheduleEntry::getEventDispatcher()?->forget('eloquent.creating: '.WeighInScheduleEntry::class);
+});
 
 it('ONB-020 saves the plan, its first week and the schedule, and deletes the draft', function () {
     $user = User::factory()->create();
@@ -156,4 +161,34 @@ it('ONB-020 refuses to start a second plan for a user who has one', function () 
     expect(fn () => app(StartPlan::class)($user))->toThrow(CapabilityFailure::class, StartPlan::ALREADY_STARTED)
         ->and(Phase::query()->where('user_id', $user->id)->count())->toBe(1)
         ->and(OnboardingDraft::query()->where('user_id', $user->id)->exists())->toBeTrue();
+});
+
+it('ONB-020 writes all of the start or none of it: a failure on the last save leaves no plan rows and keeps the draft', function () {
+    $user = User::factory()->create();
+    W::draft($user);
+    WeighInScheduleEntry::creating(fn (): never => throw new RuntimeException('the schedule could not be saved'));
+
+    expect(fn () => app(StartPlan::class)($user))->toThrow(RuntimeException::class, 'the schedule could not be saved');
+
+    foreach ([Profile::class, Plan::class, Phase::class, Mesocycle::class, PlanWeek::class, DayTarget::class, DayTargetMeal::class, WeighInScheduleEntry::class] as $model) {
+        expect($model::query()->count())->toBe(0, "{$model} kept a row from the failed start");
+    }
+    expect(OnboardingDraft::query()->where('user_id', $user->id)->exists())->toBeTrue();
+});
+
+it('ONB-020 locks the draft row before it checks for a plan, so a second start waits for the first and then finds the plan', function () {
+    $user = User::factory()->create();
+    W::draft($user);
+    $queries = [];
+    DB::listen(function (QueryExecuted $query) use (&$queries) {
+        $queries[] = strtolower($query->sql);
+    });
+
+    app(StartPlan::class)($user);
+
+    $lock = array_key_first(array_filter($queries, fn (string $sql) => str_contains($sql, 'from `onboarding_drafts`') && str_contains($sql, 'for update')));
+    $planCheck = array_key_first(array_filter($queries, fn (string $sql) => str_contains($sql, 'from `plans`')));
+    expect($lock)->not->toBeNull('the draft row is not locked')
+        ->and($planCheck)->not->toBeNull()
+        ->and($lock)->toBeLessThan($planCheck);
 });
