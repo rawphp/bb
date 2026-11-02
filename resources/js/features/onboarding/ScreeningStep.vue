@@ -11,7 +11,7 @@ type Row = OnboardingShowOutput['screening']['rows'][number];
 // Step 3: the health screening (ONB-005, SAFE-001), between the medical clearance
 // (SAFE-002) and medical diets (SAFE-014) notes. Each tick is saved as it is made; the
 // server decides what it rules out. Ported from rp-clone's ScreeningStep.
-defineProps<{ screening: OnboardingShowOutput['screening']; disabled?: boolean }>();
+defineProps<{ screening: OnboardingShowOutput['screening'] }>();
 
 const emit = defineEmits<{ answer: [answers: Answers] }>();
 
@@ -26,7 +26,7 @@ function toggle(row: Row): void {
         <OnboardingCallout :text="screening.clearance_note.text" :tone="screening.clearance_note.tone" />
         <StepHeading :text="screening.prompt" />
         <div class="flex flex-col gap-2">
-            <ScreeningRowView v-for="row in screening.rows" :key="row.item" :row="row" :disabled="disabled" @toggle="toggle(row)" />
+            <ScreeningRowView v-for="row in screening.rows" :key="row.item" :row="row" @toggle="toggle(row)" />
         </div>
         <OnboardingCallout :text="screening.medical_diets_note.text" :tone="screening.medical_diets_note.tone" />
     </div>

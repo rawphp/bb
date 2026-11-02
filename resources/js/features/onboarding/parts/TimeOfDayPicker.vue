@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 
 // A time of day held as minutes after midnight, shown in the browser's own time format.
-// Shared with Settings' schedule screens. Ported from rp-clone's OnboardingParts.
+// For the training-day and weigh-in steps; Settings reuses it (19-views). Ported from rp-clone's OnboardingParts.
 const props = withDefaults(defineProps<{ label: string; modelValue: number; disabled?: boolean }>(), { disabled: false });
 
 const emit = defineEmits<{ 'update:modelValue': [minutes: number] }>();

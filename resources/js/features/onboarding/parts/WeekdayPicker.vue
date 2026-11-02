@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Mon to Sun toggles (ISO weekdays), as the server lists them. Shared with Settings'
-// schedule screens. Ported from rp-clone's OnboardingParts.
+// Mon to Sun toggles (ISO weekdays), as the server lists them. For the training-day and
+// weigh-in steps; Settings reuses it (19-views). Ported from rp-clone's OnboardingParts.
 withDefaults(defineProps<{ days: { weekday: number; name: string; full_name: string; is_on: boolean }[]; disabled?: boolean }>(), { disabled: false });
 
 const emit = defineEmits<{ toggle: [weekday: number] }>();

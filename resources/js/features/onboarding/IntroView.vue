@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 // The three intro cards before sign-up (ONB-001). Swipe or Next walks them; the last
-// card's Get started leads to sign-up. Static copy: it shows before there is an account
+// card's Get started opens sign-in, where a new user creates an account. Static copy: it shows before there is an account
 // to read anything for. Ported from rp-clone's IntroView and OnboardingIntro.
 const cards = [
     {
@@ -49,7 +49,7 @@ function swiped(event: PointerEvent): void {
 
 <template>
     <main class="mx-auto flex min-h-dvh w-full max-w-[560px] flex-col gap-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)]">
-        <div class="flex flex-1 overflow-hidden" @pointerdown="swipeFrom = $event.clientX" @pointerup="swiped" @pointercancel="swipeFrom = null">
+        <div class="flex flex-1 touch-pan-y overflow-hidden" @pointerdown="swipeFrom = $event.clientX" @pointerup="swiped" @pointercancel="swipeFrom = null">
             <div class="flex w-full shrink-0 transition-transform duration-300 motion-reduce:transition-none" :style="{ transform: `translateX(-${page * 100}%)` }">
                 <section
                     v-for="(card, index) in cards"

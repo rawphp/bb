@@ -3,7 +3,7 @@ import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
 
 // One screening item as a tick box. An item step 2 answers (age, height, weight, BMI)
 // is locked, with a lock icon. Ported from rp-clone's ScreeningStep.
-defineProps<{ row: OnboardingShowOutput['screening']['rows'][number]; disabled?: boolean }>();
+defineProps<{ row: OnboardingShowOutput['screening']['rows'][number] }>();
 
 const emit = defineEmits<{ toggle: [] }>();
 </script>
@@ -13,9 +13,8 @@ const emit = defineEmits<{ toggle: [] }>();
         type="button"
         role="checkbox"
         :aria-checked="row.is_on"
-        :disabled="row.is_locked || disabled"
+        :disabled="row.is_locked"
         class="flex min-h-tap w-full items-center gap-3 rounded-xl bg-background px-3.5 py-1.5 text-left active:opacity-70"
-        :class="{ 'opacity-60': disabled && !row.is_locked }"
         @click="emit('toggle')"
     >
         <svg viewBox="0 0 24 24" class="size-6 shrink-0" :class="row.is_on ? 'text-accent' : 'text-secondary-text'" aria-hidden="true">

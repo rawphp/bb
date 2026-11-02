@@ -4,7 +4,7 @@ import type { Answers } from './choices';
 import YesNoQuestion from './parts/YesNoQuestion.vue';
 
 // Step 4: the weight-loss drug question (ONB-006, SAFE-013). Ported from rp-clone's OnboardingView.
-defineProps<{ glp1: OnboardingShowOutput['glp1']; disabled?: boolean }>();
+defineProps<{ glp1: OnboardingShowOutput['glp1'] }>();
 
 const emit = defineEmits<{ answer: [answers: Answers] }>();
 </script>
@@ -14,7 +14,6 @@ const emit = defineEmits<{ answer: [answers: Answers] }>();
         :question="glp1.question"
         :detail="glp1.detail"
         :model-value="glp1.answer"
-        :disabled="disabled"
         @update:model-value="(answer) => emit('answer', { uses_glp1: answer })"
     />
 </template>

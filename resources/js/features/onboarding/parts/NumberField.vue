@@ -36,10 +36,12 @@ function typed(): void {
     if (props.commitsWhileTyping) push();
 }
 
+// Tidies what was typed. A field left empty or unreadable shows the value again: the
+// parent may hold its value until a save comes back, so props can lag the emit.
 function left(): void {
     focused.value = false;
     push();
-    text.value = format(props.modelValue);
+    text.value = format(parse(text.value) ?? props.modelValue);
 }
 
 // Another field moved this one (a unit switch, a length change). Never under the user's typing.
