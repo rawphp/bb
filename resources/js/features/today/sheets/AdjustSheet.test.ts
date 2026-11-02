@@ -33,8 +33,10 @@ function lastAsked(): Record<string, unknown> {
     return input as Record<string, unknown>;
 }
 
+// The calorie field asks the server once typing stops (DEBOUNCE_MS), so a typed amount runs the clock past it.
 async function typeKcal(wrapper: Awaited<ReturnType<typeof mountSheet>>['wrapper'], text: string) {
     await wrapper.get('input[name="kcal"]').setValue(text);
+    vi.advanceTimersByTime(300);
     await flushPromises();
 }
 
@@ -45,7 +47,10 @@ describe('AdjustSheet', () => {
         writeMock.mockReset();
         readMock.mockResolvedValue(content);
         freshMock.mockResolvedValue(content);
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     });
+
+    afterEach(() => vi.useRealTimers());
 
     it('DAY-020 shows both days\' projected calories and protein', async () => {
         const { wrapper } = await mountSheet(AdjustSheet, { payload: content });
@@ -117,8 +122,7 @@ describe('AdjustSheet', () => {
 
         await wrapper.get('select[name="day"]').setValue('2026-09-26');
         await wrapper.get('[data-test="direction-take"]').trigger('click');
-        await wrapper.get('input[name="kcal"]').setValue('200');
-        await flushPromises();
+        await typeKcal(wrapper, '200');
         expect(lastAsked()).toEqual({ date: '2026-09-23', mode: 'days', direction: 'take', other_date: '2026-09-26', kcal: 200 });
 
         await wrapper.get('[data-test="mode-meals"]').trigger('click');
@@ -139,8 +143,7 @@ describe('AdjustSheet', () => {
         const { wrapper } = await mountSheet(AdjustSheet, { date: '2026-09-23' });
         await flushPromises();
 
-        await wrapper.get('input[name="kcal"]').setValue('2.5');
-        await flushPromises();
+        await typeKcal(wrapper, '2.5');
 
         expect(lastAsked()).toMatchObject({ kcal: null });
     });
@@ -152,8 +155,7 @@ describe('AdjustSheet', () => {
         const { wrapper } = await mountSheet(AdjustSheet, { payload: content, onSaved });
 
         await wrapper.get('select[name="day"]').setValue('2026-09-26');
-        await wrapper.get('input[name="kcal"]').setValue('200');
-        await flushPromises();
+        await typeKcal(wrapper, '200');
         await wrapper.get('[data-save]').trigger('click');
         await flushPromises();
 
@@ -164,13 +166,83 @@ describe('AdjustSheet', () => {
         expect(onSaved).toHaveBeenCalledWith(result);
     });
 
+    it('DAY-020 saves a move between meals as picked', async () => {
+        writeMock.mockResolvedValueOnce({ invalidates: [], toast: 'Moved 150 kcal', undo: null });
+        // The server answers in the mode it was asked about.
+        freshMock.mockResolvedValue(meals);
+        const { wrapper } = await mountSheet(AdjustSheet, { payload: meals, onSaved: vi.fn() });
+        const [lunch, , postWorkout] = meals.meal_options;
+
+        await wrapper.get('select[name="from"]').setValue(postWorkout!.id);
+        await wrapper.get('select[name="to"]').setValue(lunch!.id);
+        await typeKcal(wrapper, '150');
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        const [name, input] = writeMock.mock.calls.at(-1)!;
+        expect(name).toBe('day_adjust');
+        expect(inputViolations('day_adjust', input)).toEqual([]);
+        expect(input).toEqual({ date: '2026-09-23', mode: 'meals', from_meal_id: postWorkout!.id, to_meal_id: lunch!.id, kcal: 150 });
+    });
+
+    it('DAY-020 saves a move that takes calories from another day', async () => {
+        writeMock.mockResolvedValueOnce({ invalidates: [], toast: 'Moved 300 kcal', undo: null });
+        const { wrapper } = await mountSheet(AdjustSheet, { payload: content, onSaved: vi.fn() });
+
+        await wrapper.get('[data-test="direction-take"]').trigger('click');
+        await wrapper.get('select[name="day"]').setValue('2026-09-26');
+        await typeKcal(wrapper, '300');
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        const [name, input] = writeMock.mock.calls.at(-1)!;
+        expect(name).toBe('day_adjust');
+        expect(inputViolations('day_adjust', input)).toEqual([]);
+        expect(input).toEqual({ date: '2026-09-23', mode: 'days', direction: 'take', other_date: '2026-09-26', kcal: 300 });
+    });
+
+    it('DAY-020 asks the server once typing stops, not on every key, and keeps Save off meanwhile', async () => {
+        const { wrapper } = await mountSheet(AdjustSheet, { payload: content });
+        await wrapper.get('select[name="day"]').setValue('2026-09-26');
+        await flushPromises();
+        freshMock.mockClear();
+
+        for (const text of ['2', '20', '200']) {
+            await wrapper.get('input[name="kcal"]').setValue(text);
+            vi.advanceTimersByTime(100);
+            await flushPromises();
+        }
+        expect(freshMock).not.toHaveBeenCalled();
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
+
+        vi.advanceTimersByTime(300);
+        await flushPromises();
+        expect(freshMock).toHaveBeenCalledOnce();
+        expect(lastAsked()).toMatchObject({ kcal: 200 });
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeUndefined();
+    });
+
+    it('DAY-020 asks the server at once for a pick, with whatever amount is typed', async () => {
+        const { wrapper } = await mountSheet(AdjustSheet, { payload: content });
+
+        await wrapper.get('input[name="kcal"]').setValue('250');
+        await wrapper.get('select[name="day"]').setValue('2026-09-26');
+        await flushPromises();
+        expect(freshMock).toHaveBeenCalledOnce();
+        expect(lastAsked()).toMatchObject({ other_date: '2026-09-26', kcal: 250 });
+
+        // The pick already asked for the typed amount, so the pending one is dropped.
+        vi.advanceTimersByTime(300);
+        await flushPromises();
+        expect(freshMock).toHaveBeenCalledOnce();
+    });
+
     it('CAP-012 shows the server\'s words when it refuses the save, and stays open', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('day_adjust', 422, { ok: false, error: { message: 'Sat, Sep 26 is finished.' } }));
         const onSaved = vi.fn();
         const { wrapper } = await mountSheet(AdjustSheet, { payload: content, onSaved });
 
-        await wrapper.get('input[name="kcal"]').setValue('200');
-        await flushPromises();
+        await typeKcal(wrapper, '200');
         await wrapper.get('[data-save]').trigger('click');
         await flushPromises();
 
