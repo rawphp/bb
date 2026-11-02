@@ -141,7 +141,7 @@ final class PantryReader
             PantryTab::Favorites => Food::query()->visibleTo($user)
                 ->whereIn('id', FoodFavorite::query()->where('user_id', $user->id)->select('food_id'))
                 ->orderBy('name')->orderBy('id'),
-            PantryTab::Custom => Food::query()->where('user_id', $user->id)->orderBy('name')->orderBy('id'),
+            PantryTab::Custom => Food::query()->customOf($user)->orderBy('name')->orderBy('id'),
         };
     }
 
