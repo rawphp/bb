@@ -315,9 +315,12 @@ it('WT-002 WT-004 WT-007 WT-020 answers 422 saying why', function () {
     weighInCall($user, 'weigh_in_delete', ['id' => 'not-a-ulid'])
         ->assertStatus(422)
         ->assertJsonPath('error.violations.0.field', 'id');
+    // One plain message, not Laravel's date rules' two (the client shows it as given, OFF-011).
     weighInCall($user, 'weigh_in_log', weighInInput(['weighed_at' => '2026-02-30T07:00:00+00:00']))
         ->assertStatus(422)
-        ->assertJsonPath('error.violations.0.field', 'weighed_at');
+        ->assertJsonCount(1, 'error.violations')
+        ->assertJsonPath('error.violations.0.field', 'weighed_at')
+        ->assertJsonPath('error.violations.0.message', 'Enter a real date and time.');
     weighInCall($user, 'steps_log', ['date' => '2026-02-30', 'steps' => 8412])
         ->assertStatus(422)
         ->assertJsonPath('error.violations.0.field', 'date');
