@@ -28,6 +28,23 @@ describe('Plan routes', () => {
         }
     });
 
+    it('NAV-001 puts add a phase, the 24-week plans and the phase transition in the Train tab', () => {
+        const router = makeRouter(false, createMemoryHistory());
+
+        for (const [path, name] of [
+            ['/train/plan/add-phase', 'add-phase'],
+            ['/train/plan/prebuilt', 'prebuilt-plans'],
+            ['/train/plan/transition', 'phase-transition'],
+        ] as const) {
+            expect(router.resolve(path).name).toBe(name);
+            expect(router.resolve(path).meta).toMatchObject({ screen: 'plan_show', tab: 'train' });
+        }
+    });
+
+    it.each(['add-phase', 'prebuilt-plans', 'phase-transition'])('VIEW-001 /dev/screens/plan_show?view=%s finds its screen', (view) => {
+        expect(findScreen('plan_show', featureRoutes, view)).not.toBeNull();
+    });
+
     it('CAP-002 opens the plan for plan_show and the phase detail for phase_show at /dev/screens', () => {
         expect(findScreen('plan_show', featureRoutes)).not.toBeNull();
         expect(findScreen('phase_show', featureRoutes)).not.toBeNull();
