@@ -6,7 +6,10 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Rawphp\Capabilities\Contracts\CapabilityBus;
 use Rawphp\Capabilities\Registry\CapabilityDefinition;
+use Rawphp\Capabilities\Schema\CatalogPresenter;
+use Rawphp\Capabilities\Support\CapabilityResult;
 use Rawphp\CapabilitiesAi\Contracts\ConversationContextProvider;
 use Rawphp\CapabilitiesAi\Contracts\ConversationStore;
 use Rawphp\CapabilitiesAi\Contracts\LlmClient;
@@ -111,6 +114,43 @@ it('AGT-011 holds today, the current phase and mesocycle, last week and this wee
         ->and($context)->toContain("week_show{}\n")
         ->and($context)->not->toContain('settings_show')
         ->and($context)->not->toContain('plan_show');
+});
+
+it('AGT-011 AGT-004 builds the context from the conversation owner\'s data only, every read as that owner', function () {
+    $this->travelTo('2026-09-23 10:00:00');
+    $alex = TrainSeed::user();
+    $blair = TrainSeed::user();
+    TrainSeed::mesocycle($alex, ['name' => 'Alex Strength Block', 'phase_id' => TrainSeed::phase($alex, 'fatLoss', '2026-08-31')->id]);
+    TrainSeed::mesocycle($blair, ['name' => 'Blair Hypertrophy Block', 'phase_id' => TrainSeed::phase($blair, 'fatLoss', '2026-08-31')->id]);
+    [$conversation, $turn] = coachTurn($blair, [['user', 'How is my block going?']], '01JC0NVERSAT10N0000000000B', '01JTURN000000000000000000B');
+
+    $actors = new ArrayObject;
+    $bus = app(CapabilityBus::class);
+    app()->instance(CapabilityBus::class, new class($bus, $actors) implements CapabilityBus
+    {
+        public function __construct(private CapabilityBus $bus, private ArrayObject $actors) {}
+
+        public function invoke(string $nameOrAlias, array $input = [], array $options = []): CapabilityResult
+        {
+            $this->actors[] = [$nameOrAlias, $options['caller'] ?? null, $options['actor']?->getKey()];
+
+            return $this->bus->invoke($nameOrAlias, $input, $options);
+        }
+
+        public function catalog(): CatalogPresenter
+        {
+            return $this->bus->catalog();
+        }
+    });
+    app()->forgetInstance(ConversationContextProvider::class);
+
+    $context = coachMessages($conversation, $turn)[1]['content'];
+
+    expect($context)->toContain('Blair Hypertrophy Block')
+        ->and($context)->not->toContain('Alex Strength Block')
+        ->and((array) $actors)->toHaveCount(4)
+        ->and(array_unique(array_column((array) $actors, 2)))->toBe([$blair->getKey()])
+        ->and(array_unique(array_column((array) $actors, 1)))->toBe(['agent']);
 });
 
 it('AGT-011 shows the failure of a read the authorizer refuses, as a tool result would', function () {
