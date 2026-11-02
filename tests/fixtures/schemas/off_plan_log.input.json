@@ -16,16 +16,20 @@
             "description": "24-hour \"HH:MM\"."
         },
         "kcal": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
         },
         "protein_g": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
         },
         "fat_g": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
         },
         "carbs_g": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
         },
         "name": {
             "type": [

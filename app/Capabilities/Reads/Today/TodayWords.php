@@ -61,4 +61,22 @@ final class TodayWords
     {
         return $count === 1 ? '1 step' : number_format($count).' steps';
     }
+
+    /** "2,400 kcal". */
+    public static function kcal(float $kcal): string
+    {
+        return number_format(round($kcal)).' kcal';
+    }
+
+    /** "170 g protein". */
+    public static function protein(float $grams): string
+    {
+        return number_format(round($grams)).' g protein';
+    }
+
+    /** "Wednesday". */
+    public static function weekday(DateTimeImmutable $day): string
+    {
+        return $day->format('l');
+    }
 }
