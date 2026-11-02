@@ -181,9 +181,11 @@ php artisan foods:import off openfoodfacts-products.jsonl.gz
 ```
 
 - USDA FoodData Central (public domain): the Foundation and Branded JSON downloads from <https://fdc.nal.usda.gov/download-datasets>.
-- Open Food Facts (ODbL): the JSONL export from <https://world.openfoodfacts.org/data>. The app shows the ODbL attribution. Any dump you publish that is derived from it stays under ODbL.
+- Open Food Facts (ODbL): the JSONL export from <https://world.openfoodfacts.org/data>. ODbL requires the credit "Food data from Open Food Facts (openfoodfacts.org), available under the Open Database License (ODbL)." in the app. The app does not show it yet: the food detail and Settings → About screens that will are not built. Until they ship, show that text yourself wherever your instance shows food data; `foods:import off` prints this reminder after every successful import. Any dump you publish that is derived from it stays under ODbL.
 
-Imports stream the file and upsert in batches, so re-running one leaves the same rows. Re-run them to refresh the data.
+Imports stream the file and upsert in batches, so re-running one leaves the same rows. An import that finds the file cut off or corrupt exits with an error, keeping the foods it saved before the bad part (a cut-off USDA file loses the batch it was reading): download the file again and re-run it. Import the Open Food Facts `.jsonl.gz` as downloaded rather than unpacking it, since a plain `.jsonl` cut exactly at a line break looks complete. Re-run them to refresh the data.
+
+An import writes `foods` and `food_servings` and, on a re-run, replaces imported foods' values and servings; removing the command does not undo that. On an instance with users, take a full database backup before an import. Restoring it takes the import back out but also discards everything users wrote after the backup, so do it only right after a failed or unwanted import, before users log against the new foods. Later, fix bad data by re-importing a corrected file, which refreshes the same rows in place. Do not delete imported foods by hand: users' favorites, recents, saved meals, plans, recipes and logged entries point at them, so a delete cascades into user data or is refused by a foreign key.
 
 ## Updating
 

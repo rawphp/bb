@@ -1,0 +1,34 @@
+{
+  "FoundationFoods": [
+    {
+      "fdcId": 1105073,
+      "dataType": "Foundation",
+      "description": "Bananas, ripe and slightly ripe, raw",
+      "foodCategory": {"description": "Fruits and Fruit Juices"},
+      "foodNutrients": [
+        {"nutrient": {"id": 1008, "number": "208", "name": "Energy", "unitName": "kcal"}, "amount": 97.0},
+        {"nutrient": {"id": 1003, "number": "203", "name": "Protein", "unitName": "g"}, "amount": 0.73},
+        {"nutrient": {"id": 1004, "number": "204", "name": "Total lipid (fat)", "unitName": "g"}, "amount": 0.29},
+        {"nutrient": {"id": 1005, "number": "205", "name": "Carbohydrate, by difference", "unitName": "g"}, "amount": 23.0},
+        {"nutrient": {"id": 1079, "number": "291", "name": "Fiber, total dietary", "unitName": "g"}, "amount": 2.6}
+      ],
+      "foodPortions": [
+        {"amount": 1.0, "gramWeight": 118.0, "modifier": "medium", "measureUnit": {"name": "undetermined"}},
+        {"amount": 1.0, "gramWeight": 150.0, "portionDescription": "1 cup, sliced", "measureUnit": {"name": "undetermined"}}
+      ]
+    },
+    {
+      "fdcId": 2262075,
+      "dataType": "Foundation",
+      "description": "Hummus, commercial",
+      "foodCategory": {"description": "Legumes and Legume Products"},
+      "foodNutrients": [
+        {"nutrient": {"id": 2047, "number": "957", "name": "Energy (Atwater General Factors)", "unitName": "kcal"}, "amount": 229.0},
+        {"nutrient": {"id": 1003, "number": "203", "name": "Protein", "unitName": "g"}, "amount": 7.35},
+        {"nutrient": {"id": 1004, "number": "204", "name": "Total lipid (fat)", "unitName": "g"}, "amount": 17.1},
+        {"nutrient": {"id": 1005, "number": "205", "name": "Carbohydrate, by difference", "unitName": "g"}, "amount": 14.9}
+      ],
+      "foodPortions": []
+    }
+  ]
+}

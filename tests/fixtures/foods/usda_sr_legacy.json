@@ -1,0 +1,36 @@
+{
+  "SRLegacyFoods": [
+    {
+      "fdcId": 171890,
+      "dataType": "SR Legacy",
+      "description": "Beverages, coffee, brewed, prepared with tap water",
+      "foodCategory": {"description": "Beverages"},
+      "foodNutrients": [
+        {"nutrient": {"id": 1008, "number": "208", "name": "Energy", "unitName": "kcal"}, "amount": 1.0},
+        {"nutrient": {"id": 1003, "number": "203", "name": "Protein", "unitName": "g"}, "amount": 0.12},
+        {"nutrient": {"id": 1004, "number": "204", "name": "Total lipid (fat)", "unitName": "g"}, "amount": 0.02},
+        {"nutrient": {"id": 1005, "number": "205", "name": "Carbohydrate, by difference", "unitName": "g"}, "amount": 0.0}
+      ],
+      "foodPortions": [
+        {"amount": 1.0, "gramWeight": 237.0, "measureUnit": {"name": "cup"}, "modifier": ""}
+      ]
+    },
+    {
+      "fdcId": 328637,
+      "dataType": "SR Legacy",
+      "description": "Cheese, cheddar",
+      "foodCategory": {"description": "Dairy and Egg Products"},
+      "foodNutrients": [
+        {"nutrient": {"id": 1008, "number": "208", "name": "Energy", "unitName": "kcal"}, "amount": 404.0},
+        {"nutrient": {"id": 1003, "number": "203", "name": "Protein", "unitName": "g"}, "amount": 22.87},
+        {"nutrient": {"id": 1004, "number": "204", "name": "Total lipid (fat)", "unitName": "g"}, "amount": 33.31},
+        {"nutrient": {"id": 1005, "number": "205", "name": "Carbohydrate, by difference", "unitName": "g"}, "amount": 3.09},
+        {"nutrient": {"id": 1079, "number": "291", "name": "Fiber, total dietary", "unitName": "g"}, "amount": 0.0}
+      ],
+      "foodPortions": [
+        {"amount": 1.0, "gramWeight": 28.35, "measureUnit": {"name": "oz"}, "modifier": ""},
+        {"amount": 2.0, "gramWeight": 56.0, "measureUnit": {"name": "slice"}, "modifier": "(1 oz)"}
+      ]
+    }
+  ]
+}
