@@ -38,4 +38,14 @@ describe('pantry routes', () => {
 
         expect(read).toHaveBeenLastCalledWith('food_search', expect.objectContaining({ group: null, meal_id: null }), expect.any(Function), expect.any(Function));
     });
+
+    it('FOOD-023 cuts a search longer than food_search takes to 100 characters', async () => {
+        vi.mocked(read).mockReturnValueOnce(new Promise(() => {}));
+        const router = createRouter({ history: createMemoryHistory(), routes });
+        await router.push(`/nutrition/pantry?search=${'a'.repeat(140)}`);
+        mount(RouterView, { global: { plugins: [router] } });
+        await flushPromises();
+
+        expect(read).toHaveBeenLastCalledWith('food_search', expect.objectContaining({ query: 'a'.repeat(100) }), expect.any(Function), expect.any(Function));
+    });
 });

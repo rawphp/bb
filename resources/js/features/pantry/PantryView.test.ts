@@ -135,9 +135,6 @@ describe('PantryView', () => {
         await pointer(swipe, 'pointerdown', 300, 10);
         await pointer(swipe, 'pointermove', 200, 12);
         await pointer(swipe, 'pointerup', 200, 12);
-        // The drag's own click is not a tap on the row.
-        await swipe.find('[data-test="pick"]').trigger('click');
-        expect(row(wrapper, 'Egg whites').find('[data-test="pick"]').attributes('aria-pressed')).toBe('false');
 
         const action = row(wrapper, 'Egg whites').find('[data-test="swipe-favorite"]');
         expect(action.attributes('aria-hidden')).toBeUndefined();
@@ -146,6 +143,33 @@ describe('PantryView', () => {
         await flushPromises();
 
         expect(writes()).toEqual([['food_favorite_set', { food_id: '01JBX5F0000000000000000007', favorite: true }]]);
+    });
+
+    it('FOOD-028 a tap that drifts a few pixels sideways still picks the food', async () => {
+        const wrapper = show();
+
+        const swipe = row(wrapper, 'Egg whites').find('[data-test="swipe"]');
+        await pointer(swipe, 'pointerdown', 300, 10);
+        await pointer(swipe, 'pointermove', 297, 11);
+        await pointer(swipe, 'pointerup', 297, 11);
+        await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+
+        expect(row(wrapper, 'Egg whites').find('[data-test="pick"]').attributes('aria-pressed')).toBe('true');
+        expect(row(wrapper, 'Egg whites').find('[data-test="swipe-favorite"]').attributes('aria-hidden')).toBe('true');
+    });
+
+    it('FOOD-022 a tap elsewhere closes the swipe action', async () => {
+        const wrapper = show();
+
+        const swipe = row(wrapper, 'Egg whites').find('[data-test="swipe"]');
+        await pointer(swipe, 'pointerdown', 300, 10);
+        await pointer(swipe, 'pointermove', 200, 12);
+        await pointer(swipe, 'pointerup', 200, 12);
+        expect(row(wrapper, 'Egg whites').find('[data-test="swipe-favorite"]').attributes('aria-hidden')).toBeUndefined();
+
+        await pointer(wrapper.find('h1'), 'pointerdown', 10, 10);
+
+        expect(row(wrapper, 'Egg whites').find('[data-test="swipe-favorite"]').attributes('aria-hidden')).toBe('true');
     });
 
     it('FOOD-022 a vertical drag scrolls and does not open the swipe action', async () => {
@@ -188,6 +212,57 @@ describe('PantryView', () => {
 
         expect(wrapper.find('[data-test="search-error"]').text()).toBe('The foods could not be loaded.');
         expect(wrapper.findAll('[data-test="food-row"]')).toHaveLength(3);
+    });
+
+    it('OFF-003 a later search with no connection keeps the foods and says search needs one', async () => {
+        const wrapper = show();
+        readMock.mockRejectedValueOnce(new CapabilityError('food_search', 0, { reason: 'network' }));
+
+        await wrapper.findAll('[role="tab"]')[1]!.trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="search-error"]').text()).toBe('Search needs a connection.');
+        expect(wrapper.findAll('[data-test="food-row"]')).toHaveLength(3);
+    });
+
+    it('OFF-003 a later search answered 401 takes the foods away and asks to sign in', async () => {
+        const wrapper = show();
+        readMock.mockRejectedValueOnce(new CapabilityError('food_search', 401, null));
+
+        await wrapper.findAll('[role="tab"]')[1]!.trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="food-row"]').exists()).toBe(false);
+        expect(wrapper.find('[role="alert"]').text()).toContain('You are signed out.');
+        expect(wrapper.find('[data-test="sign-in"]').exists()).toBe(true);
+    });
+
+    it('OFF-003 a cached search whose refresh is refused is taken away', async () => {
+        let failRefresh: (error: CapabilityError) => void = () => {};
+        readMock.mockImplementationOnce(async (_n, _i, _u, onError) => {
+            failRefresh = onError as typeof failRefresh;
+            return search;
+        });
+        const wrapper = show();
+        await wrapper.findAll('[role="tab"]')[1]!.trigger('click');
+        await flushPromises();
+        expect(row(wrapper, 'Chicken stock').exists()).toBe(true);
+
+        failRefresh(new CapabilityError('food_search', 404, null));
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="food-row"]').exists()).toBe(false);
+        expect(wrapper.find('[role="alert"]').text()).toContain('The foods could not be loaded.');
+    });
+
+    it('CAP-012 a refused favorite says why in the server\'s words', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('food_favorite_set', 422, { ok: false, error: { message: 'That food is gone.' } }));
+        const wrapper = show();
+
+        await row(wrapper, 'Egg whites').find('[data-test="favorite"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="search-error"]').text()).toBe('That food is gone.');
     });
 
     it('FOOD-024 offers the typo correction, and tapping it searches for that', async () => {
@@ -344,6 +419,83 @@ describe('PantryView', () => {
         const ids = writes().map(([, input]) => (input as { entries: { id: string }[] }).entries[0]!.id);
         expect(ids[1]).toBe(ids[0]);
         expect(back).toHaveBeenCalledOnce();
+    });
+
+    it('FOOD-028 a saved meal that did not load stays in the basket, and Add sends only it again', async () => {
+        writeMock
+            .mockResolvedValueOnce({})
+            .mockResolvedValueOnce({})
+            .mockRejectedValueOnce(new CapabilityError('meal_saved_meal_load', 0, { reason: 'network' }))
+            .mockResolvedValueOnce({});
+        const twoMeals = structuredClone(curated);
+        twoMeals.saved_meals.push({ saved_meal_id: '01JBX5S0000000000000000002', name: 'Cut lunch', detail: '2 foods' });
+        readMock.mockResolvedValue(twoMeals);
+        const wrapper = show({ payload: twoMeals, mealId: MEAL });
+
+        await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+        await wrapper.find('select[aria-label="Show"]').setValue('saved_meals');
+        await flushPromises();
+        for (const meal of wrapper.findAll('[data-test="collection-row"]')) await meal.trigger('click');
+        await wrapper.find('[data-test="confirm"]').trigger('click');
+        await flushPromises();
+
+        expect(writes().map(([name, input]) => [name, input.saved_meal_id])).toEqual([
+            ['meal_food_add', undefined],
+            ['meal_saved_meal_load', '01JBX5S0000000000000000001'],
+            ['meal_saved_meal_load', '01JBX5S0000000000000000002'],
+        ]);
+        expect(back).not.toHaveBeenCalled();
+        expect(wrapper.find('[data-test="confirm-error"]').exists()).toBe(true);
+        expect(wrapper.find('[data-test="basket"]').findAll('li').map((li) => li.text())).toEqual(['Cut lunchSaved meal']);
+
+        await wrapper.find('[data-test="confirm"]').trigger('click');
+        await flushPromises();
+
+        expect(writes().slice(3)).toEqual([['meal_saved_meal_load', { meal_id: MEAL, saved_meal_id: '01JBX5S0000000000000000002' }]]);
+        expect(back).toHaveBeenCalledOnce();
+    });
+
+    it('FOOD-028 picks wait while Add runs, so none is dropped or sent unseen', async () => {
+        let finish: (value: unknown) => void = () => {};
+        writeMock.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+        const wrapper = show();
+
+        await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+        await wrapper.find('[data-test="confirm"]').trigger('click');
+        await flushPromises();
+
+        expect(row(wrapper, 'Broccoli').find('[data-test="pick"]').attributes('disabled')).toBeDefined();
+        expect(wrapper.find('[data-test="basket"] button[aria-label="Remove Egg whites"]').attributes('disabled')).toBeDefined();
+        finish({});
+        await flushPromises();
+        expect(back).toHaveBeenCalledOnce();
+    });
+
+    it('NAV-002 an Add that finishes after the user left does not go back a second time', async () => {
+        let finish: (value: unknown) => void = () => {};
+        writeMock.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+        const wrapper = show();
+
+        await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+        await wrapper.find('[data-test="confirm"]').trigger('click');
+        await flushPromises();
+        await wrapper.find('[data-test="cancel"]').trigger('click');
+        wrapper.unmount();
+        finish({});
+        await flushPromises();
+
+        expect(back).toHaveBeenCalledOnce();
+    });
+
+    it('FOOD-025 the source hint goes with the source chip when a collection shows', async () => {
+        const wrapper = show();
+
+        await wrapper.find('select[aria-label="Source filter"]').setValue('recents');
+        await flushPromises();
+        await wrapper.find('select[aria-label="Show"]').setValue('recipes');
+        await flushPromises();
+
+        expect(wrapper.text()).not.toContain('The source filter narrows search results.');
     });
 
     it('FOOD-006 switches a food with a cooked value between raw and cooked numbers', async () => {
