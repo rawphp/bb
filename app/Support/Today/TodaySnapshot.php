@@ -90,31 +90,38 @@ final class TodaySnapshot
     ) {}
 
     /**
-     * Everything Today and the week strip show for `$date` (today when null). A date outside the plan is shown at its
-     * nearest edge (SCH-023). The sessions read are those of the mesocycles covering the 7 days shown, and of the
-     * current one, whose feedback the next-mesocycle prompt reads (MESO-064).
+     * Everything Today shows for `$date` (today when null). A date outside the plan is shown at its nearest edge
+     * (SCH-023). The sessions read are those of the mesocycles covering the 7 days shown, and of the current one,
+     * whose feedback the next-mesocycle prompt reads (MESO-064).
      */
     public static function load(User $user, ?string $date = null): self
     {
+        return self::read($user, $date, wholeDay: true);
+    }
+
+    /**
+     * What the week strip shows for the week around `$date`: the plan, its sessions, the targets and what was eaten.
+     * The day's weigh-ins, steps and Other activities and the meals' planned foods and recipes are not read, so
+     * {@see meals()} is not for this snapshot.
+     */
+    public static function loadWeek(User $user, ?string $date = null): self
+    {
+        return self::read($user, $date, wholeDay: false);
+    }
+
+    private static function read(User $user, ?string $date, bool $wholeDay): self
+    {
         $today = TrainSnapshot::day(CarbonImmutable::now());
         $plan = Plan::query()->where('user_id', $user->id)->first();
+        $profile = Profile::query()->where('user_id', $user->id)->first();
+        $mesocycles = Mesocycle::query()->where('user_id', $user->id)->get();
+        $phases = Phase::query()->where('user_id', $user->id)->orderBy('start_date')->get();
+        $planWeeks = PlanWeek::query()->where('user_id', $user->id)->get();
         $last = DayTarget::query()->where('user_id', $user->id)->max('date');
         $lastTarget = $last === null ? null : TrainSnapshot::day((string) $last);
-        $base = new TrainSnapshot(
-            today: $today,
-            plan: $plan,
-            profile: Profile::query()->where('user_id', $user->id)->first(),
-            mesocycles: Mesocycle::query()->where('user_id', $user->id)->get(),
-            phases: Phase::query()->where('user_id', $user->id)->orderBy('start_date')->get(),
-            sessions: new Collection,
-            sets: new Collection,
-            feedback: new Collection,
-            planWeeks: PlanWeek::query()->where('user_id', $user->id)->get(),
-            dayTargets: new Collection,
-            exercises: fn (?array $ids): Collection => Exercise::query()->visibleTo($user)
-                ->when($ids !== null, fn ($query) => $query->whereIn('id', $ids))
-                ->orderBy('name')->get(),
-        );
+        $train = fn (Collection $sessions): TrainSnapshot => self::train($user, $today, $plan, $profile, $mesocycles, $phases, $planWeeks, $sessions);
+
+        $base = $train(new Collection);
         $probe = new self($base, $today, $lastTarget, new Collection, new Collection, new Collection, new Collection, new Collection, new Collection, null);
         $day = $date === null ? $today : $probe->insidePlan(TrainSnapshot::day($date));
         $first = $probe->weekStart($day);
@@ -123,40 +130,56 @@ final class TodaySnapshot
             $ids[] = $probe->covering($first->modify("+{$offset} days"))?->id;
         }
         $sessions = WorkoutSession::query()->where('user_id', $user->id)->whereIn('mesocycle_id', array_values(array_unique(array_filter($ids))))->get();
-        $train = new TrainSnapshot(
-            today: $today,
-            plan: $plan,
-            profile: $base->profile,
-            mesocycles: $base->mesocycles,
-            phases: $base->phases,
-            sessions: $sessions,
-            sets: WorkoutSet::query()->whereIn('workout_session_id', $sessions->modelKeys())->orderBy('position')->get(),
-            feedback: MuscleFeedback::query()->whereIn('workout_session_id', $sessions->modelKeys())->get(),
-            planWeeks: $base->planWeeks,
-            dayTargets: new Collection,
-            exercises: fn (?array $ids): Collection => Exercise::query()->visibleTo($user)
-                ->when($ids !== null, fn ($query) => $query->whereIn('id', $ids))
-                ->orderBy('name')->get(),
-        );
         $range = [$first->format('Y-m-d'), $first->modify('+6 days')->format('Y-m-d')];
         $targets = DayTarget::query()->where('user_id', $user->id)->whereBetween('date', $range)->get();
 
         return new self(
-            train: $train,
+            train: $train($sessions),
             date: $day,
             lastTarget: $lastTarget,
             dayTargets: $targets,
             meals: DayTargetMeal::query()->whereIn('day_target_id', $targets->modelKeys())
-                ->with(['plannedFoods.food', 'plannedRecipes.sourceRecipe.ingredients.food', 'checkIn', 'planningState'])
+                ->with($wholeDay ? ['plannedFoods.food', 'plannedRecipes.sourceRecipe.ingredients.food', 'checkIn', 'planningState'] : ['checkIn'])
                 ->get(),
             offPlan: OffPlanEntry::query()->where('user_id', $user->id)->whereBetween('date', $range)->orderBy('time')->get(),
-            otherActivities: OtherActivity::query()->where('user_id', $user->id)->whereBetween('date', $range)->get(),
-            weighIns: WeighIn::query()->where('user_id', $user->id)
+            otherActivities: $wholeDay ? OtherActivity::query()->where('user_id', $user->id)->whereBetween('date', $range)->get() : new Collection,
+            weighIns: $wholeDay ? WeighIn::query()->where('user_id', $user->id)
                 ->whereBetween('weighed_at', [$day->format('Y-m-d 00:00:00'), $day->format('Y-m-d 23:59:59')])
-                ->orderBy('weighed_at')->get(),
-            weighInSchedule: WeighInScheduleEntry::query()->where('user_id', $user->id)->orderBy('id')->get(),
-            steps: Step::query()->where('user_id', $user->id)->whereDate('date', $day->format('Y-m-d'))->first(),
+                ->orderBy('weighed_at')->get() : new Collection,
+            weighInSchedule: $wholeDay ? WeighInScheduleEntry::query()->where('user_id', $user->id)->orderBy('id')->get() : new Collection,
+            steps: $wholeDay ? Step::query()->where('user_id', $user->id)->whereDate('date', $day->format('Y-m-d'))->first() : null,
             nowTime: CarbonImmutable::now()->format('H:i'),
+        );
+    }
+
+    /**
+     * The plan and mesocycles as TrainSnapshot reads them, with these sessions and their sets and feedback.
+     *
+     * @param  Collection<int, Mesocycle>  $mesocycles
+     * @param  Collection<int, Phase>  $phases
+     * @param  Collection<int, PlanWeek>  $planWeeks
+     * @param  Collection<int, WorkoutSession>  $sessions
+     */
+    private static function train(
+        User $user, DateTimeImmutable $today, ?Plan $plan, ?Profile $profile, Collection $mesocycles, Collection $phases,
+        Collection $planWeeks, Collection $sessions,
+    ): TrainSnapshot {
+        $ids = $sessions->map(fn (WorkoutSession $session) => $session->getKey())->values()->all();
+
+        return new TrainSnapshot(
+            today: $today,
+            plan: $plan,
+            profile: $profile,
+            mesocycles: $mesocycles,
+            phases: $phases,
+            sessions: $sessions,
+            sets: $ids === [] ? new Collection : WorkoutSet::query()->whereIn('workout_session_id', $ids)->orderBy('position')->get(),
+            feedback: $ids === [] ? new Collection : MuscleFeedback::query()->whereIn('workout_session_id', $ids)->get(),
+            planWeeks: $planWeeks,
+            dayTargets: new Collection,
+            exercises: fn (?array $ids): Collection => Exercise::query()->visibleTo($user)
+                ->when($ids !== null, fn ($query) => $query->whereIn('id', $ids))
+                ->orderBy('name')->get(),
         );
     }
 
@@ -628,7 +651,7 @@ final class TodaySnapshot
      */
     public function consumed(DateTimeImmutable $day): ?DayTotals
     {
-        $eaten = array_values(array_filter(array_map(fn (TodayMealItem $m) => $m->eaten, $this->meals($day))));
+        $eaten = $this->eaten($day);
         $offPlan = $this->offPlan($day);
         if ($eaten === [] && $offPlan === []) {
             return null;
@@ -638,6 +661,29 @@ final class TodaySnapshot
             kcal: array_sum(array_map(fn (MealTarget $m) => $m->kcal, $eaten)) + array_sum(array_map(fn (OffPlanEntry $e) => $e->kcal, $offPlan)),
             proteinG: array_sum(array_map(fn (MealTarget $m) => $m->proteinG, $eaten)) + array_sum(array_map(fn (OffPlanEntry $e) => $e->protein_g, $offPlan)),
         );
+    }
+
+    /**
+     * The check-ins of a day's meals, read from the check-ins alone so the week strip needs no planned foods.
+     *
+     * @return list<MealTarget>
+     */
+    private function eaten(DateTimeImmutable $day): array
+    {
+        $target = $this->dayTarget($day);
+        if ($target === null) {
+            return [];
+        }
+        $index = $this->meals->keyBy(fn (DayTargetMeal $m) => strtolower((string) $m->id));
+        $eaten = [];
+        foreach (self::json($target->meals) as $meal) {
+            $checkIn = $index->get(strtolower((string) ($meal['id'] ?? '')))?->checkIn;
+            if ($checkIn !== null) {
+                $eaten[] = new MealTarget(kcal: $checkIn->kcal, proteinG: $checkIn->protein_g, fatG: $checkIn->fat_g, carbsG: $checkIn->carbs_g);
+            }
+        }
+
+        return $eaten;
     }
 
     /**

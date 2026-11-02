@@ -25,7 +25,7 @@ final class WeekShowCapability implements HostCapability
                 /** @var User $user */
                 $user = $context->user();
 
-                return WeekPayload::build(TodaySnapshot::load($user, $input->date));
+                return WeekPayload::build(TodaySnapshot::loadWeek($user, $input->date));
             });
     }
 }

@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\User;
 use App\Models\DayTarget;
 use App\Models\MealCheckIn;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\ScreenFixture;
