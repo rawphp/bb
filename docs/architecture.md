@@ -8,7 +8,8 @@ A Laravel 13 app owns every rule and exposes every action as a capability. A Vue
 
 ```text
  Vue PWA ──► outbox / cache ──► POST /capabilities/{name} ─┐
- MCP client / CLI / Shortcut ─► POST /capabilities/{name} ─┤  (token)
+ CLI / Shortcut ──────────────► POST /capabilities/{name} ─┤  (token)
+ MCP client ─────► POST /mcp/bodybuilder ► McpToolAdapter ─┤  (token, caller=mcp)
  In-app agent (TurnRunner) ──► CapabilityBus::invoke ──────┤  (caller=agent, actor=user)
                                                            ▼
                         CapabilityRegistry → authorize (CAP-020) → run() → audit
