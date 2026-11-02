@@ -6,6 +6,8 @@ use App\Domain\Model\MuscleGroup;
 use App\Models\DayTarget;
 use App\Models\Exercise;
 use App\Models\ExerciseFeedback;
+use App\Models\ExerciseLoadStep;
+use App\Models\ExerciseNote;
 use App\Models\Mesocycle;
 use App\Models\MuscleFeedback;
 use App\Models\User;
@@ -14,6 +16,7 @@ use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Workout\WorkoutIds;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Tests\Support\ScreenFixture;
 use Tests\Support\TrainSeed;
 
@@ -161,4 +164,37 @@ it('WO-001 never shows another user\'s session rows', function () {
 
     expect(showOver($user, ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1])->json('data.status'))->toBe('not_started')
         ->and(Mesocycle::query()->count())->toBe(1);
+});
+
+it('WO-002 WO-009 FB-007 FB-009 another user\'s notes, load steps, day target and sessions never reach the caller\'s screen', function () {
+    // The stranger's rows come first, so a lookup that lost its user scope would find theirs.
+    Carbon::setTestNow('2026-09-21 17:00:00');
+    $bench = Exercise::factory()->create([
+        'name' => 'Bench Press', 'muscle_group' => MuscleGroup::Chest, 'equipment' => Equipment::Barbell,
+        'load_type' => ExerciseLoadType::Barbell, 'rep_range_min' => 5, 'rep_range_max' => 10,
+    ]);
+    $stranger = User::factory()->create();
+    ExerciseNote::factory()->for($stranger)->create(['exercise_id' => $bench->id, 'note' => 'Their grip cue']);
+    ExerciseLoadStep::factory()->for($stranger)->create(['exercise_id' => $bench->id, 'step_kg' => 5]);
+    DayTarget::factory()->for($stranger)->create(['date' => '2026-09-21', 'meals' => [
+        ['id' => '01JB6Q600A2B3C4D5E6F7G8H9J', 'name' => 'Shake', 'time' => '18:45', 'kcal' => 300, 'protein_g' => 40, 'fat_g' => 5, 'carbs_g' => 30],
+    ]]);
+    [$user, $mesocycle, , $row] = showSeed();
+    test()->actingAs($user)->postJson('/capabilities/workout_start', ['workout_id' => WorkoutIds::workout($mesocycle->id, 3, 1)], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+    // Their back trained two days ago (FB-007 would ask soreness) and again after the caller started (FB-009 would lock it).
+    foreach (['2026-09-19 10:00:00', '2026-09-21 17:30:00'] as $at) {
+        $theirs = WorkoutSession::factory()->for($stranger)->create(['actual_start_at' => $at]);
+        WorkoutSet::factory()->logged()->create(['workout_session_id' => $theirs->id, 'exercise_id' => $row->id]);
+    }
+
+    $data = showOver($user, ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1])->assertOk()->json('data');
+    $back = array_values(array_filter($data['feedback'], fn (array $sheet) => $sheet['muscle_group'] === 'back'))[0];
+
+    expect($data['exercises'][0]['pinned_note'])->toBeNull()
+        // The default 2.5 kg step: 82.5 kg planned, and a table from 72.5 kg (a 5 kg step would start at 75).
+        ->and($data['exercises'][0]['sets'][0]['target_weight']['value'])->toEqual(82.5)
+        ->and($data['exercises'][0]['sets'][0]['rep_table'][0]['weight']['value'])->toEqual(72.5)
+        ->and($data['next_meal'])->toBe('Next: Meal 2 at 7:00 PM · 95 g carbs')
+        ->and(array_column($back['questions'], 'kind'))->toBe(['joint', 'pump', 'volume'])
+        ->and($back['can_edit'])->toBeTrue();
 });
