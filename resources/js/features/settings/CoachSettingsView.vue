@@ -98,7 +98,7 @@ async function clear(): Promise<void> {
                 <h2 id="coach-can" class="font-semibold">What the Coach can do</h2>
                 <p>Anything you can do in the app, when you ask: swap an exercise, move a workout, plan a day's meals, explain a deload. It asks before it deletes or ends anything, and every change it makes shows on its screen with Undo.</p>
                 <h2 class="font-semibold">What it cannot do</h2>
-                <p>Log a set, a meal or a weigh-in you did not tell it about, delete your account, make tokens or change your subscription. It is not a doctor.</p>
+                <p>Log a set, a meal or a weigh-in you did not tell it about, delete your account, make or revoke tokens or change your subscription. It is not a doctor.</p>
             </section>
 
             <div class="rounded-2xl bg-surface px-4 py-2">

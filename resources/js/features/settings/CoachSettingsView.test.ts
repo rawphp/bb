@@ -48,6 +48,8 @@ describe('CoachSettingsView', () => {
         expect(wrapper.text()).toContain('What it cannot do');
         // CAP-031 excludes only deleting the account, tokens and billing; the note promises no more.
         expect(wrapper.text()).not.toContain('health screening');
+        // Every CAP-031 exclusion is named: account_delete, token_create, token_revoke, billing_*.
+        expect(wrapper.text()).toContain('delete your account, make or revoke tokens or change your subscription');
         expect(readMock).not.toHaveBeenCalled();
     });
 
