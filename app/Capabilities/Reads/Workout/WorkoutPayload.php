@@ -1,0 +1,331 @@
+<?php
+
+namespace App\Capabilities\Reads\Workout;
+
+use App\Capabilities\Support\Tone;
+use App\Capabilities\Train\Data\Measure;
+use App\Capabilities\Train\Data\Pill;
+use App\Capabilities\Workout\Data\WorkoutChoice;
+use App\Capabilities\Workout\Data\WorkoutExercise;
+use App\Capabilities\Workout\Data\WorkoutFeedback;
+use App\Capabilities\Workout\Data\WorkoutFeedbackQuestion;
+use App\Capabilities\Workout\Data\WorkoutHelpSection;
+use App\Capabilities\Workout\Data\WorkoutLookBackRow;
+use App\Capabilities\Workout\Data\WorkoutRepRow;
+use App\Capabilities\Workout\Data\WorkoutSet;
+use App\Capabilities\Workout\Data\WorkoutShowOutput;
+use App\Capabilities\Workout\Data\WorkoutWarmUp;
+use App\Capabilities\Workout\Data\WorkoutWarmUpStep;
+use App\Domain\Model\ExerciseLoadType;
+use App\Domain\Model\JointPain;
+use App\Domain\Model\Pump;
+use App\Domain\Model\Session;
+use App\Domain\Model\Soreness;
+use App\Domain\Model\VolumeFeedback;
+use App\Domain\Placement\ClockTime;
+use App\Domain\Progression\FeedbackSheet;
+use App\Domain\Progression\FeedbackSheets;
+use App\Domain\Progression\LoadProgression;
+use App\Domain\Progression\RepTable;
+use App\Domain\Progression\RepTableRow;
+use App\Domain\Progression\RetargetKind;
+use App\Domain\Progression\SetLoad;
+use App\Domain\Progression\SetTarget;
+use App\Domain\Progression\WorkoutStatus;
+use App\Models\DayTarget;
+use App\Models\ExerciseFeedback;
+use App\Models\MuscleFeedback;
+use App\Models\WorkoutSession;
+use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\Workout\WorkoutBlock;
+use App\Support\Workout\WorkoutSetRow;
+use App\Support\Workout\WorkoutSnapshot;
+
+/**
+ * The workout screen (rp-clone WorkoutModel, WO-001 to WO-052, NAV-004) from a {@see WorkoutSnapshot}, with
+ * everything the session needs offline (OFF-020): each set's target and rep table (CAP-016), the Feedback sheets and
+ * when they fall due, the notes and the next meal. The view computes nothing.
+ */
+final class WorkoutPayload
+{
+    public static function build(WorkoutSnapshot $s): WorkoutShowOutput
+    {
+        $status = $s->status();
+        $editable = $status->isEditable();
+        $blocks = $s->blocks();
+        $plan = $s->plan();
+        $rir = $s->rir();
+        $isDeload = $s->isDeload();
+        $sheets = self::feedback($s, $blocks, $status);
+        $pending = $editable && array_filter($sheets, fn (WorkoutFeedback $sheet) => $sheet->is_due && ! $sheet->is_answered) !== [];
+        $sets = array_merge(...array_map(fn (WorkoutBlock $block) => $block->sets, $blocks));
+        $allDone = $sets !== [] && array_filter($sets, fn (WorkoutSetRow $set) => ! $set->isDone()) === [];
+        $anyDone = array_filter($sets, fn (WorkoutSetRow $set) => $set->isDone()) !== [];
+        $date = $s->date();
+
+        $exercises = [];
+        foreach ($blocks as $index => $block) {
+            $exercises[] = self::exercise($s, $block, $index, count($blocks), $editable, $rir);
+        }
+
+        return new WorkoutShowOutput(
+            workout_id: $s->workoutId(),
+            mesocycle_id: (string) $s->mesocycle->id,
+            title: implode(' · ', array_filter(["Week {$s->week}", "Day {$s->day}", $plan->name, $date?->format('D j M')])),
+            day_label: $plan->name,
+            status: $status->value,
+            is_editable: $editable,
+            active_bar_text: $status === WorkoutStatus::InProgress
+                ? $plan->name.' · '.count(array_filter($blocks, fn (WorkoutBlock $b) => $b->isDone())).' of '.count($blocks).' exercises'
+                : null,
+            weight_unit: $s->unit()->value,
+            deload_banner: $isDeload ? new Pill(WorkoutWords::DELOAD, Tone::Info->value) : null,
+            feedback_banner: $pending ? new Pill(WorkoutWords::FEEDBACK_REQUIRED, Tone::Warning->value) : null,
+            can_finish: $editable && $allDone && ! $pending,
+            next_meal: self::nextMeal($s),
+            warm_up: $editable && $blocks !== [] && ! $anyDone ? new WorkoutWarmUp(
+                workout_exercise_id: $blocks[0]->id,
+                title: WorkoutWords::WARM_UP_TITLE,
+                steps: array_map(fn (string $text) => new WorkoutWarmUpStep($text), WorkoutWords::WARM_UP_STEPS),
+                note: WorkoutWords::WARM_UP_NOTE,
+            ) : null,
+            rir_info: new WorkoutHelpSection(WorkoutWords::RIR_TITLE, WorkoutWords::rir($rir), 'rir'),
+            exercises: $exercises,
+            feedback: $sheets,
+            set_type_choices: WorkoutWords::setTypeChoices(),
+            add_set_choices: WorkoutWords::addSetChoices(),
+            help: WorkoutWords::help(),
+            swap_advice: WorkoutWords::SWAP_ADVICE,
+            look_back: self::lookBack($s),
+        );
+    }
+
+    // MARK: exercises and sets (WO-002 to WO-007, WO-021, WO-023)
+
+    private static function exercise(WorkoutSnapshot $s, WorkoutBlock $block, int $index, int $count, bool $editable, ?int $rir): WorkoutExercise
+    {
+        $exercise = $block->exercise;
+        $unit = $s->unit()->value;
+        $lastWeek = $s->lastWeekLoads($exercise);
+        $sets = [];
+        foreach ($block->sets as $number => $row) {
+            $sets[] = self::set($s, $block, $row, $number, $rir, $lastWeek);
+        }
+
+        return new WorkoutExercise(
+            id: $block->id,
+            exercise_id: (string) $exercise->id,
+            name: $exercise->name,
+            detail: $exercise->equipment->title()." · {$exercise->rep_range_min}–{$exercise->rep_range_max} reps",
+            muscle_group: $exercise->muscle_group->value,
+            weight_label: match ($exercise->load_type) {
+                ExerciseLoadType::Dumbbell => "Weight of one dumbbell ({$unit})",
+                ExerciseLoadType::Bodyweight => "Added weight ({$unit})",
+                default => "Weight ({$unit})",
+            },
+            pinned_note: $s->pinnedNote($exercise),
+            session_note: $block->note,
+            // PROG-051, PROG-053, PROG-018 and EX-009 belong to the recovery rules (#84, #85).
+            recovery_note: null,
+            swap_suggestion: null,
+            carries_first_weight: $editable && $exercise->load_type !== ExerciseLoadType::Bodyweight && $block->sets !== []
+                && array_filter($block->sets, fn (WorkoutSetRow $set) => $set->targetKg !== null) === [],
+            can_move_up: $index > 0,
+            can_move_down: $index < $count - 1,
+            sets: $sets,
+        );
+    }
+
+    /**
+     * rp-clone restoredSet: the fields hold what was typed or logged, else the target (WO-004). A weight moved off
+     * the target with no reps typed shows the reps for an equal effort (WO-005, PROG-024), or none when it is far
+     * from last week's (PROG-025).
+     *
+     * @param  list<SetLoad>  $lastWeek
+     */
+    private static function set(WorkoutSnapshot $s, WorkoutBlock $block, WorkoutSetRow $row, int $index, ?int $rir, array $lastWeek): WorkoutSet
+    {
+        $exercise = $block->exercise;
+        $rules = $s->rules($exercise);
+        $weightKg = $row->actualKg ?? $row->targetKg;
+        if (in_array($exercise->load_type, [ExerciseLoadType::Bodyweight, ExerciseLoadType::BodyweightPlusLoad], true) && $weightKg !== null && abs($weightKg) < 1e-9) {
+            $weightKg = null;
+        }
+        $target = $row->targetKg === null ? null : round($s->display($row->targetKg), 4);
+        $reps = $row->actualReps;
+        if ($reps === null && self::showsTarget($row, $weightKg)) {
+            $reps = $row->targetReps;
+        } elseif ($reps === null && $weightKg !== null && $target !== null && $target > 0 && $row->targetReps !== null && $rir !== null
+            && $exercise->load_type !== ExerciseLoadType::Bodyweight) {
+            $last = $lastWeek === [] ? null : $lastWeek[min($index, count($lastWeek) - 1)]->weight;
+            $retarget = LoadProgression::retarget(new SetTarget($target, $row->targetReps, $rir), $s->display($weightKg), $last, $rules);
+            $reps = $retarget->kind === RetargetKind::Reps && $retarget->value > 0 ? $retarget->value : null;
+        }
+        $table = RepTable::rows($target, $row->targetReps, $rir, $rules, $s->isFatLoss());
+
+        return new WorkoutSet(
+            id: $row->id,
+            number: $index + 1,
+            set_type: $row->type->value,
+            badge: $row->type->badge(),
+            weight: $weightKg === null ? null : self::measure($s, $s->display($weightKg)),
+            reps: $reps,
+            target_weight: $target === null ? null : self::measure($s, $target),
+            target_text: $row->targetReps === null ? null
+                : implode(' ', array_filter([$target === null ? null : WorkoutWords::weight($target, $s->unit()), "× {$row->targetReps}"])),
+            reps_placeholder: $rir === null ? 'Reps' : "{$rir} RIR",
+            rep_table: array_map(fn (RepTableRow $r) => new WorkoutRepRow(self::measure($s, $r->weight), $r->reps), $table),
+            off_table_text: $table === [] ? null : "{$rir} RIR, just log reps",
+            is_logged: $row->isLogged,
+            is_skipped: $row->isSkipped,
+        );
+    }
+
+    /** WO-004: the planned weight is in use. */
+    private static function showsTarget(WorkoutSetRow $row, ?float $weightKg): bool
+    {
+        if ($row->targetReps === null && $row->targetKg === null) {
+            return false;
+        }
+
+        return match (true) {
+            $weightKg === null && $row->targetKg === null => true,
+            $weightKg !== null && $row->targetKg !== null => abs($weightKg - $row->targetKg) < 0.001,
+            default => false,
+        };
+    }
+
+    private static function measure(WorkoutSnapshot $s, float $value): Measure
+    {
+        $value = round($value, 2);
+
+        return new Measure($value, $s->unit()->value, WorkoutWords::weight($value, $s->unit()));
+    }
+
+    // MARK: feedback (FB-001 to FB-009, OFF-020)
+
+    /**
+     * @param  list<WorkoutBlock>  $blocks
+     * @return list<WorkoutFeedback>
+     */
+    private static function feedback(WorkoutSnapshot $s, array $blocks, WorkoutStatus $status): array
+    {
+        $session = $s->session();
+        $sheets = FeedbackSheets::sheets(array_map(fn (WorkoutBlock $block) => $block->feedback(), $blocks), $s->isDeload(), $status);
+        $joints = $session === null ? collect() : $s->exerciseFeedback
+            ->filter(fn (ExerciseFeedback $row) => $row->workout_session_id === $session->id)
+            ->mapWithKeys(fn (ExerciseFeedback $row) => [(int) $row->exercise_id => JointPain::tryFrom((string) $row->joint_pain)?->value]);
+
+        return array_map(function (FeedbackSheet $sheet) use ($s, $session, $joints) {
+            $row = $session === null ? null : $s->train->feedback->first(fn (MuscleFeedback $f) => $f->workout_session_id === $session->id && $f->muscle_group === $sheet->muscle);
+            $soreness = Soreness::tryFrom((string) $row?->soreness)?->value;
+            $pump = Pump::tryFrom((string) $row?->pump)?->value;
+            $volume = VolumeFeedback::tryFrom((string) $row?->volume)?->value;
+            $asks = FeedbackSheets::asksSoreness($s->start(), $s->lastTrained($sheet->muscle));
+            $muscle = mb_strtolower($sheet->muscle->title());
+
+            $questions = [];
+            foreach ($sheet->exercises as $exerciseId => $name) {
+                $questions[] = new WorkoutFeedbackQuestion('joint', (string) $exerciseId, "How did your joints feel during {$name}?", WorkoutWords::feedbackHelp('joint'),
+                    array_map(fn (JointPain $a) => new WorkoutChoice($a->value, $a->label(), $a === JointPain::ALot ? WorkoutWords::PAIN_NOTE : null), JointPain::cases()),
+                    $joints->get($exerciseId));
+            }
+            if ($asks) {
+                $questions[] = new WorkoutFeedbackQuestion('soreness', null, "How sore did you get in your {$muscle} AFTER training them LAST TIME?", WorkoutWords::feedbackHelp('soreness'),
+                    array_map(fn (Soreness $a) => new WorkoutChoice($a->value, $a->label(), null), Soreness::cases()), $soreness);
+            }
+            $questions[] = new WorkoutFeedbackQuestion('pump', null, "How much of a pump did you get today in your {$muscle}?", WorkoutWords::feedbackHelp('pump'),
+                array_map(fn (Pump $a) => new WorkoutChoice($a->value, $a->label(), null), Pump::cases()), $pump);
+            $questions[] = new WorkoutFeedbackQuestion('volume', null, "How was the volume of work (number of hard sets) for your {$muscle}?", WorkoutWords::feedbackHelp('volume'),
+                array_map(fn (VolumeFeedback $a) => new WorkoutChoice($a->value, $a->label(), null), VolumeFeedback::cases()), $volume);
+
+            return new WorkoutFeedback(
+                muscle_group: $sheet->muscle->value,
+                title: $sheet->muscle->title(),
+                due_after_exercise_id: $sheet->dueAfter,
+                is_due: $sheet->isDue,
+                is_answered: FeedbackSheets::isAnswered($sheet, $asks, $soreness, $pump, $volume, array_keys(array_filter($joints->all(), fn ($answer) => $answer !== null))),
+                can_edit: ! $s->isLocked($sheet->muscle),
+                questions: $questions,
+            );
+        }, $sheets);
+    }
+
+    // MARK: next meal (WO-009), look back (WO-008)
+
+    /**
+     * WO-009: the first meal of the session's day at or after its planned end, or now when that is later and the
+     * session is today.
+     */
+    private static function nextMeal(WorkoutSnapshot $s): ?string
+    {
+        $date = $s->date();
+        $target = $date === null ? null : $s->dayTargets->first(fn (DayTarget $t) => TrainSnapshot::day($t->date) == $date);
+        if ($target === null) {
+            return null;
+        }
+        $cutoffs = [];
+        $end = $s->plannedEnd();
+        if ($end !== null) {
+            $cutoffs[] = (int) $end->format('G') * 60 + (int) $end->format('i');
+        }
+        if ($date == $s->train->today) {
+            $cutoffs[] = (int) $s->now->format('G') * 60 + (int) $s->now->format('i');
+        }
+        if ($cutoffs === []) {
+            return null;
+        }
+        $cutoff = max($cutoffs);
+        $next = null;
+        foreach ($target->meals as $index => $meal) {
+            $time = ClockTime::fromHhmm((string) ($meal['time'] ?? ''));
+            if ($time !== null && $time->minuteOfDay >= $cutoff && ($next === null || $time->minuteOfDay < $next['time']->minuteOfDay)) {
+                $next = ['name' => ($meal['name'] ?? null) ?: 'Meal '.($index + 1), 'time' => $time, 'carbs' => (float) ($meal['carbs_g'] ?? 0)];
+            }
+        }
+        if ($next === null) {
+            return null;
+        }
+        $time = $next['time'];
+        $clock = sprintf('%d:%02d %s', $time->hour() % 12 === 0 ? 12 : $time->hour() % 12, $time->minute(), $time->hour() < 12 ? 'AM' : 'PM');
+
+        return "Next: {$next['name']} at {$clock} · ".(int) round($next['carbs']).' g carbs';
+    }
+
+    /**
+     * WO-008: the earlier sessions of this mesocycle that were started or skipped, newest first.
+     *
+     * @return list<WorkoutLookBackRow>
+     */
+    private static function lookBack(WorkoutSnapshot $s): array
+    {
+        $domain = $s->train->domain($s->mesocycle);
+
+        return $s->mine()
+            ->filter(fn (WorkoutSession $row) => ($row->actual_start_at !== null || $row->is_skipped) && [$row->week, $row->day] < [$s->week, $s->day])
+            ->map(function (WorkoutSession $row) use ($domain) {
+                $plan = $domain->sessionsInWeek($row->week - 1)[$row->day - 1] ?? null;
+
+                return $plan === null ? null : [$row, $plan];
+            })
+            ->filter()
+            ->unique(fn (array $pair) => "{$pair[0]->week}/{$pair[0]->day}")
+            ->sortByDesc(fn (array $pair) => $pair[0]->week * 100 + $pair[0]->day)
+            ->map(function (array $pair) {
+                /** @var array{0: WorkoutSession, 1: Session} $pair */
+                [$row, $plan] = $pair;
+
+                return new WorkoutLookBackRow(
+                    week: $row->week,
+                    day: $row->day,
+                    title: "Week {$row->week} · Day {$row->day} · {$plan->name}",
+                    status: match (true) {
+                        $row->is_skipped => new Pill('Skipped', Tone::Neutral->value),
+                        $row->actual_end_at !== null => new Pill('Done', Tone::Good->value),
+                        default => new Pill('Started', Tone::Info->value),
+                    },
+                );
+            })
+            ->values()->all();
+    }
+}

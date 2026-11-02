@@ -3,6 +3,7 @@
 use App\Capabilities\Reads\Workout\WorkoutPayload;
 use App\Models\ExerciseLoadStep;
 use App\Models\ExerciseNote;
+use App\Models\WorkoutSet;
 use App\Support\Workout\WorkoutIds;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Tests\Unit\Capabilities\Reads\Workout\WorkoutWorld as W;
@@ -58,7 +59,7 @@ function woStarted(array $sets, array $world = []): array
 }
 
 /** A set row of a started week 3 day 1 block, as workout_start writes it. */
-function woRow(string $slot, int $index, int $exercise, array $attributes = []): App\Models\WorkoutSet
+function woRow(string $slot, int $index, int $exercise, array $attributes = []): WorkoutSet
 {
     $workout = WorkoutIds::workout(W::MESO, 3, 1);
 
@@ -191,14 +192,14 @@ it('PROG-027 a load step of the exercise replaces the default', function () {
 
 it('WO-005 PROG-024 each set carries a rep table, so a changed weight shows reps for an equal effort', function () {
     $set = woExercise(woShow(), 'Bench Press')['sets'][0];
-    $table = array_column(array_map(fn (array $row) => [$row['weight']['value'], $row['reps']], $set['rep_table']), 1, 0);
+    $table = array_column(array_map(fn (array $row) => [$row['weight']['text'], $row['reps']], $set['rep_table']), 1, 0);
 
     // 82.5 kg x 10 at 1 RIR; 15% either side is 72.5 to 92.5 kg.
-    expect(array_key_first($table))->toBe('72.5')
-        ->and(array_key_last($table))->toBe('92.5')
-        ->and($table['82.5'])->toBe(10)
-        ->and($table['85'])->toBe(8)
-        ->and($table['77.5'])->toBe(12)
+    expect(array_key_first($table))->toBe('72.5 kg')
+        ->and(array_key_last($table))->toBe('92.5 kg')
+        ->and($table['82.5 kg'])->toBe(10)
+        ->and($table['85 kg'])->toBe(8)
+        ->and($table['77.5 kg'])->toBe(12)
         ->and($set['off_table_text'])->toBe('1 RIR, just log reps')
         ->and($set['reps_placeholder'])->toBe('1 RIR');
 });

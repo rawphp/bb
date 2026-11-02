@@ -35,6 +35,12 @@ class WorkoutSession extends Model
         return $this->hasMany(WorkoutSet::class);
     }
 
+    /** @return HasMany<WorkoutExercise, $this> the session's exercises in order (WO-002) */
+    public function exercises(): HasMany
+    {
+        return $this->hasMany(WorkoutExercise::class)->orderBy('position');
+    }
+
     /** @return HasMany<MuscleFeedback, $this> */
     public function muscleFeedback(): HasMany
     {

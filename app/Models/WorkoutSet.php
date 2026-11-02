@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /** One set of an exercise in a session: what was targeted and what was lifted (MESO-062). */
 #[Fillable([
-    'workout_session_id', 'exercise_id', 'position', 'type', 'variant',
+    'workout_session_id', 'workout_exercise_id', 'exercise_id', 'position', 'type', 'variant',
     'target_weight_kg', 'target_reps', 'actual_weight_kg', 'actual_reps', 'is_logged', 'is_skipped',
 ])]
 class WorkoutSet extends Model
@@ -25,6 +25,12 @@ class WorkoutSet extends Model
     public function session(): BelongsTo
     {
         return $this->belongsTo(WorkoutSession::class, 'workout_session_id');
+    }
+
+    /** @return BelongsTo<WorkoutExercise, $this> the exercise of the session the set belongs to; null on rows written before there was one */
+    public function workoutExercise(): BelongsTo
+    {
+        return $this->belongsTo(WorkoutExercise::class);
     }
 
     /** @return BelongsTo<Exercise, $this> */
