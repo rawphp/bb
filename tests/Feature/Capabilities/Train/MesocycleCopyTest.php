@@ -1,9 +1,11 @@
 <?php
 
+use App\Capabilities\Support\HostDefinition;
 use App\Models\Mesocycle;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Tests\Support\TrainSeed;
 
 // The HTTP seam of mesocycle_copy. The rules are unit tests (CopyMesocycleTest).
@@ -16,6 +18,14 @@ function copyOver(?User $user, array $input): mixed
 
     return $request->postJson('/capabilities/mesocycle_copy', $input, ['Idempotency-Key' => (string) Str::ulid()]);
 }
+
+it('AGT-010 MESO-007 mesocycle_copy is destructive, since it replaces the other draft, and says so', function () {
+    $definition = app(CapabilityRegistry::class)->get('mesocycle_copy');
+
+    expect(HostDefinition::isDestructive($definition))->toBeTrue()
+        ->and(HostDefinition::isReversible($definition))->toBeFalse()
+        ->and($definition->description)->toContain('deletes');
+});
 
 it('MESO-060 refuses mesocycle_copy when signed out', function () {
     copyOver(null, ['mesocycle_id' => (string) Str::ulid(), 'source_mesocycle_id' => '01JB6Q3V8T2K9WZ4M5N7P1R3S5'])->assertUnauthorized();
