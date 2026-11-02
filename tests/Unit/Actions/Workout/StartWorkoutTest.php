@@ -122,3 +122,20 @@ it('OFF-021 a workout id that names none of the user\'s sessions is not found', 
         ->and(fn () => startIt($stranger, WorkoutIds::workout($mesocycle->id, 3, 1)))->toThrow(ModelNotFoundException::class)
         ->and(WorkoutSession::query()->count())->toBe(1);
 });
+
+it('SCH-039 OFF-021 starts a day an earlier week ran, though the rotation has since dropped it', function () {
+    // Weeks 1 and 2 ran three days; the user then dropped "Upper B", so the rotation has two.
+    [$user, $mesocycle] = startSeed();
+    $days = $mesocycle->days;
+    $dropped = ['id' => '01JB6Q420A2B3C4D5E6F7G8H9J', 'label' => 'Upper B', 'weekday' => null, 'slots' => [
+        ['id' => '01JB6Q421A2B3C4D5E6F7G8H9J', 'exercise_id' => $days[0]['slots'][0]['exercise_id'], 'muscle_group' => 'chest', 'sets' => 2],
+    ]];
+    $mesocycle->update(['earlier_weeks' => [[...$days, $dropped], [...$days, $dropped]]]);
+    $shown = WorkoutPayload::build(WorkoutSnapshot::load($user, $mesocycle->id, 1, 3))->toArray();
+
+    expect(startIt($user, $shown['workout_id']))->toBeNull();
+
+    $session = WorkoutSession::query()->where('week', 1)->sole();
+    expect([$session->day, $session->actual_start_at->format('Y-m-d H:i')])->toBe([3, '2026-09-21 17:40'])
+        ->and(WorkoutSet::query()->where('workout_session_id', $session->id)->orderBy('position')->pluck('id')->all())->toBe(array_column($shown['exercises'][0]['sets'], 'id'));
+});
