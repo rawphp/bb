@@ -14,6 +14,10 @@ export interface ScanDescribeOutput {
      * At the current portion; sent back unchanged to scan_adjust
      */
     grams: number;
+    /**
+     * The grams at 1×, unrounded; sent back unchanged to scan_adjust so a portion step rounds once (FOOD-045)
+     */
+    base_grams: number;
     grams_text: string;
     food_id?: string | null;
     /**
@@ -44,7 +48,7 @@ export interface ScanDescribeOutput {
   };
   unmatched_note?: string | null;
   /**
-   * The matched foods, merged per food: what Add to meal and Save as saved meal send
+   * The matched foods, merged per food, by raw weight (FOOD-006): what Add to meal and Save as saved meal send
    */
   matched: {
     food_id: string;
@@ -54,4 +58,4 @@ export interface ScanDescribeOutput {
   empty_text?: string | null;
 }
 
-export const outputVersion = 'e9badd81cfb9';
+export const outputVersion = 'a466d6ba88e6';

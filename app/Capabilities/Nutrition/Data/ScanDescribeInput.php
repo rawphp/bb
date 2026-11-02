@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
+use App\Domain\Scan\ScanDescription;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -9,7 +10,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class ScanDescribeInput extends CapabilityData
 {
     public function __construct(
-        #[Field(minLength: 1, maxLength: 1000)]
+        #[Field(minLength: 1, maxLength: ScanDescription::LIMIT)]
         public readonly string $description,
     ) {}
 }
