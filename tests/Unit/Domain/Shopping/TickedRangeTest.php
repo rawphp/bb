@@ -87,11 +87,8 @@ it('OFF-030 an untick sent from another range, such as a stale one replayed from
         ->and($after->keys)->toBe(['food:broccoli']);
 });
 
-it('SHOP-005 an untick with no ticks kept leaves none, in the range it was sent from', function () {
-    $after = TickedRange::check(null, tickRange(10, 16), 'food:broccoli', false);
-
-    expect(tickDays($after->range))->toBe(['2026-10-10 00:00', '2026-10-16 00:00'])
-        ->and($after->keys)->toBe([]);
+it('SHOP-005 an untick with no ticks kept keeps nothing, so it moves no list', function () {
+    expect(TickedRange::check(null, tickRange(10, 16), 'food:broccoli', false))->toBeNull();
 });
 
 it('SHOP-005 a tick in the range already shown keeps the other ticks', function () {

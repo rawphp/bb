@@ -79,6 +79,13 @@ it('SHOP-005 a tick in another range clears the old range\'s ticks and says whic
         ->and(shopActionTicks($user))->toBe(['2026-10-12', '2026-10-14', ['food:01jbx5f0000000000000000011']]);
 });
 
+it('SHOP-005 an untick before any tick saves nothing', function () {
+    $user = User::factory()->create();
+
+    expect((new CheckShoppingItem)($user, shopActionRange('2026-10-16', '2026-10-22'), 'food:01jbx5f0000000000000000002', false))->toBeNull()
+        ->and(shopActionTicks($user))->toBeNull();
+});
+
 it('SHOP-005 never ticks another user\'s manual item, or one that is gone', function () {
     $user = User::factory()->create();
     $theirs = ManualShoppingItem::factory()->create();

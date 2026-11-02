@@ -167,6 +167,9 @@ it('CAP-010 refreshes the list shown, the list with no range and the range the t
     shoppingCall($user, 'shopping_item_add', ['id' => (string) Str::ulid(), 'text' => 'Soap'])
         ->assertOk()
         ->assertJsonPath('data.invalidates', ['shopping_show{}', 'shopping_show{"from":"2026-11-02","to":"2026-11-08"}']);
+    shoppingCall($user, 'shopping_item_add', ['id' => (string) Str::ulid(), 'text' => 'Candles', 'from' => '2026-11-02', 'to' => '2026-11-08'])
+        ->assertOk()
+        ->assertJsonPath('data.invalidates', ['shopping_show{}', 'shopping_show{"from":"2026-11-02","to":"2026-11-08"}']);
     // A tick in another range clears the old one's ticks, so that list changes too.
     shoppingCall($user, 'shopping_item_check', [...$shown, 'key' => 'food:01JBX5F0000000000000000002', 'ticked' => true])
         ->assertOk()
