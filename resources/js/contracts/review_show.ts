@@ -221,3 +221,5 @@ export interface ReviewShowOutput {
   can_save: boolean;
   save_title: string;
 }
+
+export const outputVersion = '980852ddf282';

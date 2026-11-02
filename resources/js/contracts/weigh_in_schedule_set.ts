@@ -12,14 +12,7 @@ export interface WeighInScheduleSetInput {
        * @minItems 1
        * @maxItems 7
        */
-      weekdays:
-        | [unknown]
-        | [unknown, unknown]
-        | [unknown, unknown, unknown]
-        | [unknown, unknown, unknown, unknown]
-        | [unknown, unknown, unknown, unknown, unknown]
-        | [unknown, unknown, unknown, unknown, unknown, unknown]
-        | [unknown, unknown, unknown, unknown, unknown, unknown, unknown];
+      weekdays: [unknown, ...unknown[]];
       /**
        * Reminder time, "HH:MM".
        */
@@ -32,14 +25,7 @@ export interface WeighInScheduleSetInput {
        * @minItems 1
        * @maxItems 7
        */
-      weekdays:
-        | [unknown]
-        | [unknown, unknown]
-        | [unknown, unknown, unknown]
-        | [unknown, unknown, unknown, unknown]
-        | [unknown, unknown, unknown, unknown, unknown]
-        | [unknown, unknown, unknown, unknown, unknown, unknown]
-        | [unknown, unknown, unknown, unknown, unknown, unknown, unknown];
+      weekdays: [unknown, ...unknown[]];
       /**
        * Reminder time, "HH:MM".
        */

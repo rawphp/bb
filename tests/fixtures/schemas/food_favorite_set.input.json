@@ -1,0 +1,17 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "food_id": {
+            "type": "string"
+        },
+        "favorite": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "food_id",
+        "favorite"
+    ]
+}

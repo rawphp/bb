@@ -125,3 +125,5 @@ export interface WeighInsShowOutput {
     }[];
   };
 }
+
+export const outputVersion = 'f10b55c23822';

@@ -1,0 +1,79 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "string",
+            "description": "The food's ULID: new for a create (CAP-019)"
+        },
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+        },
+        "serving_size": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 99999
+        },
+        "serving_unit": {
+            "type": "string",
+            "enum": [
+                "g",
+                "cup",
+                "tbsp",
+                "tsp",
+                "piece"
+            ]
+        },
+        "serving_grams": {
+            "type": "number",
+            "minimum": 0.01,
+            "maximum": 10000
+        },
+        "protein": {
+            "type": "number",
+            "minimum": 0
+        },
+        "fat": {
+            "type": "number",
+            "minimum": 0
+        },
+        "carbs": {
+            "type": "number",
+            "minimum": 0
+        },
+        "fiber": {
+            "type": "number",
+            "minimum": 0
+        },
+        "brand": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "maxLength": 255
+        },
+        "barcode": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "1 to 14 digits",
+            "minLength": 1,
+            "maxLength": 14
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "serving_size",
+        "serving_unit",
+        "serving_grams",
+        "protein",
+        "fat",
+        "carbs",
+        "fiber"
+    ]
+}

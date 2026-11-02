@@ -31,3 +31,5 @@ export interface ExerciseHistoryShowOutput {
     }[];
   }[];
 }
+
+export const outputVersion = '4ad53144f3b6';

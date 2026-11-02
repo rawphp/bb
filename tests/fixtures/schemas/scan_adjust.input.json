@@ -1,0 +1,49 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "rows": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "grams": {
+                        "type": "number",
+                        "minimum": 0.1
+                    },
+                    "food_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "grams"
+                ]
+            }
+        },
+        "from_portion": {
+            "type": "number",
+            "description": "The portion the rows' grams are at",
+            "minimum": 0.25,
+            "maximum": 4
+        },
+        "portion": {
+            "type": "number",
+            "minimum": 0.25,
+            "maximum": 4
+        }
+    },
+    "required": [
+        "rows",
+        "from_portion",
+        "portion"
+    ]
+}

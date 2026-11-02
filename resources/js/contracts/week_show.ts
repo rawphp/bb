@@ -70,3 +70,5 @@ export interface WeekShowOutput {
     tone: "good" | "neutral" | "warning" | "info";
   }[];
 }
+
+export const outputVersion = 'dd0842b44fb4';

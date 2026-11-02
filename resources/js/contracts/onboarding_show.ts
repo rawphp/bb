@@ -374,3 +374,5 @@ export interface OnboardingShowOutput {
     starting_text: string;
   };
 }
+
+export const outputVersion = '7884778e9b3a';

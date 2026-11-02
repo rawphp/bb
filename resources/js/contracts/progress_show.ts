@@ -161,3 +161,5 @@ export interface ProgressShowOutput {
     muscle: string;
   }[];
 }
+
+export const outputVersion = '7afe588d22a0';

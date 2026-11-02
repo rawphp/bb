@@ -1,0 +1,96 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "recipe_id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "is_read_only": {
+            "type": "boolean",
+            "description": "A library recipe"
+        },
+        "can_delete": {
+            "type": "boolean"
+        },
+        "servings": {
+            "type": "number"
+        },
+        "servings_text": {
+            "type": "string"
+        },
+        "meal_type": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "One of: breakfast, lunch, dinner, snack; or null"
+        },
+        "meal_type_title": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "per_serving_text": {
+            "type": "string",
+            "description": "330 kcal · P 28 g · F 3 g · C 47 g"
+        },
+        "ingredients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "food_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "grams": {
+                        "type": "number"
+                    },
+                    "amount_text": {
+                        "type": "string"
+                    },
+                    "is_cooked": {
+                        "type": "boolean"
+                    },
+                    "can_toggle_cooked": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id",
+                    "food_id",
+                    "name",
+                    "grams",
+                    "amount_text",
+                    "is_cooked",
+                    "can_toggle_cooked"
+                ]
+            }
+        },
+        "steps": {
+            "type": "array"
+        }
+    },
+    "required": [
+        "recipe_id",
+        "name",
+        "is_read_only",
+        "can_delete",
+        "servings",
+        "servings_text",
+        "per_serving_text",
+        "ingredients",
+        "steps"
+    ]
+}
