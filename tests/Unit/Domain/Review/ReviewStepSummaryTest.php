@@ -181,6 +181,7 @@ it('REV-003 progress flags a trend above the range', function () {
     $progress = ReviewProgressRules::make(reviewFatLossPhase(), F::trend(fn (int $day) => 82.0), F::day(18));
     expect($progress)->not->toBeNull()
         ->and($progress->position)->toBe(Position::Above)
+        ->and($progress->weekRatePercent)->not->toBeNull()
         ->and($progress->weekRatePercent)->toEqualWithDelta(0, 1e-9)
         ->and($progress->rateIsOnTarget)->toBeFalse();
 });

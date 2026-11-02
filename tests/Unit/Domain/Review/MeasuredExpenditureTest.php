@@ -115,7 +115,9 @@ it('REV-022 ineligible weeks are left out of the estimate', function () {
     $trend = F::flatTrend(60);
     $base = [F::week(0, intake: 2000), F::week(1, intake: 2200), F::week(2, intake: 2400)];
     $withBreak = [...$base, F::week(3, intake: 9000, dietBreak: true), F::week(4, intake: 9000)];
-    expect(MeasuredExpenditure::estimate($withBreak, $trend))
+    expect(MeasuredExpenditure::estimate($base, $trend))->not->toBeNull()
+        ->and(MeasuredExpenditure::estimate($withBreak, $trend))->not->toBeNull()
+        ->and(MeasuredExpenditure::estimate($withBreak, $trend))
         ->toEqualWithDelta(MeasuredExpenditure::estimate($base, $trend), 1e-9, 'an ineligible newest week keeps the last estimate');
 });
 
