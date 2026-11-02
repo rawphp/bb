@@ -3,6 +3,7 @@
 namespace App\Capabilities\Today;
 
 use App\Actions\Today\DeleteOffPlan;
+use App\Actions\Today\LogOffPlan;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\OwnsInput;
@@ -10,6 +11,7 @@ use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Today\Data\OffPlanDeleteInput;
 use App\Models\OffPlanEntry;
 use App\Models\User;
+use App\Support\Today\DayPlans;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -30,7 +32,7 @@ final class OffPlanDeleteCapability implements HostCapability, OwnsInput
                 $entry = ($this->delete)($user, $input->id);
 
                 return new WriteResult(
-                    invalidates: TodayReads::keys([$entry->date->format('Y-m-d')], ['day_redistribute_show']),
+                    invalidates: TodayReads::keys([DayPlans::day($entry->date)->format('Y-m-d')], ['day_redistribute_show']),
                     toast: ($entry->name ?? LogOffPlan::DEFAULT_NAME).' deleted',
                 );
             });

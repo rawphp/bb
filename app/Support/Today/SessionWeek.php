@@ -57,7 +57,7 @@ final readonly class SessionWeek
             mesocycle: $snapshot->domain($mesocycle),
             mesocycleStartWeek: $grid->weekIndexContaining(TrainSnapshot::day($mesocycle->start_date)) ?? 0,
             trainingDays: self::trainingDays($snapshot),
-            awayTraining: ($row?->is_away ?? false) && $row->away_training !== null ? Training::from($row->away_training) : null,
+            awayTraining: $row !== null && $row->is_away && $row->away_training !== null ? Training::from($row->away_training) : null,
             flaggedDeload: (bool) ($row->is_deload ?? false),
             logged: $sessions->filter(fn (WorkoutSession $session) => self::isLogged($session))
                 ->map(fn (WorkoutSession $session) => new LoggedDay($session->week, (int) $session->day))->values()->all(),
@@ -68,8 +68,8 @@ final readonly class SessionWeek
                 week: $session->week,
                 day: $session->day,
                 isSkipped: $session->is_skipped,
-                plannedStartAt: $session->planned_start_at?->toDateTimeImmutable(),
-                actualStartAt: $session->actual_start_at?->toDateTimeImmutable(),
+                plannedStartAt: $session->planned_start_at === null ? null : DayPlans::instant($session->planned_start_at),
+                actualStartAt: $session->actual_start_at === null ? null : DayPlans::instant($session->actual_start_at),
             ))->values()->all(), $mesocycle->id),
         );
 

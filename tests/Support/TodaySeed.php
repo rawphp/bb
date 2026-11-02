@@ -43,6 +43,7 @@ final class TodaySeed
         return $suffix === '260923' ? $meal : substr($meal, 0, 24).$suffix.substr($meal, 30);
     }
 
+    /** @param  array<string, mixed>  $attributes */
     public static function checkIn(string $mealId, array $attributes = []): MealCheckIn
     {
         return MealCheckIn::factory()->create(['meal_id' => $mealId] + $attributes);

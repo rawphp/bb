@@ -34,7 +34,7 @@ final readonly class AdjustWeek
         $plans = DayPlans::load($user, $dates);
         $profile = Profile::query()->where('user_id', $user->id)->first();
         $weighIns = WeighInRow::query()->where('user_id', $user->id)->get()
-            ->map(fn (WeighInRow $row) => new WeighIn((string) $row->id, DateTimeImmutable::createFromInterface($row->weighed_at), (float) $row->weight_kg))
+            ->map(fn (WeighInRow $row) => new WeighIn((string) $row->id, DayPlans::instant($row->weighed_at), (float) $row->weight_kg))
             ->values()->all();
 
         return new self(
@@ -51,7 +51,7 @@ final readonly class AdjustWeek
         if ($plan === null) {
             return [$day->format('Y-m-d')];
         }
-        $grid = new PlanWeekGrid(DayPlans::day($plan->start_date->format('Y-m-d')), PlanWeekDays::calendarWeekdayFromIso($plan->review_weekday));
+        $grid = new PlanWeekGrid(DayPlans::day($plan->start_date), PlanWeekDays::calendarWeekdayFromIso($plan->review_weekday));
         $index = $grid->weekIndexContaining($day);
         if ($index === null) {
             return [$day->format('Y-m-d')];

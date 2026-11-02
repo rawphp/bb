@@ -69,10 +69,11 @@ final class RetargetDays
     public static function context(User $user, DateTimeImmutable $date, bool $isDeloadWeek, ?PlanWeekRow $week): RetargetContext
     {
         $profile = Profile::query()->where('user_id', $user->id)->first();
-        $start = ClockTime::fromHhmm((string) ($profile->eating_window['start'] ?? ''));
-        $end = ClockTime::fromHhmm((string) ($profile->eating_window['end'] ?? ''));
+        $window = $profile?->getAttribute('eating_window');
+        $start = ClockTime::fromHhmm((string) ($window['start'] ?? ''));
+        $end = ClockTime::fromHhmm((string) ($window['end'] ?? ''));
         $weighIns = WeighInRow::query()->where('user_id', $user->id)->get()
-            ->map(fn (WeighInRow $row) => new WeighIn((string) $row->id, DateTimeImmutable::createFromInterface($row->weighed_at), (float) $row->weight_kg))
+            ->map(fn (WeighInRow $row) => new WeighIn((string) $row->id, DayPlans::instant($row->weighed_at), (float) $row->weight_kg))
             ->values()->all();
         $weightKg = CurrentWeight::fromWeighIns($weighIns, $profile?->weight_kg, new DateTimeZone('UTC'));
         if ($start === null || $end === null || $weightKg === null) {
@@ -80,7 +81,7 @@ final class RetargetDays
         }
         $isoWeekday = (int) $date->format('N');
         $busy = [];
-        foreach ($profile->busy_periods ?? [] as $period) {
+        foreach ($profile->getAttribute('busy_periods') ?? [] as $period) {
             $from = ClockTime::fromHhmm((string) ($period['start'] ?? ''));
             $to = ClockTime::fromHhmm((string) ($period['end'] ?? ''));
             if ($from !== null && $to !== null && in_array($isoWeekday, $period['weekdays'] ?? range(1, 7), false)) {
@@ -93,7 +94,7 @@ final class RetargetDays
             eatingWindow: new ClockRange($start, $end),
             busy: $busy,
             isDeloadWeek: $isDeloadWeek,
-            countsWorkoutEnergy: ! (($week?->is_away ?? false) && $week->away_calories === 'rest_day'),
+            countsWorkoutEnergy: ! ($week !== null && $week->is_away && $week->away_calories === 'rest_day'),
         );
     }
 
@@ -127,13 +128,14 @@ final class RetargetDays
             $meals[] = $written($meal, []);
         }
 
-        $row->day_type = $day->day->type;
-        $row->kcal = $day->target->kcal;
-        $row->protein_g = $day->target->proteinG;
-        $row->fat_g = $day->target->fatG;
-        $row->carbs_g = $day->target->carbsG;
-        $row->meals = $meals;
-        $row->save();
+        $row->fill([
+            'day_type' => $day->day->type,
+            'kcal' => $day->target->kcal,
+            'protein_g' => $day->target->proteinG,
+            'fat_g' => $day->target->fatG,
+            'carbs_g' => $day->target->carbsG,
+            'meals' => $meals,
+        ])->save();
     }
 
     /** A day with no stored target, for a session's source day that is past and is not saved. */

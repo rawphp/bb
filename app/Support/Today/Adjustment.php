@@ -50,7 +50,10 @@ final class Adjustment
             : self::mealMove($kcal, $selected, $fromMealId, $toMealId);
     }
 
-    /** @return list<DayPlan> NUT-021: the other days of the plan week */
+    /**
+     * @param  list<DayPlan>  $week
+     * @return list<DayPlan> NUT-021: the other days of the plan week
+     */
     public static function otherDays(DayPlan $selected, array $week): array
     {
         return array_values(array_filter($week, fn (DayPlan $day) => $day->date != $selected->date));

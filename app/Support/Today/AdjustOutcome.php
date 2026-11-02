@@ -13,7 +13,7 @@ final readonly class AdjustOutcome
 {
     /**
      * @param  list<array{date: DateTimeImmutable, target: MealTarget, meals: array<string, MealTarget>}>  $changed
-     *                                                                                                             each changed day's totals and every meal's target, by id
+     *                                                                                                               each changed day's totals and every meal's target, by id
      */
     private function __construct(
         public ?string $missing,

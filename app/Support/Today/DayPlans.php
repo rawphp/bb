@@ -2,6 +2,7 @@
 
 namespace App\Support\Today;
 
+use App\Domain\Model\DayType;
 use App\Domain\Model\MealTarget;
 use App\Domain\Placement\ClockTime;
 use App\Models\DayTarget;
@@ -11,6 +12,7 @@ use App\Models\PlannedFood;
 use App\Models\PlannedRecipe;
 use App\Models\User;
 use DateTimeImmutable;
+use DateTimeInterface;
 use DateTimeZone;
 use Illuminate\Support\Collection;
 
@@ -33,20 +35,24 @@ final class DayPlans
         $rows = DayTarget::query()->where('user_id', $user->id)
             ->whereIn('date', array_values(array_unique($dates)))
             ->get()
-            ->keyBy(fn (DayTarget $target) => $target->date->format('Y-m-d'));
+            ->keyBy(fn (DayTarget $target): string => self::day($target->date)->format('Y-m-d'));
         $mealIds = $rows->flatMap(fn (DayTarget $target) => array_column($target->meals, 'id'))->all();
         $checkIns = MealCheckIn::query()->whereIn('meal_id', $mealIds)->get()->keyBy('meal_id');
-        $foods = PlannedFood::query()->whereIn('meal_id', $mealIds)->get(['meal_id', 'is_locked'])
-            ->concat(PlannedRecipe::query()->whereIn('meal_id', $mealIds)->get(['meal_id', 'is_locked']))
-            ->groupBy('meal_id');
+        // Each meal's planned foods and recipes, as whether each is locked.
+        $locks = [];
+        foreach ([PlannedFood::query(), PlannedRecipe::query()] as $query) {
+            foreach ($query->whereIn('meal_id', $mealIds)->get(['meal_id', 'is_locked']) as $item) {
+                $locks[(string) $item->meal_id][] = (bool) $item->is_locked;
+            }
+        }
         $offPlan = OffPlanEntry::query()->where('user_id', $user->id)
             ->whereIn('date', $rows->keys()->all())
             ->get()
-            ->groupBy(fn (OffPlanEntry $entry) => $entry->date->format('Y-m-d'));
+            ->groupBy(fn (OffPlanEntry $entry): string => self::day($entry->date)->format('Y-m-d'));
 
         $plans = [];
         foreach ($rows as $date => $row) {
-            $plans[$date] = self::build($row, $checkIns, $foods, $offPlan->get($date, new Collection));
+            $plans[$date] = self::build($row, $checkIns, $locks, $offPlan->get($date, new Collection));
         }
 
         return new self($rows->all(), $plans);
@@ -63,21 +69,29 @@ final class DayPlans
     }
 
     /** The day at midnight, read from its Y-m-d in UTC, as dates are compared whole. */
-    public static function day(string $date): DateTimeImmutable
+    public static function day(DateTimeInterface|string $date): DateTimeImmutable
     {
-        return new DateTimeImmutable(substr($date, 0, 10), new DateTimeZone('UTC'));
+        $text = is_string($date) ? substr($date, 0, 10) : $date->format('Y-m-d');
+
+        return new DateTimeImmutable($text, new DateTimeZone('UTC'));
+    }
+
+    /** A stored timestamp as an instant. */
+    public static function instant(DateTimeInterface|string $value): DateTimeImmutable
+    {
+        return is_string($value) ? new DateTimeImmutable($value) : DateTimeImmutable::createFromInterface($value);
     }
 
     /**
      * @param  Collection<string, MealCheckIn>  $checkIns
-     * @param  Collection<string, Collection<int, PlannedFood|PlannedRecipe>>  $foods
+     * @param  array<string, list<bool>>  $locks  each meal's planned foods and recipes, whether each is locked
      * @param  Collection<int, OffPlanEntry>  $offPlan
      */
-    private static function build(DayTarget $row, Collection $checkIns, Collection $foods, Collection $offPlan): DayPlan
+    private static function build(DayTarget $row, Collection $checkIns, array $locks, Collection $offPlan): DayPlan
     {
-        $meals = array_map(function (array $meal) use ($checkIns, $foods) {
+        $meals = array_map(function (array $meal) use ($checkIns, $locks) {
             $checkIn = $checkIns->get($meal['id']);
-            $planned = $foods->get($meal['id'], new Collection);
+            $planned = $locks[$meal['id']] ?? [];
 
             return new DayMeal(
                 id: $meal['id'],
@@ -85,14 +99,14 @@ final class DayPlans
                 time: isset($meal['time']) ? ClockTime::fromHhmm((string) $meal['time']) : null,
                 target: self::target($meal),
                 eaten: $checkIn === null ? null : new MealTarget($checkIn->kcal, $checkIn->protein_g, $checkIn->fat_g, $checkIn->carbs_g),
-                hasFoods: $planned->isNotEmpty(),
-                onlyLocked: $planned->isNotEmpty() && $planned->every(fn (PlannedFood|PlannedRecipe $item) => (bool) $item->is_locked),
+                hasFoods: $planned !== [],
+                onlyLocked: $planned !== [] && ! in_array(false, $planned, true),
             );
-        }, array_values($row->meals));
+        }, $row->meals);
 
         return new DayPlan(
-            date: self::day($row->date->format('Y-m-d')),
-            type: $row->day_type,
+            date: self::day($row->date),
+            type: self::dayType($row->getAttribute('day_type')),
             target: new MealTarget($row->kcal, $row->protein_g, $row->fat_g, $row->carbs_g),
             meals: $meals,
             offPlan: $offPlan->map(fn (OffPlanEntry $entry) => new MealTarget($entry->kcal, $entry->protein_g, $entry->fat_g, $entry->carbs_g))->values()->all(),
@@ -125,6 +139,12 @@ final class DayPlans
             return $target === null ? $meal : array_replace($meal, [
                 'kcal' => $target->kcal, 'protein_g' => $target->proteinG, 'fat_g' => $target->fatG, 'carbs_g' => $target->carbsG,
             ]);
-        }, array_values($meals));
+        }, $meals);
+    }
+
+    /** The stored day type, cast or not. */
+    public static function dayType(mixed $value): DayType
+    {
+        return $value instanceof DayType ? $value : DayType::from((string) $value);
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\DayTarget;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -86,7 +87,7 @@ it('NUT-021 day_adjust saves both days and says which reads changed', function (
             'today_show{"date":"2026-09-26"}', 'day_adjust_show{"date":"2026-09-26"}', 'day_redistribute_show{"date":"2026-09-26"}',
         ]);
 
-    $kcal = $user->hasMany(\App\Models\DayTarget::class)->orderBy('date')->pluck('kcal')->all();
+    $kcal = $user->hasMany(DayTarget::class)->orderBy('date')->pluck('kcal')->all();
     expect($kcal)->toBe([2600.0, 2400.0, 2800.0]);
 });
 
