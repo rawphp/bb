@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AuditRecord;
+use App\Models\UndoToken;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -16,3 +17,6 @@ Schedule::command('model:prune', ['--model' => [AuditRecord::class]])->daily();
 Schedule::command('capabilities-ai:reap-stale-turns')->everyFiveMinutes()
     // A run killed mid-way frees its lock after 10 minutes, not Laravel's default day.
     ->withoutOverlapping(10);
+
+// Expired undo tokens hold copies of the rows their write changed (CAP-013): hourly, so none outlives its 24 hours by more than one.
+Schedule::command('model:prune', ['--model' => [UndoToken::class]])->hourly();

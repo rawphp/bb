@@ -45,19 +45,21 @@ class DayTarget extends Model
             $target->refuseTakenMealIds();
         });
 
+        // Through DayTargetMeal models, so a reversible write's undo sees each index change (CAP-013).
         static::saved(function (self $target) {
             $ids = array_column($target->meals, 'id');
-            $indexed = $target->mealIndex()->pluck('position', 'id')->all();
+            $indexed = $target->mealIndex()->get()->keyBy('id');
 
-            // Removing a row cascades to the meal's planned foods, recipes, check-in and planning state.
-            $target->mealIndex()->whereNotIn('id', $ids)->delete();
+            // Removing a meal removes its planned foods, recipes, check-in and planning state.
+            $indexed->except($ids)->each->delete();
             foreach ($ids as $position => $id) {
-                if (! array_key_exists($id, $indexed)) {
+                $meal = $indexed->get($id);
+                if ($meal === null) {
                     // An insert, not an upsert: an id another day holds fails on the primary key
                     // rather than moving that day's meal here.
-                    DayTargetMeal::insert(['id' => $id, 'user_id' => $target->user_id, 'day_target_id' => $target->id, 'position' => $position]);
-                } elseif ((int) $indexed[$id] !== $position) {
-                    $target->mealIndex()->whereKey($id)->update(['position' => $position]);
+                    (new DayTargetMeal(['id' => $id, 'user_id' => $target->user_id, 'day_target_id' => $target->id, 'position' => $position]))->save();
+                } elseif ($meal->position !== $position) {
+                    $meal->update(['position' => $position]);
                 }
             }
         });

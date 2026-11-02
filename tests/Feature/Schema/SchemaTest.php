@@ -33,6 +33,7 @@ use App\Models\SavedMealFood;
 use App\Models\Step;
 use App\Models\Template;
 use App\Models\TemplateSlot;
+use App\Models\UndoToken;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WeighInScheduleEntry;
@@ -98,6 +99,7 @@ function fillAccount(User $user): void
 
     PendingSignInCode::factory()->for($user)->create();
     AuditRecord::factory()->for($user)->create();
+    UndoToken::factory()->for($user)->create();
     PushSubscription::factory()->for($user)->create();
 
     // A Coach conversation with a message and a turn (the package's tables).
