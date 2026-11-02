@@ -60,6 +60,8 @@ watch(rootEl, (el) => {
 });
 
 const message = computed(() => props.result.toast ?? '');
+// UI-010: a toast of several changes ("Chest +1 set next week" and the meals it moved) comes as lines, one under another.
+const lines = computed(() => message.value.split('\n'));
 const token = computed(() => props.result.undo ?? null);
 const busy = computed(() => props.loading || (undoing.value !== null && undoing.value === token.value));
 const shownError = computed(() => failure.value ?? props.error);
@@ -116,7 +118,7 @@ async function undo(): Promise<void> {
         <template v-if="message">
             <div class="flex items-center gap-3 rounded-xl border border-secondary-text/25 bg-surface pr-2 pl-4">
                 <span class="flex min-w-0 grow flex-col gap-0.5 py-2">
-                    <span class="text-sm text-primary-text">{{ message }}</span>
+                    <span v-for="(line, index) in lines" :key="index" class="text-sm text-primary-text" data-toast-line>{{ line }}</span>
                     <span v-if="pending" :id="`${uid}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
                 </span>
                 <button

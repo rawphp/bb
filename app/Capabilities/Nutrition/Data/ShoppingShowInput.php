@@ -14,4 +14,9 @@ final class ShoppingShowInput extends CapabilityData
         #[Field(format: 'date')]
         public readonly ?string $to = null,
     ) {}
+
+    public static function rules(): array
+    {
+        return ShoppingRange::rules();
+    }
 }
