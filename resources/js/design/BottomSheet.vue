@@ -1,13 +1,11 @@
 <script lang="ts">
 /** A resting height: half the screen, or the whole screen under the status bar. */
 export type SheetHeight = 'half' | 'full';
-
-// Open sheets, oldest first. Only the top one answers Escape and Tab, so a sheet opened over another closes first.
-const openSheets: symbol[] = [];
 </script>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, useId, watch } from 'vue';
+import { openSheets } from './openSheets';
 import { useModalFocus } from './useModalFocus';
 
 // Bottom sheet frame: Cancel left, title middle, Save right (UI-005), ported from rp-clone's SheetScaffold.swift.
@@ -19,6 +17,8 @@ const props = withDefaults(
         /** null for a sheet that answers by its own choices: no Save. */
         saveTitle?: string | null;
         saveDisabled?: boolean;
+        /** The left button's label, for a sheet whose Cancel reads better as, say, Not now. */
+        cancelTitle?: string;
         cancelDisabled?: boolean;
         /** Resting heights, lowest first; the sheet opens at the first. */
         heights?: SheetHeight[];
@@ -32,6 +32,7 @@ const props = withDefaults(
     {
         saveTitle: 'Save',
         saveDisabled: false,
+        cancelTitle: 'Cancel',
         cancelDisabled: false,
         heights: () => ['full'],
         dismissible: true,
@@ -225,7 +226,7 @@ function toggleHeight(): void {
                                 class="min-h-tap min-w-tap justify-self-start text-left disabled:opacity-40"
                                 @click="emit('cancel')"
                             >
-                                Cancel
+                                {{ cancelTitle }}
                             </button>
                             <div class="text-center">
                                 <h2 :id="titleId" class="font-semibold text-primary-text">{{ title }}</h2>

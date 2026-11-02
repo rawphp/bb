@@ -12,14 +12,19 @@ export default defineConfig({
         vue({ template: { transformAssetUrls: { base: null, includeAbsolute: false } } }),
         tailwindcss(),
         // The service worker is ours (injectManifest) and precaches the shell (OFF-002).
-        // SHELL_PWA adds registration and the manifest.
+        // It builds to public/sw.js so its scope is / (PWA-004); updates.ts registers it.
+        // The manifest and icons are committed files from `npm run icons` (PWA-001).
         VitePWA({
             strategies: 'injectManifest',
             srcDir: 'resources/js/app',
             filename: 'sw.ts',
+            outDir: 'public',
             injectRegister: false,
             manifest: false,
-            injectManifest: { globPatterns: ['**/*.{js,css,html,woff,woff2,svg,png,ico,webp}'] },
+            injectManifest: {
+                globPatterns: ['build/**/*.{js,css,woff,woff2,svg,png,ico,webp}', 'icons/*.png', 'manifest.webmanifest'],
+                dontCacheBustURLsMatching: /^build\/assets\//,
+            },
         }),
     ],
 });
