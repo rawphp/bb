@@ -14,9 +14,14 @@ const WIDTH = 340;
 const LEFT = 4;
 const RIGHT = WIDTH - 30;
 const TOP = 8;
+// The waist has its own scale; padding keeps a centimetre from filling the chart's height.
+const WAIST_PAD = 2;
 const bottom = computed(() => props.plotHeight - 30);
 
-const dayLabel = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+// "31 Aug", as rp-clone's axis reads (en-GB would say "Sept").
+const day = new Intl.DateTimeFormat('en-US', { day: 'numeric', timeZone: 'UTC' });
+const month = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' });
+const dayLabel = (date: string) => `${day.format(new Date(date))} ${month.format(new Date(date))}`;
 
 const time = computed(() => {
     const c = props.chart;
@@ -29,7 +34,7 @@ const weight = computed(() => {
     return valueAxis(values, bottom.value, TOP);
 });
 
-const waist = computed(() => (props.chart.waist.length > 1 ? valueAxis(props.chart.waist.map((p) => p.value), bottom.value, TOP) : null));
+const waist = computed(() => (props.chart.waist.length > 1 ? valueAxis(props.chart.waist.map((p) => p.value), bottom.value, TOP, WAIST_PAD) : null));
 
 const shapes = computed(() => {
     const { x } = time.value;
@@ -86,13 +91,13 @@ const legend = computed(() => {
                     stroke-dasharray="2 2"
                 />
                 <text :x="time.x(tick) + 3" :y="bottom + 16" class="fill-secondary-text" font-size="11">
-                    {{ dayLabel.format(new Date(tick)) }}
+                    {{ dayLabel(tick) }}
                 </text>
             </g>
 
             <path v-if="shapes.range" data-goal-range :d="shapes.range" class="fill-tone-good" fill-opacity="0.18" />
             <path :d="shapes.goal" class="stroke-tone-good" fill="none" stroke-width="1.5" stroke-dasharray="4 3" />
-            <path v-if="shapes.waist" data-waist :d="shapes.waist" class="stroke-tone-info" fill="none" stroke-width="1.5" />
+            <path v-if="shapes.waist" data-waist :d="shapes.waist" class="stroke-tone-info" fill="none" stroke-width="1.25" stroke-opacity="0.8" />
             <circle v-for="p in shapes.weights" :key="p.key" data-weight :cx="p.x" :cy="p.y" r="2.6" class="fill-secondary-text" fill-opacity="0.7" />
             <path data-trend :d="shapes.trend" class="stroke-accent" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
 

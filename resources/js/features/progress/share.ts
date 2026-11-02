@@ -6,7 +6,7 @@ export type ShareOutcome = 'shared' | 'downloaded' | 'cancelled';
 const FILE_NAME = 'progress.png';
 // Copied from the page onto each element, so the picture keeps its colours and type
 // once it is drawn on its own, away from the stylesheet.
-const STYLES = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'opacity', 'font-family', 'font-size', 'font-weight'] as const;
+const STYLES = ['fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-opacity', 'fill-opacity', 'opacity', 'font-family', 'font-size', 'font-weight'] as const;
 
 /** Draws an on-screen <svg> as a PNG at the device's pixel density. */
 export async function toPng(svg: SVGSVGElement, scale = window.devicePixelRatio || 2): Promise<Blob> {

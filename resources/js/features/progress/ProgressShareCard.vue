@@ -15,7 +15,7 @@ const WIDTH = 380;
 const PAD = 20;
 const PLOT = 200;
 // SVG text does not wrap; break the message between words at about this many characters.
-const LINE_CHARS = 48;
+const LINE_CHARS = 42;
 
 const lines = computed(() =>
     props.content.message.split(' ').reduce<string[]>((out, word) => {

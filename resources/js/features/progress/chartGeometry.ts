@@ -25,10 +25,13 @@ export function timeAxis(dates: string[], left: number, right: number): { x: (da
     return { x, ticks };
 }
 
-/** Values along y from `bottom` to `top`, widened to whole numbers, with a tick on each. */
-export function valueAxis(values: number[], bottom: number, top: number): { y: (value: number) => number; ticks: number[] } {
-    const low = Math.floor(Math.min(...values));
-    let high = Math.ceil(Math.max(...values));
+/**
+ * Values along y from `bottom` to `top`, widened to whole numbers and then by `pad`
+ * on each side, with a tick on each whole number.
+ */
+export function valueAxis(values: number[], bottom: number, top: number, pad = 0): { y: (value: number) => number; ticks: number[] } {
+    const low = Math.floor(Math.min(...values)) - pad;
+    let high = Math.ceil(Math.max(...values)) + pad;
     if (high === low) high = low + 1;
 
     const step = Math.max(1, Math.ceil((high - low) / 5));
