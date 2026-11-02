@@ -217,8 +217,14 @@ async function revoke(id: string): Promise<void> {
                         class="mt-1 min-h-tap w-full rounded-xl border border-secondary-text/25 bg-background px-3"
                     />
                 </label>
-                <ChoiceList v-model="days" label="Expires after" :choices="expiryChoices" :disabled="locked" />
-                <ChoiceList v-model="scope" label="Scope" :choices="scopeChoices" :disabled="locked" />
+                <div>
+                    <p class="mb-2 text-sm text-secondary-text" aria-hidden="true">Expires after</p>
+                    <ChoiceList v-model="days" label="Expires after" :choices="expiryChoices" :disabled="locked" />
+                </div>
+                <div>
+                    <p class="mb-2 text-sm text-secondary-text" aria-hidden="true">Scope</p>
+                    <ChoiceList v-model="scope" label="Scope" :choices="scopeChoices" :disabled="locked" />
+                </div>
                 <fieldset v-if="scope === 'custom'" class="space-y-2">
                     <legend class="mb-2 text-sm text-secondary-text">Actions it may take</legend>
                     <label v-for="capability in list.capabilities" :key="capability.name" class="flex min-h-tap items-start gap-3 py-1">
