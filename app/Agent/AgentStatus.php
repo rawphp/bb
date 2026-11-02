@@ -24,6 +24,13 @@ final class AgentStatus
             && filled($this->config->get('capabilities-ai.llm.anthropic.api_key'));
     }
 
+    /** Whether the instance sets either AGT-005 cap. */
+    public function capped(): bool
+    {
+        return $this->config->get('agent.turns_per_day') !== null
+            || $this->config->get('agent.tokens_per_month') !== null;
+    }
+
     public function allowance(int|string $userId): Allowance
     {
         $now = CarbonImmutable::now();

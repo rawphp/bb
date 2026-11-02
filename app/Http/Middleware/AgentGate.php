@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
  * In front of the package's chat routes: a new message, which starts a turn, is
  * refused while the agent is off (AGT-002), the user is at a cap (AGT-005), or,
  * under a token cap, one of the user's turns is still queued or running.
- * The checks and the store run under one lock per user. Nothing is stored or queued then. Every other chat route and every screen keep working.
+ * Under a cap, the checks and the store run under one lock per user. Nothing is stored or queued then. Every other chat route and every screen keep working.
  */
 final class AgentGate
 {
@@ -40,8 +40,12 @@ final class AgentGate
 
         $userId = $request->user()->getAuthIdentifier();
 
-        // Checked and stored under one lock per user, so parallel posts cannot all
-        // pass the checks before any of them has stored its turn.
+        if (! $this->status->capped()) {
+            return $next($request);
+        }
+
+        // Under a cap, checked and stored under one lock per user, so parallel posts
+        // cannot all pass the checks before any of them has stored its turn.
         $lock = Cache::lock(self::LOCK.$userId, self::LOCK_SECONDS);
         if (! $lock->get()) {
             return self::refuse(CapabilityResult::failure('rate_limited', self::BUSY));

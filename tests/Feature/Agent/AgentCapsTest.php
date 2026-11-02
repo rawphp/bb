@@ -123,6 +123,15 @@ it('AGT-005 checks and stores a Coach message under one lock per user, so parall
     expect(Cache::lock(AgentGate::LOCK.$user->id, 30)->get())->toBeTrue();
 });
 
+it('AGT-005 with no cap takes parallel Coach messages: no lock, no refusal', function () {
+    $user = User::factory()->create();
+    $held = Cache::lock(AgentGate::LOCK.$user->id, 30);
+    $held->get();
+
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
+    $held->release();
+});
+
 it('AGT-005 without a token cap takes a message while another turn runs', function () {
     config(['agent.turns_per_day' => 10]);
     $user = User::factory()->create();
