@@ -17,7 +17,6 @@ use App\Support\Today\AdjustWeek;
 use App\Support\Today\DayMeal;
 use App\Support\Today\DayPlan;
 use App\Support\Today\Redistribution;
-use App\Capabilities\Reads\Today\TodayWords;
 use DateTimeImmutable;
 use DomainException;
 
