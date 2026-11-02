@@ -6,4 +6,12 @@ export interface ShoppingItemAddInput {
    */
   id: string;
   text: string;
+  /**
+   * The first day of the list shown, so the write refreshes it
+   */
+  from?: string | null;
+  /**
+   * The last day of the list shown
+   */
+  to?: string | null;
 }

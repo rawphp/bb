@@ -6,8 +6,7 @@ use App\Capabilities\Support\ReadKey;
 use App\Domain\Shopping\DateRange;
 use App\Models\ShoppingTicks;
 use App\Models\User;
-use DateTimeImmutable;
-use DateTimeZone;
+use App\Support\Mesocycles\TrainSnapshot;
 
 /**
  * The shopping reads a write changes (CAP-011, CAP-017): the list with no range asked for, and the list
@@ -17,9 +16,13 @@ final class ShoppingReads
 {
     public static function range(string $from, string $to): DateRange
     {
-        $utc = new DateTimeZone('UTC');
+        return new DateRange(TrainSnapshot::day($from), TrainSnapshot::day($to));
+    }
 
-        return new DateRange(new DateTimeImmutable($from, $utc), new DateTimeImmutable($to, $utc));
+    /** The range a write's input names, when it names both ends. */
+    public static function shown(?string $from, ?string $to): ?DateRange
+    {
+        return $from !== null && $to !== null ? self::range($from, $to) : null;
     }
 
     /** @return list<string> */
@@ -36,13 +39,13 @@ final class ShoppingReads
     }
 
     /**
-     * A manual item is on every range's list: the list with no range, and the range the ticks are in,
-     * which is the one the app shows the user's ticks on.
+     * A manual item is on every range's list. The ones the app can have on screen: the list with no range,
+     * the range the ticks are in, and the range the write was made on.
      *
      * @return list<string>
      */
-    public static function everyList(User $user): array
+    public static function everyList(User $user, ?DateRange $shown): array
     {
-        return self::keys(ShoppingTicks::query()->where('user_id', $user->id)->first()?->ticked()->range);
+        return self::keys(ShoppingTicks::query()->where('user_id', $user->id)->first()?->ticked()->range, $shown);
     }
 }

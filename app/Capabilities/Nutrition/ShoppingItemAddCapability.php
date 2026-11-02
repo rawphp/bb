@@ -22,7 +22,7 @@ final class ShoppingItemAddCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('shopping_item_add', affects: ['shopping_show'])
-            ->description('Add an item that is not a planned food, such as paper towels, to the Other group of the shopping list. It stays on the list for every date range until it is deleted. A new item takes a new id.')
+            ->description('Add an item that is not a planned food, such as paper towels, to the Other group of the shopping list. It stays on the list for every date range until it is deleted. A new item takes a new id; from and to name the list on screen, so it is refreshed.')
             ->cli('shopping', 'item-add')
             ->input(ShoppingItemAddInput::class)
             ->run(function (ShoppingItemAddInput $input, CapabilityContext $context): WriteResult {
@@ -30,7 +30,7 @@ final class ShoppingItemAddCapability implements HostCapability
                 $user = $context->user();
                 ($this->add)($user, $this->ownedOrNew(ManualShoppingItem::class, $input->id, $user), $input->id, $input->text);
 
-                return new WriteResult(invalidates: ShoppingReads::everyList($user));
+                return new WriteResult(invalidates: ShoppingReads::everyList($user, ShoppingReads::shown($input->from, $input->to)));
             });
     }
 }

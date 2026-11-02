@@ -29,7 +29,7 @@ final class ShoppingShowCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::read('shopping_show')
-            ->description('Show the shopping list for a date range, the next 7 days unless dates are given: the foods planned in those days\' meals, recipes broken into ingredients, summed and rounded up to the raw weight to buy, grouped by store category, with the items the user added and which lines are ticked off. It also gives the list as text to share. It changes nothing.')
+            ->description('Show the shopping list for a date range: the foods planned in those days\' meals, recipes broken into ingredients, summed and rounded up to the raw weight to buy, grouped by store category, with the items the user added, which lines are ticked off, and the list as text to share. With no dates it shows the range the user last ticked in while that range has not ended, otherwise the next 7 days; pass from and to for a particular week. It changes nothing.')
             ->cli('shopping', 'show')
             ->input(ShoppingShowInput::class)
             ->output(ShoppingShowOutput::class)
@@ -37,9 +37,8 @@ final class ShoppingShowCapability implements HostCapability
                 /** @var User $user */
                 $user = $context->user();
                 $saved = ShoppingTicks::query()->where('user_id', $user->id)->first()?->ticked();
-                $range = $input->from !== null && $input->to !== null
-                    ? ShoppingReads::range($input->from, $input->to)
-                    : TickedRange::rangeToShow($saved, CarbonImmutable::now()->toDateTimeImmutable(), new DateTimeZone('UTC'));
+                $range = ShoppingReads::shown($input->from, $input->to)
+                    ?? TickedRange::rangeToShow($saved, CarbonImmutable::now()->toDateTimeImmutable(), new DateTimeZone('UTC'));
 
                 $manual = ManualShoppingItem::query()->where('user_id', $user->id)->orderBy('id')->get()
                     ->map(fn (ManualShoppingItem $item) => new ManualItem((string) $item->id, $item->text))

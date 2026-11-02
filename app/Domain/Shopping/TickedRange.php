@@ -30,6 +30,12 @@ final readonly class TickedRange
         return "manual:{$itemId}";
     }
 
+    /** The manual item a key names; null for a food's key. */
+    public static function manualId(string $key): ?string
+    {
+        return str_starts_with($key, 'manual:') ? substr($key, strlen('manual:')) : null;
+    }
+
     /** A line's key: a food or a manual item, by its ULID. */
     public static function isKey(string $key): bool
     {
@@ -51,10 +57,15 @@ final readonly class TickedRange
 
     /**
      * SHOP-005, OFF-030: tick a line off, or take the tick back. The tick names the state it leaves, so the
-     * same tick twice changes nothing. A tick in another range clears the ticks of the old one.
+     * same tick twice changes nothing. A tick in another range clears the ticks of the old one; an untick
+     * there (a stale one replayed from the outbox) leaves them alone.
      */
     public static function check(?self $saved, DateRange $range, string $key, bool $ticked): self
     {
+        if (! $ticked && $saved !== null && ! $saved->isFor($range)) {
+            return $saved;
+        }
+
         $keys = array_values(array_filter($saved?->keysIn($range) ?? [], fn (string $kept) => $kept !== $key));
 
         return new self($range, $ticked ? [...$keys, $key] : $keys);

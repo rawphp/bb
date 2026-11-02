@@ -5,10 +5,9 @@ namespace App\Models;
 use App\Domain\Shopping\DateRange;
 use App\Domain\Shopping\TickedRange;
 use App\Models\Concerns\BelongsToUser;
+use App\Support\Mesocycles\TrainSnapshot;
 use Carbon\CarbonImmutable;
 use Database\Factories\ShoppingTicksFactory;
-use DateTimeImmutable;
-use DateTimeZone;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,15 +28,7 @@ class ShoppingTicks extends Model
 
     public function ticked(): TickedRange
     {
-        $utc = new DateTimeZone('UTC');
-
-        return new TickedRange(
-            new DateRange(
-                new DateTimeImmutable($this->starts_on->format('Y-m-d'), $utc),
-                new DateTimeImmutable($this->ends_on->format('Y-m-d'), $utc),
-            ),
-            $this->keys,
-        );
+        return new TickedRange(new DateRange(TrainSnapshot::day($this->starts_on), TrainSnapshot::day($this->ends_on)), $this->keys);
     }
 
     /** @return array<string, string> */

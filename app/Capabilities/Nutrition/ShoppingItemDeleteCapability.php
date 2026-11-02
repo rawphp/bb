@@ -21,7 +21,7 @@ final class ShoppingItemDeleteCapability implements HostCapability, OwnsInput
     {
         // AGT-010: it deletes, so the coach needs the user's say-so.
         return HostDefinition::write('shopping_item_delete', affects: ['shopping_show'], destructive: true)
-            ->description('Delete an item the user added to the shopping list, and its tick. Planned foods cannot be deleted here: they leave the list when they leave the meals. It cannot be undone.')
+            ->description('Delete an item the user added to the shopping list, and its tick; from and to name the list on screen, so it is refreshed. Planned foods cannot be deleted here: they leave the list when they leave the meals. It cannot be undone.')
             ->cli('shopping', 'item-delete')
             ->input(ShoppingItemDeleteInput::class)
             ->run(function (ShoppingItemDeleteInput $input, CapabilityContext $context): WriteResult {
@@ -29,7 +29,7 @@ final class ShoppingItemDeleteCapability implements HostCapability, OwnsInput
                 $user = $context->user();
                 ($this->delete)($user, $input->id);
 
-                return new WriteResult(invalidates: ShoppingReads::everyList($user));
+                return new WriteResult(invalidates: ShoppingReads::everyList($user, ShoppingReads::shown($input->from, $input->to)));
             });
     }
 

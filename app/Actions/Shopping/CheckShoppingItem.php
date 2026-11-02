@@ -18,12 +18,16 @@ final class CheckShoppingItem
     /** @return DateRange|null the range whose ticks this cleared, when the tick was in another one */
     public function __invoke(User $user, DateRange $range, string $key, bool $ticked): ?DateRange
     {
-        if (str_starts_with($key, 'manual:')) {
-            ManualShoppingItem::query()->where('user_id', $user->id)->findOrFail(substr($key, strlen('manual:')));
+        $manualId = TickedRange::manualId($key);
+        if ($manualId !== null) {
+            ManualShoppingItem::query()->where('user_id', $user->id)->findOrFail($manualId);
         }
 
         return DB::transaction(function () use ($user, $range, $key, $ticked): ?DateRange {
-            $row = ShoppingTicks::query()->where('user_id', $user->id)->lockForUpdate()->first();
+            // The user's row first: a user with no ticks yet has no ticks row to lock, and two first ticks
+            // at once would both insert one.
+            User::query()->whereKey($user->id)->lockForUpdate()->first();
+            $row = ShoppingTicks::query()->where('user_id', $user->id)->first();
             $saved = $row?->ticked();
             $next = TickedRange::check($saved, $range, $key, $ticked);
 
@@ -33,7 +37,7 @@ final class CheckShoppingItem
                 'keys' => $next->keys,
             ])->save();
 
-            return $saved !== null && ! $saved->isFor($range) ? $saved->range : null;
+            return $saved !== null && ! $saved->isFor($next->range) ? $saved->range : null;
         });
     }
 }
