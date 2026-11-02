@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Support\Fixtures\Undo;
+namespace Tests\Support\Fixtures\Undo\Steps;
 
 use Rawphp\Capabilities\Support\CapabilityData;
 

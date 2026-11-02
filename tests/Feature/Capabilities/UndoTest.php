@@ -14,14 +14,18 @@ use App\Capabilities\Undo\Data\UndoApplyInput;
 use App\Capabilities\Undo\UndoApplyCapability;
 use App\Enums\MeasurementSource;
 use App\Models\DayTarget;
+use App\Models\DayTargetMeal;
 use App\Models\MealCheckIn;
+use App\Models\MealPlanningState;
 use App\Models\PlannedFood;
+use App\Models\PlannedRecipe;
 use App\Models\Step;
 use App\Models\UndoToken;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
+use App\Providers\CapabilitiesHostProvider;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -33,8 +37,9 @@ use Illuminate\Support\Str;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\Capabilities\Support\CapabilityContext;
 use Rawphp\Capabilities\Support\CapabilityFailure;
-use Tests\Support\Fixtures\Undo\StepCountSetCapability;
-use Tests\Support\Fixtures\Undo\StepCountSetInput;
+use Rawphp\Capabilities\Support\SystemActor;
+use Tests\Support\Fixtures\Undo\Steps\StepCountSetCapability;
+use Tests\Support\Fixtures\Undo\Steps\StepCountSetInput;
 
 beforeEach(function () {
     Carbon::setTestNow('2026-11-02 08:00:00');
@@ -45,8 +50,10 @@ beforeEach(function () {
 
 function setStepsAs(User $user, int $count): WriteResult
 {
-    // Registered the way the host registers it, which records it for undo.
-    $run = HostDefinition::register(app(StepCountSetCapability::class)->definition(), new CapabilityRegistry)->run;
+    // Registered by the host provider, as every capability is, which records it for undo.
+    $registry = new CapabilityRegistry;
+    CapabilitiesHostProvider::registerFrom(base_path('tests/Support/Fixtures/Undo'), 'Tests\\Support\\Fixtures\\Undo', $registry, app());
+    $run = $registry->get('step_count_set')->run;
 
     return $run(new StepCountSetInput($count), CapabilityContext::make(['caller' => 'http', 'actor' => $user]));
 }
@@ -222,9 +229,10 @@ it('CAP-013 undoes a write that re-targets a day\'s meals, with the meal index a
     $meal = fn (string $name, int $kcal) => ['name' => $name, 'time' => '08:00', 'kcal' => $kcal, 'protein_g' => 30, 'fat_g' => 10, 'carbs_g' => 50];
     $day = DayTarget::factory()->for($this->user)->create(['meals' => [$meal('Breakfast', 500), $meal('Lunch', 700), $meal('Dinner', 800)]]);
     [$breakfast, $lunch, $dinner] = array_column($day->meals, 'id');
-    PlannedFood::factory()->create(['meal_id' => $dinner]);
-    MealCheckIn::factory()->create(['meal_id' => $dinner]);
-    $tables = ['day_targets', 'day_target_meals', 'planned_foods', 'meal_check_ins'];
+    foreach ([PlannedFood::class, PlannedRecipe::class, MealCheckIn::class, MealPlanningState::class] as $child) {
+        $child::factory()->create(['meal_id' => $dinner]);
+    }
+    $tables = ['day_targets', 'day_target_meals', 'planned_foods', 'planned_recipes', 'meal_check_ins', 'meal_planning_states'];
     $rows = fn () => collect($tables)->mapWithKeys(fn (string $table) => [$table => DB::table($table)->get()->sortBy(fn ($row) => json_encode($row))->values()->all()])->all();
     $before = $rows();
 
@@ -234,12 +242,32 @@ it('CAP-013 undoes a write that re-targets a day\'s meals, with the meal index a
         ['id' => $breakfast] + $meal('Breakfast', 700),
         ['id' => (string) Str::uuid7()] + $meal('Snack', 200),
     ]]))->undo;
-    expect(DB::table('planned_foods')->count())->toBe(0)
+    expect(DB::table('planned_foods')->count() + DB::table('planned_recipes')->count()
+        + DB::table('meal_check_ins')->count() + DB::table('meal_planning_states')->count())->toBe(0)
         ->and(DB::table('day_target_meals')->count())->toBe(3);
 
     undoAs($this->user, $token);
 
     expect($rows())->toEqual($before);
+});
+
+it('CAP-013 removes a meal\'s plan through the relations of every table that points at a meal', function () {
+    $pointing = collect(Schema::getTables())
+        ->filter(fn (array $table) => collect(Schema::getForeignKeys($table['name']))->contains('foreign_table', 'day_target_meals'))
+        ->pluck('name')->unique()->sort()->values()->all();
+    $meal = new DayTargetMeal;
+    $declared = collect(DayTargetMeal::DEPENDENTS)->map(fn (string $relation) => $meal->{$relation}()->getRelated()->getTable())
+        ->sort()->values()->all();
+
+    expect($declared)->toBe($pointing);
+});
+
+it('CAP-013 refuses to run a reversible write for a caller that is not a user, who could not hold its undo token', function () {
+    $registry = new CapabilityRegistry;
+    CapabilitiesHostProvider::registerFrom(base_path('tests/Support/Fixtures/Undo'), 'Tests\\Support\\Fixtures\\Undo', $registry, app());
+
+    expect(fn () => ($registry->get('step_count_set')->run)(new StepCountSetInput(9000), CapabilityContext::make(['caller' => 'job', 'actor' => SystemActor::named('nightly')])))
+        ->toThrow(LogicException::class, 'step_count_set is reversible, so it needs a user to hold its undo token.');
 });
 
 it('CAP-013 refreshes the reads of a reversible write run inside another, on the write and on its undo', function () {

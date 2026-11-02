@@ -27,28 +27,15 @@ abstract class TestCase extends BaseTestCase
         // live connection and silently rolls back the test's RefreshDatabase
         // transaction. Reconnect it as soon as the migration ends, before that
         // transaction begins.
-        $app->make('events')->listen(DatabaseRefreshed::class, fn () => self::reconnectCapabilityStores($app));
-        // A warp-isolated test boots a fresh app and finds the database already migrated, so no
-        // DatabaseRefreshed fires: reconnect now too, still before the transaction begins.
-        self::reconnectCapabilityStores($app);
+        $app->make('events')->listen(DatabaseRefreshed::class, function () use ($app): void {
+            $connection = $app->make(CapabilityRegistry::class)->transactionConnection();
+
+            if ($connection instanceof Connection) {
+                $connection->reconnectIfMissingConnection();
+            }
+        });
 
         return $app;
-    }
-
-    private static function reconnectCapabilityStores(Application $app): void
-    {
-        $connection = $app->make(CapabilityRegistry::class)->transactionConnection();
-
-        if ($connection instanceof Connection) {
-            // Reconnect it on its own: through the manager, a reconnect disconnects the live
-            // connection the test's transaction is open on.
-            // The current app, not this one: the connection outlives the test that set this.
-            $connection->setReconnector(function (Connection $stale): void {
-                $fresh = app('db.factory')->make(config('database.connections.'.$stale->getName()), $stale->getName());
-                $stale->setPdo($fresh->getRawPdo())->setReadPdo($fresh->getRawReadPdo());
-            });
-            $connection->reconnectIfMissingConnection();
-        }
     }
 
     protected function createClassicApplication(): Application

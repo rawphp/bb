@@ -3,19 +3,32 @@
 // The undo round trip over HTTP: the reversible write's token and undo_apply's
 // answers as the client gets them, through the package's write pipeline.
 
-use App\Capabilities\Support\HostDefinition;
 use App\Models\Step;
 use App\Models\User;
+use App\Providers\CapabilitiesHostProvider;
+use Illuminate\Database\Connection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
-use Tests\Support\Fixtures\Undo\StepCountSetCapability;
 
 // Registers a test-only capability, so each test gets its own application.
 uses()->group('warp-isolated');
 
 beforeEach(function () {
+    // The package's stores keep the connection they resolved when this app booted. In a
+    // warp-isolated app it is not the live one, and its reconnect through the manager would
+    // disconnect the live connection and roll back this test's transaction. So it reconnects
+    // on its own.
+    $stores = app(CapabilityRegistry::class)->transactionConnection();
+    if ($stores instanceof Connection && $stores !== DB::connection($stores->getName())) {
+        $stores->setReconnector(function (Connection $stale): void {
+            $fresh = app('db.factory')->make(config('database.connections.'.$stale->getName()), $stale->getName());
+            $stale->setPdo($fresh->getRawPdo())->setReadPdo($fresh->getRawReadPdo());
+        });
+    }
+
     Carbon::setTestNow('2026-11-02 08:00:00');
-    HostDefinition::register(app(StepCountSetCapability::class)->definition(), app(CapabilityRegistry::class));
+    CapabilitiesHostProvider::registerFrom(base_path('tests/Support/Fixtures/Undo'), 'Tests\\Support\\Fixtures\\Undo', app(CapabilityRegistry::class), app());
 
     $this->user = User::factory()->create();
     $this->step = Step::factory()->for($this->user)->create(['date' => '2026-11-02', 'count' => 4000]);
