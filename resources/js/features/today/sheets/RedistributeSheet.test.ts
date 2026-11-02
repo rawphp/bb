@@ -1,21 +1,22 @@
 import { flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { DayRedistributeShowOutput } from '@/contracts/day_redistribute_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import RedistributeSheet from './RedistributeSheet.vue';
 import { mountSheet } from './sheetTesting';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
 
 const readMock = vi.mocked(read);
+const freshMock = vi.mocked(readFresh);
 const writeMock = vi.mocked(write);
 const content = screenFixture<DayRedistributeShowOutput>('day_redistribute_show');
 const warned = screenFixture<DayRedistributeShowOutput>('day_redistribute_show.warning');
 const [lunch, preWorkout, postWorkout] = content.rows;
 
-function lastRead(): Record<string, unknown> {
-    const [name, input] = readMock.mock.calls.at(-1)!;
+function lastRead(mock: typeof readMock | typeof freshMock = readMock): Record<string, unknown> {
+    const [name, input] = mock.mock.calls.at(-1)!;
     expect(name).toBe('day_redistribute_show');
     expect(inputViolations('day_redistribute_show', input)).toEqual([]);
     return input as Record<string, unknown>;
@@ -24,8 +25,10 @@ function lastRead(): Record<string, unknown> {
 describe('RedistributeSheet', () => {
     beforeEach(() => {
         readMock.mockReset();
+        freshMock.mockReset();
         writeMock.mockReset();
         readMock.mockResolvedValue(content);
+        freshMock.mockResolvedValue(content);
     });
 
     it('DAY-002 lists the later meals with what each would hold, and which take the rest', async () => {
@@ -61,19 +64,52 @@ describe('RedistributeSheet', () => {
         expect(warning.classes()).toContain('text-tone-warning');
     });
 
-    it('DAY-002 leaves a tapped meal out, takes it back on a second tap, and asks the server each time', async () => {
+    it('DAY-002 leaves a tapped meal out, takes it back on a second tap, and asks the server, not the cache, each time', async () => {
         const { wrapper } = await mountSheet(RedistributeSheet, { date: '2026-09-23' });
         await flushPromises();
         expect(lastRead()).toEqual({ date: '2026-09-23' });
 
-        readMock.mockResolvedValueOnce({ ...content, rows: [{ ...lunch!, selected: false }, preWorkout!, postWorkout!] });
+        freshMock.mockResolvedValueOnce({ ...content, rows: [{ ...lunch!, selected: false }, preWorkout!, postWorkout!] });
         await wrapper.findAll('[data-test="redistribute-row"]')[0]!.trigger('click');
         await flushPromises();
-        expect(lastRead()).toEqual({ date: '2026-09-23', excluded_meal_ids: [lunch!.id] });
+        expect(lastRead(freshMock)).toEqual({ date: '2026-09-23', excluded_meal_ids: [lunch!.id] });
 
         await wrapper.findAll('[data-test="redistribute-row"]')[0]!.trigger('click');
         await flushPromises();
-        expect(lastRead()).toEqual({ date: '2026-09-23', excluded_meal_ids: [] });
+        expect(lastRead(freshMock)).toEqual({ date: '2026-09-23', excluded_meal_ids: [] });
+        expect(readMock).toHaveBeenCalledOnce();
+    });
+
+    it('DAY-002 keeps Confirm off, and the rows still, while the answer for the last tap is on its way', async () => {
+        const { wrapper } = await mountSheet(RedistributeSheet, { payload: content });
+        let answer: (data: DayRedistributeShowOutput) => void = () => {};
+        freshMock.mockReturnValueOnce(new Promise((resolve) => (answer = resolve as typeof answer)));
+
+        await wrapper.findAll('[data-test="redistribute-row"]')[0]!.trigger('click');
+        await flushPromises();
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
+        await wrapper.findAll('[data-test="redistribute-row"]')[2]!.trigger('click');
+        await wrapper.get('[data-save]').trigger('click');
+        expect(freshMock).toHaveBeenCalledOnce();
+        expect(writeMock).not.toHaveBeenCalled();
+
+        answer({ ...content, rows: [{ ...lunch!, selected: false }, preWorkout!, postWorkout!] });
+        await flushPromises();
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+        expect(writeMock.mock.calls.at(-1)![1]).toEqual({ date: '2026-09-23', meal_ids: [postWorkout!.id] });
+    });
+
+    it('OFF-003 keeps the meals on screen when a tap cannot be read, says why, and keeps Confirm off', async () => {
+        freshMock.mockRejectedValueOnce(new CapabilityError('day_redistribute_show', 503, null));
+        const { wrapper } = await mountSheet(RedistributeSheet, { payload: content });
+
+        await wrapper.findAll('[data-test="redistribute-row"]')[0]!.trigger('click');
+        await flushPromises();
+
+        expect(wrapper.findAll('[data-test="redistribute-row"]')).toHaveLength(3);
+        expect(wrapper.get('[role="alert"]').text()).toBe('The meals to redistribute over could not be loaded.');
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
     });
 
     it('DAY-002 Confirm sends the meals the server shows as taking the rest, and hands its toast to the screen', async () => {

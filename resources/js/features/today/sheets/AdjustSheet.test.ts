@@ -1,14 +1,15 @@
 import { flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { DayAdjustShowOutput } from '@/contracts/day_adjust_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import AdjustSheet from './AdjustSheet.vue';
 import { mountSheet } from './sheetTesting';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
 
 const readMock = vi.mocked(read);
+const freshMock = vi.mocked(readFresh);
 const writeMock = vi.mocked(write);
 const content = screenFixture<DayAdjustShowOutput>('day_adjust_show');
 const refused = screenFixture<DayAdjustShowOutput>('day_adjust_show.warning');
@@ -21,11 +22,26 @@ function lastRead(): Record<string, unknown> {
     return input as Record<string, unknown>;
 }
 
+// A changed move is asked of the server, never the cache: an old copy of the same pick predates any move saved since.
+function lastAsked(): Record<string, unknown> {
+    const [name, input] = freshMock.mock.calls.at(-1)!;
+    expect(name).toBe('day_adjust_show');
+    expect(inputViolations('day_adjust_show', input)).toEqual([]);
+    return input as Record<string, unknown>;
+}
+
+async function typeKcal(wrapper: Awaited<ReturnType<typeof mountSheet>>['wrapper'], text: string) {
+    await wrapper.get('input[name="kcal"]').setValue(text);
+    await flushPromises();
+}
+
 describe('AdjustSheet', () => {
     beforeEach(() => {
         readMock.mockReset();
+        freshMock.mockReset();
         writeMock.mockReset();
         readMock.mockResolvedValue(content);
+        freshMock.mockResolvedValue(content);
     });
 
     it('DAY-020 shows both days\' projected calories and protein', async () => {
@@ -90,23 +106,24 @@ describe('AdjustSheet', () => {
         expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
     });
 
-    it('DAY-020 asks the server again as the user fills the sheet in', async () => {
+    it('DAY-020 asks the server again, not the cache, as the user fills the sheet in', async () => {
         const { wrapper } = await mountSheet(AdjustSheet, { date: '2026-09-23' });
         await flushPromises();
         expect(lastRead()).toEqual({ date: '2026-09-23' });
+        expect(freshMock).not.toHaveBeenCalled();
 
         await wrapper.get('select[name="day"]').setValue('2026-09-26');
         await wrapper.get('[data-test="direction-take"]').trigger('click');
         await wrapper.get('input[name="kcal"]').setValue('200');
         await flushPromises();
-        expect(lastRead()).toEqual({ date: '2026-09-23', mode: 'days', direction: 'take', other_date: '2026-09-26', kcal: 200 });
+        expect(lastAsked()).toEqual({ date: '2026-09-23', mode: 'days', direction: 'take', other_date: '2026-09-26', kcal: 200 });
 
         await wrapper.get('[data-test="mode-meals"]').trigger('click');
         await flushPromises();
         await wrapper.get('select[name="from"]').setValue(content.meal_options[0]!.id);
         await wrapper.get('select[name="to"]').setValue(content.meal_options[2]!.id);
         await flushPromises();
-        expect(lastRead()).toEqual({
+        expect(lastAsked()).toEqual({
             date: '2026-09-23',
             mode: 'meals',
             from_meal_id: content.meal_options[0]!.id,
@@ -122,7 +139,7 @@ describe('AdjustSheet', () => {
         await wrapper.get('input[name="kcal"]').setValue('2.5');
         await flushPromises();
 
-        expect(lastRead()).toMatchObject({ kcal: null });
+        expect(lastAsked()).toMatchObject({ kcal: null });
     });
 
     it('DAY-020 saves the move as filled in and hands the server\'s toast to the screen', async () => {
@@ -156,6 +173,71 @@ describe('AdjustSheet', () => {
 
         expect(wrapper.get('[role="alert"]').text()).toBe('Sat, Sep 26 is finished.');
         expect(onSaved).not.toHaveBeenCalled();
+    });
+
+    it('DAY-020 keeps Save off until an amount is typed', async () => {
+        const { wrapper } = await mountSheet(AdjustSheet, { payload: content });
+
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
+        await typeKcal(wrapper, '200');
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeUndefined();
+    });
+
+    it('DAY-020 keeps Save off while the answer for the latest change is on its way', async () => {
+        const { wrapper } = await mountSheet(AdjustSheet, { payload: content });
+        let answer: (data: DayAdjustShowOutput) => void = () => {};
+        freshMock.mockReturnValueOnce(new Promise((resolve) => (answer = resolve as typeof answer)));
+
+        await typeKcal(wrapper, '200');
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
+
+        answer(content);
+        await flushPromises();
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeUndefined();
+    });
+
+    it('OFF-003 keeps the sheet and what was typed when a changed move cannot be read, says why, and keeps Save off', async () => {
+        freshMock.mockRejectedValueOnce(new CapabilityError('day_adjust_show', 0, { reason: 'network' }));
+        const { wrapper } = await mountSheet(AdjustSheet, { payload: content });
+
+        await typeKcal(wrapper, '200');
+
+        expect((wrapper.get('input[name="kcal"]').element as HTMLInputElement).value).toBe('200');
+        expect(wrapper.findAll('[data-test="projected"]')).toHaveLength(2);
+        expect(wrapper.get('[role="alert"]').text()).toBe('No connection. Try again when you are online.');
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
+    });
+
+    it('OFF-004 asks again when the device comes back online', async () => {
+        freshMock.mockRejectedValueOnce(new CapabilityError('day_adjust_show', 0, { reason: 'network' }));
+        const { wrapper } = await mountSheet(AdjustSheet, { payload: content });
+        await typeKcal(wrapper, '200');
+
+        window.dispatchEvent(new Event('online'));
+        await flushPromises();
+
+        expect(freshMock).toHaveBeenCalledTimes(2);
+        expect(lastAsked()).toMatchObject({ kcal: 200 });
+        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+        wrapper.unmount();
+    });
+
+    it('CAP-014 a retry after no answer sends the same move with the same key, and the move cannot change meanwhile', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('day_adjust', 0, { reason: 'timeout' })).mockResolvedValueOnce({ invalidates: [] });
+        const { wrapper } = await mountSheet(AdjustSheet, { payload: content, onSaved: vi.fn() });
+        await wrapper.get('select[name="day"]').setValue('2026-09-26');
+        await typeKcal(wrapper, '200');
+
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+        expect((wrapper.get('input[name="kcal"]').element as HTMLInputElement).disabled).toBe(true);
+        expect((wrapper.get('[data-test="mode-meals"]').element as HTMLButtonElement).disabled).toBe(true);
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        const [first, second] = writeMock.mock.calls;
+        expect(second![1]).toEqual(first![1]);
+        expect(second![2]?.idempotencyKey).toBe(first![2]?.idempotencyKey);
     });
 
     it('UI-005 Cancel closes the sheet without saving', async () => {

@@ -91,6 +91,62 @@ describe('OffPlanSheet', () => {
         expect(wrapper.get('input[name="protein"]').attributes('aria-label')).toBe('Protein in grams');
     });
 
+    it.each([
+        ['12,5', 12.5],
+        ['.5', 0.5],
+        ['7.', 7],
+    ])('DAY-001 reads %s as %s grams, a comma as the decimal point', async (typed, grams) => {
+        writeMock.mockResolvedValueOnce({ invalidates: [] });
+        const { wrapper } = await mountSheet(OffPlanSheet, { date: '2026-09-23', time: '12:00' });
+
+        await fill(wrapper, { protein: typed });
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toMatchObject({ protein_g: grams });
+    });
+
+    it('DAY-001 keeps Save off while the time is empty', async () => {
+        const { wrapper } = await mountSheet(OffPlanSheet, { date: '2026-09-23', time: '12:00' });
+
+        await fill(wrapper, { time: '' });
+
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
+    });
+
+    it('CAP-019 opened again, the sheet starts a new, empty entry', async () => {
+        writeMock.mockResolvedValue({ invalidates: [] });
+        const { wrapper } = await mountSheet(OffPlanSheet, { date: '2026-09-23', time: '12:00', onSaved: vi.fn() });
+        await fill(wrapper, { name: 'Office cake', kcal: '320' });
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+        const first = sent();
+
+        await wrapper.setProps({ open: false });
+        await wrapper.setProps({ open: true });
+        expect((wrapper.get('input[name="name"]').element as HTMLInputElement).value).toBe('');
+        expect((wrapper.get('input[name="kcal"]').element as HTMLInputElement).value).toBe('');
+        expect((wrapper.get('input[name="time"]').element as HTMLInputElement).value).toBe('12:00');
+        await fill(wrapper, { kcal: '150' });
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(sent().id).not.toBe(first.id);
+    });
+
+    it('CAP-014 the entry cannot change while a save that got no answer may have worked', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('off_plan_log', 0, { reason: 'timeout' }));
+        const { wrapper } = await mountSheet(OffPlanSheet, { date: '2026-09-23', time: '12:00' });
+
+        await fill(wrapper, { kcal: '320' });
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        for (const field of ['name', 'time', 'kcal', 'protein', 'fat', 'carbs']) {
+            expect((wrapper.get(`input[name="${field}"]`).element as HTMLInputElement).disabled, field).toBe(true);
+        }
+    });
+
     it('CAP-019 a retry after no answer sends the same entry again', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('off_plan_log', 0, { reason: 'timeout' })).mockResolvedValueOnce({ invalidates: [] });
         const { wrapper } = await mountSheet(OffPlanSheet, { date: '2026-09-23', time: '12:00' });
