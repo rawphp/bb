@@ -1,15 +1,21 @@
 <?php
 
+use App\Domain\Model\MuscleGroup;
 use App\Models\Exercise;
+use App\Models\Phase;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
+use Illuminate\Support\Carbon;
 use Tests\Support\ProgressSeed;
 use Tests\Support\ScreenFixture;
 
 // The HTTP seam of exercise_history_show and its screen fixtures. The rules are unit tests
 // (ExerciseHistoryPayloadTest, EstimatedOneRepMaxTest).
+
+beforeEach(fn () => Carbon::setTestNow(ProgressSeed::NOW));
+afterEach(fn () => Carbon::setTestNow());
 
 function historyOf($test, User $user, Exercise|string $exercise)
 {
@@ -27,7 +33,41 @@ it('ANA-009 answers 404 for another user\'s custom exercise, an unknown one and 
     historyOf($this, $user, $theirs)->assertNotFound();
     historyOf($this, $user, '999999')->assertNotFound();
     historyOf($this, $user, 'abc')->assertNotFound();
-    historyOf($this, $user, '12abc')->assertNotFound();
+});
+
+it('ANA-009 answers 404 for an id with trailing or leading characters, though the number is an exercise the user can see', function () {
+    $user = User::factory()->create();
+    $visible = Exercise::factory()->create();
+
+    historyOf($this, $user, $visible)->assertOk();
+    historyOf($this, $user, "{$visible->id}abc")->assertNotFound();
+    historyOf($this, $user, " {$visible->id}")->assertNotFound();
+});
+
+it('EX-002 shows a custom exercise\'s history to its owner only', function () {
+    ['user' => $user] = ProgressSeed::world();
+    $mesocycle = ProgressSeed::mesocycle($user, 'Own', Phase::query()->where('user_id', $user->id)->value('id'), '2026-10-01', 2);
+    $custom = Exercise::factory()->custom($user)->create(['name' => 'My press', 'muscle_group' => MuscleGroup::Chest]);
+    $session = ProgressSeed::session($user, $mesocycle, 1, '2026-10-09 09:00:00', [[$custom, 50, 10]]);
+
+    $data = historyOf($this, $user, $custom)->assertOk()->json('data');
+    historyOf($this, ProgressSeed::stranger(), $custom)->assertNotFound();
+
+    expect($data['title'])->toBe('My press')
+        ->and(array_column($data['sessions'], 'id'))->toBe([$session->id]);
+});
+
+it('EX-002 lists a session\'s sets by position, not by when they were logged', function () {
+    ['user' => $user, 'bench' => $bench, 'benchSessions' => [$first]] = ProgressSeed::world();
+    // Added after the others, at the top: an inserted warm-up.
+    WorkoutSet::factory()->create([
+        'workout_session_id' => $first->id, 'exercise_id' => $bench->id, 'position' => 0,
+        'actual_weight_kg' => 40, 'actual_reps' => 12, 'is_logged' => true,
+    ]);
+
+    $labels = array_column(historyOf($this, $user, $bench)->assertOk()->json('data.sessions.1.sets'), 'label');
+
+    expect($labels)->toBe(['40.0 kg × 12', '60.0 kg × 9', '62.5 kg × 8']);
 });
 
 it('ANA-009 answers 422 naming exercise_id when it is missing', function () {

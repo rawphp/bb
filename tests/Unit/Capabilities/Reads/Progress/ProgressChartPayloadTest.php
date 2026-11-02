@@ -73,6 +73,35 @@ it('ANA-001 shows pounds in the profile\'s unit', function () {
         ->and($payload['summary'][0]['value'])->toBe('176.4 lb');
 });
 
+it('ANA-001 draws the goal band in pounds too', function () {
+    $chart = W::payload(W::snapshot(weighIns: W::weighIns('2026-08-20', 52), profile: ['weight_unit' => 'lb']), ProgressScope::WholePlan)['chart'];
+
+    // Maintenance at 80 kg, 1% either side (79.2 and 80.8 kg).
+    expect($chart['goal'][0])->toBe(['date' => '2026-08-20', 'low' => 174.61, 'goal' => 176.37, 'high' => 178.13]);
+});
+
+it('WT-021 keeps the waist in centimetres for a pounds user whose height is in centimetres', function () {
+    $chart = W::payload(W::snapshot(weighIns: waistReadings([0 => 88.0, 14 => 87.5, 28 => 87.5, 39 => 87.0]), profile: ['weight_unit' => 'lb']))['chart'];
+
+    expect($chart['waist_unit'])->toBe('cm')
+        ->and(array_column($chart['waist'], 'value'))->toBe([88.0, 87.5, 87.5, 87.0]);
+});
+
+it('ANA-001 ANA-002 a user with no plan has the whole plan start at the first phase', function () {
+    // Phases start 4 August; weigh-ins before that are not on the plan's chart.
+    $chart = W::payload(W::snapshot(withPlan: false, weighIns: W::weighIns('2026-07-25', 30)), ProgressScope::WholePlan)['chart'];
+
+    expect($chart['trend'][0]['date'])->toBe('2026-08-04')
+        ->and($chart['goal'][0]['date'])->toBe('2026-08-04');
+});
+
+it('ANA-001 ANA-002 a user with no plan and no phases has the whole plan start at the first weigh-in', function () {
+    $payload = W::payload(W::snapshot(withPlan: false, phases: [], weighIns: W::weighIns('2026-09-03', 10)), ProgressScope::WholePlan);
+
+    expect($payload['chart']['trend'][0]['date'])->toBe('2026-09-03')
+        ->and($payload['summary'][0]['value'])->toBe('80.0 kg');
+});
+
 it('ANA-002 the summary has start, change and goal', function () {
     $summary = W::payload(W::snapshot())['summary'];
 
@@ -107,7 +136,7 @@ it('ANA-010 shares the title and the phase summary', function () {
     expect($share)->toBe(['title' => 'My progress', 'message' => 'Fat loss: 80.0 kg to 80.0 kg (+0.0 kg) over 5 weeks']);
 });
 
-it('ANA-010 shares pounds when that is the unit', function () {
+it('ANA-002 ANA-010 shares pounds when that is the unit', function () {
     $share = W::payload(W::snapshot(profile: ['weight_unit' => 'lb']))['share'];
 
     expect($share['message'])->toBe('Fat loss: 176.4 lb to 176.4 lb (+0.0 lb) over 5 weeks');

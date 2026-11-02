@@ -103,12 +103,14 @@ it('ANA-011 no consumed data means no dots', function () {
     expect(array_filter(array_column($days, 'is_complete')))->toBe([]);
 });
 
-it('ANA-011 days before the plan start get no dot and no calories', function () {
+it('ANA-011 days before the plan start get no dot but keep their target', function () {
     $days = W::payload(W::snapshot(
         today: '2026-10-14', planStart: '2026-10-12', targetDays: ['2026-10-10'], consumed: ['2026-10-10' => [2000, 150]],
     ))['this_week']['days'];
 
-    expect(array_column($days, 'is_complete'))->toBe([false, false, false, false, false, false, false]);
+    expect(array_column($days, 'is_complete'))->toBe([false, false, false, false, false, false, false])
+        ->and($days[0]['date'])->toBe('2026-10-10')
+        ->and($days[0]['calories_label'])->toBe('2000');
 });
 
 // MARK: ANA-004 review card

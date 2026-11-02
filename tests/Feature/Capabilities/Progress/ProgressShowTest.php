@@ -136,3 +136,33 @@ it('ANA-005 shows no steps when none are stored for today', function () {
 
     expect($this->actingAs($user)->postJson('/capabilities/progress_show')->assertOk()->json('data.steps'))->toBeNull();
 });
+
+it('ANA-005 shows today\'s steps, not those of another day', function () {
+    ['user' => $user] = ProgressSeed::world();
+    Step::factory()->for($user)->create(['date' => '2026-10-09', 'count' => 9999]);
+
+    expect($this->actingAs($user)->postJson('/capabilities/progress_show')->assertOk()->json('data.steps.bar.value_label'))->toBe('6,240/10,000');
+});
+
+it('ANA-005 shows no steps when only yesterday\'s are stored', function () {
+    ['user' => $user] = ProgressSeed::world();
+    Step::query()->where('user_id', $user->id)->update(['date' => '2026-10-09']);
+
+    expect($this->actingAs($user)->postJson('/capabilities/progress_show')->assertOk()->json('data.steps'))->toBeNull();
+});
+
+it('EX-013 dates an exercise by its planned start when the session has no actual one, and by the actual start when it has both', function () {
+    ['user' => $user, 'bench' => $bench, 'row' => $row, 'curl' => $curl] = ProgressSeed::world();
+    $logged = ['is_logged' => true, 'actual_weight_kg' => 40, 'actual_reps' => 10];
+    // Curl, last logged on 5 October, is also in a planned-only session on 12 October: it moves to the top.
+    $planned = WorkoutSession::factory()->for($user)->create(['actual_start_at' => null, 'planned_start_at' => '2026-10-12 09:00:00']);
+    WorkoutSet::factory()->create([...$logged, 'workout_session_id' => $planned->id, 'exercise_id' => $curl->id]);
+    // Row has an actual start on 9 October and a planned start later: the actual one counts, so Bench (8 October)
+    // stays behind it and the planned 26 October does not move Row any higher than the actual start would.
+    $both = WorkoutSession::factory()->for($user)->create(['actual_start_at' => '2026-10-08 20:00:00', 'planned_start_at' => '2026-10-26 09:00:00']);
+    WorkoutSet::factory()->create([...$logged, 'workout_session_id' => $both->id, 'exercise_id' => $bench->id]);
+
+    $data = $this->actingAs($user)->postJson('/capabilities/progress_show')->assertOk()->json('data');
+
+    expect(array_column($data['exercises'], 'id'))->toBe([(string) $curl->id, (string) $row->id, (string) $bench->id]);
+});
