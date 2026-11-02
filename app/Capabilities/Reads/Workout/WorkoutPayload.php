@@ -275,6 +275,7 @@ final class WorkoutPayload
         if ($next === null) {
             return null;
         }
+
         return "Next: {$next['name']} at {$next['time']->shortText()} · ".(int) round($next['carbs']).' g carbs';
     }
 
