@@ -138,6 +138,22 @@ it('PROG-027 past the top of the range the weight goes up a step and reps reset 
         ->and(woReps($row))->toBe([7, 6, 5]);
 });
 
+it('PROG-022 a pure bodyweight exercise logged with added weight last week still progresses by reps alone', function () {
+    // Last week's pull-ups were logged with 10 kg typed in the added weight field. A pure bodyweight exercise has no
+    // load to progress, so that weight never becomes a target.
+    $days = W::days();
+    $days[0]['slots'] = [W::slot(W::PULL_UP, 'back', 3)];
+    $lastWeek = array_map(fn (int $index, int $reps) => W::set("w2-pull-{$index}", 'm2w2d1', W::PULL_UP, $index + 1, [
+        'actual_weight_kg' => 10, 'actual_reps' => $reps, 'is_logged' => true,
+    ]), [0, 1, 2], [8, 7, 6]);
+    $pullUp = woExercise(woShow(meso: ['days' => $days], sets: [...W::sets(), ...$lastWeek]), 'Pull-up');
+
+    expect(array_column($pullUp['sets'], 'target_weight'))->toBe([null, null, null])
+        ->and(array_column($pullUp['sets'], 'rep_table'))->toBe([[], [], []])
+        ->and(woWeights($pullUp))->toBe([null, null, null])
+        ->and(woReps($pullUp))->toBe([9, 8, 7]);
+});
+
 it('PROG-021 PROG-023 fat loss rises by 1% on the smallest step', function () {
     // 80 kg raised 1% is 80.8, which rounds to 81.25 on the 1.25 kg step fat loss uses.
     expect(woWeights(woExercise(woShow(phase: 'fatLoss'), 'Bench Press')))->toBe([81.25, 81.25, 81.25]);
