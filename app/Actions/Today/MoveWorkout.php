@@ -48,7 +48,7 @@ final class MoveWorkout
         DB::transaction(function () use ($source, $destination, $result, $user, $session, $input, $to) {
             $source->save($result->days[0]);
             $destination->save($result->days[1]);
-            PlannedSession::saveRow($user, $session->row, $input->mesocycle_id, $input->week, $input->day, $to, $session->scheduled->time);
+            PlannedSession::saveRow($user, $session->row, $session->item->mesocycle->id, $input->week, $input->day, $to, $session->scheduled->time);
         });
 
         return ['toast' => $result->message, 'dates' => [$source->date, $destination->date], 'week' => $source->weekDates()];

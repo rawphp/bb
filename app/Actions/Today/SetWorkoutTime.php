@@ -34,7 +34,7 @@ final class SetWorkoutTime
 
         DB::transaction(function () use ($day, $result, $user, $session, $input, $start) {
             $day->save($result->days[0]);
-            PlannedSession::saveRow($user, $session->row, $input->mesocycle_id, $input->week, $input->day, $session->item->date,
+            PlannedSession::saveRow($user, $session->row, $session->item->mesocycle->id, $input->week, $input->day, $session->item->date,
                 new WorkoutTime($start, $session->scheduled->time->lengthMinutes));
         });
 

@@ -45,7 +45,7 @@ final class ResolveMissedSession
         $option = $this->offered($input, Retargeting::missedDayOptions($session->date, $snapshot->today, $week->planWeek, $week->trainingDates()), $snapshot->today);
         $weekDates = array_map(fn (DateTimeImmutable $day) => $day->format('Y-m-d'), $week->planWeek->days());
         if ($option->kind === Kind::Skip) {
-            PlannedSession::saveRow($user, $stored, $input->mesocycle_id, $input->week, $input->day, $session->date, $session->time, skipped: true);
+            PlannedSession::saveRow($user, $stored, $mesocycle->id, $input->week, $input->day, $session->date, $session->time, skipped: true);
 
             return ['toast' => 'Session skipped', 'dates' => [$session->date->format('Y-m-d')], 'week' => $weekDates];
         }
@@ -69,9 +69,9 @@ final class ResolveMissedSession
             throw new DomainException(self::refusal($refused->refusal));
         }
         // The day and the session's row are saved together or not at all.
-        DB::transaction(function () use ($plans, $date, $result, $user, $stored, $input, $session, $destination) {
+        DB::transaction(function () use ($plans, $date, $result, $user, $stored, $input, $session, $destination, $mesocycle) {
             RetargetDays::save($plans->row($date), $result->days[1]);
-            PlannedSession::saveRow($user, $stored, $input->mesocycle_id, $input->week, $input->day, $destination, $session->time);
+            PlannedSession::saveRow($user, $stored, $mesocycle->id, $input->week, $input->day, $destination, $session->time);
         });
 
         return ['toast' => $result->message, 'dates' => [$session->date->format('Y-m-d'), $date], 'week' => $weekDates];

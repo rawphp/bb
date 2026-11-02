@@ -60,7 +60,11 @@ final readonly class PlannedSession
         return new self($snapshot, $item, $scheduled, $row);
     }
 
-    /** The session's row, placed on `$day` at `$time` until its length; a stored row keeps its id. */
+    /**
+     * The session's row, placed on `$date` at `$time` until its length; a stored row keeps its id.
+     *
+     * @param  string  $mesocycleId  the stored mesocycle's own id, not the caller's spelling of it: Today matches rows by it exactly
+     */
     public static function saveRow(User $user, ?WorkoutSession $stored, string $mesocycleId, int $week, int $day, DateTimeImmutable $date, WorkoutTime $time, bool $skipped = false): void
     {
         $start = DayPlans::day($date)->modify("+{$time->start->minuteOfDay} minutes");

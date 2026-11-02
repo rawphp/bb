@@ -5,12 +5,10 @@ namespace App\Actions\Today;
 use App\Capabilities\Reads\Data\DayOptimizeShowOutput;
 use App\Capabilities\Reads\Data\Today\OptimizeRow;
 use App\Capabilities\Today\Data\DayOptimizeInput;
-use App\Domain\Retarget\MealRetarget;
 use App\Domain\Retarget\Retargeting;
 use App\Domain\Retarget\RetargetMeal;
 use App\Domain\Retarget\RetargetRefused;
 use App\Models\User;
-use Closure;
 use DomainException;
 
 /**
@@ -30,7 +28,7 @@ final class OptimizeDay
     {
         try {
             $day = RetargetableDay::load($user, $date);
-            $result = self::result($day, fn (): string => self::PREVIEW_ID);
+            $result = Retargeting::optimize($day->day, $day->context, fn (): string => self::PREVIEW_ID);
         } catch (DomainException $refused) {
             $message = $refused instanceof RetargetRefused ? RetargetableDay::refused($refused)->getMessage() : $refused->getMessage();
 
@@ -48,23 +46,13 @@ final class OptimizeDay
     {
         $day = RetargetableDay::load($user, $input->date);
         try {
-            $result = self::result($day, RetargetableDay::newId(...)) ?? throw new DomainException(self::ALREADY_BEST);
+            $result = Retargeting::optimize($day->day, $day->context, RetargetableDay::newId(...)) ?? throw new DomainException(self::ALREADY_BEST);
         } catch (RetargetRefused $refused) {
             throw RetargetableDay::refused($refused);
         }
         $day->save($result->days[0]);
 
         return ['toast' => $result->message, 'dates' => [$day->date], 'week' => $day->weekDates()];
-    }
-
-    /**
-     * @param  Closure(): string  $newId
-     *
-     * @throws RetargetRefused
-     */
-    private static function result(RetargetableDay $day, Closure $newId): ?MealRetarget
-    {
-        return Retargeting::optimize($day->day, $day->context, $newId);
     }
 
     /**
