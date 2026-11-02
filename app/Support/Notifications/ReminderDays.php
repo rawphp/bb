@@ -46,53 +46,65 @@ final class ReminderDays
     }
 
     /**
-     * A cheap check before {@see between()}: whether any clock time a reminder can fall at lies in ($after, $now].
-     * It reads every source of a due time, so it may say yes when nothing is due but never no when something is: the
-     * 09:00 review and deload reminders, the weigh-in schedule, the meal times of the days' targets, and an hour
-     * before each session start, from the profile's training days and from the session rows a move or re-time wrote.
+     * A cheap check before {@see between()}, for many users at once: which of them have a clock time a reminder can
+     * fall at in ($after, $now]. It reads every source of a due time, so it may name a user with nothing due but
+     * never leaves out one with something due: the 09:00 review and deload reminders, the weigh-in schedule, the meal
+     * times of the days' targets, and an hour before each session start, from the profile's training days and from
+     * the session rows a move or re-time wrote. Four queries, however many users.
+     *
+     * @param  list<int>  $userIds
+     * @return list<int> those users who may have something due, in the order given
      */
-    public static function mayHaveDue(User $user, DateTimeImmutable $after, DateTimeImmutable $now): bool
+    public static function mayHaveDue(array $userIds, DateTimeImmutable $after, DateTimeImmutable $now): array
     {
         $span = $now->getTimestamp() - $after->getTimestamp();
-        if ($span >= 86400) {
-            return true;
+        $from = (int) $after->format('G') * 3600 + (int) $after->format('i') * 60 + (int) $after->format('s');
+        $inWindow = function (?ClockTime $time) use ($span, $from): bool {
+            $offset = $time === null ? 0 : (($time->minuteOfDay * 60 - $from) % 86400 + 86400) % 86400;
+
+            return $offset > 0 && $offset <= $span;
+        };
+        if ($userIds === [] || $span >= 86400 || $inWindow(ReminderPlanner::morningTime())) {
+            return $userIds;
         }
         $first = TrainSnapshot::day($after);
         $last = TrainSnapshot::day($now->modify('+'.ReminderPlanner::WORKOUT_LEAD_MINUTES.' minutes'));
         $lead = ReminderPlanner::WORKOUT_LEAD_MINUTES;
+        $due = [];
 
-        $times = [ReminderPlanner::morningTime()];
-        foreach (WeighInScheduleEntry::query()->where('user_id', $user->id)->pluck('time') as $time) {
-            $times[] = ClockTime::fromHhmm((string) $time);
-        }
-        $targets = DayTarget::query()->where('user_id', $user->id)
-            ->whereBetween('date', [$first->format('Y-m-d'), $last->format('Y-m-d')])->pluck('meals');
-        foreach ($targets as $meals) {
-            foreach (TodaySnapshot::json($meals) as $meal) {
-                $times[] = ClockTime::fromHhmm((string) ($meal['time'] ?? ''));
+        foreach (WeighInScheduleEntry::query()->whereIn('user_id', $userIds)->get(['user_id', 'time']) as $entry) {
+            if ($inWindow(ClockTime::fromHhmm((string) $entry->time))) {
+                $due[$entry->user_id] = true;
             }
         }
-        foreach (TodaySnapshot::json(Profile::query()->where('user_id', $user->id)->value('training_days')) as $day) {
-            $times[] = ClockTime::fromHhmm((string) ($day['start'] ?? ''))?->adding(-$lead);
+        $targets = DayTarget::query()->whereIn('user_id', $userIds)
+            ->whereBetween('date', [$first->format('Y-m-d'), $last->format('Y-m-d')])->get(['user_id', 'meals']);
+        foreach ($targets as $target) {
+            foreach (TodaySnapshot::json($target->meals) as $meal) {
+                if ($inWindow(ClockTime::fromHhmm((string) ($meal['time'] ?? '')))) {
+                    $due[$target->user_id] = true;
+                }
+            }
         }
-        $rows = WorkoutSession::query()->where('user_id', $user->id)
+        foreach (Profile::query()->whereIn('user_id', $userIds)->get(['user_id', 'training_days']) as $profile) {
+            foreach (TodaySnapshot::json($profile->training_days) as $day) {
+                if ($inWindow(ClockTime::fromHhmm((string) ($day['start'] ?? ''))?->adding(-$lead))) {
+                    $due[$profile->user_id] = true;
+                }
+            }
+        }
+        $rows = WorkoutSession::query()->whereIn('user_id', $userIds)
             ->where('planned_start_at', '>=', $first->format('Y-m-d 00:00:00'))
             ->where('planned_start_at', '<', $last->modify('+1 day')->format('Y-m-d 00:00:00'))
-            ->pluck('planned_start_at');
-        foreach ($rows as $start) {
-            $at = TodaySnapshot::instant($start);
-            $times[] = $at === null ? null : ClockTime::at((int) $at->format('G'), (int) $at->format('i'))->adding(-$lead);
-        }
-
-        $from = (int) $after->format('G') * 3600 + (int) $after->format('i') * 60 + (int) $after->format('s');
-        foreach (array_filter($times) as $time) {
-            $offset = (($time->minuteOfDay * 60 - $from) % 86400 + 86400) % 86400;
-            if ($offset > 0 && $offset <= $span) {
-                return true;
+            ->get(['user_id', 'planned_start_at']);
+        foreach ($rows as $row) {
+            $at = TodaySnapshot::instant($row->planned_start_at);
+            if ($at !== null && $inWindow(ClockTime::at((int) $at->format('G'), (int) $at->format('i'))->adding(-$lead))) {
+                $due[$row->user_id] = true;
             }
         }
 
-        return false;
+        return array_values(array_filter($userIds, fn (int $id) => isset($due[$id])));
     }
 
     private static function on(User $user, DateTimeImmutable $day): ?ReminderDay

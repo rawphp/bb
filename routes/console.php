@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Notifications\SendDueReminders;
 use App\Billing\PlanPrices;
 use App\Jobs\SendUserReminders;
 use App\Models\AuditOutboxRow;
@@ -8,7 +9,9 @@ use App\Models\SentReminder;
 use App\Models\UndoToken;
 use App\Models\User;
 use App\Notifications\PushNotification;
+use App\Support\Notifications\ReminderDays;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -47,7 +50,12 @@ Schedule::command('billing:refresh-prices')->everyFifteenMinutes()->when(fn (): 
 // users with a subscribed browser have anywhere to send to; without VAPID keys the pass does not run.
 Artisan::command('reminders:send', function (): int {
     $now = CarbonImmutable::now();
-    User::query()->whereHas('pushSubscriptions')->each(fn (User $user) => SendUserReminders::dispatch($user, $now));
+    $after = $now->subMinutes(SendDueReminders::WINDOW_MINUTES);
+    // A cheap set-based check first, so a job is queued only for a user who may have something due.
+    User::query()->whereHas('pushSubscriptions')->select('id')->chunkById(500, function (Collection $users) use ($now, $after) {
+        $due = ReminderDays::mayHaveDue(array_map('intval', $users->modelKeys()), $after->toDateTimeImmutable(), $now->toDateTimeImmutable());
+        $users->whereIn('id', $due)->each(fn (User $user) => SendUserReminders::dispatch($user, $now));
+    });
 
     return 0;
 })->purpose('Queue each subscribed user\'s reminders that fell due in the last few minutes');

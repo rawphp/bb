@@ -26,7 +26,7 @@ final class SendDueReminders
     {
         $after = $now->subMinutes(self::WINDOW_MINUTES);
         // Most minutes nothing can be due: a few small reads say so before the full read of the plan.
-        if (! ReminderDays::mayHaveDue($user, $after->toDateTimeImmutable(), $now->toDateTimeImmutable())) {
+        if (ReminderDays::mayHaveDue([$user->id], $after->toDateTimeImmutable(), $now->toDateTimeImmutable()) === []) {
             return [];
         }
         // A workout's reminder is due the hour before it, so tomorrow's first hour can be due tonight.
