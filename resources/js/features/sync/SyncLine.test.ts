@@ -41,7 +41,7 @@ describe('SyncLine', () => {
         expect(wrapper.text()).toContain('Not synced yet');
     });
 
-    it('OFF-010 shows the outbox count while it is not empty, with how many couldn\'t sync', async () => {
+    it('OFF-010 shows the outbox count while it is not empty, refused entries included', async () => {
         await queue({ label: 'Logged 9,000 steps' });
         const { wrapper } = await line();
         expect(wrapper.text()).toContain('1 change waiting to sync');
@@ -50,7 +50,6 @@ describe('SyncLine', () => {
         await queue({ label: 'Logged set 3', refusal });
         await flushPromises();
         expect(wrapper.text()).toContain('3 changes waiting to sync');
-        expect(wrapper.get('[data-test="sync-failed"]').text()).toBe("2 couldn't sync");
     });
 
     it('OFF-010 opens the outbox when tapped', async () => {

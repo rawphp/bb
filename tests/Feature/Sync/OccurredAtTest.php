@@ -35,3 +35,17 @@ it('OFF-007 judges occurred_at against the walked clock (SET-011)', function () 
 
     expect(TallyAddCapability::$runs)->toBe(1);
 });
+
+it('CAP-014 answers a lost write sent again after its window from the stored answer, not a refusal', function () {
+    $user = User::factory()->create();
+    $headers = ['Idempotency-Key' => 'tally_add:late', 'X-BB-Occurred-At' => '2026-11-02T08:00:00Z'];
+    $this->actingAs($user)->postJson('/capabilities/tally_add', ['amount' => 3], $headers)->assertOk();
+
+    // The answer was lost, and the outbox sends it again eight days on.
+    Carbon::setTestNow('2026-11-10T09:00:00Z');
+    $this->actingAs($user)->postJson('/capabilities/tally_add', ['amount' => 3], $headers)
+        ->assertOk()
+        ->assertJsonPath('meta.idempotent_replay', true);
+
+    expect(TallyAddCapability::$runs)->toBe(1);
+});

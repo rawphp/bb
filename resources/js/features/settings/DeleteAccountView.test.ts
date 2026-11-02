@@ -58,6 +58,19 @@ describe('DeleteAccountView', () => {
         expect(router.currentRoute.value.path).toBe('/');
     });
 
+    it('OFF-031 says earlier changes must sync first when the delete was held back, and knows it was not sent', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('account_delete', 0, { reason: 'waiting' }));
+        const { wrapper, router } = await view();
+
+        await wrapper.get('input').setValue('DELETE');
+        await wrapper.get('[data-test="delete"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[role="alert"]').text()).toBe("Earlier changes haven't synced yet. Try again once they have.");
+        expect(clearReads).not.toHaveBeenCalled();
+        expect(router.currentRoute.value.path).toBe('/settings/delete-account');
+    });
+
     it("ACC-005 deletes the account's entries left in the outbox, since there is no account to sync them to", async () => {
         await queue({ label: 'Logged a weigh-in', refusal: { status: 422, body: null } });
         writeMock.mockResolvedValueOnce(undefined);

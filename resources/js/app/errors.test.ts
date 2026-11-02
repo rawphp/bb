@@ -24,6 +24,12 @@ describe('failureMessage', () => {
         expect(writeFailureMessage(error, 'Could not save.')).toBe("Earlier changes haven't synced yet. Try again once they have.");
     });
 
+    it('OFF-031 says there is no connection when a write was held back behind entries the device can\'t send', () => {
+        const error = new CapabilityError('token_revoke', 0, { reason: 'waiting', offline: true });
+
+        expect(failureMessage(error, 'Could not save.')).toBe('No connection. Try again when you are online.');
+    });
+
     it('OFF-003 says a call needs a connection when none arrived', () => {
         const error = new CapabilityError('token_create', 0, { reason: 'network' });
 

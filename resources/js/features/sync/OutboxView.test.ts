@@ -80,6 +80,20 @@ describe('OutboxView', () => {
         expect(retryMock).toHaveBeenCalledWith(expect.objectContaining({ seq: failed.seq }), { weight: 80.5, unit: 'kg' });
     });
 
+    it('OFF-007 offers only Discard for a change the server refused for its age, since sending it again changes nothing', async () => {
+        const message = "This change was made more than 7 days ago, so it can't be saved.";
+        const failed = await queue({
+            label: 'Logged 9,000 steps',
+            refusal: { status: 422, body: { ok: false, error: { code: 'validation_failed', message, violations: [{ field: 'occurred_at', message }] } } },
+        });
+        const wrapper = await view();
+
+        expect(row(wrapper, failed.seq).get('[role="alert"]').text()).toBe(message);
+        expect(row(wrapper, failed.seq).find('[data-test="retry"]').exists()).toBe(false);
+        expect(row(wrapper, failed.seq).find('[data-test="edit"]').exists()).toBe(false);
+        expect(row(wrapper, failed.seq).find('[data-test="discard"]').exists()).toBe(true);
+    });
+
     it('OFF-011 discards a failed entry only once the user confirms', async () => {
         const failed = await queue({ label: 'Logged a weigh-in', refusal: weightRefused });
         const wrapper = await view();

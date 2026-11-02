@@ -1,5 +1,5 @@
 {
-    "about": "One outbox as the app replays it (OFF-006, OFF-051): each entry is POST /capabilities/{capability} with its input as the body and these headers. resources/js/app/call.test.ts checks the app sends entries this way; tests/Feature/Sync/OutboxReplayTest.php replays it twice.",
+    "about": "One outbox as the app replays it (OFF-006, OFF-051): each entry is POST /capabilities/{capability} with its input as the body and these headers. resources/js/app/outbox.test.ts checks the app sends entries this way; tests/Feature/Sync/OutboxReplayTest.php replays it twice.",
     "entries": [
         {
             "capability": "tally_add",

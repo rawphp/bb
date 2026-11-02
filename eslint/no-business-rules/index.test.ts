@@ -42,6 +42,8 @@ describe('no-business-rules', () => {
             { ...inFeatures, code: "let meal; meal.value = await read('meal_show'); const s = meal.value.a + meal.value.b;", errors: mathError },
             { ...inFeatures, code: "function f() { return data.kcal % data.step; } const data = await write('meal_log', {});", errors: mathError },
             { ...inFeatures, code: "read('meal_show').then((d) => d.x - d.y);", errors: mathError },
+            { ...inFeatures, code: "const made = await writeNow('token_create', {}); const left = made.days - made.used;", errors: mathError },
+            { ...inFeatures, code: "const fresh = await readFresh('mesocycles_show'); const n = fresh.a * fresh.b;", errors: mathError },
             { ...inFeatures, code: 'const p = props.payload.done / props.payload.total;', errors: mathError },
             { ...inFeatures, code: 'const p = Number(payload.a) - parseFloat(payload.b as string);', errors: mathError },
             {

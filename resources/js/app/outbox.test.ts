@@ -51,10 +51,14 @@ describe('outbox', () => {
         m = await boot();
     });
 
-    afterEach(() => {
+    afterEach(async () => {
         vi.useRealTimers();
+        vi.restoreAllMocks();
         vi.unstubAllGlobals();
         m.clock.clearWalk();
+        // A retry timer this boot left must find nothing to send in a later test.
+        await m.outbox.removeEntries(m.outbox.entries.value.map((entry) => entry.seq));
+        await m.outbox.removeOthers();
     });
 
     it('OFF-006 stores the entry with everything replay needs before write() returns', async () => {
@@ -106,6 +110,43 @@ describe('outbox', () => {
             ['workout_finish', { id: 'w' }],
         ]);
         expect(m.outbox.entries.value).toEqual([]);
+    });
+
+    it('OFF-006 keeps two writes made in the same millisecond apart and in order', async () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-11-02T09:30:00.000Z'));
+
+        const first = await m.call.write('workout_set_log', { set: 1 }, { label });
+        const second = await m.call.write('workout_set_log', { set: 2 }, { label });
+
+        expect(second.seq).toBeGreaterThan(first.seq);
+        const reloaded = await boot();
+        await reloaded.outbox.loadOutbox();
+        expect(reloaded.outbox.entries.value.map((entry) => entry.input)).toEqual([{ set: 1 }, { set: 2 }]);
+    });
+
+    it('OFF-006 stores the entry on a fresh connection when the open one was lost', async () => {
+        const put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementationOnce(() => {
+            throw new DOMException('Connection to Indexed Database server lost.', 'InvalidStateError');
+        });
+
+        await m.call.write('steps_log', { steps: 9000 }, { label });
+
+        expect(put).toHaveBeenCalledTimes(2);
+        const reloaded = await boot();
+        await reloaded.outbox.loadOutbox();
+        expect(reloaded.outbox.entries.value.map((entry) => entry.input)).toEqual([{ steps: 9000 }]);
+    });
+
+    it('OFF-006 fails the write, and keeps nothing to send, when the device cannot store it', async () => {
+        vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(() => {
+            throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+        });
+
+        await expect(m.call.write('steps_log', { steps: 9000 }, { label })).rejects.toThrow();
+        expect(m.outbox.entries.value).toEqual([]);
+        await settle();
+        expect(sent()).toEqual([]);
     });
 
     it('OFF-051 sends each entry as tests/fixtures/outbox/replay.json records it', async () => {
@@ -165,6 +206,86 @@ describe('outbox', () => {
 
         expect(m.outbox.entries.value).toHaveLength(1);
         expect(m.outbox.stateOf(m.outbox.entries.value[0]!)).toBe('waiting');
+    });
+
+    it.each([
+        ['the throttle', json({ message: 'Too Many Attempts.' }, 429)],
+        ['a gateway that gave up', json({ message: 'Bad gateway' }, 502)],
+        ['the app still running the first attempt', json({ ok: false, error: { code: 'conflict', message: 'Still processing.', retryable: true } }, 409)],
+    ])('OFF-011 keeps and retries an entry after %s, which is no answer to it', async (_, response) => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        let calls = 0;
+        fetchMock.mockImplementation(async (url) => {
+            if (url !== '/capabilities/steps_log') throw new TypeError('offline');
+            return ++calls === 1 ? response.clone() : ok();
+        });
+
+        await m.call.write('steps_log', { steps: 9000 }, { label });
+        await vi.advanceTimersByTimeAsync(0);
+        expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['waiting']);
+
+        await vi.advanceTimersByTimeAsync(m.call.RETRY_FIRST_MS);
+        expect(calls).toBe(2);
+        expect(m.outbox.entries.value).toEqual([]);
+    });
+
+    it.each([
+        ['an error the app answered with', 500, { ok: false, error: { code: 'internal', message: 'Something went wrong on our side.' } }],
+        ['a limit the app answered with', 429, { ok: false, error: { code: 'rate_limited', message: 'Slow down.' } }],
+        ['a conflict the app keeps', 409, { ok: false, error: { code: 'conflict', message: 'That set was deleted.', retryable: false } }],
+    ])("OFF-011 moves an entry to Couldn't sync after %s, since the server keeps that answer under its key", async (_, status, body) => {
+        fetchMock.mockImplementation(async (url) => (url === '/capabilities/steps_log' ? json(body, status) : Promise.reject(new TypeError('offline'))));
+
+        await m.call.write('steps_log', { steps: 9000 }, { label });
+        await settle();
+
+        const [entry] = m.outbox.entries.value;
+        expect(m.outbox.stateOf(entry!)).toBe('failed');
+        expect(entry!.refusal).toEqual({ status, body });
+    });
+
+    it("OFF-011 moves an entry to Couldn't sync once the server has said it is still running it ten times running", async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        const busy = { ok: false, error: { code: 'conflict', message: 'Still processing.', retryable: true } };
+        fetchMock.mockImplementation(async (url) => (url === '/capabilities/steps_log' ? json(busy, 409) : Promise.reject(new TypeError('offline'))));
+
+        await m.call.write('steps_log', { steps: 9000 }, { label });
+        await m.call.write('weigh_in_log', { weight: 80 }, { label });
+        for (let attempt = 1; attempt < m.call.STUCK_AFTER; attempt++) await vi.advanceTimersByTimeAsync(m.call.RETRY_MAX_MS);
+        expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['waiting', 'waiting']);
+
+        await vi.advanceTimersByTimeAsync(m.call.RETRY_MAX_MS);
+
+        expect(m.outbox.entries.value.map((entry) => [entry.name, m.outbox.stateOf(entry)])).toEqual([
+            ['steps_log', 'failed'],
+            ['weigh_in_log', 'waiting'],
+        ]);
+        expect(sent().filter(([name]) => name === 'steps_log')).toHaveLength(m.call.STUCK_AFTER);
+        expect(sent().at(-1)?.[0]).toBe('weigh_in_log');
+    });
+
+    it('OFF-011 starts the backoff at 2 s again after an entry goes through', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        let failing = true;
+        fetchMock.mockImplementation(async (url) => {
+            if (!String(url).startsWith('/capabilities/') || url === '/capabilities/sync_manifest') throw new TypeError('offline');
+            if (failing) throw new TypeError('Failed to fetch');
+            return ok();
+        });
+        await m.call.write('steps_log', { steps: 1 }, { label });
+        await vi.advanceTimersByTimeAsync(2_000 + 4_000);
+        failing = false;
+        await vi.advanceTimersByTimeAsync(8_000);
+        expect(m.outbox.entries.value).toEqual([]);
+
+        failing = true;
+        await m.call.write('steps_log', { steps: 2 }, { label });
+        await vi.advanceTimersByTimeAsync(0);
+        const before = sent().length;
+        await vi.advanceTimersByTimeAsync(1_999);
+        expect(sent()).toHaveLength(before);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(sent()).toHaveLength(before + 1);
     });
 
     it('OFF-011 retries at once when the device reconnects', async () => {
@@ -240,6 +361,25 @@ describe('outbox', () => {
         expect(weight).toBe(80);
         expect(headersOf(1)['Idempotency-Key']).not.toBe(headersOf(0)['Idempotency-Key']);
         expect(sent()[1]).toEqual(['weigh_in_log', { weight: 80, unit: 'kg' }]);
+        expect(m.outbox.entries.value).toEqual([]);
+    });
+
+    it('OFF-011 sends a fixed entry in its place, before the entries that waited on it', async () => {
+        let fixedIt = false;
+        fetchMock.mockImplementation(async (url) => {
+            if (!String(url).startsWith('/capabilities/') || url === '/capabilities/sync_manifest') throw new TypeError('offline');
+            return url === '/capabilities/workout_set_add' && !fixedIt ? refused(422, 'Pick an exercise.', 'exercise_id') : ok();
+        });
+        await m.call.write('workout_set_add', { exercise_id: '', set_id: '01NEWSET' }, { label, creates: ['01NEWSET'] });
+        await m.call.write('workout_set_log', { set_id: '01NEWSET', reps: 8 }, { label });
+        await settle();
+        expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['failed', 'held']);
+
+        fixedIt = true;
+        await m.call.retryEntry(m.outbox.entries.value[0]!, { exercise_id: 'e', set_id: '01NEWSET' });
+        await settle();
+
+        expect(sent().map(([name]) => name)).toEqual(['workout_set_add', 'workout_set_add', 'workout_set_log']);
         expect(m.outbox.entries.value).toEqual([]);
     });
 
@@ -334,6 +474,21 @@ describe('outbox', () => {
         expect(forRow('c')).toBeUndefined();
     });
 
+    it('OFF-009 never shows input the server refused as if it were waiting', async () => {
+        fetchMock.mockImplementation(async (url, init) => {
+            if (url !== '/capabilities/workout_set_log') throw new TypeError('offline');
+            return (JSON.parse(String(init?.body)) as { reps: number }).reps > 50 ? refused(422, 'Too many reps.', 'reps') : Promise.reject(new TypeError('offline'));
+        });
+        await m.call.write('workout_set_log', { set_id: 'a', reps: 8 }, { label });
+        await settle();
+        await m.call.write('workout_set_log', { set_id: 'b', reps: 99 }, { label });
+        await m.call.replay();
+        const forRow = (id: string) => m.outbox.pendingInput<{ set_id: string; reps: number }>('workout_set_log', (input) => input.set_id === id);
+
+        expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['waiting', 'waiting']);
+        expect(forRow('a')?.reps).toBe(8);
+    });
+
     it('CAP-010 drops the cached reads a replayed answer invalidates, tells screens, and warms the cache after (OFF-004)', async () => {
         await m.cache.store('today_show{}', { sets: 1 });
         const told = vi.fn();
@@ -348,28 +503,82 @@ describe('outbox', () => {
         await settle();
 
         expect(await m.cache.cached('today_show{}')).toBeUndefined();
+        expect(told).toHaveBeenCalledTimes(1);
         expect(told).toHaveBeenCalledWith(['today_show{}']);
         expect(sent().map(([name]) => name)).toEqual(['workout_set_log']);
         expect(fetchMock.mock.calls.map(([url]) => url)).toContain('/capabilities/sync_manifest');
         expect(m.outbox.syncedAt.value).not.toBeNull();
     });
 
-    it('OFF-006 a write the user waits on goes after the entries made before it', async () => {
-        fetchMock.mockImplementation(async (url) => (url === '/capabilities/token_revoke' ? ok({ invalidates: [] }) : String(url).startsWith('/capabilities/') ? ok() : Promise.reject(new TypeError('offline'))));
+    it('CAP-010 tells screens once per replay, with every read the replayed answers invalidated', async () => {
+        const told = vi.fn();
+        m.outbox.onReplayed(told);
+        let answer: (response: Response) => void = () => {};
+        fetchMock.mockImplementationOnce((url) => {
+            expect(url).toBe('/capabilities/workout_set_log');
+            return new Promise<Response>((resolve) => (answer = resolve));
+        });
+
+        await m.call.write('workout_set_log', { set: 1 }, { label });
+        await m.call.write('workout_set_log', { set: 2 }, { label });
+        fetchMock.mockImplementation(async (url) => (url === '/capabilities/workout_set_log' ? ok({ invalidates: ['week_show{}'] }) : Promise.reject(new TypeError('offline'))));
+        answer(ok({ invalidates: ['today_show{}'] }));
+        await settle();
+
+        expect(told).toHaveBeenCalledTimes(1);
+        expect(told).toHaveBeenCalledWith(['today_show{}', 'week_show{}']);
+    });
+
+    it('ACC-003 a sync whose replay stopped does not count as synced', async () => {
+        fetchMock.mockImplementation(async (url) => (url === '/capabilities/sync_manifest' ? ok({ keys: [] }) : Promise.reject(new TypeError('offline'))));
+        await m.call.write('steps_log', { steps: 9000 }, { label });
+
+        await m.call.sync();
+
+        expect(m.outbox.syncedAt.value).toBeNull();
+    });
+
+    it('OFF-006 a write the user waits on is not sent until the entries made before it have answered', async () => {
+        let answerSteps: (response: Response) => void = () => {};
+        fetchMock.mockImplementation((url) => {
+            if (url === '/capabilities/steps_log') return new Promise<Response>((resolve) => (answerSteps = resolve));
+            if (url === '/capabilities/token_revoke') return Promise.resolve(ok({ invalidates: [] }));
+            return Promise.reject(new TypeError('offline'));
+        });
 
         await m.call.write('steps_log', { steps: 9000 }, { label });
-        await m.call.writeNow('token_revoke', { id: 't' });
+        const revoked = m.call.writeNow('token_revoke', { id: 't' });
+        await settle();
+        expect(sent().map(([name]) => name)).toEqual(['steps_log']);
 
+        answerSteps(ok());
+        await revoked;
         expect(sent().map(([name]) => name)).toEqual(['steps_log', 'token_revoke']);
     });
 
-    it("OFF-031 a write the user waits on fails at once without sending while earlier entries can't be sent", async () => {
+    it.each([401, 419])('OFF-012 a write the user waits on fails with the gone session (%s) when the outbox stopped on it, without sending', async (status) => {
+        fetchMock.mockImplementation(async (url) => (url === '/capabilities/steps_log' ? json({ message: 'Unauthenticated.' }, status) : Promise.reject(new TypeError('offline'))));
         await m.call.write('steps_log', { steps: 9000 }, { label });
         await settle();
-        fetchMock.mockClear();
 
-        await expect(m.call.writeNow('token_revoke', { id: 't' })).rejects.toMatchObject({ capability: 'token_revoke', status: 0, body: { reason: 'waiting' } });
-        expect(sent().map(([name]) => name)).toEqual(['steps_log']);
+        await expect(m.call.writeNow('token_revoke', { id: 't' })).rejects.toMatchObject({ capability: 'token_revoke', status });
+        expect(sent().map(([name]) => name)).not.toContain('token_revoke');
+    });
+
+    it("OFF-031 a write the user waits on fails at once without sending while earlier entries can't be sent", async () => {
+        fetchMock.mockImplementation(async (url) => (url === '/capabilities/steps_log' ? json({ message: 'Bad gateway' }, 502) : Promise.reject(new TypeError('offline'))));
+        await m.call.write('steps_log', { steps: 9000 }, { label });
+        await settle();
+
+        await expect(m.call.writeNow('token_revoke', { id: 't' })).rejects.toMatchObject({ capability: 'token_revoke', status: 0, body: { reason: 'waiting', offline: false } });
+        expect(sent().map(([name]) => name)).not.toContain('token_revoke');
+    });
+
+    it('OFF-031 says the device is offline when that is why earlier entries could not be sent', async () => {
+        await m.call.write('steps_log', { steps: 9000 }, { label });
+        await settle();
+
+        await expect(m.call.writeNow('token_revoke', { id: 't' })).rejects.toMatchObject({ status: 0, body: { reason: 'waiting', offline: true } });
     });
 
     it('OFF-006 refuses a write with no one signed in, rather than keep it for no one', async () => {

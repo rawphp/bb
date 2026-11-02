@@ -37,6 +37,7 @@ describe('useRetryKey', () => {
         ['a conflict the server keeps', new CapabilityError('account_delete', 409, { ok: false, error: { code: 'conflict', retryable: false } })],
         ['the app\'s own server error', new CapabilityError('account_delete', 500, { ok: false, error: { code: 'internal' } })],
         ['a gone session', new CapabilityError('account_delete', 401, { message: 'Unauthenticated.' })],
+        ['a write the outbox held back, so it was never sent', new CapabilityError('account_delete', 0, { reason: 'waiting' })],
     ])('CAP-014 ends the key after %s, since the server keeps that answer under it', (_label, error) => {
         const retry = useRetryKey('account_delete');
         const first = retry.key.value;
