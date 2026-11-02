@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Today\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -19,7 +20,8 @@ final class MealRedistributeInput extends CapabilityData
     public static function rules(): array
     {
         return [
-            'meal_ids.*' => ['ulid'],
+            // A meal the server made has a UUID; one a client added has its ULID (CAP-019).
+            'meal_ids.*' => [Rule::anyOf([['ulid'], ['uuid']])],
         ];
     }
 }
