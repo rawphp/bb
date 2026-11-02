@@ -170,9 +170,13 @@ describe('OnboardingView', () => {
             ]);
         });
 
-        it('CAP-010 while an answer saves its step takes no typing, and takes it again once the save lands', async () => {
+        it.each([
+            ['cm', 4],
+            ['feet and inches', 5],
+        ] as const)('CAP-010 while an answer saves its step takes no typing, and takes it again once the save lands (height in %s)', async (layout, inputs) => {
             const dated = structuredClone(aboutYou);
             dated.about_you.birth_date = review.about_you.birth_date;
+            if (layout === 'feet and inches') dated.about_you.height = review.about_you.height;
             readMock.mockResolvedValue(dated);
             let finish: (value: unknown) => void = () => {};
             writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
@@ -180,7 +184,7 @@ describe('OnboardingView', () => {
             const typed = () => wrapper!.findAll('input').filter((input) => input.attributes('type') !== 'hidden');
 
             await radio(wrapper, 'Sex', 'Male').trigger('click');
-            expect(typed().length).toBe(4);
+            expect(typed().length).toBe(inputs);
             for (const input of typed()) expect(input.attributes('readonly'), input.html()).toBeDefined();
             finish({});
             await flushPromises();
