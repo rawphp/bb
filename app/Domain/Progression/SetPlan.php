@@ -15,13 +15,13 @@ final class SetPlan
 
         // PROG-041: a deload repeats last week at half the reps, and half the weight in the second half of the week.
         if ($inputs->deloadHalf !== null) {
-            if ($inputs->lastWeek === []) {
-                return self::empty($count);
-            }
             $step = $inputs->rules->step($inputs->isFatLoss);
             $planned = [];
             for ($index = 0; $index < $count; $index++) {
-                $base = $inputs->lastWeek[min($index, count($inputs->lastWeek) - 1)];
+                $base = self::lastWeekFor($inputs->lastWeek, $index);
+                if ($base === null) {
+                    return self::empty($count);
+                }
                 $weight = null;
                 if ($base->weight !== null) {
                     $weight = Deload::weight($base->weight, $inputs->deloadHalf);
@@ -69,6 +69,17 @@ final class SetPlan
 
         // WO-006: no loads to build on, so the weights are empty and the reps show the RIR.
         return self::empty($count);
+    }
+
+    /**
+     * The set last week that set $index (0-based) builds on: its own, else last week's last; null when last week has
+     * none.
+     *
+     * @param  list<SetLoad>  $lastWeek
+     */
+    public static function lastWeekFor(array $lastWeek, int $index): ?SetLoad
+    {
+        return $lastWeek === [] ? null : $lastWeek[min($index, count($lastWeek) - 1)];
     }
 
     /** @return list<PlannedLoad> */

@@ -18,9 +18,4 @@ final class WorkoutShowInput extends CapabilityData
         #[Field(minimum: 1)]
         public readonly int $day,
     ) {}
-
-    public static function rules(): array
-    {
-        return ['mesocycle_id' => ['ulid']];
-    }
 }
