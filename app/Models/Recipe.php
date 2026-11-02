@@ -38,6 +38,28 @@ class Recipe extends Model
     }
 
     /**
+     * RCP-021: the recipe as a meal it is planned in keeps it (PlannedRecipe::$recipe). A meal not checked in takes
+     * it again after every edit; a checked-in meal keeps the one it had. Needs `ingredients` loaded.
+     *
+     * @return array{id: string, name: string, servings: float, meal_type: string, instructions: list<string>, ingredients: list<array{food_id: string, grams: float, is_cooked: bool}>}
+     */
+    public function plannedCopy(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'servings' => $this->servings,
+            'meal_type' => $this->meal_type,
+            'instructions' => $this->instructions ?? [],
+            'ingredients' => $this->ingredients->map(fn (RecipeIngredient $ingredient): array => [
+                'food_id' => $ingredient->food_id,
+                'grams' => $ingredient->grams,
+                'is_cooked' => $ingredient->is_cooked,
+            ])->values()->all(),
+        ];
+    }
+
+    /**
      * The library, or one user's own recipes.
      *
      * @param  Builder<Recipe>  $query
@@ -46,6 +68,17 @@ class Recipe extends Model
     protected function ownedBy(Builder $query, ?User $user): void
     {
         $query->where('user_id', $user?->id);
+    }
+
+    /**
+     * RCP-001, RCP-020: what a user may open: the library and their own recipes.
+     *
+     * @param  Builder<Recipe>  $query
+     */
+    #[Scope]
+    protected function visibleTo(Builder $query, User $user): void
+    {
+        $query->where(fn (Builder $q) => $q->whereNull('user_id')->orWhere('user_id', $user->id));
     }
 
     /**
