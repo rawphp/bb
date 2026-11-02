@@ -80,3 +80,20 @@ it('WO-010 SCH-022 a session started away from its planned day refreshes Today a
                 '2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25', '2026-09-26', '2026-09-27'],
         ));
 });
+
+it('WO-010 SCH-051 starting a session moved to another day refreshes Today of the day it moved to', function () {
+    // Week 3 day 1, "Upper A", is planned for Monday 21 September; missed_session_resolve moved it to Tuesday 22nd at
+    // 07:00, and the user starts it on Monday evening after all.
+    Carbon::setTestNow('2026-09-21 17:40:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+    WorkoutSession::factory()->for($user)->create([
+        'mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1,
+        'planned_start_at' => '2026-09-22 07:00:00', 'planned_end_at' => '2026-09-22 08:00:00', 'actual_start_at' => null,
+    ]);
+
+    $keys = startOver($user, ['workout_id' => WorkoutIds::workout($mesocycle->id, 3, 1)])->assertOk()->json('data.invalidates');
+
+    expect($keys)->toContain('today_show{"date":"2026-09-21"}', 'today_show{"date":"2026-09-22"}')
+        ->and(WorkoutSession::query()->sole()->planned_start_at->format('Y-m-d H:i'))->toBe('2026-09-22 07:00');
+});
