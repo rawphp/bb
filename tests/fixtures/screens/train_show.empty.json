@@ -1,0 +1,36 @@
+{
+    "todays_session": null,
+    "current": null,
+    "draft": null,
+    "sections": [],
+    "create_routes": [
+        {
+            "route": "template",
+            "title": "Template",
+            "available": true,
+            "copy_source_id": null,
+            "priority_notice": null
+        },
+        {
+            "route": "copy_previous",
+            "title": "Copy previous mesocycle",
+            "available": false,
+            "copy_source_id": null,
+            "priority_notice": null
+        },
+        {
+            "route": "builder",
+            "title": "Meso Builder",
+            "available": true,
+            "copy_source_id": null,
+            "priority_notice": null
+        },
+        {
+            "route": "scratch",
+            "title": "Build from scratch",
+            "available": true,
+            "copy_source_id": null,
+            "priority_notice": null
+        }
+    ]
+}

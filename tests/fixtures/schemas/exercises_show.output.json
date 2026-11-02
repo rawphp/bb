@@ -1,0 +1,136 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "exercises": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "detail": {
+                        "type": "string"
+                    },
+                    "muscle_group": {
+                        "type": "string",
+                        "enum": [
+                            "chest",
+                            "back",
+                            "quads",
+                            "hamstrings",
+                            "glutes",
+                            "sideDelts",
+                            "rearDelts",
+                            "frontDelts",
+                            "biceps",
+                            "triceps",
+                            "calves",
+                            "abs",
+                            "traps",
+                            "forearms"
+                        ]
+                    },
+                    "equipment": {
+                        "type": "string",
+                        "enum": [
+                            "barbell",
+                            "ezBar",
+                            "trapBar",
+                            "dumbbell",
+                            "kettlebell",
+                            "machine",
+                            "cable",
+                            "smithMachine",
+                            "bodyweight"
+                        ]
+                    },
+                    "last_used_text": {
+                        "type": "string"
+                    },
+                    "has_video": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "detail",
+                    "muscle_group",
+                    "equipment",
+                    "last_used_text",
+                    "has_video"
+                ]
+            }
+        },
+        "muscle_groups": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "value": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "value",
+                    "label"
+                ]
+            }
+        },
+        "equipment": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "value": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "value",
+                    "label"
+                ]
+            }
+        },
+        "load_types": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "value": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "value",
+                    "label"
+                ]
+            }
+        }
+    },
+    "required": [
+        "exercises",
+        "muscle_groups",
+        "equipment",
+        "load_types"
+    ]
+}
