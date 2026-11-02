@@ -9,7 +9,9 @@ use App\Domain\Notifications\ReminderWeighIn;
 use App\Domain\Notifications\ReminderWorkout;
 use App\Domain\Placement\ClockTime;
 use App\Models\DayTarget;
+use App\Models\Plan;
 use App\Models\Profile;
+use App\Models\SentReminder;
 use App\Models\User;
 use App\Models\WeighInScheduleEntry;
 use App\Models\WorkoutSession;
@@ -48,9 +50,10 @@ final class ReminderDays
     /**
      * A cheap check before {@see between()}, for many users at once: which of them have a clock time a reminder can
      * fall at in ($after, $now]. It reads every source of a due time, so it may name a user with nothing due but
-     * never leaves out one with something due: the 09:00 review and deload reminders, the weigh-in schedule, the meal
+     * never leaves out one with something due: the 09:00 review and deload reminders on a plan-week start, the weigh-in schedule, the meal
      * times of the days' targets, and an hour before each session start, from the profile's training days and from
-     * the session rows a move or re-time wrote. Four queries, however many users.
+     * the session rows a move or re-time wrote. Four queries, however many users, and two more in the minutes after
+     * 09:00.
      *
      * @param  list<int>  $userIds
      * @return list<int> those users who may have something due, in the order given
@@ -64,13 +67,33 @@ final class ReminderDays
 
             return $offset > 0 && $offset <= $span;
         };
-        if ($userIds === [] || $span >= 86400 || $inWindow(ReminderPlanner::morningTime())) {
+        if ($userIds === [] || $span >= 86400) {
             return $userIds;
         }
         $first = TrainSnapshot::day($after);
         $last = TrainSnapshot::day($now->modify('+'.ReminderPlanner::WORKOUT_LEAD_MINUTES.' minutes'));
         $lead = ReminderPlanner::WORKOUT_LEAD_MINUTES;
         $due = [];
+
+        // NOTIF-004, NOTIF-005: both morning reminders fall on the first day of a plan week, which is the plan start
+        // or the review weekday (PLAN-008), and are sent together. A user already sent that day's is not due again.
+        $morning = ReminderPlanner::morningTime();
+        foreach (array_unique([$first->format('Y-m-d'), TrainSnapshot::day($now)->format('Y-m-d')]) as $date) {
+            $at = TrainSnapshot::day($date)->setTime($morning->hour(), $morning->minute());
+            if ($at <= $after || $at > $now) {
+                continue;
+            }
+            $sent = SentReminder::query()->whereIn('user_id', $userIds)
+                ->whereIn('reminder_id', ["weekly-review-{$date}", "next-mesocycle-{$date}"])->pluck('user_id')->all();
+            $starting = Plan::query()->whereIn('user_id', $userIds)
+                ->where(fn ($query) => $query->where('review_weekday', (int) $at->format('N'))->orWhereDate('start_date', $date))
+                ->pluck('user_id');
+            foreach ($starting as $id) {
+                if (! in_array($id, $sent, true)) {
+                    $due[$id] = true;
+                }
+            }
+        }
 
         foreach (WeighInScheduleEntry::query()->whereIn('user_id', $userIds)->get(['user_id', 'time']) as $entry) {
             if ($inWindow(ClockTime::fromHhmm((string) $entry->time))) {
