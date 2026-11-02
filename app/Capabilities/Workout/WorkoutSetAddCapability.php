@@ -25,7 +25,7 @@ final class WorkoutSetAddCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('workout_set_add', affects: WorkoutReads::AFFECTS)
-            ->description('Add a set to an exercise of a session under way, below after_set_id or at the end, as a regular, myorep or myorep match set. It starts from the weight and reps of the set above. Added sets carry forward to later weeks once the session is finished.')
+            ->description('Add a set to an exercise of a session under way, below after_set_id or at the end, as a regular, myorep or myorep match set. It starts from the weight and reps of the set above.')
             ->cli('workout', 'set-add')
             ->input(WorkoutSetAddInput::class)
             ->run(function (WorkoutSetAddInput $input, CapabilityContext $context): WriteResult {
