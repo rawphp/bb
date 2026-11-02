@@ -31,17 +31,13 @@ final class AnswerWorkoutFeedback
     /** @return array{toast: ?string, session: WorkoutSession} the UI-010 lines when next week's sets changed, and the session */
     public function __invoke(User $user, WorkoutFeedbackAnswerInput $input): array
     {
-        [$mesocycle, $week, $day] = WorkoutSnapshot::locate($user, $input->workout_id);
         $muscle = MuscleGroup::from($input->muscle_group);
 
-        return DB::transaction(function () use ($user, $input, $mesocycle, $week, $day, $muscle): array {
-            // One write at a time per mesocycle. The rows that decide the outcome are read again with locks, which see
-            // the latest commit whatever the transaction read before, so a second request finds what the first saved.
-            $locked = Mesocycle::query()->whereKey($mesocycle->id)->lockForUpdate()->firstOrFail();
-            $snapshot = WorkoutSnapshot::load($user, (string) $mesocycle->id, $week, $day);
-            $row = $snapshot->session();
-            $session = $row === null ? null : WorkoutSession::query()->whereKey($row->id)->lockForUpdate()->first();
-            $status = $session?->status() ?? WorkoutStatus::NotStarted;
+        return DB::transaction(function () use ($user, $input, $muscle): array {
+            // One workout write at a time per mesocycle, reading what the one before it saved.
+            $snapshot = WorkoutSnapshot::lockFor($user, $input->workout_id);
+            $session = $snapshot->session();
+            $status = $snapshot->status();
 
             if ($session === null || $status === WorkoutStatus::NotStarted || $status === WorkoutStatus::Skipped) {
                 throw new DomainException(self::NOT_STARTED);
@@ -63,14 +59,14 @@ final class AnswerWorkoutFeedback
             }
             $pain = $this->jointPain($input, $sheet);
 
-            $answers = MuscleFeedback::query()->where('workout_session_id', $session->id)->where('muscle_group', $muscle)->lockForUpdate()->first()
+            $answers = $snapshot->muscleAnswers($muscle)
                 ?? (new MuscleFeedback(['workout_session_id' => $session->id, 'muscle_group' => $muscle]))->forceFill(['user_id' => $user->id]);
             $answers->fill(['soreness' => $asksSoreness ? $input->soreness : null, 'pump' => $input->pump, 'volume' => $input->volume]);
             $wrote = $answers->isDirty() || ! $answers->exists;
             $answers->save();
 
             foreach ($pain as $exerciseId => $answer) {
-                $stored = ExerciseFeedback::query()->where('workout_session_id', $session->id)->where('exercise_id', $exerciseId)->lockForUpdate()->first()
+                $stored = $snapshot->exerciseFeedback->first(fn (ExerciseFeedback $row) => $row->workout_session_id === $session->id && (int) $row->exercise_id === $exerciseId)
                     ?? (new ExerciseFeedback(['workout_session_id' => $session->id, 'exercise_id' => $exerciseId]))->forceFill(['user_id' => $user->id]);
                 $stored->joint_pain = $answer;
                 $wrote = $wrote || $stored->isDirty() || ! $stored->exists;
@@ -79,7 +75,7 @@ final class AnswerWorkoutFeedback
 
             // FB-009: next week follows the new answers, read back from what was just saved.
             $toast = $wrote && $finished
-                ? NextWeekSets::save(WorkoutSnapshot::load($user, (string) $mesocycle->id, $week, $day), $locked)
+                ? NextWeekSets::save(WorkoutSnapshot::load($user, (string) $snapshot->mesocycle->id, $snapshot->week, $snapshot->day, locked: true))
                 : null;
 
             return ['toast' => $toast, 'session' => $session];

@@ -69,7 +69,7 @@ Parallel issues rely on these names.
 ## Server
 
 - Laravel 13, PHP 8.4 (raise to 8.5 once the gate host has it), MySQL 8, Redis (cache, queues, the AI progress store).
-- MySQL runs at READ COMMITTED. A write that serializes on a row lock (one workout write at a time per mesocycle) then reads what the write before it committed; under REPEATABLE READ it would keep reading the view its transaction's first read took.
+- MySQL keeps its default REPEATABLE READ, so a plain read inside a transaction that has read before sees that first view. A workout write (`workout_feedback_answer`, `workout_finish`) therefore locks its mesocycle row for update and reads everything after with shared locks (`WorkoutSnapshot::lockFor()`), which return the latest commit: one workout write runs at a time per mesocycle, and it sees what the one before it saved.
 - Auth: Sanctum. The PWA uses SPA cookie auth on the same domain. Tokens (CAP-021) are Sanctum personal access tokens whose abilities are capability names.
 - Queues: `default` and `agent` (AGT setup defaults), each with its own worker.
 - Scheduler: the package's stale-turn reaper, pruning of `audit_records` and the old audit outbox rows (daily) and of expired undo tokens (hourly, CAP-013). Every minute, `reminders:send` sends the reminders that fell due (NOTIF, below), and daily the sent-reminder log is pruned to two days. Pruning of the idempotency table is planned but not scheduled yet.

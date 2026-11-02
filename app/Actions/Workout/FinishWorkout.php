@@ -45,16 +45,12 @@ final class FinishWorkout
      */
     public function __invoke(User $user, string $workoutId, DateTimeInterface $at): array
     {
-        [$mesocycle, $week, $day] = WorkoutSnapshot::locate($user, $workoutId);
-
-        return DB::transaction(function () use ($user, $mesocycle, $week, $day, $at): array {
-            // One write at a time per mesocycle. The session and the mesocycle are read again with locks, which see the
-            // latest commit whatever the transaction read before, so a second Finish finds the first one's end.
-            $locked = Mesocycle::query()->whereKey($mesocycle->id)->lockForUpdate()->firstOrFail();
-            $snapshot = WorkoutSnapshot::load($user, (string) $mesocycle->id, $week, $day);
-            $row = $snapshot->session();
-            $session = $row === null ? null : WorkoutSession::query()->whereKey($row->id)->lockForUpdate()->first();
-            $status = $session?->status() ?? WorkoutStatus::NotStarted;
+        return DB::transaction(function () use ($user, $workoutId, $at): array {
+            // One workout write at a time per mesocycle, reading what the one before it saved: a second Finish finds
+            // the first one's end.
+            $snapshot = WorkoutSnapshot::lockFor($user, $workoutId);
+            $session = $snapshot->session();
+            $status = $snapshot->status();
             if ($session === null || $status === WorkoutStatus::NotStarted || $status === WorkoutStatus::Skipped) {
                 throw new DomainException(self::NOT_STARTED);
             }
@@ -76,7 +72,7 @@ final class FinishWorkout
             $this->markAnswersRead($session);
             // Today's session is sized by the sets it ran, so the day is re-targeted before next week's counts change.
             $meals = $this->retarget($user, $snapshot, $session, $start, $end);
-            $sets = NextWeekSets::save($snapshot, $locked);
+            $sets = NextWeekSets::save($snapshot);
             $lines = array_values(array_filter([$sets, $meals['message']]));
 
             return [
@@ -136,7 +132,8 @@ final class FinishWorkout
     /**
      * CAP-013: the finish relies on the session's answers (WO-040, PROG-010), so it changes their rows: their
      * updated_at moves on, at least a second, as timestamps keep whole seconds. Undo of an earlier answer then finds
-     * its rows changed since and is refused, and undoing the finish puts the timestamps back.
+     * its rows changed since and is refused, and undoing the finish puts the timestamps back. Each row is saved through
+     * its model, as UndoLog records only model writes; a session has one row per muscle and exercise.
      */
     private function markAnswersRead(WorkoutSession $session): void
     {

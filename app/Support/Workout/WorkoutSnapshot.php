@@ -54,8 +54,11 @@ use App\Support\Today\TodaySnapshot;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use LogicException;
 
 /**
  * Everything one session of a mesocycle is built from, read once (rp-clone WorkoutModel): the mesocycle and its plan
@@ -112,19 +115,19 @@ final class WorkoutSnapshot
      *
      * @throws ModelNotFoundException<Mesocycle>
      */
-    public static function load(User $user, string $mesocycleId, int $week, int $day): self
+    public static function load(User $user, string $mesocycleId, int $week, int $day, bool $locked = false): self
     {
-        $train = TrainSnapshot::load($user, $mesocycleId);
+        $train = TrainSnapshot::load($user, $mesocycleId, $locked);
         $mesocycle = $train->mesocycle($mesocycleId);
         self::sessionOrFail($train, $mesocycle, $week, $day);
         $now = CarbonImmutable::now()->toDateTimeImmutable();
         $session = self::rowOf($train, $mesocycle, $week, $day);
         $start = self::instant($session?->actual_start_at) ?? $now;
-        $history = WorkoutSession::query()->where('user_id', $user->id)
+        $history = self::read(WorkoutSession::query()->where('user_id', $user->id)
             ->where('is_skipped', false)->whereNotNull('actual_start_at')
             ->when($session !== null, fn ($query) => $query->whereKeyNot($session->id))
             ->where(fn ($query) => $query->where('mesocycle_id', $mesocycle->id)
-                ->orWhere('actual_start_at', '>=', $start->modify('-'.FeedbackSheets::SORENESS_WINDOW_DAYS.' days')->format('Y-m-d H:i:s')))
+                ->orWhere('actual_start_at', '>=', $start->modify('-'.FeedbackSheets::SORENESS_WINDOW_DAYS.' days')->format('Y-m-d H:i:s'))), $locked)
             ->get();
         $date = self::dateOf($train, $mesocycle, $week, $day);
 
@@ -133,13 +136,13 @@ final class WorkoutSnapshot
             mesocycle: $mesocycle,
             week: $week,
             day: $day,
-            blockRows: $session === null ? new Collection : WorkoutExercise::query()->where('workout_session_id', $session->id)->orderBy('position')->get(),
-            exerciseFeedback: $session === null ? new Collection : ExerciseFeedback::query()->where('workout_session_id', $session->id)->get(),
+            blockRows: $session === null ? new Collection : self::read(WorkoutExercise::query()->where('workout_session_id', $session->id)->orderBy('position'), $locked)->get(),
+            exerciseFeedback: $session === null ? new Collection : self::read(ExerciseFeedback::query()->where('workout_session_id', $session->id), $locked)->get(),
             history: $history,
-            historySets: WorkoutSet::query()->whereIn('workout_session_id', $history->modelKeys())->with('exercise:id,muscle_group')->get(),
-            loadSteps: ExerciseLoadStep::query()->where('user_id', $user->id)->get(),
-            notes: ExerciseNote::query()->where('user_id', $user->id)->get(),
-            dayTargets: $date === null ? new Collection : DayTarget::query()->where('user_id', $user->id)->whereDate('date', $date->format('Y-m-d'))->get(),
+            historySets: self::read(WorkoutSet::query()->whereIn('workout_session_id', $history->modelKeys()), $locked)->with('exercise:id,muscle_group')->get(),
+            loadSteps: self::read(ExerciseLoadStep::query()->where('user_id', $user->id), $locked)->get(),
+            notes: self::read(ExerciseNote::query()->where('user_id', $user->id), $locked)->get(),
+            dayTargets: $date === null ? new Collection : self::read(DayTarget::query()->where('user_id', $user->id)->whereDate('date', $date->format('Y-m-d')), $locked)->get(),
             now: $now,
         );
     }
@@ -151,6 +154,24 @@ final class WorkoutSnapshot
      *
      * @throws ModelNotFoundException<WorkoutSession> when it names none of the user's sessions
      */
+    /**
+     * The session a workout id names, for a write: the mesocycle row is locked for update first, so workout writes
+     * to one mesocycle run one at a time, and everything is then read with locks, so this write sees what the one
+     * before it saved. Call it inside the write's transaction; the locks last until it ends.
+     *
+     * @throws ModelNotFoundException<WorkoutSession> when it names none of the user's sessions
+     */
+    public static function lockFor(User $user, string $workoutId): self
+    {
+        if (DB::transactionLevel() === 0) {
+            throw new LogicException('WorkoutSnapshot::lockFor() takes locks that last until a transaction ends; call it inside one.');
+        }
+        [$mesocycle, $week, $day] = self::locate($user, $workoutId);
+        Mesocycle::query()->whereKey($mesocycle->id)->lockForUpdate()->firstOrFail();
+
+        return self::load($user, (string) $mesocycle->id, $week, $day, locked: true);
+    }
+
     public static function forWorkout(User $user, string $workoutId): self
     {
         [$mesocycle, $week, $day] = self::locate($user, $workoutId);
@@ -836,5 +857,19 @@ final class WorkoutSnapshot
             $value instanceof DateTimeInterface => DateTimeImmutable::createFromInterface($value),
             default => CarbonImmutable::parse((string) $value)->toDateTimeImmutable(),
         };
+    }
+
+    /**
+     * A shared-lock read when `$locked`: it returns the latest commit, as a plain read inside a transaction that has
+     * read before does not (REPEATABLE READ).
+     *
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    private static function read(Builder $query, bool $locked): Builder
+    {
+        return $locked ? $query->sharedLock() : $query;
     }
 }
