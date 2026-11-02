@@ -35,7 +35,7 @@ final class RedistributeMeals
         $receivableIds = array_map(fn (DayMeal $meal) => $meal->id, $receivable);
         foreach ($mealIds as $id) {
             if (! in_array($id, $receivableIds, true)) {
-                $name = $day->meal($id)?->name ?? 'That meal';
+                $name = $day->meal($id)->name ?? 'That meal';
                 throw new DomainException("{$name} can't take a share: it is checked in, past, or its foods are locked.");
             }
         }
