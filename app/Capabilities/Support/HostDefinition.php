@@ -30,6 +30,9 @@ final class HostDefinition
      */
     public const ANY_READ = '*';
 
+    /** The writes that may affect any read; the freeze test names any other that claims it. */
+    private const ANY_READ_WRITES = ['undo_apply'];
+
     private const AFFECTS_TAG = 'affects:';
 
     private const REVERSIBLE_TAG = 'reversible';
@@ -87,6 +90,7 @@ final class HostDefinition
 
     /**
      * Every affects entry that does not name a registered read, as `<write> affects <name>`.
+     * Only the writes in ANY_READ_WRITES may affect any read.
      *
      * @return list<string>
      */
@@ -96,7 +100,8 @@ final class HostDefinition
         $unknown = [];
         foreach ($definitions as $definition) {
             foreach (self::affects($definition) as $read) {
-                if ($read !== self::ANY_READ && ! ($definitions[$read]->readOnly ?? false)) {
+                $anyRead = $read === self::ANY_READ && in_array($definition->name, self::ANY_READ_WRITES, true);
+                if (! $anyRead && ! ($definitions[$read]->readOnly ?? false)) {
                     $unknown[] = "{$definition->name} affects {$read}";
                 }
             }

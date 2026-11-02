@@ -23,6 +23,7 @@ use App\Models\WorkoutSet;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Rawphp\Capabilities\Support\CapabilityContext;
@@ -367,6 +368,78 @@ it('CAP-013 reads the foreign keys from the schema once per migration, not once 
 
     expect($schemaReads)->toBe(0)
         ->and(WorkoutSession::query()->count())->toBe(0);
+});
+
+it('CAP-013 undoes a write that deletes a row and creates its replacement under the same unique key', function () {
+    $before = storedRows();
+
+    $token = recordAs($this->user, function () {
+        $this->step->delete();
+        Step::factory()->for($this->user)->create(['date' => '2026-11-02', 'count' => 9000]);
+    })->undo;
+    undoAs($this->user, $token);
+
+    expect(storedRows())->toEqual($before);
+});
+
+it('CAP-013 undoes a write that moves a row off its unique key and creates another on it', function () {
+    $before = storedRows();
+
+    $token = recordAs($this->user, function () {
+        $this->step->update(['date' => '2026-11-09']);
+        Step::factory()->for($this->user)->create(['date' => '2026-11-02', 'count' => 9000]);
+    })->undo;
+    undoAs($this->user, $token);
+
+    expect(storedRows())->toEqual($before);
+});
+
+it('CAP-013 undoes a write that created a row and a row that points at it', function () {
+    $token = recordAs($this->user, function () {
+        $session = WorkoutSession::factory()->for($this->user)->create();
+        WorkoutSet::factory()->create(['workout_session_id' => $session->id]);
+    })->undo;
+
+    undoAs($this->user, $token);
+
+    expect(WorkoutSession::withTrashed()->count())->toBe(0)
+        ->and(WorkoutSet::withTrashed()->count())->toBe(0);
+    $this->assertDatabaseMissing('undo_tokens', ['id' => $token]);
+});
+
+it('CAP-013 leaves the framework\'s own tables out of what a reversible write must change through models', function () {
+    config(['cache.default' => 'database', 'queue.default' => 'database']);
+    $session = WorkoutSession::factory()->for($this->user)->create();
+
+    // A cold database cache (the foreign key map) and a queued job, both written outside models.
+    $token = recordAs($this->user, function () use ($session) {
+        Cache::put('unrelated', 'value');
+        dispatch(fn () => null);
+        $session->forceDelete();
+    })->undo;
+
+    expect($token)->toBeString()
+        ->and(DB::table('cache')->count())->toBeGreaterThan(0)
+        ->and(DB::table('jobs')->count())->toBe(1);
+});
+
+it('CAP-013 reads the schema version once per write, and checks a delete only against the foreign keys that point at its table', function () {
+    $session = WorkoutSession::factory()->for($this->user)->create();
+    WorkoutSet::factory()->count(5)->create(['workout_session_id' => $session->id]);
+    $pointingAtSets = collect(Schema::getTables())->sum(fn (array $table) => collect(Schema::getForeignKeys($table['name']))
+        ->where('foreign_table', 'workout_sets')->count());
+
+    $versions = $checks = 0;
+    DB::listen(function ($query) use (&$versions, &$checks) {
+        $versions += (int) str_contains($query->sql, 'from `migrations`');
+        $checks += (int) str_starts_with($query->sql, 'select exists');
+    });
+    $token = recordAs($this->user, fn () => $session->sets()->get()->each->forceDelete())->undo;
+
+    // The check has to run before each delete: once a foreign key has cascaded, nothing is left to see.
+    expect($token)->toBeString()
+        ->and($versions)->toBe(1)
+        ->and($checks)->toBe(5 * $pointingAtSets);
 });
 
 it('CAP-013 prunes expired undo tokens, every user\'s, and keeps the live ones', function () {

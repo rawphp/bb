@@ -106,3 +106,12 @@ it('CAP-011 lets a write affect any read, and does not call that an unknown read
     expect($registry->get('undo_apply')->tags)->toBe(['affects:*'])
         ->and(HostDefinition::unknownAffects($registry))->toBe([]);
 });
+
+it('CAP-011 names a write other than undo_apply that claims to affect any read', function () {
+    $registry = new CapabilityRegistry;
+    HostDefinition::write('weigh_in_log', affects: [HostDefinition::ANY_READ])
+        ->description('Log a weigh-in.')->cli('weigh-in', 'log')->input(TallyInput::class)
+        ->run(fn () => new WriteResult(invalidates: []))->register($registry);
+
+    expect(HostDefinition::unknownAffects($registry))->toBe(['weigh_in_log affects *']);
+});

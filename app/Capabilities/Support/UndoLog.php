@@ -45,6 +45,9 @@ final class UndoLog
 
     private int $modelStatements = 0;
 
+    /** @var array<string, array<string, list<array{table: string, columns: list<string>, parent_columns: list<string>}>>> each connection's foreign keys, by the table they point at, loaded once per record or apply */
+    private array $foreignKeys = [];
+
     public function __construct(Dispatcher $events)
     {
         $events->listen('eloquent.created: *', fn (string $event, array $payload) => $this->see($payload[0], created: true));
@@ -59,7 +62,7 @@ final class UndoLog
             }
         });
         $events->listen(QueryExecuted::class, function (QueryExecuted $query): void {
-            if ($this->seen !== null && preg_match('/^\s*(insert|update|delete|replace|upsert|merge|truncate)\b/i', $query->sql) === 1) {
+            if ($this->seen !== null && $this->writesUserData($query)) {
                 $this->statements++;
             }
         });
@@ -78,6 +81,10 @@ final class UndoLog
         }
 
         return DB::transaction(function () use ($user, $write): WriteResult {
+            // Before the window opens: reading the map may write to a database cache store.
+            $this->foreignKeys = [];
+            $this->foreignKeysOf(null);
+
             $this->seen = [];
             $this->statements = $this->modelStatements = 0;
             try {
@@ -124,6 +131,7 @@ final class UndoLog
             }
 
             // Locking reads: the rows compared are the rows restored, and no other write slips between.
+            $this->foreignKeys = [];
             $changes = $undo->changes;
             $now = $this->load($changes, lock: true);
             foreach ($changes as $ref => $row) {
@@ -132,41 +140,109 @@ final class UndoLog
                 }
             }
 
-            // Deleted rows come back before the rows that point at them, and created rows go
-            // after the rows that pointed at them have been put back, each in reverse order.
-            $reversed = array_reverse($changes);
-            $putBack = array_filter($reversed, fn (array $row) => $row['after'] === null);
-            $updated = array_filter($reversed, fn (array $row) => $row['before'] !== null && $row['after'] !== null);
-            $removed = array_filter($reversed, fn (array $row) => $row['before'] === null);
-
             // A row the write created goes only if nothing outside the write now points at it.
+            $removed = array_filter($changes, fn (array $row) => $row['before'] === null);
             if ($this->referenced($removed, besides: $changes)) {
                 throw CapabilityFailure::conflict('This can\'t be undone because something added since depends on it.');
             }
 
-            try {
-                foreach ($putBack as $row) {
-                    DB::connection($row['connection'])->table($row['table'])->insert($row['before']);
-                }
-                foreach ($updated as $row) {
-                    DB::connection($row['connection'])->table($row['table'])->where($row['key'], $row['id'])->update($this->changedColumns($row));
-                }
-                foreach ($removed as $row) {
-                    DB::connection($row['connection'])->table($row['table'])->where($row['key'], $row['id'])->delete();
-                }
-            } catch (QueryException $failed) {
-                // An integrity constraint (SQLSTATE class 23): a row added since holds a unique key of one put back.
-                if (! str_starts_with((string) $failed->getCode(), '23')) {
-                    throw $failed;
-                }
-
-                throw CapabilityFailure::conflict(self::CHANGED);
-            }
+            $this->restore(array_reverse($changes));
 
             $undo->delete();
 
             return new WriteResult(invalidates: $undo->invalidates, toast: 'Undone.');
         });
+    }
+
+    /**
+     * Put every row back as it was before the write. The order that keeps keys valid depends
+     * on the write: a created row may hold the unique key of a row it replaced, and a deleted
+     * row may be the parent of an updated one. So a step that breaks a constraint is rolled back
+     * and tried again after the others, and a created row is removed only once no updated row
+     * still points at it, so its foreign keys never cascade. When a pass puts nothing back, a
+     * row added since holds a key one of these needs.
+     *
+     * @param  list<array{connection: ?string, table: string, key: string, id: int|string, before: ?array<string, mixed>, after: ?array<string, mixed>}>  $rows  latest change first
+     */
+    private function restore(array $rows): void
+    {
+        // Created rows first, keeping latest first, so a write's own children go before their parents.
+        usort($rows, fn (array $a, array $b) => ($b['before'] === null) <=> ($a['before'] === null));
+
+        while ($rows !== []) {
+            $left = [];
+            foreach ($rows as $index => $row) {
+                $updates = array_filter(
+                    [...$left, ...array_slice($rows, $index + 1)],
+                    fn (array $other) => $other['before'] !== null && $other['after'] !== null,
+                );
+                if (($row['before'] === null && $this->pointsAt($updates, $row)) || ! $this->tryRestore($row)) {
+                    $left[] = $row;
+                }
+            }
+
+            if (count($left) === count($rows)) {
+                throw CapabilityFailure::conflict(self::CHANGED);
+            }
+            $rows = $left;
+        }
+    }
+
+    /**
+     * Put one row back, in a savepoint. False when it breaks an integrity constraint
+     * (SQLSTATE class 23), which the savepoint has rolled back.
+     *
+     * @param  array{connection: ?string, table: string, key: string, id: int|string, before: ?array<string, mixed>, after: ?array<string, mixed>}  $row
+     */
+    private function tryRestore(array $row): bool
+    {
+        $database = DB::connection($row['connection']);
+
+        try {
+            $database->transaction(function () use ($database, $row): void {
+                $table = $database->table($row['table']);
+                match (true) {
+                    $row['before'] === null => $table->where($row['key'], $row['id'])->delete(),
+                    $row['after'] === null => $table->insert($row['before']),
+                    default => $table->where($row['key'], $row['id'])->update($this->changedColumns($row)),
+                };
+            });
+        } catch (QueryException $failed) {
+            if (! str_starts_with((string) $failed->getCode(), '23')) {
+                throw $failed;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Whether one of these rows, as it is now, points at the given row through a foreign key.
+     *
+     * @param  array<array-key, array{connection: ?string, table: string, after: ?array<string, mixed>}>  $rows
+     * @param  array{connection: ?string, table: string, after: ?array<string, mixed>}  $row
+     */
+    private function pointsAt(array $rows, array $row): bool
+    {
+        foreach ($this->foreignKeysOf($row['connection'])[$row['table']] ?? [] as $foreign) {
+            foreach ($rows as $other) {
+                if ($other['connection'] !== $row['connection'] || $other['table'] !== $foreign['table']) {
+                    continue;
+                }
+                $matches = true;
+                foreach ($foreign['columns'] as $index => $column) {
+                    $value = $other['after'][$column] ?? null;
+                    $matches = $matches && $value !== null && (string) $value === (string) ($row['after'][$foreign['parent_columns'][$index]] ?? '');
+                }
+                if ($matches) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function see(Model $model, bool $created): void
@@ -220,7 +296,7 @@ final class UndoLog
 
         foreach ($groups as $group) {
             $connection = $group[0]['connection'];
-            foreach ($this->referencesTo($connection, $group[0]['table']) as $foreign) {
+            foreach ($this->foreignKeysOf($connection)[$group[0]['table']] ?? [] as $foreign) {
                 $query = DB::connection($connection)->table($foreign['table'])->sharedLock()
                     ->where(function ($query) use ($group, $foreign): void {
                         foreach ($group as $row) {
@@ -245,33 +321,59 @@ final class UndoLog
     }
 
     /**
-     * The foreign keys that point at a table. They are read from the schema once per migration
-     * and cached under the latest one, so a migration that adds a foreign key is seen at once.
+     * The connection's foreign keys, by the table they point at. They are read from the schema
+     * once per migration and cached under the latest one, so a migration that adds a foreign key
+     * is seen at once, and kept for the rest of the record or apply.
      *
-     * @return list<array{table: string, columns: list<string>, parent_columns: list<string>}>
+     * @return array<string, list<array{table: string, columns: list<string>, parent_columns: list<string>}>>
      */
-    private function referencesTo(?string $connection, string $table): array
+    private function foreignKeysOf(?string $connection): array
     {
         $database = DB::connection($connection);
-        $version = $database->getName().':'.$database->table(config('database.migrations.table'))->max('id');
 
-        $references = Cache::rememberForever('undo-log:foreign-keys:'.$version, function () use ($database): array {
-            $schema = $database->getSchemaBuilder();
-            $references = [];
-            foreach ($schema->getTableListing(schemaQualified: false) as $child) {
-                foreach ($schema->getForeignKeys($child) as $foreign) {
-                    $references[$foreign['foreign_table']][] = [
-                        'table' => $child,
-                        'columns' => $foreign['columns'],
-                        'parent_columns' => $foreign['foreign_columns'],
-                    ];
+        return $this->foreignKeys[$database->getName()] ??= Cache::rememberForever(
+            'undo-log:foreign-keys:'.$database->getName().':'.$database->table(config('database.migrations.table'))->max('id'),
+            function () use ($database): array {
+                $schema = $database->getSchemaBuilder();
+                $references = [];
+                foreach ($schema->getTableListing(schemaQualified: false) as $child) {
+                    foreach ($schema->getForeignKeys($child) as $foreign) {
+                        $references[$foreign['foreign_table']][] = [
+                            'table' => $child,
+                            'columns' => $foreign['columns'],
+                            'parent_columns' => $foreign['foreign_columns'],
+                        ];
+                    }
                 }
-            }
 
-            return $references;
-        });
+                return $references;
+            },
+        );
+    }
 
-        return $references[$table] ?? [];
+    /**
+     * Whether a statement writes rows of the app's data. The framework's own tables (cache,
+     * queue, sessions) are written outside models by design, and undo leaves them alone.
+     */
+    private function writesUserData(QueryExecuted $query): bool
+    {
+        if (preg_match('/^\s*(insert|update|delete|replace|upsert|merge|truncate)\b/i', $query->sql) !== 1) {
+            return false;
+        }
+        if (preg_match('/^\s*(?:insert\s+(?:ignore\s+)?into|replace\s+into|update|delete\s+from|truncate(?:\s+table)?)\s+[`"]?([\w.]+)/i', $query->sql, $match) !== 1) {
+            return true;
+        }
+
+        $framework = array_filter([
+            config('cache.stores.database.table'),
+            config('cache.stores.database.lock_table'),
+            config('queue.connections.database.table'),
+            config('queue.batching.table'),
+            config('queue.failed.table'),
+            config('session.table'),
+        ]);
+
+        return ! in_array(substr($match[1], strlen($query->connection->getTablePrefix())), $framework, true);
     }
 
     /**
