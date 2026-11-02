@@ -153,3 +153,29 @@ it('AGT-010 refuses a destructive call in a turn whose message has no link', fun
     expect(app(TurnMessages::class)->forTurn($turn)['message'])->toBeNull()
         ->and(mayEnd($turn))->toBeFalse();
 });
+
+it('AGT-010 links only a user message to its turn, never an assistant message stored in between', function () {
+    $store = app(ConversationStore::class);
+    $conversation = turnConversation();
+    $user = $store->createMessage($conversation, '01JMESSAGE0000000000000001', 'user', 'End my mesocycle');
+    $assistant = $store->createMessage($conversation, '01JREPLY000000000000000001', 'assistant', CONFIRM_LINE);
+    $turn = $store->createQueuedTurn($conversation, '01JTURN0000000000000000001')->ulid;
+
+    expect($user->fresh()->getAttribute('meta'))->toBe(['turn_ulid' => $turn])
+        ->and($assistant->fresh()->getAttribute('meta'))->toBeNull()
+        ->and(app(TurnMessages::class)->forTurn($turn)['message'])->toBe('End my mesocycle');
+});
+
+it('AGT-010 never takes a message of another role as the turn message, even one that carries the turn link', function () {
+    $store = app(ConversationStore::class);
+    $conversation = turnConversation();
+    $turn = $store->createQueuedTurn($conversation, '01JTURN0000000000000000001')->ulid;
+    $store->createMessage($conversation, '01JREPLY000000000000000001', 'assistant', CONFIRM_LINE)
+        ->forceFill(['meta' => ['turn_ulid' => $turn]])->save();
+
+    $definition = app(CapabilityRegistry::class)->get('mesocycle_end');
+    $context = new CapabilityContext(caller: 'agent', actor: User::query()->firstOrFail(), agent: ['conversation_ulid' => $conversation->ulid, 'turn_ulid' => $turn]);
+
+    expect(app(TurnMessages::class)->forTurn($turn)['message'])->toBeNull()
+        ->and(app(ConfirmationPolicy::class)->allows($definition, new MesocycleEndInput('01JD4Q8V6Y3N0M2K7T5R9W1XBC'), $context))->toBeFalse();
+});
