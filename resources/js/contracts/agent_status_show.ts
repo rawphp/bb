@@ -8,10 +8,11 @@ export interface AgentStatusShowOutput {
   tokens_left?: number | null;
   at_cap: boolean;
   resets_at?: string | null;
-  notice?: {
+  notice?: string | null;
+  notice_status?: {
     text: string;
     tone: "good" | "neutral" | "warning" | "info";
   } | null;
 }
 
-export const outputVersion = 'e7d82320116b';
+export const outputVersion = 'e0f5b7c815c9';

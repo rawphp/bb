@@ -333,6 +333,26 @@ describe('TokensView', () => {
         expect(wrapper.text()).not.toContain(first.last_used_text);
     });
 
+    it('CAP-014 a revoke of another token after an unanswered one takes a new key', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('token_revoke', 0, { reason: 'timeout' })).mockResolvedValueOnce({ invalidates: ['token_list'] });
+        readMock.mockResolvedValueOnce(content);
+        const wrapper = mount(TokensView, { global, props: { payload: content } });
+        const [first, second] = content.tokens;
+
+        await wrapper.get(`[data-test="revoke-${first!.id}"]`).trigger('click');
+        await wrapper.get('[role="dialog"] [data-save]').trigger('click');
+        await flushPromises();
+        await wrapper.findAll('[role="dialog"] button').find((b) => b.text() === 'Cancel')!.trigger('click');
+        await flushPromises();
+        await wrapper.get(`[data-test="revoke-${second!.id}"]`).trigger('click');
+        await wrapper.get('[role="dialog"] [data-save]').trigger('click');
+        await flushPromises();
+
+        expect(writeMock.mock.calls[1]![1]).toEqual({ id: second!.id });
+        const keys = writeMock.mock.calls.map(([, , options]) => options?.idempotencyKey);
+        expect(keys[1]).not.toBe(keys[0]);
+    });
+
     it('CAP-021 treats a revoke of a token that is already gone as done', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('token_revoke', 404, { ok: false, error: { message: 'Not found.' } }));
         readMock.mockResolvedValueOnce({ ...content, tokens: content.tokens.slice(1) });

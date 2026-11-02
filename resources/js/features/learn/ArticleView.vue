@@ -46,14 +46,6 @@ function spanTag(span: Span): 'strong' | 'em' | 'span' {
             </template>
         </article>
 
-        <ReadState v-else :failure="failure" what="This article" @retry="load">
-            <template #loading>
-                <div aria-busy="true" class="flex flex-col gap-3">
-                    <span class="sr-only">Loading</span>
-                    <span aria-hidden="true" class="mx-auto block h-4 w-40 animate-pulse rounded bg-background" />
-                    <span v-for="(w, n) in ['w-full', 'w-full', 'w-2/3']" :key="n" aria-hidden="true" class="block h-4 animate-pulse rounded bg-background" :class="w" />
-                </div>
-            </template>
-        </ReadState>
+        <ReadState v-else :failure="failure" what="This article" @retry="load" />
     </main>
 </template>

@@ -4,8 +4,7 @@ import OfflineNotice from '@/design/OfflineNotice.vue';
 import Skeleton from '@/design/Skeleton.vue';
 import { toneClasses } from '@/design/tones';
 
-// What a screen shows while its useRead() has no data: a placeholder, or why it failed.
-// A screen whose content has its own shape passes its placeholder in the loading slot.
+// What a screen shows while its useRead() has no data: a skeleton, or why it failed.
 defineProps<{ failure: ReadFailure | null; what: string }>();
 defineEmits<{ retry: [] }>();
 </script>
@@ -25,7 +24,5 @@ defineEmits<{ retry: [] }>();
             Try again
         </button>
     </div>
-    <slot v-else name="loading">
-        <Skeleton shape="row" :count="3" data-test="skeleton" />
-    </slot>
+    <Skeleton v-else shape="row" :count="3" data-test="skeleton" />
 </template>

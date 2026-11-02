@@ -118,34 +118,16 @@ describe('DeleteAccountView', () => {
         expect(keys[1]).not.toBe(keys[0]);
     });
 
-    it('CAP-014 retries with the same key, and a gone session on the retry means the delete ran', async () => {
-        writeMock
-            .mockRejectedValueOnce(new CapabilityError('account_delete', 0, { reason: 'timeout' }))
-            .mockRejectedValueOnce(new CapabilityError('account_delete', 401, { message: 'Unauthenticated.' }));
-        const { wrapper, router } = await view();
-
-        await deleteTyped(wrapper);
-        expect(wrapper.get('[role="alert"]').text()).toContain("can't tell whether your account was deleted");
-        expect(clearReads).toHaveBeenCalledTimes(1);
-        expect(router.currentRoute.value.path).toBe('/settings/delete-account');
-
-        await wrapper.get('[data-test="delete"]').trigger('click');
-        await flushPromises();
-
-        const keys = writeMock.mock.calls.map(([, , options]) => options?.idempotencyKey);
-        expect(keys[1]).toBe(keys[0]);
-        expect(router.currentRoute.value.path).toBe('/');
-    });
-
     it.each([
+        ['no answer', new CapabilityError('account_delete', 0, { reason: 'timeout' }), "No connection, so we can't tell whether your account was deleted."],
         ['a gateway timeout', new CapabilityError('account_delete', 504, null), "can't tell whether your account was deleted"],
         [
             'the first try still running',
             new CapabilityError('account_delete', 409, { ok: false, error: { code: 'conflict', retryable: true, message: 'This change is still being saved. Try again in a moment.' } }),
             'This change is still being saved.',
         ],
-    ])('CAP-014 after %s, a gone session on the retry means the delete ran', async (_label, first, said) => {
-        writeMock.mockRejectedValueOnce(first).mockRejectedValueOnce(new CapabilityError('account_delete', 401, { message: 'Unauthenticated.' }));
+    ])('CAP-014 retries after %s with the same key', async (_label, first, said) => {
+        writeMock.mockRejectedValueOnce(first).mockResolvedValueOnce(undefined);
         const { wrapper, router } = await view();
 
         await deleteTyped(wrapper);
@@ -159,5 +141,21 @@ describe('DeleteAccountView', () => {
         const keys = writeMock.mock.calls.map(([, , options]) => options?.idempotencyKey);
         expect(keys[1]).toBe(keys[0]);
         expect(router.currentRoute.value.path).toBe('/');
+    });
+
+    // A try with no answer may never have reached the server (the network failed before
+    // it was sent), so a gone session on the retry proves nothing either way.
+    it.each([401, 419])('ACC-005 a retry answered %i after an unanswered try says it cannot tell, and stays', async (status) => {
+        writeMock
+            .mockRejectedValueOnce(new CapabilityError('account_delete', 0, { reason: 'network' }))
+            .mockRejectedValueOnce(new CapabilityError('account_delete', status, { message: 'Unauthenticated.' }));
+        const { wrapper, router } = await view();
+
+        await deleteTyped(wrapper);
+        await wrapper.get('[data-test="delete"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[role="alert"]').text()).toContain("can't tell whether your account was deleted. Sign in again to check");
+        expect(router.currentRoute.value.path).toBe('/settings/delete-account');
     });
 });

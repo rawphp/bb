@@ -32,12 +32,6 @@ describe('ReadState', () => {
         expect(wrapper.find('[data-test="retry"]').exists()).toBe(false);
     });
 
-    it('PWA-024 a screen can give its own placeholder', () => {
-        const wrapper = mount(ReadState, { props: { failure: null, what: 'Learn' }, slots: { loading: '<div data-test="own" />' } });
-
-        expect(wrapper.find('[data-test="own"]').exists()).toBe(true);
-        expect(wrapper.find('[data-test="skeleton"]').exists()).toBe(false);
-    });
 
     it('CAP-010 a failed read says what did not load and offers Try again', async () => {
         const wrapper = mount(ReadState, { props: { failure: failed(500), what: 'Your tokens' } });

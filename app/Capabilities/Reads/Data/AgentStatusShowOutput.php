@@ -14,7 +14,8 @@ final class AgentStatusShowOutput extends CapabilityData
         public readonly ?int $tokens_left,
         public readonly bool $at_cap,
         public readonly ?string $resets_at,
-        /** How much is left, or that a cap is reached, with its tone picked here (CAP-018). */
-        #[Field(of: Status::class)] public readonly ?Status $notice,
+        public readonly ?string $notice,
+        /** The notice with its tone, picked here so a screen never derives it (CAP-018). */
+        #[Field(of: Status::class)] public readonly ?Status $notice_status,
     ) {}
 }

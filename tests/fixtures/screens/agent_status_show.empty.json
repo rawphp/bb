@@ -4,5 +4,6 @@
     "tokens_left": null,
     "at_cap": false,
     "resets_at": null,
-    "notice": null
+    "notice": null,
+    "notice_status": null
 }

@@ -91,7 +91,7 @@ async function clear(): Promise<void> {
                 Turning the Coach off for your account isn't available on this server yet.
             </p>
 
-            <p v-if="status.notice" class="rounded-2xl p-4" :class="toneClasses[status.notice.tone]" data-test="notice">{{ status.notice.text }}</p>
+            <p v-if="status.notice_status" class="rounded-2xl p-4" :class="toneClasses[status.notice_status.tone]" data-test="notice">{{ status.notice_status.text }}</p>
             <p v-if="error" class="rounded-2xl p-4" :class="toneClasses.warning" role="alert">{{ error }}</p>
 
             <section class="space-y-3 rounded-2xl bg-surface p-4" aria-labelledby="coach-can">

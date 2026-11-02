@@ -57,11 +57,11 @@ describe('LearnIndexView', () => {
         readMock.mockResolvedValueOnce(content);
         const { wrapper } = await mountIndex();
 
-        expect(wrapper.find('[aria-busy="true"]').exists()).toBe(true);
+        expect(wrapper.find('[data-test="skeleton"]').exists()).toBe(true);
         await flushPromises();
 
         expect(readMock).toHaveBeenCalledWith('learn_show', {}, expect.any(Function), expect.any(Function));
-        expect(wrapper.find('[aria-busy="true"]').exists()).toBe(false);
+        expect(wrapper.find('[data-test="skeleton"]').exists()).toBe(false);
         expect(wrapper.text()).toContain('Weighing in');
     });
 

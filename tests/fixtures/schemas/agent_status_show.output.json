@@ -29,6 +29,12 @@
         },
         "notice": {
             "type": [
+                "string",
+                "null"
+            ]
+        },
+        "notice_status": {
+            "type": [
                 "object",
                 "null"
             ],

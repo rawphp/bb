@@ -64,7 +64,7 @@ describe('CoachSettingsView', () => {
     });
 
     it.each(['info', 'warning'] as const)('CAP-018 shows the notice in the %s tone the server picked', (tone) => {
-        const wrapper = mount(CoachSettingsView, { global, props: { payload: { ...nearCap, notice: { text: '3 Coach messages left today.', tone } } } });
+        const wrapper = mount(CoachSettingsView, { global, props: { payload: { ...nearCap, notice_status: { text: '3 Coach messages left today.', tone } } } });
 
         expect(wrapper.get('[data-test="notice"]').classes()).toEqual(expect.arrayContaining(toneClasses[tone].split(' ')));
     });

@@ -33,17 +33,7 @@ const { data: learn, failure, load } = useRead<LearnShowOutput>('learn_show', {}
         </template>
 
         <div v-else class="mt-6">
-            <ReadState :failure="failure" what="Learn" @retry="load">
-                <template #loading>
-                    <div aria-busy="true">
-                        <span class="sr-only">Loading</span>
-                        <div v-for="n in 2" :key="n" aria-hidden="true" class="mt-6">
-                            <span class="mx-4 mb-2 block h-3 w-24 animate-pulse rounded bg-surface" />
-                            <span class="block h-[calc(var(--spacing-tap)*3)] animate-pulse rounded-xl bg-surface" />
-                        </div>
-                    </div>
-                </template>
-            </ReadState>
+            <ReadState :failure="failure" what="Learn" @retry="load" />
         </div>
     </main>
 </template>

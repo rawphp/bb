@@ -62,11 +62,11 @@ describe('ArticleView', () => {
         readMock.mockResolvedValueOnce(payload);
         const wrapper = mount(ArticleView, { props: { slug: 'rir' } });
 
-        expect(wrapper.find('[aria-busy="true"]').exists()).toBe(true);
+        expect(wrapper.find('[data-test="skeleton"]').exists()).toBe(true);
         await flushPromises();
 
         expect(readMock).toHaveBeenCalledWith('article_show', { slug: 'rir' }, expect.any(Function), expect.any(Function));
-        expect(wrapper.find('[aria-busy="true"]').exists()).toBe(false);
+        expect(wrapper.find('[data-test="skeleton"]').exists()).toBe(false);
         expect(wrapper.find('h1').text()).toBe('Reps in reserve (RIR)');
     });
 

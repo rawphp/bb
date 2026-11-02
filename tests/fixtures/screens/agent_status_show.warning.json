@@ -4,7 +4,8 @@
     "tokens_left": 412000,
     "at_cap": false,
     "resets_at": null,
-    "notice": {
+    "notice": "3 Coach messages left today.",
+    "notice_status": {
         "text": "3 Coach messages left today.",
         "tone": "info"
     }

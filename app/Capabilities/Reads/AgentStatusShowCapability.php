@@ -39,8 +39,9 @@ final class AgentStatusShowCapability implements HostCapability
             tokens_left: $allowance->tokensLeft,
             at_cap: $allowance->atCap,
             resets_at: $allowance->resetsAt?->toIso8601String(),
+            notice: $allowance->notice,
             // A reached cap is a warning; how much is left near it is information.
-            notice: $allowance->notice === null ? null : new Status($allowance->notice, ($allowance->atCap ? Tone::Warning : Tone::Info)->value),
+            notice_status: $allowance->notice === null ? null : new Status($allowance->notice, ($allowance->atCap ? Tone::Warning : Tone::Info)->value),
         );
     }
 }

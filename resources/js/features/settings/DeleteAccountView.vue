@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { clearReads } from '@/app/cache';
-import { CapabilityError, write } from '@/app/call';
+import { CapabilityError, SESSION_GONE, write } from '@/app/call';
 import { failureMessage } from '@/app/errors';
 import { useRetryKey } from '@/app/retryKey';
 import type { AccountDeleteInput } from '@/contracts/account_delete';
@@ -38,9 +38,14 @@ async function remove(): Promise<void> {
 
 async function failedDelete(failed: unknown, afterLostAnswer: boolean): Promise<void> {
     const status = failed instanceof CapabilityError ? failed.status : null;
-    if (status === 401 || status === 419) {
-        // After a try that got no answer, a gone session is what that delete left behind.
-        if (afterLostAnswer) return leave();
+    if (status !== null && SESSION_GONE.includes(status)) {
+        // After a try that got no answer, the session may be gone because that delete ran,
+        // or that try never reached the server and the session simply ended: no telling which.
+        if (afterLostAnswer) {
+            await clearReads().catch(() => undefined);
+            error.value = "Your session has ended, so we can't tell whether your account was deleted. Sign in again to check: if you can't, it was.";
+            return;
+        }
         // On a first try it only means this session ended: nothing was deleted.
         error.value = 'You were signed out, so nothing was deleted. Sign in again, then delete your account.';
         return;
