@@ -239,3 +239,12 @@ it('SCH-056 the day and the session row are saved together: a failed row save le
 
     expect($day->fresh()->getAttributes())->toBe($before);
 });
+
+it('SCH-057 an answer named by the mesocycle id in capitals saves the row under the stored id', function (string $choice) {
+    [$user, $mesocycle] = missedWorld('2026-09-22');
+    SheetSeed::day($user, '2026-09-22', ['day_type' => 'rest']);
+
+    app(ResolveMissedSession::class)($user, new MissedSessionResolveInput(strtoupper($mesocycle->id), 3, 1, $choice, $choice === 'skip' ? null : '2026-09-22'));
+
+    expect(WorkoutSession::query()->sole()->mesocycle_id)->toBe($mesocycle->id);
+})->with(['do_it_today', 'skip']);
