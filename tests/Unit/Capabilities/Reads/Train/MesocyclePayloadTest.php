@@ -193,8 +193,18 @@ it('MESO-044 no offer when the current week is already a diet break', function (
 });
 
 it('MESO-045 days can be added while the mesocycle runs', function () {
-    expect(saved()['can_add_day'])->toBeTrue()
-        ->and(saved('2026-11-30')['can_add_day'])->toBeFalse();
+    // The user trains Monday, Thursday and Friday; the mesocycle's days are on Monday and Thursday.
+    $friday = ['trainingDays' => [1, 4, 5]];
+
+    expect(saved(world: $friday)['can_add_day'])->toBeTrue()
+        ->and(saved('2026-11-30', world: $friday)['can_add_day'])->toBeFalse();
+});
+
+it('MESO-045 a weekday split with every training day taken cannot add a day; a floating one can', function () {
+    $floating = array_map(fn (array $day) => array_replace($day, ['weekday' => null]), W::days());
+
+    expect(saved()['can_add_day'])->toBeFalse()
+        ->and(saved(meso: ['days' => $floating])['can_add_day'])->toBeTrue();
 });
 
 it('MESO-046 a day lists its exercises in the order the mesocycle plans them', function () {

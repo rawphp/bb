@@ -68,3 +68,41 @@ it('MESO-005 a day of a weekday split is named after its ISO weekday', function 
     expect(MesocycleRules::weekdayName(1))->toBe('Monday')
         ->and(MesocycleRules::weekdayName(7))->toBe('Sunday');
 });
+
+/** A stored day: its id, its weekday and no slots. */
+function rulesStoredDay(string $id, ?int $weekday = null): array
+{
+    return ['id' => $id, 'label' => $id, 'weekday' => $weekday, 'slots' => []];
+}
+
+it('MESO-045 SCH-039 an added day runs from the current week on; the weeks before keep the days they had', function () {
+    $days = [rulesStoredDay('a'), rulesStoredDay('b')];
+    $added = MesocycleRules::addingDay($days, [], [], fromWeek: 2, day: rulesStoredDay('new'));
+
+    expect($added['days'])->toBe([...$days, rulesStoredDay('new')])
+        ->and($added['earlier_weeks'])->toBe([$days, $days])
+        ->and($added['later_weeks'])->toBe([]);
+});
+
+it('MESO-045 SCH-039 the weeks already stored keep theirs, and the later weeks still ahead run the new day too', function () {
+    $days = [rulesStoredDay('a'), rulesStoredDay('b')];
+    $added = MesocycleRules::addingDay($days, [[rulesStoredDay('old')]], [['b', 'a'], ['b'], ['a', 'b']], fromWeek: 2, day: rulesStoredDay('new'));
+
+    expect($added['earlier_weeks'])->toBe([[rulesStoredDay('old')], [rulesStoredDay('b'), rulesStoredDay('a')]])
+        ->and($added['later_weeks'])->toBe([['b', 'new'], ['a', 'b', 'new']]);
+});
+
+it('MESO-045 before the mesocycle starts, every week runs the new day', function () {
+    $added = MesocycleRules::addingDay([rulesStoredDay('a')], [], [['a']], fromWeek: 0, day: rulesStoredDay('new'));
+
+    expect($added['earlier_weeks'])->toBe([])
+        ->and($added['later_weeks'])->toBe([['a', 'new']]);
+});
+
+it('MESO-005 MESO-045 a weekday split names a new day after the first free training weekday, in plan-week order', function () {
+    expect(MesocycleRules::isWeekdaySplit([1, 4]))->toBeTrue()
+        ->and(MesocycleRules::isWeekdaySplit([1, null]))->toBeFalse()
+        ->and(MesocycleRules::isWeekdaySplit([]))->toBeFalse()
+        ->and(MesocycleRules::freeWeekday([1, 4], [6, 1, 4, 5]))->toBe(6)
+        ->and(MesocycleRules::freeWeekday([1, 4], [1, 4]))->toBeNull();
+});

@@ -3,6 +3,7 @@
 use App\Actions\Mesocycles\AddMesocycleDay;
 use App\Models\Mesocycle;
 use App\Models\Profile;
+use App\Support\Mesocycles\TrainSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Support\TrainSeed;
@@ -60,16 +61,27 @@ it('MESO-045 a weekday split gets the next free training weekday', function () {
     expect($mesocycle->dayRows()[2])->toMatchArray(['label' => 'Friday', 'weekday' => 5]);
 });
 
-it('MESO-045 a weekday split with no free training day falls back to a day number', function () {
-    [$mesocycle] = addDay();
+it('MESO-045 a weekday split with no free training day refuses in plain words and changes nothing', function () {
+    [$mesocycle, $refusal] = addDay();
 
-    expect($mesocycle->dayRows()[2])->toMatchArray(['label' => 'Day 3', 'weekday' => null]);
+    expect($refusal)->toBe('Every training day already has a session. Add a training day in your schedule first.')
+        ->and(count($mesocycle->dayRows()))->toBe(2);
 });
 
-it('MESO-045 every later week stored runs the new day too', function () {
-    [$mesocycle] = addDay(['later_weeks' => [['01JB6Q400A2B3C4D5E6F7G8H9J'], ['01JB6Q410A2B3C4D5E6F7G8H9J']]]);
+it('MESO-045 SCH-039 a day added in week 3 runs from week 3 on; weeks 1 and 2 keep their two days', function () {
+    [$mesocycle] = addDay(['days' => floatingDays()]);
+    $domain = TrainSnapshot::load($mesocycle->user, $mesocycle->id)->domain($mesocycle);
 
-    expect($mesocycle->laterWeekIds())->toBe([['01JB6Q400A2B3C4D5E6F7G8H9J', NEW_DAY], ['01JB6Q410A2B3C4D5E6F7G8H9J', NEW_DAY]]);
+    expect(array_map(fn (int $week) => count($domain->sessionsInWeek($week)), range(0, 4)))->toBe([2, 2, 3, 3, 3]);
+});
+
+it('MESO-045 SCH-039 later weeks still ahead run the new day too; the ones passed keep theirs', function () {
+    $upper = '01JB6Q400A2B3C4D5E6F7G8H9J';
+    $lower = '01JB6Q410A2B3C4D5E6F7G8H9J';
+    [$mesocycle] = addDay(['days' => floatingDays(), 'later_weeks' => [[$upper], [$lower], [$upper, $lower], [$upper]]]);
+
+    expect(array_map(fn (array $week) => array_column($week, 'id'), $mesocycle->earlierWeekRows()))->toBe([[$upper], [$lower]])
+        ->and($mesocycle->laterWeekIds())->toBe([[$upper, $lower, NEW_DAY], [$upper, NEW_DAY]]);
 });
 
 it('MESO-045 adding the same day again changes nothing', function () {
