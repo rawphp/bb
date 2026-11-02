@@ -1,0 +1,60 @@
+{
+    "date": "2026-09-23",
+    "mode": "days",
+    "note": "Small misses are fine. Within 10% on calories and protein each day is a success.",
+    "meal_options": [
+        {
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X1",
+            "name": "Lunch",
+            "time_text": "12:30 PM"
+        },
+        {
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X2",
+            "name": "Pre-workout",
+            "time_text": "4:00 PM"
+        },
+        {
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X3",
+            "name": "Post-workout",
+            "time_text": "7:30 PM"
+        }
+    ],
+    "day_options": [
+        {
+            "date": "2026-09-22",
+            "label": "Tue, Sep 22",
+            "enabled": false
+        },
+        {
+            "date": "2026-09-26",
+            "label": "Sat, Sep 26",
+            "enabled": true
+        }
+    ],
+    "day": {
+        "label": "Wed, Sep 23",
+        "kcal_text": "2,400 kcal",
+        "protein_text": "170 g protein"
+    },
+    "other_day": {
+        "label": "Sat, Sep 26",
+        "kcal_text": "2,400 kcal",
+        "protein_text": "170 g protein"
+    },
+    "projected_meals": [
+        {
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X1",
+            "name": "Lunch",
+            "kcal_text": "553 kcal",
+            "protein_text": "42 g protein"
+        }
+    ],
+    "refusal": "A day can't go below its calorie floor. Move fewer calories.",
+    "warnings": [
+        {
+            "text": "Carbs drop below 50 g on Wed, Sep 23.",
+            "tone": "warning"
+        }
+    ],
+    "can_save": false
+}

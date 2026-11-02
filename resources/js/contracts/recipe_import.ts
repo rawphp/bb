@@ -20,3 +20,5 @@ export interface RecipeImportOutput {
     detail?: string | null;
   }[];
 }
+
+export const outputVersion = '111bd6026172';

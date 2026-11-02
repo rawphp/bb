@@ -22,3 +22,5 @@ export interface CustomFoodsShowOutput {
   }[];
   empty_text?: string | null;
 }
+
+export const outputVersion = 'bd5f8bde8a6d';

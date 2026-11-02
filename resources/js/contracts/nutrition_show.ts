@@ -25,3 +25,5 @@ export interface NutritionShowOutput {
   }[];
   empty_text?: string | null;
 }
+
+export const outputVersion = '3828bfeb47a5';

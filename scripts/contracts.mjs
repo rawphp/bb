@@ -1,6 +1,7 @@
 // npm run contracts: generate resources/js/contracts/<name>.ts from the schema
 // snapshots in tests/fixtures/schemas/<name>.input.json and <name>.output.json.
 // The output is committed; a Vitest test fails when it is stale.
+import { createHash } from 'node:crypto';
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +25,14 @@ function normalise(schema) {
     return out;
 }
 
+// The read cache (OFF-003) stores this with each result and treats a copy cached
+// under another version as missing, so a changed output shape never meets old data.
+function outputVersion(schema) {
+    const hash = createHash('sha256').update(JSON.stringify(normalise(schema))).digest('hex').slice(0, 12);
+
+    return `export const outputVersion = '${hash}';\n`;
+}
+
 /** @returns {Promise<Map<string, string>>} file name → TS source, sorted by name */
 export async function generate(schemaDir = SCHEMAS) {
     const sides = new Map();
@@ -41,6 +50,7 @@ export async function generate(schemaDir = SCHEMAS) {
         for (const [side, schema] of list) {
             const type = studly(name) + (side === 'input' ? 'Input' : 'Output');
             parts.push(await compile(normalise(schema), type, { bannerComment: '', additionalProperties: false, maxItems: -1 }));
+            if (side === 'output') parts.push(outputVersion(schema));
         }
         files.set(`${name}.ts`, BANNER + '\n' + parts.join('\n'));
     }

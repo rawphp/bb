@@ -29,3 +29,5 @@ export interface ShoppingShowOutput {
   share_text: string;
   empty_text?: string | null;
 }
+
+export const outputVersion = 'e6122055dcf3';

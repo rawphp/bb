@@ -42,3 +42,5 @@ export interface FoodBarcodeLookupOutput {
   } | null;
   message?: string | null;
 }
+
+export const outputVersion = '627f1b57b287';

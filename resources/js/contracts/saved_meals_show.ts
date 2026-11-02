@@ -13,3 +13,5 @@ export interface SavedMealsShowOutput {
   }[];
   empty_text?: string | null;
 }
+
+export const outputVersion = '270faaf6397e';

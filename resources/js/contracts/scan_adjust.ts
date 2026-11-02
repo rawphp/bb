@@ -62,3 +62,5 @@ export interface ScanAdjustOutput {
   saved_meal_name: string;
   empty_text?: string | null;
 }
+
+export const outputVersion = 'e9badd81cfb9';

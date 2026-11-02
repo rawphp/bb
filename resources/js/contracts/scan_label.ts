@@ -24,3 +24,5 @@ export interface ScanLabelOutput {
   fiber: number;
   kcal_text: string;
 }
+
+export const outputVersion = 'd5d8f3bdf756';

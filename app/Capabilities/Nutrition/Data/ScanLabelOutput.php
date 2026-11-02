@@ -6,7 +6,7 @@ use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
 /** FOOD-042: a nutrition label read into the custom food form, for the user to confirm. */
-final class CustomFoodDraft extends CapabilityData
+final class ScanLabelOutput extends CapabilityData
 {
     public function __construct(
         public readonly string $name,

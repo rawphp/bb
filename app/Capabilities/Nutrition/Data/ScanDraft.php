@@ -5,8 +5,8 @@ namespace App\Capabilities\Nutrition\Data;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
-/** The scanned meal (FOOD-043 to FOOD-046): nothing is saved until the user adds it or saves it as a saved meal. */
-final class ScanDraft extends CapabilityData
+/** The scanned meal (FOOD-043 to FOOD-046): nothing is saved until the user adds it or saves it as a saved meal. scan_photo, scan_describe and scan_adjust each return it through their own Output class. */
+abstract class ScanDraft extends CapabilityData
 {
     public function __construct(
         /** @var list<ScanRow> */

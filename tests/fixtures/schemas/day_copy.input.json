@@ -1,0 +1,28 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "source_date": {
+            "type": "string",
+            "format": "date"
+        },
+        "target_dates": {
+            "type": "array",
+            "description": "\"YYYY-MM-DD\"."
+        },
+        "update_target_macros": {
+            "type": "boolean"
+        },
+        "update_meal_times": {
+            "type": "boolean"
+        },
+        "copy_locked_state": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "source_date",
+        "target_dates"
+    ]
+}

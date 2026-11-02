@@ -116,3 +116,5 @@ export interface MealShowOutput {
     is_enabled: boolean;
   }[];
 }
+
+export const outputVersion = '188d2d3ccbb6';

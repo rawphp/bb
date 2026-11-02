@@ -106,3 +106,5 @@ export interface FoodSearchOutput {
   }[];
   empty_text?: string | null;
 }
+
+export const outputVersion = 'be89f5d83809';

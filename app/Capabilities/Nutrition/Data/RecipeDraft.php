@@ -5,8 +5,8 @@ namespace App\Capabilities\Nutrition\Data;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
-/** An imported or generated recipe for the user to confirm before it is saved (RCP-003, RCP-010). */
-final class RecipeDraft extends CapabilityData
+/** An imported or generated recipe for the user to confirm before it is saved (RCP-003, RCP-010). recipe_generate and recipe_import each return it through their own Output class. */
+abstract class RecipeDraft extends CapabilityData
 {
     public function __construct(
         public readonly string $name,

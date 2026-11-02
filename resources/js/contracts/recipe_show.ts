@@ -34,3 +34,5 @@ export interface RecipeShowOutput {
   }[];
   steps: unknown[];
 }
+
+export const outputVersion = 'd018f78d4221';

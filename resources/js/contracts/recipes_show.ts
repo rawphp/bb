@@ -25,3 +25,5 @@ export interface RecipesShowOutput {
   }[];
   empty_text?: string | null;
 }
+
+export const outputVersion = '8685e011715f';
