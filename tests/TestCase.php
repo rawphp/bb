@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use RawPHP\Warp\Concerns\InteractsWithWarmApplication;
 use RawPHP\Warp\ResetManifest;
+use RawPHP\Warp\WarmApplicationFactory;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -19,6 +20,7 @@ abstract class TestCase extends BaseTestCase
 
     public function createApplication(): Application
     {
+        $boots = WarmApplicationFactory::bootCount();
         $app = $this->createWarmApplication();
 
         // migrate:fresh can purge the default connection. The capability
@@ -35,9 +37,11 @@ abstract class TestCase extends BaseTestCase
             }
         });
 
-        // An isolated app boots before Warp points it at the snapshot database, so a
-        // connection resolved during boot still has the old settings. Drop it.
-        if ($this->warpShouldIsolate()) {
+        // An isolated app, or a warm base booted after one, boots before Warp points it at
+        // the snapshot database, so a connection resolved during boot still has the old
+        // settings. The warm base usually loses it to the first test's migrate:fresh, but
+        // after an isolated test the database is already migrated. Drop it.
+        if ($this->warpShouldIsolate() || WarmApplicationFactory::bootCount() !== $boots) {
             $app['db']->purge();
         }
 
