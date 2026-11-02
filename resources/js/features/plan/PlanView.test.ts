@@ -1,5 +1,5 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { PlanShowOutput } from '@/contracts/plan_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
@@ -56,6 +56,16 @@ describe('PlanView', () => {
         expect(wrapper.find('[data-test="today"]').attributes('style')).toContain('left: 192.9px');
         expect(wrapper.findAll('[data-test="ruler"] span').map((s) => s.text())).toEqual(['1', '5', '9', '13']);
         expect(readMock).not.toHaveBeenCalled();
+    });
+
+    it('PLAN-003 starts the timeline at week 1 while today is in view, else scrolls today into view', () => {
+        const width = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth')!;
+        Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get: () => 360 });
+        onTestFinished(() => Object.defineProperty(HTMLElement.prototype, 'clientWidth', width));
+        const scroller = (wrapper: ReturnType<typeof show>) => wrapper.find('[data-test="timeline"]').element.parentElement!;
+
+        expect(scroller(show(plan)).scrollLeft).toBe(0);
+        expect(scroller(show({ ...plan, week_count: 30, today_position: 20.5 })).scrollLeft).toBe(540);
     });
 
     it('PLAN-003 marks the current mesocycle, past phases and the deficit deload', () => {
