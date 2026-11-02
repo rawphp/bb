@@ -5,6 +5,7 @@ use App\Domain\MealFit\Food as MealFitFood;
 use App\Domain\MealFit\MealFit;
 use App\Domain\MealFit\MealFood;
 use App\Domain\Model\MealTarget;
+use App\Domain\Recipe\RecipeServing;
 use App\Domain\SavedMeals\SavedMealLoad;
 use App\Models\DayTarget;
 use App\Models\Food;
@@ -57,6 +58,20 @@ function loadSavedMealBulkDinner(User $user, Food $chicken, Food $rice, Food $oi
 function loadSavedMealFitFood(Food $food): MealFitFood
 {
     return new MealFitFood(id: $food->id, name: $food->name, kcal: $food->kcal, proteinG: $food->protein, fatG: $food->fat, carbsG: $food->carbs);
+}
+
+/**
+ * What SavedMealLoad makes of these entries for the dinner, as grams by entry id.
+ *
+ * @param  list<MealFood>  $meal
+ * @param  list<MealFood>  $saved
+ * @return array<string, float>
+ */
+function savedLoadExpected(array $meal, array $saved): array
+{
+    $loaded = (new SavedMealLoad(new MealFit))->load($meal, $saved, new MealTarget(kcal: 1040, proteinG: 68, fatG: 28, carbsG: 128));
+
+    return array_combine(array_map(fn (MealFood $f) => $f->id, $loaded), array_map(fn (MealFood $f) => $f->grams, $loaded));
 }
 
 /** @return list<array<string, mixed>> */
@@ -118,13 +133,20 @@ it('MEAL-070 load adds to the meal, skips a food already in it and refits what i
 
     $loaded = (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $meal, $saved->id);
 
-    // The rice was already there, so only the oil joins, after the chili; the locked chili serving stays.
+    // The rice was already there, so only the oil joins, after the chili; the locked chili serving stays. The chili
+    // counts 100 g of chicken a serving (200 g over 2 servings), and the chicken, rice and oil fit around it.
+    $expected = savedLoadExpected([
+        new MealFood('chicken', loadSavedMealFitFood($chicken), 150),
+        RecipeServing::food('chili', 'Chili', new MealTarget(kcal: 165, proteinG: 31, fatG: 3.6, carbsG: 0), 1.5, isLocked: true),
+        new MealFood('rice', loadSavedMealFitFood($rice), 80),
+    ], [new MealFood('oil', loadSavedMealFitFood($oil), 5)]);
     $planned = loadSavedMealPlanned($meal);
     expect($loaded['added'])->toBe(1)
         ->and(array_column($planned, 'food_id'))->toBe([$chicken->id, $rice->id, $oil->id])
         ->and(array_column($planned, 'position'))->toBe([0, 2, 3])
         ->and($planned[1]['is_locked'])->toBeFalse()
-        ->and($planned[0]['grams'])->not->toBe(150.0)
+        ->and(array_column($planned, 'grams'))->toBe([$expected['chicken'], $expected['rice'], $expected['oil']])
+        ->and($expected['chicken'])->not->toBe(150.0)
         ->and(PlannedRecipe::query()->where('meal_id', $meal)->sole()->servings)->toBe(1.5);
 });
 
@@ -139,8 +161,18 @@ it('MEAL-070 load refits an unlocked recipe serving with the foods', function ()
 
     (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $meal, $saved->id);
 
-    $servings = PlannedRecipe::query()->where('meal_id', $meal)->sole()->servings;
-    expect($servings)->not->toBe(3.0)->and($servings)->toBeGreaterThanOrEqual(0.1);
+    // A serving of the bowl is 200 g of rice; 1 g of a serving food is a tenth of a serving.
+    $expected = savedLoadExpected(
+        [RecipeServing::food('bowl', 'Bowl', new MealTarget(kcal: 260, proteinG: 5.4, fatG: 0.6, carbsG: 56), 3)],
+        [
+            new MealFood('chicken', loadSavedMealFitFood($chicken), 300, isLocked: true),
+            new MealFood('rice', loadSavedMealFitFood($rice), 100),
+            new MealFood('oil', loadSavedMealFitFood($oil), 5),
+        ],
+    );
+    expect(PlannedRecipe::query()->where('meal_id', $meal)->sole()->servings)->toBe($expected['bowl'] / RecipeServing::GRAMS_PER_SERVING)
+        ->and($expected['bowl'])->not->toBe(30.0)
+        ->and(array_column(loadSavedMealPlanned($meal), 'grams'))->toBe([300.0, $expected['rice'], $expected['oil']]);
 });
 
 it('MEAL-070 load writes nothing when every saved food is already in the meal', function () {

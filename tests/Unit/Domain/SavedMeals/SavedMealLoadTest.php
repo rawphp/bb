@@ -97,12 +97,12 @@ it('MEAL-070 load adds to the meal and skips a food already in it', function () 
         ->and(savedLoadGrams($loaded))->toBe(savedLoadGrams((new MealFit)->fit([...$lunch, $saved[1]], savedLoadDinner())->foods));
 });
 
-it('MEAL-070 load joins a food the saved meal holds twice only once', function () {
-    $saved = [new MealFood('saved:1', savedLoadRice(), 100), new MealFood('saved:2', savedLoadRice(), 50)];
+it('MEAL-070 load joins every food of the saved meal, one it holds twice included, so no saved amount is lost', function () {
+    $saved = [new MealFood('saved:1', savedLoadRice(), 100, isLocked: true), new MealFood('saved:2', savedLoadRice(), 50, isLocked: true)];
 
     $loaded = (new SavedMealLoad(new MealFit))->load([], $saved, savedLoadDinner());
 
-    expect(array_map(fn (MealFood $f) => $f->id, $loaded))->toBe(['saved:1']);
+    expect(savedLoadGrams($loaded))->toBe(['saved:1' => 100.0, 'saved:2' => 50.0]);
 });
 
 it('MEAL-070 load changes nothing when every saved food is already in the meal', function () {
@@ -120,4 +120,15 @@ it('MEAL-070 load never leaves an amount below 1 g, so every food and recipe ser
     );
 
     expect(savedLoadGrams($loaded)['saved:2'])->toBe(RecipeServing::MIN_GRAMS);
+});
+
+it('MEAL-070 MEAL-005 load keeps a locked amount below 1 g exactly, in the meal and in the saved meal', function () {
+    $loaded = (new SavedMealLoad(new MealFit))->load(
+        [new MealFood('food:1', savedLoadOil(), 0.5, isLocked: true)],
+        [new MealFood('saved:1', savedLoadChicken(), 0.4, isLocked: true), new MealFood('saved:2', savedLoadRice(), 100)],
+        savedLoadDinner(),
+    );
+
+    expect(savedLoadGrams($loaded)['food:1'])->toBe(0.5)
+        ->and(savedLoadGrams($loaded)['saved:1'])->toBe(0.4);
 });

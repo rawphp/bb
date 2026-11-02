@@ -50,15 +50,16 @@ it('MEAL-070 save keeps the meal\'s foods with their amounts, cooked state, lock
         ]);
 });
 
-it('MEAL-070 save keeps at least 1 g of a food the meal fitted to nothing', function () {
+it('MEAL-070 MEAL-005 save keeps each amount exactly, a locked one under 1 g included', function () {
     $user = User::factory()->create();
     $meal = saveSavedMealLunch($user);
-    PlannedFood::factory()->create(['meal_id' => $meal, 'grams' => 0]);
+    PlannedFood::factory()->create(['meal_id' => $meal, 'position' => 0, 'grams' => 0.5, 'is_locked' => true]);
+    PlannedFood::factory()->create(['meal_id' => $meal, 'position' => 1, 'grams' => 0]);
     $id = (string) Str::ulid();
 
     (new SaveSavedMeal)($user, null, $id, 'Lunch', $meal, []);
 
-    expect(saveSavedMealRows($id)[0]['grams'])->toBe(1.0);
+    expect(array_column(saveSavedMealRows($id), 'grams'))->toBe([0.5, 0.0]);
 });
 
 it('MEAL-070 save keeps the first 50 foods of a bigger meal', function () {
@@ -98,6 +99,30 @@ it('MEAL-070 an empty meal cannot be saved', function () {
         ->and(SavedMeal::query()->count())->toBe(0);
 });
 
+it('MEAL-070 never saves a meal of a deleted day', function () {
+    $user = User::factory()->create();
+    $meal = saveSavedMealLunch($user);
+    PlannedFood::factory()->create(['meal_id' => $meal]);
+    DayTarget::query()->where('user_id', $user->id)->sole()->delete();
+
+    expect(fn () => (new SaveSavedMeal)($user, null, (string) Str::ulid(), 'Lunch', $meal, []))
+        ->toThrow(ModelNotFoundException::class)
+        ->and(SavedMeal::query()->count())->toBe(0);
+});
+
+it('FOOD-046 never saves another user\'s custom food or a deleted one', function () {
+    $user = User::factory()->create();
+    $theirs = Food::factory()->custom(User::factory()->create())->create();
+    $deleted = Food::factory()->custom($user)->create();
+    $deleted->delete();
+
+    foreach ([$theirs, $deleted] as $food) {
+        expect(fn () => (new SaveSavedMeal)($user, null, (string) Str::ulid(), 'Snack', null, [['food_id' => $food->id, 'grams' => 30]]))
+            ->toThrow(ModelNotFoundException::class);
+    }
+    expect(SavedMeal::query()->count())->toBe(0);
+});
+
 it('MEAL-070 never saves another user\'s meal', function () {
     $meal = saveSavedMealLunch(User::factory()->create());
     PlannedFood::factory()->create(['meal_id' => $meal]);
@@ -133,15 +158,16 @@ it('FOOD-046 refuses more than 50 foods', function () {
         ->and(SavedMeal::query()->count())->toBe(0);
 });
 
-it('CAP-019 a retry under the same id replaces the saved meal, never adding a second', function () {
+it('CAP-019 a save under an id the user already has returns that saved meal unchanged, never replacing its foods', function () {
     $user = User::factory()->create();
     [$eggs, $oats] = [Food::factory()->create(), Food::factory()->create()];
     $id = (string) Str::ulid();
     $first = (new SaveSavedMeal)($user, null, $id, 'Breakfast', null, [['food_id' => $eggs->id, 'grams' => 100]]);
 
-    (new SaveSavedMeal)($user, $first, $id, 'Big breakfast', null, [['food_id' => $oats->id, 'grams' => 80]]);
+    $again = (new SaveSavedMeal)($user, $first, $id, 'Big breakfast', null, [['food_id' => $oats->id, 'grams' => 80]]);
 
-    expect(SavedMeal::query()->count())->toBe(1)
-        ->and(SavedMeal::query()->findOrFail($id)->name)->toBe('Big breakfast')
-        ->and(array_column(saveSavedMealRows($id), 'food_id'))->toBe([$oats->id]);
+    expect($again->name)->toBe('Breakfast')
+        ->and(SavedMeal::query()->count())->toBe(1)
+        ->and(SavedMeal::query()->findOrFail($id)->name)->toBe('Breakfast')
+        ->and(saveSavedMealRows($id))->toBe([['food_id' => $eggs->id, 'position' => 0, 'grams' => 100.0, 'is_cooked' => false, 'is_locked' => true, 'unit' => 'g']]);
 });

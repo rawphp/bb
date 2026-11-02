@@ -114,6 +114,17 @@ it('MEAL-070 saves a meal\'s foods under the client\'s id and says the list chan
         ->and(savedMealCall($user, 'saved_meals_show')->json('data.meals.0'))->toBe(['saved_meal_id' => $id, 'name' => 'Usual lunch', 'detail' => '1 food']);
 });
 
+it('CAP-019 answers a save under the user\'s own saved meal\'s id with that saved meal, unchanged', function () {
+    $user = User::factory()->create();
+    $meal = savedMealOf($user, 'Bulk dinner', 2);
+
+    savedMealCall($user, 'saved_meal_save', ['id' => $meal->id, 'name' => 'Other', 'foods' => [['food_id' => Food::factory()->create()->id, 'grams' => 50]]])
+        ->assertOk()
+        ->assertJsonPath('data.toast', 'Saved Bulk dinner');
+
+    expect($meal->fresh()->name)->toBe('Bulk dinner')->and($meal->foods()->count())->toBe(2);
+});
+
 it('FOOD-046 saves a scanned meal\'s foods', function () {
     $user = User::factory()->create();
     $id = (string) Str::ulid();
