@@ -41,11 +41,15 @@ const fakeCaches = {
     async delete(name: string) {
         return stores.delete(name);
     },
+    async keys() {
+        return [...stores.keys()];
+    },
     async match(request: Request, options: { cacheName: string }) {
         return stores.get(options.cacheName)?.match(request);
     },
 };
 
+const PREFIX = 'bb-previous-build-';
 const at = (path: string) => new URL(path, self.location.origin).href;
 
 async function cache(name: string, paths: string[]) {
@@ -77,10 +81,6 @@ function buildRoute(): BuildRoute {
     return route as unknown as BuildRoute;
 }
 
-function openTabs(count: number) {
-    Object.defineProperty(self, 'clients', { value: { matchAll: vi.fn(async () => Array.from({ length: count }, () => ({}))) }, configurable: true });
-}
-
 describe('sw', () => {
     // This version's files, as the build injects them.
     const manifest = [
@@ -97,7 +97,6 @@ describe('sw', () => {
         vi.stubGlobal('FetchEvent', class extends Event {});
         vi.stubGlobal('ExtendableEvent', class extends Event {});
         Object.assign(self, { __WB_MANIFEST: manifest });
-        openTabs(0);
     });
 
     it('OFF-002 precaches the build plus the shell, and answers app navigations with the shell', async () => {
@@ -121,76 +120,100 @@ describe('sw', () => {
         expect(skipWaiting).toHaveBeenCalled();
     });
 
+    // The copies on the device, oldest first, as name: [paths].
+    function copies(): Record<string, string[]> {
+        return Object.fromEntries(
+            [...stores.entries()]
+                .filter(([name]) => name.startsWith(PREFIX))
+                .sort(([a], [b]) => Number(a.slice(PREFIX.length)) - Number(b.slice(PREFIX.length)))
+                .map(([name, store]) => [name, [...store.entries.keys()].map((url) => new URL(url).pathname + new URL(url).search).sort()]),
+        );
+    }
+
     it('PWA-035 installing a new version keeps a copy of the build it replaces', async () => {
-        const { PREVIOUS_BUILD } = await import('./sw');
-        await cache(PREVIOUS_BUILD, ['/build/assets/older-a.js']);
+        await import('./sw');
         // Workbox's own install step may already have added this version's files.
         await cache('precache', ['/build/assets/main-old.js', '/build/assets/main-old.css', '/build/assets/main-new.js', '/icons/icon-192.png', '/?__WB_REVISION__=1']);
 
         await install();
 
-        expect([...stores.get(PREVIOUS_BUILD)!.entries.keys()].sort()).toEqual([at('/build/assets/main-old.css'), at('/build/assets/main-old.js')]);
-        expect(await (await fakeCaches.match(new Request(at('/build/assets/main-old.js')), { cacheName: PREVIOUS_BUILD }))!.text()).toBe(
-            'precache /build/assets/main-old.js',
-        );
+        expect(Object.values(copies())).toEqual([['/build/assets/main-old.css', '/build/assets/main-old.js']]);
+        const [name] = Object.keys(copies());
+        expect(await (await fakeCaches.match(new Request(at('/build/assets/main-old.js')), { cacheName: name! }))!.text()).toBe('precache /build/assets/main-old.js');
     });
 
-    it('PWA-035 with a tab open, an install adds to the earlier copy, so a tab held through two deploys keeps its files', async () => {
-        const { PREVIOUS_BUILD } = await import('./sw');
-        openTabs(1);
-        // Tab A runs v1 (in the copy); v2 is the precache being replaced by this version.
-        await cache(PREVIOUS_BUILD, ['/build/assets/main-v1.js']);
-        await cache('precache', ['/build/assets/main-v2.js', '/build/assets/main-new.js']);
+    it('PWA-035 keeps the newest two builds, so a tab held through two deploys keeps its files and the copies stay bounded', async () => {
+        const { KEPT_BUILDS } = await import('./sw');
+        expect(KEPT_BUILDS).toBe(2);
+
+        for (const [n, old] of ['v1', 'v2', 'v3'].entries()) {
+            vi.spyOn(Date, 'now').mockReturnValue(1000 + n);
+            stores.delete('precache');
+            await cache('precache', [`/build/assets/main-${old}.js`, '/build/assets/main-new.js']);
+            await install();
+        }
+
+        expect(Object.values(copies())).toEqual([['/build/assets/main-v2.js'], ['/build/assets/main-v3.js']]);
+        vi.restoreAllMocks();
+    });
+
+    it('PWA-035 a revisioned build file is still recognised by its plain URL, and copied under it', async () => {
+        Object.assign(self, { __WB_MANIFEST: [{ url: 'build/assets/main-new.js', revision: 'n1' }] });
+        await import('./sw');
+        await cache('precache', ['/build/assets/main-old.js?__WB_REVISION__=o1', '/build/assets/main-new.js?__WB_REVISION__=n1']);
 
         await install();
 
-        expect([...stores.get(PREVIOUS_BUILD)!.entries.keys()].sort()).toEqual([at('/build/assets/main-v1.js'), at('/build/assets/main-v2.js')]);
-        expect((self as unknown as ServiceWorkerGlobalScope).clients.matchAll).toHaveBeenCalledWith({ type: 'window', includeUncontrolled: true });
+        expect(Object.values(copies())).toEqual([['/build/assets/main-old.js']]);
     });
 
-    it('PWA-035 a first install, with no build to replace, keeps the copy an earlier update made', async () => {
-        const { PREVIOUS_BUILD } = await import('./sw');
-        await cache(PREVIOUS_BUILD, ['/build/assets/older-a.js']);
+    it('PWA-035 a first install, with no build to replace, keeps the copies earlier updates made', async () => {
+        await import('./sw');
+        await cache(`${PREFIX}1`, ['/build/assets/older-a.js']);
         await cache('precache', ['/build/assets/main-new.js']);
 
         await install();
 
-        expect([...stores.get(PREVIOUS_BUILD)!.entries.keys()]).toEqual([at('/build/assets/older-a.js')]);
+        expect(copies()).toEqual({ [`${PREFIX}1`]: ['/build/assets/older-a.js'] });
     });
 
-    it('PWA-035 a copy that fails halfway never fails the install, and leaves the earlier copy to serve', async () => {
-        const { PREVIOUS_BUILD } = await import('./sw');
+    it('PWA-035 a copy that fails halfway never fails the install, and leaves the earlier copies to serve', async () => {
+        await import('./sw');
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-        await cache(PREVIOUS_BUILD, ['/build/assets/older-a.js']);
+        await cache(`${PREFIX}1`, ['/build/assets/older-a.js']);
+        await cache(`${PREFIX}2`, ['/build/assets/older-b.js']);
         await cache('precache', ['/build/assets/main-old.js']);
-        vi.spyOn(stores.get(PREVIOUS_BUILD)!, 'put').mockRejectedValue(new DOMException('full', 'QuotaExceededError'));
+        vi.spyOn(FakeCache.prototype, 'put').mockRejectedValue(new DOMException('full', 'QuotaExceededError'));
 
         await expect(install()).resolves.toBeUndefined();
 
         expect(error).toHaveBeenCalledWith('The previous build was not kept', expect.any(DOMException));
-        expect([...stores.get(PREVIOUS_BUILD)!.entries.keys()]).toEqual([at('/build/assets/older-a.js')]);
-        error.mockRestore();
+        expect(copies()[`${PREFIX}1`]).toEqual(['/build/assets/older-a.js']);
+        expect(copies()[`${PREFIX}2`]).toEqual(['/build/assets/older-b.js']);
+        vi.restoreAllMocks();
     });
 
-    it('PWA-035 a tab still on the old build gets its files from that copy, online or not', async () => {
-        const { PREVIOUS_BUILD } = await import('./sw');
-        await cache(PREVIOUS_BUILD, ['/build/assets/main-old.js']);
+    it('PWA-035 a tab still on an old build gets its files from the newest copy that has them, online or not', async () => {
+        await import('./sw');
+        await cache(`${PREFIX}1`, ['/build/assets/main-v1.js', '/build/assets/shared.js']);
+        await cache(`${PREFIX}2`, ['/build/assets/main-v2.js', '/build/assets/shared.js']);
         const network = vi.fn(async () => new Response('network'));
         vi.stubGlobal('fetch', network);
         const route = buildRoute();
         const [matches] = route;
 
-        expect(matches({ url: new URL(at('/build/assets/main-old.js')) })).toBe(true);
+        expect(matches({ url: new URL(at('/build/assets/main-v1.js')) })).toBe(true);
         expect(matches({ url: new URL(at('/icons/icon-192.png')) })).toBe(false);
-        expect(matches({ url: new URL('https://elsewhere.test/build/assets/main-old.js') })).toBe(false);
+        expect(matches({ url: new URL('https://elsewhere.test/build/assets/main-v1.js') })).toBe(false);
 
-        expect(await (await answer(route, '/build/assets/main-old.js')).text()).toBe(`${PREVIOUS_BUILD} /build/assets/main-old.js`);
+        expect(await (await answer(route, '/build/assets/main-v1.js')).text()).toBe(`${PREFIX}1 /build/assets/main-v1.js`);
+        expect(await (await answer(route, '/build/assets/shared.js')).text()).toBe(`${PREFIX}2 /build/assets/shared.js`);
         expect(network).not.toHaveBeenCalled();
 
         expect(await (await answer(route, '/build/assets/unknown.js')).text()).toBe('network');
         expect(network).toHaveBeenCalledTimes(1);
-        // The copy holds only the replaced build; a network answer is not added to it.
-        expect([...stores.get(PREVIOUS_BUILD)!.entries.keys()]).toEqual([at('/build/assets/main-old.js')]);
+        // A network answer is not added to any copy.
+        expect(Object.values(copies()).flat()).not.toContain('/build/assets/unknown.js');
     });
 
     it('PWA-035 the route for old build files comes after the precache and the shell, so it never shadows them', async () => {

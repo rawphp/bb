@@ -5,7 +5,8 @@ import { anySheetOpen } from '../design/openSheets';
 // Quiet updates (PWA-035). A new version installs in the background and waits.
 // The banner offers it; only a tap reloads, and only the tab that was tapped.
 // The banner stays away while any BottomSheet is open, and while a hold is open:
-// the workout view (V_WO1) is to call holdUpdates() for the length of a workout.
+// the workout view (V_WO1) is to call holdUpdates() for the length of a workout
+// (pwaWiring.test.ts fails once WorkoutView.vue exists without the call).
 
 let workbox: Workbox | null = null;
 let registration: ServiceWorkerRegistration | undefined;

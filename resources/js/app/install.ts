@@ -8,7 +8,7 @@ import { now } from './clock';
 // V_TODAY1) wires both halves in the same change: listenForInstall() in main.ts at
 // start-up, and offerInstall() from a tap once the user is through onboarding, since
 // Chrome shows its prompt only on a user gesture. Until then Chrome's own install
-// mini-infobar is left alone.
+// mini-infobar is left alone. pwaWiring.test.ts enforces both directions.
 
 type InstallPromptEvent = Event & {
     prompt(): Promise<void>;

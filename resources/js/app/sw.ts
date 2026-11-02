@@ -2,7 +2,6 @@
 import { cacheNames } from 'workbox-core';
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
-import { CacheFirst } from 'workbox-strategies';
 import { listenForPush } from '../features/notifications/serviceWorker';
 import { SERVER_PATHS, SHELL_URL, shellEntry } from './shell';
 
@@ -22,39 +21,66 @@ self.addEventListener('message', (event) => {
 // the old build from the precache. A tab still running the old build (held mid-workout,
 // say) would then fail to load its next chunk. So installing a version first keeps a copy
 // of the build files it replaces, and a request for a file the precache no longer has is
-// answered from that copy, online or not.
-export const PREVIOUS_BUILD = 'bb-previous-build';
+// answered from a copy, online or not.
+//
+// Each install's copy is its own cache, named by when it was made, and only the newest
+// KEPT_BUILDS stay: a tab held through two deploys still finds its files, and the copies
+// never grow past two builds however many deploys a device sees.
+export const PREVIOUS_BUILD_PREFIX = 'bb-previous-build-';
+export const KEPT_BUILDS = 2;
 
 self.addEventListener('install', (event) => event.waitUntil(keepPreviousBuild()));
 
 // Runs beside Workbox's own install step, which adds this version's files to the same
-// precache, so it copies only the files this version's manifest does not list, adding them
-// to any earlier copy. A failed
+// precache, so it copies only the files this version's manifest does not list. A failed
 // copy is logged and never fails the install: the update matters more than the copy.
 async function keepPreviousBuild(): Promise<void> {
     try {
         const current = new Set(manifest.map((entry) => new URL(typeof entry === 'string' ? entry : entry.url, self.location.href).href));
         const precache = await caches.open(cacheNames.precache);
-        const replaced = (await precache.keys()).filter((request) => isBuildFile(new URL(request.url)) && !current.has(request.url));
-        // Nothing replaced (a first install, or a rebuild of the same files): keep the copy an earlier update made.
+        const replaced = (await precache.keys()).filter((request) => {
+            const url = plainUrl(request);
+            return isBuildFile(new URL(url)) && !current.has(url);
+        });
+        // Nothing replaced (a first install, or a rebuild of the same files): keep the copies earlier updates made.
         if (replaced.length === 0) return;
 
-        // Add the new copy before dropping the old one, so a failure halfway leaves files to serve.
-        const previous = await caches.open(PREVIOUS_BUILD);
+        // Make the new copy before dropping old ones, so a failure halfway leaves files to serve.
+        const copy = await caches.open(`${PREVIOUS_BUILD_PREFIX}${Date.now()}`);
         for (const request of replaced) {
             const response = await precache.match(request);
-            if (response) await previous.put(request, response);
+            if (response) await copy.put(new Request(plainUrl(request)), response);
         }
-        // An open tab may still run a build older than the one replaced now (held through two
-        // deploys, say), so earlier copies go only when no tab is open to need them.
-        if ((await self.clients.matchAll({ type: 'window', includeUncontrolled: true })).length > 0) return;
-        const kept = new Set(replaced.map((request) => request.url));
-        for (const request of await previous.keys()) {
-            if (!kept.has(request.url)) await previous.delete(request);
-        }
+        for (const name of (await previousBuilds()).slice(KEPT_BUILDS)) await caches.delete(name);
     } catch (error) {
         console.error('The previous build was not kept', error);
     }
+}
+
+// The copies, newest first.
+async function previousBuilds(): Promise<string[]> {
+    const stamp = (name: string) => Number(name.slice(PREVIOUS_BUILD_PREFIX.length));
+
+    return (await caches.keys()).filter((name) => name.startsWith(PREVIOUS_BUILD_PREFIX)).sort((a, b) => stamp(b) - stamp(a));
+}
+
+// The URL a page asks for. Workbox keys a revisioned file as url?__WB_REVISION__=…; build
+// files are keyed plain (vite.config.ts, dontCacheBustURLsMatching), but either matches.
+function plainUrl(request: Request): string {
+    const url = new URL(request.url);
+    url.searchParams.delete('__WB_REVISION__');
+
+    return url.href;
+}
+
+// The newest copy that has the file answers, then the network; what the network sends is never kept.
+async function fromPreviousBuild({ request }: { request: Request }): Promise<Response> {
+    for (const name of await previousBuilds()) {
+        const response = await (await caches.open(name)).match(request);
+        if (response) return response;
+    }
+
+    return fetch(request);
 }
 
 function isBuildFile(url: URL): boolean {
@@ -65,7 +91,6 @@ cleanupOutdatedCaches();
 precacheAndRoute([...manifest, shellEntry(manifest)]);
 registerRoute(new NavigationRoute(createHandlerBoundToURL(SHELL_URL), { denylist: [SERVER_PATHS] }));
 // After the precache's own route, so it sees only build files the current version does not have.
-// The copy answers first, then the network; what the network sends is never added to the copy.
-registerRoute(({ url }) => isBuildFile(url), new CacheFirst({ cacheName: PREVIOUS_BUILD, plugins: [{ cacheWillUpdate: async () => null }] }));
+registerRoute(({ url }) => isBuildFile(url), { handle: fromPreviousBuild });
 
 listenForPush(self);
