@@ -1,0 +1,49 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "set_id": {
+            "type": "string"
+        },
+        "weight": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "value": {
+                    "type": "number"
+                },
+                "unit": {
+                    "type": "string",
+                    "enum": [
+                        "kg",
+                        "lb"
+                    ]
+                }
+            },
+            "required": [
+                "value",
+                "unit"
+            ]
+        },
+        "reps": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 0
+        },
+        "is_logged": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "set_id",
+        "is_logged",
+        "weight",
+        "reps"
+    ]
+}

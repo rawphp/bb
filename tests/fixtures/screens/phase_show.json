@@ -1,0 +1,199 @@
+{
+    "id": "01JB8Q2V6N3XKZ4M5P7R9T1W2A",
+    "type": "fatLoss",
+    "title": "Fat loss",
+    "dates_text": "31 Aug – 22 Nov",
+    "progress": 0.5,
+    "progress_text": "Week 7 of 12",
+    "length_text": "12 weeks",
+    "rate_text": "Lose 0.75% a week",
+    "start_weight_text": "90.0 kg",
+    "target_weight_text": "83.2 kg",
+    "current_weight_text": "86.5 kg",
+    "change_text": "-3.5 kg",
+    "event_date": null,
+    "event_text": null,
+    "warnings": [],
+    "event_offer": null,
+    "can_end": true,
+    "lengths": [
+        {
+            "weeks": 10,
+            "label": "10 weeks",
+            "ends_text": "Ends 8 Nov",
+            "is_selected": false,
+            "warnings": [],
+            "mesocycles": [],
+            "fixes": [
+                {
+                    "fix": "change_mesocycle_length",
+                    "text": "Shorten Meso 2 to 4 weeks so its deload is the last week"
+                },
+                {
+                    "fix": "keep_end",
+                    "text": "Keep 8 Nov as the end"
+                }
+            ]
+        },
+        {
+            "weeks": 11,
+            "label": "11 weeks",
+            "ends_text": "Ends 15 Nov",
+            "is_selected": false,
+            "warnings": [],
+            "mesocycles": [],
+            "fixes": [
+                {
+                    "fix": "move_end_to_deload",
+                    "text": "End the phase after the deload on 22 Nov"
+                },
+                {
+                    "fix": "change_mesocycle_length",
+                    "text": "Shorten Meso 2 to 5 weeks so its deload is the last week"
+                },
+                {
+                    "fix": "keep_end",
+                    "text": "Keep 15 Nov as the end"
+                }
+            ]
+        },
+        {
+            "weeks": 12,
+            "label": "12 weeks",
+            "ends_text": "Ends 22 Nov",
+            "is_selected": true,
+            "warnings": [],
+            "mesocycles": [],
+            "fixes": []
+        },
+        {
+            "weeks": 16,
+            "label": "16 weeks",
+            "ends_text": "Ends 20 Dec",
+            "is_selected": false,
+            "warnings": [
+                {
+                    "text": "Fat loss over 12 weeks is a long diet. Consider a shorter phase.",
+                    "tone": "warning"
+                }
+            ],
+            "mesocycles": [],
+            "fixes": [
+                {
+                    "fix": "change_mesocycle_length",
+                    "text": "Lengthen Meso 2 to 8 weeks so its deload is the last week"
+                },
+                {
+                    "fix": "keep_end",
+                    "text": "Keep 20 Dec as the end"
+                }
+            ]
+        }
+    ],
+    "goals": [
+        {
+            "type": "maintenance",
+            "title": "Maintenance",
+            "from_text": "From 19 Oct",
+            "length_text": "5 weeks",
+            "rate_text": "Hold weight",
+            "refusal": null,
+            "warnings": [],
+            "training_lines": [
+                {
+                    "text": "All muscles Maintain"
+                },
+                {
+                    "text": "Volume starts at maintenance volume (MV)"
+                },
+                {
+                    "text": "Volume ceiling: maintenance volume (MV)"
+                },
+                {
+                    "text": "No sets added from week to week"
+                },
+                {
+                    "text": "Loads are held"
+                },
+                {
+                    "text": "Each muscle at least 1x a week"
+                },
+                {
+                    "text": "Deload weeks at maintenance calories"
+                }
+            ],
+            "progression_text": "Meso 2 follows Maintenance progression from week 2."
+        },
+        {
+            "type": "muscleGain",
+            "title": "Muscle gain",
+            "from_text": "From 19 Oct",
+            "length_text": "5 weeks",
+            "rate_text": "Gain 0.375% a week",
+            "refusal": "A Muscle gain phase must run at least 8 weeks.",
+            "warnings": [
+                {
+                    "text": "A surplus with a low-volume plan wastes the phase.",
+                    "tone": "warning"
+                }
+            ],
+            "training_lines": [
+                {
+                    "text": "Up to 2 muscles Emphasize, the rest Grow or Maintain"
+                },
+                {
+                    "text": "Volume starts at MEV -1 sets"
+                },
+                {
+                    "text": "Volume ceiling: MRV +2 sets"
+                },
+                {
+                    "text": "Up to 2 sets added per session each week"
+                },
+                {
+                    "text": "Loads go up 2% a week"
+                },
+                {
+                    "text": "Each muscle at least 2x a week"
+                },
+                {
+                    "text": "Deload weeks at maintenance calories"
+                }
+            ],
+            "progression_text": "Meso 2 follows Muscle gain progression from week 2."
+        },
+        {
+            "type": "miniCut",
+            "title": "Mini-cut",
+            "from_text": "From 19 Oct",
+            "length_text": "5 weeks",
+            "rate_text": "Lose 1% a week",
+            "refusal": null,
+            "warnings": [],
+            "training_lines": [
+                {
+                    "text": "All muscles Emphasize"
+                },
+                {
+                    "text": "Volume starts at MEV sets"
+                },
+                {
+                    "text": "Volume ceiling: MEV +2 sets"
+                },
+                {
+                    "text": "Up to 1 set added per session each week"
+                },
+                {
+                    "text": "Loads go up 1% a week"
+                },
+                {
+                    "text": "Each muscle at least 2x a week"
+                },
+                {
+                    "text": "Deload weeks at maintenance calories"
+                }
+            ],
+            "progression_text": "Meso 2 follows Mini-cut progression from week 2."
+        }
+    ]
+}

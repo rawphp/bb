@@ -1,0 +1,91 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "title": {
+            "type": "string"
+        },
+        "subtitle": {
+            "type": "string"
+        },
+        "best": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ],
+            "description": "The pill shown beside each set marked is_best."
+        },
+        "sessions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "date_label": {
+                        "type": "string"
+                    },
+                    "best_label": {
+                        "type": "string",
+                        "description": "\"Best e1RM 76.0 kg\"."
+                    },
+                    "sets": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "label": {
+                                    "type": "string"
+                                },
+                                "is_best": {
+                                    "type": "boolean",
+                                    "description": "The first set that reached the session's best estimated 1RM; it shows the `best` pill."
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "label",
+                                "is_best"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "date_label",
+                    "best_label",
+                    "sets"
+                ]
+            }
+        }
+    },
+    "required": [
+        "title",
+        "subtitle",
+        "best",
+        "sessions"
+    ]
+}

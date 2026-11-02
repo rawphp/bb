@@ -1,0 +1,989 @@
+{
+    "workout_id": "01JB8W3Q000000000000000901",
+    "mesocycle_id": "01JB8W3Q000000000000000900",
+    "title": "Week 3 · Day 1 · Upper A · Mon 28 Sep",
+    "day_label": "Upper A",
+    "status": "in_progress",
+    "is_editable": true,
+    "active_bar_text": "Upper A · 1 of 2 exercises",
+    "weight_unit": "kg",
+    "deload_banner": null,
+    "feedback_banner": {
+        "text": "Your feedback is required",
+        "tone": "warning"
+    },
+    "can_finish": false,
+    "next_meal": "Next: Meal 3 at 7:00 PM · 95 g carbs",
+    "warm_up": null,
+    "rir_info": {
+        "title": "Reps in reserve",
+        "body": "This week's target is 2 RIR: stop each set with 2 reps left in the tank.",
+        "article": "rir"
+    },
+    "exercises": [
+        {
+            "id": "01JB8W3Q000000000000000010",
+            "exercise_id": "01JB8W3Q000000000000000101",
+            "name": "Bench Press",
+            "detail": "Barbell · 5–10 reps",
+            "muscle_group": "chest",
+            "weight_label": "Weight (kg)",
+            "pinned_note": null,
+            "session_note": null,
+            "recovery_note": {
+                "text": "Chest missed its rep targets 2 sessions running. Hold sets and repeat the weight to recover.",
+                "tone": "neutral"
+            },
+            "swap_suggestion": null,
+            "carries_first_weight": false,
+            "can_move_up": false,
+            "can_move_down": true,
+            "sets": [
+                {
+                    "id": "01JB8W3Q000000000000000100",
+                    "number": 1,
+                    "set_type": "regular_straight",
+                    "badge": null,
+                    "weight": {
+                        "value": 80.0,
+                        "unit": "kg",
+                        "text": "80 kg"
+                    },
+                    "reps": 10,
+                    "target_weight": {
+                        "value": 80.0,
+                        "unit": "kg",
+                        "text": "80 kg"
+                    },
+                    "target_text": "80 kg × 10",
+                    "reps_placeholder": "2 RIR",
+                    "rep_table": [
+                        {
+                            "weight": {
+                                "value": 70.0,
+                                "unit": "kg",
+                                "text": "70 kg"
+                            },
+                            "reps": 16
+                        },
+                        {
+                            "weight": {
+                                "value": 72.5,
+                                "unit": "kg",
+                                "text": "72.5 kg"
+                            },
+                            "reps": 14
+                        },
+                        {
+                            "weight": {
+                                "value": 75.0,
+                                "unit": "kg",
+                                "text": "75 kg"
+                            },
+                            "reps": 12
+                        },
+                        {
+                            "weight": {
+                                "value": 77.5,
+                                "unit": "kg",
+                                "text": "77.5 kg"
+                            },
+                            "reps": 11
+                        },
+                        {
+                            "weight": {
+                                "value": 80.0,
+                                "unit": "kg",
+                                "text": "80 kg"
+                            },
+                            "reps": 10
+                        },
+                        {
+                            "weight": {
+                                "value": 82.5,
+                                "unit": "kg",
+                                "text": "82.5 kg"
+                            },
+                            "reps": 8
+                        },
+                        {
+                            "weight": {
+                                "value": 85.0,
+                                "unit": "kg",
+                                "text": "85 kg"
+                            },
+                            "reps": 7
+                        },
+                        {
+                            "weight": {
+                                "value": 87.5,
+                                "unit": "kg",
+                                "text": "87.5 kg"
+                            },
+                            "reps": 6
+                        },
+                        {
+                            "weight": {
+                                "value": 90.0,
+                                "unit": "kg",
+                                "text": "90 kg"
+                            },
+                            "reps": 5
+                        }
+                    ],
+                    "off_table_text": "2 RIR, just log reps",
+                    "is_logged": true,
+                    "is_skipped": false
+                },
+                {
+                    "id": "01JB8W3Q000000000000000101",
+                    "number": 2,
+                    "set_type": "regular_straight",
+                    "badge": null,
+                    "weight": {
+                        "value": 80.0,
+                        "unit": "kg",
+                        "text": "80 kg"
+                    },
+                    "reps": 8,
+                    "target_weight": {
+                        "value": 80.0,
+                        "unit": "kg",
+                        "text": "80 kg"
+                    },
+                    "target_text": "80 kg × 9",
+                    "reps_placeholder": "2 RIR",
+                    "rep_table": [
+                        {
+                            "weight": {
+                                "value": 70.0,
+                                "unit": "kg",
+                                "text": "70 kg"
+                            },
+                            "reps": 14
+                        },
+                        {
+                            "weight": {
+                                "value": 72.5,
+                                "unit": "kg",
+                                "text": "72.5 kg"
+                            },
+                            "reps": 13
+                        },
+                        {
+                            "weight": {
+                                "value": 75.0,
+                                "unit": "kg",
+                                "text": "75 kg"
+                            },
+                            "reps": 11
+                        },
+                        {
+                            "weight": {
+                                "value": 77.5,
+                                "unit": "kg",
+                                "text": "77.5 kg"
+                            },
+                            "reps": 10
+                        },
+                        {
+                            "weight": {
+                                "value": 80.0,
+                                "unit": "kg",
+                                "text": "80 kg"
+                            },
+                            "reps": 9
+                        },
+                        {
+                            "weight": {
+                                "value": 82.5,
+                                "unit": "kg",
+                                "text": "82.5 kg"
+                            },
+                            "reps": 7
+                        },
+                        {
+                            "weight": {
+                                "value": 85.0,
+                                "unit": "kg",
+                                "text": "85 kg"
+                            },
+                            "reps": 6
+                        },
+                        {
+                            "weight": {
+                                "value": 87.5,
+                                "unit": "kg",
+                                "text": "87.5 kg"
+                            },
+                            "reps": 5
+                        },
+                        {
+                            "weight": {
+                                "value": 90.0,
+                                "unit": "kg",
+                                "text": "90 kg"
+                            },
+                            "reps": 4
+                        }
+                    ],
+                    "off_table_text": "2 RIR, just log reps",
+                    "is_logged": true,
+                    "is_skipped": false
+                },
+                {
+                    "id": "01JB8W3Q000000000000000102",
+                    "number": 3,
+                    "set_type": "regular_straight",
+                    "badge": null,
+                    "weight": {
+                        "value": 80.0,
+                        "unit": "kg",
+                        "text": "80 kg"
+                    },
+                    "reps": 8,
+                    "target_weight": {
+                        "value": 80.0,
+                        "unit": "kg",
+                        "text": "80 kg"
+                    },
+                    "target_text": "80 kg × 8",
+                    "reps_placeholder": "2 RIR",
+                    "rep_table": [
+                        {
+                            "weight": {
+                                "value": 70.0,
+                                "unit": "kg",
+                                "text": "70 kg"
+                            },
+                            "reps": 13
+                        },
+                        {
+                            "weight": {
+                                "value": 72.5,
+                                "unit": "kg",
+                                "text": "72.5 kg"
+                            },
+                            "reps": 12
+                        },
+                        {
+                            "weight": {
+                                "value": 75.0,
+                                "unit": "kg",
+                                "text": "75 kg"
+                            },
+                            "reps": 10
+                        },
+                        {
+                            "weight": {
+                                "value": 77.5,
+                                "unit": "kg",
+                                "text": "77.5 kg"
+                            },
+                            "reps": 9
+                        },
+                        {
+                            "weight": {
+                                "value": 80.0,
+                                "unit": "kg",
+                                "text": "80 kg"
+                            },
+                            "reps": 8
+                        },
+                        {
+                            "weight": {
+                                "value": 82.5,
+                                "unit": "kg",
+                                "text": "82.5 kg"
+                            },
+                            "reps": 6
+                        },
+                        {
+                            "weight": {
+                                "value": 85.0,
+                                "unit": "kg",
+                                "text": "85 kg"
+                            },
+                            "reps": 5
+                        },
+                        {
+                            "weight": {
+                                "value": 87.5,
+                                "unit": "kg",
+                                "text": "87.5 kg"
+                            },
+                            "reps": 4
+                        },
+                        {
+                            "weight": {
+                                "value": 90.0,
+                                "unit": "kg",
+                                "text": "90 kg"
+                            },
+                            "reps": 3
+                        }
+                    ],
+                    "off_table_text": "2 RIR, just log reps",
+                    "is_logged": true,
+                    "is_skipped": false
+                }
+            ]
+        },
+        {
+            "id": "01JB8W3Q000000000000000011",
+            "exercise_id": "01JB8W3Q000000000000000102",
+            "name": "Barbell Row",
+            "detail": "Barbell · 5–10 reps",
+            "muscle_group": "back",
+            "weight_label": "Weight (kg)",
+            "pinned_note": "Chest up, pull to the belly button",
+            "session_note": "Superset with face pulls",
+            "recovery_note": null,
+            "swap_suggestion": {
+                "text": "Barbell Row hurt 2 sessions running. Consider swapping it.",
+                "tone": "warning"
+            },
+            "carries_first_weight": false,
+            "can_move_up": true,
+            "can_move_down": false,
+            "sets": [
+                {
+                    "id": "01JB8W3Q000000000000000110",
+                    "number": 1,
+                    "set_type": "regular_straight",
+                    "badge": null,
+                    "weight": {
+                        "value": 62.5,
+                        "unit": "kg",
+                        "text": "62.5 kg"
+                    },
+                    "reps": 7,
+                    "target_weight": {
+                        "value": 62.5,
+                        "unit": "kg",
+                        "text": "62.5 kg"
+                    },
+                    "target_text": "62.5 kg × 7",
+                    "reps_placeholder": "2 RIR",
+                    "rep_table": [
+                        {
+                            "weight": {
+                                "value": 55.0,
+                                "unit": "kg",
+                                "text": "55 kg"
+                            },
+                            "reps": 12
+                        },
+                        {
+                            "weight": {
+                                "value": 57.5,
+                                "unit": "kg",
+                                "text": "57.5 kg"
+                            },
+                            "reps": 10
+                        },
+                        {
+                            "weight": {
+                                "value": 60.0,
+                                "unit": "kg",
+                                "text": "60 kg"
+                            },
+                            "reps": 8
+                        },
+                        {
+                            "weight": {
+                                "value": 62.5,
+                                "unit": "kg",
+                                "text": "62.5 kg"
+                            },
+                            "reps": 7
+                        },
+                        {
+                            "weight": {
+                                "value": 65.0,
+                                "unit": "kg",
+                                "text": "65 kg"
+                            },
+                            "reps": 5
+                        },
+                        {
+                            "weight": {
+                                "value": 67.5,
+                                "unit": "kg",
+                                "text": "67.5 kg"
+                            },
+                            "reps": 4
+                        },
+                        {
+                            "weight": {
+                                "value": 70.0,
+                                "unit": "kg",
+                                "text": "70 kg"
+                            },
+                            "reps": 2
+                        }
+                    ],
+                    "off_table_text": "2 RIR, just log reps",
+                    "is_logged": false,
+                    "is_skipped": false
+                },
+                {
+                    "id": "01JB8W3Q000000000000000111",
+                    "number": 2,
+                    "set_type": "regular_straight",
+                    "badge": null,
+                    "weight": {
+                        "value": 62.5,
+                        "unit": "kg",
+                        "text": "62.5 kg"
+                    },
+                    "reps": 6,
+                    "target_weight": {
+                        "value": 62.5,
+                        "unit": "kg",
+                        "text": "62.5 kg"
+                    },
+                    "target_text": "62.5 kg × 6",
+                    "reps_placeholder": "2 RIR",
+                    "rep_table": [
+                        {
+                            "weight": {
+                                "value": 55.0,
+                                "unit": "kg",
+                                "text": "55 kg"
+                            },
+                            "reps": 11
+                        },
+                        {
+                            "weight": {
+                                "value": 57.5,
+                                "unit": "kg",
+                                "text": "57.5 kg"
+                            },
+                            "reps": 9
+                        },
+                        {
+                            "weight": {
+                                "value": 60.0,
+                                "unit": "kg",
+                                "text": "60 kg"
+                            },
+                            "reps": 7
+                        },
+                        {
+                            "weight": {
+                                "value": 62.5,
+                                "unit": "kg",
+                                "text": "62.5 kg"
+                            },
+                            "reps": 6
+                        },
+                        {
+                            "weight": {
+                                "value": 65.0,
+                                "unit": "kg",
+                                "text": "65 kg"
+                            },
+                            "reps": 4
+                        },
+                        {
+                            "weight": {
+                                "value": 67.5,
+                                "unit": "kg",
+                                "text": "67.5 kg"
+                            },
+                            "reps": 3
+                        },
+                        {
+                            "weight": {
+                                "value": 70.0,
+                                "unit": "kg",
+                                "text": "70 kg"
+                            },
+                            "reps": 1
+                        }
+                    ],
+                    "off_table_text": "2 RIR, just log reps",
+                    "is_logged": false,
+                    "is_skipped": false
+                },
+                {
+                    "id": "01JB8W3Q000000000000000112",
+                    "number": 3,
+                    "set_type": "regular_straight",
+                    "badge": null,
+                    "weight": {
+                        "value": 62.5,
+                        "unit": "kg",
+                        "text": "62.5 kg"
+                    },
+                    "reps": 5,
+                    "target_weight": {
+                        "value": 62.5,
+                        "unit": "kg",
+                        "text": "62.5 kg"
+                    },
+                    "target_text": "62.5 kg × 5",
+                    "reps_placeholder": "2 RIR",
+                    "rep_table": [
+                        {
+                            "weight": {
+                                "value": 55.0,
+                                "unit": "kg",
+                                "text": "55 kg"
+                            },
+                            "reps": 10
+                        },
+                        {
+                            "weight": {
+                                "value": 57.5,
+                                "unit": "kg",
+                                "text": "57.5 kg"
+                            },
+                            "reps": 8
+                        },
+                        {
+                            "weight": {
+                                "value": 60.0,
+                                "unit": "kg",
+                                "text": "60 kg"
+                            },
+                            "reps": 6
+                        },
+                        {
+                            "weight": {
+                                "value": 62.5,
+                                "unit": "kg",
+                                "text": "62.5 kg"
+                            },
+                            "reps": 5
+                        },
+                        {
+                            "weight": {
+                                "value": 65.0,
+                                "unit": "kg",
+                                "text": "65 kg"
+                            },
+                            "reps": 3
+                        },
+                        {
+                            "weight": {
+                                "value": 67.5,
+                                "unit": "kg",
+                                "text": "67.5 kg"
+                            },
+                            "reps": 2
+                        },
+                        {
+                            "weight": {
+                                "value": 70.0,
+                                "unit": "kg",
+                                "text": "70 kg"
+                            },
+                            "reps": 1
+                        }
+                    ],
+                    "off_table_text": "2 RIR, just log reps",
+                    "is_logged": false,
+                    "is_skipped": false
+                }
+            ]
+        }
+    ],
+    "feedback": [
+        {
+            "muscle_group": "chest",
+            "title": "Chest",
+            "due_after_exercise_id": "01JB8W3Q000000000000000010",
+            "is_due": true,
+            "is_answered": false,
+            "can_edit": true,
+            "questions": [
+                {
+                    "kind": "joint",
+                    "exercise_id": "01JB8W3Q000000000000000101",
+                    "text": "How did your joints feel during Bench Press?",
+                    "help": {
+                        "title": "Joint pain",
+                        "body": "Rate how the joints around this exercise felt, not how hard it was. Moderate or a lot of pain keeps sets from being added to this exercise next week, and if sets must come off a muscle they come off the exercise that hurt most.",
+                        "article": "feedback-questions"
+                    },
+                    "choices": [
+                        {
+                            "value": "none",
+                            "label": "None",
+                            "note": null
+                        },
+                        {
+                            "value": "low",
+                            "label": "Low pain",
+                            "note": null
+                        },
+                        {
+                            "value": "moderate",
+                            "label": "Moderate pain",
+                            "note": null
+                        },
+                        {
+                            "value": "aLot",
+                            "label": "A lot of pain",
+                            "note": "Stop this exercise if the pain is sharp, and see a professional if it persists."
+                        }
+                    ],
+                    "answer": "low"
+                },
+                {
+                    "kind": "soreness",
+                    "exercise_id": null,
+                    "text": "How sore did you get in your chest AFTER training them LAST TIME?",
+                    "help": {
+                        "title": "Soreness",
+                        "body": "How long the muscle took to recover after you last trained it. Never sore or healed a while ago says it can take more work next week; still sore says it needs less. It is not asked the first time you train a muscle here, or after a break of over two weeks.",
+                        "article": "feedback-questions"
+                    },
+                    "choices": [
+                        {
+                            "value": "neverGotSore",
+                            "label": "Never got sore",
+                            "note": null
+                        },
+                        {
+                            "value": "healedAWhileAgo",
+                            "label": "Healed a while ago",
+                            "note": null
+                        },
+                        {
+                            "value": "healedJustOnTime",
+                            "label": "Healed just on time",
+                            "note": null
+                        },
+                        {
+                            "value": "stillSore",
+                            "label": "I'm still sore!",
+                            "note": null
+                        }
+                    ],
+                    "answer": "healedJustOnTime"
+                },
+                {
+                    "kind": "pump",
+                    "exercise_id": null,
+                    "text": "How much of a pump did you get today in your chest?",
+                    "help": {
+                        "title": "Pump",
+                        "body": "How full and worked the muscle felt today. A low pump pushes next week's sets up; an amazing pump nudges them down.",
+                        "article": "feedback-questions"
+                    },
+                    "choices": [
+                        {
+                            "value": "low",
+                            "label": "Low pump",
+                            "note": null
+                        },
+                        {
+                            "value": "moderate",
+                            "label": "Moderate pump",
+                            "note": null
+                        },
+                        {
+                            "value": "amazing",
+                            "label": "Amazing pump",
+                            "note": null
+                        }
+                    ],
+                    "answer": null
+                },
+                {
+                    "kind": "volume",
+                    "exercise_id": null,
+                    "text": "How was the volume of work (number of hard sets) for your chest?",
+                    "help": {
+                        "title": "Volume",
+                        "body": "Was the number of hard sets right? Not enough adds sets next week, just right keeps them, pushed my limits holds them where they are, and too much takes a set off.",
+                        "article": "feedback-questions"
+                    },
+                    "choices": [
+                        {
+                            "value": "notEnough",
+                            "label": "Not enough",
+                            "note": null
+                        },
+                        {
+                            "value": "justRight",
+                            "label": "Just right",
+                            "note": null
+                        },
+                        {
+                            "value": "pushedMyLimits",
+                            "label": "Pushed my limits",
+                            "note": null
+                        },
+                        {
+                            "value": "tooMuch",
+                            "label": "Too much",
+                            "note": null
+                        }
+                    ],
+                    "answer": null
+                }
+            ]
+        },
+        {
+            "muscle_group": "back",
+            "title": "Back",
+            "due_after_exercise_id": "01JB8W3Q000000000000000011",
+            "is_due": false,
+            "is_answered": false,
+            "can_edit": true,
+            "questions": [
+                {
+                    "kind": "joint",
+                    "exercise_id": "01JB8W3Q000000000000000102",
+                    "text": "How did your joints feel during Barbell Row?",
+                    "help": {
+                        "title": "Joint pain",
+                        "body": "Rate how the joints around this exercise felt, not how hard it was. Moderate or a lot of pain keeps sets from being added to this exercise next week, and if sets must come off a muscle they come off the exercise that hurt most.",
+                        "article": "feedback-questions"
+                    },
+                    "choices": [
+                        {
+                            "value": "none",
+                            "label": "None",
+                            "note": null
+                        },
+                        {
+                            "value": "low",
+                            "label": "Low pain",
+                            "note": null
+                        },
+                        {
+                            "value": "moderate",
+                            "label": "Moderate pain",
+                            "note": null
+                        },
+                        {
+                            "value": "aLot",
+                            "label": "A lot of pain",
+                            "note": "Stop this exercise if the pain is sharp, and see a professional if it persists."
+                        }
+                    ],
+                    "answer": null
+                },
+                {
+                    "kind": "soreness",
+                    "exercise_id": null,
+                    "text": "How sore did you get in your back AFTER training them LAST TIME?",
+                    "help": {
+                        "title": "Soreness",
+                        "body": "How long the muscle took to recover after you last trained it. Never sore or healed a while ago says it can take more work next week; still sore says it needs less. It is not asked the first time you train a muscle here, or after a break of over two weeks.",
+                        "article": "feedback-questions"
+                    },
+                    "choices": [
+                        {
+                            "value": "neverGotSore",
+                            "label": "Never got sore",
+                            "note": null
+                        },
+                        {
+                            "value": "healedAWhileAgo",
+                            "label": "Healed a while ago",
+                            "note": null
+                        },
+                        {
+                            "value": "healedJustOnTime",
+                            "label": "Healed just on time",
+                            "note": null
+                        },
+                        {
+                            "value": "stillSore",
+                            "label": "I'm still sore!",
+                            "note": null
+                        }
+                    ],
+                    "answer": null
+                },
+                {
+                    "kind": "pump",
+                    "exercise_id": null,
+                    "text": "How much of a pump did you get today in your back?",
+                    "help": {
+                        "title": "Pump",
+                        "body": "How full and worked the muscle felt today. A low pump pushes next week's sets up; an amazing pump nudges them down.",
+                        "article": "feedback-questions"
+                    },
+                    "choices": [
+                        {
+                            "value": "low",
+                            "label": "Low pump",
+                            "note": null
+                        },
+                        {
+                            "value": "moderate",
+                            "label": "Moderate pump",
+                            "note": null
+                        },
+                        {
+                            "value": "amazing",
+                            "label": "Amazing pump",
+                            "note": null
+                        }
+                    ],
+                    "answer": null
+                },
+                {
+                    "kind": "volume",
+                    "exercise_id": null,
+                    "text": "How was the volume of work (number of hard sets) for your back?",
+                    "help": {
+                        "title": "Volume",
+                        "body": "Was the number of hard sets right? Not enough adds sets next week, just right keeps them, pushed my limits holds them where they are, and too much takes a set off.",
+                        "article": "feedback-questions"
+                    },
+                    "choices": [
+                        {
+                            "value": "notEnough",
+                            "label": "Not enough",
+                            "note": null
+                        },
+                        {
+                            "value": "justRight",
+                            "label": "Just right",
+                            "note": null
+                        },
+                        {
+                            "value": "pushedMyLimits",
+                            "label": "Pushed my limits",
+                            "note": null
+                        },
+                        {
+                            "value": "tooMuch",
+                            "label": "Too much",
+                            "note": null
+                        }
+                    ],
+                    "answer": null
+                }
+            ]
+        }
+    ],
+    "set_type_choices": [
+        {
+            "value": "regular_straight",
+            "label": "Regular · Straight",
+            "note": null
+        },
+        {
+            "value": "regular_down",
+            "label": "Regular · Down",
+            "note": null
+        },
+        {
+            "value": "regular_ascending",
+            "label": "Regular · Ascending",
+            "note": null
+        },
+        {
+            "value": "myorep",
+            "label": "Myorep (M)",
+            "note": "Rest 5 to 15 seconds between mini-sets, and log the total reps."
+        },
+        {
+            "value": "myorep_match",
+            "label": "Myorep match (MM)",
+            "note": "Do as many mini-sets as you need to match the first set's reps."
+        }
+    ],
+    "add_set_choices": [
+        {
+            "value": "regular_straight",
+            "label": "Regular",
+            "note": null
+        },
+        {
+            "value": "myorep",
+            "label": "Myorep (M)",
+            "note": "Rest 5 to 15 seconds between mini-sets, and log the total reps."
+        },
+        {
+            "value": "myorep_match",
+            "label": "Myorep match (MM)",
+            "note": "Do as many mini-sets as you need to match the first set's reps."
+        }
+    ],
+    "help": [
+        {
+            "title": "Resting by feel",
+            "body": "There is no rest timer. Rest until your breathing is back to normal, you feel mentally ready, no supporting muscle is cramping, and you can hit at least 3 to 5 reps. That is usually 30 seconds to 5 minutes. Paired exercises go back to back: note it on the exercise or reorder them.",
+            "article": "rest-times"
+        },
+        {
+            "title": "Warm-ups",
+            "body": "12 reps at a weight you could lift 30 or more times. 8 reps at a weight you could lift about 20 times. 4 reps at about your 10-rep max. Then your working sets, at 3 RIR. Warm-up sets are not logged.",
+            "article": "warm-ups"
+        },
+        {
+            "title": "Dumbbells and one side at a time",
+            "body": "For dumbbells, enter the weight of one dumbbell. For exercises done one side at a time, start with your weaker side, match its reps on the other side, and log one side's reps.",
+            "article": null
+        },
+        {
+            "title": "Deload week",
+            "body": "The deload is meant to feel easy. Push the 0 RIR week as hard as possible before it.",
+            "article": "deloads"
+        },
+        {
+            "title": "Training while sick",
+            "body": "Feeling unwell? Train lighter or skip the session. A missed workout costs less than a sick week.",
+            "article": "training-while-sick"
+        },
+        {
+            "title": "Training alongside a sport",
+            "body": "Training alongside a sport? Tell the app your sport days in your schedule, and expect to take sets off the muscles the sport hits hard.",
+            "article": "training-alongside-sport"
+        },
+        {
+            "title": "Long workouts",
+            "body": "Sessions running long? Answer \"Pushed my limits\" honestly in the feedback, or lower the priority of a muscle. Both cut the sets the app plans.",
+            "article": "long-workouts"
+        }
+    ],
+    "swap_advice": "Swap an exercise only for a good reason, such as pain or equipment you can't use. Changing exercises often makes your progress harder to see.",
+    "look_back": [
+        {
+            "week": 2,
+            "day": 2,
+            "title": "Week 2 · Day 2 · Lower A",
+            "status": {
+                "text": "Done",
+                "tone": "good"
+            }
+        },
+        {
+            "week": 2,
+            "day": 1,
+            "title": "Week 2 · Day 1 · Upper A",
+            "status": {
+                "text": "Done",
+                "tone": "good"
+            }
+        },
+        {
+            "week": 1,
+            "day": 2,
+            "title": "Week 1 · Day 2 · Lower A",
+            "status": {
+                "text": "Skipped",
+                "tone": "neutral"
+            }
+        },
+        {
+            "week": 1,
+            "day": 1,
+            "title": "Week 1 · Day 1 · Upper A",
+            "status": {
+                "text": "Done",
+                "tone": "good"
+            }
+        }
+    ]
+}
