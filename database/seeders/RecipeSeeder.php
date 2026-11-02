@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Model\DietFilter;
 use App\Models\Food;
 use App\Models\Recipe;
 use Illuminate\Database\Seeder;
@@ -12,7 +13,7 @@ use RuntimeException;
 /**
  * The ready-made recipe library (RCP-020) from data/recipes.php, keyed by slug. Runs after CuratedFoodSeeder
  * (name order): ingredients are curated foods only. A recipe's diet flag is true when every ingredient's is
- * (FOOD-027). Safe to re-run.
+ * (FOOD-027, DietFilter::sharedBy). Safe to re-run.
  */
 class RecipeSeeder extends Seeder
 {
@@ -28,11 +29,11 @@ class RecipeSeeder extends Seeder
                     $ingredients,
                 );
 
-                $recipe = Recipe::firstOrNew(['slug' => Str::slug($name)]);
+                // A library recipe in the data file is served again even if it was soft-deleted.
+                $recipe = Recipe::withTrashed()->firstOrNew(['slug' => Str::slug($name)]);
                 $recipe->fill(['name' => $name, 'servings' => $servings, 'meal_type' => $mealType, 'instructions' => $steps]);
-                foreach (Food::DIETS as $diet) {
-                    $recipe->{$diet} = collect($used)->every(fn (Food $food) => (bool) $food->{$diet});
-                }
+                $recipe->forceFill(['deleted_at' => null]
+                    + DietFilter::sharedBy(array_map(fn (Food $food) => $food->only(Food::DIETS), $used)));
                 $recipe->save();
 
                 $recipe->ingredients()->delete();

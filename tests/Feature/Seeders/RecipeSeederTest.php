@@ -67,6 +67,53 @@ it('RCP-020 can seed the library again without duplicating it', function () {
         ->and(DB::table('recipe_ingredients')->count())->toBe($ingredients);
 });
 
+it('RCP-020 re-seeding puts back the servings, meal type, diet flags and ingredients the data file gives', function () {
+    [$name, $mealType, $servings, $ingredients] = (require database_path('seeders/data/recipes.php'))[0];
+    $recipe = Recipe::where('name', $name)->firstOrFail();
+    $recipe->forceFill(['servings' => 99, 'meal_type' => 'snack', 'vegan' => ! $recipe->vegan])->save();
+    $recipe->ingredients()->first()->delete();
+    $recipe->ingredients()->first()->update(['grams' => 1]);
+
+    $this->seed(RecipeSeeder::class);
+
+    $recipe = Recipe::with('ingredients.food')->findOrFail($recipe->id);
+    expect($recipe->servings)->toBe((float) $servings)
+        ->and($recipe->meal_type)->toBe($mealType)
+        ->and($recipe->vegan)->toBe($recipe->ingredients->every(fn ($i) => $i->food->vegan))
+        ->and($recipe->ingredients->map(fn ($i) => [$i->food->name, $i->grams, $i->position])->all())
+        ->toBe(array_map(fn ($i, $position) => [$i[0], (float) $i[1], $position], $ingredients, array_keys($ingredients)));
+});
+
+it('RCP-020 re-seeding restores a soft-deleted library recipe instead of failing on its slug', function () {
+    $recipe = Recipe::whereNull('user_id')->firstOrFail();
+    $recipe->delete();
+    $count = Recipe::withTrashed()->count();
+
+    $this->seed(RecipeSeeder::class);
+
+    expect(Recipe::find($recipe->id))->not->toBeNull()
+        ->and(Recipe::withTrashed()->count())->toBe($count);
+});
+
+it('RCP-020 seeding fails loudly and writes nothing when a recipe names a food that is not curated', function () {
+    DB::table('recipe_ingredients')->delete();
+    Recipe::query()->forceDelete();
+    // The food a recipe past the first uses before any other, so recipes before it are written and must be rolled back.
+    $firstUse = [];
+    foreach (require database_path('seeders/data/recipes.php') as $position => $row) {
+        foreach (array_column($row[3], 0) as $food) {
+            $firstUse[$food] ??= $position;
+        }
+    }
+    $name = array_search(max($firstUse), $firstUse, true);
+    expect(max($firstUse))->toBeGreaterThan(0);
+    Food::where('source', 'curated')->where('name', $name)->update(['name' => "{$name} (renamed)"]);
+
+    expect(fn () => $this->seed(RecipeSeeder::class))->toThrow(RuntimeException::class, "uses \"{$name}\"")
+        ->and(Recipe::withTrashed()->count())->toBe(0)
+        ->and(DB::table('recipe_ingredients')->count())->toBe(0);
+});
+
 it('RCP-020 builds the library from curated foods, not other foods with the same name', function () {
     $name = (require database_path('seeders/data/recipes.php'))[0][3][0][0];
     $lookalike = Food::factory()->create(['name' => $name]);

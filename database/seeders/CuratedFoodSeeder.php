@@ -38,6 +38,8 @@ class CuratedFoodSeeder extends Seeder
                 'cooked_ratio' => $ratio,
                 'created_at' => $now,
                 'updated_at' => $now,
+                // A curated food in the data file is part of the library: re-seeding restores a soft-deleted one.
+                'deleted_at' => null,
             ] + self::flags($diets);
             $servings[$slug] = $units;
         }

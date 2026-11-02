@@ -91,6 +91,34 @@ it('FOOD-002 is idempotent', function () {
     expect(Food::count())->toBe($foods)->and(FoodServing::count())->toBe($servings);
 });
 
+it('FOOD-002 re-seeding puts back the macros, group, diet flags and servings the data file gives', function () {
+    [$name, $group, $kcal, $protein, , , , , $units] = (require database_path('seeders/data/curated_foods.php'))[0];
+    $food = Food::where('source', 'curated')->where('name', $name)->firstOrFail();
+    $food->forceFill(['kcal' => 1, 'protein' => 1, 'curated_group' => 'treats', 'vegan' => ! $food->vegan])->save();
+    $food->servings()->first()->update(['grams' => 1]);
+    $food->servings()->create(['label' => 'stale', 'grams' => 9]);
+
+    $this->seed(CuratedFoodSeeder::class);
+
+    $food = $food->fresh();
+    expect($food->kcal)->toBe((float) $kcal)
+        ->and($food->protein)->toBe((float) $protein)
+        ->and($food->curated_group)->toBe($group)
+        ->and($food->vegan)->toBeFalse()
+        ->and($food->servings->mapWithKeys(fn ($s) => [$s->label => $s->grams])->all())
+        ->toBe(array_map(fn ($grams) => (float) $grams, $units));
+});
+
+it('FOOD-002 re-seeding restores a soft-deleted curated food with its servings', function () {
+    $food = Food::where('source', 'curated')->where('name', 'Whole egg')->firstOrFail();
+    $food->delete();
+
+    $this->seed(CuratedFoodSeeder::class);
+
+    expect(Food::where('source', 'curated')->where('name', 'Whole egg')->sole()->id)->toBe($food->id)
+        ->and($food->servings()->pluck('grams', 'label')->all())->toBe(['egg' => 50.0]);
+});
+
 it('FOOD-002 is part of the default seed', function () {
     Food::query()->forceDelete();
 
@@ -126,6 +154,14 @@ it('FOOD-027 sets curated diet flags by food knowledge, not by name keywords', f
     'potato' => ['Potato', ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'vegan']],
     'sugary cereal' => ['Sugary breakfast cereal', ['dairy_free']],
     'spinach' => ['Spinach', ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'paleo', 'vegan']],
+    // Processed meats can hold a wheat binder or onion and garlic seasoning, so only dairy free is certain.
+    'pork sausage' => ['Pork sausage', ['dairy_free']],
+    'italian sausage' => ['Italian sausage', ['dairy_free']],
+    'pepperoni' => ['Pepperoni', ['dairy_free']],
+    'salami' => ['Salami', ['dairy_free']],
+    'beef hot dog' => ['Beef hot dog', ['dairy_free']],
+    'deli turkey' => ['Deli turkey', ['dairy_free']],
+    'lean ham' => ['Lean ham', ['dairy_free']],
 ]);
 
 it('FOOD-027 never contradicts itself on curated foods', function () {
