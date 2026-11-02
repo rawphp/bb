@@ -106,3 +106,22 @@ it('MESO-011 a phase fits cut, gain or maintain templates; a mini-cut is a cut',
         ->and(PhaseFit::for(PhaseType::MuscleGain))->toBe(PhaseFit::Gain)
         ->and(PhaseFit::for(PhaseType::Maintenance))->toBe(PhaseFit::Maintain);
 });
+
+it('MESO-034 a change to the Off set stores this week with its done sessions as they ran and the rest as they will run', function () {
+    $day = fn (string $id, array $muscles) => ['id' => $id, 'slots' => array_map(fn (string $m) => ['muscle_group' => $m], $muscles)];
+    $ran = [$day('a', ['chest', 'quads']), $day('b', ['chest'])];
+    $next = [$day('a', ['quads']), $day('b', [])];
+
+    $stored = MesocycleRules::changingOff($ran, $next, [], [], 1, [1]);
+
+    expect($stored['earlier_weeks'])->toBe([$ran, [$ran[0], $next[1]]])
+        ->and($stored['later_weeks'])->toBe([])
+        // A second change this week keeps the done session and moves the rest on again.
+        ->and(MesocycleRules::changingOff($next, $ran, $stored['earlier_weeks'], [], 1, [1])['earlier_weeks'][1])->toBe([$ran[0], $ran[1]]);
+});
+
+it('MESO-045 a day added this week joins this week when a change to the Off set already stored it', function () {
+    $added = MesocycleRules::addingDay([['id' => 'a']], [[['id' => 'a']], [['id' => 'a']]], [], fromWeek: 1, day: ['id' => 'new']);
+
+    expect($added['earlier_weeks'])->toBe([[['id' => 'a']], [['id' => 'a'], ['id' => 'new']]]);
+});

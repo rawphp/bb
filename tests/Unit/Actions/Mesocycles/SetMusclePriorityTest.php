@@ -89,7 +89,7 @@ it('MESO-032 choosing the priority a muscle already has changes nothing', functi
         ->and($after->muscle_priorities)->toBe(['chest' => 'emphasize', 'quads' => 'grow', 'forearms' => null]);
 });
 
-it('MESO-034 setting a muscle Off keeps the weeks that ran as they were; this week runs on without it', function () {
+it('MESO-034 setting a muscle Off keeps the weeks that ran and this week\'s done sessions as they were', function () {
     $mesocycle = priorityMeso();
     // Week 3 (from Monday 21 September): Upper A is done, Lower A is still to come.
     TrainSeed::trained($mesocycle, 3, 1, '2026-09-21');
@@ -104,7 +104,7 @@ it('MESO-034 setting a muscle Off keeps the weeks that ran as they were; this we
 
     expect($muscles(0))->toBe([['chest'], ['quads', 'calves']])
         ->and($muscles(1))->toBe([['chest'], ['quads', 'calves']])
-        ->and($muscles(2))->toBe([[], ['calves']])
+        ->and($muscles(2))->toBe([['chest'], ['calves']])
         ->and($muscles(3))->toBe([[], ['calves']])
         ->and($muscles(4))->toBe([[], ['calves']]);
 });
@@ -169,5 +169,30 @@ it('MESO-034 MESO-045 a day added after a muscle went Off stores the weeks that 
     expect(priorityWeek($mesocycle, 0))->toBe([['chest'], ['quads']])
         ->and(priorityWeek($mesocycle, 2))->toBe([[], ['quads'], []])
         // The rotation keeps the Off muscles' slots for when they come back.
+        ->and(array_column($mesocycle->fresh()->dayRows()[1]['slots'], 'muscle_group'))->toBe(['quads', 'calves']);
+});
+
+it('MESO-032 MESO-034 bringing a muscle back in the week it went Off keeps the sessions done without it', function () {
+    $mesocycle = priorityMeso();
+    prioritySet($mesocycle, MuscleGroup::Chest, null);
+    // Monday's Upper A runs without chest; on Tuesday chest is back.
+    TrainSeed::trained($mesocycle->fresh(), 3, 1, '2026-09-21');
+    Carbon::setTestNow('2026-09-23 10:00:00');
+    prioritySet($mesocycle, MuscleGroup::Chest, Priority::Grow);
+
+    expect(priorityWeek($mesocycle, 2))->toBe([[], ['quads', 'calves']])
+        ->and(priorityWeek($mesocycle, 3))->toBe([['chest'], ['quads', 'calves']]);
+});
+
+it('MESO-034 MESO-045 a day added with a muscle Off since before the start stores the weeks that ran without it', function () {
+    $mesocycle = priorityMeso();
+    Carbon::setTestNow('2026-09-01 10:00:00');
+    prioritySet($mesocycle, MuscleGroup::Calves, null);
+    Carbon::setTestNow('2026-09-22 10:00:00');
+    app(AddMesocycleDay::class)($mesocycle->user, $mesocycle->id, '01JE00000000000000000000DA');
+
+    expect(priorityWeek($mesocycle, 0))->toBe([['chest'], ['quads']])
+        ->and(priorityWeek($mesocycle, 1))->toBe([['chest'], ['quads']])
+        ->and(priorityWeek($mesocycle, 2))->toBe([['chest'], ['quads'], []])
         ->and(array_column($mesocycle->fresh()->dayRows()[1]['slots'], 'muscle_group'))->toBe(['quads', 'calves']);
 });
