@@ -5,6 +5,7 @@ use App\Actions\Workout\FinishWorkout;
 use App\Domain\Progression\WorkoutSetType;
 use App\Models\DayTarget;
 use App\Models\Mesocycle;
+use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
@@ -266,4 +267,27 @@ it('WO-040 refuses to finish a session whose every set was deleted', function ()
 
     expect(finishAt($user, $session, '2026-09-21 18:30:00'))->toBe(FinishWorkout::SETS_LEFT)
         ->and($session->fresh()->actual_end_at)->toBeNull();
+});
+
+it('SCH-054 a session that ran more than 20 minutes short re-targets today\'s meals still to come down', function () {
+    [$user, , $session] = finishSession(answers: ['pump' => 'moderate', 'volume' => 'justRight']);
+    $day = SheetSeed::day($user, '2026-09-21');
+    $before = $day->fresh()->kcal;
+
+    $result = finishAt($user, $session, '2026-09-21 18:00:00');
+
+    expect($result['toast'])->toBe('Meals updated for your 5:30 PM workout')
+        ->and($result['dates'])->toBe(['2026-09-21'])
+        ->and(DayTarget::query()->find($day->id)->kcal)->toBeLessThan($before);
+});
+
+it('SCH-054 a day the rule cannot re-target (no eating window set) keeps its meals, and the session still finishes', function () {
+    [$user, , $session] = finishSession(answers: ['pump' => 'moderate', 'volume' => 'justRight']);
+    Profile::query()->where('user_id', $user->id)->update(['eating_window' => json_encode(['start' => '', 'end' => ''])]);
+    $day = SheetSeed::day($user, '2026-09-21');
+    $before = $day->fresh()->only(['kcal', 'carbs_g', 'meals']);
+
+    expect(finishAt($user, $session, '2026-09-21 19:00:00'))->toMatchArray(['toast' => null, 'dates' => [], 'week' => []])
+        ->and($session->fresh()->actual_end_at->format('H:i'))->toBe('19:00')
+        ->and(DayTarget::query()->find($day->id)->only(['kcal', 'carbs_g', 'meals']))->toEqual($before);
 });
