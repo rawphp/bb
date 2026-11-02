@@ -28,7 +28,8 @@ export const PREVIOUS_BUILD = 'bb-previous-build';
 self.addEventListener('install', (event) => event.waitUntil(keepPreviousBuild()));
 
 // Runs beside Workbox's own install step, which adds this version's files to the same
-// precache, so it copies only the files this version's manifest does not list. A failed
+// precache, so it copies only the files this version's manifest does not list, adding them
+// to any earlier copy. A failed
 // copy is logged and never fails the install: the update matters more than the copy.
 async function keepPreviousBuild(): Promise<void> {
     try {
@@ -44,6 +45,9 @@ async function keepPreviousBuild(): Promise<void> {
             const response = await precache.match(request);
             if (response) await previous.put(request, response);
         }
+        // An open tab may still run a build older than the one replaced now (held through two
+        // deploys, say), so earlier copies go only when no tab is open to need them.
+        if ((await self.clients.matchAll({ type: 'window', includeUncontrolled: true })).length > 0) return;
         const kept = new Set(replaced.map((request) => request.url));
         for (const request of await previous.keys()) {
             if (!kept.has(request.url)) await previous.delete(request);

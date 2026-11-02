@@ -8,14 +8,17 @@ import { applyUpdate, updateBanner } from './updates';
 </script>
 
 <template>
-    <button
-        v-if="updateBanner"
-        type="button"
-        class="fixed top-[calc(env(safe-area-inset-top)_+_0.5rem)] left-1/2 z-50 min-h-tap -translate-x-1/2 rounded-full bg-surface px-5 text-sm font-medium text-primary-text shadow-lg"
-        @click="applyUpdate"
-    >
-        Updated, tap to reload
-    </button>
+    <!-- Always in the page, so a screen reader announces the banner when it appears. -->
+    <div role="status" aria-live="polite">
+        <button
+            v-if="updateBanner"
+            type="button"
+            class="fixed top-[calc(env(safe-area-inset-top)_+_0.5rem)] left-1/2 z-50 min-h-tap -translate-x-1/2 rounded-full bg-surface px-5 text-sm font-medium text-primary-text shadow-lg"
+            @click="applyUpdate"
+        >
+            Updated, tap to reload
+        </button>
+    </div>
 
     <BottomSheet :open="installSheet" title="Add to Home Screen" :save-title="null" cancel-title="Not now" :heights="['half']" @cancel="dismissInstall">
         <div class="p-4">

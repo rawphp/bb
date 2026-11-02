@@ -35,6 +35,9 @@ export const ICONS = [
 
 export const APPLE_TOUCH_ICON = { file: 'apple-touch-icon.png', size: 180 };
 
+// Every icon the service worker precaches (scripts/sw-precache.mjs checks the build).
+export const ICON_FILES = [...ICONS.map(({ file }) => file), APPLE_TOUCH_ICON.file];
+
 // The light and dark values of a light-dark() token in tokens.css.
 export function token(css, name) {
     const match = new RegExp(`--bb-${name}:\\s*light-dark\\((#[0-9a-f]{6}),\\s*(#[0-9a-f]{6})\\)`, 'i').exec(css);
@@ -61,8 +64,8 @@ function markShapes() {
 
 // The mark on the accent, on a 512 grid. Rounded for "any"; full bleed where the
 // platform crops it (maskable, apple-touch-icon).
-function iconSvg(mark, accent, rounded) {
-    return `<rect width="512" height="512" rx="${rounded ? 112 : 0}" fill="${accent}"/>${mark}`;
+function iconSvg(mark, { accent, onAccent }, rounded) {
+    return `<rect width="512" height="512" rx="${rounded ? 112 : 0}" fill="${accent}"/><g color="${onAccent}">${mark}</g>`;
 }
 
 function png(svg, width, height) {
@@ -115,7 +118,7 @@ export function headTags(background) {
 function main() {
     const css = readFileSync(join(root, 'resources/js/design/tokens.css'), 'utf8');
     const background = token(css, 'background');
-    const accent = token(css, 'accent').light;
+    const accent = { accent: token(css, 'accent').light, onAccent: token(css, 'on-accent').light };
     const mark = markShapes();
     const icons = join(root, 'public/icons');
 

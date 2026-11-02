@@ -13,4 +13,7 @@ keepWarm();
 
 // The service worker exists only in a production build.
 if (import.meta.env.PROD) registerServiceWorker();
-createApp(PwaOverlay).mount(document.body.appendChild(document.createElement('div')));
+// A second root restarts useId(), so its ids get their own prefix to stay unique in the page.
+const overlay = createApp(PwaOverlay);
+overlay.config.idPrefix = 'pwa';
+overlay.mount(document.body.appendChild(document.createElement('div')));

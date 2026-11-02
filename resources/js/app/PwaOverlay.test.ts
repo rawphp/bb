@@ -55,6 +55,18 @@ describe('PwaOverlay', () => {
         expect(wrapper.get('button').text()).toBe('Updated, tap to reload');
     });
 
+    it('PWA-035 the banner appears inside a live status region that is always in the page, so it is announced', async () => {
+        const wrapper = overlay();
+        const status = wrapper.get('[role="status"]');
+        expect(status.attributes('aria-live')).toBe('polite');
+        expect(status.text()).toBe('');
+
+        state.banner.value = true;
+        await nextTick();
+        expect(wrapper.get('[role="status"]').element).toBe(status.element);
+        expect(status.get('button').text()).toBe('Updated, tap to reload');
+    });
+
     it('PWA-035 reloads only on a tap of the banner', async () => {
         state.banner.value = true;
         const wrapper = overlay();

@@ -33,6 +33,7 @@ describe('install', () => {
         localStorage.clear();
         vi.useRealTimers();
         vi.unstubAllGlobals();
+        Reflect.deleteProperty(navigator, 'standalone');
     });
 
     it("PWA-003 on Android, holds Chrome's prompt and shows it when offered", async () => {
@@ -97,5 +98,41 @@ describe('install', () => {
         await install.offerInstall();
 
         expect(next.prompt).not.toHaveBeenCalled();
+    });
+
+    it('PWA-003 offers nothing in an iPhone Home Screen app that reports navigator.standalone', async () => {
+        browser(IPHONE);
+        Object.defineProperty(navigator, 'standalone', { value: true, configurable: true });
+        const { offerInstall, installSheet } = await load();
+
+        await offerInstall();
+
+        expect(installSheet.value).toBe(false);
+    });
+
+    it("PWA-003 accepting Chrome's prompt snoozes nothing", async () => {
+        browser(ANDROID);
+        const install = await load();
+        chromePrompt('accepted');
+        await install.offerInstall();
+
+        expect(localStorage.getItem('bb.install-snoozed-until')).toBeNull();
+    });
+
+    it("PWA-003 Chrome's prompt is offered again once the 30-day snooze ends", async () => {
+        vi.useFakeTimers({ now: new Date('2026-11-02T09:00:00Z'), toFake: ['Date'] });
+        browser(ANDROID);
+        const install = await load();
+        chromePrompt('dismissed');
+        await install.offerInstall();
+
+        vi.setSystemTime(Date.now() + 29 * DAY_MS);
+        const early = chromePrompt('accepted');
+        await install.offerInstall();
+        expect(early.prompt).not.toHaveBeenCalled();
+
+        vi.setSystemTime(Date.now() + 2 * DAY_MS);
+        await install.offerInstall();
+        expect(early.prompt).toHaveBeenCalledTimes(1);
     });
 });

@@ -4,10 +4,11 @@
 // app is installed). A unit test cannot see this: it lives in vite.config.ts and the build.
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { ICON_FILES } from './icons.mjs';
 
 export const WORKER = 'public/sw.js';
 
-const REQUIRED = ['icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-192.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'manifest.webmanifest'];
+const REQUIRED = [...ICON_FILES.map((file) => `icons/${file}`), 'manifest.webmanifest'];
 const ALLOWED = /^(build\/.+|icons\/[^/]+\.png|manifest\.webmanifest)$/;
 
 /** The URLs Workbox injected into a built worker. */

@@ -77,6 +77,10 @@ function buildRoute(): BuildRoute {
     return route as unknown as BuildRoute;
 }
 
+function openTabs(count: number) {
+    Object.defineProperty(self, 'clients', { value: { matchAll: vi.fn(async () => Array.from({ length: count }, () => ({}))) }, configurable: true });
+}
+
 describe('sw', () => {
     // This version's files, as the build injects them.
     const manifest = [
@@ -93,6 +97,7 @@ describe('sw', () => {
         vi.stubGlobal('FetchEvent', class extends Event {});
         vi.stubGlobal('ExtendableEvent', class extends Event {});
         Object.assign(self, { __WB_MANIFEST: manifest });
+        openTabs(0);
     });
 
     it('OFF-002 precaches the build plus the shell, and answers app navigations with the shell', async () => {
@@ -128,6 +133,19 @@ describe('sw', () => {
         expect(await (await fakeCaches.match(new Request(at('/build/assets/main-old.js')), { cacheName: PREVIOUS_BUILD }))!.text()).toBe(
             'precache /build/assets/main-old.js',
         );
+    });
+
+    it('PWA-035 with a tab open, an install adds to the earlier copy, so a tab held through two deploys keeps its files', async () => {
+        const { PREVIOUS_BUILD } = await import('./sw');
+        openTabs(1);
+        // Tab A runs v1 (in the copy); v2 is the precache being replaced by this version.
+        await cache(PREVIOUS_BUILD, ['/build/assets/main-v1.js']);
+        await cache('precache', ['/build/assets/main-v2.js', '/build/assets/main-new.js']);
+
+        await install();
+
+        expect([...stores.get(PREVIOUS_BUILD)!.entries.keys()].sort()).toEqual([at('/build/assets/main-v1.js'), at('/build/assets/main-v2.js')]);
+        expect(self.clients.matchAll).toHaveBeenCalledWith({ type: 'window', includeUncontrolled: true });
     });
 
     it('PWA-035 a first install, with no build to replace, keeps the copy an earlier update made', async () => {
