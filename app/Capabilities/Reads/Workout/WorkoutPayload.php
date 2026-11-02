@@ -27,6 +27,7 @@ use App\Domain\Progression\FeedbackSheet;
 use App\Domain\Progression\FeedbackSheets;
 use App\Domain\Progression\RepTable;
 use App\Domain\Progression\RepTableRow;
+use App\Domain\Progression\SetPlan;
 use App\Domain\Progression\WorkoutStatus;
 use App\Models\DayTarget;
 use App\Models\ExerciseFeedback;
@@ -105,9 +106,7 @@ final class WorkoutPayload
         $lastWeek = $s->lastWeekLoads($exercise);
         $sets = [];
         foreach ($block->sets as $number => $row) {
-            // rp-clone applyRetarget: the set's own last-week set, else last week's last.
-            $last = $lastWeek === [] ? null : $lastWeek[min($number, count($lastWeek) - 1)]->weight;
-            $sets[] = self::set($s, $block, $row, $number, $rir, $last);
+            $sets[] = self::set($s, $block, $row, $number, $rir, SetPlan::lastWeekFor($lastWeek, $number)?->weight);
         }
 
         return new WorkoutExercise(
