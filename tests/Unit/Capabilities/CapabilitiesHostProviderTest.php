@@ -1,12 +1,16 @@
 <?php
 
 use App\Capabilities\HostAuthorizer;
+use App\Capabilities\Support\BillingOnly;
 use App\Providers\CapabilitiesHostProvider;
 use Rawphp\Capabilities\Contracts\Authorizer;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 
-it('CAP-003 registers every app/Capabilities/*/*Capability.php class', function () {
-    $files = glob(app_path('Capabilities/*/*Capability.php'));
+it('CAP-003 registers every app/Capabilities/*/*Capability.php class, but billing\'s only with billing on (SUB-020)', function () {
+    $files = array_filter(
+        glob(app_path('Capabilities/*/*Capability.php')),
+        fn (string $file) => config('billing.enabled') || ! is_subclass_of('App\\Capabilities\\'.basename(dirname($file)).'\\'.basename($file, '.php'), BillingOnly::class),
+    );
 
     expect(app(CapabilityRegistry::class)->all())
         ->toHaveCount(count($files))
