@@ -164,13 +164,15 @@ it('SAFE-017 PLAN-002 the phases after the switched one keep their place: no ove
     ]);
 });
 
-it('SAFE-017 PLAN-007 an open-ended phase becomes one default mesocycle of training only', function () {
-    // TBL-020: an intermediate's default mesocycle is 5 weeks.
+it('SAFE-017 PLAN-007 an open-ended phase stays open-ended as training only, so the plan keeps running', function () {
     $phases = [switchPhase(SWITCH_CURRENT, PhaseType::Maintenance, '2026-09-07', null, 0.0)];
 
     $writes = PhaseSwitch::toTrainingOnly($phases, switchGrid(), switchDay('2026-10-14'), ExperienceLevel::Intermediate, SWITCH_NEW);
 
-    expect($writes[1]->phase->end?->format('Y-m-d'))->toBe('2026-11-16');
+    expect(array_map(fn (array $row) => [$row['start'], $row['end']], switchRows($writes)))->toBe([
+        ['2026-09-07', '2026-10-12'],
+        ['2026-10-12', null],
+    ]);
 });
 
 it('SAFE-017 PLAN-007 with no phase covering the switch day, training only runs Maintenance for one default mesocycle', function () {

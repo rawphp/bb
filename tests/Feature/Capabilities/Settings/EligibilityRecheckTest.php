@@ -119,6 +119,7 @@ it('SAFE-017 a nutrition user who now fails is moved to training only over HTTP,
     DayTarget::factory()->for($user)->create(['date' => '2026-10-15']);
     // A past phase the switch does not write: its screen still loses its rate (SAFE-003, PLAN-007).
     $past = Phase::factory()->for($user)->create(['type' => 'maintenance', 'start_date' => '2026-08-31', 'end_date' => '2026-09-07']);
+    $others = Phase::factory()->create();
 
     $data = eligibilityRecheck($user, everyAnswer(['diabetes']))
         ->assertOk()
@@ -131,6 +132,7 @@ it('SAFE-017 a nutrition user who now fails is moved to training only over HTTP,
         ->and($data['invalidates'])->toContain(
             'eligibility_recheck_show{}', 'plan_show{}', 'today_show{"date":"2026-10-14"}', 'today_show{"date":"2026-10-15"}',
             'week_show{"date":"2026-10-18"}', 'phase_show{"phase_id":"'.$past->id.'"}')
+        ->and($data['invalidates'])->not->toContain('phase_show{"phase_id":"'.$others->id.'"}')
         ->and($user->profile->fresh()->training_only)->toBeTrue()
         ->and(DayTarget::query()->where('user_id', $user->id)->count())->toBe(0);
 });

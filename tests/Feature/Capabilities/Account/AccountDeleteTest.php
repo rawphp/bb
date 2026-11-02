@@ -6,6 +6,7 @@ use App\Models\AuditRecord;
 use App\Models\DayTarget;
 use App\Models\Phase;
 use App\Models\Profile;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Models\WeighIn;
 use Illuminate\Support\Facades\DB;
@@ -86,6 +87,15 @@ it('ACC-005 CAP-022 the deletion is audited with no user, since the account is g
     Exceptions::assertNothingReported();
     expect(AuditRecord::query()->where('capability', 'account_delete')->get(['user_id', 'channel'])->toArray())
         ->toBe([['user_id' => null, 'channel' => 'ui']]);
+});
+
+it('ACC-005 SUB-020 with billing off, a subscription row left from billing on does not stop the deletion', function () {
+    $user = User::factory()->create();
+    Subscription::factory()->for($user)->create(['status' => 'active', 'cancel_at_period_end' => false]);
+
+    accountDelete($user, ['confirmation' => 'DELETE'])->assertOk();
+
+    expect(User::query()->whereKey($user->id)->exists())->toBeFalse();
 });
 
 it('ACC-005 AGT-010 CAP-031 deleting the account is destructive, and only a person may do it', function () {

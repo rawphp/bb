@@ -84,3 +84,9 @@ it('SAFE-001 SAFE-017 a user trying to conceive keeps nutrition targets without 
     expect($show['mode'])->toBe(['text' => 'Training and nutrition, no fat loss', 'tone' => 'info'])
         ->and($show['reasons'])->toBe([]);
 });
+
+it('SAFE-001 SAFE-017 saved items that block every target read as training only, whatever the stored mode', function () {
+    $show = recheckShow(recheckProfile(['screening' => ['tryingToConceive', 'diabetes'], 'training_only' => false]));
+
+    expect($show['mode'])->toBe(['text' => 'Training only', 'tone' => 'warning']);
+});
