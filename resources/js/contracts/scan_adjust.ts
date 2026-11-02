@@ -65,7 +65,7 @@ export interface ScanAdjustOutput {
   };
   unmatched_note?: string | null;
   /**
-   * The matched foods, merged per food: what Add to meal and Save as saved meal send
+   * The matched foods, merged per food, by raw weight (FOOD-006): what Add to meal and Save as saved meal send
    */
   matched: {
     food_id: string;
@@ -75,4 +75,4 @@ export interface ScanAdjustOutput {
   empty_text?: string | null;
 }
 
-export const outputVersion = 'b64e4d77f381';
+export const outputVersion = 'a466d6ba88e6';

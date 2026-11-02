@@ -2,13 +2,19 @@
 
 namespace App\Domain\Scan;
 
+use App\Domain\MealFit\Food;
 use App\Domain\MealFit\MealFit;
 use App\Domain\MealFit\MealFood;
+use App\Domain\MealFit\Weighing;
 use App\Domain\Model\MealTarget;
 
 /**
  * FOOD-043 to FOOD-046: the scanned meal at one portion. Nothing is saved: Add to meal and Save as
  * saved meal send `matched()` to their own capabilities.
+ *
+ * Scanned grams are what is on the plate, so a food that changes weight when cooked (FOOD-006) is
+ * weighed cooked: its calories count cooked, and `matched()` holds its raw weight, the basis a meal
+ * and a saved meal store.
  */
 final readonly class ScannedMeal
 {
@@ -66,28 +72,38 @@ final readonly class ScannedMeal
     /** The item's calories by the meal's own rule; null with no match. */
     public function kcal(ScanItem $item): ?float
     {
-        return $item->food === null ? null : (new MealFood($item->food->id, $item->food, $this->grams($item)))->macros()->kcal;
+        return $item->food === null ? null : $this->served($item->food, $this->grams($item))->macros()->kcal;
     }
 
     /**
-     * FOOD-045, FOOD-046: the matched rows, one per food, in the order each food first appears: rows matched to
-     * the same food add up. Totals, Add to meal and the saved meal all read this, so they agree.
+     * FOOD-045, FOOD-046: the matched rows, one per food, in the order each food first appears, by raw weight:
+     * rows matched to the same food add up. Totals, Add to meal and the saved meal all read this, so they agree.
      *
      * @return list<MealFood>
      */
     public function matched(): array
     {
+        $raw = [];
         $foods = [];
         foreach ($this->items as $item) {
             if ($item->food === null) {
                 continue;
             }
             $id = $item->food->id;
-            $grams = isset($foods[$id]) ? ScanPortion::grams($foods[$id]->grams + $this->grams($item)) : $this->grams($item);
-            $foods[$id] = new MealFood($id, $item->food, $grams);
+            $raw[$id] = ($raw[$id] ?? 0.0) + $this->served($item->food, $this->grams($item))->rawGrams();
+            $foods[$id] = $item->food;
         }
 
-        return array_values($foods);
+        return array_values(array_map(
+            fn (string $id): MealFood => new MealFood($id, $foods[$id], ScanPortion::grams($raw[$id])),
+            array_map('strval', array_keys($foods)),
+        ));
+    }
+
+    /** The food at `grams` as served: cooked weight when it has a cooked ratio. */
+    private function served(Food $food, float $grams): MealFood
+    {
+        return new MealFood($food->id, $food, $grams, Weighing::Cooked);
     }
 
     /** FOOD-045: the matched foods' calories and macros. */

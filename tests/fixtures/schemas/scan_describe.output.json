@@ -126,7 +126,7 @@
                     "grams"
                 ]
             },
-            "description": "The matched foods, merged per food: what Add to meal and Save as saved meal send"
+            "description": "The matched foods, merged per food, by raw weight (FOOD-006): what Add to meal and Save as saved meal send"
         },
         "saved_meal_name": {
             "type": "string"
