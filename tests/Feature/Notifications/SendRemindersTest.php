@@ -205,6 +205,35 @@ it('NOTIF-001 reminders:send queues a job only for users who may have something 
     Queue::assertPushed(SendUserReminders::class, fn (SendUserReminders $job) => $job->user->is($weighsNow));
 });
 
+it('NOTIF-004 NOTIF-005 NOTIF-007 at 09:00 a user with both morning switches off is not queued', function () {
+    $user = remindedUser();
+    NotificationPref::query()->create(['user_id' => $user->id, 'kind' => 'weekly_review', 'on' => false]);
+    NotificationPref::query()->create(['user_id' => $user->id, 'kind' => 'next_mesocycle', 'on' => false]);
+    Queue::fake();
+
+    Carbon::setTestNow('2026-09-26 09:00:00');
+    $this->artisan('reminders:send')->assertSuccessful();
+
+    Queue::assertNothingPushed();
+});
+
+it('NOTIF-004 NOTIF-005 a user is queued once for the morning, even when the pass sent nothing', function () {
+    // The plan starts today, so the review day has no full week behind it: nothing is due at 09:00.
+    $user = remindedUser();
+    Plan::query()->where('user_id', $user->id)->update(['start_date' => '2026-09-26']);
+
+    Carbon::setTestNow('2026-09-26 09:00:00');
+    $this->artisan('reminders:send')->assertSuccessful();
+    expect(sentLines($user))->toBe([]);
+
+    Queue::fake();
+    foreach (['2026-09-26 09:01:00', '2026-09-26 09:05:00'] as $at) {
+        Carbon::setTestNow($at);
+        $this->artisan('reminders:send')->assertSuccessful();
+    }
+    Queue::assertNothingPushed();
+});
+
 it('NOTIF-004 NOTIF-005 at 09:00 only a user on a plan-week start may be due, and only until the morning reminder went out', function () {
     $user = remindedUser();
     Queue::fake();
