@@ -197,6 +197,6 @@ php artisan route:cache
 php artisan queue:restart
 ```
 
-`db:seed` brings the library (exercises, templates, curated foods, recipes) up to the data files in `database/seeders/data/`, so a corrected value there reaches an install that is already running. It is safe to re-run: rows are matched by name or slug and updated, never duplicated, and the test account is only ever seeded in `local` and `testing`.
+`db:seed` brings the library (exercises, templates, curated foods, recipes) up to the data files in `database/seeders/data/`, so a corrected value there reaches an install that is already running. It is safe to re-run: library rows are matched by name or slug and updated in place, so their IDs and the users' meals, saved meals and recipes that point at them are kept. Nothing is duplicated, and the test account is only ever seeded in `local` and `testing`. `tests/Feature/DatabaseSeederTest.php` re-runs every seeder on a production install with user data and fails if any row outside the library changes. Take a database backup before updating, as for any release.
 
 With a `package.json` in the repo, rebuild the front end too (`npm ci`, then `npm run build`).
