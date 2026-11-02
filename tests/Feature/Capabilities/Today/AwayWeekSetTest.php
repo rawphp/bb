@@ -58,3 +58,18 @@ it('SCH-060 CAP-013 marks a week away with a toast, drops what it changed, and i
     expect(Phase::query()->find($phase->id)->end_date->format('Y-m-d'))->toBe('2026-12-05')
         ->and(PlanWeek::query()->where('user_id', $user->id)->where('is_away', true)->count())->toBe(0);
 });
+
+it('PLAN-025 a second away_week_set without a keep_phase_end key keeps the saved value and the phase end', function () {
+    Carbon::setTestNow('2026-09-23 10:00:00');
+    $user = TodaySeed::user();
+    $phase = TrainSeed::phase($user, 'fatLoss', '2026-09-12', '2026-12-05');
+
+    awaySet($user, ['week_starts' => ['2026-09-26'], 'away' => true, 'training' => 'pause', 'calories' => 'maintenance', 'keep_phase_end' => true])->assertOk();
+    expect($phase->fresh()->end_date->format('Y-m-d'))->toBe('2026-12-05');
+
+    // The key is left out of this body altogether.
+    awaySet($user, ['week_starts' => ['2026-09-26'], 'away' => true, 'training' => 'pause', 'calories' => 'rest'])->assertOk();
+
+    expect($phase->fresh()->end_date->format('Y-m-d'))->toBe('2026-12-05')
+        ->and(PlanWeek::query()->where('user_id', $user->id)->whereDate('start_date', '2026-09-26')->first()->keep_phase_end)->toBeTrue();
+});
