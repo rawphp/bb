@@ -21,6 +21,9 @@ function sent(capability: string): unknown {
     return call[1];
 }
 
+// The confirmations are BottomSheets, which teleport to <body>; render them in place.
+const global = { stubs: { teleport: true } };
+
 describe('CoachSettingsView', () => {
     beforeEach(() => {
         readMock.mockReset();
@@ -29,7 +32,7 @@ describe('CoachSettingsView', () => {
 
     it('AGT-020 shows no switch while the read does not carry the user\'s own setting', () => {
         // enabled is the instance's flag, so it must not stand in for the user's choice.
-        const wrapper = mount(CoachSettingsView, { props: { payload: fixture } });
+        const wrapper = mount(CoachSettingsView, { global, props: { payload: fixture } });
 
         expect(wrapper.find('[role="switch"]').exists()).toBe(false);
         expect(wrapper.get('[data-test="no-switch"]').text()).toContain("isn't available on this server yet");
@@ -37,22 +40,24 @@ describe('CoachSettingsView', () => {
     });
 
     it('AGT-020 shows the Coach on, with a note on what it can and cannot do', () => {
-        const wrapper = mount(CoachSettingsView, { props: { payload: on } });
+        const wrapper = mount(CoachSettingsView, { global, props: { payload: on } });
 
         expect(wrapper.get<HTMLInputElement>('[role="switch"]').element.checked).toBe(true);
         expect(wrapper.text()).toContain('What the Coach can do');
         expect(wrapper.text()).toContain('What it cannot do');
+        // CAP-031 excludes only deleting the account, tokens and billing; the note promises no more.
+        expect(wrapper.text()).not.toContain('health screening');
         expect(readMock).not.toHaveBeenCalled();
     });
 
     it('AGT-020 shows the Coach off', () => {
-        const wrapper = mount(CoachSettingsView, { props: { payload: off } });
+        const wrapper = mount(CoachSettingsView, { global, props: { payload: off } });
 
         expect(wrapper.get<HTMLInputElement>('[role="switch"]').element.checked).toBe(false);
     });
 
     it('AGT-005 shows how much Coach use is left, in the server\'s words', () => {
-        const wrapper = mount(CoachSettingsView, { props: { payload: nearCap } });
+        const wrapper = mount(CoachSettingsView, { global, props: { payload: nearCap } });
 
         expect(wrapper.text()).toContain('3 Coach messages left today.');
     });
@@ -63,7 +68,7 @@ describe('CoachSettingsView', () => {
     ])('AGT-020 turns the Coach on or off and reads the screen again', async (payload, turnsOn) => {
         writeMock.mockResolvedValueOnce({ invalidates: ['agent_status_show'] });
         readMock.mockResolvedValueOnce({ ...payload, on: turnsOn });
-        const wrapper = mount(CoachSettingsView, { props: { payload } });
+        const wrapper = mount(CoachSettingsView, { global, props: { payload } });
 
         await wrapper.get('[role="switch"]').setValue(turnsOn);
         await flushPromises();
@@ -75,7 +80,7 @@ describe('CoachSettingsView', () => {
     it('AGT-020 shows what the server holds after the change, not what was tapped', async () => {
         writeMock.mockResolvedValueOnce({ invalidates: ['agent_status_show'] });
         readMock.mockResolvedValueOnce(on);
-        const wrapper = mount(CoachSettingsView, { props: { payload: on } });
+        const wrapper = mount(CoachSettingsView, { global, props: { payload: on } });
 
         await wrapper.get('[role="switch"]').setValue(false);
         await flushPromises();
@@ -85,7 +90,7 @@ describe('CoachSettingsView', () => {
 
     it('CAP-012 puts the switch back and says why when the change is refused', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('coach_enabled_set', 0, { reason: 'network' }));
-        const wrapper = mount(CoachSettingsView, { props: { payload: on } });
+        const wrapper = mount(CoachSettingsView, { global, props: { payload: on } });
 
         await wrapper.get('[role="switch"]').setValue(false);
         await flushPromises();
@@ -96,11 +101,11 @@ describe('CoachSettingsView', () => {
 
     it('AGT-020 clears the conversation after the user confirms', async () => {
         writeMock.mockResolvedValueOnce({ invalidates: [], toast: 'Conversation cleared.' });
-        const wrapper = mount(CoachSettingsView, { props: { payload: on } });
+        const wrapper = mount(CoachSettingsView, { global, props: { payload: on } });
 
         await wrapper.get('[data-test="clear"]').trigger('click');
         expect(writeMock).not.toHaveBeenCalled();
-        await wrapper.get('[data-test="confirm-clear"]').trigger('click');
+        await wrapper.get('[role="dialog"] [data-save]').trigger('click');
         await flushPromises();
 
         expect(sent('coach_conversation_clear')).toEqual({});
@@ -109,14 +114,14 @@ describe('CoachSettingsView', () => {
 
     it('CAP-012 keeps the confirmation open and says why when clearing fails', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('coach_conversation_clear', 0, { reason: 'network' }));
-        const wrapper = mount(CoachSettingsView, { props: { payload: on } });
+        const wrapper = mount(CoachSettingsView, { global, props: { payload: on } });
 
         await wrapper.get('[data-test="clear"]').trigger('click');
-        await wrapper.get('[data-test="confirm-clear"]').trigger('click');
+        await wrapper.get('[role="dialog"] [data-save]').trigger('click');
         await flushPromises();
 
         expect(wrapper.get('[role="alert"]').text()).toContain('No connection');
-        expect(wrapper.find('[data-test="confirm-clear"]').exists()).toBe(true);
+        expect(wrapper.find('[role="dialog"] [data-save]').exists()).toBe(true);
         expect(wrapper.text()).not.toContain('Conversation cleared.');
     });
 

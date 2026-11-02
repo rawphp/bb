@@ -96,6 +96,28 @@ describe('DeleteAccountView', () => {
         expect(router.currentRoute.value.path).toBe('/');
     });
 
+    it.each([401, 419])('ACC-005 a first try refused with %i says the user was signed out and deletes nothing', async (status) => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('account_delete', status, { message: 'Unauthenticated.' }));
+        const { wrapper, router } = await view();
+
+        await deleteTyped(wrapper);
+
+        expect(wrapper.get('[role="alert"]').text()).toContain('You were signed out, so nothing was deleted.');
+        expect(router.currentRoute.value.path).toBe('/settings/delete-account');
+    });
+
+    it('CAP-014 takes a new key after a refusal, since the server keeps the refusal under the old one', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('account_delete', 500, null)).mockResolvedValueOnce(undefined);
+        const { wrapper } = await view();
+
+        await deleteTyped(wrapper);
+        await wrapper.get('[data-test="delete"]').trigger('click');
+        await flushPromises();
+
+        const keys = writeMock.mock.calls.map(([, , options]) => options?.idempotencyKey);
+        expect(keys[1]).not.toBe(keys[0]);
+    });
+
     it('CAP-014 retries with the same key, and a gone session on the retry means the delete ran', async () => {
         writeMock
             .mockRejectedValueOnce(new CapabilityError('account_delete', 0, { reason: 'timeout' }))

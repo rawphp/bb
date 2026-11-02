@@ -2,14 +2,15 @@
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { write } from '@/app/call';
-import { useNavigation, type Navigation } from '@/app/navigation';
+import { findNavigation } from '@/app/navigation';
+import { useRetryKey } from '@/app/retryKey';
 import { failureMessage } from '@/app/errors';
 import { useRead } from '@/app/useRead';
 import type { EligibilityRecheckInput, EligibilityRecheckOutput } from '@/contracts/eligibility_recheck';
 import type { EligibilityRecheckShowOutput } from '@/contracts/eligibility_recheck_show';
 import StatusPill from '@/design/StatusPill.vue';
 import ReadState from './ReadState.vue';
-import { TONE_CLASS } from './tones';
+import { toneClasses } from '@/design/tones';
 
 // Settings → Re-check eligibility (SAFE-017). The screening again; the server decides
 // the outcome and whether the nutrition steps come next.
@@ -18,7 +19,12 @@ const props = defineProps<{ payload?: EligibilityRecheckShowOutput }>();
 type Item = EligibilityRecheckInput['answers'][number]['item'];
 
 const router = useRouter();
-const nav = shellNavigation();
+// None outside the shell: dev screens and tests render this with a plain router.
+const nav = findNavigation(router);
+// A check retried after a lost answer replays the first outcome (CAP-014) instead of
+// comparing against what that first check already saved. Until an answer comes the
+// boxes stay as sent, so the retry is the same check.
+const retry = useRetryKey('eligibility_recheck');
 const { data: screening, failure, load } = useRead<EligibilityRecheckShowOutput>('eligibility_recheck_show', props.payload);
 const ticked = ref<Partial<Record<Item, boolean>>>({});
 // Boxes the user has changed. A background refresh (OFF-003) never overrides them.
@@ -44,8 +50,10 @@ async function check(): Promise<void> {
         answers: screening.value.questions.map((q) => ({ item: q.item, applies: ticked.value[q.item] ?? q.applies })),
     };
     try {
-        outcome.value = await write<EligibilityRecheckOutput>('eligibility_recheck', { ...input });
+        outcome.value = await write<EligibilityRecheckOutput>('eligibility_recheck', { ...input }, { idempotencyKey: retry.key.value });
+        retry.settle();
     } catch (failed) {
+        retry.settle(failed);
         error.value = failureMessage(failed, 'Your answers could not be checked. Try again.');
     } finally {
         saving.value = false;
@@ -58,15 +66,6 @@ function finish(): void {
     if (outcome.value?.next === 'onboarding') void router.push('/onboarding');
     else if (nav && nav.state.stacks[nav.state.active].length > 1) nav.back();
     else void router.replace('/more');
-}
-
-function shellNavigation(): Navigation | undefined {
-    try {
-        return useNavigation();
-    } catch {
-        // A router not made by makeRouter() (dev screens, tests) has no tab stacks.
-        return undefined;
-    }
 }
 </script>
 
@@ -91,10 +90,10 @@ function shellNavigation(): Navigation | undefined {
                 <span class="text-secondary-text">Now:</span>
                 <StatusPill :text="screening.mode.text" :tone="screening.mode.tone" />
             </p>
-            <ul v-if="screening.reasons.length" class="space-y-2 rounded-2xl p-4" :class="TONE_CLASS.warning">
+            <ul v-if="screening.reasons.length" class="space-y-2 rounded-2xl p-4" :class="toneClasses.warning">
                 <li v-for="reason in screening.reasons" :key="reason.text">{{ reason.text }}</li>
             </ul>
-            <p class="rounded-2xl p-4" :class="TONE_CLASS.warning">Get medical clearance from your doctor before starting any diet.</p>
+            <p class="rounded-2xl p-4" :class="toneClasses.warning">Get medical clearance from your doctor before starting any diet.</p>
 
             <fieldset class="space-y-2">
                 <legend class="mb-2 font-semibold">Tick anything that applies to you.</legend>
@@ -109,7 +108,7 @@ function shellNavigation(): Navigation | undefined {
                         type="checkbox"
                         @change="touched.add(question.item)"
                         class="size-5 accent-accent"
-                        :disabled="question.measured || saving"
+                        :disabled="question.measured || saving || retry.unsure.value"
                         :aria-describedby="question.measured ? `measured-${question.item}` : undefined"
                     />
                     <span class="flex-1">
@@ -120,7 +119,7 @@ function shellNavigation(): Navigation | undefined {
             </fieldset>
 
             <p class="rounded-2xl bg-surface p-4 text-sm">This app does not support medical diets. If you have a metabolic condition, consult a physician first.</p>
-            <p v-if="error" class="rounded-2xl p-4" :class="TONE_CLASS.warning" role="alert">{{ error }}</p>
+            <p v-if="error" class="rounded-2xl p-4" :class="toneClasses.warning" role="alert">{{ error }}</p>
             <button
                 type="button"
                 class="min-h-tap w-full rounded-2xl bg-accent font-semibold text-on-accent active:opacity-70 disabled:opacity-50"

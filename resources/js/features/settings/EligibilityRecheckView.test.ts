@@ -152,6 +152,27 @@ describe('EligibilityRecheckView', () => {
         expect((sent().answers as { item: string; applies: boolean }[]).find((a) => a.item === 'pregnantOrBreastfeeding')?.applies).toBe(true);
     });
 
+    it('CAP-014 retries a check that got no answer with the same key and the boxes locked', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('eligibility_recheck', 0, { reason: 'timeout' })).mockResolvedValueOnce(
+            result({ outcome: 'switchToTrainingOnly', message: 'You are now on training only.' }),
+        );
+        const { wrapper } = await view(content);
+
+        await wrapper.get('[data-test="check"]').trigger('click');
+        await flushPromises();
+        const open = content.questions.findIndex((q) => !q.measured);
+        expect(wrapper.findAll<HTMLInputElement>('input[type="checkbox"]')[open]!.element.disabled).toBe(true);
+
+        await wrapper.get('[data-test="check"]').trigger('click');
+        await flushPromises();
+
+        const keys = writeMock.mock.calls.map(([, , options]) => options?.idempotencyKey);
+        expect(keys[0]).toMatch(/^eligibility_recheck:/);
+        expect(keys[1]).toBe(keys[0]);
+        // The replayed first outcome, not "Nothing changed".
+        expect(wrapper.text()).toContain('You are now on training only.');
+    });
+
     it('CAP-012 shows a refused check in the server\'s words and keeps the answers', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('eligibility_recheck', 422, { ok: false, error: { message: 'Answer every question.' } }));
         const { wrapper } = await view(content);

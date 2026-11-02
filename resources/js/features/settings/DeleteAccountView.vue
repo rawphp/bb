@@ -4,9 +4,9 @@ import { useRouter } from 'vue-router';
 import { clearReads } from '@/app/cache';
 import { CapabilityError, write } from '@/app/call';
 import { failureMessage } from '@/app/errors';
-import { ulid } from '@/app/ulid';
+import { useRetryKey } from '@/app/retryKey';
 import type { AccountDeleteInput } from '@/contracts/account_delete';
-import { TONE_CLASS } from './tones';
+import { toneClasses } from '@/design/tones';
 
 // Settings → Delete account (ACC-005). The schema takes only the word DELETE, so the
 // button turns on when that is what the field holds; the server refuses anything else.
@@ -14,8 +14,8 @@ const router = useRouter();
 const typed = ref('');
 const busy = ref(false);
 const error = ref<string | null>(null);
-// One key for this screen, so a retry after a lost answer is the same delete (CAP-014).
-const idempotencyKey = `account_delete:${ulid()}`;
+// A retry after a lost answer is the same delete (CAP-014).
+const retry = useRetryKey('account_delete');
 const confirmation = computed<AccountDeleteInput['confirmation'] | null>(() => (typed.value === 'DELETE' ? 'DELETE' : null));
 
 async function remove(): Promise<void> {
@@ -23,19 +23,28 @@ async function remove(): Promise<void> {
     busy.value = true;
     error.value = null;
     try {
-        await write('account_delete', { confirmation: confirmation.value } satisfies AccountDeleteInput, { idempotencyKey });
+        await write('account_delete', { confirmation: confirmation.value } satisfies AccountDeleteInput, { idempotencyKey: retry.key.value });
+        retry.settle();
         await leave();
     } catch (failed) {
-        await failedDelete(failed);
+        // Read before settle(): whether an earlier try went unanswered decides what a 401 means.
+        const afterLostAnswer = retry.unsure.value;
+        retry.settle(failed);
+        await failedDelete(failed, afterLostAnswer);
     } finally {
         busy.value = false;
     }
 }
 
-async function failedDelete(failed: unknown): Promise<void> {
+async function failedDelete(failed: unknown, afterLostAnswer: boolean): Promise<void> {
     const status = failed instanceof CapabilityError ? failed.status : null;
-    // 401 or 419: the session is gone, which is what a delete whose answer was lost leaves behind.
-    if (status === 401 || status === 419) return leave();
+    if (status === 401 || status === 419) {
+        // After a try that got no answer, a gone session is what that delete left behind.
+        if (afterLostAnswer) return leave();
+        // On a first try it only means this session ended: nothing was deleted.
+        error.value = 'You were signed out, so nothing was deleted. Sign in again, then delete your account.';
+        return;
+    }
     // No answer: the delete may have run. The cached reads go either way; they come back if it didn't.
     if (status === 0) {
         await clearReads().catch(() => undefined);
@@ -76,7 +85,7 @@ async function leave(): Promise<void> {
             />
             <span id="delete-hint" class="mt-2 block px-4 text-sm text-secondary-text">Type DELETE in capital letters to turn the button on.</span>
         </label>
-        <p v-if="error" class="rounded-2xl p-4" :class="TONE_CLASS.warning" role="alert">{{ error }}</p>
+        <p v-if="error" class="rounded-2xl p-4" :class="toneClasses.warning" role="alert">{{ error }}</p>
         <button
             type="button"
             class="min-h-tap w-full rounded-2xl bg-surface py-3 font-medium text-tone-warning active:opacity-70 disabled:text-secondary-text disabled:opacity-60"

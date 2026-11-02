@@ -6,9 +6,10 @@ import { useRead } from '@/app/useRead';
 import type { AgentStatusShowOutput } from '@/contracts/agent_status_show';
 import type { CoachConversationClearInput } from '@/contracts/coach_conversation_clear';
 import type { CoachEnabledSetInput } from '@/contracts/coach_enabled_set';
+import BottomSheet from '@/design/BottomSheet.vue';
 import Toast, { type ToastResult } from '@/design/Toast.vue';
 import ReadState from './ReadState.vue';
-import { TONE_CLASS } from './tones';
+import { toneClasses } from '@/design/tones';
 
 // Settings → Coach (AGT-020): this user's Coach on or off, clear the conversation,
 // and what the Coach can and cannot do. The only way here is Settings' Coach row,
@@ -28,6 +29,7 @@ const on = computed(() => (typeof status.value?.on === 'boolean' ? status.value.
 const busy = ref(false);
 const error = ref<string | null>(null);
 const confirming = ref(false);
+const clearError = ref<string | null>(null);
 const cleared = ref<ToastResult>({});
 
 async function toggle(event: Event): Promise<void> {
@@ -49,13 +51,13 @@ async function toggle(event: Event): Promise<void> {
 
 async function clear(): Promise<void> {
     busy.value = true;
-    error.value = null;
+    clearError.value = null;
     try {
         const result = await write<ToastResult | undefined>('coach_conversation_clear', {} satisfies CoachConversationClearInput);
         cleared.value = { toast: result?.toast || 'Conversation cleared.', undo: result?.undo ?? null };
         confirming.value = false;
     } catch (failed) {
-        error.value = failureMessage(failed, 'The conversation could not be cleared. Try again.');
+        clearError.value = failureMessage(failed, 'The conversation could not be cleared. Try again.');
     } finally {
         busy.value = false;
     }
@@ -89,43 +91,40 @@ async function clear(): Promise<void> {
                 Turning the Coach off for your account isn't available on this server yet.
             </p>
 
-            <p v-if="status.notice" class="rounded-2xl p-4" :class="TONE_CLASS[status.at_cap ? 'warning' : 'info']">{{ status.notice }}</p>
-            <p v-if="error" class="rounded-2xl p-4" :class="TONE_CLASS.warning" role="alert">{{ error }}</p>
+            <p v-if="status.notice" class="rounded-2xl p-4" :class="toneClasses[status.at_cap ? 'warning' : 'info']">{{ status.notice }}</p>
+            <p v-if="error" class="rounded-2xl p-4" :class="toneClasses.warning" role="alert">{{ error }}</p>
 
             <section class="space-y-3 rounded-2xl bg-surface p-4" aria-labelledby="coach-can">
                 <h2 id="coach-can" class="font-semibold">What the Coach can do</h2>
                 <p>Anything you can do in the app, when you ask: swap an exercise, move a workout, plan a day's meals, explain a deload. It asks before it deletes or ends anything, and every change it makes shows on its screen with Undo.</p>
                 <h2 class="font-semibold">What it cannot do</h2>
-                <p>Log a set, a meal or a weigh-in you did not tell it about, answer the health screening, delete your account, make tokens or change your subscription. It is not a doctor.</p>
+                <p>Log a set, a meal or a weigh-in you did not tell it about, delete your account, make tokens or change your subscription. It is not a doctor.</p>
             </section>
 
             <div class="rounded-2xl bg-surface px-4 py-2">
-                <div v-if="confirming" class="space-y-3 py-2">
-                    <p>Clear the whole conversation? The changes the Coach made stay.</p>
-                    <div class="flex gap-2">
-                        <button type="button" class="min-h-tap flex-1 rounded-xl border border-secondary-text/25 px-4 disabled:opacity-50 active:opacity-70" :disabled="busy" @click="confirming = false">Cancel</button>
-                        <button
-                            type="button"
-                            class="min-h-tap flex-1 rounded-xl border border-secondary-text/25 px-4 disabled:opacity-50 font-medium text-tone-warning active:opacity-70"
-                            data-test="confirm-clear"
-                            :disabled="busy"
-                            :aria-busy="busy"
-                            @click="clear"
-                        >
-                            Clear
-                        </button>
-                    </div>
-                </div>
                 <button
-                    v-else
                     type="button"
                     class="min-h-tap w-full text-left text-tone-warning active:opacity-70"
                     data-test="clear"
-                    @click="(confirming = true), (cleared = {})"
+                    @click="(confirming = true), (cleared = {}), (clearError = null)"
                 >
                     Clear conversation
                 </button>
             </div>
+            <BottomSheet
+                :open="confirming"
+                title="Clear conversation"
+                save-title="Clear"
+                :heights="['half']"
+                :save-disabled="busy"
+                :cancel-disabled="busy"
+                :dismissible="!busy"
+                :error="clearError"
+                @cancel="confirming = false"
+                @save="clear"
+            >
+                <p class="p-4">Clear the whole conversation? The changes the Coach made stay.</p>
+            </BottomSheet>
             <Toast :result="cleared" />
         </template>
 
