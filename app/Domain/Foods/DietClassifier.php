@@ -54,7 +54,8 @@ use App\Domain\Model\DietFilter;
  *    en:fish, en:crustaceans, en:molluscs, en:non-vegetarian, en:non-vegan. A trace of gluten
  *    or milk (DumpRow passes trace:en:...) turns off gluten_free or dairy_free only.
  *  - en:vegan and en:vegetarian only ever set those flags true, before the table, so they
- *    stand in for missing ingredients and never undo a "no". *
+ *    stand in for missing ingredients and never undo a "no".
+ *
  * @phpstan-type DietFlags array{dairy_free: bool, gluten_free: bool, grain_free: bool, low_fodmap: bool, vegetarian: bool, paleo: bool, vegan: bool}
  */
 final class DietClassifier
