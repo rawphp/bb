@@ -7,7 +7,7 @@ import type { AccountShowOutput } from '@/contracts/account_show';
 // /dev/screens/account_show can render it from a fixture; otherwise it reads.
 const props = defineProps<{ payload?: AccountShowOutput }>();
 
-const { data: account, failure, load } = useRead<AccountShowOutput>('account_show', {}, props.payload);
+const { data: account, failure, load } = useRead<AccountShowOutput>('account_show', {}, 'Your account could not be loaded.', props.payload);
 </script>
 
 <template>

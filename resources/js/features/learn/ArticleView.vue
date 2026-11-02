@@ -11,7 +11,7 @@ type Span = Block['spans'][number];
 
 const props = defineProps<{ slug?: string; payload?: ArticleShowOutput }>();
 
-const { data: article, failure, load } = useRead<ArticleShowOutput>('article_show', { slug: props.slug ?? '' }, props.payload);
+const { data: article, failure, load } = useRead<ArticleShowOutput>('article_show', { slug: props.slug ?? '' }, 'This article could not be loaded.', props.payload);
 
 // Consecutive bullet blocks render as one list; every other block stands alone.
 const groups = computed(() => {

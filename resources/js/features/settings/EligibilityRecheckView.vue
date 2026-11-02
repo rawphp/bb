@@ -25,7 +25,7 @@ const nav = findNavigation(router);
 // comparing against what that first check already saved. Until an answer comes the
 // boxes stay as sent, so the retry is the same check.
 const retry = useRetryKey('eligibility_recheck');
-const { data: screening, failure, load } = useRead<EligibilityRecheckShowOutput>('eligibility_recheck_show', {}, props.payload);
+const { data: screening, failure, load } = useRead<EligibilityRecheckShowOutput>('eligibility_recheck_show', {}, 'Your screening could not be loaded.', props.payload);
 const ticked = ref<Partial<Record<Item, boolean>>>({});
 // Boxes the user has changed. A background refresh (OFF-003) never overrides them.
 const touched = new Set<Item>();

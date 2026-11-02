@@ -8,7 +8,7 @@ import ReadState from '@/app/ReadState.vue';
 // rp-clone's LearnIndexView. /dev/screens/learn_show hands it a fixture as payload.
 const props = defineProps<{ payload?: LearnShowOutput }>();
 
-const { data: learn, failure, load } = useRead<LearnShowOutput>('learn_show', {}, props.payload);
+const { data: learn, failure, load } = useRead<LearnShowOutput>('learn_show', {}, 'Learn could not be loaded.', props.payload);
 </script>
 
 <template>

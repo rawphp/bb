@@ -24,7 +24,7 @@ type CoachStatus = AgentStatusShowOutput & { on?: boolean | null };
 
 const props = defineProps<{ payload?: CoachStatus }>();
 
-const { data: status, failure, load } = useRead<CoachStatus>('agent_status_show', {}, props.payload);
+const { data: status, failure, load } = useRead<CoachStatus>('agent_status_show', {}, 'The Coach settings could not be loaded.', props.payload);
 const on = computed(() => (typeof status.value?.on === 'boolean' ? status.value.on : null));
 const busy = ref(false);
 const error = ref<string | null>(null);

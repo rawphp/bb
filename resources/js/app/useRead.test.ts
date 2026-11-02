@@ -2,6 +2,7 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { CapabilityError, read } from './call';
+import type { ReadFailure } from './screenRead';
 import { useRead } from './useRead';
 
 vi.mock('./call', async (original) => ({ ...(await original<typeof import('./call')>()), read: vi.fn() }));
@@ -11,12 +12,17 @@ const readMock = vi.mocked(read);
 // A mounted screen listens for reconnects; one left from an earlier test would read again.
 enableAutoUnmount(afterEach);
 
+function label(failure: ReadFailure | null): string | null {
+    if (failure === null) return null;
+    return failure.offline ? 'offline' : failure.signedOut ? 'signed-out' : 'error';
+}
+
 function screen(payload?: { n: number }) {
     let api!: ReturnType<typeof useRead<{ n: number }>>;
     const wrapper = mount(
         defineComponent(() => {
-            api = useRead('probe_show', { id: 7 }, payload);
-            return () => h('p', api.failure.value ?? String(api.data.value?.n ?? 'loading'));
+            api = useRead('probe_show', { id: 7 }, 'The probe could not be loaded.', payload);
+            return () => h('p', label(api.failure.value) ?? String(api.data.value?.n ?? 'loading'));
         }),
     );
     return { wrapper, api: () => api };
@@ -45,6 +51,7 @@ describe('useRead', () => {
 
     it.each([
         [new CapabilityError('probe_show', 401, null), 'signed-out'],
+        [new CapabilityError('probe_show', 419, null), 'signed-out'],
         [new CapabilityError('probe_show', 0, null), 'offline'],
         [new CapabilityError('probe_show', 404, null), 'error'],
         [new CapabilityError('probe_show', 500, null), 'error'],
