@@ -99,6 +99,7 @@ const dim = computed(() => (props.pending ? 'opacity-60' : ''));
                     :class="dim"
                     @update:model-value="lengthPick = $event"
                 />
+                <h3 v-if="rateChoices.length > 1" :class="heading" class="pt-2">Rate</h3>
                 <ChoiceList
                     v-if="rateChoices.length > 1"
                     label="Rate"
