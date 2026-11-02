@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\MesocycleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -50,6 +51,23 @@ class Mesocycle extends Model
     public function sessions(): HasMany
     {
         return $this->hasMany(WorkoutSession::class);
+    }
+
+    /**
+     * The user's saved mesocycles: not drafts, and with a start and a length.
+     *
+     * @return Builder<self>
+     */
+    public static function savedBy(User $user): Builder
+    {
+        return self::query()->where('user_id', $user->id)->where('is_draft', false)
+            ->whereNotNull('start_date')->whereNotNull('weeks');
+    }
+
+    /** Not a draft, and dated: what MESO-001 lists and mesocycle_show shows as saved. */
+    public function isSaved(): bool
+    {
+        return ! $this->is_draft && $this->start_date !== null && $this->weeks !== null;
     }
 
     /**

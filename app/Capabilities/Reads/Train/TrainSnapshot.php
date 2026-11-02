@@ -128,7 +128,7 @@ final readonly class TrainSnapshot
     public function saved(): Collection
     {
         return $this->mesocycles
-            ->filter(fn (Mesocycle $m) => ! $m->is_draft && $m->start_date !== null && $m->weeks !== null)
+            ->filter(fn (Mesocycle $m) => $m->isSaved())
             ->values();
     }
 

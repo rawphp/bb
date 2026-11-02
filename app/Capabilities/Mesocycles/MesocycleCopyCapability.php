@@ -41,6 +41,6 @@ final class MesocycleCopyCapability implements HostCapability, OwnsInput
 
     public function owned(User $user): array
     {
-        return ['source_mesocycle_id' => Mesocycle::query()->where('user_id', $user->id)->where('is_draft', false)];
+        return ['source_mesocycle_id' => Mesocycle::savedBy($user)];
     }
 }

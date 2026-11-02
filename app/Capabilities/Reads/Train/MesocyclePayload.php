@@ -65,9 +65,10 @@ final class MesocyclePayload
         return new MesocycleShowOutput(
             id: (string) $mesocycle->id,
             name: $mesocycle->name,
-            priority_options: self::priorityOptions(withOff: ! $mesocycle->is_draft),
-            saved: $mesocycle->is_draft ? null : self::saved($snapshot, $mesocycle),
-            build: $mesocycle->is_draft ? self::draft($snapshot, $mesocycle) : null,
+            priority_options: self::priorityOptions(withOff: $mesocycle->isSaved()),
+            saved: $mesocycle->isSaved() ? self::saved($snapshot, $mesocycle) : null,
+            // A row saved without dates cannot be shown as running, so it opens in the create flow to be finished.
+            build: $mesocycle->isSaved() ? null : self::draft($snapshot, $mesocycle),
         );
     }
 

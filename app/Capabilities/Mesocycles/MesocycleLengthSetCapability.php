@@ -34,6 +34,6 @@ final class MesocycleLengthSetCapability implements HostCapability, OwnsInput
 
     public function owned(User $user): array
     {
-        return ['mesocycle_id' => Mesocycle::query()->where('user_id', $user->id)->where('is_draft', false)];
+        return ['mesocycle_id' => Mesocycle::savedBy($user)];
     }
 }
