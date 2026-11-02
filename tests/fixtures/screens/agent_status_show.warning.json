@@ -1,8 +1,8 @@
 {
     "enabled": true,
     "turns_left": 3,
-    "tokens_left": null,
+    "tokens_left": 412000,
     "at_cap": false,
-    "resets_at": "2026-11-03T00:00:00+00:00",
+    "resets_at": null,
     "notice": "3 Coach messages left today."
 }

@@ -2,24 +2,20 @@
 
 namespace App\Capabilities\Settings\Data;
 
+use App\Capabilities\Support\DomainValues;
+use App\Capabilities\Support\WriteOutput;
+use App\Capabilities\Support\WriteResult;
 use Rawphp\Capabilities\Attributes\Field;
-use Rawphp\Capabilities\Support\CapabilityData;
 
 /** eligibility_recheck's result: the write result (CAP-010), what the re-check decided, and where to go next. */
-final class EligibilityRecheckOutput extends CapabilityData
+final class EligibilityRecheckOutput extends WriteOutput
 {
-    /**
-     * @param  list<string>  $invalidates
-     */
     public function __construct(
-        #[Field(description: 'read keys whose data changed (CAP-010)')]
-        public readonly array $invalidates,
-        public readonly ?string $toast,
-        public readonly ?string $undo,
-        #[Field(enum: ['keep', 'switch_to_training_only', 'run_nutrition_setup', 'leave_fat_loss'])]
+        #[Field(enum: DomainValues::RECHECK_OUTCOME_KINDS)]
         public readonly string $outcome,
         public readonly string $message,
         #[Field(description: 'onboarding: onboarding_show holds the steps this outcome needs', enum: ['done', 'onboarding'])]
         public readonly string $next,
+        public readonly WriteResult $result,
     ) {}
 }

@@ -17,9 +17,6 @@ export interface TokenCreateInput {
 }
 
 export interface TokenCreateOutput {
-  /**
-   * read keys whose data changed (CAP-010)
-   */
   invalidates: unknown[];
   toast?: string | null;
   undo?: string | null;
@@ -32,4 +29,4 @@ export interface TokenCreateOutput {
   };
 }
 
-export const outputVersion = '9a7aa8ff659e';
+export const outputVersion = '2f53148c5578';

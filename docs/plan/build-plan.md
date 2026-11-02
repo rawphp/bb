@@ -80,7 +80,7 @@ Parallel issues rely on these names. They are written into architecture.md by SK
 
 **DOMAIN** (port one rp-clone `ios/Sources/RPCore/Domain/<Folder>`):
 1. Every test in `ios/Tests/RPCoreTests/Domain/<Folder>` has a Pest unit test in `tests/Unit/Domain/<Folder>/` with the same requirement ID, inputs and expected values. Write it first and see it fail.
-2. `app/Domain/<Folder>` holds plain PHP: an arch test fails if it uses Eloquent, a facade, `now()`, `Carbon::now()` or `config()`. Time and settings arrive as arguments.
+2. `app/Domain/<Folder>` holds plain PHP: an arch test fails if it uses Eloquent, a facade, `now()`, `Carbon::now()`, `config()`, or a PHP clock function, or builds a date. Time and settings arrive as arguments. Every folder's arch test takes its rules from `tests/Support/DomainArch.php`. A folder that must rebuild a date from whole values it is given names those files in its arch test; today that is only `Plan/PlanWeekGrid.php`.
 3. The PR body lists each public Swift function or type and its PHP name.
 4. Gate passes.
 

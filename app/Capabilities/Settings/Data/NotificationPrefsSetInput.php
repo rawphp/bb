@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Settings\Data;
 
+use App\Capabilities\Support\SettingsValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -9,7 +10,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class NotificationPrefsSetInput extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: ['weigh_in', 'meal', 'workout', 'weekly_review', 'next_mesocycle', 'retarget'])]
+        #[Field(enum: SettingsValues::NOTIFICATION_KINDS)]
         public readonly string $kind,
         public readonly bool $on,
     ) {}

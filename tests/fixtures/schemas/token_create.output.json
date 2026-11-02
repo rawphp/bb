@@ -4,8 +4,7 @@
     "additionalProperties": false,
     "properties": {
         "invalidates": {
-            "type": "array",
-            "description": "read keys whose data changed (CAP-010)"
+            "type": "array"
         },
         "toast": {
             "type": [

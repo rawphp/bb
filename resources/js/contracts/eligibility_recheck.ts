@@ -21,13 +21,10 @@ export interface EligibilityRecheckInput {
 }
 
 export interface EligibilityRecheckOutput {
-  /**
-   * read keys whose data changed (CAP-010)
-   */
   invalidates: unknown[];
   toast?: string | null;
   undo?: string | null;
-  outcome: "keep" | "switch_to_training_only" | "run_nutrition_setup" | "leave_fat_loss";
+  outcome: "runNutritionSetup" | "switchToTrainingOnly" | "leaveFatLoss" | "keep";
   message: string;
   /**
    * onboarding: onboarding_show holds the steps this outcome needs
@@ -35,4 +32,4 @@ export interface EligibilityRecheckOutput {
   next: "done" | "onboarding";
 }
 
-export const outputVersion = 'd5d639efd6f7';
+export const outputVersion = 'ee0cbda27bad';

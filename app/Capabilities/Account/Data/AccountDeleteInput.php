@@ -9,7 +9,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class AccountDeleteInput extends CapabilityData
 {
     public function __construct(
-        #[Field(description: 'the word DELETE, typed')]
+        #[Field(description: 'the word DELETE, typed; anything else is refused', enum: ['DELETE'])]
         public readonly string $confirmation,
     ) {}
 }

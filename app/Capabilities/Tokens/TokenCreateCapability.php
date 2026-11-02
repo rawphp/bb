@@ -6,6 +6,7 @@ use App\Actions\Tokens\CreateToken;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\ReadKey;
+use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Tokens\Data\CreatedToken;
 use App\Capabilities\Tokens\Data\TokenCapability;
 use App\Capabilities\Tokens\Data\TokenCreateInput;
@@ -49,9 +50,6 @@ final class TokenCreateCapability implements HostCapability
         );
 
         return new TokenCreateOutput(
-            invalidates: [ReadKey::for('token_list')],
-            toast: null,
-            undo: null,
             token: new CreatedToken(
                 id: $token->id,
                 name: $token->name,
@@ -59,6 +57,7 @@ final class TokenCreateCapability implements HostCapability
                 scope_text: $token->scope->label(),
                 expires_text: TokenRows::expiresText($token),
             ),
+            result: new WriteResult(invalidates: [ReadKey::for('token_list')]),
         );
     }
 }

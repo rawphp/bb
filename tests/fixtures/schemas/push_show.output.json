@@ -1,0 +1,27 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "available": {
+            "type": "boolean"
+        },
+        "public_key": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "devices": {
+            "type": "integer"
+        },
+        "this_browser": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "available",
+        "devices",
+        "this_browser"
+    ]
+}

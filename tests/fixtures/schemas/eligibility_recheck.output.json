@@ -4,8 +4,7 @@
     "additionalProperties": false,
     "properties": {
         "invalidates": {
-            "type": "array",
-            "description": "read keys whose data changed (CAP-010)"
+            "type": "array"
         },
         "toast": {
             "type": [
@@ -22,10 +21,10 @@
         "outcome": {
             "type": "string",
             "enum": [
-                "keep",
-                "switch_to_training_only",
-                "run_nutrition_setup",
-                "leave_fat_loss"
+                "runNutritionSetup",
+                "switchToTrainingOnly",
+                "leaveFatLoss",
+                "keep"
             ]
         },
         "message": {

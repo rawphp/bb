@@ -1,0 +1,29 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "workout_exercise_id": {
+            "type": "string"
+        },
+        "new_workout_exercise_id": {
+            "type": "string"
+        },
+        "exercise_id": {
+            "type": "string"
+        },
+        "scope": {
+            "type": "string",
+            "enum": [
+                "this_session",
+                "rest_of_mesocycle"
+            ]
+        }
+    },
+    "required": [
+        "workout_exercise_id",
+        "new_workout_exercise_id",
+        "exercise_id",
+        "scope"
+    ]
+}

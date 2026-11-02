@@ -7,8 +7,8 @@ use App\Capabilities\Reads\Data\Settings\DietFilters;
 use App\Capabilities\Reads\Data\Settings\NotificationSwitch;
 use App\Capabilities\Reads\Data\Settings\Profile;
 use App\Capabilities\Reads\Data\Settings\Schedule;
-use App\Capabilities\Reads\Data\Settings\Status;
 use App\Capabilities\Reads\Data\Settings\Units;
+use App\Capabilities\Reads\Data\Today\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 

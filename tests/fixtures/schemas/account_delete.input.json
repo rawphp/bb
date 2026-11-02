@@ -5,7 +5,10 @@
     "properties": {
         "confirmation": {
             "type": "string",
-            "description": "the word DELETE, typed"
+            "description": "the word DELETE, typed; anything else is refused",
+            "enum": [
+                "DELETE"
+            ]
         }
     },
     "required": [

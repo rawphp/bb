@@ -4,7 +4,8 @@ namespace App\Capabilities\Reads\Data;
 
 use App\Capabilities\Reads\Data\Settings\BillingPlan;
 use App\Capabilities\Reads\Data\Settings\LapsedBanner;
-use App\Capabilities\Reads\Data\Settings\Status;
+use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\SettingsValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -20,7 +21,7 @@ final class BillingShowOutput extends CapabilityData
         public readonly ?LapsedBanner $lapsed,
         #[Field(items: BillingPlan::class)]
         public readonly array $plans,
-        #[Field(enum: ['monthly', 'six_months', 'yearly'])]
+        #[Field(enum: SettingsValues::BILLING_PLANS)]
         public readonly string $default_plan,
         #[Field(description: '"Start 7-day free trial" or "Subscribe"')]
         public readonly string $primary_label,

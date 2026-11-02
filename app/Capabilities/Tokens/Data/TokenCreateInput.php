@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Tokens\Data;
 
+use App\Capabilities\Support\SettingsValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -18,7 +19,7 @@ final class TokenCreateInput extends CapabilityData
         public readonly string $name,
         #[Field(enum: [30, 90, 365])]
         public readonly int $expires_in_days,
-        #[Field(enum: ['everything', 'read_only', 'health_bridge', 'custom'])]
+        #[Field(enum: SettingsValues::TOKEN_SCOPES)]
         public readonly string $scope,
         #[Field(description: 'the custom scope; empty for the others', items: TokenCapability::class)]
         public readonly array $capabilities,

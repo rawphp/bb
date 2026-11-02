@@ -2,7 +2,7 @@
 
 export interface ProfileUpdateInput {
   name: string;
-  sex: "male" | "female";
+  sex: "female" | "male";
   birth_date: string;
   height: {
     unit: "cm" | "feetInches";
