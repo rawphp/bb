@@ -25,12 +25,8 @@ use App\Domain\Model\VolumeFeedback;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Progression\FeedbackSheet;
 use App\Domain\Progression\FeedbackSheets;
-use App\Domain\Progression\LoadProgression;
 use App\Domain\Progression\RepTable;
 use App\Domain\Progression\RepTableRow;
-use App\Domain\Progression\RetargetKind;
-use App\Domain\Progression\SetLoad;
-use App\Domain\Progression\SetTarget;
 use App\Domain\Progression\WorkoutStatus;
 use App\Models\DayTarget;
 use App\Models\ExerciseFeedback;
@@ -106,10 +102,9 @@ final class WorkoutPayload
     {
         $exercise = $block->exercise;
         $unit = $s->unit()->value;
-        $lastWeek = $s->lastWeekLoads($exercise);
         $sets = [];
         foreach ($block->sets as $number => $row) {
-            $sets[] = self::set($s, $block, $row, $number, $rir, $lastWeek);
+            $sets[] = self::set($s, $block, $row, $number, $rir);
         }
 
         return new WorkoutExercise(
@@ -138,30 +133,24 @@ final class WorkoutPayload
 
     /**
      * rp-clone restoredSet: the fields hold what was typed or logged, else the target (WO-004). A weight moved off
-     * the target with no reps typed shows the reps for an equal effort (WO-005, PROG-024), or none when it is far
-     * from last week's (PROG-025).
-     *
-     * @param  list<SetLoad>  $lastWeek
+     * the target with no reps typed shows the rep table's reps for it (WO-005, PROG-024, CAP-016), as the view does
+     * offline; a weight not in the table shows only the RIR.
      */
-    private static function set(WorkoutSnapshot $s, WorkoutBlock $block, WorkoutSetRow $row, int $index, ?int $rir, array $lastWeek): WorkoutSet
+    private static function set(WorkoutSnapshot $s, WorkoutBlock $block, WorkoutSetRow $row, int $index, ?int $rir): WorkoutSet
     {
         $exercise = $block->exercise;
-        $rules = $s->rules($exercise);
         $weightKg = $row->actualKg ?? $row->targetKg;
         if (in_array($exercise->load_type, [ExerciseLoadType::Bodyweight, ExerciseLoadType::BodyweightPlusLoad], true) && $weightKg !== null && abs($weightKg) < 1e-9) {
             $weightKg = null;
         }
         $target = $row->targetKg === null ? null : round($s->display($row->targetKg), 4);
+        $table = RepTable::rows($target, $row->targetReps, $rir, $s->rules($exercise), $s->isFatLoss());
         $reps = $row->actualReps;
         if ($reps === null && self::showsTarget($row, $weightKg)) {
             $reps = $row->targetReps;
-        } elseif ($reps === null && $weightKg !== null && $target !== null && $target > 0 && $row->targetReps !== null && $rir !== null
-            && $exercise->load_type !== ExerciseLoadType::Bodyweight) {
-            $last = $lastWeek === [] ? null : $lastWeek[min($index, count($lastWeek) - 1)]->weight;
-            $retarget = LoadProgression::retarget(new SetTarget($target, $row->targetReps, $rir), $s->display($weightKg), $last, $rules);
-            $reps = $retarget->kind === RetargetKind::Reps && $retarget->value > 0 ? $retarget->value : null;
+        } elseif ($reps === null && $weightKg !== null) {
+            $reps = RepTable::repsAt($table, $s->display($weightKg));
         }
-        $table = RepTable::rows($target, $row->targetReps, $rir, $rules, $s->isFatLoss());
 
         return new WorkoutSet(
             id: $row->id,

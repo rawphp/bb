@@ -62,3 +62,11 @@ it('PROG-025 WO-006 a set with no planned weight, no planned reps, no RIR or no 
         ->and(RepTable::rows(80.0, 10, null, repTableRules(), false))->toBe([])
         ->and(RepTable::rows(80.0, 10, 2, repTableRules(LoadType::Bodyweight), false))->toBe([]);
 });
+
+it('CAP-016 a weight is looked up in the table; one that is not a row gives no reps', function () {
+    $rows = RepTable::rows(140.0, 26, 2, repTableRules(unit: WeightUnit::Lb, step: 5.0), isFatLoss: false);
+
+    expect(RepTable::repsAt($rows, 145.0))->toBe(24)
+        ->and(RepTable::repsAt($rows, 142.5))->toBeNull()
+        ->and(RepTable::repsAt([], 140.0))->toBeNull();
+});

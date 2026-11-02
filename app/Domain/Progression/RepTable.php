@@ -48,4 +48,21 @@ final class RepTable
 
         return $rows;
     }
+
+    /**
+     * CAP-016: the reps a table gives for a weight, as the view looks a typed weight up; null for a weight that is not
+     * one of its rows, which shows only the RIR.
+     *
+     * @param  list<RepTableRow>  $table
+     */
+    public static function repsAt(array $table, float $weight): ?int
+    {
+        foreach ($table as $row) {
+            if (abs($row->weight - $weight) < 0.001) {
+                return $row->reps;
+            }
+        }
+
+        return null;
+    }
 }

@@ -224,13 +224,13 @@ it('WO-003 WO-005 a started session is rebuilt from its rows, a changed weight s
         ->and(woExercise($payload, 'Dumbbell Curl')['sets'][0]['is_skipped'])->toBeTrue();
 });
 
-it('PROG-025 a weight far from last week\'s keeps only the RIR when the screen is rebuilt', function () {
+it('PROG-025 CAP-016 a weight off the rep table keeps only the RIR when the screen is rebuilt', function () {
     $payload = woShow(...woStarted([
         woRow('slot-12', 0, W::BENCH, ['target_weight_kg' => 82.5, 'target_reps' => 10, 'actual_weight_kg' => 100]),
     ]));
     $set = woExercise($payload, 'Bench Press')['sets'][0];
 
-    // 100 kg is 25% above last week's 80 kg.
+    // 100 kg is 21% above the planned 82.5 kg, so the table has no row for it.
     expect($set['reps'])->toBeNull()
         ->and($set['weight']['value'])->toBe(100.0)
         ->and($set['off_table_text'])->toBe('1 RIR, just log reps');
