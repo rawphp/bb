@@ -1,19 +1,19 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import type { MesocycleShowOutput } from '@/contracts/mesocycle_show';
 import type { TemplatesShowOutput } from '@/contracts/templates_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import PriorityRowView from '../PriorityRowView.vue';
 import MesocycleBuildView from './MesocycleBuildView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 const router = { replace: vi.fn(), push: vi.fn(), back: vi.fn() };
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => router }));
 
 const readMock = vi.mocked(read);
 const readFreshMock = vi.mocked(readFresh);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const empty = screenFixture<MesocycleShowOutput>('mesocycle_show.empty');
 const warning = screenFixture<MesocycleShowOutput>('mesocycle_show.warning');
 const saved = screenFixture<MesocycleShowOutput>('mesocycle_show');
