@@ -119,7 +119,7 @@ final class ImportFoods extends Command
         $this->info("Imported {$this->imported} foods, skipped {$this->skipped}.");
         // Reported, not failed: these come from the data, so a fresh download would give the same result.
         if ($this->merged > 0 || $this->unmatched > 0) {
-            $this->warn("{$this->merged} rows repeated another row's source id and were merged into it; {$this->unmatched} rows lost their servings because no saved food matched them (see the log).");
+            $this->warn("Dropped {$this->unmatched}: rows the database merged into another food, so their servings were not saved (see the log). Merged {$this->merged}: rows that repeated another row's source id.");
         }
         if ($source === FoodSource::OpenFoodFacts) {
             // ODbL needs the credit in the app, and no screen shows it yet (docs/self-hosting.md, "Food data").

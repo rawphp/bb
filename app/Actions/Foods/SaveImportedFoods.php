@@ -75,7 +75,8 @@ final class SaveImportedFoods
             }
         });
 
-        return ['saved' => $saved, 'merged' => count($rows) - $saved, 'unmatched' => $unmatched];
+        // An unmatched row was folded into another food by the database, so it is not a food of its own.
+        return ['saved' => $saved - $unmatched, 'merged' => count($rows) - $saved, 'unmatched' => $unmatched];
     }
 
     /**

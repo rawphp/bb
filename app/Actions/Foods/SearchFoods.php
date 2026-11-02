@@ -12,6 +12,7 @@ use App\Models\FoodRecent;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The food database search behind the Pantry: search (FOOD-002, FOOD-023 to FOOD-027,
@@ -77,11 +78,13 @@ final class SearchFoods
     private function mine(User $user, FoodSearchFilters $filters, array $terms, string $query): Builder
     {
         $userId = $user->id;
-        // Subqueries on the user_id-indexed tables, so the database bounds the scan by the user's foods and no
-        // id list, however long the user's history, travels through PHP.
-        $builder = $this->filtered($filters)->where(fn (Builder $q) => $q->where('foods.user_id', $userId)
-            ->orWhereIn('foods.id', FoodRecent::query()->select('food_id')->where('user_id', $userId))
-            ->orWhereIn('foods.id', FoodFavorite::query()->select('food_id')->where('user_id', $userId)));
+        // The user's candidate ids as one derived table: a UNION of three selects that each use their own
+        // user_id index, joined to foods by primary key. No id list travels through PHP, and the foods table
+        // is read only for those ids, however long the user's history.
+        $candidates = DB::table('foods')->select('id as food_id')->where('user_id', $userId)
+            ->union(FoodRecent::query()->toBase()->select('food_id')->where('user_id', $userId))
+            ->union(FoodFavorite::query()->toBase()->select('food_id')->where('user_id', $userId));
+        $builder = $this->filtered($filters)->select('foods.*')->joinSub($candidates, 'mine', 'mine.food_id', '=', 'foods.id');
         // visibleTo: a recent or favorite never reveals another user's custom food (FOOD-060).
         $builder->visibleTo($user);
 
