@@ -279,8 +279,8 @@ async function saveMeal(): Promise<void> {
 
 <template>
     <BottomSheet :open="true" title="Scan a food" :save-title="null" :dismissible="!busy" @cancel="emit('close', false)">
-        <div class="space-y-4">
-            <SegmentedPicker v-model="mode" label="Mode" :options="MODES" :disabled="busy" />
+        <div class="min-h-full space-y-4 bg-background p-4">
+            <SegmentedPicker v-model="mode" label="Mode" :options="MODES" :disabled="busy" class="bg-secondary-text/15!" />
 
             <p class="text-sm text-secondary-text">
                 <template v-if="mode === 'barcode'">{{
@@ -430,15 +430,17 @@ async function saveMeal(): Promise<void> {
         </div>
 
         <BottomSheet :open="naming" title="Name the saved meal" :heights="['half']" :save-disabled="mealName.trim() === ''" @cancel="naming = false" @save="saveMeal">
-            <input
-                v-model="mealName"
-                type="text"
-                maxlength="255"
-                aria-label="Name"
-                class="min-h-tap w-full rounded-xl bg-surface px-3.5 text-primary-text"
-                data-test="saved-meal-name"
-                @keydown.enter.prevent="saveMeal"
-            />
+            <div class="min-h-full bg-background p-4">
+                <input
+                    v-model="mealName"
+                    type="text"
+                    maxlength="255"
+                    aria-label="Name"
+                    class="min-h-tap w-full rounded-xl bg-surface px-3.5 text-primary-text"
+                    data-test="saved-meal-name"
+                    @keydown.enter.prevent="saveMeal"
+                />
+            </div>
         </BottomSheet>
 
         <slot
