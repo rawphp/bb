@@ -4,8 +4,9 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 // (CAP-017), with the time it was fetched. call.ts is its only user.
 // Each user has their own database, named by the bb_cache_owner cookie the server
 // sets on sign-in and clears on sign-out (NameCacheOwner). With no owner there is
-// no cache, and a change of owner deletes every other owner's database, so the
-// cookie going away (a 401, a sign-out) leaves no one's reads on the device.
+// no cache, and a change of owner deletes every other owner's database where the
+// browser can list them, so the cookie going away (a 401, a sign-out) leaves no
+// one's reads on the device.
 
 export const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -17,9 +18,9 @@ export type CachedRead = { key: string; data: unknown; fetchedAt: number; versio
 const contracts = import.meta.glob<{ outputVersion?: string }>('../contracts/*.ts', { eager: true });
 
 export function versionOf(key: string): string | undefined {
-    const brace = key.indexOf('{');
+    const name = parseReadKey(key)?.name;
 
-    return contracts[`../contracts/${brace < 0 ? key : key.slice(0, brace)}.ts`]?.outputVersion;
+    return name === undefined ? undefined : contracts[`../contracts/${name}.ts`]?.outputVersion;
 }
 
 interface Schema extends DBSchema {
@@ -37,6 +38,10 @@ function owner(): string | null {
     return match?.[1] ?? null;
 }
 
+// A healthy open takes milliseconds. One blocked by another tab's delete would
+// otherwise hang every read and write; after this the cache counts as unavailable.
+export const OPEN_TIMEOUT_MS = 1_000;
+
 /** The current owner's database, or undefined when no one is signed in on this device. */
 function open(): Promise<IDBPDatabase<Schema>> | undefined {
     const current = owner();
@@ -44,24 +49,45 @@ function open(): Promise<IDBPDatabase<Schema>> | undefined {
     if (opened !== undefined && opened.owner === current) return opened.db;
 
     // Close the old owner's connection, or deleting that database waits on it forever.
-    void opened?.db?.then((db) => db.close());
+    void opened?.db?.then((db) => db.close()).catch(() => undefined);
     void deleteOtherOwners(current);
-    opened = {
-        owner: current,
-        db:
-            current === null
-                ? undefined
-                : openDB<Schema>(DB_PREFIX + current, 1, {
-                      upgrade(database) {
-                          database.createObjectStore('reads', { keyPath: 'key' });
-                      },
-                  }),
-    };
+    opened = { owner: current, db: current === null ? undefined : openOwner(current) };
 
     return opened.db;
 }
 
+function openOwner(owner: string): Promise<IDBPDatabase<Schema>> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const opening = openDB<Schema>(DB_PREFIX + owner, 1, {
+        upgrade(database) {
+            database.createObjectStore('reads', { keyPath: 'key' });
+        },
+        // Another tab is deleting this database because its owner changed: let it.
+        blocking(_current, _blocked, event) {
+            (event.target as IDBDatabase).close();
+            if (opened?.db === db) opened = undefined;
+        },
+    });
+    const db = Promise.race([
+        opening,
+        new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error('IndexedDB did not open in time')), OPEN_TIMEOUT_MS);
+        }),
+    ]).finally(() => clearTimeout(timer));
+
+    // A timed-out open is forgotten, so the next call tries again; its connection, if it
+    // ever opens, is closed.
+    db.catch(() => {
+        if (opened?.db === db) opened = undefined;
+    });
+    void opening.then((connection) => (opened?.db === db ? undefined : connection.close())).catch(() => undefined);
+
+    return db;
+}
+
 async function deleteOtherOwners(current: string | null): Promise<void> {
+    // Not every browser lists databases; there the others stay until their owner returns.
+    if (typeof indexedDB.databases !== 'function') return;
     const databases = await indexedDB.databases().catch(() => []);
 
     for (const { name } of databases) {
@@ -72,6 +98,19 @@ async function deleteOtherOwners(current: string | null): Promise<void> {
 /** The capability name plus its input as JSON with keys sorted at every depth, as the server's ReadKey builds it. */
 export function readKey(name: string, input: Record<string, unknown> = {}): string {
     return name + JSON.stringify(sorted(input));
+}
+
+/** The name and input a read key was built from, or undefined when it is not one. */
+export function parseReadKey(key: string): { name: string; input: Record<string, unknown> } | undefined {
+    const brace = key.indexOf('{');
+    if (brace < 1) return undefined;
+
+    try {
+        // Text that starts with `{` parses to an object or not at all.
+        return { name: key.slice(0, brace), input: JSON.parse(key.slice(brace)) as Record<string, unknown> };
+    } catch {
+        return undefined;
+    }
 }
 
 function sorted(value: unknown): unknown {

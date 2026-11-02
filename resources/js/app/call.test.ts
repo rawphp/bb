@@ -301,24 +301,26 @@ describe('call', () => {
         it.each([
             ['a write drops it', () => write('workout_set_log', {})],
             ['the session ends', () => clearReads()],
-        ])('OFF-003 a refresh that started before %s does not put the old answer back', async (_, removeIt) => {
+        ])('OFF-003 a refresh that started before %s asks again instead of showing or storing the old answer', async (_, removeIt) => {
             await store('today_show{}', { sets: 1 });
-            let answerRefresh: (response: Response) => void = () => {};
+            let answerFirst: (response: Response) => void = () => {};
+            let todayCalls = 0;
             document.cookie = 'XSRF-TOKEN=t; path=/';
             fetchMock.mockImplementation(async (url) => {
-                if (url === '/capabilities/today_show') return new Promise<Response>((resolve) => (answerRefresh = resolve));
-                return json({ ok: true, data: { invalidates: ['today_show{}'] } });
+                if (url !== '/capabilities/today_show') return json({ ok: true, data: { invalidates: ['today_show{}'] } });
+                if (++todayCalls === 1) return new Promise<Response>((resolve) => (answerFirst = resolve));
+                return json({ ok: true, data: { sets: 2 } });
             });
             const onUpdate = vi.fn();
 
             await read('today_show', {}, onUpdate);
-            await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/capabilities/today_show', expect.anything()));
+            await vi.waitFor(() => expect(todayCalls).toBe(1));
             await removeIt();
-            answerRefresh(json({ ok: true, data: { sets: 1 } }));
+            answerFirst(json({ ok: true, data: { sets: 1 } }));
             await vi.waitFor(() => expect(onUpdate).toHaveBeenCalled());
-            await settle();
 
-            expect(await cached('today_show{}')).toBeUndefined();
+            expect(onUpdate.mock.calls).toEqual([[{ sets: 2 }]]);
+            expect((await cached('today_show{}'))?.data).toEqual({ sets: 2 });
         });
 
         it(`OFF-004 skips a read cached less than ${WARM_FRESH_MS / 1000} s ago and refetches an older one`, async () => {

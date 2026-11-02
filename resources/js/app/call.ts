@@ -1,5 +1,5 @@
 import type { SyncManifestOutput } from '@/contracts/sync_manifest';
-import { cached, clearReads, drop, evict, isCurrent, readKey, requestPersistentStorage, stamp, store } from './cache';
+import { cached, clearReads, drop, evict, isCurrent, parseReadKey, readKey, requestPersistentStorage, stamp, store } from './cache';
 import { isWalked, now } from './clock';
 
 // The only way the app talks to the server (CAP-004): POST /capabilities/{name}
@@ -54,15 +54,22 @@ export async function read<T = unknown>(
     if (hit === undefined) return fresh;
 
     fresh.then(onUpdate, (error: unknown) => {
-        if (error instanceof CapabilityError && REMOVES_COPY.includes(error.status)) onError?.(error);
+        if (hasStatus(error, REMOVES_COPY)) onError?.(error);
         // Otherwise keep showing the cached copy.
     });
 
     return hit.data as T;
 }
 
-// Refresh answers after which the cached copy may not be shown.
-const REMOVES_COPY = [401, 403, 404, 419];
+// The statuses after which a cached copy may not be shown. A gone session clears
+// every read (forget()); a refused or missing read drops that one (fetchRead()).
+const SESSION_GONE = [401, 419];
+const READ_GONE = [403, 404];
+const REMOVES_COPY = [...SESSION_GONE, ...READ_GONE];
+
+function hasStatus(error: unknown, statuses: readonly number[]): error is CapabilityError {
+    return error instanceof CapabilityError && statuses.includes(error.status);
+}
 
 /**
  * OFF-004: fetch every read key the server's sync_manifest lists into the cache,
@@ -100,11 +107,11 @@ async function warmOnce(): Promise<void> {
         const hit = await cached(key).catch(() => undefined);
         if (hit !== undefined && Date.now() - hit.fetchedAt < WARM_FRESH_MS) return;
 
-        const brace = key.indexOf('{');
+        const parsed = parseReadKey(key);
         // A malformed key fails on its own; the rest still warm.
-        if (brace < 1) throw new Error(`Not a read key: ${key}`);
+        if (parsed === undefined) throw new Error(`Not a read key: ${key}`);
 
-        await fetchRead(key.slice(0, brace), JSON.parse(key.slice(brace)) as CapabilityInput, key);
+        await fetchRead(parsed.name, parsed.input, key);
     });
     await evict(new Set(keys));
 
@@ -140,13 +147,13 @@ export function keepWarm(target: Window = window): void {
 async function fetchRead<T>(name: string, input: CapabilityInput, key: string): Promise<T> {
     const since = stamp();
     const data = await invoke<T>(name, input).catch(async (error: unknown) => {
-        if (error instanceof CapabilityError && (error.status === 403 || error.status === 404)) {
-            await drop([key]).catch(() => undefined);
-        }
+        if (hasStatus(error, READ_GONE)) await drop([key]).catch(() => undefined);
 
         throw error;
     });
-    if (!isCurrent(key, since)) return data;
+    // A write, a clear or a new owner came while this was in flight, so the answer
+    // may predate it: ask again rather than show or store it.
+    if (!isCurrent(key, since)) return fetchRead(name, input, key);
 
     await store(key, data).catch(() => {
         // No IndexedDB (a private window, say): the read still answers.
@@ -185,9 +192,7 @@ async function invoke<T>(name: string, input: CapabilityInput): Promise<T> {
 // again. The server also drops the bb_cache_owner cookie then, as on sign-out, and
 // a sign-in names the new owner, so cache.ts opens no other user's reads.
 async function forget(error: unknown): Promise<void> {
-    if (error instanceof CapabilityError && (error.status === 401 || error.status === 419)) {
-        await clearReads().catch(() => undefined);
-    }
+    if (hasStatus(error, SESSION_GONE)) await clearReads().catch(() => undefined);
 }
 
 async function send<T>(name: string, input: CapabilityInput, signal: AbortSignal): Promise<T> {

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { outputVersion as accountShowVersion } from '@/contracts/account_show';
-import { cached, clearReads, drop, evict, isCurrent, MAX_AGE_MS, readKey, requestPersistentStorage, stamp, store, versionOf } from './cache';
+import { cached, clearReads, drop, evict, isCurrent, MAX_AGE_MS, OPEN_TIMEOUT_MS, parseReadKey, readKey, requestPersistentStorage, stamp, store, versionOf } from './cache';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -96,6 +96,53 @@ describe('cache', () => {
 
         expect(isCurrent('account_show{}', since)).toBe(false);
         expect(isCurrent('account_show{}', stamp())).toBe(true);
+    });
+
+    it('CAP-017 parses a read key back into the name and input it was built from', () => {
+        expect(parseReadKey(readKey('meal_show', { meal: 2, date: '2026-11-01' }))).toEqual({ name: 'meal_show', input: { date: '2026-11-01', meal: 2 } });
+        expect(parseReadKey('account_show{}')).toEqual({ name: 'account_show', input: {} });
+        for (const bad of ['week_show', '{}', 'x{bad', 'x[1]', 'x{}[', 'x"a"', 'x{"a":1}{']) expect(parseReadKey(bad), bad).toBeUndefined();
+    });
+
+    it("OFF-003 lets another tab delete this owner's database instead of blocking it", async () => {
+        await store('account_show{}', { name: 'A' });
+
+        const outcome = await new Promise<string>((resolve) => {
+            const request = indexedDB.deleteDatabase('bodybuilder-reads-a1');
+            request.onsuccess = () => resolve('deleted');
+            request.onblocked = () => setTimeout(() => resolve('blocked'), 50);
+        });
+
+        expect(outcome).toBe('deleted');
+        await store('account_show{}', { name: 'A again' });
+        expect((await cached('account_show{}'))?.data).toEqual({ name: 'A again' });
+    });
+
+    it(`OFF-003 treats the cache as unavailable when its database does not open within ${OPEN_TIMEOUT_MS} ms`, async () => {
+        // An older tab holds c3's database open and ignores the delete, so opening c3 queues behind it.
+        const holder = await new Promise<IDBDatabase>((resolve) => {
+            const request = indexedDB.open('bodybuilder-reads-c3', 1);
+            request.onupgradeneeded = () => request.result.createObjectStore('reads', { keyPath: 'key' });
+            request.onsuccess = () => resolve(request.result);
+        });
+        indexedDB.deleteDatabase('bodybuilder-reads-c3');
+        signIn('c3');
+
+        const started = Date.now();
+        await expect(cached('account_show{}')).rejects.toThrow('did not open in time');
+        expect(Date.now() - started).toBeLessThan(OPEN_TIMEOUT_MS + 500);
+
+        holder.close();
+        await vi.waitFor(async () => expect(await cached('account_show{}').catch(() => 'still blocked')).toBeUndefined());
+    });
+
+    it('OFF-003 still switches owners where the browser cannot list databases', async () => {
+        vi.stubGlobal('indexedDB', Object.assign(Object.create(indexedDB), { databases: undefined }));
+
+        signIn('d4');
+        await store('account_show{}', { name: 'D' });
+
+        expect((await cached('account_show{}'))?.data).toEqual({ name: 'D' });
     });
 
     it('OFF-005 drops cached reads that are not in the manifest and older than 30 days', async () => {
