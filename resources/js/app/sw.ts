@@ -80,6 +80,8 @@ async function fromPreviousBuild({ request }: { request: Request }): Promise<Res
         if (response) return response;
     }
 
+    // A static build file passed on to the web server, not a server call (CAP-004 is about those).
+    // eslint-disable-next-line bb/no-business-rules
     return fetch(request);
 }
 

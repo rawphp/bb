@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SERVER_PATHS, SHELL_URL, shellEntry } from './shell';
 
 const workbox = vi.hoisted(() => ({
@@ -82,13 +82,26 @@ function buildRoute(): BuildRoute {
 }
 
 describe('sw', () => {
+    afterEach(() => {
+        for (const [type, listener] of added.splice(0)) self.removeEventListener(type, listener);
+        vi.restoreAllMocks();
+    });
+
     // This version's files, as the build injects them.
     const manifest = [
         { url: 'build/assets/main-new.js', revision: null },
         { url: 'icons/icon-192.png', revision: 'a1' },
     ];
 
+    // Each test imports the worker afresh; the listeners an earlier import added must not run again.
+    const added: [string, EventListenerOrEventListenerObject][] = [];
+    const addEventListener = self.addEventListener.bind(self);
+
     beforeEach(() => {
+        vi.spyOn(self, 'addEventListener').mockImplementation((type: string, listener: EventListenerOrEventListenerObject) => {
+            added.push([type, listener]);
+            addEventListener(type, listener);
+        });
         vi.resetModules();
         vi.clearAllMocks();
         stores.clear();
