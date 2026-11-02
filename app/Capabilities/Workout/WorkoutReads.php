@@ -6,6 +6,7 @@ use App\Capabilities\Mesocycles\MesocycleReads;
 use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Today\TodayReads;
 use App\Models\WorkoutSession;
+use App\Support\Mesocycles\TrainSnapshot;
 
 /**
  * The reads a workout write changes (CAP-011, CAP-017): the session's workout_show and, when its sets change, the
@@ -19,7 +20,7 @@ final class WorkoutReads
         return [
             self::workout($session),
             ...MesocycleReads::keys((string) $session->mesocycle_id),
-            ...TodayReads::keys($session->actual_start_at === null ? [] : [$session->actual_start_at->format('Y-m-d')]),
+            ...TodayReads::keys($session->actual_start_at === null ? [] : [TrainSnapshot::day($session->actual_start_at)->format('Y-m-d')]),
         ];
     }
 

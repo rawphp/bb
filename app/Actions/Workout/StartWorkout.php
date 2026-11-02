@@ -49,8 +49,7 @@ final class StartWorkout
                 'planned_end_at' => $snapshot->plannedEnd(),
                 'is_skipped' => false,
             ]))->forceFill(['user_id' => $user->id]);
-            $session->actual_start_at = $actedAt;
-            $session->save();
+            $session->fill(['actual_start_at' => $actedAt])->save();
 
             foreach ($snapshot->plannedBlocks() as $position => $block) {
                 (new WorkoutExercise([
