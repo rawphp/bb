@@ -5,11 +5,9 @@ import { isStandalone } from './device';
 // The install offer (PWA-003). Android gets Chrome's prompt; iPhone gets a sheet showing
 // Share, then Add to Home Screen. Dismissed means not offered again for 30 days.
 //
-// Nothing offers it yet. The screen that does (the end of onboarding, V_ONB2, or Today,
-// V_TODAY1) wires both halves in the same change: listenForInstall() in main.ts at
-// start-up, and offerInstall() from a tap once the user is through onboarding, since
-// Chrome shows its prompt only on a user gesture. Until then Chrome's own install
-// mini-infobar is left alone. pwaWiring.test.ts enforces both directions.
+// listenForInstall() runs in main.ts at start-up and holds Chrome's own mini-infobar;
+// onboarding's "Start my plan" (V_ONB2) calls offerInstall() on its tap, since Chrome
+// shows its prompt only on a user gesture. pwaWiring.test.ts keeps both halves wired.
 
 type InstallPromptEvent = Event & {
     prompt(): Promise<void>;

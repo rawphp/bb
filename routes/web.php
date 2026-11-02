@@ -8,9 +8,10 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\SendSignInCodeController;
 use App\Http\Controllers\Auth\SignInController;
 use App\Http\Controllers\Auth\SignOutController;
+use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
 
-// Host routes are for signing in and the app shell only (CAP-004).
+// Host routes are for signing in, the Stripe webhook and the app shell only (CAP-004).
 // Every read and write goes through POST /capabilities/{name}.
 Route::middleware(['guest', 'throttle:10,1'])->group(function (): void {
     Route::post('/register', RegisterController::class)->name('register');
@@ -26,6 +27,12 @@ Route::middleware(['guest', 'throttle:10,1'])->group(function (): void {
 });
 
 Route::post('/sign-out', SignOutController::class)->middleware('auth')->name('sign-out');
+
+// Stripe's webhook, with billing on only (SUB-020, SUB-021). Stripe signs each
+// request, so it takes no session, cookie or CSRF token from the web group.
+if (config('billing.enabled')) {
+    Route::post('/stripe/webhook', StripeWebhookController::class)->withoutMiddleware('web')->name('billing.webhook');
+}
 
 // The Vue app shell answers every other GET, so the client router owns the path.
 // Capability, Sanctum, MCP and API paths are left to their own routes and 404s.

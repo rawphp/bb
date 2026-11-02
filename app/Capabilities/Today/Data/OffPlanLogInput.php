@@ -13,10 +13,10 @@ final class OffPlanLogInput extends CapabilityData
         #[Field(description: 'A client-made ULID (CAP-019).')] public readonly string $id,
         #[Field(format: 'date')] public readonly string $date,
         #[Field(description: '24-hour "HH:MM".')] public readonly string $time,
-        public readonly float $kcal,
-        public readonly float $protein_g,
-        public readonly float $fat_g,
-        public readonly float $carbs_g,
+        #[Field(minimum: 0)] public readonly float $kcal,
+        #[Field(minimum: 0)] public readonly float $protein_g,
+        #[Field(minimum: 0)] public readonly float $fat_g,
+        #[Field(minimum: 0)] public readonly float $carbs_g,
         #[Field(description: 'Defaults to "Off-plan food".')] public readonly ?string $name = null,
     ) {}
 

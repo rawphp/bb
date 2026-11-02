@@ -2,6 +2,8 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
+use Closure;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
@@ -30,6 +32,18 @@ final class RecipeSaveInput extends CapabilityData
     {
         return [
             'id' => ['ulid'],
+            // Implicit: Laravel skips a plain rule for a value that is only spaces.
+            'name' => [new class implements ValidationRule
+            {
+                public bool $implicit = true;
+
+                public function validate(string $attribute, mixed $value, Closure $fail): void
+                {
+                    if (is_string($value) && trim($value) === '') {
+                        $fail('Give the recipe a name.');
+                    }
+                }
+            }],
             'steps.*' => ['filled', Rule::string()->max(1000)],
         ];
     }

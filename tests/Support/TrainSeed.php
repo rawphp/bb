@@ -10,6 +10,7 @@ use App\Models\Phase;
 use App\Models\Plan;
 use App\Models\Profile;
 use App\Models\User;
+use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 
@@ -76,9 +77,10 @@ final class TrainSeed
             'actual_start_at' => "{$at} 17:30:00", 'actual_end_at' => "{$at} 18:30:00",
         ]);
         $slot = $mesocycle->dayRows()[$day - 1]['slots'][0];
+        $block = WorkoutExercise::factory()->create(['workout_session_id' => $session->id, 'exercise_id' => $slot['exercise_id']]);
         foreach ([1, 2] as $position) {
             WorkoutSet::factory()->create([
-                'workout_session_id' => $session->id, 'exercise_id' => $slot['exercise_id'], 'position' => $position,
+                'workout_session_id' => $session->id, 'workout_exercise_id' => $block->id, 'exercise_id' => $slot['exercise_id'], 'position' => $position,
                 'actual_weight_kg' => 80 + $position, 'actual_reps' => 10, 'is_logged' => true,
             ]);
         }

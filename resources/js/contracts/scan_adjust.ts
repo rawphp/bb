@@ -5,12 +5,20 @@ export interface ScanAdjustInput {
     name: string;
     grams: number;
     food_id?: string | null;
+    /**
+     * The row's base_grams as the draft returned it; left out, grams is taken as typed at from_portion
+     */
+    base_grams?: number | null;
   }[];
   /**
    * The portion the rows' grams are at
    */
   from_portion: number;
   portion: number;
+  /**
+   * The saved_meal_name the draft came with, sent back unchanged (FOOD-046)
+   */
+  saved_meal_name?: string | null;
 }
 
 export interface ScanAdjustOutput {
@@ -23,6 +31,10 @@ export interface ScanAdjustOutput {
      * At the current portion; sent back unchanged to scan_adjust
      */
     grams: number;
+    /**
+     * The grams at 1×, unrounded; sent back unchanged to scan_adjust so a portion step rounds once (FOOD-045)
+     */
+    base_grams: number;
     grams_text: string;
     food_id?: string | null;
     /**
@@ -53,7 +65,7 @@ export interface ScanAdjustOutput {
   };
   unmatched_note?: string | null;
   /**
-   * The matched foods, merged per food: what Add to meal and Save as saved meal send
+   * The matched foods, merged per food, by raw weight (FOOD-006): what Add to meal and Save as saved meal send
    */
   matched: {
     food_id: string;
@@ -63,4 +75,4 @@ export interface ScanAdjustOutput {
   empty_text?: string | null;
 }
 
-export const outputVersion = 'e9badd81cfb9';
+export const outputVersion = 'a466d6ba88e6';

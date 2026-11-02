@@ -3,11 +3,14 @@ import { createApp } from 'vue';
 import { applyStoredAppearance } from '../design/appearance';
 import App from './App.vue';
 import { keepSynced } from './call';
+import { listenForInstall } from './install';
 import PwaOverlay from './PwaOverlay.vue';
 import { makeRouter } from './router';
 import { registerServiceWorker } from './updates';
 
 applyStoredAppearance();
+// Chrome fires its install prompt once, early; setup's "Start my plan" offers it (PWA-003).
+listenForInstall();
 createApp(App).use(makeRouter()).mount('#app');
 keepSynced();
 
