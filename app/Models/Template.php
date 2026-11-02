@@ -11,8 +11,20 @@ use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
-/** A library training template (MESO-010). */
+/**
+ * A library training template (MESO-010).
+ *
+ * @property int $id
+ * @property string $name
+ * @property Split $split
+ * @property int $days_per_week
+ * @property SexFit $sex
+ * @property Collection<int, PhaseFit> $phase_fit
+ * @property array<string, string>|null $priorities MESO-012: muscle to priority; empty when the phase decides
+ * @property list<string>|null $day_labels
+ */
 #[Fillable(['name', 'split', 'days_per_week', 'sex', 'phase_fit', 'priorities', 'day_labels'])]
 class Template extends Model
 {
