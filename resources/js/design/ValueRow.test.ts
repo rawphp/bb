@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import ValueRow, { type RowAction, type ValueField } from './ValueRow.vue';
 
@@ -222,6 +222,45 @@ describe('ValueRow', () => {
         expect(open()).toBeUndefined();
         expect(wrapper.find('[role="menu"]').exists()).toBe(true);
         wrapper.unmount();
+    });
+
+    it('UI-008 a drift under the slop stays a tap; past it the row captures the pointer, so the drag ends in no click', async () => {
+        const wrapper = row({ swipeActions });
+        const capture = vi.fn();
+        (wrapper.get('[data-row]').element as HTMLElement).setPointerCapture = capture;
+
+        await swipe(wrapper, -5);
+        expect(capture).not.toHaveBeenCalled();
+        expect(wrapper.get('[data-row]').attributes('data-open')).toBeUndefined();
+
+        await swipe(wrapper, -60);
+        expect(capture).toHaveBeenCalledWith(1);
+        expect(wrapper.get('[data-row]').attributes('data-open')).toBe('true');
+    });
+
+    it('UI-008 an open row stays open for a short swipe back or a further swipe left, and closes past the threshold', async () => {
+        const wrapper = row({ swipeActions });
+        const open = () => wrapper.get('[data-row]').attributes('data-open');
+
+        await swipe(wrapper, -60);
+        await swipe(wrapper, 20);
+        expect(open()).toBe('true');
+        await swipe(wrapper, -60);
+        expect(open()).toBe('true');
+        await swipe(wrapper, 60);
+        expect(open()).toBeUndefined();
+    });
+
+    it('UI-008 only the finger that started the swipe moves the row', async () => {
+        const wrapper = row({ swipeActions });
+        const el = wrapper.get('[data-row]').element;
+
+        el.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, pointerId: 1, pointerType: 'touch', bubbles: true }));
+        el.dispatchEvent(new PointerEvent('pointermove', { clientX: 120, pointerId: 2, pointerType: 'touch', bubbles: true }));
+        el.dispatchEvent(new PointerEvent('pointerup', { clientX: 120, pointerId: 1, pointerType: 'touch', bubbles: true }));
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.get('[data-row]').attributes('data-open')).toBeUndefined();
     });
 
     it('UI-008 with no actions there is no menu button', () => {
