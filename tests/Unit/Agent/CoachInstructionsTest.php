@@ -62,5 +62,7 @@ it('AGT-012 AGT-014 AGT-015 states the logging, refusal and Learn rules', functi
 
     expect($text)->toContain('Never log a set, a meal check-in or a weigh-in the user did not report in chat')
         ->and($text)->toContain('show the user its message as given')
-        ->and($text)->toContain('from the Learn articles, and link the article');
+        ->and($text)->toContain('from the Learn articles when you can read them, and link the article')
+        ->and($text)->toContain('send the line by itself')
+        ->and($text)->toContain('A read that is missing from it is not available this turn');
 });

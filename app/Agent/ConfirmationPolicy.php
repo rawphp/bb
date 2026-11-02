@@ -12,14 +12,15 @@ use Throwable;
 
 /**
  * CAP-020 step 5 (AGT-010): the agent may call a destructive capability only in a turn
- * whose user message holds a line `confirm: <name><input as JSON>` for that exact call.
- * The Coach writes the line at the end of its question, and the user's reply carries it.
+ * whose user message is exactly one line, `confirm: <name><input as JSON>`, for that call.
+ * The Coach writes the line at the end of its question, and a confirm control in the chat
+ * sends it as the whole message, so a pasted copy of the Coach's reply is not consent.
  * Both inputs are normalised through the capability's input class and compared as read
  * keys, so key order, spacing and defaults the model left out do not matter.
  */
 final class ConfirmationPolicy implements AgentPolicy
 {
-    private const LINE = '/^\s*confirm:\s*([a-z][a-z0-9_]{0,63})(\{.*\})\s*$/m';
+    private const LINE = '/^confirm:\s*([a-z][a-z0-9_]{0,63})(\{.*\})$/';
 
     public function __construct(private readonly TurnMessages $messages) {}
 
@@ -30,20 +31,22 @@ final class ConfirmationPolicy implements AgentPolicy
         }
 
         $turn = $context->agent()['turn_ulid'] ?? null;
-        $message = is_string($turn) ? $this->messages->userMessage($turn) : null;
+        $message = is_string($turn) ? $this->messages->forTurn($turn)['message'] ?? null : null;
+
+        return $this->confirms($capability, $input, $message);
+    }
+
+    /** Whether the message, as a whole, is the confirm line for this call. */
+    public function confirms(CapabilityDefinition $capability, mixed $input, ?string $message): bool
+    {
         if ($message === null || (! is_array($input) && ! $input instanceof CapabilityData)) {
             return false;
         }
-
-        $call = ReadKey::for($capability->name, $input);
-        preg_match_all(self::LINE, $message, $lines, PREG_SET_ORDER);
-        foreach ($lines as [, $name, $json]) {
-            if ($name === $capability->name && $this->normalised($capability, $json) === $call) {
-                return true;
-            }
+        if (preg_match(self::LINE, trim($message), $line) !== 1 || $line[1] !== $capability->name) {
+            return false;
         }
 
-        return false;
+        return $this->normalised($capability, $line[2]) === ReadKey::for($capability->name, $input);
     }
 
     private function normalised(CapabilityDefinition $capability, string $json): ?string

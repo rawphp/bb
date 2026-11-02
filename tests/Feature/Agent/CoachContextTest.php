@@ -18,15 +18,18 @@ use Tests\Support\TrainSeed;
 // A classic boot per test, as AgentTurnTest: the turn runner is rebuilt around the scripted model.
 uses()->group('warp-isolated');
 
-/** A conversation for the user with these messages, then a turn. @return array{string, string} */
+/** A conversation for the user, built as the package builds one: each user message is followed by its turn. @return array{string, string} the conversation and the last turn */
 function coachTurn(User $user, array $messages, string $conversation = '01JC0NVERSAT10N00000000000', string $turn = '01JTURN0000000000000000001'): array
 {
     $store = app(ConversationStore::class);
     $row = $store->createConversation($conversation, null, (string) $user->id);
-    foreach ($messages as [$role, $content]) {
+    $lastUser = array_key_last(array_filter($messages, fn (array $m): bool => $m[0] === 'user'));
+    foreach ($messages as $i => [$role, $content]) {
         $store->createMessage($row, (string) Str::ulid(), $role, $content);
+        if ($role === 'user') {
+            $store->createQueuedTurn($row, $i === $lastUser ? $turn : (string) Str::ulid());
+        }
     }
-    $store->createQueuedTurn($row, $turn);
 
     return [$row->ulid, $turn];
 }

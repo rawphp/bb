@@ -5,69 +5,58 @@ namespace App\Agent;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Rawphp\CapabilitiesAi\Contracts\ConversationStore;
 use Rawphp\CapabilitiesAi\Models\Conversation;
-use Rawphp\CapabilitiesAi\Models\Message;
+use Rawphp\CapabilitiesAi\Models\Turn;
 
 /**
- * Which message a turn answers. Turns do not link to their message, so one rule serves
- * the context and the confirmation check alike: a turn answers the latest user message
- * created at or before the turn. Later messages belong to later turns.
+ * Which message a turn answers. Turns do not link to their message, and timestamps have
+ * second precision, so the pairing is by order: the conversation's n-th turn (by turn id)
+ * answers its n-th user message (by message id). That holds because the package's
+ * ConversationService::createUserMessage() is the only place either is created, and it
+ * creates one user message and then one turn, in that order. Two sends at the same moment
+ * may swap pairs; both are the same user's own messages.
  */
 final class TurnMessages
 {
     public function __construct(private readonly ConversationStore $store) {}
 
     /**
-     * The user and assistant messages up to and including the one the turn answers.
+     * The turn's conversation, the user and assistant messages before the one the turn
+     * answers (in the store's order), and that message. The message is null when the turn
+     * has no n-th user message; `before` is then every user and assistant message.
+     * Null for an unknown turn.
      *
-     * @return list<array{role: string, content: string}>
+     * @return array{conversation: Conversation, before: list<array{role: string, content: string}>, message: ?string}|null
      */
-    public function history(string $turnUlid): array
-    {
-        [$messages, $answered] = $this->answered($turnUlid);
-
-        $history = [];
-        foreach (array_slice($messages, 0, $answered === null ? 0 : $answered + 1) as $message) {
-            $role = $message->getAttribute('role');
-            if (in_array($role, ['user', 'assistant'], true)) {
-                $history[] = ['role' => $role, 'content' => (string) $message->getAttribute('content')];
-            }
-        }
-
-        return $history;
-    }
-
-    /** The message the turn answers; null when there is none or the turn is unknown. */
-    public function userMessage(string $turnUlid): ?string
-    {
-        [$messages, $answered] = $this->answered($turnUlid);
-
-        return $answered === null ? null : (string) $messages[$answered]->getAttribute('content');
-    }
-
-    /**
-     * @return array{list<Message>, int|null} the conversation's messages, and the index of the one the turn answers
-     */
-    private function answered(string $turnUlid): array
+    public function forTurn(string $turnUlid): ?array
     {
         try {
             $turn = $this->store->turn($turnUlid);
         } catch (ModelNotFoundException) {
-            return [[], null];
+            return null;
         }
 
         /** @var Conversation $conversation */
         $conversation = $turn->conversation;
-        $messages = $this->store->messages($conversation);
-        $cutoff = $turn->getAttribute('created_at');
+        $ordinal = Turn::query()
+            ->where('conversation_id', $turn->getAttribute('conversation_id'))
+            ->where('id', '<', $turn->getKey())
+            ->count();
 
-        $answered = null;
-        foreach ($messages as $i => $message) {
-            $createdAt = $message->getAttribute('created_at');
-            if ($message->getAttribute('role') === 'user' && ($cutoff === null || $createdAt === null || $createdAt <= $cutoff)) {
-                $answered = $i;
+        $before = [];
+        $users = 0;
+        $message = null;
+        foreach ($this->store->messages($conversation) as $row) {
+            $role = $row->getAttribute('role');
+            $content = (string) $row->getAttribute('content');
+            if ($role === 'user' && $users++ === $ordinal) {
+                $message = $content;
+                break;
+            }
+            if (in_array($role, ['user', 'assistant'], true)) {
+                $before[] = ['role' => $role, 'content' => $content];
             }
         }
 
-        return [$messages, $answered];
+        return ['conversation' => $conversation, 'before' => $before, 'message' => $message];
     }
 }
