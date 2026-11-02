@@ -63,7 +63,7 @@ it('AGT-040 lists over MCP, with a personal access token, the tools the in-app a
     expect(array_column($tools, 'name'))->toBe(array_column($agent, 'name'))
         ->and(array_column($tools, 'name'))->toContain('tally_add', 'account_show')
         ->and(array_column($tools, 'description'))->toBe(array_column($agent, 'description'))
-        ->and(json_encode(array_column($tools, 'inputSchema')))->toBe(json_encode(array_column($agent, 'parameters')));
+        ->and(array_column($tools, 'inputSchema'))->toBe(json_decode(json_encode(array_column($agent, 'parameters')), true));
 });
 
 it('AGT-040 answers MCP without a personal access token with 401', function () {
