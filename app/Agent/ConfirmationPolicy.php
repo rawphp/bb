@@ -12,15 +12,17 @@ use Throwable;
 
 /**
  * CAP-020 step 5 (AGT-010): the agent may call a destructive capability only in a turn
- * whose user message is exactly one line, `confirm: <name><input as JSON>`, for that call.
- * The Coach writes the line at the end of its question, and a confirm control in the chat
- * sends it as the whole message, so a pasted copy of the Coach's reply is not consent.
- * Both inputs are normalised through the capability's input class and compared as read
- * keys, so key order, spacing and defaults the model left out do not matter.
+ * whose user message is a single line, `confirm: <name><input JSON>`, whose input, read
+ * through the capability's input class, is that call's input. The Coach writes the line at
+ * the end of its question. Until the chat has a confirm control (V_COACH), which must send
+ * exactly the Coach's line as the whole message, the user sends the line by itself; a pasted
+ * copy of the Coach's reply is not consent. Key order, spacing inside the JSON and defaults
+ * the model left out do not matter, because both inputs are compared as read keys. A line
+ * split after the colon or inside the JSON is not one line and confirms nothing.
  */
 final class ConfirmationPolicy implements AgentPolicy
 {
-    private const LINE = '/^confirm:\s*([a-z][a-z0-9_]{0,63})(\{.*\})$/';
+    private const LINE = '/^confirm:[ \t]*([a-z][a-z0-9_]{0,63})(\{.*\})$/';
 
     public function __construct(private readonly TurnMessages $messages) {}
 

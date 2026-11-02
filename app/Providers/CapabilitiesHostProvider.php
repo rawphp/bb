@@ -6,6 +6,7 @@ use App\Agent\CoachContext;
 use App\Agent\ConfirmationPolicy;
 use App\Agent\MeteredTurnClaim;
 use App\Agent\RegistryToolCatalog;
+use App\Agent\TurnLinkingStore;
 use App\Billing\StripeClientGateway;
 use App\Billing\StripeGateway;
 use App\Capabilities\HostAuthorizer;
@@ -32,8 +33,10 @@ use Rawphp\Capabilities\Contracts\CapabilityBus;
 use Rawphp\Capabilities\Contracts\IdempotencyStore;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\CapabilitiesAi\Contracts\ConversationContextProvider;
+use Rawphp\CapabilitiesAi\Contracts\ConversationStore;
 use Rawphp\CapabilitiesAi\Contracts\ToolCatalog;
 use Rawphp\CapabilitiesAi\Contracts\TurnClaim;
+use Rawphp\CapabilitiesAi\Support\EloquentConversationStore;
 use Rawphp\CapabilitiesAi\Support\EloquentTurnClaim;
 use Stripe\ApiRequestor;
 use Stripe\HttpClient\CurlClient;
@@ -80,6 +83,8 @@ final class CapabilitiesHostProvider extends ServiceProvider
         // The agent's seams in capabilities-ai (AGT-003, AGT-011).
         $this->app->singleton(ToolCatalog::class, RegistryToolCatalog::class);
         $this->app->singleton(ConversationContextProvider::class, CoachContext::class);
+        // The package's store, plus each turn's link to its user message (the package skips its own binding when this one exists).
+        $this->app->singleton(ConversationStore::class, fn (): TurnLinkingStore => new TurnLinkingStore(new EloquentConversationStore));
         // Replaces the package's claim: the same transitions, plus each turn's token total (AGT-005).
         $this->app->singleton(TurnClaim::class, fn (): MeteredTurnClaim => new MeteredTurnClaim(new EloquentTurnClaim));
     }
