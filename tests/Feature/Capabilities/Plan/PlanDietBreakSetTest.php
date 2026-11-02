@@ -4,6 +4,7 @@ use App\Models\Phase;
 use App\Models\PlanWeek;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\PlanSeed;
 use Tests\Unit\Capabilities\Reads\Plan\PlanWorld as W;
@@ -118,4 +119,19 @@ it('PLAN-009 PLAN-023 a Mini-cut deload can be turned off, and one already on ca
         ->assertStatus(422)->assertJsonPath('error.message', 'This deload already runs at maintenance calories.');
     dietBreakSet($user, ['week_start' => '2026-11-16', 'diet_break' => false])->assertOk();
     expect(PlanWeek::query()->where('user_id', $user->id)->sole()->diet_break_off)->toBeTrue();
+});
+
+it('PLAN-023 reads the plan under its row lock, so two turns at the same week cannot both add a row', function () {
+    [$user] = PlanSeed::world();
+
+    DB::enableQueryLog();
+    dietBreakSet($user, ['week_start' => '2026-11-16', 'diet_break' => false])->assertOk();
+    $locked = collect(DB::getQueryLog())->pluck('query')
+        ->filter(fn (string $sql) => str_contains($sql, '`plans`') && str_contains($sql, 'for update'));
+    // The warm app keeps the connection between tests, so the log is turned off again.
+    DB::disableQueryLog();
+    DB::flushQueryLog();
+
+    expect($locked)->toHaveCount(1)
+        ->and(PlanWeek::query()->where('user_id', $user->id)->where('start_date', '2026-11-16')->count())->toBe(1);
 });
