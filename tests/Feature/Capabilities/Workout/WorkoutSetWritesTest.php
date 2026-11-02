@@ -9,7 +9,9 @@ use App\Models\User;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSet;
 use App\Support\Workout\WorkoutIds;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Tests\Support\TrainSeed;
@@ -152,4 +154,31 @@ it('OFF-021 a session started offline takes the sets logged offline: the ids the
         ->and($after['exercises'][0]['sets'][1])->toMatchArray(['is_logged' => true, 'reps' => 12])
         ->and($after['exercises'][0]['sets'][1]['weight']['value'])->toEqual(60)
         ->and($after['exercises'][0]['session_note'])->toBe('Pause at the chest');
+});
+
+it('WO-003 CAP-011 logging a set names the reads it changes from the session row, without loading the mesocycle\'s sessions and sets', function () {
+    [$user, $shown] = startedOver();
+    $mesocycleId = WorkoutSet::query()->find($shown['exercises'][0]['sets'][0]['id'])->session->mesocycle_id;
+    $queries = [];
+    DB::listen(function (QueryExecuted $query) use (&$queries) {
+        if (! preg_match('/`(capabilities_\w+|audit_records)`/', $query->sql)) {
+            $queries[] = $query->sql;
+        }
+    });
+
+    $keys = writeOver($user, 'workout_set_log', ['set_id' => $shown['exercises'][0]['sets'][0]['id'], 'weight' => ['value' => 80, 'unit' => 'kg'], 'reps' => 10, 'is_logged' => true])
+        ->assertOk()->json('data.invalidates');
+
+    // The write reads the set, its session and exercise, and saves the set; the keys need the plan, the profile and
+    // the mesocycle. A Train snapshot alone runs nine queries, the session's sets among them.
+    expect(count($queries))->toBeLessThanOrEqual(8, implode("\n", $queries))
+        ->and($keys)->toBe([
+            'workout_show{"day":1,"mesocycle_id":"'.$mesocycleId.'","week":3}',
+            'train_show{}',
+            "mesocycle_show{\"mesocycle_id\":\"{$mesocycleId}\"}",
+            'today_show{"date":"2026-09-21"}',
+            'today_show{}',
+            ...array_map(fn (string $day) => 'week_show{"date":"2026-09-'.$day.'"}', ['21', '22', '23', '24', '25', '26', '27']),
+            'week_show{}',
+        ]);
 });
