@@ -539,6 +539,34 @@ describe('OnboardingView', () => {
             expect(sent().at(-1)!.answers).toEqual({ height: { unit: 'feetInches', feet: 5, inches: 10 } });
         });
 
+        it('ONB-004 saves a height typed in cm when the field is left', async () => {
+            wrapper = view(aboutYou);
+            const height = wrapper.get('input[aria-label="Height in cm"]');
+
+            await height.setValue('175');
+            expect(writeMock).not.toHaveBeenCalled();
+            await height.trigger('blur');
+            await flushPromises();
+
+            expect(sent()).toEqual([{ answers: { height: { unit: 'cm', cm: 175 } }, move: 'stay' }]);
+        });
+
+        it.each([
+            ['Feet', '6', { feet: 6, inches: 0 }],
+            ['Inches', '4', { feet: 0, inches: 4 }],
+        ] as const)('ONB-004 %s typed while the other half is empty saves the empty half as 0, as rp-clone does', async (field, typed, height) => {
+            const empty = structuredClone(aboutYou);
+            empty.about_you.height = { ...review.about_you.height, feet: null, inches: null, cm: null, text: '' };
+            readMock.mockResolvedValue(empty);
+            wrapper = view(empty);
+
+            await wrapper.get(`input[aria-label="${field} in ${field === 'Feet' ? 'ft' : 'in'}"]`).setValue(typed);
+            await wrapper.get(`input[aria-label="${field} in ${field === 'Feet' ? 'ft' : 'in'}"]`).trigger('blur');
+            await flushPromises();
+
+            expect(sent()).toEqual([{ answers: { height: { unit: 'feetInches', ...height } }, move: 'stay' }]);
+        });
+
         it('ONB-004 after a unit switch, a feet edit is saved with the inches the server converted to', async () => {
             const converted = structuredClone(aboutYou);
             converted.about_you.height = { ...review.about_you.height, feet: 5, inches: 11, text: '5 ft 11 in' };
