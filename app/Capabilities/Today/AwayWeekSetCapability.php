@@ -23,7 +23,7 @@ final class AwayWeekSetCapability implements HostCapability
     {
         // SCH-060, PLAN-025: a diet break moves the phase end date, so the phases, the mesocycles and Today change too.
         return HostDefinition::write('away_week_set', affects: ['today_show', 'week_show', 'away_week_show', 'plan_show', 'phase_show', 'train_show', 'mesocycle_show'], reversible: true)
-            ->description('Mark plan weeks away, change them, or mark them not away. Only the weeks the Away sheet offers are accepted: from next week to the end of the phase. An away week pauses training or becomes the deload, and eats at rest-day targets or at maintenance; in Fat loss maintenance counts as a diet break, which moves the phase end date a week later unless keep_phase_end is true. Left out, keep_phase_end is what each week was saved with.')
+            ->description('Mark plan weeks away, change them, or mark them not away; only the weeks the Away sheet offers are accepted, from next week to the end of the phase. An away week pauses training or becomes the deload, and eats at rest-day targets or at maintenance; in Fat loss maintenance counts as a diet break, which moves the phase end date a week later unless keep_phase_end is true. Left out, keep_phase_end is what each week was saved with.')
             ->cli('week', 'away-set')
             ->input(AwayWeekSetInput::class)
             ->run(function (AwayWeekSetInput $input, CapabilityContext $context): WriteResult {
