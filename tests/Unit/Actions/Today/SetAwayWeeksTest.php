@@ -342,3 +342,39 @@ it('SCH-060 the offered weeks come back from the phase as it ends after the move
 it('SCH-060 refuses when the user has no plan', function () {
     expect(fn () => setAway(User::factory()->create(), ['2026-09-26']))->toThrow(DomainException::class);
 });
+
+// SCH-060, SCH-023: a paused or un-paused week changes the sessions, deload and menu of every later week, so the days
+// returned run from the earliest week saved to the last day the client can browse to.
+
+it('SCH-060 SCH-023 names every day from the earliest week saved to the last day with a target', function () {
+    [$user] = awayWorld();
+    TodaySeed::targets($user, '2026-11-20');
+
+    $saved = setAway($user, ['2026-10-03', '2026-09-26']);
+
+    expect($saved['dates'][0])->toBe('2026-09-26')
+        ->and($saved['dates'])->toContain('2026-10-10', '2026-11-20')
+        ->and(end($saved['dates']))->toBe('2026-11-20')
+        ->and($saved['dates'])->toHaveCount(56)
+        ->and($saved['dates'])->not->toContain('2026-09-25');
+});
+
+it('SCH-060 SCH-023 clearing a paused week names the days after the week that follows it', function () {
+    [$user] = awayWorld();
+    TodaySeed::targets($user, '2026-10-30');
+    setAway($user, ['2026-09-26']);
+
+    $saved = setAway($user, ['2026-09-26'], away: false);
+
+    expect($saved['dates'])->toContain('2026-10-04', '2026-10-17', '2026-10-30');
+});
+
+it('SCH-060 SCH-023 names at least the touched weeks and the rest of the plan week in progress', function () {
+    [$user] = awayWorld();
+
+    $saved = setAway($user, ['2026-10-03']);
+
+    // No target past 9 Oct: the touched week (3 to 9 Oct) is the last day named.
+    expect($saved['dates'][0])->toBe('2026-10-03')
+        ->and(end($saved['dates']))->toBe('2026-10-09');
+});

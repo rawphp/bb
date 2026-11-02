@@ -3,7 +3,6 @@
 use App\Capabilities\Reads\Today\TodayPayload;
 use App\Models\WorkoutSession;
 use App\Support\Today\MissedWeeksPrompt;
-use App\Support\Today\TodaySnapshot;
 use Tests\Unit\Capabilities\Reads\Today\TodayWorld as W;
 
 // SCH-058, rp-clone TodayMissedWeeksTests: the question Today asks after a plan week or more without training. The
@@ -120,9 +119,50 @@ it('SCH-058 today_show carries the prompt in the shape of its fixture, and null 
     ])->and(TodayPayload::build(W::snapshot())->toArray()['missed_weeks'])->toBeNull();
 });
 
-it('SCH-058 reads the prompt relative to today, whatever date Today shows', function () {
-    $shown = W::snapshot(today: '2026-09-30', date: '2026-09-20', sessions: []);
+it('SCH-058 today_show carries the prompt on today only: any other date gets null', function () {
+    $skipped = [skippedSession(1, 1), skippedSession(1, 2), skippedSession(1, 3)];
+    $onToday = TodayPayload::build(W::snapshot(today: '2026-09-30', date: '2026-09-30', sessions: $skipped))->toArray();
+    $elsewhere = fn (string $date) => TodayPayload::build(W::snapshot(today: '2026-09-30', date: $date, sessions: $skipped))->toArray()['missed_weeks'];
 
-    expect(MissedWeeksPrompt::from($shown))->not->toBeNull()
-        ->and($shown instanceof TodaySnapshot)->toBeTrue();
+    expect($onToday['missed_weeks'])->not->toBeNull()
+        ->and($elsewhere('2026-09-20'))->toBeNull()
+        ->and($elsewhere('2026-10-01'))->toBeNull()
+        // Another day of today's week.
+        ->and($elsewhere('2026-09-28'))->toBeNull();
+});
+
+it('SCH-058 the prompt is about today, whatever date the snapshot was loaded for', function () {
+    $today = MissedWeeksPrompt::from(W::snapshot(today: '2026-09-30', sessions: []));
+    $other = MissedWeeksPrompt::from(W::snapshot(today: '2026-09-30', date: '2026-09-20', sessions: []));
+
+    expect($other->text())->toBe($today->text())
+        ->and([$other->stoppedWeek, $other->shift])->toBe([$today->stoppedWeek, $today->shift]);
+});
+
+it('SCH-058 MESO-044 offers a diet break when a Fat loss phase covers the mesocycle, and not otherwise', function (string $type, bool $offered) {
+    $phase = W::phase($type);
+    $snapshot = W::snapshot(today: '2026-09-30', mesocycles: [W::mesocycle(['phase_id' => $phase->id])], sessions: [], phases: [$phase]);
+
+    expect(MissedWeeksPrompt::from($snapshot)->offersDietBreak)->toBe($offered)
+        ->and(TodayPayload::build($snapshot)->toArray()['missed_weeks']['offers_diet_break'])->toBe($offered);
+})->with([
+    'Fat loss' => ['fatLoss', true],
+    'Muscle gain' => ['muscleGain', false],
+]);
+
+it('SCH-058 MESO-044 offers no diet break to a mesocycle without a phase', function () {
+    expect(missedPrompt('2026-09-30')->offersDietBreak)->toBeFalse();
+});
+
+it('SCH-058 SCH-060 a paused away week inside the mesocycle moves the restart one plan week less', function () {
+    // Meso A is on plan weeks 0, 2, 3 and 4 with week 1 paused. Week 0's sessions were skipped, so the user stopped in
+    // its week 2, which falls on plan week 2. Today is in plan week 3: starting one plan week later puts mesocycle week
+    // 2 on plan week 3, where a mutant that ignores the pause needs two.
+    $paused = [W::planWeek('2026-09-19', away: true, awayTraining: 'pause')];
+    $prompt = missedPrompt('2026-10-07', [skippedSession(1, 1), skippedSession(1, 2), skippedSession(1, 3)], $paused);
+
+    expect($prompt->stoppedWeek)->toBe(2)
+        ->and($prompt->paused)->toBe([1])
+        ->and($prompt->shift)->toBe(1)
+        ->and($prompt->restartStart->format('Y-m-d'))->toBe('2026-09-19');
 });

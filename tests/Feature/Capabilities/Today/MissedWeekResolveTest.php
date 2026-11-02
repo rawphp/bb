@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
+use Tests\Support\SheetSeed;
 use Tests\Support\TrainSeed;
 
 // The HTTP seam of missed_week_resolve. The rules are ResolveMissedWeekTest's and MissedWeeksPromptTest's.
@@ -53,4 +54,25 @@ it('SCH-058 CAP-011 restart moves the start and invalidates the strip of the wee
 
 it('SCH-058 AGT-010 is destructive, so the agent needs the user\'s say-so', function () {
     expect(HostDefinition::isDestructive(app(CapabilityRegistry::class)->get('missed_week_resolve')))->toBeTrue();
+});
+
+it('SCH-058 CAP-011 SCH-023 restart and end invalidate every day the client can browse to from the plan week in progress', function (string $choice) {
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+    SheetSeed::day($user, '2026-10-20');
+
+    $invalidates = weekResolveOver($user, ['mesocycle_id' => $mesocycle->id, 'choice' => $choice])->assertOk()->json('data.invalidates');
+
+    expect($invalidates)->toContain('today_show{"date":"2026-09-28"}', 'today_show{"date":"2026-10-12"}', 'today_show{"date":"2026-10-20"}', 'week_show{"date":"2026-10-14"}', 'week_show{"date":"2026-10-20"}')
+        ->and($invalidates)->not->toContain('today_show{"date":"2026-09-27"}');
+})->with(['restart', 'end']);
+
+it('SCH-058 answers 422 for end when no answer is due', function () {
+    Carbon::setTestNow('2026-09-09 08:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+
+    weekResolveOver($user, ['mesocycle_id' => $mesocycle->id, 'choice' => 'end'])->assertStatus(422);
+
+    expect($mesocycle->fresh()->ended_on)->toBeNull();
 });

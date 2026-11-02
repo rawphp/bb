@@ -73,3 +73,15 @@ it('PLAN-025 a second away_week_set without a keep_phase_end key keeps the saved
     expect($phase->fresh()->end_date->format('Y-m-d'))->toBe('2026-12-05')
         ->and(PlanWeek::query()->where('user_id', $user->id)->whereDate('start_date', '2026-09-26')->first()->keep_phase_end)->toBeTrue();
 });
+
+it('SCH-060 CAP-011 SCH-023 away_week_set invalidates every day from the earliest week saved to the last day with a target', function () {
+    Carbon::setTestNow('2026-09-23 10:00:00');
+    $user = TodaySeed::user();
+    TodaySeed::targets($user, '2026-11-20');
+    TrainSeed::phase($user, 'fatLoss', '2026-09-12', '2026-12-05');
+
+    $invalidates = awaySet($user, ['week_starts' => ['2026-10-03'], 'away' => true, 'training' => 'pause'])->assertOk()->json('data.invalidates');
+
+    expect($invalidates)->toContain('today_show{"date":"2026-10-03"}', 'today_show{"date":"2026-10-24"}', 'today_show{"date":"2026-11-20"}', 'week_show{"date":"2026-11-14"}')
+        ->and($invalidates)->not->toContain('today_show{"date":"2026-10-02"}');
+});
