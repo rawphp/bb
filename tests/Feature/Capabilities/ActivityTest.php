@@ -38,15 +38,8 @@ function bearerToken(User $user, TokenScope $scope, array $abilities): string
     return $token->id.'|'.$secret;
 }
 
-/** A stand-in for the Health bridge's steps_log write (INT-001), which is not built yet. */
-function registerStepsLog(): void
-{
-    HostDefinition::write('steps_log', affects: ['tally_show'])
-        ->description('Stand-in for the Health bridge write. Used by Activity tests only.')
-        ->input(TallyInput::class)
-        ->run(fn (TallyInput $input): WriteResult => new WriteResult(invalidates: [ReadKey::for('tally_show')], toast: "Logged {$input->amount}"))
-        ->register(app(CapabilityRegistry::class));
-}
+/** A steps_log input: one of the two writes the Health bridge posts (INT-001). */
+const BRIDGE_STEPS = ['date' => '2026-10-09', 'steps' => 3];
 
 beforeEach(function () {
     (new TallyAddCapability)->definition()->register(app(CapabilityRegistry::class));
@@ -105,13 +98,12 @@ it('CAP-022 lists a write whose reply failed its schema as done, with a server e
 });
 
 it('CAP-022 derives the channel on the server, ignoring a caller the client claims, and lists the write', function (string $claimed, bool $bridgeToken, string $channel) {
-    registerStepsLog();
     $user = User::factory()->create();
     $request = $bridgeToken
         ? $this->withToken(bearerToken($user, TokenScope::HealthBridge, TokenScope::HEALTH_BRIDGE))
         : $this->actingAs($user);
 
-    $request->postJson('/capabilities/steps_log', ['amount' => 3], ['X-Capabilities-Caller' => $claimed])->assertOk();
+    $request->postJson('/capabilities/steps_log', BRIDGE_STEPS, ['X-Capabilities-Caller' => $claimed])->assertOk();
 
     expect(AuditRecord::sole())->user_id->toBe($user->id)->channel->toBe($channel);
     Auth::forgetGuards();
@@ -141,17 +133,16 @@ it('CAP-022 records the agent, MCP and CLI channels from the caller their adapte
     Exceptions::assertNothingReported();
 });
 
-it('CAP-022 records a Health bridge token\'s write as the bridge and a full token\'s as the CLI', function (TokenScope $scope, array $abilities, string $capability, string $channel) {
-    registerStepsLog();
+it('CAP-022 records a Health bridge token\'s write as the bridge and a full token\'s as the CLI', function (TokenScope $scope, array $abilities, string $capability, array $input, string $channel) {
     $user = User::factory()->create();
     $token = bearerToken($user, $scope, $abilities);
 
-    $this->withToken($token)->postJson("/capabilities/{$capability}", ['amount' => 3])->assertOk();
+    $this->withToken($token)->postJson("/capabilities/{$capability}", $input)->assertOk();
 
     expect(AuditRecord::sole())->user_id->toBe($user->id)->channel->toBe($channel);
 })->with([
-    'a Health bridge token' => [TokenScope::HealthBridge, TokenScope::HEALTH_BRIDGE, 'steps_log', 'bridge'],
-    'a full CLI token' => [TokenScope::Everything, ['*'], 'tally_add', 'cli'],
+    'a Health bridge token' => [TokenScope::HealthBridge, TokenScope::HEALTH_BRIDGE, 'steps_log', BRIDGE_STEPS, 'bridge'],
+    'a full CLI token' => [TokenScope::Everything, ['*'], 'tally_add', ['amount' => 3], 'cli'],
 ]);
 
 it('CAP-023 refuses a Health bridge token any capability outside its abilities, and audits the refusal', function () {
@@ -195,11 +186,10 @@ it('CAP-022 audits no read and no write refused for invalid input', function () 
 
 it('CAP-022 writes the audit row inside the invoke, so a token write keeps its channel with a real queue', function () {
     Queue::fake();
-    registerStepsLog();
     $user = User::factory()->create();
 
     $this->withToken(bearerToken($user, TokenScope::HealthBridge, TokenScope::HEALTH_BRIDGE))
-        ->postJson('/capabilities/steps_log', ['amount' => 3])->assertOk();
+        ->postJson('/capabilities/steps_log', BRIDGE_STEPS)->assertOk();
 
     expect(AuditRecord::sole()->channel)->toBe('bridge');
     Queue::assertNothingPushed();
