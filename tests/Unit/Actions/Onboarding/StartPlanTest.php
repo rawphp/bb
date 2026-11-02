@@ -1,6 +1,8 @@
 <?php
 
 use App\Actions\Onboarding\StartPlan;
+use App\Capabilities\Onboarding\Data\OnboardingChoice;
+use App\Capabilities\Reads\Onboarding\OnboardingShowPayload;
 use App\Capabilities\Reads\Plan\PlanPayload;
 use App\Capabilities\Reads\Today\TodayPayload;
 use App\Capabilities\Reads\Today\WeekPayload;
@@ -59,6 +61,22 @@ it('ONB-020 saves the plan, its first week and the schedule, and deletes the dra
         ->toBe(DayTarget::query()->where('user_id', $user->id)->get()->sum(fn (DayTarget $day) => count($day->meals)))
         ->and(WeighInScheduleEntry::query()->where('user_id', $user->id)->get(['weekdays', 'time'])->toArray())
         ->toBe([['weekdays' => [1, 3, 5], 'time' => '07:00']]);
+});
+
+it('ONB-012 ONB-020 starts the template the review shows while none is picked, whatever order the library was saved in', function () {
+    $user = User::factory()->create();
+    // Both fit a 3-day Fat loss plan and are recommended; the one saved first sorts last by name.
+    W::template('Zeta full body');
+    W::template('Alpha full body');
+    W::draft($user, ['training_plan' => null, 'template_id' => null]);
+    $shown = array_values(array_filter(
+        OnboardingShowPayload::for($user)->training_plan->options, fn (OnboardingChoice $option) => $option->is_selected,
+    ));
+
+    app(StartPlan::class)($user);
+
+    expect(array_column($shown, 'title'))->toBe(['Alpha full body'])
+        ->and(Mesocycle::query()->where('user_id', $user->id)->sole()->name)->toBe('Alpha full body');
 });
 
 it('ONB-020 ONB-031 the screens read the new plan back: Plan, Train, Today and the week strip', function () {

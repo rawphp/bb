@@ -19,15 +19,15 @@ use App\Models\User;
  */
 final class StartWorld
 {
-    /** A three-day full-body template: each day a chest and a side-delts exercise. Made once. */
-    public static function template(): Template
+    /** A three-day full-body template for a cut or maintenance: each day a chest and a side-delts exercise. Made once. */
+    public static function template(string $name = 'Full body three'): Template
     {
-        $saved = Template::query()->where('name', 'Full body three')->first();
+        $saved = Template::query()->where('name', $name)->first();
         if ($saved !== null) {
             return $saved;
         }
         $template = Template::factory()->create([
-            'name' => 'Full body three', 'split' => Split::FullBody, 'sex' => SexFit::Any,
+            'name' => $name, 'split' => Split::FullBody, 'sex' => SexFit::Any,
             'phase_fit' => [PhaseFit::Cut, PhaseFit::Maintain], 'priorities' => ['chest' => 'grow', 'sideDelts' => 'emphasize'],
         ]);
         foreach ([1, 2, 3] as $day) {
