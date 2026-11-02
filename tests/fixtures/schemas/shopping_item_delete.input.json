@@ -5,6 +5,22 @@
     "properties": {
         "id": {
             "type": "string"
+        },
+        "from": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The first day of the list shown, so the write refreshes it",
+            "format": "date"
+        },
+        "to": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The last day of the list shown",
+            "format": "date"
         }
     },
     "required": [
