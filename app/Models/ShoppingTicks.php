@@ -27,13 +27,13 @@ class ShoppingTicks extends Model
     use BelongsToUser, HasFactory;
 
     /**
-     * The user's ticked ranges, the most recently ticked first.
+     * The user's ticked ranges, first day first.
      *
      * @return list<TickedRange>
      */
     public static function of(User $user): array
     {
-        return self::query()->where('user_id', $user->id)->orderByDesc('updated_at')->orderByDesc('id')->get()
+        return self::query()->where('user_id', $user->id)->orderBy('starts_on')->orderBy('ends_on')->get()
             ->map(fn (self $row) => $row->ticked())
             ->values()
             ->all();

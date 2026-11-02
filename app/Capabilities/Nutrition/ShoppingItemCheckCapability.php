@@ -18,7 +18,7 @@ final class ShoppingItemCheckCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('shopping_item_check', affects: ['shopping_show'])
-            ->description('Tick a line of the shopping list off, or take the tick back, by its key from shopping_show and the dates that list showed. Each date range keeps its own ticks, and the ticks of ranges that have ended are dropped. It changes only the ticks, never the planned meals.')
+            ->description('Tick a line of the shopping list off, or take the tick back, by its key from shopping_show and the dates that list showed. Each date range keeps its own ticks, and the ticks of other ranges that have ended are dropped. It changes only the ticks, never the planned meals.')
             ->cli('shopping', 'item-check')
             ->input(ShoppingItemCheckInput::class)
             ->run(function (ShoppingItemCheckInput $input, CapabilityContext $context): WriteResult {

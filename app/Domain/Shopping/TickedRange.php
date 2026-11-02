@@ -42,20 +42,24 @@ final readonly class TickedRange
     }
 
     /**
-     * SHOP-001, SHOP-005: with no range asked for, the last range ticked in comes back while it still runs
-     * through today; otherwise the list shows the next 7 days from today.
+     * SHOP-001, SHOP-005: with no range asked for, the ticked range that starts latest comes back while it
+     * still runs through today; otherwise the list shows the next 7 days from today. Starting latest, not
+     * ticked last, so a late tick replayed for an earlier week does not move the list.
      *
-     * @param  list<self>  $saved  the most recently ticked first
+     * @param  list<self>  $saved
      */
     public static function rangeToShow(array $saved, DateTimeImmutable $today, DateTimeZone $timezone): DateRange
     {
+        $shown = null;
         foreach ($saved as $ticked) {
-            if (! $ticked->hasEnded($today, $timezone)) {
-                return $ticked->range;
+            $later = $shown === null || [$ticked->range->lower->format('Y-m-d'), $ticked->range->upper->format('Y-m-d')]
+                > [$shown->lower->format('Y-m-d'), $shown->upper->format('Y-m-d')];
+            if (! $ticked->hasEnded($today, $timezone) && $later) {
+                $shown = $ticked->range;
             }
         }
 
-        return ShoppingList::defaultRange($today, $timezone);
+        return $shown ?? ShoppingList::defaultRange($today, $timezone);
     }
 
     /**

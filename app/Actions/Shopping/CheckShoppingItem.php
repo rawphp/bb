@@ -14,12 +14,12 @@ use Illuminate\Support\Facades\DB;
 /**
  * SHOP-005, OFF-030: tick a line of the list off, or take the tick back, in the range the list showed.
  * Each range keeps its own ticks, so a stale tick replayed for another range changes only that range.
- * A manual line must be one of the user's items (404 otherwise, CAP-020). The ticks of ranges that have
- * ended go.
+ * A manual line must be one of the user's items (404 otherwise, CAP-020). The ticks of other ranges that
+ * have ended go.
  */
 final class CheckShoppingItem
 {
-    /** @return list<DateRange> the ended ranges whose ticks this dropped */
+    /** @return list<DateRange> the other ended ranges whose ticks this dropped */
     public function __invoke(User $user, DateRange $range, string $key, bool $ticked): array
     {
         return DB::transaction(function () use ($user, $range, $key, $ticked): array {
@@ -37,7 +37,8 @@ final class CheckShoppingItem
             $rows = ShoppingTicks::query()->where('user_id', $user->id)->lockForUpdate()->get();
             $ended = [];
             foreach ($rows as $index => $row) {
-                if ($row->ticked()->hasEnded($today, $utc)) {
+                // Not the range written to: a screen still showing last week after midnight keeps its ticks.
+                if ($row->ticked()->hasEnded($today, $utc) && ! $row->ticked()->isFor($range)) {
                     $ended[] = $row->ticked()->range;
                     $row->delete();
                     $rows->forget($index);
