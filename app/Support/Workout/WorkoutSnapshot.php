@@ -76,9 +76,7 @@ final class WorkoutSnapshot
         public readonly Collection $dayTargets,
         public readonly DateTimeImmutable $now,
     ) {
-        if (! $mesocycle->isSaved() || $week < 1 || $week > (int) $mesocycle->weeks || self::sessionOf($train, $mesocycle, $week, $day) === null) {
-            throw (new ModelNotFoundException)->setModel(Mesocycle::class, [(string) $mesocycle->id]);
-        }
+        self::sessionOrFail($train, $mesocycle, $week, $day);
     }
 
     /**
@@ -90,9 +88,7 @@ final class WorkoutSnapshot
     {
         $train = TrainSnapshot::load($user, $mesocycleId);
         $mesocycle = $train->mesocycle($mesocycleId);
-        if (! $mesocycle->isSaved() || self::sessionOf($train, $mesocycle, $week, $day) === null) {
-            throw (new ModelNotFoundException)->setModel(Mesocycle::class, [$mesocycleId]);
-        }
+        self::sessionOrFail($train, $mesocycle, $week, $day);
         $now = CarbonImmutable::now()->toDateTimeImmutable();
         $session = self::rowOf($train, $mesocycle, $week, $day);
         $start = self::instant($session?->actual_start_at) ?? $now;
@@ -122,20 +118,20 @@ final class WorkoutSnapshot
 
     /**
      * The session a workout id names (OFF-021): one of the user's saved mesocycles, a week and a day, matched
-     * against the ids {@see WorkoutIds} gives them. There are only a few to try.
+     * against the ids {@see WorkoutIds} gives them. There are only a few to try: each week has at most the days it
+     * stores, and {@see load()} refuses one the plan does not run.
      *
      * @throws ModelNotFoundException<WorkoutSession> when it names none of the user's sessions
      */
     public static function forWorkout(User $user, string $workoutId): self
     {
-        $train = TrainSnapshot::load($user);
         $wanted = strtolower($workoutId);
-        foreach ($train->saved() as $mesocycle) {
-            $domain = $train->domain($mesocycle);
+        foreach (Mesocycle::query()->where('user_id', $user->id)->get()->filter(fn (Mesocycle $m) => $m->isSaved()) as $mesocycle) {
             for ($week = 1; $week <= (int) $mesocycle->weeks; $week++) {
-                foreach (array_keys($domain->sessionsInWeek($week - 1)) as $index) {
-                    if (WorkoutIds::workout((string) $mesocycle->id, $week, $index + 1) === $wanted) {
-                        return self::load($user, (string) $mesocycle->id, $week, $index + 1);
+                $days = count($mesocycle->earlierWeekRows()[$week - 1] ?? $mesocycle->dayRows());
+                for ($day = 1; $day <= $days; $day++) {
+                    if (WorkoutIds::workout((string) $mesocycle->id, $week, $day) === $wanted) {
+                        return self::load($user, (string) $mesocycle->id, $week, $day);
                     }
                 }
             }
@@ -154,8 +150,7 @@ final class WorkoutSnapshot
     /** The day as the plan has it this week (SCH-039). */
     public function plan(): Session
     {
-        /** @var Session */
-        return self::sessionOf($this->train, $this->mesocycle, $this->week, $this->day);
+        return self::sessionOrFail($this->train, $this->mesocycle, $this->week, $this->day);
     }
 
     /** The session's row: done, started or skipped first, else one that only moved it (SCH-051). */
@@ -479,6 +474,13 @@ final class WorkoutSnapshot
             isLogged: (bool) $set->is_logged,
             isSkipped: (bool) $set->is_skipped,
         ))->values()->all();
+    }
+
+    /** @throws ModelNotFoundException<Mesocycle> for a draft, or a week or day the mesocycle does not have */
+    private static function sessionOrFail(TrainSnapshot $train, Mesocycle $mesocycle, int $week, int $day): Session
+    {
+        return self::sessionOf($train, $mesocycle, $week, $day)
+            ?? throw (new ModelNotFoundException)->setModel(Mesocycle::class, [(string) $mesocycle->id]);
     }
 
     private static function sessionOf(TrainSnapshot $train, Mesocycle $mesocycle, int $week, int $day): ?Session
