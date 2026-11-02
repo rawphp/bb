@@ -91,7 +91,8 @@ it('MESO-032 choosing the priority a muscle already has changes nothing', functi
 
 it('MESO-034 setting a muscle Off keeps the weeks that ran and this week\'s done sessions as they were', function () {
     $mesocycle = priorityMeso();
-    // Week 3 (from Monday 21 September): Upper A is done, Lower A is still to come.
+    // Lower A ran last week. Week 3 (from Monday 21 September): Upper A is done, Lower A is still to come.
+    TrainSeed::trained($mesocycle, 2, 2, '2026-09-17');
     TrainSeed::trained($mesocycle, 3, 1, '2026-09-21');
 
     $mesocycle = prioritySet($mesocycle, MuscleGroup::Chest, null);
