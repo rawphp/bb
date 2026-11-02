@@ -2,6 +2,7 @@
 import { nextTick, ref, watch } from 'vue';
 import type { ProgressShowOutput } from '@/contracts/progress_show';
 import OfflineNotice from '@/design/OfflineNotice.vue';
+import PendingMark from '@/design/PendingMark.vue';
 import Skeleton from '@/design/Skeleton.vue';
 import MesocycleHistoryCard from './MesocycleHistoryCard.vue';
 import PhaseHistoryCard from './PhaseHistoryCard.vue';
@@ -59,8 +60,7 @@ function pickScope(scope: ProgressShowOutput['scopes'][number]): void {
 }
 
 // The card mounts off screen only while it is drawn into the picture (ANA-010, PWA-034).
-async function draw(): Promise<Blob> {
-    const ticket = ++drawn;
+async function drawNow(ticket: number): Promise<Blob> {
     drawing.value = true;
     try {
         await nextTick();
@@ -72,10 +72,23 @@ async function draw(): Promise<Blob> {
     }
 }
 
+// The current payload's picture while it is drawn, so a tap waits for it rather than drawing twice.
+let inFlight: Promise<Blob> | null = null;
+
+function draw(): Promise<Blob> {
+    const run = drawNow(++drawn);
+    inFlight = run;
+    run.catch(() => {
+        if (inFlight === run) inFlight = null;
+    });
+    return run;
+}
+
 watch(
     () => [props.payload?.share, props.payload?.chart] as const,
     ([share, chart]) => {
         picture.value = null;
+        inFlight = null;
         // Not drawn yet is fine: a tap draws it then.
         if (share && chart) draw().catch(() => undefined);
     },
@@ -87,7 +100,9 @@ async function share(content: NonNullable<ProgressShowOutput['share']>): Promise
     sharing.value = true;
     shareError.value = null;
     try {
-        await sharePng(picture.value ?? (await draw()), content);
+        // Drawn already: shared straight from the tap. Otherwise the draw under way, or a new one if that failed.
+        const png = picture.value ?? (await (inFlight ?? draw()).catch(() => draw()));
+        await sharePng(png, content);
     } catch {
         shareError.value = 'The progress picture could not be shared.';
     } finally {
@@ -155,7 +170,7 @@ async function share(content: NonNullable<ProgressShowOutput['share']>): Promise
                     <p v-else class="flex min-h-30 items-center justify-center text-secondary-text">{{ payload.scope_message }}</p>
                 </div>
                 <ProgressSummaryView v-if="payload.summary.length" :summary="payload.summary" :pending="pending" />
-                <span v-if="pending" class="text-sm text-secondary-text">Waiting to sync</span>
+                <PendingMark v-if="pending" derived />
             </section>
 
             <ThisWeekCard v-if="payload.this_week" :week="payload.this_week" :pending="pending" @edit-schedule="openPlaceholder('schedule')" />

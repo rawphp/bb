@@ -43,6 +43,7 @@ const height = computed(() => figuresTop.value + 50);
         <rect :width="WIDTH" :height="height" class="fill-surface" />
         <text :x="PAD" :y="PAD + 22" class="fill-primary-text" font-size="22" font-weight="700">{{ content.title }}</text>
         <text v-for="(line, i) in lines" :key="i" :x="PAD" :y="PAD + 50 + i * 18" class="fill-secondary-text" font-size="14">{{ line }}</text>
+        <!-- x, y, width and height fall through to the chart's root <svg>, which places it inside this one. -->
         <ProgressChartView :chart="chart" :plot-height="PLOT" :x="PAD" :y="chartTop" :width="WIDTH - PAD * 2" :height="PLOT + 24" />
         <g v-for="(figure, i) in summary" :key="figure.label">
             <text :x="PAD + i * 114" :y="figuresTop" class="fill-secondary-text" font-size="13">{{ figure.label }}</text>
