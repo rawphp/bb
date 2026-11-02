@@ -11,7 +11,8 @@ class AccountSeeder extends Seeder
     {
         // The test account's password is public (UserFactory), so it never
         // reaches a server anyone else can sign in to.
-        if (! app()->environment('local', 'testing')) {
+        // Re-running db:seed (docs/self-hosting.md, Updating) leaves an existing test account alone.
+        if (! app()->environment('local', 'testing') || User::where('email', 'test@example.com')->exists()) {
             return;
         }
 
