@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ config('app.name') }}</title>
+    @include('pwa')
 @if ($devRoutes)
     <meta name="bb-dev-routes" content="1">
 @endif
