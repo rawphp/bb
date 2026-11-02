@@ -49,9 +49,9 @@ it('FOOD-043 a photo becomes an editable list of foods matched to database foods
 
     expect($llm->userContent()[0]['type'])->toBe('image')
         ->and($data['rows'])->toBe([
-            ['name' => 'Cooked rice', 'grams' => 200, 'grams_text' => '200 g', 'food_id' => $this->rice->id, 'match_text' => 'White rice', 'detail' => null, 'kcal_text' => '260 kcal'],
-            ['name' => 'Burrito bowl', 'grams' => 100, 'grams_text' => '100 g', 'food_id' => $this->bowl->id, 'match_text' => 'Burrito bowl', 'detail' => 'Chipotle', 'kcal_text' => '150 kcal'],
-            ['name' => 'Mystery sauce', 'grams' => 30, 'grams_text' => '30 g', 'food_id' => null, 'match_text' => 'No match', 'detail' => null, 'kcal_text' => null],
+            ['name' => 'Cooked rice', 'grams' => 200, 'base_grams' => 200, 'grams_text' => '200 g', 'food_id' => $this->rice->id, 'match_text' => 'White rice', 'detail' => null, 'kcal_text' => '260 kcal'],
+            ['name' => 'Burrito bowl', 'grams' => 100, 'base_grams' => 100, 'grams_text' => '100 g', 'food_id' => $this->bowl->id, 'match_text' => 'Burrito bowl', 'detail' => 'Chipotle', 'kcal_text' => '150 kcal'],
+            ['name' => 'Mystery sauce', 'grams' => 30, 'base_grams' => 30, 'grams_text' => '30 g', 'food_id' => null, 'match_text' => 'No match', 'detail' => null, 'kcal_text' => null],
         ])
         ->and($data['portion'])->toEqual(1)
         ->and($data['portion_text'])->toBe('1×')
@@ -75,7 +75,7 @@ it('FOOD-043 a photo that finds nothing says so', function () {
 });
 
 it('FOOD-043 FOOD-044 FOOD-042 a scan saves nothing', function () {
-    aiPlate();
+    RecordingLlmClient::answering(['items' => [['name' => 'Cooked rice', 'search' => 'white rice', 'grams' => 200]]])->install();
     $writes = [];
     DB::listen(function ($query) use (&$writes) {
         if (preg_match('/^\s*(insert|update|delete|replace)\b/i', $query->sql) === 1 && ! str_contains($query->sql, 'cache')) {
@@ -86,6 +86,11 @@ it('FOOD-043 FOOD-044 FOOD-042 a scan saves nothing', function () {
     scan('scan_photo', ['image' => SCAN_JPEG]);
     scan('scan_describe', ['description' => 'rice and a burrito bowl']);
     scan('scan_adjust', ['rows' => [['name' => 'Rice', 'grams' => 100, 'food_id' => $this->rice->id]], 'from_portion' => 1, 'portion' => 2]);
+    RecordingLlmClient::answering([
+        'name' => 'Oats', 'brand' => null, 'serving' => null,
+        'per_100g' => ['kcal' => 380, 'protein' => 13, 'fat' => 7, 'carbs' => 60, 'fiber' => 10],
+    ])->install();
+    scan('scan_label', ['image' => SCAN_JPEG]);
 
     expect($writes)->toBe([]);
 });
@@ -134,6 +139,29 @@ it('FOOD-045 the portion scales the whole scanned meal, and the rows come back a
         ->and($data['saved_meal_name'])->toBe('Burrito night');
 });
 
+it('FOOD-045 FOOD-046 a draft sent back as returned steps the portion without drifting and keeps its name', function () {
+    RecordingLlmClient::answering(['items' => [['name' => 'Cooked rice', 'search' => 'white rice', 'grams' => 33]]])->install();
+    $draft = scan('scan_describe', ['description' => 'rice']);
+
+    foreach ([1.25, 1.5, 1.75] as $portion) {
+        $draft = scan('scan_adjust', [
+            'rows' => array_map(fn (array $row) => ['name' => $row['name'], 'grams' => $row['grams'], 'base_grams' => $row['base_grams'], 'food_id' => $row['food_id']], $draft['rows']),
+            'from_portion' => $draft['portion'],
+            'portion' => $portion,
+            'saved_meal_name' => $draft['saved_meal_name'],
+        ]);
+    }
+
+    expect($draft['rows'][0]['grams'])->toEqual(57.8)
+        ->and($draft['saved_meal_name'])->toBe('rice');
+});
+
+it('FOOD-045 totals over a thousand calories are written with a thousands separator', function () {
+    $data = scan('scan_adjust', ['rows' => [['name' => 'Rice', 'grams' => 200, 'food_id' => $this->rice->id]], 'from_portion' => 1, 'portion' => 4]);
+
+    expect($data['totals']['kcal'])->toBe('1,040 kcal');
+});
+
 it('FOOD-043 a new match, a typed amount and a removed row are what the user sends back', function () {
     $basmati = Food::factory()->create(['name' => 'Basmati rice', 'kcal' => 350, 'protein' => 8, 'fat' => 1, 'carbs' => 78]);
 
@@ -144,29 +172,12 @@ it('FOOD-043 a new match, a typed amount and a removed row are what the user sen
     ]);
 
     expect($data['rows'])->toBe([
-        ['name' => 'Cooked rice', 'grams' => 100, 'grams_text' => '100 g', 'food_id' => $basmati->id, 'match_text' => 'Basmati rice', 'detail' => null, 'kcal_text' => '350 kcal'],
+        ['name' => 'Cooked rice', 'grams' => 100, 'base_grams' => 80, 'grams_text' => '100 g', 'food_id' => $basmati->id, 'match_text' => 'Basmati rice', 'detail' => null, 'kcal_text' => '350 kcal'],
     ])->and($data['unmatched_note'])->toBeNull()
         ->and($data['saved_meal_name'])->toBe('Scanned meal');
 });
 
-it('FOOD-045 the portion stops at four times', function () {
-    $data = scan('scan_adjust', ['rows' => [['name' => 'Rice', 'grams' => 100, 'food_id' => null]], 'from_portion' => 3.75, 'portion' => 4]);
-
-    expect($data['portion_up'])->toBeNull()
-        ->and($data['portion_down'])->toEqual(3.75);
-});
-
-it('FOOD-046 two rows matched to one food are saved as one food with both amounts', function () {
-    $data = scan('scan_adjust', [
-        'rows' => [['name' => 'Rice', 'grams' => 100, 'food_id' => $this->rice->id], ['name' => 'Cooked rice', 'grams' => 50, 'food_id' => $this->rice->id]],
-        'from_portion' => 1,
-        'portion' => 1.25,
-    ]);
-
-    expect($data['matched'])->toEqual([['food_id' => $this->rice->id, 'grams' => 187.5]]);
-});
-
-it('FOOD-042 a label becomes a custom food draft per serving, carrying the barcode that found nothing', function () {
+it('FOOD-042 FOOD-060 a label becomes a custom food draft per serving, carrying the barcode that found nothing, with the calories its macros give', function () {
     $llm = RecordingLlmClient::answering([
         'name' => 'Oat bar', 'brand' => 'Barco', 'serving' => ['label' => '1 bar', 'grams' => 40],
         'per_100g' => ['kcal' => 400, 'protein' => 10, 'fat' => 12, 'carbs' => 60, 'fiber' => 8],
@@ -178,7 +189,7 @@ it('FOOD-042 a label becomes a custom food draft per serving, carrying the barco
         ->and($data)->toEqual([
             'name' => 'Oat bar', 'brand' => 'Barco', 'barcode' => '5012345678900',
             'serving_size' => 40, 'serving_unit' => 'g', 'serving_grams' => 40,
-            'protein' => 4, 'fat' => 4.8, 'carbs' => 24, 'fiber' => 3.2, 'kcal_text' => '160 kcal',
+            'protein' => 4, 'fat' => 4.8, 'carbs' => 24, 'fiber' => 3.2, 'kcal_text' => '155 kcal',
         ]);
 });
 
@@ -193,7 +204,7 @@ it('FOOD-042 a label with no serving is per 100 g, with no barcode', function ()
     expect($data['serving_grams'])->toEqual(100)
         ->and($data['barcode'])->toBeNull()
         ->and($data['brand'])->toBeNull()
-        ->and($data['kcal_text'])->toBe('380 kcal');
+        ->and($data['kcal_text'])->toBe('355 kcal');
 });
 
 it('FOOD-042 FOOD-043 FOOD-044 a scan with no AI key is refused in plain words', function (string $name, array $input) {

@@ -35,20 +35,33 @@ it('FOOD-045 the portion stops at a quarter and at four times', function () {
         ->and(ScanPortion::down(0.5))->toBe(0.25);
 });
 
-it('FOOD-045 the shown grams follow the portion', function () {
-    // 200 g at 1× is 250 g at 1.25×, and 150 g is 187.5 g.
-    expect(ScanPortion::rescale(200, 1.0, 1.25))->toBe(250.0)
-        ->and(ScanPortion::rescale(150, 1.0, 1.25))->toBe(187.5)
-        ->and(ScanPortion::rescale(30, 1.0, 1.25))->toBe(37.5);
+it('FOOD-045 the grams at one times are the base the screen sent back, while the row shows what that base gives', function () {
+    // 33 g at 1×, stepped up one quarter at a time, rounds once from the base, as rp-clone does: 57.8 g at 1.75×.
+    $base = 33.0;
+    foreach ([1.0, 1.25, 1.5] as $from) {
+        $shown = ScanPortion::grams($base * $from);
+        $base = ScanPortion::base($shown, $base, $from);
+    }
+
+    expect($base)->toBe(33.0)
+        ->and(ScanPortion::grams($base * 1.75))->toBe(57.8);
+});
+
+it('FOOD-045 a round trip through the smallest portion comes back to the same grams', function () {
+    // A pinch of salt shows 0.1 g at 0.25×, the floor, and is back to 0.1 g at 1×.
+    $base = ScanPortion::base(ScanPortion::grams(0.1 * 0.25), 0.1, 0.25);
+
+    expect($base)->toBe(0.1)
+        ->and(ScanPortion::grams($base * 1.0))->toBe(0.1);
 });
 
 it('FOOD-045 a typed amount is the amount shown, so it is kept across portions', function () {
-    // 100 g typed at 1.25× is 80 g back at 1×.
-    expect(ScanPortion::rescale(100, 1.25, 1.25))->toBe(100.0)
-        ->and(ScanPortion::rescale(100, 1.25, 1.0))->toBe(80.0);
+    // 100 g typed at 1.25× over a row whose base showed 250 g is 80 g at 1×.
+    expect(ScanPortion::base(100, 200, 1.25))->toBe(80.0)
+        ->and(ScanPortion::grams(ScanPortion::base(100, 200, 1.25) * 1.25))->toBe(100.0);
 });
 
-it('FOOD-045 the scaled grams are rounded to a tenth and never zero', function () {
-    expect(ScanPortion::rescale(33, 1.0, 1.75))->toBe(57.8)
-        ->and(ScanPortion::rescale(0.1, 1.0, 0.25))->toBe(0.1);
+it('FOOD-045 a row sent back with no base is taken as typed at its portion', function () {
+    expect(ScanPortion::base(100, null, 1.25))->toBe(80.0)
+        ->and(ScanPortion::base(37.5, null, 1.0))->toBe(37.5);
 });

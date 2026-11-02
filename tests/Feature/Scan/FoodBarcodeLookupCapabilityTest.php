@@ -61,6 +61,13 @@ it('FOOD-041 a found food that changes weight when cooked carries its cooked val
         ->and($food['is_favorite'])->toBeTrue();
 });
 
+it('FOOD-023 a food another user starred is not starred for the caller', function () {
+    $bar = Food::factory()->create(['barcode' => '124']);
+    FoodFavorite::factory()->create(['user_id' => User::factory()->create()->id, 'food_id' => $bar->id]);
+
+    expect(lookUpBarcode('124')['food']['is_favorite'])->toBeFalse();
+});
+
 it('FOOD-041 an unknown barcode offers the label scan or a custom food with the barcode filled in', function () {
     $data = lookUpBarcode('0123456789012');
 
