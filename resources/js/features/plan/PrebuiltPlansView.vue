@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { findNavigation } from '@/app/navigation';
 import ReadState from '@/app/ReadState.vue';
 import { ulid } from '@/app/ulid';
 import { useRead } from '@/app/useRead';
@@ -10,6 +8,7 @@ import type { PlanShowOutput } from '@/contracts/plan_show';
 import type { PrebuiltPlanApplyInput } from '@/contracts/prebuilt_plan_apply';
 import PendingMark from '@/design/PendingMark.vue';
 import { toneClasses } from '@/design/tones';
+import { useLeave } from './planScreen';
 
 // Plan → 24-week plans (PLAN-030): RP's two prebuilt plans, laid out by the server
 // from the end of the plan, to preview and add. `pending` dims the server's dates
@@ -18,9 +17,7 @@ const props = withDefaults(defineProps<{ payload?: PlanShowOutput; pending?: boo
 
 type Plan = PrebuiltPlanApplyInput['plan'];
 
-const router = useRouter();
-// None outside the shell: dev screens and tests render this with a plain router.
-const nav = findNavigation(router);
+const leave = useLeave();
 const { data, failure, load } = useRead<PlanShowOutput>('plan_show', {}, 'Your plan could not be loaded.', props.payload);
 const { send, busy, error } = useWrite(load);
 
@@ -34,13 +31,6 @@ async function apply(plan: Plan): Promise<void> {
     const outcome = await send('prebuilt_plan_apply', input, 'The plan could not be added.');
     adding.value = null;
     if (outcome === 'done') leave();
-}
-
-// The tab stack's back. Opened on its own (a deep link, /dev/screens) there is no
-// screen under this one, so it goes to Train.
-function leave(): void {
-    if (nav && nav.state.stacks[nav.state.active].length > 1) nav.back();
-    else void router.replace('/train');
 }
 
 const weeks = (count: number) => `${count} ${count === 1 ? 'week' : 'weeks'}`;

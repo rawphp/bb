@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { findNavigation } from '@/app/navigation';
 import ReadState from '@/app/ReadState.vue';
 import { ulid } from '@/app/ulid';
 import { useRead } from '@/app/useRead';
@@ -12,6 +10,7 @@ import BottomSheet from '@/design/BottomSheet.vue';
 import ChoiceList, { type Choice } from '@/design/ChoiceList.vue';
 import PendingMark from '@/design/PendingMark.vue';
 import { toneClasses } from '@/design/tones';
+import { selectedIndex, useLeave } from './planScreen';
 
 // The sheet End phase, "Choose a new goal" and "End the plan" open (PH-007, PH-030 to
 // PH-046): what the phase achieved, what comes next, and Confirm. The server sends every
@@ -23,9 +22,7 @@ const props = withDefaults(defineProps<{ payload?: PlanShowOutput; pending?: boo
 
 type CalorieMode = NonNullable<PhaseTransitionCompleteInput['calorie_mode']>;
 
-const router = useRouter();
-// None outside the shell: dev screens and tests render this with a plain router.
-const nav = findNavigation(router);
+const leave = useLeave();
 const { data, failure, load } = useRead<PlanShowOutput>('plan_show', {}, 'Your plan could not be loaded.', props.payload);
 const { send, busy, error } = useWrite(load);
 
@@ -36,13 +33,14 @@ const optionPick = ref<number | null>(null);
 const lengthPick = ref<number | null>(null);
 const templatePick = ref<number | null>(null);
 const stepPick = ref<number | null>(null);
+// PH-044 steps calories up by default. plan_show sends no default mode for step_up, so
+// this is the one default the screen holds until the contract carries it (#79).
 const calorieMode = ref<CalorieMode>('step_up');
 // The readiness answers (PH-046), by question.
 const answers = ref<Record<string, 'yes' | 'no'>>({});
 
 const transition = computed(() => data.value?.transition ?? null);
 const options = computed(() => transition.value?.options ?? []);
-const selectedIndex = <T extends { is_selected: boolean }>(pick: number | null, list: T[]) => pick ?? Math.max(0, list.findIndex((item) => item.is_selected));
 const optionIndex = computed(() => selectedIndex(optionPick.value, options.value));
 const option = computed(() => options.value[optionIndex.value]);
 const lengthIndex = computed(() => selectedIndex(lengthPick.value, option.value?.lengths ?? []));
@@ -109,13 +107,6 @@ async function confirm(): Promise<void> {
         step_kcal: stepsUp ? (step.value?.step.value ?? null) : null,
     } satisfies PhaseTransitionCompleteInput;
     if ((await send('phase_transition_complete', input, 'The next phase could not be set.')) === 'done') leave();
-}
-
-// The tab stack's back. Opened on its own (a deep link, /dev/screens) there is no
-// screen under this one, so it goes to Train.
-function leave(): void {
-    if (nav && nav.state.stacks[nav.state.active].length > 1) nav.back();
-    else void router.replace('/train');
 }
 
 const heading = 'px-1 text-sm font-medium text-secondary-text';
@@ -228,8 +219,9 @@ const dim = computed(() => (props.pending ? 'opacity-60' : ''));
                     <button
                         v-if="maintenanceIndex >= 0"
                         type="button"
-                        class="min-h-tap w-full rounded-xl border border-accent px-4 text-left font-medium text-accent active:opacity-70"
+                        class="min-h-tap w-full rounded-xl border border-accent px-4 text-left font-medium text-accent active:opacity-70 disabled:opacity-50"
                         data-test="maintenance-first"
+                        :disabled="busy"
                         @click="optionPick = maintenanceIndex"
                     >
                         Choose Maintenance first

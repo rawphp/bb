@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { findNavigation } from '@/app/navigation';
 import ReadState from '@/app/ReadState.vue';
 import { ulid } from '@/app/ulid';
 import { useRead } from '@/app/useRead';
@@ -11,6 +9,7 @@ import type { PlanShowOutput } from '@/contracts/plan_show';
 import ChoiceList, { type Choice } from '@/design/ChoiceList.vue';
 import PendingMark from '@/design/PendingMark.vue';
 import { toneClasses } from '@/design/tones';
+import { selectedIndex, useLeave } from './planScreen';
 
 // Plan → Add a phase (PLAN-006): the type, the length and rate, what the mesocycles
 // that fill it look like and where training starts. The server sends every option
@@ -21,9 +20,7 @@ const props = withDefaults(defineProps<{ payload?: PlanShowOutput; pending?: boo
 
 type PhaseType = PhaseAddInput['type'];
 
-const router = useRouter();
-// None outside the shell: dev screens and tests render this with a plain router.
-const nav = findNavigation(router);
+const leave = useLeave();
 const { data, failure, load } = useRead<PlanShowOutput>('plan_show', {}, 'Your plan could not be loaded.', props.payload);
 const { send, busy, error } = useWrite(load);
 
@@ -36,8 +33,8 @@ const ratePick = ref<number | null>(null);
 
 const addPhase = computed(() => data.value?.add_phase);
 const type = computed(() => addPhase.value?.types.find((t) => t.type === (picked.value ?? addPhase.value?.default_type)) ?? addPhase.value?.types[0]);
-const lengthIndex = computed(() => lengthPick.value ?? Math.max(0, type.value?.lengths.findIndex((l) => l.is_selected) ?? 0));
-const rateIndex = computed(() => ratePick.value ?? Math.max(0, type.value?.rates.findIndex((r) => r.is_selected) ?? 0));
+const lengthIndex = computed(() => selectedIndex(lengthPick.value, type.value?.lengths ?? []));
+const rateIndex = computed(() => selectedIndex(ratePick.value, type.value?.rates ?? []));
 const length = computed(() => type.value?.lengths[lengthIndex.value]);
 const rate = computed(() => type.value?.rates[rateIndex.value]);
 
@@ -61,13 +58,6 @@ async function add(): Promise<void> {
         rate_percent_per_week: rate.value?.rate.value ?? null,
     } satisfies PhaseAddInput;
     if ((await send('phase_add', input, 'The phase could not be added.')) === 'done') leave();
-}
-
-// The tab stack's back. Opened on its own (a deep link, /dev/screens) there is no
-// screen under this one, so it goes to Train.
-function leave(): void {
-    if (nav && nav.state.stacks[nav.state.active].length > 1) nav.back();
-    else void router.replace('/train');
 }
 
 const heading = 'px-1 text-sm font-medium text-secondary-text';
