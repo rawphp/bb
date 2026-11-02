@@ -9,6 +9,9 @@ namespace App\Capabilities\Support;
  */
 interface ShownOnce
 {
+    /** @return array<string, mixed> the output on the wire */
+    public function toArray(): array;
+
     /**
      * @param  array<string, mixed>  $data  the output on the wire
      * @return array<string, mixed> the same output, its secret cleared

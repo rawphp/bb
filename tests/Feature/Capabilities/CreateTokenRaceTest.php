@@ -12,11 +12,18 @@ const RACED_ID = '01JBX8Z6Q7M0V2K3N4P5R6S7T9';
 /** Another request inserts this ULID for $owner between the check and the save. */
 function raceCreate(User $owner): void
 {
-    PersonalAccessToken::creating(function (PersonalAccessToken $token) use ($owner) {
-        PersonalAccessToken::flushEventListeners();
+    $raced = false;
+    PersonalAccessToken::creating(function (PersonalAccessToken $token) use ($owner, &$raced) {
+        if ($raced) {
+            return;
+        }
+        $raced = true;
         PersonalAccessToken::factory()->for($owner, 'tokenable')->create(['id' => $token->id]);
     });
 }
+
+// The listener sits on the model's static dispatcher, so it goes after each test, pass or fail.
+afterEach(fn () => PersonalAccessToken::getEventDispatcher()?->forget('eloquent.creating: '.PersonalAccessToken::class));
 
 function createRaced(User $user): mixed
 {

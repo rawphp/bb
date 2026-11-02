@@ -53,7 +53,7 @@ final class CapabilitiesHostProvider extends ServiceProvider
         $this->app->singleton(CapabilityBus::class, fn (Container $app): HostBus => new HostBus($app->make(CapabilityRegistry::class), $app->make(Ownership::class)));
 
         // A replay never shows a secret again, so the store never keeps one (CAP-014, CAP-021).
-        $this->app->extend(IdempotencyStore::class, fn (IdempotencyStore $store, Container $app): ShownOnceIdempotencyStore => new ShownOnceIdempotencyStore($store, fn (): CapabilityRegistry => $app->make(CapabilityRegistry::class)));
+        $this->app->extend(IdempotencyStore::class, fn (IdempotencyStore $store): ShownOnceIdempotencyStore => new ShownOnceIdempotencyStore($store));
 
         // The agent's seams in capabilities-ai (AGT-003, AGT-011).
         $this->app->singleton(ToolCatalog::class, RegistryToolCatalog::class);

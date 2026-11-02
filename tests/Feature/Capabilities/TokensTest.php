@@ -1,7 +1,11 @@
 <?php
 
 use App\Agent\Exclusions;
+use App\Capabilities\HostAuthorizer;
+use App\Capabilities\Support\HostBus;
 use App\Capabilities\Support\HostDefinition;
+use App\Capabilities\Support\NoAgentPolicy;
+use App\Capabilities\Support\NoBilling;
 use App\Capabilities\Support\Ownership;
 use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Tokens\TokenCatalog;
@@ -304,27 +308,6 @@ it('INT-001 names, for a Health bridge token, the two writes the weigh-in contra
     }
 });
 
-it('INT-001 lets a Health bridge token post a weigh-in and steps, and nothing else', function () {
-    $registry = app(CapabilityRegistry::class);
-    // Until the weigh-in issue registers them, a stand-in under each name proves the scope.
-    foreach (TokenScope::HEALTH_BRIDGE as $name) {
-        if (! $registry->has($name)) {
-            HostDefinition::write($name, affects: ['account_show'])
-                ->input(TallyInput::class)
-                ->run(fn (): WriteResult => new WriteResult(invalidates: []))
-                ->register($registry);
-        }
-    }
-    $secret = createToken(User::factory()->create(), 'health_bridge');
-
-    foreach (TokenScope::HEALTH_BRIDGE as $name) {
-        $status = withToken($secret)->postJson("/capabilities/{$name}", ['amount' => 1], ['Idempotency-Key' => (string) Str::ulid()])->status();
-        expect($status)->not->toBeIn([401, 403], $name);
-    }
-    withToken($secret)->postJson('/capabilities/account_show')->assertForbidden();
-    withToken($secret)->postJson('/capabilities/token_list')->assertForbidden();
-});
-
 it('CAP-020 makes every capability that takes an existing row\'s ID check its owner', function () {
     // A create takes a new row's client-made ULID (CAP-019) and checks its owner itself.
     $creates = ['token_create' => ['id']];
@@ -365,4 +348,29 @@ it('CAP-021 mints every token through token_create, so each has a scope', functi
     }
 
     expect(PersonalAccessToken::query()->count())->toBe(0);
+});
+
+it('INT-001 lets a Health bridge token post a weigh-in and steps, and nothing else', function () {
+    $user = User::factory()->create();
+    createToken($user, 'health_bridge');
+    $bearer = $user->withAccessToken(PersonalAccessToken::query()->findOrFail(TOKEN_ID));
+
+    // A registry of its own, so no other test sees the stand-ins: until the weigh-in issue
+    // registers them, a stand-in under each Health bridge name proves the scope.
+    $registry = new CapabilityRegistry;
+    foreach ([...TokenScope::HEALTH_BRIDGE, 'account_show', 'token_list'] as $name) {
+        HostDefinition::write($name, affects: ['account_show'])
+            ->input(TallyInput::class)
+            ->run(fn (): WriteResult => new WriteResult(invalidates: []))
+            ->register($registry);
+    }
+    $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, new Ownership, new NoBilling, new NoAgentPolicy));
+    $bus = new HostBus($registry, new Ownership);
+    $invoke = fn (string $name) => $bus->invoke($name, ['amount' => 1], ['actor' => $bearer, 'caller' => 'http']);
+
+    foreach (TokenScope::HEALTH_BRIDGE as $name) {
+        expect($invoke($name)->isOk())->toBeTrue($name);
+    }
+    expect($invoke('account_show')->errorCode())->toBe('forbidden')
+        ->and($invoke('token_list')->errorCode())->toBe('forbidden');
 });
