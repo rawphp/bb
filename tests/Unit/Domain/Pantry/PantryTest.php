@@ -3,7 +3,6 @@
 use App\Domain\Foods\FoodSearchSource;
 use App\Domain\MealFit\CuratedGroup;
 use App\Domain\MealFit\Food;
-use App\Domain\Model\DietFilter;
 use App\Domain\Pantry\CuratedSection;
 use App\Domain\Pantry\Pantry;
 use App\Domain\Pantry\PantryFood;
@@ -11,13 +10,11 @@ use App\Domain\Pantry\PantryTab;
 
 // The rules of rp-clone's PantryModel (FOOD-020 to FOOD-028), as plain values.
 
-/** @param  list<DietFilter>  $diets */
-function pantryFood(string $id, string $name, ?CuratedGroup $group = null, array $diets = [], bool $curated = false): PantryFood
+function pantryFood(string $id, string $name, ?CuratedGroup $group = null, bool $curated = false): PantryFood
 {
     return new PantryFood(
         food: new Food(id: $id, name: $name, kcal: 100, proteinG: 10, fatG: 2, carbsG: 12, curatedGroup: $group),
         isCurated: $curated || $group !== null,
-        diets: $diets,
     );
 }
 

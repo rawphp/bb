@@ -14,8 +14,7 @@ use Tests\Support\ScreenFixture;
 
 // What food_search shows (rp-clone PantryModel and PantryView), from in-memory rows.
 
-/** @param  list<DietFilter>  $diets */
-function payloadFood(string $id, string $name, array $nutrition = [100, 10, 2, 12], ?CuratedGroup $group = null, ?float $cookedRatio = null, ?string $brand = null, array $diets = []): PantryFood
+function payloadFood(string $id, string $name, array $nutrition = [100, 10, 2, 12], ?CuratedGroup $group = null, ?float $cookedRatio = null, ?string $brand = null): PantryFood
 {
     [$kcal, $protein, $fat, $carbs] = $nutrition;
 
@@ -23,7 +22,6 @@ function payloadFood(string $id, string $name, array $nutrition = [100, 10, 2, 1
         food: new Food(id: $id, name: $name, kcal: $kcal, proteinG: $protein, fatG: $fat, carbsG: $carbs, cookedRatio: $cookedRatio, curatedGroup: $group),
         brand: $brand,
         isCurated: $group !== null,
-        diets: $diets,
     );
 }
 

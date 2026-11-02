@@ -6,21 +6,16 @@ use App\Domain\MealFit\CuratedGroup;
 use App\Domain\MealFit\Food;
 use App\Domain\MealFit\MealFood;
 use App\Domain\MealFit\Weighing;
-use App\Domain\Model\DietFilter;
 use App\Domain\Model\MealTarget;
 
-/** A food as the Pantry lists it (FOOD-002, FOOD-006, FOOD-009, FOOD-026, FOOD-027). */
+/** A food as the Pantry lists it (FOOD-002, FOOD-006, FOOD-009). */
 final readonly class PantryFood
 {
-    /**
-     * @param  ?string  $brand  the brand or restaurant
-     * @param  list<DietFilter>  $diets  the diet filters the food passes
-     */
+    /** @param  ?string  $brand  the brand or restaurant */
     public function __construct(
         public Food $food,
         public ?string $brand = null,
         public bool $isCurated = false,
-        public array $diets = [],
     ) {}
 
     public function id(): string

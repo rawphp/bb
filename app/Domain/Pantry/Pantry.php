@@ -4,7 +4,6 @@ namespace App\Domain\Pantry;
 
 use App\Domain\Foods\FoodSearchSource;
 use App\Domain\MealFit\CuratedGroup;
-use App\Domain\Model\DietFilter;
 
 /**
  * The Pantry, the food picker (FOOD-020 to FOOD-028): what its tabs, curated groups, filters and search show.
@@ -25,60 +24,31 @@ final class Pantry
     public const CREATE_CUSTOM_FOOD_TITLE = "Can't find it? Create a custom food";
 
     /**
-     * FOOD-021, FOOD-026, FOOD-027: each curated group in FOOD-003 order with the foods that pass the filters, in the
-     * order given. A group with none is left out; a group filter keeps only its own group.
+     * FOOD-021: each curated group in FOOD-003 order with its foods in the order given, five of them, or thirty once
+     * opened with "Show 25 more". A group with none is left out. The read applies the group and diet filters (FOOD-026,
+     * FOOD-027) and reads one row past five, so a group that has more says so.
      *
-     * @param  list<PantryFood>  $foods  the curated foods
-     * @param  list<DietFilter>  $diets  the filters that are on
+     * @param  list<PantryFood>  $foods  the curated foods that pass the filters
      * @param  list<CuratedGroup>  $expanded  the groups opened with "Show 25 more"
      * @return list<CuratedSection>
      */
-    public static function curated(array $foods, array $diets = [], ?CuratedGroup $group = null, array $expanded = []): array
+    public static function curated(array $foods, array $expanded = []): array
     {
         $sections = [];
-        foreach (CuratedGroup::cases() as $candidate) {
-            if ($group !== null && $group !== $candidate) {
-                continue;
-            }
-            $inGroup = self::filter($foods, $diets, $candidate);
+        foreach (CuratedGroup::cases() as $group) {
+            $inGroup = array_values(array_filter($foods, fn (PantryFood $food) => $food->group() === $group));
             if ($inGroup === []) {
                 continue;
             }
-            $isExpanded = in_array($candidate, $expanded, true);
+            $isExpanded = in_array($group, $expanded, true);
             $sections[] = new CuratedSection(
-                group: $candidate,
+                group: $group,
                 foods: array_slice($inGroup, 0, $isExpanded ? self::EXPANDED : self::COLLAPSED),
                 hasMore: ! $isExpanded && count($inGroup) > self::COLLAPSED,
             );
         }
 
         return $sections;
-    }
-
-    /**
-     * FOOD-026, FOOD-027: the foods that pass every diet filter that is on and, with a group filter, are in that group.
-     *
-     * @param  list<PantryFood>  $foods
-     * @param  list<DietFilter>  $diets
-     * @return list<PantryFood>
-     */
-    public static function filter(array $foods, array $diets = [], ?CuratedGroup $group = null): array
-    {
-        return array_values(array_filter(
-            $foods,
-            fn (PantryFood $food) => self::passesDiets($food->diets, $diets) && ($group === null || $food->group() === $group),
-        ));
-    }
-
-    /**
-     * FOOD-027: an item passes when it matches every filter that is on.
-     *
-     * @param  list<DietFilter>  $has  the filters the item passes
-     * @param  list<DietFilter>  $on  the filters that are on
-     */
-    public static function passesDiets(array $has, array $on): bool
-    {
-        return array_all($on, fn (DietFilter $filter) => in_array($filter, $has, true));
     }
 
     /**

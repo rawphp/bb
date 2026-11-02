@@ -36,7 +36,7 @@ final class PantryPayload
 
         if ($input->collection === 'recipes') {
             $recipes = array_map(self::recipeRow(...), $snapshot->recipes);
-            $emptyText = $recipes === [] ? Pantry::emptyCollectionText('recipes', $query, $snapshot->recipesHidden) : null;
+            $emptyText = $recipes === [] ? Pantry::emptyCollectionText('recipes', $query, $snapshot->hidden) : null;
         } elseif ($input->collection === 'saved_meals') {
             $savedMeals = array_map(self::savedMealRow(...), $snapshot->savedMeals);
             $emptyText = $savedMeals === [] ? Pantry::emptyCollectionText('saved meals', $query) : null;
@@ -49,7 +49,7 @@ final class PantryPayload
                 $suggestion = $snapshot->suggestion === null ? null : new Suggestion(Pantry::didYouMean($snapshot->suggestion), $snapshot->suggestion);
                 $createCustomFood = new CreateCustomFood(Pantry::CREATE_CUSTOM_FOOD_TITLE, $query);
             }
-            $emptyText = $sections === [] ? Pantry::emptyText(PantryTab::from($input->tab), $query, filtered: $snapshot->foods !== []) : null;
+            $emptyText = $sections === [] ? Pantry::emptyText(PantryTab::from($input->tab), $query, filtered: $snapshot->hidden) : null;
         }
 
         return new FoodSearchOutput(
@@ -72,13 +72,13 @@ final class PantryPayload
     }
 
     /**
-     * FOOD-020, FOOD-021: the Curated tab's groups, or the Recents, Favorites or Custom list as one section.
+     * FOOD-020, FOOD-021: the Curated tab's groups, or the Recents, Favorites or Custom list as one section. The read
+     * already applied the group and diet filters.
      *
      * @return list<FoodSection>
      */
     private static function tabSections(FoodSearchInput $input, PantrySnapshot $snapshot, FoodRows $rows): array
     {
-        $group = CuratedGroup::tryFrom((string) $input->group);
         $tab = PantryTab::from($input->tab);
 
         if ($tab === PantryTab::Curated) {
@@ -90,12 +90,10 @@ final class PantryPayload
                 group: $section->group->value,
                 show_more_title: $section->hasMore ? Pantry::SHOW_MORE_TITLE : null,
                 rows: $rows->rows($section->foods),
-            ), Pantry::curated($snapshot->foods, $snapshot->diets, $group, $expanded));
+            ), Pantry::curated($snapshot->foods, $expanded));
         }
 
-        $foods = Pantry::filter($snapshot->foods, $snapshot->diets, $group);
-
-        return $foods === [] ? [] : [new FoodSection(id: $tab->value, title: null, group: null, show_more_title: null, rows: $rows->rows($foods))];
+        return $snapshot->foods === [] ? [] : [new FoodSection(id: $tab->value, title: null, group: null, show_more_title: null, rows: $rows->rows($snapshot->foods))];
     }
 
     /**

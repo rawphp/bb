@@ -15,14 +15,14 @@ final readonly class PantrySnapshot
 {
     /**
      * @param  list<DietFilter>  $diets  the user's diet filters (FOOD-027)
-     * @param  list<PantryFood>  $foods  the tab's foods before the filters, or a search's results
+     * @param  list<PantryFood>  $foods  the tab's foods that pass the filters, or a search's results
      * @param  list<string>  $ownIds  a search's results that are in the user's Recents, Favorites or Custom
      * @param  list<string>  $favoriteIds  the shown foods the user favourited
      * @param  array<string, string>  $mealFoods  the foods already in the meal, food id => name, in the meal's order
      * @param  ?string  $suggestion  FOOD-024's corrected query
      * @param  list<PantryRecipe>  $recipes  the user's own recipes, then the library's, that pass the diet filters and the search
      * @param  list<PantrySavedMeal>  $savedMeals  the user's saved meals that match the search
-     * @param  bool  $recipesHidden  the diet filters hid every recipe there is
+     * @param  bool  $hidden  the filters hid every food on the tab, or every recipe
      */
     public function __construct(
         public array $diets = [],
@@ -33,6 +33,6 @@ final readonly class PantrySnapshot
         public ?string $suggestion = null,
         public array $recipes = [],
         public array $savedMeals = [],
-        public bool $recipesHidden = false,
+        public bool $hidden = false,
     ) {}
 }

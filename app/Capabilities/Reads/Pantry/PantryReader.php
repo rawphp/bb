@@ -11,6 +11,7 @@ use App\Domain\MealFit\Food as MealFitFood;
 use App\Domain\MealFit\MealFood;
 use App\Domain\MealFit\Weighing;
 use App\Domain\Model\DietFilter;
+use App\Domain\Pantry\Pantry;
 use App\Domain\Pantry\PantryFood;
 use App\Domain\Pantry\PantryRecipe;
 use App\Domain\Pantry\PantrySavedMeal;
@@ -34,8 +35,11 @@ use Illuminate\Database\Eloquent\Model;
  */
 final class PantryReader
 {
-    /** rp-clone's Recents list: the last 100 foods the user used. */
-    public const RECENTS = 100;
+    /**
+     * The most rows a list shows: rp-clone's Recents (the last 100 foods used), and the cap on Favorites, Custom,
+     * Recipes and Saved Meals. Search reaches the rest.
+     */
+    public const LIST_LIMIT = 100;
 
     public function __construct(private readonly SearchFoods $search) {}
 
@@ -50,15 +54,23 @@ final class PantryReader
             $hidden = $recipes === [] && $diets !== [] && $query === ''
                 && Recipe::query()->where(fn (Builder $q) => $q->where('user_id', $user->id)->orWhereNull('user_id'))->exists();
 
-            return new PantrySnapshot(diets: $diets, mealFoods: $mealFoods, recipes: $recipes, recipesHidden: $hidden);
+            return new PantrySnapshot(diets: $diets, mealFoods: $mealFoods, recipes: $recipes, hidden: $hidden);
         }
         if ($input->collection === 'saved_meals') {
             return new PantrySnapshot(diets: $diets, mealFoods: $mealFoods, savedMeals: self::savedMeals($user, $query));
         }
 
         $suggestion = null;
+        $hidden = false;
         if ($query === '') {
-            $found = self::tab($user, PantryTab::from($input->tab));
+            $tab = PantryTab::from($input->tab);
+            $group = CuratedGroup::tryFrom((string) $input->group);
+            if ($tab === PantryTab::Curated) {
+                $found = self::curated($diets, $group, array_map(CuratedGroup::from(...), $input->expanded_groups));
+            } else {
+                $found = self::filtered(self::listed($user, $tab), $diets, $group)->limit(self::LIST_LIMIT)->get();
+                $hidden = $found->isEmpty() && ($diets !== [] || $group !== null) && self::listed($user, $tab)->exists();
+            }
         } else {
             $filters = new FoodSearchFilters(
                 source: FoodSearchSource::tryFrom((string) $input->source),
@@ -84,31 +96,71 @@ final class PantryReader
             favoriteIds: $favoriteIds,
             mealFoods: $mealFoods,
             suggestion: $suggestion,
+            hidden: $hidden,
         );
     }
 
     /**
-     * FOOD-020: a tab's foods. Curated is every shared curated food by name (a few hundred rows); Recents the user's
-     * last 100, newest first; Favorites and Custom by name. A recent or favourite never reveals another user's custom food.
+     * FOOD-021: each curated group's foods by name, five and one more to tell whether "Show 25 more" has more to show,
+     * or thirty for a group opened with it. A group filter reads only its own group (FOOD-026).
      *
+     * @param  list<DietFilter>  $diets
+     * @param  list<CuratedGroup>  $expanded
      * @return Collection<int, Food>
      */
-    private static function tab(User $user, PantryTab $tab): Collection
+    private static function curated(array $diets, ?CuratedGroup $group, array $expanded): Collection
     {
+        $foods = new Collection;
+        foreach ($group === null ? CuratedGroup::cases() : [$group] as $candidate) {
+            $foods = $foods->concat(self::filtered(self::listed(null, PantryTab::Curated), $diets, $candidate)
+                ->limit(in_array($candidate, $expanded, true) ? Pantry::EXPANDED : Pantry::COLLAPSED + 1)
+                ->get());
+        }
+
+        return $foods;
+    }
+
+    /**
+     * FOOD-020: a tab's foods in its order, before the filters. Curated is the shared curated foods by name; Recents
+     * the user's newest first; Favorites and Custom by name. A recent or favourite never reveals another user's
+     * custom food.
+     *
+     * @return Builder<Food>
+     */
+    private static function listed(?User $user, PantryTab $tab): Builder
+    {
+        $userId = $user?->id;
+
         return match ($tab) {
-            PantryTab::Curated => Food::query()->whereNull('user_id')->where('curated', true)->orderBy('name')->orderBy('id')->get(),
-            PantryTab::Recents => new Collection(FoodRecent::query()
-                ->where('user_id', $user->id)
-                ->whereHas('food', fn (Builder $food) => $food->visibleTo($user))
-                ->with('food')
-                ->orderByDesc('used_at')->orderByDesc('id')
-                ->limit(self::RECENTS)
-                ->get()->pluck('food')->all()),
-            PantryTab::Favorites => Food::query()->visibleTo($user)
-                ->whereIn('id', FoodFavorite::query()->where('user_id', $user->id)->select('food_id'))
-                ->orderBy('name')->orderBy('id')->get(),
-            PantryTab::Custom => Food::query()->where('user_id', $user->id)->orderBy('name')->orderBy('id')->get(),
+            PantryTab::Curated => Food::query()->whereNull('user_id')->where('curated', true)->orderBy('name')->orderBy('id'),
+            PantryTab::Recents => Food::query()->select('foods.*')
+                ->join('food_recents', 'food_recents.food_id', '=', 'foods.id')
+                ->where('food_recents.user_id', $userId)
+                ->where(fn (Builder $food) => $food->whereNull('foods.user_id')->orWhere('foods.user_id', $userId))
+                ->orderByDesc('food_recents.used_at')->orderByDesc('food_recents.id'),
+            PantryTab::Favorites => Food::query()
+                ->where(fn (Builder $food) => $food->whereNull('user_id')->orWhere('user_id', $userId))
+                ->whereIn('id', FoodFavorite::query()->where('user_id', $userId)->select('food_id'))
+                ->orderBy('name')->orderBy('id'),
+            PantryTab::Custom => Food::query()->where('user_id', $userId)->orderBy('name')->orderBy('id'),
         };
+    }
+
+    /**
+     * FOOD-026, FOOD-027: the foods that pass every diet filter that is on and, with a group filter, are in that
+     * curated group.
+     *
+     * @param  Builder<Food>  $foods
+     * @param  list<DietFilter>  $diets
+     * @return Builder<Food>
+     */
+    private static function filtered(Builder $foods, array $diets, ?CuratedGroup $group): Builder
+    {
+        foreach ($diets as $diet) {
+            $foods->where("foods.{$diet->value}", true);
+        }
+
+        return $group === null ? $foods : $foods->where('foods.curated_group', $group->value);
     }
 
     /**
@@ -157,18 +209,20 @@ final class PantryReader
 
     /**
      * RCP-020, FOOD-027: the user's own recipes by name, then the library's, that pass every diet filter on and hold
-     * the search text in their name.
+     * the search text in their name, up to the list limit.
      *
      * @param  list<DietFilter>  $diets
      * @return list<PantryRecipe>
      */
     private static function recipes(User $user, array $diets, string $query): array
     {
-        $load = fn (?User $owner) => self::named(Recipe::query()->ownedBy($owner), $query)
+        $load = fn (?User $owner, int $limit) => self::named(Recipe::query()->ownedBy($owner), $query)
             ->filtered(null, array_column($diets, 'value'))
-            ->with('ingredients.food')->orderBy('name')->orderBy('id')->get();
+            ->with('ingredients.food')->orderBy('name')->orderBy('id')->limit($limit)->get();
+        $own = $load($user, self::LIST_LIMIT);
+        $recipes = $own->count() < self::LIST_LIMIT ? $own->concat($load(null, self::LIST_LIMIT - $own->count())) : $own;
 
-        return $load($user)->concat($load(null))->map(fn (Recipe $recipe) => new PantryRecipe(
+        return $recipes->map(fn (Recipe $recipe) => new PantryRecipe(
             id: (string) $recipe->id,
             name: $recipe->name,
             mealType: $recipe->meal_type,
@@ -185,11 +239,11 @@ final class PantryReader
         ))->values()->all();
     }
 
-    /** @return list<PantrySavedMeal> MEAL-071: the user's saved meals by name that hold the search text in their name. */
+    /** @return list<PantrySavedMeal> MEAL-071: the user's saved meals by name that hold the search text in their name, up to the list limit. */
     private static function savedMeals(User $user, string $query): array
     {
         return self::named(SavedMeal::query()->where('user_id', $user->id), $query)
-            ->withCount('foods')->orderBy('name')->orderBy('id')->get()
+            ->withCount('foods')->orderBy('name')->orderBy('id')->limit(self::LIST_LIMIT)->get()
             ->map(fn (SavedMeal $meal) => new PantrySavedMeal((string) $meal->id, $meal->name, (int) $meal->getAttribute('foods_count')))
             ->values()->all();
     }
@@ -213,7 +267,6 @@ final class PantryReader
             food: self::mealFitFood($food),
             brand: $food->brand,
             isCurated: (bool) $food->curated,
-            diets: self::dietsOf($food),
         );
     }
 
@@ -229,11 +282,5 @@ final class PantryReader
             cookedRatio: $food->cooked_ratio,
             curatedGroup: CuratedGroup::tryFrom((string) $food->curated_group),
         );
-    }
-
-    /** @return list<DietFilter> the diet flags a food has set */
-    private static function dietsOf(Food $row): array
-    {
-        return array_values(array_filter(DietFilter::cases(), fn (DietFilter $filter) => (bool) $row->getAttribute($filter->value)));
     }
 }
