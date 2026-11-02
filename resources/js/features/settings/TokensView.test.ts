@@ -1,15 +1,15 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, writeNow } from '@/app/call';
 import type { TokenCreateOutput } from '@/contracts/token_create';
 import type { TokenListOutput } from '@/contracts/token_list';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import TokensView from './TokensView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const content = screenFixture<TokenListOutput>('token_list');
 const empty = screenFixture<TokenListOutput>('token_list.empty');
 const expiring = screenFixture<TokenListOutput>('token_list.warning');

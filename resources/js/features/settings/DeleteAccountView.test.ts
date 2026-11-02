@@ -1,15 +1,15 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter } from 'vue-router';
-import { CapabilityError, write } from '@/app/call';
+import { CapabilityError, writeNow } from '@/app/call';
 import { clearReads } from '@/app/cache';
 import { inputViolations } from '@/testing/schemas';
 import DeleteAccountView from './DeleteAccountView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), writeNow: vi.fn() }));
 vi.mock('@/app/cache', async (original) => ({ ...(await original<typeof import('@/app/cache')>()), clearReads: vi.fn() }));
 
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 
 async function view() {
     const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:any(.*)*', component: { template: '<p />' } }] });
