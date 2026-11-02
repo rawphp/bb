@@ -142,6 +142,26 @@ it('MESO-064 MESO-065 a copy moved into a phase of another type takes that phase
         ->and($shown['priority_notice'])->toBe(['text' => 'Priorities reset for Fat loss. Your old priorities can be kept.', 'tone' => 'info']);
 });
 
+it('MESO-064 MESO-065 a copy of an older mesocycle at the next start is not the one waiting, and stays as it is', function () {
+    Carbon::setTestNow('2026-10-06 10:00:00');
+    $user = TrainSeed::user();
+    $gain = TrainSeed::phase($user, 'muscleGain', '2026-05-25', '2026-10-19');
+    TrainSeed::phase($user, 'fatLoss', '2026-10-19');
+    $older = TrainSeed::mesocycle($user, ['name' => 'Meso 1', 'start_date' => '2026-06-01', 'phase_id' => $gain->id,
+        'muscle_priorities' => ['chest' => 'maintain', 'back' => 'emphasize']]);
+    $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => $gain->id]);
+    TrainSeed::trained($mesocycle, 3, 1, '2026-09-21', flat: true);
+    TrainSeed::trained($mesocycle, 4, 1, '2026-09-28', flat: true);
+    $copy = '01JD0000000000000000000001';
+    // Dated at Meso 2's next start, but a copy of Meso 1: it does not follow Meso 2's active rest.
+    app(CopyMesocycle::class)($user, null, $copy, $older->id, '2026-10-12', false);
+    $before = Mesocycle::query()->findOrFail($copy)->getAttributes();
+
+    expect(app(TakeActiveRest::class)($user, $mesocycle->id))->toBe([])
+        ->and(Mesocycle::query()->findOrFail($copy)->getAttributes())->toBe($before)
+        ->and($before['copied_from_id'])->toBe($older->id);
+});
+
 it('MESO-064 a draft starting elsewhere, or not a copy, stays where it is', function () {
     Carbon::setTestNow('2026-10-06 10:00:00');
     $user = TrainSeed::user();

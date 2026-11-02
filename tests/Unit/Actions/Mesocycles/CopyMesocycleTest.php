@@ -54,6 +54,7 @@ it('MESO-060 copies the structure into a new draft with new ids', function () {
 
     expect($copy->is_draft)->toBeTrue()
         ->and($copy->route)->toBe(MesocycleRoute::CopyPrevious)
+        ->and($copy->copied_from_id)->toBe($source->id)
         ->and($copy->name)->toBeNull()
         ->and($copy->weeks)->toBe(5)
         ->and($copy->user_id)->toBe($user->id)
@@ -151,14 +152,17 @@ it('MESO-065 a copy into a phase of another type takes its priority preset, unle
         ->and($kept)->toBe($source->muscle_priorities);
 });
 
-it('MESO-060 MESO-005 a copy of a weekday split with a day added labels each day as the saved one does', function () {
+it('MESO-060 MESO-005 a copy of a weekday split with a day added labels each day as the saved one does: its own label', function () {
     [$user, $source] = copyWorld();
     // The user trains Monday and Thursday, both taken, so the day added is "Day 3" with no weekday.
     app(AddMesocycleDay::class)($user, $source->id, '01JC0000000000000000000000');
 
     $build = MesocyclePayload::build(TrainSnapshot::load($user, COPY), copyOf($user, $source->fresh()))->toArray()['build'];
 
-    expect(array_column($build['days'], 'label'))->toBe(['Monday', 'Thursday', 'Day 3'])
+    $saved = MesocyclePayload::build(TrainSnapshot::load($user, $source->id), $source->fresh())->toArray()['saved'];
+
+    expect(array_column($build['days'], 'label'))->toBe(['Upper A', 'Lower A', 'Day 3'])
+        ->and(array_column($saved['weeks'][0]['days'], 'label'))->toBe(['Upper A', 'Lower A', 'Day 3'])
         ->and($build['label_style'])->toBe('weekdays');
 });
 

@@ -337,19 +337,21 @@ it('MESO-003 a draft no phase covers warns and cannot be finished', function () 
         ->and(draftOf(['days' => W::days()])['build']['can_finish'])->toBeFalse();
 });
 
-it('MESO-005 a day carries its weekday\'s name when it has one, else its own label, as the saved view does', function () {
+it('MESO-005 a day shows its own label, else its weekday\'s name, else "Day i", as the saved view does', function () {
     $weekdays = draftOf(['days' => W::days()])['build'];
     $mixed = draftOf(['days' => [W::days()[0], array_replace(W::days()[1], ['weekday' => null])]])['build'];
     $floating = draftOf(['days' => array_map(fn (array $day) => array_replace($day, ['weekday' => null]), W::days())])['build'];
-    $unlabelled = draftOf(['days' => [array_replace(W::days()[0], ['weekday' => null, 'label' => ''])]])['build'];
+    $blank = [array_replace(W::days()[0], ['label' => '']), array_replace(W::days()[1], ['weekday' => null, 'label' => ''])];
+    $unlabelled = draftOf(['days' => $blank])['build'];
 
     expect($weekdays['label_style'])->toBe('weekdays')
-        ->and(array_column($weekdays['days'], 'label'))->toBe(['Monday', 'Thursday'])
+        ->and(array_column($weekdays['days'], 'label'))->toBe(['Upper A', 'Lower A'])
         ->and($mixed['label_style'])->toBe('weekdays')
-        ->and(array_column($mixed['days'], 'label'))->toBe(['Monday', 'Lower A'])
+        ->and(array_column($mixed['days'], 'label'))->toBe(['Upper A', 'Lower A'])
         ->and($floating['label_style'])->toBe('floating')
         ->and(array_column($floating['days'], 'label'))->toBe(['Upper A', 'Lower A'])
-        ->and(array_column($unlabelled['days'], 'label'))->toBe(['Day 1'])
+        ->and(array_column($unlabelled['days'], 'label'))->toBe(['Monday', 'Day 2'])
+        ->and(array_column(saved(meso: ['days' => $blank])['weeks'][0]['days'], 'label'))->toBe(['Monday', 'Day 2'])
         ->and($weekdays['weekdays_available'])->toBeTrue()
         ->and(draftOf(world: ['trainingDays' => []])['build']['weekdays_available'])->toBeFalse()
         ->and($weekdays['days_per_week'])->toBe(2)
@@ -387,10 +389,34 @@ it('MESO-065 a copy whose priorities were reset to the new phase\'s preset says 
         W::phase(W::CUT, 'fatLoss', '2026-10-12', null),
     ]];
     $preset = array_fill_keys(['chest', 'back', 'quads', 'hamstrings', 'glutes', 'sideDelts', 'rearDelts', 'frontDelts', 'biceps', 'triceps', 'calves', 'abs', 'traps', 'forearms'], 'emphasize');
-    $copy = ['route' => 'copy_previous', 'start_date' => '2026-10-12', 'days' => W::days()];
+    $copy = ['route' => 'copy_previous', 'copied_from_id' => W::MESO, 'start_date' => '2026-10-12', 'days' => W::days()];
 
     expect(draftOf([...$copy, 'muscle_priorities' => $preset], $world)['build']['priority_notice'])
         ->toBe(['text' => 'Priorities reset for Fat loss. Your old priorities can be kept.', 'tone' => 'info'])
         ->and(draftOf([...$copy, 'muscle_priorities' => ['chest' => 'emphasize']], $world)['build']['priority_notice'])->toBeNull()
         ->and(draftOf([...$copy, 'muscle_priorities' => $preset])['build']['priority_notice'])->toBeNull();
+});
+
+it('MESO-065 the notice follows the mesocycle the draft was copied from, and a draft with no source has none', function () {
+    // Meso 1 ran under fat loss, so a copy of it into fat loss keeps its priorities: nothing was reset, though a copy
+    // of Meso 2 (muscle gain, the one Copy offers) would have been.
+    $phases = [
+        W::phase('old-cut', 'fatLoss', '2026-06-01', '2026-07-27'),
+        W::phase(W::GAIN, 'muscleGain', '2026-07-27', '2026-10-12'),
+        W::phase(W::CUT, 'fatLoss', '2026-10-12', null),
+    ];
+    $meso1 = W::mesocycle(['id' => 'meso-1', 'name' => 'Meso 1', 'phase_id' => 'old-cut', 'start_date' => '2026-06-01']);
+    $preset = array_fill_keys(['chest', 'back', 'quads', 'hamstrings', 'glutes', 'sideDelts', 'rearDelts', 'frontDelts', 'biceps', 'triceps', 'calves', 'abs', 'traps', 'forearms'], 'emphasize');
+    $notice = function (?string $source) use ($phases, $meso1, $preset) {
+        $draft = W::mesocycle([
+            'id' => 'draft', 'name' => null, 'is_draft' => true, 'phase_id' => W::CUT, 'route' => 'copy_previous',
+            'copied_from_id' => $source, 'start_date' => '2026-10-12', 'muscle_priorities' => $preset,
+        ]);
+
+        return shown(W::snapshot(mesocycles: [$meso1, W::mesocycle(), $draft], phases: $phases), $draft)['build']['priority_notice'];
+    };
+
+    expect($notice(W::MESO))->toBe(['text' => 'Priorities reset for Fat loss. Your old priorities can be kept.', 'tone' => 'info'])
+        ->and($notice('meso-1'))->toBeNull()
+        ->and($notice(null))->toBeNull();
 });
