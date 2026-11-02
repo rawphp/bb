@@ -170,7 +170,8 @@ describe('CustomFoodsView', () => {
         expect(dialogTitle()).toBe('New custom food');
         const name = document.body.querySelector<HTMLInputElement>('[name="name"]')!;
         expect(name.value).toBe('chicken');
-        for (const [field, value] of [['serving_size', '100'], ['serving_grams', '100'], ['protein', '31'], ['fat', '3.6'], ['carbs', '0'], ['fiber', '0']]) {
+        const typed: [string, string][] = [['serving_size', '100'], ['serving_grams', '100'], ['protein', '31'], ['fat', '3.6'], ['carbs', '0'], ['fiber', '0']];
+        for (const [field, value] of typed) {
             const input = document.body.querySelector<HTMLInputElement>(`[name="${field}"]`)!;
             input.value = value;
             input.dispatchEvent(new Event('input'));
