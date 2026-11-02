@@ -221,3 +221,11 @@ it('FB-002 FB-009 each answer lands on its own muscle and exercise of this sessi
         ->and($lastChest->fresh()->only(['pump', 'volume']))->toBe(['pump' => 'amazing', 'volume' => 'tooMuch'])
         ->and($joints)->toEqual(["last {$bench}" => 'low', "this {$bench}" => 'none', "this {$incline}" => 'aLot', "this {$row}" => 'moderate']);
 });
+
+it('FB-009 a session not finished yet can still be answered when a later session has trained the muscle', function () {
+    [$user, $mesocycle, $session] = feedbackSession();
+    TrainSeed::trained($mesocycle, 4, 1, '2026-09-28');
+
+    expect(answerRefusal($user, chestAnswer($session, $mesocycle)))->toBeNull()
+        ->and(MuscleFeedback::query()->where('workout_session_id', $session->id)->count())->toBe(1);
+});

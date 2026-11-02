@@ -259,3 +259,11 @@ it('PROG-019 a set added to one of two slots of an exercise carries forward on t
     expect(finishAt($user, $session, '2026-09-21 18:30:00')['toast'])->toBe('Chest +1 set next week')
         ->and(array_column($mesocycle->fresh()->dayRows()[0]['slots'], 'sets'))->toBe([4, 2]);
 });
+
+it('WO-040 refuses to finish a session whose every set was deleted', function () {
+    [$user, $mesocycle, $session] = finishSession();
+    WorkoutSet::query()->where('workout_session_id', $session->id)->get()->each->delete();
+
+    expect(finishAt($user, $session, '2026-09-21 18:30:00'))->toBe(FinishWorkout::SETS_LEFT)
+        ->and($session->fresh()->actual_end_at)->toBeNull();
+});
