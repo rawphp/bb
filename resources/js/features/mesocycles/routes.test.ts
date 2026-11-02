@@ -30,7 +30,8 @@ describe('Train routes', () => {
         expect(router.resolve('/train/templates').name).toBe('templates');
         expect(router.resolve('/train/templates/01J9TPL0000000000000000000').name).toBe('template-detail');
         expect(router.resolve('/train/templates/01J9TPL0000000000000000000').meta.tab).toBe('train');
-        expect(router.resolve('/train/templates/x').matched[0]?.path).toBe('/:pathMatch(.*)*');
+        expect(router.resolve('/train/templates/3').name).toBe('template-detail');
+        expect(router.resolve('/train/templates/3/x').matched[0]?.path).toBe('/:pathMatch(.*)*');
     });
 
     it('VIEW-001 /dev/screens/templates_show finds the library, and ?view=template-detail the detail', () => {

@@ -45,7 +45,7 @@ describe('TemplateLibraryView', () => {
 
         expect(wrapper.findAll('select').map((s) => s.attributes('aria-label'))).toEqual(['Days filter', 'Sex filter', 'Focus filter', 'Phase filter']);
         const chips = wrapper.findAll('[data-test="filter"]');
-        expect(chips.map((c) => c.text())).toEqual(expect.arrayContaining(['Days: All', 'Sex: All', 'Focus: All', 'Gain']));
+        expect(chips.map((c) => c.find('[data-test="filter-label"]').text())).toEqual(['Days: All', 'Sex: All', 'Focus: All', 'Gain']);
         expect(chips[3]!.classes()).toContain('bg-accent');
         expect(chips[0]!.classes()).not.toContain('bg-accent');
         const days = wrapper.find('select[aria-label="Days filter"]').findAll('option');

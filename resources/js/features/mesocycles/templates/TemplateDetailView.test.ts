@@ -26,7 +26,7 @@ describe('TemplateDetailView', () => {
 
         expect(wrapper.find('h1').text()).toBe('Full Body 2-Day Essentials');
         expect(wrapper.text()).toContain('2 days/week · Full body');
-        const days = wrapper.findAll('section[aria-label]');
+        const days = wrapper.findAll('[data-test="day"]');
         expect(days.map((d) => d.attributes('aria-label'))).toEqual(['Full Body A', 'Full Body B']);
         expect(days[0]!.findAll('[data-test="slot"]')).toHaveLength(7);
         expect(days[0]!.findAll('[data-test="slot"]')[0]!.text()).toContain('Barbell Back Squat');
