@@ -98,6 +98,12 @@ it('SHOP-001 SHOP-005 shows the next 7 days of planned foods by store category, 
         ->and($later->json('data.sections.0.rows.0.is_ticked'))->toBeFalse()
         ->and($later->json('data.sections.1.rows.0.amount_text'))->toBe('1600 g')
         ->and($later->json('data.sections.2.rows.0.key'))->toBe("manual:{$towels}");
+
+    // A tick in that range leaves the first week's ticks as they were.
+    shoppingCall($user, 'shopping_item_check', ['from' => '2026-11-04', 'to' => '2026-11-09', 'key' => "food:{$rice->id}", 'ticked' => true])->assertOk();
+    $week = shoppingCall($user, 'shopping_show', ['from' => '2026-11-02', 'to' => '2026-11-08'])->assertOk();
+    expect($week->json('data.sections.0.rows.0.is_ticked'))->toBeTrue()
+        ->and($week->json('data.sections.1.rows.0.is_ticked'))->toBeFalse();
 });
 
 it('SHOP-001 says nothing is planned for an empty range', function () {
@@ -149,7 +155,8 @@ it('SHOP-001 SHOP-005 shows only the user\'s own manual items and ticks', functi
     ]]]);
 });
 
-it('CAP-010 refreshes the list shown, the list with no range and the range the ticks are in', function () {
+it('CAP-010 refreshes the list shown, the list with no range and the ranges the ticks are in', function () {
+    Carbon::setTestNow('2026-11-09 09:00:00');
     // Another user's ticks come first, so a read of the ticks row that is not the caller's would find them.
     ShoppingTicks::factory()->for(User::factory()->create())->create(['starts_on' => '2026-11-16', 'ends_on' => '2026-11-22']);
     $user = User::factory()->create();
@@ -170,7 +177,7 @@ it('CAP-010 refreshes the list shown, the list with no range and the range the t
     shoppingCall($user, 'shopping_item_add', ['id' => (string) Str::ulid(), 'text' => 'Candles', 'from' => '2026-11-02', 'to' => '2026-11-08'])
         ->assertOk()
         ->assertJsonPath('data.invalidates', ['shopping_show{}', 'shopping_show{"from":"2026-11-02","to":"2026-11-08"}']);
-    // A tick in another range clears the old one's ticks, so that list changes too.
+    // A tick drops the ticks of the range that has ended, so that list changes too.
     shoppingCall($user, 'shopping_item_check', [...$shown, 'key' => 'food:01JBX5F0000000000000000002', 'ticked' => true])
         ->assertOk()
         ->assertJsonPath('data.invalidates', ['shopping_show{}', 'shopping_show{"from":"2026-11-09","to":"2026-11-15"}', 'shopping_show{"from":"2026-11-02","to":"2026-11-08"}']);

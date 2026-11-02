@@ -22,12 +22,13 @@ function tickDays(DateRange $range): array
 }
 
 it('SHOP-001 shows the next 7 days from today when no ticks are kept', function () {
-    expect(tickDays(TickedRange::rangeToShow(null, tickDay(10, 12), new DateTimeZone('UTC'))))
+    expect(tickDays(TickedRange::rangeToShow([], tickDay(10, 12), new DateTimeZone('UTC'))))
         ->toBe(['2026-10-10 00:00', '2026-10-16 00:00']);
 });
 
-it('SHOP-005 brings the ticked range back while it still runs through today', function (int $today, int $hour) {
-    $saved = new TickedRange(tickRange(12, 14), ['food:broccoli']);
+it('SHOP-005 brings the last ticked range back while it still runs through today', function (int $today, int $hour) {
+    // Most recently ticked first.
+    $saved = [new TickedRange(tickRange(12, 14), ['food:broccoli']), new TickedRange(tickRange(10, 16), ['food:spinach'])];
 
     expect(tickDays(TickedRange::rangeToShow($saved, tickDay($today, $hour), new DateTimeZone('UTC'))))
         ->toBe(['2026-10-12 00:00', '2026-10-14 00:00']);
@@ -36,20 +37,27 @@ it('SHOP-005 brings the ticked range back while it still runs through today', fu
     'the evening of its last day' => [14, 18],
 ]);
 
-it('SHOP-005 shows the default range once the ticked range has ended, and none of its ticks', function () {
-    $saved = new TickedRange(tickRange(10, 16), ['food:broccoli']);
-    $shown = TickedRange::rangeToShow($saved, tickDay(20, 12), new DateTimeZone('UTC'));
+it('SHOP-005 passes over a ticked range that has ended for the last one still running, else the next 7 days', function () {
+    $saved = [new TickedRange(tickRange(10, 16), ['food:broccoli']), new TickedRange(tickRange(17, 23), ['food:spinach'])];
 
-    expect(tickDays($shown))->toBe(['2026-10-20 00:00', '2026-10-26 00:00'])
-        ->and($saved->keysIn($shown))->toBe([]);
+    expect(tickDays(TickedRange::rangeToShow($saved, tickDay(17, 12), new DateTimeZone('UTC'))))->toBe(['2026-10-17 00:00', '2026-10-23 00:00'])
+        ->and(tickDays(TickedRange::rangeToShow($saved, tickDay(24, 12), new DateTimeZone('UTC'))))->toBe(['2026-10-24 00:00', '2026-10-30 00:00']);
 });
 
-it('SHOP-005 keeps ticks to the range they were made in', function () {
-    $saved = new TickedRange(tickRange(10, 16), ['food:broccoli', 'manual:01JBX5H0000000000000000001']);
+it('SHOP-005 knows when a ticked range has ended: the day after its last', function () {
+    $ticked = new TickedRange(tickRange(10, 16), ['food:broccoli']);
+    $utc = new DateTimeZone('UTC');
 
-    expect($saved->keysIn(tickRange(10, 16)))->toBe(['food:broccoli', 'manual:01JBX5H0000000000000000001'])
-        ->and($saved->keysIn(tickRange(10, 12)))->toBe([])
-        ->and($saved->keysIn(new DateRange(tickDay(10, 15), tickDay(16, 9))))->toBe(['food:broccoli', 'manual:01JBX5H0000000000000000001']);
+    expect($ticked->hasEnded(tickDay(16, 23), $utc))->toBeFalse()
+        ->and($ticked->hasEnded(tickDay(17, 0), $utc))->toBeTrue();
+});
+
+it('SHOP-005 shows each range its own ticks, and none for a range with no ticks', function () {
+    $saved = [new TickedRange(tickRange(10, 16), ['food:broccoli']), new TickedRange(tickRange(17, 23), ['food:spinach'])];
+
+    expect(TickedRange::keysIn($saved, tickRange(10, 16)))->toBe(['food:broccoli'])
+        ->and(TickedRange::keysIn($saved, new DateRange(tickDay(17, 15), tickDay(23, 9))))->toBe(['food:spinach'])
+        ->and(TickedRange::keysIn($saved, tickRange(10, 12)))->toBe([]);
 });
 
 it('SHOP-005 ticks a line off and takes the tick back', function () {
@@ -69,33 +77,8 @@ it('OFF-030 a tick names the state it leaves, so a tick replayed or sent twice l
         ->and($untickedTwice->keys)->toBe([]);
 });
 
-it('SHOP-005 a tick in another range clears the ticks of the old one', function () {
-    $saved = new TickedRange(tickRange(10, 16), ['food:broccoli', 'manual:01JBX5H0000000000000000001']);
-
-    $ticked = TickedRange::check($saved, tickRange(10, 12), 'food:spinach', true);
-
-    expect(tickDays($ticked->range))->toBe(['2026-10-10 00:00', '2026-10-12 00:00'])
-        ->and($ticked->keys)->toBe(['food:spinach']);
-});
-
-it('OFF-030 an untick sent from another range, such as a stale one replayed from the outbox, leaves the ticks alone', function () {
-    $saved = new TickedRange(tickRange(10, 16), ['food:broccoli']);
-
-    $after = TickedRange::check($saved, tickRange(17, 23), 'food:spinach', false);
-
-    expect(tickDays($after->range))->toBe(['2026-10-10 00:00', '2026-10-16 00:00'])
-        ->and($after->keys)->toBe(['food:broccoli']);
-});
-
-it('SHOP-005 an untick with no ticks kept keeps nothing, so it moves no list', function () {
+it('SHOP-005 an untick in a range with no ticks keeps nothing, so it moves no list', function () {
     expect(TickedRange::check(null, tickRange(10, 16), 'food:broccoli', false))->toBeNull();
-});
-
-it('SHOP-005 a tick in the range already shown keeps the other ticks', function () {
-    $saved = new TickedRange(tickRange(10, 16), ['food:broccoli']);
-
-    expect(TickedRange::check($saved, new DateRange(tickDay(10, 8), tickDay(16, 20)), 'food:spinach', true)->keys)
-        ->toBe(['food:broccoli', 'food:spinach']);
 });
 
 it('SHOP-005 a deleted manual item takes its tick with it', function () {
