@@ -1,5 +1,7 @@
 <?php
 
+use App\Agent\RegistryToolCatalog;
+use App\Capabilities\Support\HostDefinition;
 use App\Domain\Tokens\TokenScope;
 use App\Models\AuditRecord;
 use App\Models\PersonalAccessToken;
@@ -10,6 +12,7 @@ use Illuminate\Testing\TestResponse;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\CapabilitiesAi\Contracts\ToolCatalog;
 use Tests\Support\Fixtures\Rail\TallyAddCapability;
+use Tests\Support\Fixtures\Rail\TallyInput;
 
 // Registers a test-only capability, so each test gets its own application.
 uses()->group('warp-isolated');
@@ -66,12 +69,41 @@ it('AGT-040 lists over MCP, with a personal access token, the tools the in-app a
         ->and(array_column($tools, 'inputSchema'))->toBe(json_decode(json_encode(array_column($agent, 'parameters')), true));
 });
 
+it('AGT-040 tells an MCP client which field of a tool call needs fixing', function () {
+    $result = mcpCall(mcpToken(User::factory()->create()), 'tools/call', ['name' => 'tally_add', 'arguments' => ['amount' => 'three']])->assertOk()->json('result');
+
+    expect($result['isError'])->toBeTrue()
+        ->and($result['content'][0]['text'])->toStartWith('Some details need fixing.')->toContain("\namount: ")
+        ->and(TallyAddCapability::$runs)->toBe(0);
+});
+
+it('AGT-040 serves the whole agent profile over MCP past the package\'s default tool caps, without a boundary audit row', function () {
+    $registry = app(CapabilityRegistry::class);
+    foreach (range(1, 70) as $n) {
+        HostDefinition::read("probe{$n}_show")->description("Show probe {$n}. It changes nothing.")->cli('probe', "show{$n}")
+            ->input(TallyInput::class)->run(fn () => null)->register($registry);
+    }
+
+    $tools = mcpTools(mcpToken(User::factory()->create()));
+
+    expect(count($tools))->toBe(count(app(RegistryToolCatalog::class)->names()))->toBeGreaterThan(64)
+        ->and(AuditRecord::query()->count())->toBe(0);
+});
+
+it('AGT-040 keeps the MCP tool caps above the agent profile, so MCP never refuses part of it', function () {
+    $profile = count(app(RegistryToolCatalog::class)->names());
+
+    expect(config('capabilities.surfaces.mcp.max_tools_warn'))->toBeGreaterThanOrEqual($profile)
+        ->and(config('capabilities.surfaces.mcp.max_tools_hard'))->toBeGreaterThanOrEqual(config('capabilities.surfaces.mcp.max_tools_warn'));
+});
+
 it('AGT-040 answers MCP without a personal access token with 401', function () {
     mcpCall(null, 'tools/list')->assertUnauthorized();
     mcpCall('1|not-a-token', 'tools/list')->assertUnauthorized();
 });
 
 it('AGT-040 runs an MCP tool call as the token\'s user, and Activity records it as mcp', function () {
+    mcpToken(User::factory()->create());
     $user = User::factory()->create();
 
     $result = mcpCall(mcpToken($user), 'tools/call', ['name' => 'tally_add', 'arguments' => ['amount' => 3]])->assertOk()->json('result');

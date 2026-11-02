@@ -14,6 +14,6 @@ it('AGT-041 serves the capabilities CLI with a personal access token: catalog, d
     $cli = $this->withHeader('Authorization', "Bearer {$token->id}|{$secret}");
 
     expect($cli->getJson('/capabilities')->assertOk()->content())->toContain('account_show');
-    $cli->getJson('/capabilities/account_show')->assertOk();
-    $cli->postJson('/capabilities/account_show')->assertOk();
+    $cli->getJson('/capabilities/account_show')->assertOk()->assertJsonFragment(['name' => 'account_show']);
+    expect($cli->postJson('/capabilities/account_show')->assertOk()->content())->toContain('Sam Lifter');
 });

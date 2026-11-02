@@ -60,3 +60,16 @@ it('AGT-040 refuses a tool call with no signed-in user, without calling the capa
 
     expect($response->isError())->toBeTrue();
 });
+
+it('AGT-040 names each field that needs fixing in a tool error, as the agent gets them', function () {
+    $this->actingAs(User::factory()->make(['id' => 7]));
+    $adapter = Mockery::mock(McpToolAdapter::class);
+    $adapter->shouldReceive('handle')->andReturn(CapabilityResult::failure('validation_failed', 'JSON Schema validation failed.', [
+        'violations' => [['field' => 'amount', 'message' => 'Enter a whole number.'], ['field' => 'note', 'message' => 'Keep it under 200 characters.']],
+    ]));
+
+    $response = showTool()->handle(new Request, $adapter);
+
+    expect($response->isError())->toBeTrue()
+        ->and((string) $response->content())->toBe("Some details need fixing.\namount: Enter a whole number.\nnote: Keep it under 200 characters.");
+});
