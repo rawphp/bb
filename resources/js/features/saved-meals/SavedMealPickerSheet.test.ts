@@ -15,8 +15,10 @@ const MEAL_ID = '01JBX5M0000000000000000001';
 
 let wrapper: VueWrapper | undefined;
 
-function show(props: { payload?: SavedMealsShowOutput } = {}): VueWrapper {
-    wrapper = mount(SavedMealPickerSheet, { props: { open: true, mealId: MEAL_ID, ...props }, attachTo: document.body });
+type Reload = (options?: { fresh?: boolean }) => Promise<void>;
+
+function show(props: { payload?: SavedMealsShowOutput; open?: boolean; reload?: Reload } = {}): VueWrapper {
+    wrapper = mount(SavedMealPickerSheet, { props: { open: true, mealId: MEAL_ID, reload: vi.fn().mockResolvedValue(undefined), ...props }, attachTo: document.body });
     return wrapper;
 }
 
@@ -49,8 +51,9 @@ describe('SavedMealPickerSheet', () => {
         expect(readMock).not.toHaveBeenCalled();
     });
 
-    it('MEAL-070 a picked meal is loaded into this meal with meal_saved_meal_load, then the sheet reports it', async () => {
-        const view = show({ payload: content });
+    it('MEAL-070 a picked meal is loaded into this meal with meal_saved_meal_load, the meal is read again, then the sheet reports it', async () => {
+        const reload = vi.fn().mockResolvedValue(undefined);
+        const view = show({ payload: content, reload });
 
         pickButton('Protein shake').click();
         await flushPromises();
@@ -61,7 +64,36 @@ describe('SavedMealPickerSheet', () => {
             { idempotencyKey: expect.stringMatching(/^meal_saved_meal_load:/) },
         );
         expect(inputViolations('meal_saved_meal_load', writeMock.mock.calls[0]![1])).toEqual([]);
+        expect(reload).toHaveBeenCalledTimes(1);
         expect(view.emitted('loaded')).toHaveLength(1);
+    });
+
+    it('CAP-014 a load with no final answer has the meal read from the server, and stays open', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('meal_saved_meal_load', 504, null));
+        const reload = vi.fn().mockResolvedValue(undefined);
+        const view = show({ payload: content, reload });
+
+        pickButton('Bulk dinner').click();
+        await flushPromises();
+
+        expect(reload).toHaveBeenCalledWith({ fresh: true });
+        expect(view.emitted('loaded')).toBeUndefined();
+    });
+
+    it('MEAL-070 opening again reads the saved meals again and drops the last refusal', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('meal_saved_meal_load', 422, { error: { message: 'That meal is locked.' } }));
+        const view = show();
+        await flushPromises();
+        pickButton('Bulk dinner').click();
+        await flushPromises();
+        await view.setProps({ open: false });
+        readMock.mockClear();
+
+        await view.setProps({ open: true });
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledWith('saved_meals_show', {}, expect.any(Function), expect.any(Function));
+        expect(dialog().querySelector('[role="alert"]')).toBeNull();
     });
 
     it('CAP-012 a refused load stays open with the server\'s words', async () => {
@@ -92,12 +124,15 @@ describe('SavedMealPickerSheet', () => {
         expect(dialog().textContent).toContain('Bulk dinner');
     });
 
-    it('CAP-004 says why the list did not load', async () => {
-        readMock.mockReset().mockRejectedValue(new CapabilityError('saved_meals_show', 500, null));
+    it('CAP-004 says why the list did not load, and Try again reads it again', async () => {
+        readMock.mockReset().mockRejectedValueOnce(new CapabilityError('saved_meals_show', 500, null)).mockResolvedValueOnce(content);
         show();
         await flushPromises();
 
         expect(dialog().querySelector('[role="alert"]')!.textContent).toContain('Your saved meals could not be loaded.');
+        dialog().querySelector<HTMLButtonElement>('[data-test="retry"]')!.click();
+        await flushPromises();
+        expect(dialog().textContent).toContain('Bulk dinner');
     });
 
     it('UI-005 Cancel closes without loading anything', async () => {

@@ -162,6 +162,11 @@ describe('SavedMealsView', () => {
         await flushPromises();
 
         expect(document.body.querySelector('[role="dialog"] [role="alert"]')!.textContent).toContain('A name can be up to 255 characters.');
+
+        document.body.querySelector<HTMLButtonElement>('[role="dialog"] [data-cancel]')!.click();
+        await flushPromises();
+        await rowAction(view, 'Protein shake', 'Rename');
+        expect(document.body.querySelector('[role="dialog"] [role="alert"]')).toBeNull();
     });
 
     it('MEAL-071 Delete sends saved_meal_delete for that meal and reads the list again', async () => {

@@ -1,6 +1,6 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { CustomFoodsShowOutput } from '@/contracts/custom_foods_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import CustomFoodsView from './CustomFoodsView.vue';
@@ -8,6 +8,7 @@ import CustomFoodsView from './CustomFoodsView.vue';
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
 
 const readMock = vi.mocked(read);
+const readFreshMock = vi.mocked(readFresh);
 const writeMock = vi.mocked(write);
 const content = screenFixture<CustomFoodsShowOutput>('custom_foods_show');
 const empty = screenFixture<CustomFoodsShowOutput>('custom_foods_show.empty');
@@ -33,6 +34,7 @@ async function rowAction(view: VueWrapper, food: string, title: string): Promise
 describe('CustomFoodsView', () => {
     beforeEach(() => {
         readMock.mockReset().mockResolvedValue(content);
+        readFreshMock.mockReset().mockResolvedValue(content);
         writeMock.mockReset().mockResolvedValue({});
     });
     afterEach(() => {
@@ -50,7 +52,7 @@ describe('CustomFoodsView', () => {
         expect(rows[0]!.text()).toContain('Mum\'s granola');
         expect(rows[0]!.text()).toContain('1 cup · 420 kcal');
         expect(rows[1]!.text()).toContain('Protein pancakes');
-        expect(rows[1]!.text()).toContain('Myprotein · 100 g · 210 kcal');
+        expect(rows[1]!.text()).toContain('Myprotein\n100 g · 210 kcal');
         expect(readMock).not.toHaveBeenCalled();
     });
 
@@ -142,6 +144,18 @@ describe('CustomFoodsView', () => {
         expect(writeMock).toHaveBeenCalledWith('custom_food_delete', { food_id: content.foods[1]!.food_id }, { idempotencyKey: expect.stringMatching(/^custom_food_delete:/) });
         expect(inputViolations('custom_food_delete', writeMock.mock.calls[0]![1])).toEqual([]);
         expect(readMock).toHaveBeenCalledWith('custom_foods_show', {}, expect.any(Function), expect.any(Function));
+    });
+
+    it('CAP-014 a save that got no final answer reads the list from the server, so a food it made shows up', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('custom_food_save', 504, null));
+        const view = show({ payload: content });
+
+        await view.get('button[aria-label="Edit Protein pancakes"]').trigger('click');
+        document.body.querySelector<HTMLButtonElement>('[data-save]')!.click();
+        await flushPromises();
+
+        expect(readFreshMock).toHaveBeenCalledWith('custom_foods_show', {});
+        expect(document.body.querySelector('[role="dialog"] [role="alert"]')!.textContent).toContain('may have worked');
     });
 
     it('CAP-012 says why a delete was refused', async () => {

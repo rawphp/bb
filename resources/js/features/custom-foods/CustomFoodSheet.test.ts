@@ -9,12 +9,13 @@ vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@
 
 const writeMock = vi.mocked(write);
 const foods = screenFixture<CustomFoodsShowOutput>('custom_foods_show').foods;
+const granola = foods[0]!;
 const pancakes = foods[1]!;
 
-type Props = { open?: boolean; food?: CustomFoodsShowOutput['foods'][number] | null; name?: string; barcode?: string };
+type Props = { open?: boolean; reload?: (options?: { fresh?: boolean }) => Promise<void>; food?: CustomFoodsShowOutput['foods'][number] | null; name?: string; barcode?: string };
 
 function show(props: Props = {}) {
-    return mount(CustomFoodSheet, { props: { open: true, ...props }, attachTo: document.body });
+    return mount(CustomFoodSheet, { props: { open: true, reload: vi.fn().mockResolvedValue(undefined), ...props }, attachTo: document.body });
 }
 
 function field(name: string): HTMLInputElement | HTMLSelectElement {
@@ -109,23 +110,66 @@ describe('CustomFoodSheet', () => {
         wrapper.unmount();
     });
 
-    it('FOOD-061 editing opens with the food filled in and saves it under its own id', async () => {
-        const wrapper = show({ food: pancakes });
+    it('FOOD-061 editing opens with every value of the food filled in and saves it under its own id', async () => {
+        const wrapper = show({ food: granola });
 
         expect(document.body.querySelector('[role="dialog"] h2')!.textContent).toBe('Edit custom food');
-        expect(field('name').value).toBe('Protein pancakes');
-        expect(field('brand').value).toBe('Myprotein');
-        expect(field('barcode').value).toBe('5055534301234');
-        expect(field('serving_unit').value).toBe('g');
-        expect(field('protein').value).toBe('25');
-
-        await type('protein', '26');
+        await type('protein', '11');
         button('[data-save]').click();
         await flushPromises();
 
         const input = writeMock.mock.calls[0]![1];
-        expect(input).toMatchObject({ id: pancakes.food_id, name: 'Protein pancakes', brand: 'Myprotein', barcode: '5055534301234', protein: 26 });
+        expect(input).toEqual({
+            id: granola.food_id,
+            name: 'Mum\'s granola',
+            brand: null,
+            barcode: null,
+            serving_size: 1,
+            serving_unit: 'cup',
+            serving_grams: 95,
+            protein: 11,
+            fat: 16,
+            carbs: 58,
+            fiber: 6,
+        });
         expect(inputViolations('custom_food_save', input)).toEqual([]);
+        wrapper.unmount();
+    });
+
+    it('FOOD-061 editing a branded food with a barcode keeps both', async () => {
+        const wrapper = show({ food: pancakes });
+
+        expect(field('brand').value).toBe('Myprotein');
+        expect(field('barcode').value).toBe('5055534301234');
+        button('[data-save]').click();
+        await flushPromises();
+
+        expect(writeMock.mock.calls[0]![1]).toMatchObject({ id: pancakes.food_id, brand: 'Myprotein', barcode: '5055534301234' });
+        wrapper.unmount();
+    });
+
+    it('CAP-010 a saved food has the screen underneath read again before the sheet reports it', async () => {
+        const reload = vi.fn().mockResolvedValue(undefined);
+        const wrapper = show({ food: pancakes, reload });
+
+        button('[data-save]').click();
+        await flushPromises();
+
+        expect(reload).toHaveBeenCalledTimes(1);
+        expect(wrapper.emitted('saved')).toHaveLength(1);
+        wrapper.unmount();
+    });
+
+    it('CAP-014 a save with no final answer has the screen underneath read the server\'s copy, and stays open', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('custom_food_save', 504, null));
+        const reload = vi.fn().mockResolvedValue(undefined);
+        const wrapper = show({ food: pancakes, reload });
+
+        button('[data-save]').click();
+        await flushPromises();
+
+        expect(reload).toHaveBeenCalledWith({ fresh: true });
+        expect(wrapper.emitted('saved')).toBeUndefined();
         wrapper.unmount();
     });
 
@@ -147,6 +191,10 @@ describe('CustomFoodSheet', () => {
 
         expect(document.body.querySelector('[role="alert"]')!.textContent).toContain('Protein can\'t weigh more than the serving.');
         expect(wrapper.emitted('saved')).toBeUndefined();
+
+        await wrapper.setProps({ open: false });
+        await wrapper.setProps({ open: true });
+        expect(document.body.querySelector('[role="dialog"] [role="alert"]')).toBeNull();
         wrapper.unmount();
     });
 
