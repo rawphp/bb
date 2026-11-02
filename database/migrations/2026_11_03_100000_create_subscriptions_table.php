@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * One row per account that has started Checkout: its Stripe customer, and
-     * the subscription as the last verified webhook described it (SUB-021).
+     * the subscription that decides its access, as Stripe last reported it (SUB-021).
      */
     public function up(): void
     {
@@ -23,8 +23,6 @@ return new class extends Migration
             $table->timestamp('current_period_end')->nullable();
             $table->boolean('cancel_at_period_end')->default(false);
             $table->timestamp('trial_ends_at')->nullable();
-            // When Stripe made the last event applied here, so an older one arriving late is ignored.
-            $table->timestamp('stripe_event_at')->nullable();
             $table->timestamps();
         });
     }

@@ -7,7 +7,8 @@ namespace App\Domain\Billing;
  *
  * Reads always work, so a lapsed user keeps every screen (SUB-010). A lapsed
  * user's writes are refused except deleting the account and the billing
- * capabilities (SUB-022); signing in and out are host routes, not capabilities.
+ * capabilities (SUB-022), and revoking a token or stopping push; signing in
+ * and out are host routes, not capabilities.
  * A user who never subscribed can onboard and reach the paywall, but the first
  * plan waits for the trial (SUB-003, SUB-004).
  */
@@ -16,8 +17,11 @@ final class BillingRule
     /** The free trial a user gets once, started from Checkout (SUB-003). */
     public const TRIAL_DAYS = 7;
 
-    /** Writes a lapsed user may still make (SUB-022). */
-    public const LAPSED_EXEMPT = ['account_delete'];
+    /**
+     * Writes a lapsed user may still make (SUB-022): deleting the account, and
+     * withdrawing access or consent, which never sits behind a payment.
+     */
+    public const LAPSED_EXEMPT = ['account_delete', 'token_revoke', 'push_unsubscribe'];
 
     /** Every capability under this prefix is billing, which always stays allowed (SUB-022). */
     public const BILLING_PREFIX = 'billing_';

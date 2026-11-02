@@ -28,7 +28,7 @@ function stripeSubscription(array $overrides = []): array
         'items' => ['object' => 'list', 'data' => [[
             'id' => 'si_1',
             'object' => 'subscription_item',
-            'current_period_end' => 1_804_067_200,
+            'current_period_end' => strtotime('2027-03-03 10:00:00 UTC'),
             'price' => ['id' => 'price_yearly', 'object' => 'price'],
         ]]],
     ], $overrides);

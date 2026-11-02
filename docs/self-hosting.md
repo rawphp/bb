@@ -122,7 +122,7 @@ Billing is off unless `BILLING_ENABLED=true` (SUB-020). A self-hosted instance l
 
 | Key | Value |
 |---|---|
-| `BILLING_ENABLED` | `false`, or `true` to sell subscriptions. Any other value stops the app from booting. |
+| `BILLING_ENABLED` | `false`, or `true` to sell subscriptions (`1`/`0`, `yes`/`no` and `on`/`off` work too). Any other value stops the app from booting. |
 | `STRIPE_KEY` | Stripe publishable key. Not used yet: payments open on Stripe's own Checkout page. |
 | `STRIPE_SECRET` | Stripe secret key. |
 | `STRIPE_WEBHOOK_SECRET` | The signing secret of the Stripe webhook endpoint. The server trusts subscription state only from webhooks it can verify (SUB-021). |
@@ -130,7 +130,8 @@ Billing is off unless `BILLING_ENABLED=true` (SUB-020). A self-hosted instance l
 
 With billing on:
 
-- Add a webhook endpoint in Stripe at `https://<your domain>/stripe/webhook`, sending `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`.
+- Add a webhook endpoint in Stripe at `https://<your domain>/stripe/webhook`, sending `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`. On each event the app reads the customer's subscriptions back from Stripe, so events arriving out of order do no harm. If Stripe cannot be reached, the webhook fails and Stripe sends the event again.
+- In Stripe's Checkout settings, turn on "Limit customers to one subscription". The app refuses a second Checkout to a user with a live subscription, but two Checkout pages opened before the first payment would otherwise both go through.
 - Turn on the customer portal in Stripe's settings, with plan switching between the prices above and cancelling (SUB-007).
 - Sale, referral and gym prices are Stripe coupons with promotion codes; users type the code in Checkout (SUB-009).
 - A user who has never subscribed gets a 7-day free trial in Checkout (SUB-003). Until it starts, they can answer onboarding but not generate their plan. A user whose subscription has ended keeps every screen read-only (SUB-010), and cannot write or talk to the Coach until they resubscribe (SUB-022, SUB-024).

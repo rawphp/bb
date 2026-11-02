@@ -2,12 +2,18 @@
 
 namespace App\Billing;
 
+use Closure;
 use Illuminate\Support\Facades\Cache;
+use RuntimeException;
+use Stripe\Exception\ApiErrorException;
 use Stripe\StripeClient;
+use Stripe\Subscription;
 
 /** {@see StripeGateway} over Stripe's API. */
 final class StripeClientGateway implements StripeGateway
 {
+    public const UNAVAILABLE = 'Payments are unavailable right now. Try again shortly.';
+
     /** How long a plan's price is kept before it is read from Stripe again. */
     private const PRICE_SECONDS = 3600;
 
@@ -15,11 +21,11 @@ final class StripeClientGateway implements StripeGateway
 
     public function createCustomer(string $email, string $name, int $userId): string
     {
-        return $this->stripe->customers->create([
+        return self::call(fn (): string => $this->stripe->customers->create([
             'email' => $email,
             'name' => $name,
             'metadata' => ['user_id' => (string) $userId],
-        ])->id;
+        ])->id);
     }
 
     public function checkoutUrl(string $customer, string $price, ?int $trialDays, string $returnUrl): string
@@ -37,29 +43,72 @@ final class StripeClientGateway implements StripeGateway
             $params['subscription_data'] = ['trial_period_days' => $trialDays];
         }
 
-        return (string) $this->stripe->checkout->sessions->create($params)->url;
+        return self::call(fn (): string => (string) $this->stripe->checkout->sessions->create($params)->url);
     }
 
     public function portalUrl(string $customer, string $returnUrl): string
     {
-        return $this->stripe->billingPortal->sessions->create([
+        return self::call(fn (): string => $this->stripe->billingPortal->sessions->create([
             'customer' => $customer,
             'return_url' => $returnUrl,
-        ])->url;
+        ])->url);
     }
 
+    public function subscriptions(string $customer): array
+    {
+        return self::call(fn (): array => array_map(
+            fn (Subscription $subscription): array => $subscription->toArray(),
+            $this->stripe->subscriptions->all(['customer' => $customer, 'status' => 'all', 'limit' => 100])->data,
+        ));
+    }
+
+    /**
+     * Kept an hour. While Stripe cannot be reached, the last price it gave is
+     * shown, so the paywall and the subscription status still open.
+     */
     public function price(string $price): array
     {
-        /** @var array{amount: int, currency: string, interval: string, interval_count: int} */
-        return Cache::remember("billing:price:{$price}", self::PRICE_SECONDS, function () use ($price): array {
-            $found = $this->stripe->prices->retrieve($price);
+        $key = "billing:price:{$price}";
 
-            return [
-                'amount' => (int) $found->unit_amount,
-                'currency' => $found->currency,
-                'interval' => (string) $found->recurring?->interval,
-                'interval_count' => (int) $found->recurring?->interval_count,
-            ];
-        });
+        try {
+            /** @var array{amount: int, currency: string, interval: string, interval_count: int} */
+            return Cache::remember($key, self::PRICE_SECONDS, function () use ($price, $key): array {
+                $found = self::call(fn () => $this->stripe->prices->retrieve($price));
+                $read = [
+                    'amount' => (int) $found->unit_amount,
+                    'currency' => $found->currency,
+                    'interval' => (string) $found->recurring?->interval,
+                    'interval_count' => (int) $found->recurring?->interval_count,
+                ];
+                Cache::forever("{$key}:last", $read);
+
+                return $read;
+            });
+        } catch (RuntimeException $unavailable) {
+            /** @var array{amount: int, currency: string, interval: string, interval_count: int}|null $last */
+            $last = Cache::get("{$key}:last");
+
+            return $last ?? throw $unavailable;
+        }
+    }
+
+    /**
+     * Runs a Stripe call. A failure is reported for the operator and never shown:
+     * Stripe's message can name the key or the price.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $call
+     * @return T
+     */
+    private static function call(Closure $call): mixed
+    {
+        try {
+            return $call();
+        } catch (ApiErrorException $failed) {
+            report($failed);
+
+            throw new RuntimeException(self::UNAVAILABLE, previous: $failed);
+        }
     }
 }

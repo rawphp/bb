@@ -4,6 +4,7 @@ use App\Billing\StripeClientGateway;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Exceptions;
 use Stripe\ApiRequestor;
+use Stripe\Exception\AuthenticationException;
 use Stripe\HttpClient\ClientInterface;
 use Stripe\StripeClient;
 
@@ -33,7 +34,10 @@ function stripeApi(array $bodies): object
     return $api;
 }
 
-beforeEach(fn () => Cache::forget('billing:price:price_yearly') && Cache::forget('billing:price:price_yearly:last'));
+beforeEach(function () {
+    Cache::forget('billing:price:price_yearly');
+    Cache::forget('billing:price:price_yearly:last');
+});
 
 afterEach(fn () => ApiRequestor::setHttpClient(null));
 
@@ -104,7 +108,7 @@ it('SUB-021 reports a Stripe failure and tells the user only that payments are u
 
     expect(fn () => stripeClientGateway()->portalUrl('cus_123', 'https://bb.test'))
         ->toThrow(RuntimeException::class, 'Payments are unavailable right now. Try again shortly.');
-    Exceptions::assertReported(Stripe\Exception\AuthenticationException::class);
+    Exceptions::assertReported(AuthenticationException::class);
 });
 
 it('SUB-002 shows the last price Stripe gave while Stripe cannot be reached', function () {

@@ -27,7 +27,7 @@ function listedSubscription(array $overrides = [], string $price = 'price_yearly
         'trial_end' => null,
         'items' => ['object' => 'list', 'data' => [[
             'id' => 'si_1',
-            'current_period_end' => 1_804_067_200, // 2027-03-03 10:00 UTC
+            'current_period_end' => strtotime('2027-03-03 10:00:00 UTC'),
             'price' => ['id' => $price],
         ]]],
     ], $overrides);
@@ -65,7 +65,7 @@ it('SUB-010 a paying customer with an old, ended subscription keeps access, whic
 });
 
 it('SUB-021 reads the period from the subscription on Stripe API versions before 2025-03-31', function () {
-    $old = listedSubscription(['current_period_end' => 1_804_067_200]);
+    $old = listedSubscription(['current_period_end' => strtotime('2027-03-03 10:00:00 UTC')]);
     unset($old['items']['data'][0]['current_period_end']);
     $this->stripe->subscriptions['cus_1'] = [$old];
 

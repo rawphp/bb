@@ -20,6 +20,17 @@ enum Access: string
     /** Ended: every screen shows, read-only (SUB-010). */
     case Lapsed = 'lapsed';
 
+    /** How strongly this access decides an account with several subscriptions: paid, then trial, then a first payment, then ended. */
+    public function rank(): int
+    {
+        return match ($this) {
+            self::Active => 3,
+            self::Trial => 2,
+            self::None => 1,
+            self::Lapsed => 0,
+        };
+    }
+
     public static function fromStripeStatus(?string $status): self
     {
         return match ($status) {

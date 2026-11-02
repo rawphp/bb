@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\Billing\ApplyStripeSubscription;
+use App\Actions\Billing\SyncStripeSubscription;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Stripe\Exception\SignatureVerificationException;
@@ -12,7 +12,8 @@ use UnexpectedValueException;
 /**
  * Stripe's webhook, the one way the server learns subscription state (SUB-021).
  * Only an event signed with the instance's webhook secret is read; anything
- * else answers 400 and changes nothing.
+ * else answers 400 and changes nothing. When Stripe cannot be read back, the
+ * request fails and Stripe sends the event again later.
  */
 final class StripeWebhookController
 {
@@ -23,7 +24,7 @@ final class StripeWebhookController
         'customer.subscription.deleted',
     ];
 
-    public function __invoke(Request $request, ApplyStripeSubscription $apply): Response
+    public function __invoke(Request $request, SyncStripeSubscription $sync): Response
     {
         try {
             $event = Webhook::constructEvent(
@@ -35,8 +36,9 @@ final class StripeWebhookController
             return new Response('', 400);
         }
 
+        // The event names the customer; the state is read back from Stripe.
         if (in_array($event->type, self::SUBSCRIPTION_EVENTS, true)) {
-            $apply($event->data->object->toArray(), $event->created);
+            $sync((string) ($event->data->object->toArray()['customer'] ?? ''));
         }
 
         // Every other event is acknowledged, so Stripe does not retry it.

@@ -3,8 +3,9 @@
 namespace App\Billing;
 
 /**
- * The calls billing makes to Stripe (SUB-005, SUB-007). Tests bind a fake;
- * {@see StripeClientGateway} makes them over Stripe's API.
+ * The calls billing makes to Stripe (SUB-005, SUB-007, SUB-021). Tests bind a
+ * fake; {@see StripeClientGateway} makes them over Stripe's API. A call Stripe
+ * fails throws a RuntimeException that says only that payments are unavailable.
  */
 interface StripeGateway
 {
@@ -16,6 +17,13 @@ interface StripeGateway
 
     /** A Stripe customer portal page, where the customer switches plan or cancels (SUB-007). */
     public function portalUrl(string $customer, string $returnUrl): string;
+
+    /**
+     * Every subscription the customer has, ended ones too, as Stripe holds them now.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function subscriptions(string $customer): array;
 
     /**
      * A recurring price as Stripe holds it (SUB-002).

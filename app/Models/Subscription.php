@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * An account's Stripe customer and subscription (SUB-021). Checkout creates the
- * row with the customer; only verified webhooks change the subscription.
+ * row with the customer; only a verified webhook changes the subscription.
  *
  * @property int $user_id
  * @property string $stripe_customer_id
@@ -21,7 +21,6 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $current_period_end
  * @property bool $cancel_at_period_end
  * @property Carbon|null $trial_ends_at
- * @property Carbon|null $stripe_event_at
  */
 class Subscription extends Model
 {
@@ -37,7 +36,6 @@ class Subscription extends Model
         'current_period_end',
         'cancel_at_period_end',
         'trial_ends_at',
-        'stripe_event_at',
     ];
 
     /** @return array<string, string> */
@@ -47,7 +45,6 @@ class Subscription extends Model
             'current_period_end' => 'datetime',
             'cancel_at_period_end' => 'boolean',
             'trial_ends_at' => 'datetime',
-            'stripe_event_at' => 'datetime',
         ];
     }
 
