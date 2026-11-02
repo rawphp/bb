@@ -82,6 +82,17 @@ it('AGT-010 only deleting a set is destructive; no workout write is reversible, 
     }
 });
 
+it('WO-003 refuses a rep count no set can hold with a plain message, not a server error', function () {
+    [$user, $shown] = startedOver();
+    $set = $shown['exercises'][0]['sets'][0]['id'];
+
+    writeOver($user, 'workout_set_log', ['set_id' => $set, 'weight' => ['value' => 80, 'unit' => 'kg'], 'reps' => 70000, 'is_logged' => false])
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'Enter 999 reps or fewer.');
+
+    expect(WorkoutSet::query()->find($set)->actual_reps)->toBeNull();
+});
+
 it('WO-020 refuses a write to a session not started yet with a plain message', function () {
     [$user, $shown] = startedOver();
     WorkoutSet::query()->find($shown['exercises'][0]['sets'][0]['id'])->session->update(['actual_start_at' => null]);

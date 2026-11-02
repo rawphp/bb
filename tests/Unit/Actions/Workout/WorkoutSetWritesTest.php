@@ -133,11 +133,14 @@ it('WO-003 a logged set with no added load comes back with an empty weight, not 
         ->and([$set['is_logged'], $set['weight'], $set['reps']])->toBe([true, null, 8]);
 });
 
-it('WO-020 a skipped set cannot be logged', function () {
+it('WO-020 a skipped set cannot be logged, and what it holds stays', function () {
     [$user, , $ids] = setsSeed();
     app(SkipWorkoutSet::class)($user, $ids[0], true);
 
-    expect(refusalOf(fn () => app(LogWorkoutSet::class)($user, $ids[0], 82.5, WeightUnit::Kg, 10, true)))->toBe('Unskip this set to log it.');
+    expect(refusalOf(fn () => app(LogWorkoutSet::class)($user, $ids[0], 82.5, WeightUnit::Kg, 10, true)))->toBe('Unskip this set to log it.')
+        ->and(refusalOf(fn () => app(LogWorkoutSet::class)($user, $ids[0], 100.0, WeightUnit::Kg, 3, false)))->toBe('Unskip this set to log it.')
+        ->and(WorkoutSet::query()->find($ids[0])->only(['actual_weight_kg', 'actual_reps', 'is_logged']))
+        ->toBe(['actual_weight_kg' => null, 'actual_reps' => null, 'is_logged' => false]);
 });
 
 it('WO-010 a set of a finished, skipped or not started session cannot change', function (array $session, string $message) {

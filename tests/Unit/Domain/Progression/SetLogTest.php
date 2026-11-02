@@ -16,10 +16,16 @@ it('WO-003 WO-025 a set is logged only with its reps, and its weight unless the 
         ->and(SetLog::refusal(false, false, null, null, ExerciseLoadType::Barbell))->toBeNull();
 });
 
-it('WO-020 a skipped set cannot be logged', function () {
+it('WO-020 a skipped set cannot be logged, nor its weight or reps changed', function () {
+    // rp-clone setWeight, setReps and toggleLogged all leave a skipped set as it is.
     expect(SetLog::refusal(true, true, 10, 80.0, ExerciseLoadType::Barbell))->toBe('Unskip this set to log it.')
-        ->and(SetLog::refusal(false, true, 10, 80.0, ExerciseLoadType::Barbell))->toBeNull();
+        ->and(SetLog::refusal(false, true, 10, 80.0, ExerciseLoadType::Barbell))->toBe('Unskip this set to log it.');
 });
+
+it('WO-003 a rep count no set can hold is refused', function (bool $isLogged) {
+    expect(SetLog::refusal($isLogged, false, 1000, 80.0, ExerciseLoadType::Barbell))->toBe('Enter 999 reps or fewer.')
+        ->and(SetLog::refusal($isLogged, false, 999, 80.0, ExerciseLoadType::Barbell))->toBeNull();
+})->with(['logging' => true, 'typing' => false]);
 
 it('WO-023 CAP-015 a weight is stored in kg from the unit it was typed in, whatever the load type', function () {
     // rp-clone setWeight stores what was typed for every load type; only the load maths leaves bodyweight out.
