@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useScreenRead } from '@/app/useScreenRead';
+import { useRead } from '@/app/useRead';
 import type { ArticleShowOutput } from '@/contracts/article_show';
+import OfflineNotice from '@/design/OfflineNotice.vue';
 
 // One Learn article, in the blocks article_show returns (LRN-001). Ported from
 // rp-clone's ArticleView. /dev/screens/article_show hands it a fixture as payload.
@@ -10,7 +11,7 @@ type Span = Block['spans'][number];
 
 const props = defineProps<{ slug?: string; payload?: ArticleShowOutput }>();
 
-const { data: article, failure } = useScreenRead<ArticleShowOutput>('article_show', { slug: props.slug ?? '' }, props.payload);
+const { data: article, failure } = useRead<ArticleShowOutput>('article_show', { slug: props.slug ?? '' }, props.payload);
 
 // Consecutive bullet blocks render as one list; every other block stands alone.
 const groups = computed(() => {
@@ -45,6 +46,7 @@ function spanTag(span: Span): 'strong' | 'em' | 'span' {
             </template>
         </article>
 
+        <OfflineNotice v-else-if="failure === 'offline'" needs="This article will load when you're back online." />
         <p v-else-if="failure" role="alert" class="text-tone-warning">
             {{ failure === 'signed-out' ? 'You are signed out.' : 'This article could not be loaded.' }}
         </p>

@@ -20,7 +20,7 @@ const props = defineProps<{ payload?: TokenListOutput }>();
 type Scope = TokenCreateInput['scope'];
 type Days = TokenCreateInput['expires_in_days'];
 
-const { data: list, failure, load } = useRead<TokenListOutput>('token_list', props.payload);
+const { data: list, failure, load } = useRead<TokenListOutput>('token_list', {}, props.payload);
 
 const creating = ref(false);
 const name = ref('');

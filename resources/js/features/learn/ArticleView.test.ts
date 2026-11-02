@@ -81,6 +81,15 @@ describe('ArticleView', () => {
         expect(wrapper.find('[role="alert"]').text()).toBe(message);
     });
 
+    it('OFF-003 offline with nothing cached says the article needs a connection', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('article_show', 0, null));
+        const wrapper = mount(ArticleView, { props: { slug: 'rir' } });
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('Not available offline');
+        expect(wrapper.text()).toContain("This article will load when you're back online.");
+    });
+
     it('OFF-003 shows the cached article at once, then the refreshed one', async () => {
         let refresh: (data: ArticleShowOutput) => void = () => {};
         readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {

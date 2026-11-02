@@ -67,13 +67,22 @@ describe('LearnIndexView', () => {
 
     it.each([
         [new CapabilityError('learn_show', 401, null), 'You are signed out.'],
-        [new CapabilityError('learn_show', 0, null), 'Learn could not be loaded.'],
+        [new CapabilityError('learn_show', 500, null), 'Learn could not be loaded.'],
     ])('CAP-004 says why the index did not load', async (error, message) => {
         readMock.mockRejectedValueOnce(error);
         const { wrapper } = await mountIndex();
         await flushPromises();
 
         expect(wrapper.find('[role="alert"]').text()).toBe(message);
+    });
+
+    it('OFF-003 offline with nothing cached says Learn needs a connection', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('learn_show', 0, null));
+        const { wrapper } = await mountIndex();
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('Not available offline');
+        expect(wrapper.text()).toContain("Learn will load when you're back online.");
     });
 
     it('OFF-003 shows the cached index at once, then the refreshed one, and drops it when the refresh is refused', async () => {

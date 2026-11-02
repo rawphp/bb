@@ -15,7 +15,7 @@ function screen(payload?: { n: number }) {
     let api!: ReturnType<typeof useRead<{ n: number }>>;
     const wrapper = mount(
         defineComponent(() => {
-            api = useRead('probe_show', payload);
+            api = useRead('probe_show', { id: 7 }, payload);
             return () => h('p', api.failure.value ?? String(api.data.value?.n ?? 'loading'));
         }),
     );
@@ -39,16 +39,18 @@ describe('useRead', () => {
 
         await flushPromises();
 
-        expect(readMock).toHaveBeenCalledWith('probe_show', {}, expect.any(Function), expect.any(Function));
+        expect(readMock).toHaveBeenCalledWith('probe_show', { id: 7 }, expect.any(Function), expect.any(Function));
         expect(wrapper.text()).toBe('2');
     });
 
     it.each([
-        [401, 'signed-out'],
-        [0, 'offline'],
-        [500, 'error'],
-    ])('CAP-004 names a failed read (%i)', async (status, failure) => {
-        readMock.mockRejectedValueOnce(new CapabilityError('probe_show', status, null));
+        [new CapabilityError('probe_show', 401, null), 'signed-out'],
+        [new CapabilityError('probe_show', 0, null), 'offline'],
+        [new CapabilityError('probe_show', 404, null), 'error'],
+        [new CapabilityError('probe_show', 500, null), 'error'],
+        [new Error('boom'), 'error'],
+    ])('CAP-004 names a failed read (%s)', async (error, failure) => {
+        readMock.mockRejectedValueOnce(error);
         const { wrapper } = screen();
         await flushPromises();
 
@@ -79,6 +81,17 @@ describe('useRead', () => {
         await flushPromises();
 
         expect(wrapper.text()).toBe('signed-out');
+    });
+
+    it('OFF-003 a refusal that lands before read() returns keeps the cached copy away', async () => {
+        readMock.mockImplementationOnce(async (_name, _input, _onUpdate, onError) => {
+            (onError as (error: CapabilityError) => void)(new CapabilityError('probe_show', 404, null));
+            return { n: 1 };
+        });
+        const { wrapper } = screen();
+        await flushPromises();
+
+        expect(wrapper.text()).toBe('error');
     });
 
     it('CAP-010 reads again on load(), after a failure', async () => {

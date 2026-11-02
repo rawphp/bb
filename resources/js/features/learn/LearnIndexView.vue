@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router';
-import { useScreenRead } from '@/app/useScreenRead';
+import { useRead } from '@/app/useRead';
 import type { LearnShowOutput } from '@/contracts/learn_show';
+import OfflineNotice from '@/design/OfflineNotice.vue';
 
 // The Learn index, grouped by section (LRN-001, LRN-002, LRN-005). Ported from
 // rp-clone's LearnIndexView. /dev/screens/learn_show hands it a fixture as payload.
 const props = defineProps<{ payload?: LearnShowOutput }>();
 
-const { data: learn, failure } = useScreenRead<LearnShowOutput>('learn_show', {}, props.payload);
+const { data: learn, failure } = useRead<LearnShowOutput>('learn_show', {}, props.payload);
 </script>
 
 <template>
@@ -31,6 +32,7 @@ const { data: learn, failure } = useScreenRead<LearnShowOutput>('learn_show', {}
             </section>
         </template>
 
+        <OfflineNotice v-else-if="failure === 'offline'" class="mt-6" needs="Learn will load when you're back online." />
         <p v-else-if="failure" role="alert" class="mt-6 px-2 text-tone-warning">
             {{ failure === 'signed-out' ? 'You are signed out.' : 'Learn could not be loaded.' }}
         </p>

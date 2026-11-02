@@ -1,15 +1,15 @@
 import { onMounted, onUnmounted, ref, type Ref } from 'vue';
-import { CapabilityError, read } from './call';
+import { CapabilityError, read, type CapabilityInput } from './call';
 
 export type ReadFailure = 'signed-out' | 'offline' | 'error';
 
 /**
- * A screen's one read (CAP-002). Given a payload (a /dev/screens fixture) it shows
+ * A screen's one read (CAP-002, CAP-004). Given a payload (a /dev/screens fixture) it shows
  * that and calls nothing; otherwise it reads on mount, cached copy first (OFF-003).
  * load() reads again, for Try again and after a write. Offline with nothing cached it
  * fails as 'offline' and reads again when the device reconnects (OFF-004).
  */
-export function useRead<T>(name: string, payload?: T): { data: Ref<T | undefined>; failure: Ref<ReadFailure | null>; load: () => Promise<void> } {
+export function useRead<T>(name: string, input: CapabilityInput, payload?: T): { data: Ref<T | undefined>; failure: Ref<ReadFailure | null>; load: () => Promise<void> } {
     const data = ref(payload) as Ref<T | undefined>;
     const failure = ref<ReadFailure | null>(null);
     // Each load() is a generation. A refresh or failure from an older one arrives late
@@ -36,7 +36,7 @@ export function useRead<T>(name: string, payload?: T): { data: Ref<T | undefined
             if (current()) fail(error);
         };
         try {
-            const copy = await read<T>(name, {}, refresh, refused);
+            const copy = await read<T>(name, input, refresh, refused);
             // A refresh that already landed wins over the copy read() was handed.
             if (current() && failure.value === null && !refreshed) data.value = copy;
         } catch (error) {
