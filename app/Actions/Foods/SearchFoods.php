@@ -4,6 +4,7 @@ namespace App\Actions\Foods;
 
 use App\Domain\Foods\Barcode;
 use App\Domain\Foods\FoodSearchFilters;
+use App\Domain\Foods\FoodSearchSource;
 use App\Domain\Foods\SearchTerms;
 use App\Domain\Foods\Speller;
 use App\Models\Food;
@@ -37,6 +38,9 @@ final class SearchFoods
         $found = new Collection;
         if (! $filters->curatedOnly()) {
             $found = $this->mine($user, $filters, $terms, $query)->limit($filters->limit)->get();
+        }
+        if ($filters->ownOnly()) {
+            return $found->values();
         }
 
         $found = $found->concat($this->curated($filters, $terms, $phrase)->whereNotIn('id', $found->modelKeys())->limit($filters->limit - $found->count())->get());
@@ -81,9 +85,19 @@ final class SearchFoods
         // The user's candidate ids as one derived table: a UNION of three selects that each use their own
         // user_id index, joined to foods by primary key. No id list travels through PHP, and the foods table
         // is read only for those ids, however long the user's history.
-        $candidates = DB::table('foods')->select('id as food_id')->where('user_id', $userId)
-            ->union(FoodRecent::query()->toBase()->select('food_id')->where('user_id', $userId))
-            ->union(FoodFavorite::query()->toBase()->select('food_id')->where('user_id', $userId));
+        // FOOD-025: Recents, Favorites and Custom each keep only their own select.
+        $selects = [
+            FoodSearchSource::Custom->value => DB::table('foods')->select('id as food_id')->where('user_id', $userId),
+            FoodSearchSource::Recents->value => FoodRecent::query()->toBase()->select('food_id')->where('user_id', $userId),
+            FoodSearchSource::Favorites->value => FoodFavorite::query()->toBase()->select('food_id')->where('user_id', $userId),
+        ];
+        if ($filters->ownOnly()) {
+            $selects = [$selects[$filters->source?->value]];
+        }
+        $candidates = array_shift($selects);
+        foreach ($selects as $select) {
+            $candidates->union($select);
+        }
         $builder = $this->filtered($filters)->select('foods.*')->joinSub($candidates, 'mine', 'mine.food_id', '=', 'foods.id');
         // visibleTo: a recent or favorite never reveals another user's custom food (FOOD-060).
         $builder->visibleTo($user);
@@ -110,8 +124,9 @@ final class SearchFoods
     {
         $query = Food::query()->with('servings');
 
-        if ($filters->kind !== null) {
-            $query->where('kind', $filters->kind->value);
+        $kind = $filters->source?->kind();
+        if ($kind !== null) {
+            $query->where('kind', $kind->value);
         }
         foreach ($filters->diets as $diet) {
             $query->where($diet->value, true);

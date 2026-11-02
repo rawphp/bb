@@ -20,7 +20,10 @@ final class LookUpFoodBarcode
 
         return Food::query()->visibleTo($user)->where('barcode', $barcode)
             ->orderByRaw('case when user_id is not null then 0 when curated then 1 when source = ? then 2 else 3 end', [FoodSource::OpenFoodFacts->value])
-            // On a tie, the most recently imported row: USDA gives an updated Branded product a new fdcId.
+            // On a tie, the newest record: USDA gives an updated Branded product a new, higher fdcId, so a
+            // USDA tie goes to the higher id whatever order the dump or the batches held them in. Other ties
+            // fall back to the most recently imported row.
+            ->orderByRaw('case when source = ? then cast(source_id as decimal(20, 0)) end desc', [FoodSource::Usda->value])
             ->orderByDesc('updated_at')->orderByDesc('id')
             ->with('servings')
             ->first();

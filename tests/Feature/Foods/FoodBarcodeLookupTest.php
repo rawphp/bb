@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Foods\LookUpFoodBarcode;
+use App\Actions\Foods\SaveImportedFoods;
 use App\Models\Food;
 use App\Models\User;
 
@@ -55,13 +56,13 @@ it('FOOD-041 ranks a curated food by its curated flag, not its source, ahead of 
     expect((new LookUpFoodBarcode)($this->user, '556')?->name)->toBe('Curated usda one');
 });
 
-it('FOOD-041 returns the most recently imported row when two rows of the same rank share a barcode', function () {
+it('FOOD-041 returns the most recently imported Open Food Facts row when two share a barcode', function () {
     $this->travelTo(now()->subYear());
-    foodsWithBarcode('Old branded', '557', ['source' => 'usda']);
+    foodsWithBarcode('Old product', '557', ['source' => 'off', 'source_id' => '0000000000557']);
     $this->travelBack();
-    foodsWithBarcode('Refreshed branded', '557', ['source' => 'usda']);
+    foodsWithBarcode('Refreshed product', '557', ['source' => 'off', 'source_id' => '557']);
 
-    expect((new LookUpFoodBarcode)($this->user, '557')?->name)->toBe('Refreshed branded');
+    expect((new LookUpFoodBarcode)($this->user, '557')?->name)->toBe('Refreshed product');
 });
 
 it('FOOD-041 never returns a soft-deleted shared row, even when it was refreshed last', function () {
@@ -72,6 +73,26 @@ it('FOOD-041 never returns a soft-deleted shared row, even when it was refreshed
 
     expect((new LookUpFoodBarcode)($this->user, '558')?->name)->toBe('Live branded');
 });
+
+it('FOOD-041 returns the newer USDA record (higher fdcId) when two share a barcode, whatever order they were imported in', function (array $order) {
+    $row = fn (string $fdcId, string $name) => [
+        'food' => ['name' => $name, 'source' => 'usda', 'source_id' => $fdcId, 'kind' => 'packaged', 'barcode' => '559',
+            'kcal' => 10.0, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
+        'servings' => [],
+    ];
+    $rows = ['999' => $row('999', 'Stale branded'), '1000001' => $row('1000001', 'Replacement branded')];
+    $save = new SaveImportedFoods;
+
+    $save(array_map(fn (string $id) => $rows[$id], $order));
+    expect((new LookUpFoodBarcode)($this->user, '559')?->name)->toBe('Replacement branded');
+
+    $save([$rows[$order[1]]]);
+    $save([$rows[$order[0]]]);
+    expect((new LookUpFoodBarcode)($this->user, '559')?->name)->toBe('Replacement branded');
+})->with([
+    'stale first' => [['999', '1000001']],
+    'replacement first' => [['1000001', '999']],
+]);
 
 it('FOOD-060 never finds another user\'s custom food by barcode, nor the user\'s deleted one', function () {
     Food::factory()->custom(User::factory()->create())->create(['name' => 'Theirs', 'barcode' => '777']);

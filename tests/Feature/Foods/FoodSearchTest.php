@@ -1,8 +1,8 @@
 <?php
 
 use App\Actions\Foods\SearchFoods;
-use App\Domain\Foods\FoodKind;
 use App\Domain\Foods\FoodSearchFilters;
+use App\Domain\Foods\FoodSearchSource;
 use App\Domain\MealFit\CuratedGroup;
 use App\Domain\Model\DietFilter;
 use App\Models\Food;
@@ -27,9 +27,9 @@ function foodsCurated(string $name, string $group = 'carbs_recommended', array $
  * @param  list<DietFilter>  $diets
  * @return list<string>
  */
-function foodsSearch(User $user, string $query, ?string $kind = null, ?CuratedGroup $group = null, array $diets = [], int $limit = 25): array
+function foodsSearch(User $user, string $query, ?string $source = null, ?CuratedGroup $group = null, array $diets = [], int $limit = 25): array
 {
-    $filters = new FoodSearchFilters($kind === 'curated' ? null : ($kind === null ? null : FoodKind::from($kind)), $kind === 'curated', $group, $diets, $limit);
+    $filters = new FoodSearchFilters($source === null ? null : FoodSearchSource::from($source), $group, $diets, $limit);
 
     return (new SearchFoods)($user, $query, $filters)->pluck('name')->all();
 }
@@ -106,16 +106,32 @@ it('FOOD-023 caps results at the limit across curated and the rest', function ()
         ->and(array_slice(foodsSearch($this->user, 'rice', limit: 7), 0, 5))->each->toStartWith('Rice curated');
 });
 
-it('FOOD-025 filters by curated or by kind', function () {
+it('FOOD-025 narrows to Curated, Restaurants or Packaged across the database', function () {
     foodsCurated('Oats curated');
     foodsMake('Oats generic');
     foodsMake('Oats bar', ['kind' => 'packaged']);
     foodsMake('Oats burger', ['kind' => 'restaurant']);
 
     expect(foodsSearch($this->user, 'oats', 'curated'))->toBe(['Oats curated'])
-        ->and(foodsSearch($this->user, 'oats', 'generic'))->toEqualCanonicalizing(['Oats curated', 'Oats generic'])
         ->and(foodsSearch($this->user, 'oats', 'packaged'))->toBe(['Oats bar'])
-        ->and(foodsSearch($this->user, 'oats', 'restaurant'))->toBe(['Oats burger']);
+        ->and(foodsSearch($this->user, 'oats', 'restaurants'))->toBe(['Oats burger'])
+        ->and(foodsSearch($this->user, 'oats'))->toHaveCount(4);
+});
+
+it('FOOD-025 narrows to the user\'s Recents, Favorites or Custom foods only', function () {
+    $recent = foodsMake('Oats recent');
+    $favorite = foodsMake('Oats favorite');
+    FoodRecent::factory()->create(['user_id' => $this->user->id, 'food_id' => $recent->id]);
+    FoodFavorite::factory()->create(['user_id' => $this->user->id, 'food_id' => $favorite->id]);
+    Food::factory()->custom($this->user)->create(['name' => 'Oats custom']);
+    foodsCurated('Oats curated');
+    foodsMake('Oats other');
+    $theirs = foodsMake('Oats theirs');
+    FoodRecent::factory()->create(['user_id' => User::factory()->create()->id, 'food_id' => $theirs->id]);
+
+    expect(foodsSearch($this->user, 'oats', 'recents'))->toBe(['Oats recent'])
+        ->and(foodsSearch($this->user, 'oats', 'favorites'))->toBe(['Oats favorite'])
+        ->and(foodsSearch($this->user, 'oats', 'custom'))->toBe(['Oats custom']);
 });
 
 it('FOOD-026 filters by curated group', function () {
@@ -295,12 +311,12 @@ it('FOOD-060 finds the user\'s custom food by name, brand and barcode, and hides
 
 it('FOOD-025 applies the kind and diet filters to the user\'s own foods too', function () {
     Food::factory()->custom($this->user)->create(['name' => 'Bar custom']);
-    $favorite = foodsMake('Bar favorite', ['vegan' => true]);
+    $favorite = foodsMake('Bar favorite', ['vegan' => true, 'kind' => 'packaged']);
     FoodFavorite::factory()->create(['user_id' => $this->user->id, 'food_id' => $favorite->id]);
 
     expect(foodsSearch($this->user, 'bar', diets: [DietFilter::Vegan]))->toBe(['Bar favorite'])
         ->and(foodsSearch($this->user, 'bar', 'curated'))->toBe([])
-        ->and(foodsSearch($this->user, 'bar', 'generic'))->toBe(['Bar favorite']);
+        ->and(foodsSearch($this->user, 'bar', 'packaged'))->toBe(['Bar favorite']);
 });
 
 it('FOOD-004 loads each food\'s servings with the results', function () {

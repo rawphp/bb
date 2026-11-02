@@ -9,21 +9,25 @@ use App\Domain\Model\DietFilter;
 final readonly class FoodSearchFilters
 {
     /**
-     * @param  FoodKind|null  $kind  one food kind
-     * @param  bool  $curated  curated foods only
+     * @param  FoodSearchSource|null  $source  FOOD-025's source filter
      * @param  list<DietFilter>  $diets  every one must be true
      */
     public function __construct(
-        public ?FoodKind $kind = null,
-        public bool $curated = false,
+        public ?FoodSearchSource $source = null,
         public ?CuratedGroup $group = null,
         public array $diets = [],
         public int $limit = 25,
     ) {}
 
-    /** Only curated foods match: the curated filter or a curated group. */
+    /** Only curated foods match: the Curated source or a curated group (FOOD-026). */
     public function curatedOnly(): bool
     {
-        return $this->curated || $this->group !== null;
+        return $this->source === FoodSearchSource::Curated || $this->group !== null;
+    }
+
+    /** Only the user's own foods match: Recents, Favorites or Custom, with no curated group. */
+    public function ownOnly(): bool
+    {
+        return $this->group === null && $this->source?->ownOnly() === true;
     }
 }
