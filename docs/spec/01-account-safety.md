@@ -7,6 +7,7 @@
 - **ACC-003** [D][B] The account must sync across the user's devices. The More menu must show sync status, for example "Synced a few seconds ago", or "3 changes waiting to sync" while the outbox is not empty (OFF-010).
 - **ACC-004** [G] Users must be able to reset a forgotten password by email.
 - **ACC-005** [G] Users must be able to delete their account and all data from Settings, with a typed confirmation.
+  - *Bodybuilder (decided 2026-11-03, #91): with billing on, deleting is refused while any of the account's Stripe subscriptions would renew (a trial, a paid subscription or a first payment still being taken, not set to end at its period's end), with a message to cancel it in Manage subscription first (SUB-007), and also while Stripe cannot be reached; nothing is deleted either way. An open Checkout page is closed first. Deleting does not cancel subscriptions in Stripe.*
 - **ACC-006** [D] Users must be able to sign out from Settings.
 
 ## Billing (SUB)

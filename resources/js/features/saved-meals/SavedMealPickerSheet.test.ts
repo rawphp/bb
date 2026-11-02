@@ -1,14 +1,14 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, writeNow } from '@/app/call';
 import type { SavedMealsShowOutput } from '@/contracts/saved_meals_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import SavedMealPickerSheet from './SavedMealPickerSheet.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const content = screenFixture<SavedMealsShowOutput>('saved_meals_show');
 const empty = screenFixture<SavedMealsShowOutput>('saved_meals_show.empty');
 const MEAL_ID = '01JBX5M0000000000000000001';

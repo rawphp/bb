@@ -1,11 +1,11 @@
 import { flushPromises, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, writeNow } from '@/app/call';
 import { offerInstall } from '@/app/install';
 import { toneIcons } from '@/design/toneIcons';
 import { back, fixture, next, sent, testRouter, view, writes } from './onboardingTesting';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), writeNow: vi.fn() }));
 vi.mock('@/app/install', () => ({ offerInstall: vi.fn(async () => undefined) }));
 
 const review = fixture();
@@ -17,7 +17,7 @@ describe('the review', () => {
     beforeEach(() => {
         wrapper?.unmount();
         vi.mocked(read).mockReset().mockResolvedValue(review);
-        vi.mocked(write).mockReset().mockResolvedValue({});
+        vi.mocked(writeNow).mockReset().mockResolvedValue({});
         vi.mocked(offerInstall).mockClear();
     });
 
@@ -108,7 +108,7 @@ describe('the review', () => {
             const router = testRouter();
             await router.push('/onboarding');
             let finish: (value: unknown) => void = () => {};
-            vi.mocked(write).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+            vi.mocked(writeNow).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
             wrapper = view(review, { router });
 
             await next(wrapper).trigger('click');
@@ -138,17 +138,17 @@ describe('the review', () => {
         });
 
         it('PWA-003 offers the install on the Start my plan tap, before the plan is sent', async () => {
-            vi.mocked(write).mockReturnValueOnce(new Promise(() => {}));
+            vi.mocked(writeNow).mockReturnValueOnce(new Promise(() => {}));
             wrapper = view(review);
 
             await next(wrapper).trigger('click');
 
             expect(offerInstall).toHaveBeenCalledOnce();
-            expect(vi.mocked(offerInstall).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(write).mock.invocationCallOrder[0]!);
+            expect(vi.mocked(offerInstall).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(writeNow).mock.invocationCallOrder[0]!);
         });
 
         it('CAP-012 after a refused start the answers open again, and the reason goes once one is saved', async () => {
-            vi.mocked(write).mockRejectedValueOnce(new CapabilityError('onboarding_complete', 422, { ok: false, error: { message: 'Answer every step first.' } }));
+            vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('onboarding_complete', 422, { ok: false, error: { message: 'Answer every step first.' } }));
             vi.mocked(read).mockResolvedValue(goal);
             wrapper = view(review);
 
@@ -162,7 +162,7 @@ describe('the review', () => {
         });
 
         it('CAP-014 after a start that got no answer, Edit and Back stay off, so a retry replays the answers it was sent with', async () => {
-            vi.mocked(write).mockRejectedValueOnce(new CapabilityError('onboarding_complete', 0, { reason: 'timeout' }));
+            vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('onboarding_complete', 0, { reason: 'timeout' }));
             wrapper = view(review);
 
             await next(wrapper).trigger('click');
@@ -178,7 +178,7 @@ describe('the review', () => {
         });
 
         it('CAP-012 a retry refused after a start that got no answer opens the answers again, with the server\'s reason', async () => {
-            vi.mocked(write)
+            vi.mocked(writeNow)
                 .mockRejectedValueOnce(new CapabilityError('onboarding_complete', 0, { reason: 'timeout' }))
                 .mockRejectedValueOnce(new CapabilityError('onboarding_complete', 422, { ok: false, error: { message: 'Answer every step first.' } }));
             vi.mocked(read).mockResolvedValue(goal);
@@ -199,7 +199,7 @@ describe('the review', () => {
         it('CAP-012 a refused start stays on the review with the server\'s reason', async () => {
             const router = testRouter();
             await router.push('/onboarding');
-            vi.mocked(write).mockRejectedValueOnce(new CapabilityError('onboarding_complete', 422, { ok: false, error: { message: 'Answer every step first.' } }));
+            vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('onboarding_complete', 422, { ok: false, error: { message: 'Answer every step first.' } }));
             wrapper = view(review, { router });
 
             await next(wrapper).trigger('click');
@@ -211,7 +211,7 @@ describe('the review', () => {
         });
 
         it('CAP-014 a start that got no answer, pressed again, is sent with the same key', async () => {
-            vi.mocked(write).mockRejectedValueOnce(new CapabilityError('onboarding_complete', 0, { reason: 'timeout' }));
+            vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('onboarding_complete', 0, { reason: 'timeout' }));
             wrapper = view(review);
 
             await next(wrapper).trigger('click');
@@ -220,19 +220,19 @@ describe('the review', () => {
             await next(wrapper).trigger('click');
             await flushPromises();
 
-            const keys = vi.mocked(write).mock.calls.map(([, , options]) => options?.idempotencyKey);
+            const keys = vi.mocked(writeNow).mock.calls.map(([, , options]) => options?.idempotencyKey);
             expect(keys).toHaveLength(2);
             expect(keys[0]).toBe(keys[1]);
         });
 
         it('CAP-010 a second tap while the plan is building sends nothing more, and Back is gone', async () => {
-            vi.mocked(write).mockReturnValueOnce(new Promise(() => {}));
+            vi.mocked(writeNow).mockReturnValueOnce(new Promise(() => {}));
             wrapper = view(review);
 
             await next(wrapper).trigger('click');
             await flushPromises();
 
-            expect(write).toHaveBeenCalledOnce();
+            expect(writeNow).toHaveBeenCalledOnce();
             expect(wrapper.find('button[data-step="back"]').exists()).toBe(false);
         });
 

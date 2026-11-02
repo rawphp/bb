@@ -8,7 +8,7 @@ import CurrentMesocycleView from './CurrentMesocycleView.vue';
 import MesocyclesView from './MesocyclesView.vue';
 import MesocycleView from './MesocycleView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 const push = vi.fn();
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ push }) }));
 

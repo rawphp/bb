@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import type { MesocycleShowOutput } from '@/contracts/mesocycle_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import PriorityBarsView from './PriorityBarsView.vue';
@@ -8,11 +8,11 @@ import PriorityRowView from './PriorityRowView.vue';
 import ProgressionRatesView from './ProgressionRatesView.vue';
 import WarningLabel from './WarningLabel.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
 const readFreshMock = vi.mocked(readFresh);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const meso = screenFixture<MesocycleShowOutput>('mesocycle_show');
 
 async function pick(wrapper: ReturnType<typeof mount>, muscle: string, title: string): Promise<void> {

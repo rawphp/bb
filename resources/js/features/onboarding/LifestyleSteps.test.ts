@@ -1,9 +1,9 @@
 import { flushPromises, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { read, write } from '@/app/call';
+import { read, writeNow } from '@/app/call';
 import { answers, commit, fixture, radio, stepper, view } from './onboardingTesting';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), writeNow: vi.fn() }));
 
 const steps = fixture('steps');
 const meals = fixture('meals');
@@ -21,7 +21,7 @@ describe('lifestyle steps', () => {
     beforeEach(() => {
         wrapper?.unmount();
         vi.mocked(read).mockReset().mockResolvedValue(steps);
-        vi.mocked(write).mockReset().mockResolvedValue({});
+        vi.mocked(writeNow).mockReset().mockResolvedValue({});
     });
 
     describe('step 10, daily steps', () => {
@@ -182,7 +182,7 @@ describe('lifestyle steps', () => {
             await wrapper.get('button[aria-label="Wednesday"]').trigger('click');
             await flushPromises();
 
-            expect(write).not.toHaveBeenCalled();
+            expect(writeNow).not.toHaveBeenCalled();
         });
 
         it('ONB-014 a label is saved when it is left, not while it is typed, and a re-read meanwhile does not wipe it', async () => {
