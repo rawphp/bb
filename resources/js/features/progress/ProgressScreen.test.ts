@@ -290,6 +290,25 @@ describe('ProgressScreen', () => {
         expect(vi.mocked(sharePng).mock.calls[0]![0]).toBe(png);
     });
 
+    it('PWA-034 a tap during a draw that then fails draws again and shares that', async () => {
+        let failFirst: (error: Error) => void = () => {};
+        const png = new Blob(['png'], { type: 'image/png' });
+        vi.mocked(toPng)
+            .mockImplementationOnce(() => new Promise((_resolve, reject) => (failFirst = reject)))
+            .mockResolvedValueOnce(png);
+        vi.mocked(sharePng).mockResolvedValue('shared');
+        const wrapper = render();
+        await flushPromises();
+
+        await wrapper.get('[data-share]').trigger('click');
+        failFirst(new Error('decode failed'));
+        await flushPromises();
+
+        expect(vi.mocked(sharePng).mock.calls).toHaveLength(1);
+        expect(vi.mocked(sharePng).mock.calls[0]![0]).toBe(png);
+        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    });
+
     it('PWA-034 draws the progress card as the shared picture', async () => {
         const png = new Blob(['png'], { type: 'image/png' });
         vi.mocked(toPng).mockResolvedValue(png);
