@@ -158,7 +158,7 @@ it('EX-002 shows the history in pounds when that is the unit', function () {
     $history = detailOf(['unit' => WeightUnit::Lb, 'sets' => [detailSet('s1', $day, 50.0, 10)]])['history'];
 
     expect($history[0]['sets'][0]['text'])->toBe('110.2 lb × 10')
-        ->and($history[0]['best_text'])->toBe('Best e1RM 146.9 lb');
+        ->and($history[0]['best_text'])->toBe('Best e1RM 147.0 lb');
 });
 
 it('EX-002 shows a missing weight or reps as a dash, and a day with no load has no best and no pill', function () {
