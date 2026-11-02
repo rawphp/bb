@@ -73,3 +73,20 @@ it('SUB-002 keeps showing an old price while Stripe cannot give a new one', func
         CarbonImmutable::setTestNow();
     }
 });
+
+it('SUB-002 while another request reads a stale price again, this one goes on with the old copy', function () {
+    $prices = new PlanPrices($this->stripe);
+    CarbonImmutable::setTestNow('2026-11-03 09:00:00');
+    $prices->get('price_monthly');
+    $this->stripe->prices['price_monthly']['amount'] = 3999;
+    CarbonImmutable::setTestNow('2026-11-03 10:00:00');
+    $fetching = Cache::lock(PlanPrices::key('price_monthly').':fetch', 30);
+    $fetching->get();
+
+    try {
+        expect($prices->get('price_monthly'))->toMatchArray(['amount' => 3499]);
+    } finally {
+        $fetching->release();
+        CarbonImmutable::setTestNow();
+    }
+});

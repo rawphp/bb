@@ -126,7 +126,7 @@ Billing is off unless `BILLING_ENABLED=true` (SUB-020). A self-hosted instance l
 | `STRIPE_KEY` | Stripe publishable key. Not used yet: payments open on Stripe's own Checkout page. |
 | `STRIPE_SECRET` | Stripe secret key. |
 | `STRIPE_WEBHOOK_SECRET` | The signing secret of the Stripe webhook endpoint. The server reads an event only when it can verify the signature, and takes subscription state from Stripe, never from the browser (SUB-021). |
-| `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_SIX_MONTHS`, `STRIPE_PRICE_YEARLY` | The Stripe price ID of each plan (SUB-002): a recurring price of 1 month, 6 months and 1 year. The paywall shows Stripe's amount and currency, read every 15 minutes by the scheduler (`php artisan billing:refresh-prices` reads them at once). Leave one empty to not sell that plan. |
+| `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_SIX_MONTHS`, `STRIPE_PRICE_YEARLY` | The Stripe price ID of each plan (SUB-002): a recurring price of 1 month, 6 months and 1 year. The paywall shows Stripe's amount and currency, read every 15 minutes by the scheduler (see Scheduler; `php artisan billing:refresh-prices` reads them at once). Leave one empty to not sell that plan. |
 
 With billing on:
 
@@ -169,7 +169,7 @@ Copy it for `agent` with `queue:work agent --queue=agent --tries=1`. Restart bot
 
 ## Scheduler
 
-The scheduler reaps the agent's stale turns, prunes the audit log (`audit_records`, kept 90 days) and prunes expired undo tokens. Sending due Web Push notifications is not scheduled yet. Run it every minute from cron, as the web server user:
+The scheduler reaps the agent's stale turns, prunes the audit log (`audit_records`, kept 90 days) and prunes expired undo tokens. With billing on it also reads the paywall's prices from Stripe every 15 minutes (`billing:refresh-prices`). Without cron, the paywall reads a price from Stripe itself when its kept copy is more than 15 minutes old, so a paywall request can wait on Stripe now and then. Sending due Web Push notifications is not scheduled yet. Run it every minute from cron, as the web server user:
 
 ```cron
 * * * * * cd /var/www/bodybuilder && php artisan schedule:run >> /dev/null 2>&1
