@@ -5,6 +5,7 @@ namespace App\Capabilities\Support;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 /**
  * Writes that create a row take its ULID from the client, so the offline
@@ -17,7 +18,9 @@ trait UsesClientUlid
 {
     /**
      * The caller's row with this ULID, or null when the ULID is new.
-     * A ULID another user owns is not found (404), never forbidden.
+     * A ULID another user owns is not found (404), never forbidden. A soft-deleted
+     * row's ULID is spent: not found either, whoever owned it, so a retry of a
+     * create whose row was since deleted cannot reuse its key.
      *
      * @template TModel of Model
      *
@@ -28,9 +31,14 @@ trait UsesClientUlid
      */
     protected function ownedOrNew(string $model, string $ulid, Authenticatable $user): ?Model
     {
-        $row = $model::query()->find($ulid);
+        // Soft-deleted rows included: their ULIDs are spent.
+        $row = $model::query()->withoutGlobalScope(SoftDeletingScope::class)->find($ulid);
+        if ($row === null) {
+            return null;
+        }
 
-        if ($row !== null && (string) $row->getAttribute('user_id') !== (string) $user->getAuthIdentifier()) {
+        $spent = method_exists($row, 'trashed') && $row->trashed();
+        if ($spent || (string) $row->getAttribute('user_id') !== (string) $user->getAuthIdentifier()) {
             throw (new ModelNotFoundException)->setModel($model, [$ulid]);
         }
 

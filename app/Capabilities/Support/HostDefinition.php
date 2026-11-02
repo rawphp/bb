@@ -23,6 +23,9 @@ use Rawphp\Capabilities\Support\CapabilityContext;
  * A write marked reversible carries the tag `reversible`, and {@see register()}
  * runs it inside {@see UndoLog::record()}, which returns its undo token (CAP-013).
  * The tag and the recording are set in that one place, so they cannot drift apart.
+ *
+ * A write marked destructive carries the tag `destructive` (AGT-010): the agent policy refuses it
+ * unless the user confirmed that call in chat.
  */
 final class HostDefinition
 {
@@ -41,6 +44,8 @@ final class HostDefinition
 
     private const REVERSIBLE_TAG = 'reversible';
 
+    private const DESTRUCTIVE_TAG = 'destructive';
+
     public static function read(string $name): CapabilityDefinitionBuilder
     {
         return Capability::define($name)
@@ -51,7 +56,7 @@ final class HostDefinition
     /**
      * @param  list<string>  $affects  the read capabilities this write can change
      */
-    public static function write(string $name, array $affects, bool $reversible = false): CapabilityDefinitionBuilder
+    public static function write(string $name, array $affects, bool $reversible = false, bool $destructive = false): CapabilityDefinitionBuilder
     {
         if ($affects === []) {
             throw new InvalidArgumentException("{$name} must list the reads it affects (CAP-011).");
@@ -69,6 +74,7 @@ final class HostDefinition
             ->tags([
                 ...array_map(fn (string $read): string => self::AFFECTS_TAG.$read, $affects),
                 ...($reversible ? [self::REVERSIBLE_TAG] : []),
+                ...($destructive ? [self::DESTRUCTIVE_TAG] : []),
             ]);
     }
 
@@ -106,6 +112,12 @@ final class HostDefinition
     public static function isReversible(CapabilityDefinition $definition): bool
     {
         return in_array(self::REVERSIBLE_TAG, $definition->tags, true);
+    }
+
+    /** AGT-010: the write needs the user's say-so before the agent may call it. */
+    public static function isDestructive(CapabilityDefinition $definition): bool
+    {
+        return in_array(self::DESTRUCTIVE_TAG, $definition->tags, true);
     }
 
     /**
