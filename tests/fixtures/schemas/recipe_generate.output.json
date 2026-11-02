@@ -1,0 +1,64 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "servings": {
+            "type": "number"
+        },
+        "meal_type": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "One of: breakfast, lunch, dinner, snack; or null"
+        },
+        "steps": {
+            "type": "array"
+        },
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "grams": {
+                        "type": "number"
+                    },
+                    "food_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "match_text": {
+                        "type": "string"
+                    },
+                    "detail": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "grams",
+                    "match_text"
+                ]
+            }
+        }
+    },
+    "required": [
+        "name",
+        "servings",
+        "steps",
+        "items"
+    ]
+}

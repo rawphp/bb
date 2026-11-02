@@ -1,0 +1,50 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "rows": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "recipe_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "meal_type_title": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "macros_text": {
+                        "type": "string",
+                        "description": "330 kcal · P 28 · F 3 · C 47, per serving"
+                    },
+                    "is_library": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "recipe_id",
+                    "name",
+                    "macros_text",
+                    "is_library"
+                ]
+            }
+        },
+        "empty_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "rows"
+    ]
+}
