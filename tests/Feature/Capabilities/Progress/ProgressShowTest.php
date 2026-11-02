@@ -2,7 +2,6 @@
 
 use App\Domain\Model\MuscleGroup;
 use App\Models\Exercise;
-use App\Models\Phase;
 use App\Models\Step;
 use App\Models\User;
 use App\Models\WeighIn;
