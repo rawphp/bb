@@ -26,13 +26,14 @@ final class AuditRecordWriter implements AuditWriter
 
     public function write(array $entry): void
     {
-        $caller = is_string($entry['caller'] ?? null) ? $entry['caller'] : 'http';
+        // Approval and tool-boundary events carry no caller, so they have no channel.
+        $caller = is_string($entry['caller'] ?? null) ? $entry['caller'] : null;
 
         AuditRecord::create([
             'user_id' => $this->userId($entry),
             'event' => (string) ($entry['event'] ?? 'capability.unknown'),
             'capability' => $entry['capability_name'] ?? null,
-            'channel' => Channel::derive($caller, $caller === 'http' ? $this->currentToken() : null)->value,
+            'channel' => $caller === null ? null : Channel::derive($caller, $caller === 'http' ? $this->currentToken() : null)->value,
             'input' => $entry['redacted_input'] ?? null,
             'result' => $entry['result'] ?? null,
             'created_at' => $this->recordedAt($entry),

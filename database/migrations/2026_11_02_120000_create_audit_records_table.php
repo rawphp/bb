@@ -21,9 +21,10 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained()->cascadeOnDelete();
             // capability.invoked | capability.failed | capability.output_invalid, or an approval event
             $table->string('event', 64);
-            $table->string('capability', 64)->nullable();
-            // ui | agent | mcp | cli | bridge
-            $table->string('channel', 16);
+            // 191, as the package's own audit table, so no capability name is too long to record.
+            $table->string('capability', 191)->nullable();
+            // ui | agent | mcp | cli | bridge; null for an approval or tool-boundary event, which has no caller
+            $table->string('channel', 16)->nullable();
             // Redacted by the package before it reaches the writer.
             $table->json('input')->nullable();
             $table->json('result')->nullable();

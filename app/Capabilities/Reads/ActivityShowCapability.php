@@ -45,12 +45,14 @@ final class ActivityShowCapability implements HostCapability
         $toast = $result['summary']['toast'] ?? null;
         $name = $record->capability === null ? 'Change' : Str::ucfirst(str_replace('_', ' ', $record->capability));
         $at = CarbonImmutable::instance($record->created_at);
+        // run() lists only rows with one of the five channels.
+        $channel = Channel::from((string) $record->channel);
 
         return new ActivityEntry(
             id: $record->id,
             title: $ok && is_string($toast) && $toast !== '' ? $toast : $name,
-            channel: $record->channel,
-            channel_label: Channel::from($record->channel)->label(),
+            channel: $channel->value,
+            channel_label: $channel->label(),
             occurred_at: $at->toIso8601String(),
             when_text: self::when($at, CarbonImmutable::instance($now)),
             result: self::status($record, $result, $ok),
@@ -66,6 +68,7 @@ final class ActivityShowCapability implements HostCapability
         $records = AuditRecord::query()
             ->whereBelongsTo($user)
             ->whereIn('event', self::INVOKE_EVENTS)
+            ->whereIn('channel', array_column(Channel::cases(), 'value'))
             ->latest()
             ->latest('id')
             ->limit(self::LIMIT)

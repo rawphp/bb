@@ -2,6 +2,8 @@
 
 use App\Capabilities\HostAuthorizer;
 use App\Models\User;
+use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\TransientToken;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\Capabilities\Support\CapabilityContext;
 use Rawphp\Capabilities\Support\SystemActor;
@@ -19,6 +21,18 @@ it('CAP-020 refuses an invoke with no signed-in user', function (mixed $context)
     'actor that is not a user' => fn () => new CapabilityContext(caller: 'http', actor: new stdClass),
     'no context' => [null],
 ]);
+
+it('CAP-023 allows a personal access token only the capabilities its abilities name', function () {
+    $user = (new User)->withAccessToken(new PersonalAccessToken(['abilities' => ['steps_log']]));
+    $everything = (new User)->withAccessToken(new PersonalAccessToken(['abilities' => ['*']]));
+    $session = (new User)->withAccessToken(new TransientToken);
+    $authorize = fn (User $actor, string $capability): bool => (new HostAuthorizer)->authorize($capability, [], new CapabilityContext(caller: 'http', actor: $actor));
+
+    expect($authorize($user, 'steps_log'))->toBeTrue()
+        ->and($authorize($user, 'account_delete'))->toBeFalse()
+        ->and($authorize($everything, 'account_delete'))->toBeTrue()
+        ->and($authorize($session, 'account_delete'))->toBeTrue();
+});
 
 it('CAP-031 refuses an excluded capability to the agent, whatever reached the bus', function (string $capability) {
     $authorizer = new HostAuthorizer;

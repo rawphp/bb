@@ -103,6 +103,9 @@ return [
 
     'audit' => [
         'enabled' => true,
+        // best_effort: a failed audit insert is reported to the exception handler and the
+        // write stands. strict would answer a write that already committed (wrap_run is
+        // off) with a failure, and the client's retry would make it twice.
         'mode' => $env('CAPABILITIES_AUDIT_MODE', 'best_effort'),
         // The host binds AuditRecordWriter (CAP-022), which wins over this driver;
         // the package has no driver name for a host-bound writer.

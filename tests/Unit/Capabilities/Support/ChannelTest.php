@@ -20,6 +20,10 @@ it('CAP-022 names the channel from the server-set caller', function (string $cal
     'an artisan command' => ['artisan', Channel::Cli],
 ]);
 
+it('CAP-022 refuses to guess the channel of a caller it does not know', function () {
+    Channel::derive('webhook', null);
+})->throws(UnexpectedValueException::class, 'webhook');
+
 it('CAP-022 counts an http call with the session as the app', function () {
     expect(Channel::derive('http', new TransientToken))->toBe(Channel::Ui);
 });

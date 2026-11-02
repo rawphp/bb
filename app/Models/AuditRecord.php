@@ -21,7 +21,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $user_id
  * @property string $event
  * @property string|null $capability
- * @property string $channel
+ * @property string|null $channel
  * @property array<array-key, mixed>|null $input
  * @property array<string, mixed>|null $result
  * @property Carbon $created_at

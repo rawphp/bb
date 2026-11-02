@@ -2,11 +2,14 @@
 
 use App\Capabilities\Support\Channel;
 use App\Capabilities\Support\HostDefinition;
+use App\Capabilities\Support\ReadKey;
+use App\Capabilities\Support\WriteResult;
 use App\Models\AuditRecord;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
 use Rawphp\Capabilities\Contracts\AuditWriter;
 use Rawphp\Capabilities\Contracts\CapabilityBus;
@@ -17,6 +20,16 @@ use Tests\Support\Fixtures\Rail\TallyInput;
 
 // Registers a test-only capability, so each test gets its own application.
 uses()->group('warp-isolated');
+
+/** A stand-in for the Health bridge's steps_log write (INT-001), which is not built yet. */
+function registerStepsLog(): void
+{
+    HostDefinition::write('steps_log', affects: ['tally_show'])
+        ->description('Stand-in for the Health bridge write. Used by Activity tests only.')
+        ->input(TallyInput::class)
+        ->run(fn (TallyInput $input): WriteResult => new WriteResult(invalidates: [ReadKey::for('tally_show')], toast: "Logged {$input->amount}"))
+        ->register(app(CapabilityRegistry::class));
+}
 
 beforeEach(function () {
     (new TallyAddCapability)->definition()->register(app(CapabilityRegistry::class));
@@ -75,17 +88,29 @@ it('CAP-022 records the agent, MCP and CLI channels from the caller their adapte
         ->and(AuditRecord::query()->distinct()->pluck('user_id')->all())->toBe([$user->id]);
 });
 
-it('CAP-022 records a Health bridge token\'s write as the bridge and any other token\'s as the CLI', function (array $abilities, string $channel) {
+it('CAP-022 records a Health bridge token\'s write as the bridge and a full token\'s as the CLI', function (array $abilities, string $capability, string $channel) {
+    registerStepsLog();
     $user = User::factory()->create();
     $token = $user->createToken('script', $abilities)->plainTextToken;
 
-    $this->withToken($token)->postJson('/capabilities/tally_add', ['amount' => 3])->assertOk();
+    $this->withToken($token)->postJson("/capabilities/{$capability}", ['amount' => 3])->assertOk();
 
     expect(AuditRecord::sole())->user_id->toBe($user->id)->channel->toBe($channel);
 })->with([
-    'a Health bridge token' => [['weigh_in_log', 'steps_log'], 'bridge'],
-    'a full CLI token' => [['*'], 'cli'],
+    'a Health bridge token' => [Channel::BRIDGE_ABILITIES, 'steps_log', 'bridge'],
+    'a full CLI token' => [['*'], 'tally_add', 'cli'],
 ]);
+
+it('CAP-023 refuses a Health bridge token any capability outside its abilities, and audits the refusal', function () {
+    $user = User::factory()->create();
+
+    $this->withToken($user->createToken('bridge', Channel::BRIDGE_ABILITIES)->plainTextToken)
+        ->postJson('/capabilities/tally_add', ['amount' => 3])->assertForbidden();
+
+    expect(TallyAddCapability::$runs)->toBe(0);
+    $record = AuditRecord::sole();
+    expect($record)->channel->toBe('bridge')->and($record->result)->toMatchArray(['ok' => false, 'code' => 'forbidden']);
+});
 
 it('CAP-022 records a write the authorizer refuses, under the user, and lists it', function () {
     HostDefinition::write('billing_tally', affects: ['tally_show'])
@@ -117,10 +142,11 @@ it('CAP-022 audits no read and no write refused for invalid input', function () 
 
 it('CAP-022 writes the audit row inside the invoke, so a token write keeps its channel with a real queue', function () {
     Queue::fake();
+    registerStepsLog();
     $user = User::factory()->create();
 
     $this->withToken($user->createToken('bridge', Channel::BRIDGE_ABILITIES)->plainTextToken)
-        ->postJson('/capabilities/tally_add', ['amount' => 3])->assertOk();
+        ->postJson('/capabilities/steps_log', ['amount' => 3])->assertOk();
 
     expect(AuditRecord::sole()->channel)->toBe('bridge');
     Queue::assertNothingPushed();
@@ -136,6 +162,26 @@ it('CAP-022 lists only capability invokes in activity_show, not approval or boun
 
     expect(array_column($entries, 'id'))->toBe([$kept->id])
         ->and($entries[0]['result'])->toBe(['text' => 'Done, with a server error', 'tone' => 'warning']);
+});
+
+it('CAP-022 stores no channel for an event with no caller, and Activity does not list it', function () {
+    $user = User::factory()->create();
+
+    app(AuditWriter::class)->write(['event' => 'capability.invoked', 'capability_name' => 'tally_add', 'actor_type' => 'user', 'actor_id' => (string) $user->id]);
+
+    expect(AuditRecord::sole()->channel)->toBeNull()
+        ->and($this->actingAs($user)->postJson('/capabilities/activity_show')->json('data.entries'))->toBe([]);
+});
+
+it('CAP-022 reports a failed audit insert to the exception handler, as main\'s package writer did, and keeps the write', function () {
+    Exceptions::fake();
+    AuditRecord::creating(fn (): never => throw new RuntimeException('Lock wait timeout exceeded.'));
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->postJson('/capabilities/tally_add', ['amount' => 3])->assertOk();
+
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'Lock wait timeout exceeded.');
+    expect(TallyAddCapability::$total)->toBe(3);
 });
 
 it('CAP-022 dates an entry by the time it carries, not the time it is stored', function () {

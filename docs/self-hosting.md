@@ -133,7 +133,7 @@ With billing on, add a webhook endpoint in Stripe pointing at the app's Stripe w
 
 Two workers:
 
-- `default`: the `default` queue (notifications, mail and other background jobs). The audit log needs no worker: each row is written during the request that made the change.
+- `default`: the `default` queue (notifications, mail and other background jobs). The audit log needs no worker: each row is written during the request that made the change. Earlier versions of this guide also listed a `capabilities-audit` queue. Nothing was ever pushed to it, so an upgrade has nothing to drain there. A failed audit insert is reported to the app's exception handler (your error tracker or `storage/logs`).
 - `agent`: the Coach's turns, on the `agent` connection. Its `retry_after` is `CAPABILITIES_AI_CLAIM_TTL` plus 60 seconds, so a turn that runs long is never handed to a second worker. Only needed with the agent on, but harmless without it.
 
 ```bash

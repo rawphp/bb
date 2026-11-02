@@ -3,6 +3,7 @@
 namespace App\Capabilities\Support;
 
 use Laravel\Sanctum\PersonalAccessToken;
+use UnexpectedValueException;
 
 /**
  * Which way a write came in (CAP-022). The server derives it from the caller
@@ -32,7 +33,9 @@ enum Channel: string
             'agent', 'job' => self::Agent,
             'mcp' => self::Mcp,
             'cli', 'artisan' => self::Cli,
-            default => self::overHttp($token),
+            'http' => self::overHttp($token),
+            // A new caller needs a decision here, not a guess that would show it as the app.
+            default => throw new UnexpectedValueException("No audit channel for caller \"{$caller}\"."),
         };
     }
 
