@@ -125,15 +125,18 @@ final class LoadSavedMeal
         );
     }
 
-    /** RCP-002: servings of a recipe at its ingredients' macros per serving. One whose recipe is gone is held as it is. */
+    /**
+     * RCP-002: servings of a recipe at its ingredients' macros per serving. The recipe is always there: a planned
+     * recipe goes with it on delete (cascade), and a soft-deleted one still loads (withTrashed).
+     */
     private static function recipe(string $id, PlannedRecipe $planned): MealFood
     {
         $recipe = $planned->sourceRecipe;
-        $perServing = $recipe === null ? new MealTarget(0, 0, 0, 0) : RecipeMacros::perServing(
+        $perServing = RecipeMacros::perServing(
             $recipe->ingredients->map(fn (RecipeIngredient $i) => self::food("ingredient:{$i->id}", $i->food, (float) $i->grams, (bool) $i->is_cooked, false))->values()->all(),
             (float) $recipe->servings,
         );
 
-        return RecipeServing::food($id, $recipe->name ?? 'Recipe', $perServing, $planned->servings, $planned->is_locked || $recipe === null);
+        return RecipeServing::food($id, $recipe->name, $perServing, $planned->servings, $planned->is_locked);
     }
 }
