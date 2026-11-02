@@ -26,6 +26,7 @@ use App\Models\WeighIn;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Providers\CapabilitiesHostProvider;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -583,8 +584,11 @@ it('CAP-013 prunes expired undo tokens, every user\'s, and keeps the live ones',
         ->assertDatabaseMissing('undo_tokens', ['id' => $otherExpired->id]);
 });
 
-it('CAP-013 schedules pruning of expired undo tokens', function () {
-    Artisan::call('schedule:list');
+it('CAP-013 schedules pruning of expired undo tokens every hour', function () {
+    $prune = collect(app(Schedule::class)->events())
+        ->filter(fn ($event) => str_contains((string) $event->command, 'model:prune'))
+        ->sole();
 
-    expect(Artisan::output())->toContain('model:prune');
+    expect($prune->command)->toContain("--model='".UndoToken::class."'")
+        ->and($prune->expression)->toBe('0 * * * *');
 });
