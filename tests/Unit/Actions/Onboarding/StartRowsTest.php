@@ -128,3 +128,31 @@ it('ONB-020 the plan week and day target rows carry week one with its meals, eac
         }
     }
 });
+
+it('ONB-020 each day target row and its meals carry the built week\'s day type and macros, column by column', function () {
+    $start = F::start(F::atReview());
+    $days = StartRows::dayTargets($start, fn () => 'id');
+
+    expect($days)->toHaveCount(count($start->targetDays))
+        ->and(array_column($days, 'day_type'))->toContain('rest')->not->toBe(array_fill(0, count($days), 'rest'));
+    foreach ($start->targetDays as $i => $built) {
+        expect($days[$i])->toMatchArray([
+            'day_type' => $built->day->type->value,
+            'kcal' => $built->target?->kcal,
+            'protein_g' => $built->target?->proteinG,
+            'fat_g' => $built->target?->fatG,
+            'carbs_g' => $built->target?->carbsG,
+        ]);
+        foreach ($built->meals as $m => $meal) {
+            expect($days[$i]['meals'][$m])->toMatchArray([
+                'name' => $meal->meal->name,
+                'kcal' => $meal->meal->target->kcal,
+                'protein_g' => $meal->meal->target->proteinG,
+                'fat_g' => $meal->meal->target->fatG,
+                'carbs_g' => $meal->meal->target->carbsG,
+            ]);
+        }
+        $macros = [$built->target?->proteinG, $built->target?->fatG, $built->target?->carbsG];
+        expect(count(array_unique(array_map('strval', $macros))))->toBe(3, 'protein, fat and carbs differ, so a swap shows');
+    }
+});
