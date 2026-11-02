@@ -3,84 +3,120 @@
 namespace Tests\Support;
 
 /**
- * Checks a decoded JSON value against a schema snapshot. It covers the subset
- * CapabilityData::jsonSchema() emits: type (one or a list), properties,
- * required, additionalProperties false, items, enum, minimum and maximum.
+ * Checks a decoded JSON value against the JSON Schema subset that
+ * CapabilityData::jsonSchema() writes: type, enum, properties, required,
+ * additionalProperties: false, items, minimum, maximum, minLength,
+ * maxLength, minItems, maxItems and the date format.
  */
 final class SchemaCheck
 {
     /**
      * @param  array<string, mixed>  $schema
-     * @return list<string> one line per problem, empty when the value fits
+     * @return list<string> one line per violation, empty when the value fits
      */
-    public static function problems(array $schema, mixed $value, string $path = '$'): array
+    public static function violations(array $schema, mixed $value, string $path = '$'): array
     {
         $types = (array) ($schema['type'] ?? []);
+        $type = self::type($value);
 
-        if ($types !== [] && ! in_array(self::type($value, $types), $types, true)) {
-            return ["{$path}: expected ".implode('|', $types).', got '.get_debug_type($value)];
+        if ($types !== [] && ! in_array($type, $types, true) && ! ($type === 'integer' && in_array('number', $types, true))) {
+            return ["{$path}: expected ".implode('|', $types).", got {$type}"];
+        }
+
+        // A nullable enum lists its values without null (see the PR notes on the package).
+        if ($value === null) {
+            return [];
         }
 
         if (isset($schema['enum']) && ! in_array($value, $schema['enum'], true)) {
             return ["{$path}: ".json_encode($value).' is not one of '.json_encode($schema['enum'])];
         }
 
-        if (is_int($value) || is_float($value)) {
-            if (isset($schema['minimum']) && $value < $schema['minimum']) {
-                return ["{$path}: {$value} is below {$schema['minimum']}"];
-            }
-            if (isset($schema['maximum']) && $value > $schema['maximum']) {
-                return ["{$path}: {$value} is above {$schema['maximum']}"];
-            }
+        $bound = self::boundViolation($schema, $value, $type);
+        if ($bound !== null) {
+            return ["{$path}: {$bound}"];
         }
 
-        if (! is_array($value)) {
-            return [];
-        }
+        $violations = [];
 
-        $problems = [];
-
-        if (array_is_list($value) && in_array('array', $types, true)) {
-            foreach ($value as $index => $item) {
-                array_push($problems, ...self::problems($schema['items'] ?? [], $item, "{$path}[{$index}]"));
-            }
-
-            return $problems;
-        }
-
-        $properties = $schema['properties'] ?? [];
-        foreach ($schema['required'] ?? [] as $key) {
-            if (! array_key_exists($key, $value)) {
-                $problems[] = "{$path}.{$key}: required";
-            }
-        }
-        foreach ($value as $key => $item) {
-            if (! array_key_exists($key, $properties)) {
-                if (($schema['additionalProperties'] ?? true) === false) {
-                    $problems[] = "{$path}.{$key}: not in the schema";
+        if ($type === 'object') {
+            $properties = $schema['properties'] ?? [];
+            foreach ($schema['required'] ?? [] as $key) {
+                if (! array_key_exists($key, $value)) {
+                    $violations[] = "{$path}.{$key}: required";
                 }
-
-                continue;
             }
-            array_push($problems, ...self::problems($properties[$key], $item, "{$path}.{$key}"));
+            foreach ($value as $key => $item) {
+                if (! array_key_exists($key, $properties)) {
+                    $violations[] = "{$path}.{$key}: not in the schema";
+
+                    continue;
+                }
+                array_push($violations, ...self::violations($properties[$key], $item, "{$path}.{$key}"));
+            }
         }
 
-        return $problems;
+        if ($type === 'array' && isset($schema['items'])) {
+            foreach ($value as $index => $item) {
+                array_push($violations, ...self::violations($schema['items'], $item, "{$path}[{$index}]"));
+            }
+        }
+
+        return $violations;
     }
 
-    /** @param  list<string>  $allowed */
-    private static function type(mixed $value, array $allowed): string
+    /** @param  array<string, mixed>  $schema */
+    private static function boundViolation(array $schema, mixed $value, string $type): ?string
+    {
+        if ($type === 'integer' || $type === 'number') {
+            return match (true) {
+                isset($schema['minimum']) && $value < $schema['minimum'] => "{$value} is below the minimum {$schema['minimum']}",
+                isset($schema['maximum']) && $value > $schema['maximum'] => "{$value} is above the maximum {$schema['maximum']}",
+                default => null,
+            };
+        }
+
+        if ($type === 'string') {
+            $length = mb_strlen($value);
+
+            return match (true) {
+                isset($schema['minLength']) && $length < $schema['minLength'] => "{$length} characters, under the minLength {$schema['minLength']}",
+                isset($schema['maxLength']) && $length > $schema['maxLength'] => "{$length} characters, over the maxLength {$schema['maxLength']}",
+                ($schema['format'] ?? null) === 'date' && ! self::isDate($value) => json_encode($value).' is not a date (Y-m-d)',
+                default => null,
+            };
+        }
+
+        if ($type === 'array') {
+            $count = count($value);
+
+            return match (true) {
+                isset($schema['minItems']) && $count < $schema['minItems'] => "{$count} items, under the minItems {$schema['minItems']}",
+                isset($schema['maxItems']) && $count > $schema['maxItems'] => "{$count} items, over the maxItems {$schema['maxItems']}",
+                default => null,
+            };
+        }
+
+        return null;
+    }
+
+    private static function isDate(string $value): bool
+    {
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+
+        return $date !== false && $date->format('Y-m-d') === $value;
+    }
+
+    private static function type(mixed $value): string
     {
         return match (true) {
             $value === null => 'null',
             is_bool($value) => 'boolean',
-            is_int($value) => in_array('integer', $allowed, true) ? 'integer' : 'number',
+            is_int($value) => 'integer',
             is_float($value) => 'number',
             is_string($value) => 'string',
-            // [] decodes the same for an empty list and an empty object.
-            is_array($value) && $value === [] => in_array('array', $allowed, true) ? 'array' : 'object',
-            is_array($value) => array_is_list($value) ? 'array' : 'object',
-            default => get_debug_type($value),
+            is_array($value) && ($value === [] || array_is_list($value)) => 'array',
+            default => 'object',
         };
     }
 }

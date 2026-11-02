@@ -1,0 +1,53 @@
+{
+    "is_editing": true,
+    "weeks": [
+        {
+            "week_start": "2026-09-26",
+            "label": "Week 3 · Sep 26",
+            "is_away": true,
+            "selected": true
+        },
+        {
+            "week_start": "2026-10-03",
+            "label": "Week 4 · Oct 3",
+            "is_away": false,
+            "selected": false
+        },
+        {
+            "week_start": "2026-10-10",
+            "label": "Week 5 · Oct 10",
+            "is_away": false,
+            "selected": false
+        }
+    ],
+    "training_options": [
+        {
+            "value": "pause",
+            "label": "Pause training",
+            "text": "Your mesocycle picks up where it stopped, and ends a week later.",
+            "enabled": true
+        },
+        {
+            "value": "deload",
+            "label": "Make it the deload",
+            "text": "Needs 3 training weeks of the mesocycle before it.",
+            "enabled": false
+        }
+    ],
+    "calorie_options": [
+        {
+            "value": "rest",
+            "label": "Rest-day targets",
+            "text": "Every day eats like a rest day."
+        },
+        {
+            "value": "maintenance",
+            "label": "Maintenance",
+            "text": "Every day eats at maintenance. In Fat loss the week counts as a diet break."
+        }
+    ],
+    "training": "pause",
+    "calories": "rest",
+    "notes": [],
+    "shows_keep_phase_end": false
+}

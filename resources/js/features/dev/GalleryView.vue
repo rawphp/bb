@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue';
 
-// Every design system component's gallery file (VIEW-004). TOKENS_CSS fills it in.
+// Every design system component's gallery file (VIEW-004).
 const entries = Object.entries(
     import.meta.glob<Component>('/resources/js/design/gallery/*.gallery.vue', { eager: true, import: 'default' }),
 )

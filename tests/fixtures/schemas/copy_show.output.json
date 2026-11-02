@@ -1,0 +1,256 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "mode": {
+            "type": "string",
+            "enum": [
+                "foods",
+                "day"
+            ]
+        },
+        "title": {
+            "type": "string",
+            "description": "\"Copy foods\" or \"Copy day\""
+        },
+        "source": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "time_text": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "foods_text": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        },
+                        "tone": {
+                            "type": "string",
+                            "enum": [
+                                "good",
+                                "neutral",
+                                "warning",
+                                "info"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "tone"
+                    ],
+                    "description": "\"Targets met\" or \"Targets not met\"; null when copying a day."
+                }
+            },
+            "required": [
+                "name",
+                "foods_text"
+            ]
+        },
+        "shown_date": {
+            "type": "string",
+            "format": "date"
+        },
+        "strip": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "letter": {
+                        "type": "string"
+                    },
+                    "number": {
+                        "type": "string"
+                    },
+                    "calories_text": {
+                        "type": "string"
+                    },
+                    "is_today": {
+                        "type": "boolean"
+                    },
+                    "is_shown": {
+                        "type": "boolean"
+                    },
+                    "has_training": {
+                        "type": "boolean"
+                    },
+                    "is_before_plan": {
+                        "type": "boolean"
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "description": "false for a day that cannot take the copy."
+                    }
+                },
+                "required": [
+                    "date",
+                    "letter",
+                    "number",
+                    "calories_text",
+                    "is_today",
+                    "is_shown",
+                    "has_training",
+                    "is_before_plan",
+                    "enabled"
+                ]
+            }
+        },
+        "previous_week": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "date"
+        },
+        "next_week": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "date"
+        },
+        "timeline": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "meal",
+                            "workout"
+                        ]
+                    },
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "kind",
+                    "id"
+                ]
+            }
+        },
+        "meals": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "time_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "target_text": {
+                        "type": "string",
+                        "description": "\"512 kcal · P 40 F 12 C 60\""
+                    },
+                    "foods_text": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Why it cannot take the copy."
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "target_text",
+                    "foods_text",
+                    "enabled"
+                ]
+            }
+        },
+        "workouts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "time_text": {
+                        "type": "string",
+                        "description": "\"5:30 PM · 55 min\""
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "time_text"
+                ]
+            }
+        },
+        "options": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "update_target_macros": {
+                    "type": "boolean"
+                },
+                "update_meal_times": {
+                    "type": "boolean"
+                },
+                "copy_locked_state": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "update_target_macros",
+                "update_meal_times",
+                "copy_locked_state"
+            ]
+        }
+    },
+    "required": [
+        "mode",
+        "title",
+        "source",
+        "shown_date",
+        "strip",
+        "timeline",
+        "meals",
+        "workouts",
+        "options"
+    ]
+}

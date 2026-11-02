@@ -1,6 +1,9 @@
 // The only way the app talks to the server (CAP-004): POST /capabilities/{name}
-// with Sanctum SPA cookie auth. CACHE (#18) puts read() behind the IndexedDB
-// cache, and OUTBOX (#58) puts write() behind the outbox.
+// with Sanctum SPA cookie auth, plus X-BB-Now while the clock is walked (SET-011).
+// CACHE (#18) puts read() behind the IndexedDB cache, and OUTBOX (#58) puts
+// write() behind the outbox.
+
+import { isWalked, now } from './clock';
 
 export type CapabilityInput = Record<string, unknown>;
 
@@ -50,6 +53,7 @@ async function send<T>(name: string, input: CapabilityInput, signal: AbortSignal
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-XSRF-TOKEN': await csrfToken(signal),
+                ...(isWalked() ? { 'X-BB-Now': now().toISOString() } : {}),
             },
             body: JSON.stringify(input),
             signal,

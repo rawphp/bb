@@ -1,0 +1,192 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "week_start": {
+            "type": "string",
+            "format": "date"
+        },
+        "heading": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "\"WEEK 2\"; null before the plan."
+        },
+        "pills": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "tone": {
+                        "type": "string",
+                        "enum": [
+                            "good",
+                            "neutral",
+                            "warning",
+                            "info"
+                        ]
+                    }
+                },
+                "required": [
+                    "text",
+                    "tone"
+                ]
+            },
+            "description": "\"Deload\", \"Away\", \"Rough week\"."
+        },
+        "days": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "letter": {
+                        "type": "string",
+                        "description": "\"M\""
+                    },
+                    "number": {
+                        "type": "string",
+                        "description": "\"23\""
+                    },
+                    "calories_text": {
+                        "type": "string",
+                        "description": "\"2600\", or \"–\" before the plan (SCH-021)."
+                    },
+                    "is_today": {
+                        "type": "boolean"
+                    },
+                    "is_selected": {
+                        "type": "boolean"
+                    },
+                    "is_complete": {
+                        "type": "boolean",
+                        "description": "SCH-021: the green dot."
+                    },
+                    "has_training": {
+                        "type": "boolean",
+                        "description": "SCH-022: the dumbbell."
+                    },
+                    "is_before_plan": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "date",
+                    "letter",
+                    "number",
+                    "calories_text",
+                    "is_today",
+                    "is_selected",
+                    "is_complete",
+                    "has_training",
+                    "is_before_plan"
+                ]
+            }
+        },
+        "previous_week": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "A day of the week before; null at the plan's start.",
+            "format": "date"
+        },
+        "next_week": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "null at the plan's end.",
+            "format": "date"
+        },
+        "calendar": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "first": {
+                    "type": "string",
+                    "format": "date"
+                },
+                "last": {
+                    "type": "string",
+                    "format": "date"
+                }
+            },
+            "required": [
+                "first",
+                "last"
+            ]
+        },
+        "actions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": [
+                            "mark_away",
+                            "edit_away",
+                            "mark_rough",
+                            "unmark_rough"
+                        ]
+                    },
+                    "label": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "action",
+                    "label"
+                ]
+            }
+        },
+        "warnings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "tone": {
+                        "type": "string",
+                        "enum": [
+                            "good",
+                            "neutral",
+                            "warning",
+                            "info"
+                        ]
+                    }
+                },
+                "required": [
+                    "text",
+                    "tone"
+                ]
+            },
+            "description": "SCH-062 \"Too much cardio\"."
+        }
+    },
+    "required": [
+        "week_start",
+        "pills",
+        "days",
+        "actions",
+        "warnings"
+    ]
+}
