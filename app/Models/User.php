@@ -110,6 +110,12 @@ class User extends Authenticatable
         return $this->hasOne(Profile::class);
     }
 
+    /** @return HasOne<Subscription, $this> the Stripe customer and subscription, with billing on (SUB-021) */
+    public function subscription(): HasOne
+    {
+        return $this->hasOne(Subscription::class);
+    }
+
     /** @return HasOne<Plan, $this> */
     public function plan(): HasOne
     {

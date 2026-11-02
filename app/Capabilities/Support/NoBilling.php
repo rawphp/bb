@@ -12,4 +12,9 @@ final class NoBilling implements BillingGate
     {
         return true;
     }
+
+    public function allowsCoach(User $user): bool
+    {
+        return true;
+    }
 }
