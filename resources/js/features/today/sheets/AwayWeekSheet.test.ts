@@ -1,13 +1,14 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { AwayWeekShowOutput } from '@/contracts/away_week_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import AwayWeekSheet from './AwayWeekSheet.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
 
 const readMock = vi.mocked(read);
+const readFreshMock = vi.mocked(readFresh);
 const writeMock = vi.mocked(write);
 const marking = screenFixture<AwayWeekShowOutput>('away_week_show');
 const editing = screenFixture<AwayWeekShowOutput>('away_week_show.editing');
@@ -29,6 +30,7 @@ function sent(capability: string): Record<string, unknown> {
 describe('AwayWeekSheet', () => {
     beforeEach(() => {
         readMock.mockReset().mockResolvedValue(marking);
+        readFreshMock.mockReset().mockResolvedValue(marking);
         writeMock.mockReset().mockResolvedValue({});
     });
 
@@ -211,5 +213,20 @@ describe('AwayWeekSheet', () => {
         await flushPromises();
 
         expect(sent('away_week_set')).toEqual({ week_starts: ['2026-09-26'], away: true, training: 'pause', calories: 'rest' });
+    });
+
+    it('CAP-014 keeps the weeks and choices picked when a save gets no answer and the weeks are read again', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('away_week_set', 503, null));
+        readFreshMock.mockResolvedValueOnce(structuredClone(marking));
+        const wrapper = show();
+        await wrapper.findAll('[data-test="week"]')[1]!.trigger('click');
+        await wrapper.get('[role="radiogroup"][aria-label="Calories"]').findAll('[role="radio"]')[0]!.trigger('click');
+
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(readFreshMock).toHaveBeenCalled();
+        expect(wrapper.findAll('[data-test="week"]').map((w) => w.attributes('aria-pressed'))).toEqual(['true', 'true', 'false']);
+        expect(wrapper.get('[role="radiogroup"][aria-label="Calories"]').find('[aria-checked="true"]').attributes('aria-label')).toBe('Rest-day targets');
     });
 });

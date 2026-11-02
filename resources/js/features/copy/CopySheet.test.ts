@@ -119,6 +119,9 @@ describe('CopySheet', () => {
         await wrapper.get('[aria-label="Advanced options"]').trigger('click');
         await wrapper.findAll('[role="dialog"]')[1]!.findAll('input[role="switch"]')[0]!.setValue(false);
         await wrapper.findAll('[role="dialog"]')[1]!.findAll('header button')[0]!.trigger('click');
+        await wrapper.get('[aria-label="Advanced options"]').trigger('click');
+        expect(wrapper.findAll('[role="dialog"]')[1]!.findAll('input[role="switch"]').map((i) => (i.element as HTMLInputElement).checked)).toEqual([true, true, true]);
+        await wrapper.findAll('[role="dialog"]')[1]!.get('[data-save]').trigger('click');
 
         await wrapper.findAll('[data-kind="meal"]')[0]!.trigger('click');
         await save(wrapper).trigger('click');
