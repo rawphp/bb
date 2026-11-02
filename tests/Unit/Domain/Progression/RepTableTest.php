@@ -43,6 +43,14 @@ it('PROG-024 WO-005 the table runs every load step within 15% of the planned wei
         ->and(array_map(fn (RepTableRow $row) => $row->reps, $rows))->toBe([15, 14, 12, 11, 10, 8, 7, 6, 5]);
 });
 
+it('PROG-025 a weight more than 15% from last week\'s is no row, though it is within 15% of the planned weight', function () {
+    // Planned 82.5 kg after last week's 80 kg: 92.5 kg is 12.1% above the plan but 15.6% above last week, so the
+    // table stops at 90. Its low end is still set by the plan: 72.5 kg is only 9.4% under last week.
+    $rows = RepTable::rows(82.5, 10, 2, repTableRules(), isFatLoss: false, lastWeekWeight: 80.0);
+
+    expect(array_map(fn (RepTableRow $row) => $row->weight, $rows))->toBe([72.5, 75.0, 77.5, 80.0, 82.5, 85.0, 87.5, 90.0]);
+});
+
 it('PROG-023 PROG-024 fat loss steps the table by the smallest increment the equipment allows', function () {
     $rows = RepTable::rows(80.0, 10, 2, repTableRules(), isFatLoss: true);
 
