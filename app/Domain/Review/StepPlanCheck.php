@@ -2,6 +2,7 @@
 
 namespace App\Domain\Review;
 
+use App\Domain\Energy\EnergyRules;
 use App\Domain\Model\StepPlanDay;
 use App\Domain\Progress\PlanWeekDays;
 use DateTimeImmutable;
@@ -59,7 +60,7 @@ final class StepPlanCheck
                 continue;
             }
             $actual[] = $count;
-            $planned[] = intdiv($range->min + $range->max, 2);
+            $planned[] = EnergyRules::stepMidpoint($range);
         }
 
         return self::offer($actual, $planned);

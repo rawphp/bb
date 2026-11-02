@@ -2,6 +2,7 @@
 
 namespace App\Domain\Review;
 
+use App\Domain\Energy\EnergyRules;
 use App\Domain\Model\StepPlanDay;
 
 /** Changes to the step plan the review can make (REV-027, REV-050). */
@@ -18,7 +19,7 @@ final class StepPlanUpdate
             return 0;
         }
 
-        return intdiv(array_sum(array_map(fn (StepPlanDay $day) => intdiv($day->min + $day->max, 2), $plan)), count($plan));
+        return intdiv(array_sum(array_map(fn (StepPlanDay $day) => EnergyRules::stepMidpoint($day), $plan)), count($plan));
     }
 
     /**
