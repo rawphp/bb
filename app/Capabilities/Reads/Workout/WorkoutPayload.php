@@ -102,9 +102,12 @@ final class WorkoutPayload
     {
         $exercise = $block->exercise;
         $unit = $s->unit()->value;
+        $lastWeek = $s->lastWeekLoads($exercise);
         $sets = [];
         foreach ($block->sets as $number => $row) {
-            $sets[] = self::set($s, $block, $row, $number, $rir);
+            // rp-clone applyRetarget: the set's own last-week set, else last week's last.
+            $last = $lastWeek === [] ? null : $lastWeek[min($number, count($lastWeek) - 1)]->weight;
+            $sets[] = self::set($s, $block, $row, $number, $rir, $last);
         }
 
         return new WorkoutExercise(
@@ -134,9 +137,9 @@ final class WorkoutPayload
     /**
      * rp-clone restoredSet: the fields hold what was typed or logged, else the target (WO-004). A weight moved off
      * the target with no reps typed shows the rep table's reps for it (WO-005, PROG-024, CAP-016), as the view does
-     * offline; a weight not in the table shows only the RIR.
+     * offline; a weight not in the table, too far from the plan or from last week's (PROG-025), shows only the RIR.
      */
-    private static function set(WorkoutSnapshot $s, WorkoutBlock $block, WorkoutSetRow $row, int $index, ?int $rir): WorkoutSet
+    private static function set(WorkoutSnapshot $s, WorkoutBlock $block, WorkoutSetRow $row, int $index, ?int $rir, ?float $lastWeekWeight): WorkoutSet
     {
         $exercise = $block->exercise;
         $weightKg = $row->actualKg ?? $row->targetKg;
@@ -144,7 +147,7 @@ final class WorkoutPayload
             $weightKg = null;
         }
         $target = $row->targetKg === null ? null : round($s->display($row->targetKg), 4);
-        $table = RepTable::rows($target, $row->targetReps, $rir, $s->rules($exercise), $s->isFatLoss());
+        $table = RepTable::rows($target, $row->targetReps, $rir, $s->rules($exercise), $s->isFatLoss(), $lastWeekWeight);
         $reps = $row->actualReps;
         if ($reps === null && self::showsTarget($row, $weightKg)) {
             $reps = $row->targetReps;
