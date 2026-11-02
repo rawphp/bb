@@ -9,6 +9,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Models\WeighIn;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Str;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Tests\Support\TrainSeed;
@@ -57,13 +58,34 @@ it('ACC-005 deletes the account and all its data, and no one else\'s', function 
         ->and(Profile::query()->where('user_id', $other->id)->exists())->toBeTrue();
 });
 
-it('ACC-005 deleting the account ends the session', function () {
+it('ACC-005 deleting the account ends the session that deleted it', function () {
+    // Signed in as the PWA is: a session cookie on the app's own origin. Signing in sets a remember token, which a
+    // plain logout would cycle by saving the user, and so put the deleted account back.
+    $this->withHeader('Referer', config('app.url'));
+    User::factory()->create(['email' => 'sam@example.com', 'password' => 'correct-horse-battery']);
+    $this->postJson('/sign-in', ['email' => 'sam@example.com', 'password' => 'correct-horse-battery'])->assertNoContent();
+    $this->startSession();
+    $token = session()->token();
+
+    accountDelete(null, ['confirmation' => 'DELETE'])->assertOk();
+
+    $this->assertGuest('web');
+    expect(session()->token())->not->toBe($token)
+        ->and(User::query()->where('email', 'sam@example.com')->exists())->toBeFalse();
+    // The next request starts with no guard resolved, as a new request to the server does.
+    app('auth')->forgetGuards();
+    $this->postJson('/capabilities/account_show')->assertUnauthorized();
+});
+
+it('ACC-005 CAP-022 the deletion is audited with no user, since the account is gone', function () {
     $user = User::factory()->create();
+    Exceptions::fake();
 
     accountDelete($user, ['confirmation' => 'DELETE'])->assertOk();
 
-    $this->assertGuest('web');
-    $this->postJson('/capabilities/account_show')->assertUnauthorized();
+    Exceptions::assertNothingReported();
+    expect(AuditRecord::query()->where('capability', 'account_delete')->get(['user_id', 'channel'])->toArray())
+        ->toBe([['user_id' => null, 'channel' => 'ui']]);
 });
 
 it('ACC-005 AGT-010 CAP-031 deleting the account is destructive, and only a person may do it', function () {
