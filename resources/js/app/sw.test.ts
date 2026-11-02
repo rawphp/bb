@@ -27,6 +27,9 @@ class FakeCache {
     async put(request: Request, response: Response) {
         this.entries.set(request.url, response);
     }
+    async delete(request: Request) {
+        return this.entries.delete(request.url);
+    }
 }
 
 const stores = new Map<string, FakeCache>();
@@ -75,7 +78,11 @@ function buildRoute(): BuildRoute {
 }
 
 describe('sw', () => {
-    const manifest = [{ url: 'assets/main-a.js', revision: null }];
+    // This version's files, as the build injects them.
+    const manifest = [
+        { url: 'build/assets/main-new.js', revision: null },
+        { url: 'icons/icon-192.png', revision: 'a1' },
+    ];
 
     beforeEach(() => {
         vi.resetModules();
@@ -112,7 +119,8 @@ describe('sw', () => {
     it('PWA-035 installing a new version keeps a copy of the build it replaces', async () => {
         const { PREVIOUS_BUILD } = await import('./sw');
         await cache(PREVIOUS_BUILD, ['/build/assets/older-a.js']);
-        await cache('precache', ['/build/assets/main-old.js', '/build/assets/main-old.css', '/icons/icon-192.png', '/?__WB_REVISION__=1']);
+        // Workbox's own install step may already have added this version's files.
+        await cache('precache', ['/build/assets/main-old.js', '/build/assets/main-old.css', '/build/assets/main-new.js', '/icons/icon-192.png', '/?__WB_REVISION__=1']);
 
         await install();
 
@@ -125,10 +133,25 @@ describe('sw', () => {
     it('PWA-035 a first install, with no build to replace, keeps the copy an earlier update made', async () => {
         const { PREVIOUS_BUILD } = await import('./sw');
         await cache(PREVIOUS_BUILD, ['/build/assets/older-a.js']);
+        await cache('precache', ['/build/assets/main-new.js']);
 
         await install();
 
         expect([...stores.get(PREVIOUS_BUILD)!.entries.keys()]).toEqual([at('/build/assets/older-a.js')]);
+    });
+
+    it('PWA-035 a copy that fails halfway never fails the install, and leaves the earlier copy to serve', async () => {
+        const { PREVIOUS_BUILD } = await import('./sw');
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        await cache(PREVIOUS_BUILD, ['/build/assets/older-a.js']);
+        await cache('precache', ['/build/assets/main-old.js']);
+        vi.spyOn(stores.get(PREVIOUS_BUILD)!, 'put').mockRejectedValue(new DOMException('full', 'QuotaExceededError'));
+
+        await expect(install()).resolves.toBeUndefined();
+
+        expect(error).toHaveBeenCalledWith('The previous build was not kept', expect.any(DOMException));
+        expect([...stores.get(PREVIOUS_BUILD)!.entries.keys()]).toEqual([at('/build/assets/older-a.js')]);
+        error.mockRestore();
     });
 
     it('PWA-035 a tab still on the old build gets its files from that copy, online or not', async () => {

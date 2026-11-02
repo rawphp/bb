@@ -16,6 +16,7 @@ if [ -f package.json ]; then
   step npx vue-tsc --noEmit
   step npx vitest run
   step npx vite build
+  step node scripts/sw-precache.mjs
   if ls tests/e2e/*.spec.ts >/dev/null 2>&1; then
     step npx playwright test
   fi

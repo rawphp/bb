@@ -6,13 +6,7 @@ import { join } from 'node:path';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import BottomSheet from './BottomSheet.vue';
 import HelpButton from './HelpButton.vue';
-
-const updates = vi.hoisted(() => {
-    const release = vi.fn();
-    return { release, holdUpdates: vi.fn(() => release) };
-});
-
-vi.mock('../app/updates', () => ({ holdUpdates: updates.holdUpdates }));
+import { anySheetOpen } from './openSheets';
 
 let mounted: VueWrapper | null = null;
 
@@ -101,24 +95,20 @@ describe('BottomSheet', () => {
         expect(get('button[data-save]').text()).toBe('Add');
     });
 
-    it('PWA-035 an open sheet holds updates until it closes or unmounts', async () => {
-        updates.holdUpdates.mockClear();
-        updates.release.mockClear();
+    it('PWA-035 an open sheet counts as open until it closes or unmounts, so the app can keep its update banner away', async () => {
         const wrapper = sheet({ open: false });
-        expect(updates.holdUpdates).not.toHaveBeenCalled();
+        expect(anySheetOpen.value).toBe(false);
 
         await wrapper.setProps({ open: true });
-        expect(updates.holdUpdates).toHaveBeenCalledTimes(1);
-        expect(updates.release).not.toHaveBeenCalled();
+        expect(anySheetOpen.value).toBe(true);
 
         await wrapper.setProps({ open: false });
-        expect(updates.release).toHaveBeenCalledTimes(1);
+        expect(anySheetOpen.value).toBe(false);
 
         await wrapper.setProps({ open: true });
         wrapper.unmount();
         mounted = null;
-        expect(updates.holdUpdates).toHaveBeenCalledTimes(2);
-        expect(updates.release).toHaveBeenCalledTimes(2);
+        expect(anySheetOpen.value).toBe(false);
     });
 
     it('UI-005 a closed sheet renders nothing', () => {

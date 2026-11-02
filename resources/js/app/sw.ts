@@ -21,26 +21,36 @@ self.addEventListener('message', (event) => {
 // PWA-035: that tap puts the new version under every open tab, and its activation drops
 // the old build from the precache. A tab still running the old build (held mid-workout,
 // say) would then fail to load its next chunk. So installing a version first keeps a copy
-// of the build it replaces, and a request for a file the precache no longer has is
+// of the build files it replaces, and a request for a file the precache no longer has is
 // answered from that copy, online or not.
 export const PREVIOUS_BUILD = 'bb-previous-build';
 
 self.addEventListener('install', (event) => event.waitUntil(keepPreviousBuild()));
 
+// Runs beside Workbox's own install step, which adds this version's files to the same
+// precache, so it copies only the files this version's manifest does not list. A failed
+// copy is logged and never fails the install: the update matters more than the copy.
 async function keepPreviousBuild(): Promise<void> {
-    const precache = await caches.open(cacheNames.precache);
-    const builds = (await precache.keys()).filter((request) => isBuildFile(new URL(request.url)));
-    // A first install replaces nothing; keep the copy an earlier update made.
-    if (builds.length === 0) return;
+    try {
+        const current = new Set(manifest.map((entry) => new URL(typeof entry === 'string' ? entry : entry.url, self.location.href).href));
+        const precache = await caches.open(cacheNames.precache);
+        const replaced = (await precache.keys()).filter((request) => isBuildFile(new URL(request.url)) && !current.has(request.url));
+        // Nothing replaced (a first install, or a rebuild of the same files): keep the copy an earlier update made.
+        if (replaced.length === 0) return;
 
-    await caches.delete(PREVIOUS_BUILD);
-    const previous = await caches.open(PREVIOUS_BUILD);
-    await Promise.all(
-        builds.map(async (request) => {
+        // Add the new copy before dropping the old one, so a failure halfway leaves files to serve.
+        const previous = await caches.open(PREVIOUS_BUILD);
+        for (const request of replaced) {
             const response = await precache.match(request);
             if (response) await previous.put(request, response);
-        }),
-    );
+        }
+        const kept = new Set(replaced.map((request) => request.url));
+        for (const request of await previous.keys()) {
+            if (!kept.has(request.url)) await previous.delete(request);
+        }
+    } catch (error) {
+        console.error('The previous build was not kept', error);
+    }
 }
 
 function isBuildFile(url: URL): boolean {

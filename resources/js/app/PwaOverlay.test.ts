@@ -11,7 +11,7 @@ vi.mock('./updates', () => {
     const banner = ref(false);
     state.banner = banner;
 
-    return { updateBanner: computed(() => banner.value), applyUpdate: () => applyUpdate(), holdUpdates: () => () => undefined };
+    return { updateBanner: computed(() => banner.value), applyUpdate: () => applyUpdate() };
 });
 vi.mock('./install', () => {
     const sheet = ref(false);

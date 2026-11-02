@@ -1,14 +1,11 @@
 <script lang="ts">
 /** A resting height: half the screen, or the whole screen under the status bar. */
 export type SheetHeight = 'half' | 'full';
-
-// Open sheets, oldest first. Only the top one answers Escape and Tab, so a sheet opened over another closes first.
-const openSheets: symbol[] = [];
 </script>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, useId, watch } from 'vue';
-import { holdUpdates } from '../app/updates';
+import { openSheets } from './openSheets';
 import { useModalFocus } from './useModalFocus';
 
 // Bottom sheet frame: Cancel left, title middle, Save right (UI-005), ported from rp-clone's SheetScaffold.swift.
@@ -63,8 +60,6 @@ const dragging = ref(false);
 
 const focus = useModalFocus(panel);
 const token = Symbol('sheet');
-// An open sheet keeps the update banner away, so a tap on it cannot reload over the sheet (PWA-035).
-let releaseUpdates: (() => void) | null = null;
 
 watch(
     () => props.open,
@@ -72,7 +67,6 @@ watch(
         if (open) {
             level.value = 0;
             openSheets.push(token);
-            releaseUpdates ??= holdUpdates();
             document.addEventListener('keydown', onKeydown);
             await focus.opened();
         } else {
@@ -90,8 +84,6 @@ function close(): void {
         openSheets.splice(index, 1);
     }
     document.removeEventListener('keydown', onKeydown);
-    releaseUpdates?.();
-    releaseUpdates = null;
     focus.closed();
 }
 

@@ -88,19 +88,35 @@ describe('updates', () => {
         expect(workbox.state.update).toHaveBeenCalled();
     });
 
-    it('PWA-035 hides the banner while a workout or sheet holds updates', async () => {
+    it('PWA-035 hides the banner while any hold is open, such as a workout', async () => {
         const { updateBanner, holdUpdates } = await load();
         newVersionWaits();
 
         const releaseWorkout = holdUpdates();
-        const releaseSheet = holdUpdates();
+        const releaseOther = holdUpdates();
         expect(updateBanner.value).toBe(false);
 
-        releaseSheet();
-        releaseSheet();
+        releaseOther();
+        releaseOther();
         expect(updateBanner.value).toBe(false);
 
         releaseWorkout();
+        expect(updateBanner.value).toBe(true);
+    });
+
+    it('PWA-035 hides the banner while a sheet is open, and a tap then does nothing', async () => {
+        const { applyUpdate, updateBanner } = await load();
+        // The same module instance updates.ts reads after load() reset the registry.
+        const { openSheets } = await import('../design/openSheets');
+        newVersionWaits();
+        const sheet = Symbol('sheet');
+
+        openSheets.push(sheet);
+        expect(updateBanner.value).toBe(false);
+        applyUpdate();
+        expect(workbox.state.messageSkipWaiting).not.toHaveBeenCalled();
+
+        openSheets.splice(openSheets.indexOf(sheet), 1);
         expect(updateBanner.value).toBe(true);
     });
 

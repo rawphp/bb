@@ -1,17 +1,18 @@
 import { computed, ref } from 'vue';
 import { Workbox } from 'workbox-window';
+import { anySheetOpen } from '../design/openSheets';
 
 // Quiet updates (PWA-035). A new version installs in the background and waits.
 // The banner offers it; only a tap reloads, and only the tab that was tapped.
-// Every BottomSheet calls holdUpdates() while it is open; the workout view (V_WO1)
-// is to call it for the length of a workout.
+// The banner stays away while any BottomSheet is open, and while a hold is open:
+// the workout view (V_WO1) is to call holdUpdates() for the length of a workout.
 
 let workbox: Workbox | null = null;
 let registration: ServiceWorkerRegistration | undefined;
 const waiting = ref(false);
 const holds = ref(0);
 
-export const updateBanner = computed(() => waiting.value && holds.value === 0);
+export const updateBanner = computed(() => waiting.value && holds.value === 0 && !anySheetOpen.value);
 
 export function registerServiceWorker(): void {
     if (!('serviceWorker' in navigator)) return;
