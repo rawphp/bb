@@ -3,9 +3,6 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-        "exercise_id": {
-            "type": "string"
-        },
         "name": {
             "type": "string",
             "minLength": 1,
@@ -55,10 +52,15 @@
                 "bodyweightPlusLoad",
                 "smithMachine"
             ]
+        },
+        "exercise_id": {
+            "type": [
+                "string",
+                "null"
+            ]
         }
     },
     "required": [
-        "exercise_id",
         "name",
         "muscle_group",
         "equipment",

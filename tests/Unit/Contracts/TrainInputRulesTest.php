@@ -151,7 +151,7 @@ it('CAP-019 refuses an id that is not a ULID in every train ULID rule, nested on
         'workout_set_add.after_set_id',
         'exercise_swap.new_workout_exercise_id',
         // workout_show's mesocycle_id has no ULID rule: mesocycle ids are UUIDs, as in mesocycle_show.
-    )->and(count($checked))->toBeGreaterThanOrEqual(29);
+    )->and(count($checked))->toBeGreaterThanOrEqual(28);
 });
 
 it('CAP-019 EX-004 lets custom_exercise_save create without an id, and refuses an edit id that is not a number', function () {
