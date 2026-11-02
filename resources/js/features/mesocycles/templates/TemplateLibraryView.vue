@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
+import { RouterLink } from 'vue-router';
 import ReadState from '@/app/ReadState.vue';
 import { screenRead, type ReadFailure } from '@/app/screenRead';
 import type { TemplatesShowInput, TemplatesShowOutput } from '@/contracts/templates_show';
@@ -83,20 +84,19 @@ function choose(filter: Filter, event: Event): void {
             <p v-if="data.rows.length === 0 && data.empty_text" class="px-4 text-sm text-secondary-text">{{ data.empty_text }}</p>
             <ul v-else class="divide-y divide-secondary-text/15 rounded-2xl bg-surface px-4">
                 <li v-for="row in data.rows" :key="row.id">
-                    <button v-if="picking" type="button" data-test="template" class="flex min-h-tap w-full items-center gap-3 py-1.5 text-left active:opacity-70" @click="emit('open', row.id)">
+                    <!-- One row: a button that opens the detail in the build flow, else a link to it. -->
+                    <component
+                        :is="picking ? 'button' : RouterLink"
+                        v-bind="picking ? { type: 'button', onClick: () => emit('open', row.id) } : { to: `/train/templates/${row.id}` }"
+                        data-test="template"
+                        class="flex min-h-tap w-full items-center gap-3 py-1.5 text-left active:opacity-70"
+                    >
                         <span class="flex min-w-0 grow flex-col">
                             <span class="text-primary-text">{{ row.name }}</span>
                             <span class="text-sm text-secondary-text">{{ row.summary }}</span>
                         </span>
                         <svg viewBox="0 0 8 14" class="h-3.5 shrink-0 text-secondary-text" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5L6.5 7l-5 5.5" /></svg>
-                    </button>
-                    <RouterLink v-else :to="`/train/templates/${row.id}`" data-test="template" class="flex min-h-tap items-center gap-3 py-1.5 active:opacity-70">
-                        <span class="flex min-w-0 grow flex-col">
-                            <span class="text-primary-text">{{ row.name }}</span>
-                            <span class="text-sm text-secondary-text">{{ row.summary }}</span>
-                        </span>
-                        <svg viewBox="0 0 8 14" class="h-3.5 shrink-0 text-secondary-text" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5L6.5 7l-5 5.5" /></svg>
-                    </RouterLink>
+                    </component>
                 </li>
             </ul>
         </template>

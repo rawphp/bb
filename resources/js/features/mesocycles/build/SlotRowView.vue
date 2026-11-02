@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { PENDING_DIM } from '../types';
+import { takePick } from './pick';
 import type { Build, BuildSlot } from './types';
 
 // One slot: its muscle, the sets, an exercise picker and Delete (MESO-013, MESO-014).
@@ -19,20 +20,16 @@ const props = withDefaults(
 
 const emit = defineEmits<{ sets: [sets: number]; exercise: [id: string | null]; delete: [] }>();
 
-// A picker always shows what the server last said: it goes back to it at once, so a
-// failed save leaves nothing picked that was never saved, and the same pick sends again.
+// The pickers show what the server last said (takePick).
 function chooseSets(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const picked = Number(select.value);
-    select.value = String(props.entry.sets);
-    if (picked !== props.entry.sets) emit('sets', picked);
+    const picked = takePick(event, String(props.entry.sets));
+    if (picked !== null) emit('sets', Number(picked));
 }
 
+// "None" is the empty option: no exercise.
 function chooseExercise(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const picked = select.value === '' ? null : select.value;
-    select.value = props.entry.exercise_id ?? '';
-    if (picked !== (props.entry.exercise_id ?? null)) emit('exercise', picked);
+    const picked = takePick(event, props.entry.exercise_id ?? '');
+    if (picked !== null) emit('exercise', picked === '' ? null : picked);
 }
 </script>
 

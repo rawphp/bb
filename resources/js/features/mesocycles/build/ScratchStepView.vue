@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Build } from './types';
+import { takePick } from './pick';
 
 // Build from scratch: how many sessions (MESO-005). Ported from rp-clone's ScratchStepView.
 // The day labels are chosen on the details step, once there are days to label. The picker
@@ -9,10 +10,8 @@ const props = defineProps<{ build: Build; disabled?: boolean }>();
 const emit = defineEmits<{ days: [days: number] }>();
 
 function chooseDays(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const picked = Number(select.value);
-    select.value = String(props.build.days_per_week);
-    if (picked !== props.build.days_per_week) emit('days', picked);
+    const picked = takePick(event, String(props.build.days_per_week));
+    if (picked !== null) emit('days', Number(picked));
 }
 </script>
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import PriorityRowView from '../PriorityRowView.vue';
 import WarningLabel from '../WarningLabel.vue';
+import { takePick } from './pick';
 import type { Priority, PriorityOption } from '../types';
 import type { Build } from './types';
 
@@ -12,10 +13,8 @@ const emit = defineEmits<{ days: [days: number]; priority: [muscle: Build['prior
 
 // The picker shows what the server last said, so a refused save leaves nothing picked that was never saved.
 function chooseDays(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const picked = Number(select.value);
-    select.value = String(props.build.days_per_week);
-    if (picked !== props.build.days_per_week) emit('days', picked);
+    const picked = takePick(event, String(props.build.days_per_week));
+    if (picked !== null) emit('days', Number(picked));
 }
 </script>
 

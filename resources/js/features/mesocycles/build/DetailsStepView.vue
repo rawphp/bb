@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import WarningLabel from '../WarningLabel.vue';
 import LabelStylePicker from './LabelStylePicker.vue';
+import { takePick } from './pick';
 import type { Build, LabelStyle } from './types';
 
 // The last step of every route: name, length and start (MESO-004), day labels (MESO-005)
@@ -14,17 +15,14 @@ const props = defineProps<{ build: Build; name: string; disabled?: boolean }>();
 const emit = defineEmits<{ edit: [name: string]; weeks: [weeks: number]; start: [date: string]; labelStyle: [style: LabelStyle] }>();
 
 function chooseWeeks(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const picked = Number(select.value);
-    select.value = String(props.build.weeks);
-    if (picked !== props.build.weeks) emit('weeks', picked);
+    const picked = takePick(event, String(props.build.weeks));
+    if (picked !== null) emit('weeks', Number(picked));
 }
 
+// A cleared date field is no date: the server's comes back and nothing is sent.
 function chooseStart(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const date = input.value;
-    input.value = props.build.start_date;
-    if (date !== '' && date !== props.build.start_date) emit('start', date);
+    const date = takePick(event, props.build.start_date);
+    if (date) emit('start', date);
 }
 </script>
 
