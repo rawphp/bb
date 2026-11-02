@@ -113,8 +113,8 @@ The in-app Coach runs on Anthropic. It is on only when the driver is `anthropic`
 |---|---|
 | `CAPABILITIES_AI_LLM_DRIVER` | `anthropic`. `.env.example` ships `fake`, which is for the test suite only: outside tests the Coach reports itself off and the chat refuses messages. Local Coach work needs `anthropic` and a key too. |
 | `ANTHROPIC_API_KEY` | Your Anthropic API key to turn the Coach on, or empty to leave it off. Every user's Coach turns are billed to it. |
-| `AGENT_TURNS_PER_DAY` | Coach messages each user may send per day (AGT-005). Empty for no cap. |
-| `AGENT_TOKENS_PER_MONTH` | Anthropic tokens each user's Coach turns may use per month. Empty for no cap. With a cap, a user has one Coach turn at a time (checked under a per-user lock in the cache), and a turn that starts under the cap finishes, so a month can end at most one turn over. |
+| `AGENT_TURNS_PER_DAY` | Coach messages each user may send per day (AGT-005). Empty for no cap. Either cap is checked under a per-user cache lock, so keep `CACHE_STORE=redis` with more than one app server (the `array` store does not lock across requests at all). |
+| `AGENT_TOKENS_PER_MONTH` | Anthropic tokens each user's Coach turns may use per month. Empty for no cap. With a cap, a user has one Coach turn at a time, and a turn that starts under the cap finishes, so a month can end at most one turn over. |
 
 ### Billing (optional)
 

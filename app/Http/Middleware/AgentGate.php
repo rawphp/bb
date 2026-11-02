@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Agent\AgentStatus;
 use Closure;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -24,7 +25,8 @@ final class AgentGate
     /** Longest a crashed request can hold the lock. Storing a message takes milliseconds. */
     private const LOCK_SECONDS = 30;
 
-    private const BUSY = 'The Coach is still answering your last message.';
+    /** Longest an overlapping post waits for the one before it. */
+    public const WAIT_SECONDS = 3;
 
     public function __construct(private readonly AgentStatus $status) {}
 
@@ -38,34 +40,32 @@ final class AgentGate
             return self::refuse(CapabilityResult::failure('forbidden', 'The Coach is off on this instance.'));
         }
 
-        $userId = $request->user()->getAuthIdentifier();
-
         if (! $this->status->capped()) {
             return $next($request);
         }
 
+        $userId = $request->user()->getAuthIdentifier();
+
         // Under a cap, checked and stored under one lock per user, so parallel posts
-        // cannot all pass the checks before any of them has stored its turn.
-        $lock = Cache::lock(self::LOCK.$userId, self::LOCK_SECONDS);
-        if (! $lock->get()) {
-            return self::refuse(CapabilityResult::failure('rate_limited', self::BUSY));
-        }
-
+        // cannot all pass the checks before any of them has stored its turn. A post
+        // that overlaps another waits for it, then is checked against what it stored.
         try {
-            $allowance = $this->status->allowance($userId);
-            if ($allowance->atCap) {
-                return self::refuse(CapabilityResult::failure('rate_limited', (string) $allowance->notice, [
-                    'resets_at' => $allowance->resetsAt?->toIso8601String(),
-                ]));
-            }
+            return Cache::lock(self::LOCK.$userId, self::LOCK_SECONDS)->block(self::WAIT_SECONDS, function () use ($request, $next, $userId): Response {
+                $allowance = $this->status->allowance($userId);
+                if ($allowance->atCap) {
+                    return self::refuse(CapabilityResult::failure('rate_limited', (string) $allowance->notice, [
+                        'resets_at' => $allowance->resetsAt?->toIso8601String(),
+                    ]));
+                }
 
-            if ($this->status->busy($userId)) {
-                return self::refuse(CapabilityResult::failure('rate_limited', self::BUSY));
-            }
+                if ($this->status->busy($userId)) {
+                    return self::refuse(CapabilityResult::failure('rate_limited', 'The Coach is still answering your last message.'));
+                }
 
-            return $next($request);
-        } finally {
-            $lock->release();
+                return $next($request);
+            });
+        } catch (LockTimeoutException) {
+            return self::refuse(CapabilityResult::failure('rate_limited', 'Your last Coach message is still being sent. Try again in a moment.'));
         }
     }
 

@@ -103,17 +103,22 @@ it('AGT-005 under a token cap takes one Coach message at a time, so a month ends
     $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'And another thing'])->assertCreated();
 });
 
-it('AGT-005 checks and stores a Coach message under one lock per user, so parallel posts cannot all pass', function () {
-    config(['agent.tokens_per_month' => 1_000_000]);
+it('AGT-005 checks and stores a Coach message under one lock per user, so parallel posts cannot all pass', function (array $caps) {
+    // The lock's wait runs on the clock, so it must move here.
+    CarbonImmutable::setTestNow();
+    config($caps);
     $user = User::factory()->create();
     $other = User::factory()->create();
-    // Another request of this user is between the checks and the store.
+    // Another request of this user is between the checks and the store, and does not finish.
     $held = Cache::lock(AgentGate::LOCK.$user->id, 30);
     $held->get();
 
+    $started = microtime(true);
     $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])
         ->assertStatus(429)
-        ->assertJsonPath('error.message', 'The Coach is still answering your last message.');
+        ->assertJsonPath('error.code', 'rate_limited')
+        ->assertJsonPath('error.message', 'Your last Coach message is still being sent. Try again in a moment.');
+    expect(microtime(true) - $started)->toBeGreaterThanOrEqual(AgentGate::WAIT_SECONDS - 0.5);
     $this->actingAs($other)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
     expect(Turn::query()->count())->toBe(1);
 
@@ -121,7 +126,10 @@ it('AGT-005 checks and stores a Coach message under one lock per user, so parall
     $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
     // The gate let its own lock go: the next request can take it.
     expect(Cache::lock(AgentGate::LOCK.$user->id, 30)->get())->toBeTrue();
-});
+})->with([
+    'daily cap' => [['agent.turns_per_day' => 10]],
+    'monthly token cap' => [['agent.tokens_per_month' => 1_000_000]],
+]);
 
 it('AGT-005 with no cap takes parallel Coach messages: no lock, no refusal', function () {
     $user = User::factory()->create();
