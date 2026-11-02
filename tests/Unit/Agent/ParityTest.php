@@ -5,19 +5,17 @@ use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\CapabilitiesAi\Contracts\ToolCatalog;
 use Tests\Support\CapabilityParity;
 
-it('CAP-030 AGT-001 lets the agent call every capability the Vue app calls, except the CAP-031 exclusions', function () {
+it('CAP-030 AGT-001 lets the agent call every registered capability the Vue app calls, except the CAP-031 exclusions, and holds each unregistered one to an owner issue', function () {
     $ui = CapabilityParity::calledInApp(resource_path('js'));
-    $snapshots = array_unique(array_map(
-        fn (string $path): string => (string) preg_replace('/\.(input|output)\.json$/', '', basename($path)),
-        glob(base_path('tests/fixtures/schemas/*.{input,output}.json'), GLOB_BRACE) ?: [],
-    ));
+    $schemas = base_path('tests/fixtures/schemas');
 
     expect($ui)->not->toBe([])
         ->and(CapabilityParity::problems(
             ui: $ui,
             registered: array_keys(app(CapabilityRegistry::class)->all()),
             tools: array_column(app(ToolCatalog::class)->toolsForTurn('PARITY', 'PARITY'), 'name'),
-            snapshots: array_values($snapshots),
+            snapshots: CapabilityParity::snapshotNames($schemas),
+            owners: CapabilityParity::owners($schemas),
             excluded: Exclusions::reason(...),
         ))->toBe([]);
 });
