@@ -53,7 +53,10 @@ it('CAP-022 records who wrote what through the app, when, with the input and the
         ->and($record->created_at->toIso8601String())->toBe('2026-11-02T18:14:00+00:00')
         ->and($record->input)->toBe(['amount' => 3])
         ->and($record->result['ok'])->toBeTrue()
-        ->and($record->result['summary']['toast'])->toBe('Tally is 3');
+        ->and($record->result['summary']['toast'])->toBe('Tally is 3')
+        ->and($record->event)->toBe('capability.invoked');
+    expect($this->actingAs($user)->postJson('/capabilities/activity_show')->json('data.entries'))->toHaveCount(1)
+        ->{0}->toMatchArray(['title' => 'Tally is 3', 'channel' => 'ui', 'result' => ['text' => 'Done', 'tone' => 'good']]);
 });
 
 it('CAP-022 records a refused write with its error', function () {
@@ -66,7 +69,25 @@ it('CAP-022 records a refused write with its error', function () {
 
     $this->actingAs($user)->postJson('/capabilities/tally_refuse', ['amount' => 3])->assertStatus(409);
 
-    expect(AuditRecord::sole()->result)->toMatchArray(['ok' => false, 'code' => 'conflict', 'message' => 'This workout was already finished.']);
+    expect(AuditRecord::sole())->event->toBe('capability.failed')
+        ->result->toMatchArray(['ok' => false, 'code' => 'conflict', 'message' => 'This workout was already finished.']);
+    expect($this->actingAs($user)->postJson('/capabilities/activity_show')->json('data.entries'))->toHaveCount(1)
+        ->{0}->toMatchArray(['title' => 'Tally refuse', 'result' => ['text' => 'Refused: this workout was already finished', 'tone' => 'warning']]);
+});
+
+it('CAP-022 lists a write whose reply failed its schema as done, with a server error', function () {
+    HostDefinition::write('tally_broken', affects: ['tally_show'])
+        ->description('Answer with a reply that fails the output schema. Used by Activity tests only.')
+        ->input(TallyInput::class)
+        ->run(fn (): array => ['not' => 'a write result'])
+        ->register(app(CapabilityRegistry::class));
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->postJson('/capabilities/tally_broken', ['amount' => 3])->assertStatus(500);
+
+    expect(AuditRecord::sole()->event)->toBe('capability.output_invalid');
+    expect($this->actingAs($user)->postJson('/capabilities/activity_show')->json('data.entries'))->toHaveCount(1)
+        ->{0}->toMatchArray(['title' => 'Tally broken', 'result' => ['text' => 'Done, with a server error', 'tone' => 'warning']]);
 });
 
 it('CAP-022 derives the channel on the server, ignoring a caller the client claims', function () {
