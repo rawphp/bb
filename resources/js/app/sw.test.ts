@@ -30,4 +30,16 @@ describe('sw', () => {
         expect(workbox.createHandlerBoundToURL).toHaveBeenCalledWith(SHELL_URL);
         expect(workbox.registerRoute).toHaveBeenCalledWith({ handler: `handler for ${SHELL_URL}`, options: { denylist: [SERVER_PATHS] } });
     });
+
+    it('PWA-035 waits until a tapped update banner asks it to take over', async () => {
+        const skipWaiting = vi.fn(async () => undefined);
+        Object.assign(self, { skipWaiting });
+
+        await import('./sw');
+        self.dispatchEvent(new MessageEvent('message', { data: { type: 'OTHER' } }));
+        expect(skipWaiting).not.toHaveBeenCalled();
+
+        self.dispatchEvent(new MessageEvent('message', { data: { type: 'SKIP_WAITING' } }));
+        expect(skipWaiting).toHaveBeenCalled();
+    });
 });

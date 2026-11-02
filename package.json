@@ -7,14 +7,17 @@
     "test": "vitest run",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint resources/js",
-    "contracts": "node scripts/contracts.mjs"
+    "contracts": "node scripts/contracts.mjs",
+    "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
     "idb": "^8.0.4",
     "vue": "^3.5.44",
-    "vue-router": "^5.4.0"
+    "vue-router": "^5.4.0",
+    "workbox-window": "^7.4.1"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.6",
     "@vitejs/plugin-vue": "^6.0.10",
