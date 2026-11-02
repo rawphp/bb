@@ -10,7 +10,7 @@ use Stripe\Webhook;
 use UnexpectedValueException;
 
 /**
- * Stripe's webhook, the one way the server learns subscription state (SUB-021).
+ * Stripe's webhook, which tells the server a subscription changed (SUB-021).
  * Only an event signed with the instance's webhook secret is read; anything
  * else answers 400 and changes nothing. When Stripe cannot be read back, the
  * request fails and Stripe sends the event again later.

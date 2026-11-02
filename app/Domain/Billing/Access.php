@@ -4,8 +4,7 @@ namespace App\Domain\Billing;
 
 /**
  * What a user's subscription gives them, from its Stripe status, which the
- * server reads back from Stripe after a verified webhook (SUB-021), never from
- * the browser.
+ * server reads back from Stripe's API (SUB-021), never from the browser.
  */
 enum Access: string
 {

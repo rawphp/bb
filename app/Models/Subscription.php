@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Actions\Billing\SyncStripeSubscription;
 use App\Domain\Billing\Access;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\SubscriptionFactory;
@@ -11,7 +12,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * An account's Stripe customer and subscription (SUB-021). Checkout creates the
- * row with the customer; only a verified webhook changes the subscription.
+ * row with the customer; the subscription is written only by
+ * {@see SyncStripeSubscription}, from what Stripe's API says.
  *
  * @property int $user_id
  * @property string $stripe_customer_id
@@ -21,6 +23,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $current_period_end
  * @property bool $cancel_at_period_end
  * @property Carbon|null $trial_ends_at
+ * @property string|null $checkout_session_id
  */
 class Subscription extends Model
 {
@@ -36,6 +39,7 @@ class Subscription extends Model
         'current_period_end',
         'cancel_at_period_end',
         'trial_ends_at',
+        'checkout_session_id',
     ];
 
     /** @return array<string, string> */

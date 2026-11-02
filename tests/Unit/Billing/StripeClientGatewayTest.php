@@ -115,11 +115,11 @@ it('SUB-021 reports a Stripe failure and tells the user only that payments are u
         ->toThrow(RuntimeException::class, 'Payments are unavailable right now. Try again shortly.');
     Exceptions::assertReported(AuthenticationException::class);
 })->with([
-    'customer' => fn () => fn (StripeClientGateway $stripe) => $stripe->createCustomer('sam@example.com', 'Sam', 1),
-    'checkout' => fn () => fn (StripeClientGateway $stripe) => $stripe->checkout('cus_123', 'price_monthly', null, 'https://bb.test'),
-    'close checkout' => fn () => fn (StripeClientGateway $stripe) => $stripe->closeCheckout('cs_1'),
-    'portal' => fn () => fn (StripeClientGateway $stripe) => $stripe->portalUrl('cus_123', 'https://bb.test'),
-    'subscriptions' => fn () => fn (StripeClientGateway $stripe) => $stripe->subscriptions('cus_123'),
+    'customer' => fn (StripeClientGateway $stripe) => $stripe->createCustomer('sam@example.com', 'Sam', 1),
+    'checkout' => fn (StripeClientGateway $stripe) => $stripe->checkout('cus_123', 'price_monthly', null, 'https://bb.test'),
+    'close checkout' => fn (StripeClientGateway $stripe) => $stripe->closeCheckout('cs_1'),
+    'portal' => fn (StripeClientGateway $stripe) => $stripe->portalUrl('cus_123', 'https://bb.test'),
+    'subscriptions' => fn (StripeClientGateway $stripe) => $stripe->subscriptions('cus_123'),
 ]);
 
 it('SUB-007 closes an open Checkout page, and says whether an earlier one was paid', function (string $status, bool $paid, int $calls) {

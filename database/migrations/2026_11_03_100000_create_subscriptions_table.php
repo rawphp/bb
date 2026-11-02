@@ -23,6 +23,8 @@ return new class extends Migration
             $table->timestamp('current_period_end')->nullable();
             $table->boolean('cancel_at_period_end')->default(false);
             $table->timestamp('trial_ends_at')->nullable();
+            // The last Checkout page opened, closed before another opens so only one can be paid.
+            $table->string('checkout_session_id')->charset('ascii')->nullable();
             $table->timestamps();
         });
     }

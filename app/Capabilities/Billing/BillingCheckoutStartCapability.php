@@ -18,7 +18,7 @@ final class BillingCheckoutStartCapability implements BillingOnly, HostCapabilit
 {
     public function definition(): CapabilityDefinitionBuilder
     {
-        // The subscription changes when Stripe's webhook reports it, so billing_show is read again on return.
+        // The subscription changes once Stripe reports the payment, so billing_show is read again on return.
         return HostDefinition::write('billing_checkout_start', affects: ['billing_show'])
             ->description('Open Stripe Checkout to subscribe to a plan: monthly, six_months or yearly. A user who has never subscribed gets the 7-day free trial; promotion codes are typed in Checkout. Returns the Checkout page to open. Only a person signed in to the app can call it (CAP-031).')
             ->cli('billing', 'checkout')

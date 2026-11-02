@@ -34,7 +34,7 @@ final class StripeClientGateway implements StripeGateway
         ])->id);
     }
 
-    public function checkoutUrl(string $customer, string $price, ?int $trialDays, string $returnUrl): string
+    public function checkout(string $customer, string $price, ?int $trialDays, string $returnUrl): array
     {
         $params = [
             'mode' => 'subscription',
@@ -51,7 +51,21 @@ final class StripeClientGateway implements StripeGateway
             $params['subscription_data'] = ['trial_period_days' => $trialDays];
         }
 
-        return self::call(fn (): string => (string) $this->stripe->checkout->sessions->create($params)->url);
+        $session = self::call(fn () => $this->stripe->checkout->sessions->create($params));
+
+        return ['id' => $session->id, 'url' => (string) $session->url];
+    }
+
+    public function closeCheckout(string $session): bool
+    {
+        return self::call(function () use ($session): bool {
+            $status = $this->stripe->checkout->sessions->retrieve($session)->status;
+            if ($status === 'open') {
+                $this->stripe->checkout->sessions->expire($session);
+            }
+
+            return $status === 'complete';
+        });
     }
 
     public function portalUrl(string $customer, string $returnUrl): string

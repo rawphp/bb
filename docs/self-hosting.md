@@ -125,13 +125,13 @@ Billing is off unless `BILLING_ENABLED=true` (SUB-020). A self-hosted instance l
 | `BILLING_ENABLED` | `false`, or `true` to sell subscriptions (`1`/`0`, `yes`/`no` and `on`/`off` work too). Any other value stops the app from booting. |
 | `STRIPE_KEY` | Stripe publishable key. Not used yet: payments open on Stripe's own Checkout page. |
 | `STRIPE_SECRET` | Stripe secret key. |
-| `STRIPE_WEBHOOK_SECRET` | The signing secret of the Stripe webhook endpoint. The server trusts subscription state only from webhooks it can verify (SUB-021). |
+| `STRIPE_WEBHOOK_SECRET` | The signing secret of the Stripe webhook endpoint. The server reads an event only when it can verify the signature, and takes subscription state from Stripe, never from the browser (SUB-021). |
 | `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_SIX_MONTHS`, `STRIPE_PRICE_YEARLY` | The Stripe price ID of each plan (SUB-002): a recurring price of 1 month, 6 months and 1 year. The paywall shows Stripe's amount and currency. Leave one empty to not sell that plan. |
 
 With billing on:
 
 - Add a webhook endpoint in Stripe at `https://<your domain>/stripe/webhook`, sending `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`. On each event the app reads the customer's subscriptions back from Stripe, so events arriving out of order do no harm. If Stripe cannot be reached, the webhook fails and Stripe sends the event again.
-- In Stripe's Checkout settings, turn on "Limit customers to one subscription". The app refuses a second Checkout to a user with a live subscription, but two Checkout pages opened before the first payment would otherwise both go through.
+- In Stripe's Checkout settings, turn on "Limit customers to one subscription" as a second guard. The app already refuses Checkout to a user with a live subscription, and closes the last Checkout page it opened before it opens another, so only one can be paid.
 - Turn on the customer portal in Stripe's settings, with plan switching between the prices above and cancelling (SUB-007).
 - Sale, referral and gym prices are Stripe coupons with promotion codes; users type the code in Checkout (SUB-009).
 - A user who has never subscribed gets a 7-day free trial in Checkout (SUB-003). Until it starts, they can answer onboarding but not generate their plan. A user whose subscription has ended keeps every screen read-only (SUB-010) and cannot talk to the Coach until they resubscribe (SUB-024). They can still delete the account, revoke an access token and turn off push (SUB-022).

@@ -9,8 +9,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * After a verified subscription event, keeps what Stripe says about the
- * customer now (SUB-021). The event is only the signal: Stripe does not
+ * Keeps what Stripe says about the customer now (SUB-021): after a verified
+ * subscription event, and before Checkout opens. An event is only the signal: Stripe does not
  * deliver events in order, and a customer can hold more than one subscription,
  * so the state is read back from Stripe and {@see CurrentSubscription} picks
  * the one that decides. The row stays locked while Stripe is read, so two

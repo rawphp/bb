@@ -12,8 +12,15 @@ interface StripeGateway
     /** Creates the account's Stripe customer and returns its ID. */
     public function createCustomer(string $email, string $name, int $userId): string;
 
-    /** A Stripe Checkout page that subscribes the customer to the price, with a free trial when given (SUB-003). */
-    public function checkoutUrl(string $customer, string $price, ?int $trialDays, string $returnUrl): string;
+    /**
+     * Opens a Stripe Checkout page that subscribes the customer to the price, with a free trial when given (SUB-003).
+     *
+     * @return array{id: string, url: string} the Checkout session and the page to open
+     */
+    public function checkout(string $customer, string $price, ?int $trialDays, string $returnUrl): array;
+
+    /** Closes a Checkout page if it is still open; true when the user had already paid on it. */
+    public function closeCheckout(string $session): bool;
 
     /** A Stripe customer portal page, where the customer switches plan or cancels (SUB-007). */
     public function portalUrl(string $customer, string $returnUrl): string;

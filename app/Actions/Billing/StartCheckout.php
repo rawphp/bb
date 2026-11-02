@@ -7,6 +7,7 @@ use App\Domain\Billing\Access;
 use App\Domain\Billing\BillingRule;
 use App\Models\Subscription;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Rawphp\Capabilities\Support\CapabilityFailure;
 
@@ -15,12 +16,13 @@ use Rawphp\Capabilities\Support\CapabilityFailure;
  * account gets one Stripe customer, made on its first Checkout, and the free
  * trial if Stripe has never billed it (SUB-003). An account with a live
  * subscription switches plans in the portal instead (SUB-007), so Checkout
- * does not sell it a second one. Two Checkout pages opened before either is
- * paid can still both go through; each closes within the hour, and Stripe's
- * "Limit customers to one subscription" setting closes the gap.
+ * never sells it a second one: Stripe is read back first, and the page opened
+ * before is closed, so only one can be paid.
  */
 final class StartCheckout
 {
+    public const SUBSCRIBED = 'You already have a subscription. Switch plans in Manage subscription.';
+
     public function __construct(private readonly StripeGateway $stripe) {}
 
     public function __invoke(User $user, string $plan): string
@@ -31,22 +33,34 @@ final class StartCheckout
             throw CapabilityFailure::conflict('That plan is not on sale.');
         }
 
+        // One Checkout at a time per account, so two taps cannot leave two pages open.
+        return Cache::lock("billing-checkout:{$user->getKey()}", 30)->block(10, fn (): string => $this->open($user, $price));
+    }
+
+    private function open(User $user, string $price): string
+    {
         $subscription = Subscription::of($user);
         if ($subscription !== null) {
-            // The row learns of a subscription only from its webhook, which can lag the
-            // payment; read Stripe back first, so a fresh subscription counts at once.
+            // The row learns of a subscription from Stripe, after its webhook, which can lag
+            // the payment; read Stripe back first, so a fresh subscription counts at once.
             (new SyncStripeSubscription($this->stripe))($subscription->stripe_customer_id);
             $subscription->refresh();
+
+            if ($subscription->checkout_session_id !== null && $this->stripe->closeCheckout($subscription->checkout_session_id)) {
+                throw CapabilityFailure::conflict(self::SUBSCRIBED);
+            }
         }
 
         if (in_array(Access::fromStripeStatus($subscription?->status), [Access::Trial, Access::Active], true)) {
-            throw CapabilityFailure::conflict('You already have a subscription. Switch plans in Manage subscription.');
+            throw CapabilityFailure::conflict(self::SUBSCRIBED);
         }
 
         $subscription ??= $this->customer($user);
         $trialDays = $subscription->hasSubscribed() ? null : BillingRule::TRIAL_DAYS;
+        $checkout = $this->stripe->checkout($subscription->stripe_customer_id, $price, $trialDays, (string) config('app.url'));
+        $subscription->forceFill(['checkout_session_id' => $checkout['id']])->save();
 
-        return $this->stripe->checkoutUrl($subscription->stripe_customer_id, $price, $trialDays, (string) config('app.url'));
+        return $checkout['url'];
     }
 
     /**
