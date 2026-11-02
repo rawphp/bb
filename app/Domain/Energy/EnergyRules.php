@@ -5,6 +5,7 @@ namespace App\Domain\Energy;
 use App\Domain\Defaults\TBL030ActivityFactor;
 use App\Domain\Defaults\TBL031SessionIntensity;
 use App\Domain\Macros\MacroRules;
+use App\Domain\Model\Age;
 use App\Domain\Model\DayType;
 use App\Domain\Model\Phase;
 use App\Domain\Model\PhaseType;
@@ -22,15 +23,12 @@ final class EnergyRules
 
     /**
      * NUT-001: age in whole years on $on. The birth date is a calendar date, read in its own time zone, so
-     * no UTC offset moves the birthday; $on is read as the calendar day it is in $timeZone. Same counting as
-     * Screening's age (SAFE-013).
+     * no UTC offset moves the birthday; $on is read as the calendar day it is in $timeZone. Counted by Age, as
+     * Screening's is (SAFE-001).
      */
     public static function age(DateTimeImmutable $birthDate, DateTimeImmutable $on, DateTimeZone $timeZone): int
     {
-        $today = $on->setTimezone($timeZone);
-        $age = (int) $today->format('Y') - (int) $birthDate->format('Y');
-
-        return $today->format('md') < $birthDate->format('md') ? $age - 1 : $age;
+        return Age::years($birthDate, $on->setTimezone($timeZone));
     }
 
     /** NUT-001: basal metabolic rate, Mifflin-St Jeor, in kcal. */

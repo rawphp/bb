@@ -52,6 +52,14 @@ it('NUT-001 a birth date keeps its own calendar day whatever its offset', functi
         ->and(EnergyRules::age($birth, on: F::date(2026, 10, 11), timeZone: F::utc()))->toBe(46);
 });
 
+it('NUT-001 a 29 February birthday turns over on 1 March in a common year', function () {
+    $birth = F::date(2000, 2, 29);
+
+    expect(EnergyRules::age($birth, on: F::date(2025, 2, 28), timeZone: F::utc()))->toBe(24)
+        ->and(EnergyRules::age($birth, on: F::date(2025, 3, 1), timeZone: F::utc()))->toBe(25)
+        ->and(EnergyRules::age($birth, on: F::date(2028, 2, 29), timeZone: F::utc()))->toBe(28);
+});
+
 it('NUT-001 BMR uses the local-day age', function () {
     $newYork = new DateTimeZone('America/New_York');
     $profile = F::profile(birthDate: F::date(1980, 10, 11));
