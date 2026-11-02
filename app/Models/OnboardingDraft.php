@@ -13,6 +13,7 @@ use App\Domain\Onboarding\Draft;
 use App\Domain\Onboarding\OnboardingTemplate;
 use App\Domain\Onboarding\OnboardingTemplateDay;
 use App\Domain\Onboarding\OnboardingTemplateSlot;
+use App\Domain\Onboarding\OnboardingTraining;
 use App\Domain\Onboarding\StepRangeChoice;
 use App\Domain\Onboarding\TrainingDayChoice;
 use App\Domain\Onboarding\TrainingPlanKind;
@@ -150,6 +151,23 @@ class OnboardingDraft extends Model
             choosesOwnCalories: $this->chooses_own_calories,
             ownDailyKcal: $this->own_daily_kcal === null ? null : (float) $this->own_daily_kcal,
         );
+    }
+
+    /**
+     * The library templates for the draft's day count, by name then id: the list step 9, the review and the start
+     * all read, so the recommended template that stands in while nothing is picked is the same one everywhere.
+     *
+     * @return list<OnboardingTemplate>
+     */
+    public static function templates(Draft $draft): array
+    {
+        $days = count($draft->trainingDays);
+        if (! in_array($days, OnboardingTraining::TEMPLATE_DAY_COUNTS, true)) {
+            return [];
+        }
+
+        return Template::query()->where('days_per_week', $days)->with('slots.exercise')->orderBy('name')->orderBy('id')->get()
+            ->map(self::onboardingTemplate(...))->values()->all();
     }
 
     /**

@@ -15,7 +15,6 @@ use App\Domain\Onboarding\OnboardingSteps;
 use App\Domain\Onboarding\OnboardingTemplate;
 use App\Domain\Onboarding\OnboardingTraining;
 use App\Models\OnboardingDraft;
-use App\Models\Template;
 use App\Models\User;
 use App\Support\Mesocycles\TrainSnapshot;
 use DateTimeImmutable;
@@ -32,7 +31,7 @@ final class OnboardingShowPayload
     {
         $draft = OnboardingDraft::for($user)->toDraft();
 
-        return self::build($draft, TrainSnapshot::day(Carbon::now()), self::templates($draft));
+        return self::build($draft, TrainSnapshot::day(Carbon::now()), OnboardingDraft::templates($draft));
     }
 
     /** @param  list<OnboardingTemplate>  $templates  the library, as step 9 reads it */
@@ -102,22 +101,5 @@ final class OnboardingShowPayload
         }
 
         return $notices;
-    }
-
-    /**
-     * The library templates for the draft's day count, in the library's order (days, then name). Step 9 and the first
-     * mesocycle keep the ones that fit its sex and goal.
-     *
-     * @return list<OnboardingTemplate>
-     */
-    private static function templates(Draft $draft): array
-    {
-        $days = count($draft->trainingDays);
-        if (! in_array($days, OnboardingTraining::TEMPLATE_DAY_COUNTS, true)) {
-            return [];
-        }
-
-        return Template::query()->where('days_per_week', $days)->with('slots.exercise')->orderBy('name')->get()
-            ->map(OnboardingDraft::onboardingTemplate(...))->values()->all();
     }
 }

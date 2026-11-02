@@ -10,7 +10,6 @@ use App\Models\Phase;
 use App\Models\Plan;
 use App\Models\PlanWeek;
 use App\Models\Profile;
-use App\Models\Template;
 use App\Models\User;
 use App\Models\WeighInScheduleEntry;
 use App\Support\Mesocycles\TrainSnapshot;
@@ -43,12 +42,11 @@ final class StartPlan
                 throw CapabilityFailure::conflict(self::ALREADY_STARTED);
             }
 
-            $templates = Template::query()->with('slots.exercise')->get()
-                ->map(fn (Template $template) => OnboardingDraft::onboardingTemplate($template))->all();
+            $draft = ($row ?? OnboardingDraft::for($user))->toDraft();
             $start = OnboardingStart::from(
-                ($row ?? OnboardingDraft::for($user))->toDraft(),
+                $draft,
                 TrainSnapshot::day(CarbonImmutable::now()),
-                $templates,
+                OnboardingDraft::templates($draft),
                 fn (): string => (string) Str::uuid7(),
             );
 

@@ -8,7 +8,7 @@ use App\Enums\Split;
 
 /**
  * A library template (MESO-010) as step 9 and the first mesocycle read it. The caller loads the templates and passes
- * them in; `OnboardingDraft::onboardingTemplate()` makes one from the model.
+ * them in; `OnboardingDraft::templates()` loads them from the library.
  */
 final readonly class OnboardingTemplate
 {
