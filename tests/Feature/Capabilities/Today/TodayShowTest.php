@@ -5,6 +5,7 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 use Tests\Support\ScreenFixture;
 use Tests\Support\TodaySeed;
+use Tests\Support\TrainSeed;
 
 // The HTTP seam of today_show and its screen fixtures. The rules are unit tests (TodayPayloadTest).
 
@@ -81,10 +82,13 @@ it('ONB-031 shows an empty day to a user without a plan, and a banner before the
     $fresh = $this->actingAs(User::factory()->create())->postJson('/capabilities/today_show')->assertOk()->json('data');
     $before = $this->actingAs($user)->postJson('/capabilities/today_show')->assertOk()->json('data');
 
+    // The fresh user has no plan of their own: another user's never shows.
+
     assertMatchesScreenFixture('today_show', $fresh);
     assertMatchesScreenFixture('today_show', $before);
     expect(ScreenFixture::differences(ScreenFixture::load('today_show.empty'), $before))->toBe([])
         ->and($fresh['timeline'])->toBe([])
+        ->and($fresh['banners'])->toBe([])
         ->and($fresh['schedule'])->toBeNull()
         ->and($before['banners'][0]['text'])->toBe('Your plan starts Sat, Sep 12')
         ->and($before['timeline'])->toBe([]);
@@ -104,9 +108,7 @@ it('SCH-023 keeps a date outside the plan inside it', function () {
 
 it('CAP-020 shows only the signed-in user\'s rows', function () {
     Carbon::setTestNow('2026-09-23 10:00:00');
-    $other = TodaySeed::user();
-    TodaySeed::targets($other, last: '2026-11-30', kcal: 3000);
-    TodaySeed::wednesday($other, TodaySeed::mesocycle($other));
+    $other = TodaySeed::stranger();
     $user = TodaySeed::user();
     $mine = TodaySeed::mesocycle($user);
     TodaySeed::targets($user);
@@ -116,13 +118,45 @@ it('CAP-020 shows only the signed-in user\'s rows', function () {
     assertMatchesScreenFixture('today_show', $data);
     // With nothing planned or eaten, the totals count every meal at its target.
     expect($data['totals']['calories']['value_text'])->toBe('2600/2600')
+        ->and($data['totals']['day_type']['text'])->toBe('Hard')
         ->and(array_column($data['meals'], 'planned_text'))->toBe([null, null, null])
         ->and(array_column(array_column($data['meals'], 'check_in'), 'state'))->toBe(['not_checked_in', 'not_checked_in', 'not_checked_in'])
         ->and($data['off_plan'])->toBe([])
         ->and($data['other_activities'])->toBe([])
-        ->and($data['weigh_ins'][0]['weight_text'])->toBeNull()
-        ->and($data['steps']['actual_text'])->toBeNull()
+        ->and($data['weigh_ins'])->toBe([['id' => 'weigh-in', 'time_text' => '7:00 AM', 'weight_text' => null]])
+        ->and($data['steps'])->toBe(['target_text' => 'Step count target 6-8k', 'actual_text' => null])
+        ->and(array_column($data['busy_periods'], 'label'))->toBe(['Team meeting'])
+        ->and($data['add_meal_time'])->toBe('14:00')
         ->and($data['workouts'][0]['mesocycle_id'])->toBe($mine->id)
+        ->and($data['workouts'][0]['title'])->toBe('Week 2 · Day 2 · Lower A')
+        ->and($data['workouts'][0]['time_text'])->toBe('5:30 PM')
         ->and($data['workouts'][0]['state'])->toBe('planned')
+        ->and($data['banners'])->toBe([])
         ->and(DayTarget::query()->where('user_id', $other->id)->count())->toBe(80);
+});
+
+it('MESO-060 MESO-064 offers the current mesocycle\'s active rest on any day shown', function () {
+    Carbon::setTestNow('2026-10-05 10:00:00');
+    $user = TodaySeed::user();
+    $mesocycle = TodaySeed::mesocycle($user);
+    TodaySeed::targets($user, last: '2026-10-20');
+    TrainSeed::trained($mesocycle, 2, 1, '2026-09-21', flat: true);
+    TrainSeed::trained($mesocycle, 3, 1, '2026-09-28', flat: true);
+
+    $later = $this->actingAs($user)->postJson('/capabilities/today_show', ['date' => '2026-10-12'])->assertOk()->json('data');
+
+    expect($later['date'])->toBe('2026-10-12')
+        ->and($later['next_mesocycle']['active_rest']['start_date'])->toBe('2026-10-17');
+});
+
+it('SCH-020 SCH-023 after the plan\'s last target, today opens the same whether or not its date is given', function () {
+    Carbon::setTestNow('2026-10-15 10:00:00');
+    $user = TodaySeed::user();
+    TodaySeed::targets($user);
+
+    $implicit = $this->actingAs($user)->postJson('/capabilities/today_show')->assertOk()->json('data');
+    $explicit = $this->actingAs($user)->postJson('/capabilities/today_show', ['date' => '2026-10-15'])->assertOk()->json('data');
+
+    expect($explicit['date'])->toBe('2026-10-15')
+        ->and($explicit)->toBe($implicit);
 });

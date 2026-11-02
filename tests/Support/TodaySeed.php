@@ -54,6 +54,33 @@ final class TodaySeed
         return $user;
     }
 
+    /**
+     * Another user whose rows differ from {@see user()}'s in everything Today shows: a plan from Monday 2026-09-07
+     * with Monday reviews, other training days, busy periods, steps and weigh-ins, an away week, a phase, targets
+     * of 3000 kcal to 2026-11-30, and a logged Wednesday. Made first, so an unscoped `first()` would find it.
+     */
+    public static function stranger(): User
+    {
+        $user = User::factory()->create();
+        Plan::factory()->for($user)->create(['start_date' => '2026-09-07', 'review_weekday' => 1]);
+        Profile::factory()->for($user)->create([
+            'experience' => 'intermediate',
+            'weight_unit' => 'lb',
+            'eating_window' => ['start' => '06:00', 'end' => '23:00'],
+            'meal_count' => 3,
+            'training_days' => [['weekday' => 2, 'start' => '06:00', 'minutes' => 60], ['weekday' => 3, 'start' => '06:00', 'minutes' => 60]],
+            'busy_periods' => [['label' => 'School run', 'start' => '08:00', 'end' => '09:00', 'weekdays' => [1, 2, 3, 4, 5]]],
+            'step_plan' => [['weekday' => 3, 'min' => 10000, 'max' => 12000]],
+        ]);
+        PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-21', 'is_deload' => true, 'is_diet_break' => false, 'is_away' => true, 'away_training' => 'deload']);
+        WeighInScheduleEntry::factory()->for($user)->create(['weekdays' => [3], 'time' => '06:15']);
+        TrainSeed::phase($user, 'fatLoss', '2026-09-07');
+        self::targets($user, last: '2026-11-30', kcal: 3000);
+        self::wednesday($user, self::mesocycle($user));
+
+        return $user;
+    }
+
     public static function mesocycle(User $user): Mesocycle
     {
         $bench = TrainSeed::exercise('Bench Press', MuscleGroup::Chest);
