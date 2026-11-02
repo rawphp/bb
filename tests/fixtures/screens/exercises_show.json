@@ -1,0 +1,220 @@
+{
+    "exercises": [
+        {
+            "id": "01JA8Q0V3K2M4N6P8R0T2W4Y6A",
+            "name": "45-Degree Hip Extension",
+            "detail": "Hamstrings · Machine",
+            "muscle_group": "hamstrings",
+            "equipment": "machine",
+            "last_used_text": "Last used 9 Oct 2026",
+            "has_video": true
+        },
+        {
+            "id": "01JA8Q0V3K2M4N6P8R0T2W4Y6B",
+            "name": "Ab Wheel Rollout",
+            "detail": "Abs · Bodyweight",
+            "muscle_group": "abs",
+            "equipment": "bodyweight",
+            "last_used_text": "Last used 9 Oct 2026",
+            "has_video": true
+        },
+        {
+            "id": "01JA8Q0V3K2M4N6P8R0T2W4Y6C",
+            "name": "Alternating Dumbbell Curl",
+            "detail": "Biceps · Dumbbell",
+            "muscle_group": "biceps",
+            "equipment": "dumbbell",
+            "last_used_text": "Last used 9 Oct 2026",
+            "has_video": true
+        },
+        {
+            "id": "01JA8Q0V3K2M4N6P8R0T2W4Y6D",
+            "name": "Alternating Dumbbell Front Raise",
+            "detail": "Front delts · Dumbbell",
+            "muscle_group": "frontDelts",
+            "equipment": "dumbbell",
+            "last_used_text": "Never used",
+            "has_video": true
+        },
+        {
+            "id": "01JA8Q0V3K2M4N6P8R0T2W4Y6E",
+            "name": "Arnold Press",
+            "detail": "Front delts · Dumbbell",
+            "muscle_group": "frontDelts",
+            "equipment": "dumbbell",
+            "last_used_text": "Never used",
+            "has_video": true
+        },
+        {
+            "id": "01JA8Q0V3K2M4N6P8R0T2W4Y6F",
+            "name": "Assisted Chest Dip",
+            "detail": "Chest · Machine",
+            "muscle_group": "chest",
+            "equipment": "machine",
+            "last_used_text": "Never used",
+            "has_video": true
+        },
+        {
+            "id": "01JA8Q0V3K2M4N6P8R0T2W4Y6G",
+            "name": "Assisted Nordic Curl",
+            "detail": "Hamstrings · Machine",
+            "muscle_group": "hamstrings",
+            "equipment": "machine",
+            "last_used_text": "Never used",
+            "has_video": false
+        },
+        {
+            "id": "01JA8Q0V3K2M4N6P8R0T2W4Y6H",
+            "name": "Barbell Bench Press",
+            "detail": "Chest · Barbell",
+            "muscle_group": "chest",
+            "equipment": "barbell",
+            "last_used_text": "Last used 8 Oct 2026",
+            "has_video": true
+        },
+        {
+            "id": "01JA8Q0V3K2M4N6P8R0T2W4Y6J",
+            "name": "Cable Fly",
+            "detail": "Chest · Cable",
+            "muscle_group": "chest",
+            "equipment": "cable",
+            "last_used_text": "Last used 6 Oct 2026",
+            "has_video": true
+        },
+        {
+            "id": "01JA8Q0V3K2M4N6P8R0T2W4Y6K",
+            "name": "Landmine Press (my gym)",
+            "detail": "Front delts · Barbell",
+            "muscle_group": "frontDelts",
+            "equipment": "barbell",
+            "last_used_text": "Never used",
+            "has_video": false
+        }
+    ],
+    "muscle_groups": [
+        {
+            "value": "chest",
+            "label": "Chest"
+        },
+        {
+            "value": "back",
+            "label": "Back"
+        },
+        {
+            "value": "quads",
+            "label": "Quads"
+        },
+        {
+            "value": "hamstrings",
+            "label": "Hamstrings"
+        },
+        {
+            "value": "glutes",
+            "label": "Glutes"
+        },
+        {
+            "value": "sideDelts",
+            "label": "Side delts"
+        },
+        {
+            "value": "rearDelts",
+            "label": "Rear delts"
+        },
+        {
+            "value": "frontDelts",
+            "label": "Front delts"
+        },
+        {
+            "value": "biceps",
+            "label": "Biceps"
+        },
+        {
+            "value": "triceps",
+            "label": "Triceps"
+        },
+        {
+            "value": "calves",
+            "label": "Calves"
+        },
+        {
+            "value": "abs",
+            "label": "Abs"
+        },
+        {
+            "value": "traps",
+            "label": "Traps"
+        },
+        {
+            "value": "forearms",
+            "label": "Forearms"
+        }
+    ],
+    "equipment": [
+        {
+            "value": "barbell",
+            "label": "Barbell"
+        },
+        {
+            "value": "ezBar",
+            "label": "EZ bar"
+        },
+        {
+            "value": "trapBar",
+            "label": "Trap bar"
+        },
+        {
+            "value": "dumbbell",
+            "label": "Dumbbell"
+        },
+        {
+            "value": "kettlebell",
+            "label": "Kettlebell"
+        },
+        {
+            "value": "machine",
+            "label": "Machine"
+        },
+        {
+            "value": "cable",
+            "label": "Cable"
+        },
+        {
+            "value": "smithMachine",
+            "label": "Smith machine"
+        },
+        {
+            "value": "bodyweight",
+            "label": "Bodyweight"
+        }
+    ],
+    "load_types": [
+        {
+            "value": "barbell",
+            "label": "Barbell"
+        },
+        {
+            "value": "dumbbell",
+            "label": "Dumbbell"
+        },
+        {
+            "value": "machine",
+            "label": "Machine"
+        },
+        {
+            "value": "cable",
+            "label": "Cable"
+        },
+        {
+            "value": "bodyweight",
+            "label": "Bodyweight"
+        },
+        {
+            "value": "bodyweightPlusLoad",
+            "label": "Bodyweight plus load"
+        },
+        {
+            "value": "smithMachine",
+            "label": "Smith machine"
+        }
+    ]
+}

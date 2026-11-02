@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Env;
 use Rawphp\Capabilities\Adapters\PeerSupportMatrix;
 
 /**
@@ -10,10 +11,10 @@ use Rawphp\Capabilities\Adapters\PeerSupportMatrix;
  * still apply via published config overrides.
  */
 // Avoid Laravel's env() helper here — monorepo unit tests load this file without
-// a full Illuminate env repository (PhpOption). Host apps override via published config.
+// a full Illuminate env repository (PhpOption). The lookup is App\Support\Env's.
 $env = static function (string $key, mixed $default = null): mixed {
-    $v = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
-    if ($v === false || $v === null || $v === '') {
+    $v = Env::raw($key);
+    if ($v === null) {
         return $default;
     }
 
@@ -32,9 +33,11 @@ return [
 
     'surfaces' => [
         'agent' => [
-            // Off: laravel/ai is not installed. The in-app agent runs on capabilities-ai.
-            'enabled' => false,
-            'require_package' => true,
+            // The in-app agent's tool calls run as caller=agent (capabilities-ai TurnRunner, D-022).
+            // laravel/ai is not installed, so its tool adapter stays unregistered; false here
+            // stops every agent tool call.
+            'enabled' => $env('CAPABILITIES_SURFACE_AGENT', true),
+            'require_package' => false,
             'on_incompatible' => $env('CAPABILITIES_AGENT_ON_INCOMPATIBLE', 'fail'),
             'profiles' => [],
             'require_profile' => true,
