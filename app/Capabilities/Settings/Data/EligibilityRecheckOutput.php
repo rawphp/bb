@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Settings\Data;
 
-use App\Capabilities\Support\DomainEnumValues;
+use App\Capabilities\Support\DomainValues;
 use App\Capabilities\Support\WriteOutput;
 use App\Capabilities\Support\WriteResult;
 use Rawphp\Capabilities\Attributes\Field;
@@ -11,7 +11,7 @@ use Rawphp\Capabilities\Attributes\Field;
 final class EligibilityRecheckOutput extends WriteOutput
 {
     public function __construct(
-        #[Field(enum: DomainEnumValues::RECHECK_OUTCOME_KIND)]
+        #[Field(enum: DomainValues::RECHECK_OUTCOME_KINDS)]
         public readonly string $outcome,
         public readonly string $message,
         #[Field(description: 'onboarding: onboarding_show holds the steps this outcome needs', enum: ['done', 'onboarding'])]

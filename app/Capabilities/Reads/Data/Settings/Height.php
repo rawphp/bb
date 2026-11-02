@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Reads\Data\Settings;
 
-use App\Capabilities\Support\DomainEnumValues;
+use App\Capabilities\Support\DomainValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -10,7 +10,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class Height extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: DomainEnumValues::HEIGHT_UNIT)]
+        #[Field(enum: DomainValues::HEIGHT_UNITS)]
         public readonly string $unit,
         #[Field(description: 'for example "178 cm" or "5 ft 10 in"')]
         public readonly string $text,

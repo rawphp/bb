@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Settings\Data;
 
-use App\Capabilities\Support\DomainEnumValues;
+use App\Capabilities\Support\DomainValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -10,7 +10,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class DietFilterInput extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: DomainEnumValues::DIET_FILTER)]
+        #[Field(enum: DomainValues::DIET_FILTERS)]
         public readonly string $filter,
     ) {}
 }

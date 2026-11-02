@@ -11,8 +11,8 @@
         "sex": {
             "type": "string",
             "enum": [
-                "male",
-                "female"
+                "female",
+                "male"
             ]
         },
         "birth_date": {

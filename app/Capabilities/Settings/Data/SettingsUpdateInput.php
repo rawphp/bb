@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Settings\Data;
 
-use App\Capabilities\Support\DomainEnumValues;
+use App\Capabilities\Support\DomainValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -10,13 +10,13 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class SettingsUpdateInput extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: DomainEnumValues::WEIGHT_UNIT)]
+        #[Field(enum: DomainValues::WEIGHT_UNITS)]
         public readonly string $weight_unit,
-        #[Field(enum: DomainEnumValues::HEIGHT_UNIT)]
+        #[Field(enum: DomainValues::HEIGHT_UNITS)]
         public readonly string $height_unit,
         #[Field(enum: ['system', 'light', 'dark'])]
         public readonly string $appearance,
-        #[Field(enum: DomainEnumValues::CONSUMED_TOTALS)]
+        #[Field(enum: DomainValues::CONSUMED_TOTALS)]
         public readonly string $consumed_totals,
         public readonly bool $micro_plates,
     ) {}

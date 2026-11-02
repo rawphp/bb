@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Reads\Data\Settings;
 
-use App\Capabilities\Support\DomainEnumValues;
+use App\Capabilities\Support\DomainValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -10,7 +10,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class ScreeningQuestion extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: DomainEnumValues::SCREENING_ITEM)]
+        #[Field(enum: DomainValues::SCREENING_ITEMS)]
         public readonly string $item,
         public readonly string $label,
         public readonly bool $applies,
