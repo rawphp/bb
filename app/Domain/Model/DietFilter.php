@@ -13,6 +13,23 @@ enum DietFilter: string
     case Paleo = 'paleo';
     case Vegan = 'vegan';
 
+    /**
+     * A mix of foods, such as a recipe, passes a filter only when every food in it does. A flag a food
+     * does not name counts as not passing.
+     *
+     * @param  list<array<string, bool>>  $foods  each food's flags, keyed by filter value
+     * @return array<string, bool> every filter's value for the mix, keyed by filter value
+     */
+    public static function sharedBy(array $foods): array
+    {
+        $flags = [];
+        foreach (self::cases() as $filter) {
+            $flags[$filter->value] = array_all($foods, fn (array $food): bool => $food[$filter->value] ?? false);
+        }
+
+        return $flags;
+    }
+
     public function title(): string
     {
         return match ($this) {

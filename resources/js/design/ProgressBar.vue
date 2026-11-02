@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { toneIcons } from './toneIcons';
 
 // One bar for macro bars and set bars, with a "45/40" label (UI-003). Ported
 // from rp-clone's ProgressBar.swift. The server sends the text, the fill and
@@ -83,7 +84,7 @@ const spoken = computed(() => {
             fill="currentColor"
             aria-hidden="true"
         >
-            <path d="M10.3 3.9a2 2 0 0 1 3.4 0l8 13.6A2 2 0 0 1 20 20.5H4a2 2 0 0 1-1.7-3zM11 9v5h2V9zm0 7v2h2v-2z" />
+            <path :d="toneIcons.warning" />
         </svg>
         <span v-if="props.loading" aria-hidden="true" class="shrink-0 whitespace-nowrap">Loading</span>
         <span v-else-if="props.error" aria-hidden="true" class="shrink-0 text-tone-warning">{{ props.error }}</span>
