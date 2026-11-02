@@ -9,7 +9,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class WeightInput extends CapabilityData
 {
     public function __construct(
-        #[Field(minimum: 0)]
+        #[Field(description: 'A floor and a ceiling that hold in kg and in lb.', minimum: 20, maximum: 1000)]
         public readonly float $value,
         #[Field(enum: ['kg', 'lb'])]
         public readonly string $unit,

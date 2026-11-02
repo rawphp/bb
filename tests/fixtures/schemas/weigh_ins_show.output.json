@@ -94,7 +94,14 @@
                         "properties": {
                             "weekdays": {
                                 "type": "array",
-                                "description": "ISO weekdays, 1 is Monday."
+                                "description": "ISO weekdays, 1 is Monday.",
+                                "minItems": 1,
+                                "maxItems": 7,
+                                "items": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 7
+                                }
                             },
                             "days_label": {
                                 "type": "string",

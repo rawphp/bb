@@ -12,7 +12,7 @@ export interface WeighInScheduleSetInput {
        * @minItems 1
        * @maxItems 7
        */
-      weekdays: [unknown, ...unknown[]];
+      weekdays: [number, ...number[]];
       /**
        * Reminder time, "HH:MM".
        */
@@ -25,7 +25,7 @@ export interface WeighInScheduleSetInput {
        * @minItems 1
        * @maxItems 7
        */
-      weekdays: [unknown, ...unknown[]];
+      weekdays: [number, ...number[]];
       /**
        * Reminder time, "HH:MM".
        */

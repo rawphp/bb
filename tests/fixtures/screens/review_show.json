@@ -250,18 +250,8 @@
                 "is_enabled": true
             }
         ],
-        "own": {
-            "label": "Calories a day",
-            "unit_label": "kcal a day",
-            "value": 2400
-        },
-        "deload": {
-            "kind": "ask",
-            "question": "Make this your deload week too?",
-            "answer": true,
-            "note": "The mesocycle ends a week early.",
-            "rir_label": "Target RIR by week: 3, 2, 1, 0"
-        },
+        "own": null,
+        "deload": null,
         "step_offer": {
             "label": "Update my step plan to 6,100 steps a day",
             "accepted": false

@@ -4,6 +4,9 @@ export interface WeighInLogInput {
   id: string;
   weighed_at: string;
   weight: {
+    /**
+     * A floor and a ceiling that hold in kg and in lb.
+     */
     value: number;
     unit: "kg" | "lb";
   };
@@ -11,6 +14,9 @@ export interface WeighInLogInput {
    * WT-021: optional waist measurement.
    */
   waist?: {
+    /**
+     * A floor and a ceiling that hold in cm and in inches.
+     */
     value: number;
     unit: "cm" | "in";
   } | null;

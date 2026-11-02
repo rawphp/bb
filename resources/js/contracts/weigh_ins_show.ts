@@ -35,8 +35,11 @@ export interface WeighInsShowOutput {
     entries: {
       /**
        * ISO weekdays, 1 is Monday.
+       *
+       * @minItems 1
+       * @maxItems 7
        */
-      weekdays: unknown[];
+      weekdays: [number, ...number[]];
       /**
        * "Mon, Wed, Fri" or "Every day".
        */
@@ -126,4 +129,4 @@ export interface WeighInsShowOutput {
   };
 }
 
-export const outputVersion = 'f10b55c23822';
+export const outputVersion = '64324e7ac226';

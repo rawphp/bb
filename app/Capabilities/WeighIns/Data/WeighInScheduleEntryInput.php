@@ -14,4 +14,13 @@ final class WeighInScheduleEntryInput extends CapabilityData
         #[Field(description: 'Reminder time, "HH:MM".')]
         public readonly string $time,
     ) {}
+
+    /** Field cannot type a list of scalars, so the weekday item type is added here. */
+    public static function jsonSchema(): array
+    {
+        $schema = parent::jsonSchema();
+        $schema['properties']['weekdays']['items'] = ['type' => 'integer', 'minimum' => 1, 'maximum' => 7];
+
+        return $schema;
+    }
 }

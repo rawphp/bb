@@ -9,7 +9,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class WaistInput extends CapabilityData
 {
     public function __construct(
-        #[Field(minimum: 0)]
+        #[Field(description: 'A floor and a ceiling that hold in cm and in inches.', minimum: 10, maximum: 300)]
         public readonly float $value,
         #[Field(enum: ['cm', 'in'])]
         public readonly string $unit,

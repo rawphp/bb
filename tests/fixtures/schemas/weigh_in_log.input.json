@@ -16,7 +16,9 @@
             "properties": {
                 "value": {
                     "type": "number",
-                    "minimum": 0
+                    "description": "A floor and a ceiling that hold in kg and in lb.",
+                    "minimum": 20,
+                    "maximum": 1000
                 },
                 "unit": {
                     "type": "string",
@@ -40,7 +42,9 @@
             "properties": {
                 "value": {
                     "type": "number",
-                    "minimum": 0
+                    "description": "A floor and a ceiling that hold in cm and in inches.",
+                    "minimum": 10,
+                    "maximum": 300
                 },
                 "unit": {
                     "type": "string",

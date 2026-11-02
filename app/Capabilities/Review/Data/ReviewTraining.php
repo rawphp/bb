@@ -2,8 +2,8 @@
 
 namespace App\Capabilities\Review\Data;
 
-use App\Capabilities\Progress\Data\Line;
-use App\Capabilities\Progress\Data\Status;
+use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\Line;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 

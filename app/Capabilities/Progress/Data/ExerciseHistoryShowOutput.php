@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Progress\Data;
 
+use App\Capabilities\Reads\Data\Today\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
