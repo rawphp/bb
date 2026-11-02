@@ -22,8 +22,9 @@ final class MesocycleCopyCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('mesocycle_copy', affects: ['train_show', 'mesocycle_show'])
-            ->description('Copy a saved mesocycle into a new draft with the same days, exercises and sets, each exercise starting from its old week-1 load. Use it to build the next mesocycle from the last one; without start_date it starts when the next mesocycle is due. It replaces any other draft, and in a phase of another type it takes that phase\'s priorities unless keep_priorities is set.')
+        // AGT-010: the copy deletes the user's unfinished draft (MESO-007), so the coach needs the user's say-so.
+        return HostDefinition::write('mesocycle_copy', affects: ['train_show', 'mesocycle_show'], destructive: true)
+            ->description('Copy a saved mesocycle into a new draft with the same days, exercises and sets, each exercise starting from its old week-1 load. Use it to build the next mesocycle from the last one; without start_date it starts when the next mesocycle is due. It deletes any other unfinished draft, which cannot be undone, and in a phase of another type it takes that phase\'s priorities unless keep_priorities is set.')
             ->cli('mesocycle', 'copy')
             ->input(MesocycleCopyInput::class)
             ->run(function (MesocycleCopyInput $input, CapabilityContext $context): WriteResult {
