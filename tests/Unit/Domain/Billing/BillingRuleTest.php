@@ -23,6 +23,10 @@ it('SUB-001 a trial or a subscription unlocks every write', function (Access $ac
     expect(BillingRule::allows($access, $write, readOnly: false))->toBeTrue();
 })->with(fn () => [Access::Trial, Access::Active])->with(['meal_check_in', 'onboarding_complete', 'token_create']);
 
+it('SUB-003 no free tier: a user who has never subscribed makes no change but onboarding answers until the trial starts', function (string $write) {
+    expect(BillingRule::allows(Access::None, $write, readOnly: false))->toBeFalse();
+})->with(['meal_check_in', 'workout_set_log', 'token_create', 'settings_update', 'undo_apply']);
+
 it('SUB-003 the first plan waits for the trial: onboarding_complete needs a trial or a subscription', function () {
     expect(BillingRule::allows(Access::None, 'onboarding_complete', readOnly: false))->toBeFalse()
         ->and(BillingRule::allows(Access::Trial, 'onboarding_complete', readOnly: false))->toBeTrue();
@@ -30,7 +34,7 @@ it('SUB-003 the first plan waits for the trial: onboarding_complete needs a tria
 
 it('SUB-004 a new user can answer onboarding and reach the paywall before paying', function (string $write) {
     expect(BillingRule::allows(Access::None, $write, readOnly: false))->toBeTrue();
-})->with(['onboarding_answer', 'billing_checkout_start', 'account_delete']);
+})->with(['onboarding_answer', 'billing_checkout_start', 'account_delete', 'token_revoke', 'push_unsubscribe']);
 
 it('SUB-024 the Coach is part of the plan: a trial or a subscription gets it, a lapsed user does not', function () {
     expect(BillingRule::allowsCoach(Access::Trial))->toBeTrue()

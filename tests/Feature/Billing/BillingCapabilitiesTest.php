@@ -1,5 +1,6 @@
 <?php
 
+use App\Billing\PlanPrices;
 use App\Billing\StripeGateway;
 use App\Capabilities\Support\BillingGate;
 use App\Capabilities\Support\StripeBilling;
@@ -97,6 +98,48 @@ it('SUB-003 billing_show says when the free trial ends', function () {
         ->assertJsonPath('data.status', ['text' => 'Free trial, ends 10 November 2026', 'tone' => 'info'])
         ->assertJsonPath('data.primary_label', 'Subscribe')
         ->assertJsonPath('data.can_manage', true);
+});
+
+it('SUB-010 with Stripe down and no price kept, billing_show still shows a lapsed user the status, the banner and the way to resubscribe', function () {
+    $this->stripe->down = true;
+    $user = User::factory()->create();
+    Subscription::factory()->for($user)->create(['status' => 'canceled', 'plan' => 'yearly']);
+
+    $data = $this->actingAs($user)->postJson('/capabilities/billing_show')->assertOk()->json('data');
+
+    expect($data['status'])->toBe(['text' => 'Ended', 'tone' => 'warning'])
+        ->and($data['lapsed'])->toBe(['text' => 'Your subscription has ended. Your data is read-only.', 'action_label' => 'Resubscribe'])
+        ->and($data['plans'])->toBe([])
+        ->and($data['default_plan'])->toBe('yearly')
+        ->and($data['can_manage'])->toBeTrue();
+});
+
+it('SUB-002 with Stripe down, billing_show shows the prices kept from the last refresh', function () {
+    app(PlanPrices::class)->refresh('price_monthly');
+    $this->stripe->down = true;
+
+    $data = $this->actingAs(User::factory()->create())->postJson('/capabilities/billing_show')->assertOk()->json('data');
+
+    expect($data['plans'])->toBe([['plan' => 'monthly', 'title' => 'Monthly', 'price_text' => '$34.99 per month', 'detail' => null]]);
+});
+
+it('SUB-002 billing_show reads Stripe for prices only when none is kept, and keeps them', function () {
+    $this->actingAs(User::factory()->create())->postJson('/capabilities/billing_show')->assertOk();
+    $this->stripe->down = true;
+
+    $this->actingAs(User::factory()->create())->postJson('/capabilities/billing_show')
+        ->assertOk()
+        ->assertJsonCount(3, 'data.plans');
+});
+
+it('SUB-002 the scheduled refresh keeps every plan\'s price from Stripe, and keeps the old one when Stripe fails', function () {
+    $this->artisan('billing:refresh-prices')->assertSuccessful();
+    $this->stripe->prices['price_monthly']['amount'] = 3999;
+    $this->stripe->down = true;
+
+    $this->artisan('billing:refresh-prices')->assertFailed();
+
+    expect(app(PlanPrices::class)->get('price_monthly'))->toMatchArray(['amount' => 3499]);
 });
 
 it('SUB-007 billing_show says a cancelled subscription ends rather than renews', function () {

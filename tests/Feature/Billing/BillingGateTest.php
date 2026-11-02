@@ -108,3 +108,8 @@ it('SUB-024 the Coach is on the plan: trial and paid users can talk to it', func
         ->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])
         ->assertCreated();
 })->with(['trialing', 'active']);
+
+it('SUB-003 a user who has never subscribed is read-only until the trial starts, as every existing user is when billing is turned on', function () {
+    createTokenAs(userWithStatus(null))->assertForbidden();
+    $this->actingAs(userWithStatus(null))->postJson('/capabilities/account_show')->assertOk();
+});

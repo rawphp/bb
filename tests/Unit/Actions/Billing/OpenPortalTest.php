@@ -26,3 +26,11 @@ it('SUB-007 opens the portal for an account whose subscription has ended, so it 
 
     expect((new OpenPortal($stripe))($user))->toBe('https://billing.stripe.com/p/session/test_1');
 });
+
+it('SUB-021 an account reaches its subscription through the user', function () {
+    $user = User::factory()->create();
+    $row = Subscription::factory()->for($user)->create();
+
+    expect($user->subscription?->is($row))->toBeTrue()
+        ->and(Subscription::of($user)?->is($row))->toBeTrue();
+});
