@@ -135,7 +135,8 @@ final class MealSplit
         $bed = $row->bedtimePercent ?? 0.0;
         $rest = $row->restPercent ?? 0.0;
 
-        // Every shake takes its points from the post-workout share, which cannot go below 0.
+        // Every shake takes its points from the post-workout share, which cannot go below 0. Points beyond that
+        // share push the weights past 100, and the split's normalising takes them from every meal (as in rp-clone).
         $post = max(0.0, $post - $shakePoints * $shakeCount);
         if ($placement === CarbPlacement::EveningWeighted) {
             $moved = min(self::EVENING_SHIFT_POINTS, $pre);

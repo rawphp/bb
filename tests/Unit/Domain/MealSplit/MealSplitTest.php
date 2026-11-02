@@ -425,3 +425,54 @@ it('NUT-031 NUT-032 direction check from the spec example', function () {
         ->and(array_sum($carbs))->toEqualWithDelta(337.5, 1e-9)
         ->and(mealSplitSum($items, 'kcal'))->toEqualWithDelta(2770, 1e-9);
 });
+
+// Review round 1: cases the Swift suite leaves open.
+
+it('NUT-031 with two workouts, pre is the last meal before the first and post the first meal after the last', function () {
+    $m = mealSplitIds(5);
+    $entries = [
+        DayEntry::meal($m[0]), DayEntry::workout(), DayEntry::meal($m[1]), DayEntry::meal($m[2]),
+        DayEntry::workout(), DayEntry::meal($m[3]), DayEntry::meal($m[4]),
+    ];
+    $items = MealSplit::split(mealSplitDay(protein: 180, fat: 80, carbs: 500), $entries);
+
+    // 5-meal row: pre 20 (meal 0), post 30 (meal 3), bedtime 20 (meal 4), rest 30 over meals 1 and 2.
+    expect(mealSplitValues($items, 'carbsG'))->toEqual([100, 75, 75, 150, 100]);
+});
+
+it('NUT-031 meals only between two workouts put the pre and post shares into the rest', function () {
+    $m = mealSplitIds(3);
+    $entries = [DayEntry::workout(), ...mealSplitMeals($m), DayEntry::workout()];
+    $items = MealSplit::split(mealSplitDay(protein: 180, fat: 80, carbs: 400), $entries);
+
+    // 3-meal row: no pre or post meal, so pre 30 + post 45 = 75 rest points over meals 0 and 1; bedtime keeps 25.
+    expect(mealSplitValues($items, 'carbsG'))->toEqual([150, 150, 100]);
+});
+
+it('NUT-035 free meals take kcal from their grams when fixed meals use more than the day', function () {
+    $m = mealSplitIds(3);
+    $fixed = new MealTarget(kcal: 1600, proteinG: 60, fatG: 40, carbsG: 100);
+    $entries = [DayEntry::meal($m[0], fixed: $fixed), DayEntry::meal($m[1]), DayEntry::meal($m[2])];
+    $items = MealSplit::split(mealSplitDay(kcal: 1500, protein: 120, fat: 45, carbs: 120), $entries);
+
+    // Free meals: P 30, F 5, C 10 each, so 4·30 + 9·5 + 4·10 = 205 kcal, not a share of the day's -100 left.
+    expect($items[0]->target)->toEqual($fixed)
+        ->and(mealSplitValues($items, 'kcal'))->toEqual([1600, 205, 205]);
+});
+
+it('NUT-037 evening-weighted with the workout before the first meal moves the shift from post to bedtime', function () {
+    $m = mealSplitIds(6);
+    $entries = [DayEntry::workout(), ...mealSplitMeals($m)];
+    $items = MealSplit::split(mealSplitDay(protein: 180, fat: 80, carbs: 500), $entries, CarbPlacement::EveningWeighted);
+
+    // 6-meal row: pre 18 -> 8 goes to post (25 + 8 = 33), bedtime 18 + 10 = 28, rest 39 over four meals.
+    expect(mealSplitValues($items, 'carbsG'))->toEqual([165, 50, 50, 50, 45, 140]);
+});
+
+it('NUT-037 evening-weighted with the workout after the last meal changes nothing, as pre and bedtime are one meal', function () {
+    $m = mealSplitIds(4);
+    $entries = [...mealSplitMeals($m), DayEntry::workout()];
+    $items = MealSplit::split(mealSplitDay(protein: 160, fat: 80, carbs: 400), $entries, CarbPlacement::EveningWeighted);
+
+    expect(mealSplitValues($items, 'carbsG'))->toEqual([20, 20, 20, 340]);
+});
