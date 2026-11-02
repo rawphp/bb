@@ -46,3 +46,5 @@ export interface AwayWeekShowOutput {
   }[];
   shows_keep_phase_end: boolean;
 }
+
+export const outputVersion = 'c7144c032766';

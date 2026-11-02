@@ -467,3 +467,5 @@ export interface TodayShowOutput {
     offers_diet_break: boolean;
   } | null;
 }
+
+export const outputVersion = '74229b27a956';

@@ -25,3 +25,5 @@ export interface DayRedistributeShowOutput {
   }[];
   can_confirm: boolean;
 }
+
+export const outputVersion = 'ac1bba57bf83';
