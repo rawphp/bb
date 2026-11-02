@@ -69,6 +69,7 @@ Parallel issues rely on these names.
 ## Server
 
 - Laravel 13, PHP 8.4 (raise to 8.5 once the gate host has it), MySQL 8, Redis (cache, queues, the AI progress store).
+- MySQL runs at READ COMMITTED. A write that serializes on a row lock (one workout write at a time per mesocycle) then reads what the write before it committed; under REPEATABLE READ it would keep reading the view its transaction's first read took.
 - Auth: Sanctum. The PWA uses SPA cookie auth on the same domain. Tokens (CAP-021) are Sanctum personal access tokens whose abilities are capability names.
 - Queues: `default` and `agent` (AGT setup defaults), each with its own worker.
 - Scheduler: the package's stale-turn reaper, pruning of `audit_records` and the old audit outbox rows (daily) and of expired undo tokens (hourly, CAP-013). The Web Push sender (NOTIF) and pruning of the idempotency table are planned but not scheduled yet.

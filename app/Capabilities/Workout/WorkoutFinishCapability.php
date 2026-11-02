@@ -27,8 +27,8 @@ final class WorkoutFinishCapability implements HostCapability
             ->run(function (WorkoutFinishInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */
                 $user = $context->user();
-                // The request clock for now. Swapping in OccurredAt::get(), the instant the user finished, is #195's one-line
-                // change once it lands, so offline replays keep the finish time.
+                // The request clock, by the instructor's decision on #84. Swapping in OccurredAt::get() (#195, now on main),
+                // the instant the user finished, is a one-line follow-up in #195's scope, so offline replays keep the time.
                 $finished = ($this->finish)($user, $input->workout_id, CarbonImmutable::now());
                 $session = $finished['session'];
 
