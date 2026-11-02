@@ -34,15 +34,6 @@ it('CAP-019 answers 422 naming day_id when it is not a ULID', function () {
         ->assertJsonPath('error.violations.0.field', 'day_id');
 });
 
-it('MESO-045 answers 422 in plain words when every training day already has a session', function () {
-    Carbon::setTestNow('2026-09-22 10:00:00');
-    $user = TrainSeed::user();
-
-    dayAddOver($user, ['mesocycle_id' => TrainSeed::mesocycle($user)->id, 'day_id' => (string) Str::ulid()])
-        ->assertStatus(422)
-        ->assertJsonPath('error.message', 'Every training day already has a session. Add a training day in your schedule first.');
-});
-
 it('MESO-045 adds the day the client named', function () {
     Carbon::setTestNow('2026-09-22 10:00:00');
     $user = TrainSeed::user();

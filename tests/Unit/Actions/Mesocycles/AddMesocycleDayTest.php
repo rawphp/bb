@@ -2,7 +2,9 @@
 
 use App\Actions\Mesocycles\AddMesocycleDay;
 use App\Models\Mesocycle;
+use App\Models\Plan;
 use App\Models\Profile;
+use App\Models\User;
 use App\Support\Mesocycles\TrainSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -61,11 +63,32 @@ it('MESO-045 a weekday split gets the next free training weekday', function () {
     expect($mesocycle->dayRows()[2])->toMatchArray(['label' => 'Friday', 'weekday' => 5]);
 });
 
-it('MESO-045 a weekday split with no free training day refuses in plain words and changes nothing', function () {
+it('MESO-045 the plan and the training days are the user\'s own, not another user\'s', function () {
+    // Made first, so a query that ignored the user would find them: plan weeks from Tuesday, and Wednesday training.
+    $other = User::factory()->create();
+    Plan::factory()->for($other)->create(['start_date' => '2026-08-31', 'review_weekday' => 2]);
+    Profile::factory()->for($other)->create(['training_days' => array_map(
+        fn (int $d) => ['weekday' => $d, 'start' => '17:30', 'minutes' => 60], [1, 3, 4],
+    )]);
+    Carbon::setTestNow('2026-09-22 10:00:00');
+    $user = TrainSeed::user();
+    $user->profile()->update(['training_days' => array_map(fn (int $d) => ['weekday' => $d, 'start' => '17:30', 'minutes' => 60], [1, 4, 5])]);
+    $mesocycle = TrainSeed::mesocycle($user);
+
+    app(AddMesocycleDay::class)($user, $mesocycle->id, NEW_DAY);
+    $added = $mesocycle->fresh();
+
+    // Week 3 of Monday weeks: Friday, and the two weeks before stored as they ran.
+    expect($added->dayRows()[2])->toMatchArray(['label' => 'Friday', 'weekday' => 5])
+        ->and(count($added->earlierWeekRows()))->toBe(2);
+});
+
+it('MESO-045 a weekday split with no free training day falls back to a day number', function () {
+    // rp-clone's addDay: Monday and Thursday are taken, so the day is "Day 3" with no weekday.
     [$mesocycle, $refusal] = addDay();
 
-    expect($refusal)->toBe('Every training day already has a session. Add a training day in your schedule first.')
-        ->and(count($mesocycle->dayRows()))->toBe(2);
+    expect($refusal)->toBeNull()
+        ->and($mesocycle->dayRows()[2])->toMatchArray(['label' => 'Day 3', 'weekday' => null]);
 });
 
 it('MESO-045 SCH-039 a day added in week 3 runs from week 3 on; weeks 1 and 2 keep their two days', function () {

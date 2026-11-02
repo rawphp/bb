@@ -68,3 +68,15 @@ it('MESO-042 refuses to run into the next saved mesocycle, saying when it starts
         ->toThrow(DomainException::class, 'The next mesocycle starts on 12 Oct, so this one can run at most 5 weeks.')
         ->and($mesocycle->fresh()->weeks)->toBe(5);
 });
+
+it('MESO-042 a copy waiting for the next start, and an earlier mesocycle, do not stop it lengthening', function () {
+    Carbon::setTestNow('2026-09-22 10:00:00');
+    $user = TrainSeed::user();
+    TrainSeed::mesocycle($user, ['name' => 'Meso 1', 'start_date' => '2026-06-01']);
+    $mesocycle = TrainSeed::mesocycle($user);
+    TrainSeed::mesocycle($user, ['name' => null, 'is_draft' => true, 'route' => 'copy_previous', 'start_date' => '2026-10-12']);
+
+    app(SetMesocycleLength::class)($user, $mesocycle->id, 6);
+
+    expect($mesocycle->fresh()->weeks)->toBe(6);
+});

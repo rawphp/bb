@@ -2,7 +2,13 @@
 
 use App\Actions\Mesocycles\CopyMesocycle;
 use App\Actions\Mesocycles\TakeActiveRest;
+use App\Capabilities\Reads\Train\MesocyclePayload;
+use App\Domain\Defaults\TBL012TrainingDefaults\Column;
+use App\Domain\Mesocycle\MesoBuilder;
+use App\Domain\Model\PhaseType;
+use App\Domain\Model\Priority;
 use App\Models\Mesocycle;
+use App\Support\Mesocycles\TrainSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Support\TrainSeed;
@@ -79,14 +85,41 @@ it('MESO-064 MESO-060 MESO-003 a copy made to start with the next mesocycle move
         ->and($draft->phase_id)->toBe($cut->id);
 });
 
-it('MESO-064 a draft starting elsewhere stays where it is', function () {
+it('MESO-064 MESO-065 a copy moved into a phase of another type takes that phase\'s preset, and the draft says so', function () {
+    Carbon::setTestNow('2026-10-06 10:00:00');
+    $user = TrainSeed::user();
+    $gain = TrainSeed::phase($user, 'muscleGain', '2026-08-31', '2026-10-19');
+    TrainSeed::phase($user, 'fatLoss', '2026-10-19');
+    $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => $gain->id]);
+    TrainSeed::trained($mesocycle, 3, 1, '2026-09-21', flat: true);
+    TrainSeed::trained($mesocycle, 4, 1, '2026-09-28', flat: true);
+    $copy = '01JD0000000000000000000001';
+    // 12 October is still muscle gain, so the copy keeps the old priorities.
+    app(CopyMesocycle::class)($user, null, $copy, $mesocycle->id, null, false);
+    $copied = Mesocycle::query()->findOrFail($copy)->muscle_priorities;
+
+    app(TakeActiveRest::class)($user, $mesocycle->id);
+    $draft = Mesocycle::query()->findOrFail($copy);
+    $preset = array_map(fn (Priority $p) => $p->value, MesoBuilder::defaultPriorities(Column::for(PhaseType::FatLoss, false)));
+    $shown = MesocyclePayload::build(TrainSnapshot::load($user, $copy), $draft)->toArray()['build'];
+
+    expect($copied)->toBe($mesocycle->muscle_priorities)
+        ->and($draft->muscle_priorities)->toEqual($preset)
+        ->and($shown['priority_notice'])->toBe(['text' => 'Priorities reset for Fat loss. Your old priorities can be kept.', 'tone' => 'info']);
+});
+
+it('MESO-064 a draft starting elsewhere, or not a copy, stays where it is', function () {
     Carbon::setTestNow('2026-10-06 10:00:00');
     $user = TrainSeed::user();
     $mesocycle = TrainSeed::mesocycle($user);
     TrainSeed::trained($mesocycle, 3, 1, '2026-09-21', flat: true);
     TrainSeed::trained($mesocycle, 4, 1, '2026-09-28', flat: true);
     $draft = TrainSeed::mesocycle($user, ['is_draft' => true, 'route' => 'copy_previous', 'start_date' => '2026-11-02']);
+    // A scratch draft dated at the next mesocycle's start is the user's own plan, not a copy waiting for it.
+    $scratch = TrainSeed::mesocycle($user, ['is_draft' => true, 'route' => 'scratch', 'start_date' => '2026-10-12']);
+    $scratchBefore = $scratch->fresh()->getAttributes();
 
     expect(app(TakeActiveRest::class)($user, $mesocycle->id))->toBe([])
-        ->and($draft->fresh()->start_date->format('Y-m-d'))->toBe('2026-11-02');
+        ->and($draft->fresh()->start_date->format('Y-m-d'))->toBe('2026-11-02')
+        ->and($scratch->fresh()->getAttributes())->toBe($scratchBefore);
 });

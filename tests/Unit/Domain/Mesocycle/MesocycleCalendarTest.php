@@ -2,6 +2,7 @@
 
 use App\Domain\Mesocycle\MesocycleCalendar;
 use App\Domain\Model\PlanWeek;
+use App\Domain\Plan\MesocycleSpan;
 use App\Domain\Plan\PlanWeekGrid;
 
 // Where a mesocycle stands in time, the one answer the Train reads and the mesocycle writes share.
@@ -163,21 +164,27 @@ it('MESO-005 a floating day with no training weekday left has no date', function
         ->toEqual([calDay('2026-10-08'), calDay('2026-10-12')]);
 });
 
-it('MESO-043 MESO-060 a mesocycle starting in a short first plan week runs to the end of its last plan week', function () {
-    // The plan starts on Wednesday 16 September with Monday weeks, so its first week runs Wednesday to Sunday and
-    // a 5-week mesocycle from that day has its deload from 12 to 18 October.
-    $grid = new PlanWeekGrid(calDay('2026-09-16'), 2);
-    $on = fn (string $today, ?string $endedOn = null) => new MesocycleCalendar(
-        calDay('2026-09-16'), 5, $endedOn === null ? null : calDay($endedOn), $grid, calDay($today),
-    );
+it('MESO-005 MESO-045 a floating day takes only the training weekdays no weekday day takes; with none left it has no date', function () {
+    // The plan week from Monday 5 October. Day 1 is on Monday, Day 2 on Thursday, Day 3 added without a weekday.
+    $week = new PlanWeek(calDay('2026-10-05'));
 
-    expect($on('2026-10-18')->lastDay())->toEqual(calDay('2026-10-18'))
+    expect(MesocycleCalendar::dayDates($week, [1, 4, null], [1, 4], 1))->toEqual([calDay('2026-10-05'), calDay('2026-10-08'), null])
+        ->and(MesocycleCalendar::dayDates($week, [4, null, null], [6, 1, 4], 1))
+        ->toEqual([calDay('2026-10-08'), calDay('2026-10-05'), calDay('2026-10-10')]);
+});
+
+it('MESO-043 MESO-060 a mesocycle starting in a short first plan week runs, and is over, with its last plan week', function () {
+    // The plan starts on Wednesday 16 September with Monday weeks, so its first week runs Wednesday to Sunday and
+    // a 5-week mesocycle from that day has its deload from 12 to 18 October. The last day itself is MesocycleSpanTest's.
+    $grid = new PlanWeekGrid(calDay('2026-09-16'), 2);
+    $on = fn (string $today) => new MesocycleCalendar(calDay('2026-09-16'), 5, null, $grid, calDay($today));
+
+    expect($on('2026-10-18')->lastDay())->toEqual(MesocycleSpan::lastDayOnGrid(calDay('2026-09-16'), 5, null, $grid))
         ->and($on('2026-10-18')->isRunning())->toBeTrue()
         ->and($on('2026-10-19')->nextMesocycleStart(activeRest: false))->toEqual(calDay('2026-10-19'))
         ->and($on('2026-10-19')->isRunning())->toBeFalse()
         ->and($on('2026-10-19')->canEnd())->toBeFalse()
-        ->and($on('2026-10-19')->canAddDay())->toBeFalse()
-        ->and($on('2026-10-07', endedOn: '2026-10-07')->lastDay())->toEqual(calDay('2026-10-06'));
+        ->and($on('2026-10-19')->canAddDay())->toBeFalse();
 });
 
 it('MESO-042 a mesocycle cannot be lengthened into the next saved one', function () {

@@ -1,6 +1,10 @@
 <?php
 
 use App\Actions\Mesocycles\CopyMesocycle;
+use App\Domain\Defaults\TBL012TrainingDefaults\Column;
+use App\Domain\Mesocycle\MesoBuilder;
+use App\Domain\Model\PhaseType;
+use App\Domain\Model\Priority;
 use App\Enums\MesocycleRoute;
 use App\Models\Mesocycle;
 use App\Models\Phase;
@@ -173,4 +177,32 @@ it('MESO-007 refuses to copy over a saved mesocycle', function () {
 
     expect(fn () => app(CopyMesocycle::class)($user, $source, $source->id, $source->id, null, false))
         ->toThrow(DomainException::class, 'That mesocycle is already saved. Copy into a new one.');
+});
+
+it('MESO-003 MESO-065 another user\'s phase covering the start is not the copy\'s', function () {
+    // The other user's muscle gain phase starts earlier and runs on, so it would come first if the user were ignored.
+    TrainSeed::phase(User::factory()->create(), 'muscleGain', '2026-01-01');
+    [$user, $source] = copyWorld(cutFrom: '2026-10-12');
+    $cut = Phase::query()->where('user_id', $user->id)->where('type', 'fatLoss')->sole();
+    $copy = copyOf($user, $source);
+
+    expect($copy->phase_id)->toBe($cut->id)
+        ->and($copy->muscle_priorities)->toEqual(array_map(
+            fn (Priority $p) => $p->value,
+            MesoBuilder::defaultPriorities(Column::for(PhaseType::FatLoss, false)),
+        ));
+});
+
+it('MESO-007 CAP-019 a copy into the user\'s own row saved without dates makes that row the draft', function () {
+    [$user, $source] = copyWorld();
+    $undated = TrainSeed::mesocycle($user, ['start_date' => null, 'weeks' => null]);
+
+    $replaced = app(CopyMesocycle::class)($user, $undated, $undated->id, $source->id, null, false);
+    $draft = $undated->fresh();
+
+    expect($replaced)->toBe([])
+        ->and($draft->is_draft)->toBeTrue()
+        ->and($draft->route)->toBe(MesocycleRoute::CopyPrevious)
+        ->and(array_column($draft->dayRows(), 'label'))->toBe(['Upper A', 'Lower A'])
+        ->and($draft->start_date->format('Y-m-d'))->toBe('2026-10-12');
 });

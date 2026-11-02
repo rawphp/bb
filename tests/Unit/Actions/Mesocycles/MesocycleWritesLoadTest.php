@@ -56,3 +56,16 @@ it('MESO-040 a saved mesocycle looks up only the exercises it names', function (
     expect($library)->not->toBe([])
         ->and(array_values(array_filter($library, fn (string $sql) => ! str_contains($sql, '`id` in ('))))->toBe([]);
 });
+
+it('MESO-003 MESO-060 a draft reads the exercise library once, and names its slots from it', function () {
+    Carbon::setTestNow('2026-10-06 10:00:00');
+    $user = TrainSeed::user();
+    $draft = TrainSeed::mesocycle($user, ['is_draft' => true, 'route' => 'copy_previous', 'start_date' => '2026-10-12']);
+
+    $queries = queriesOf(fn () => test()->actingAs($user)
+        ->postJson('/capabilities/mesocycle_show', ['mesocycle_id' => $draft->id])
+        ->assertOk()
+        ->assertJsonPath('data.build.days.0.slots.0.exercise_name', 'Bench Press'));
+
+    expect(preg_grep('/from `exercises`/', $queries))->toHaveCount(1);
+});

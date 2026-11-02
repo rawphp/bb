@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MesocycleRoute;
 use App\Models\Mesocycle;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -70,4 +71,17 @@ it('MESO-007 CAP-019 answers 404 for a copy into a deleted mesocycle\'s id, the 
     idsOver($user, 'mesocycle_copy', ['mesocycle_id' => $theirs->id, 'source_mesocycle_id' => $source->id])->assertNotFound();
 
     expect(Mesocycle::query()->where('user_id', $user->id)->count())->toBe(1);
+});
+
+it('MESO-007 CAP-019 a copy into the caller\'s own draft, its id in other letters, updates that draft', function () {
+    Carbon::setTestNow('2026-09-22 10:00:00');
+    $user = TrainSeed::user();
+    $source = TrainSeed::mesocycle($user);
+    $draft = TrainSeed::mesocycle($user, ['id' => strtolower((string) Str::ulid()), 'is_draft' => true]);
+
+    idsOver($user, 'mesocycle_copy', ['mesocycle_id' => strtoupper($draft->id), 'source_mesocycle_id' => $source->id])->assertOk();
+
+    expect($draft->fresh()?->trashed())->toBeFalse()
+        ->and($draft->fresh()->route)->toBe(MesocycleRoute::CopyPrevious);
+    idsOver($user, 'mesocycle_show', ['mesocycle_id' => $draft->id])->assertOk();
 });

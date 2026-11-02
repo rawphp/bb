@@ -152,6 +152,16 @@ it('MESO-042 it cannot lengthen into the next saved mesocycle', function () {
         ->and($payload['saved']['can_shorten'])->toBeTrue();
 });
 
+it('MESO-042 neither an earlier mesocycle nor a copy waiting for the next start caps the length', function () {
+    $earlier = W::mesocycle(['id' => 'earlier', 'name' => 'Meso 1', 'start_date' => '2026-07-27']);
+    $copy = W::mesocycle(['id' => 'copy', 'name' => null, 'is_draft' => true, 'route' => 'copy_previous', 'start_date' => '2026-10-19']);
+    $snapshot = W::snapshot(today: '2026-09-23', mesocycles: [$earlier, W::mesocycle(), $copy]);
+    $range = $snapshot->calendar($snapshot->mesocycle(W::MESO))->lengthRange();
+
+    expect(shown($snapshot, $snapshot->mesocycle(W::MESO))['saved']['can_lengthen'])->toBeTrue()
+        ->and([$range->lower, $range->upper])->toBe([3, 8]);
+});
+
 it('MESO-042 both are off during the deload week and once it is over', function () {
     $deload = saved('2026-10-13');
     $over = saved('2026-11-30');
@@ -215,11 +225,20 @@ it('MESO-045 days can be added while the mesocycle runs', function () {
         ->and(saved('2026-11-30', world: $friday)['can_add_day'])->toBeFalse();
 });
 
-it('MESO-045 a weekday split with every training day taken cannot add a day; a floating one can', function () {
+it('MESO-045 a weekday split with every training day taken can still add a day, as can a floating one', function () {
     $floating = array_map(fn (array $day) => array_replace($day, ['weekday' => null]), W::days());
 
-    expect(saved()['can_add_day'])->toBeFalse()
+    expect(saved()['can_add_day'])->toBeTrue()
         ->and(saved(meso: ['days' => $floating])['can_add_day'])->toBeTrue();
+});
+
+it('MESO-005 MESO-045 a "Day 3" added to a full weekday split does not take Day 1\'s date: it is missed once its week is past, else upcoming', function () {
+    // Monday and Thursday are taken, so Day 3 has no date. On Tuesday 6 October, Monday 5 October's Day 1 is done.
+    $saved = saved(meso: ['days' => [...W::days(), ['id' => 'day-3', 'label' => 'Day 3', 'weekday' => null, 'slots' => []]]]);
+
+    expect(array_column($saved['weeks'][1]['days'], 'state'))->toBe(['done', 'missed', 'missed'])
+        ->and(array_column($saved['weeks'][3]['days'], 'state'))->toBe(['done', 'upcoming', 'upcoming'])
+        ->and(array_column($saved['weeks'][4]['days'], 'state'))->toBe(['upcoming', 'upcoming', 'upcoming']);
 });
 
 it('MESO-046 a day lists its exercises in the order the mesocycle plans them', function () {
