@@ -303,8 +303,8 @@ function invalidatesOf(data: unknown): string[] {
     return Array.isArray(invalidates) ? invalidates.filter((key) => typeof key === 'string') : [];
 }
 
-// OFF-011: an entry with no answer tries again in 2 s, then doubling up to 5 minutes,
-// and at once on reconnect (keepSynced).
+// OFF-011: an entry with no answer tries again in 2 s, then doubling up to 5 minutes
+// (or later, when a limit says how long to wait), and at once on reconnect (keepSynced).
 export const RETRY_FIRST_MS = 2_000;
 export const RETRY_MAX_MS = 5 * 60_000;
 // The app saying "still running it" this many times in a row means the run that held
@@ -379,7 +379,7 @@ async function deliver(entry: OutboxEntry, invalidated: string[]): Promise<Capab
         const error = failure instanceof CapabilityError ? failure : new CapabilityError(entry.name, 0, { reason: 'network' });
         if (SESSION_GONE.includes(error.status)) return error;
         if (retryable(error) && !stuck(entry, error)) {
-            retryLater();
+            retryLater(retryAfterMs(error));
             return error;
         }
         stillRunning.delete(entry.seq);
@@ -389,10 +389,22 @@ async function deliver(entry: OutboxEntry, invalidated: string[]): Promise<Capab
     }
 }
 
-// No answer to this entry yet: no response, a gateway's 5xx, the throttle in front of
-// the app, or the app still running it. Anything else the app keeps under the key.
+// No answer to this entry yet: no response, a gateway's 5xx, the app still running it,
+// or a limit that refused it before it ran (the throttle in front of the app, or the
+// app's own, which marks that retryable and gives the key back). Anything else the
+// app keeps under the key.
 function retryable(error: CapabilityError): boolean {
-    return unanswered(error) || (error.status === 429 && appError(error) === null);
+    if (unanswered(error)) return true;
+    const app = appError(error);
+
+    return error.status === 429 && (app === null || app.retryable === true);
+}
+
+/** How long a limit asked the app to wait, if it said (`retry_after` seconds). */
+function retryAfterMs(error: CapabilityError): number {
+    const seconds = (appError(error) as { retry_after?: unknown } | null)?.retry_after;
+
+    return typeof seconds === 'number' && seconds > 0 ? seconds * 1000 : 0;
 }
 
 function stuck(entry: OutboxEntry, error: CapabilityError): boolean {
@@ -406,8 +418,8 @@ function stuck(entry: OutboxEntry, error: CapabilityError): boolean {
     return times >= STUCK_AFTER;
 }
 
-function retryLater(): void {
-    const delay = Math.min(RETRY_FIRST_MS * 2 ** retries, RETRY_MAX_MS);
+function retryLater(atLeastMs = 0): void {
+    const delay = Math.max(atLeastMs, Math.min(RETRY_FIRST_MS * 2 ** retries, RETRY_MAX_MS));
     retries++;
     retryTimer = setTimeout(() => void replay(), delay);
 }

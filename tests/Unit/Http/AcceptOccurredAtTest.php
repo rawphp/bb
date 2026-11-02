@@ -1,5 +1,6 @@
 <?php
 
+use App\Capabilities\Support\IdempotencyKeys;
 use App\Http\Middleware\AcceptOccurredAt;
 use App\Models\User;
 use App\Support\OccurredAt;
@@ -61,7 +62,7 @@ function acceptOccurredAt(Request $request, ?InMemoryIdempotencyStore $store = n
     // After instance(): rebinding the request gives it the auth guard's resolver.
     $request->setUserResolver(fn () => tap(new User, fn (User $user) => $user->id = 7));
     $seen = null;
-    $response = (new AcceptOccurredAt($store ?? idempotencyStore()))->handle($request, function () use (&$seen): Response {
+    $response = (new AcceptOccurredAt(new IdempotencyKeys($store ?? idempotencyStore())))->handle($request, function () use (&$seen): Response {
         $seen = OccurredAt::get()->toIso8601ZuluString();
 
         return new Response('next');

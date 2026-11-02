@@ -2,13 +2,12 @@
 
 namespace App\Http\Middleware;
 
+use App\Capabilities\Support\IdempotencyKeys;
 use App\Support\OccurredAt;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Http\Request;
-use Rawphp\Capabilities\Contracts\IdempotencyStore;
 use Rawphp\Capabilities\Http\HttpResponse;
-use Rawphp\Capabilities\Pipeline\ResolveActor;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -21,14 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class AcceptOccurredAt
 {
-    /**
-     * The tenant the package's DefaultScopeResolver gives every invoke in this
-     * single-tenant app, so the lookup finds what the pipeline stored. The feature
-     * test that replays a lost write after its window fails if this drifts.
-     */
-    private const TENANT = 'default-tenant';
-
-    public function __construct(private readonly IdempotencyStore $answers) {}
+    public function __construct(private readonly IdempotencyKeys $keys) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -63,6 +55,6 @@ final class AcceptOccurredAt
             return false;
         }
 
-        return $this->answers->find(self::TENANT, ResolveActor::actorType($user), ResolveActor::actorId($user), $name, $key) !== null;
+        return $this->keys->answered($user, $name, $key);
     }
 }

@@ -12,6 +12,7 @@ use App\Capabilities\Support\AuditRecordWriter;
 use App\Capabilities\Support\BillingGate;
 use App\Capabilities\Support\HostBus;
 use App\Capabilities\Support\HostDefinition;
+use App\Capabilities\Support\IdempotencyKeys;
 use App\Capabilities\Support\NoAgentPolicy;
 use App\Capabilities\Support\NoBilling;
 use App\Capabilities\Support\Ownership;
@@ -56,7 +57,7 @@ final class CapabilitiesHostProvider extends ServiceProvider
         $this->app->singleton(AuditWriter::class, AuditRecordWriter::class);
 
         // Replaces the package's alias of CapabilityBus to the registry (CAP-012, CAP-014).
-        $this->app->singleton(CapabilityBus::class, fn (Container $app): HostBus => new HostBus($app->make(CapabilityRegistry::class), $app->make(Ownership::class)));
+        $this->app->singleton(CapabilityBus::class, fn (Container $app): HostBus => new HostBus($app->make(CapabilityRegistry::class), $app->make(Ownership::class), $app->make(IdempotencyKeys::class)));
 
         // A replay never shows a secret again, so the store never keeps one (CAP-014, CAP-021).
         $this->app->extend(IdempotencyStore::class, fn (IdempotencyStore $store): ShownOnceIdempotencyStore => new ShownOnceIdempotencyStore($store));

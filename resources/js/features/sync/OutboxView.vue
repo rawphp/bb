@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { CapabilityError, discardEntry, retryEntry } from '@/app/call';
+import { CapabilityError, discardEntry, retryEntry, unanswered } from '@/app/call';
 import { failureMessage } from '@/app/errors';
 import { entries, stateOf, type OutboxEntry } from '@/app/outbox';
 import PendingMark from '@/design/PendingMark.vue';
@@ -19,6 +19,8 @@ const discarding = ref<number | null>(null);
 
 function message(entry: OutboxEntry): string {
     const refused = new CapabilityError(entry.name, entry.refusal?.status ?? 0, entry.refusal?.body ?? null);
+    // call.ts gave up on the app's "still running it" (STUCK_AFTER): that run may have saved it.
+    if (unanswered(refused)) return "The server didn't finish this change, so it may already be saved. Check before you send it again.";
 
     return failureMessage(refused, "The server couldn't save this change.");
 }
@@ -32,13 +34,6 @@ function fixable(entry: OutboxEntry): { field: string; message: string }[] {
         (violation): violation is { field: string; message: string } =>
             typeof violation?.field === 'string' && ['string', 'number'].includes(typeof entry.input[violation.field]),
     );
-}
-
-// A change refused for when it was made (OFF-007) is refused the same way every time.
-function retryable(entry: OutboxEntry): boolean {
-    const violations = (entry.refusal?.body as { error?: { violations?: unknown } } | null)?.error?.violations;
-
-    return !(Array.isArray(violations) && violations.some((violation) => violation?.field === 'occurred_at'));
 }
 
 function edit(entry: OutboxEntry): void {
@@ -119,9 +114,7 @@ function words(field: string): string {
 
                     <div v-else class="flex flex-wrap gap-x-4">
                         <button v-if="fixable(entry).length > 0" type="button" class="min-h-tap text-accent active:opacity-70" data-test="edit" @click="edit(entry)">Edit</button>
-                        <button v-else-if="retryable(entry)" type="button" class="min-h-tap text-accent active:opacity-70" data-test="retry" @click="send(entry)">
-                            Try again
-                        </button>
+                        <button v-else type="button" class="min-h-tap text-accent active:opacity-70" data-test="retry" @click="send(entry)">Try again</button>
                         <button type="button" class="min-h-tap text-tone-warning active:opacity-70" data-test="discard" @click="(discarding = entry.seq), (editing = null)">Discard</button>
                     </div>
                 </template>

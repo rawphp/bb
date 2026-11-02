@@ -27,7 +27,7 @@ function signIn(owner: string | null): void {
 }
 
 // Lets every pending promise, IndexedDB request and zero-delay timer run.
-const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
 
 const label = 'A change';
 
@@ -567,6 +567,7 @@ describe('outbox', () => {
         await m.call.write('workout_set_log', { set: 2 }, { label });
         fetchMock.mockImplementation(async (url) => (url === '/capabilities/workout_set_log' ? ok({ invalidates: ['week_show{}'] }) : Promise.reject(new TypeError('offline'))));
         answer(ok({ invalidates: ['today_show{}'] }));
+        await vi.waitFor(() => expect(m.outbox.entries.value).toEqual([]));
         await settle();
 
         expect(told).toHaveBeenCalledTimes(1);
