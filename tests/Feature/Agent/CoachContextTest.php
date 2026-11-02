@@ -1,9 +1,11 @@
 <?php
 
+use App\Capabilities\Support\BillingGate;
 use App\Models\Mesocycle;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Rawphp\Capabilities\Registry\CapabilityDefinition;
 use Rawphp\CapabilitiesAi\Contracts\ConversationContextProvider;
 use Rawphp\CapabilitiesAi\Contracts\ConversationStore;
 use Rawphp\CapabilitiesAi\Contracts\LlmClient;
@@ -93,6 +95,54 @@ it('AGT-024 sends the instructions as the cached block and the context as the la
     });
 });
 
+it('AGT-011 holds today, the current phase and mesocycle, last week and this week, and no read that is not registered', function () {
+    $this->travelTo('2026-11-03 09:14:00');
+    [$conversation, $turn] = coachTurn(TrainSeed::user(), [['user', 'Hi.']]);
+
+    $context = coachMessages($conversation, $turn)[1]['content'];
+
+    expect($context)->toContain("today_show{}\n")
+        ->and($context)->toContain("train_show{}\n")
+        ->and($context)->toContain("week_show{\"date\":\"2026-10-27\"}\n")
+        ->and($context)->toContain("week_show{}\n")
+        ->and($context)->not->toContain('settings_show')
+        ->and($context)->not->toContain('plan_show');
+});
+
+it('AGT-011 shows the failure of a read the authorizer refuses, as a tool result would', function () {
+    $this->travelTo('2026-11-03 09:14:00');
+    [$conversation, $turn] = coachTurn(TrainSeed::user(), [['user', 'Hi.']]);
+    app()->instance(BillingGate::class, new class implements BillingGate
+    {
+        public function allows(User $user, CapabilityDefinition $capability): bool
+        {
+            return $capability->name !== 'today_show';
+        }
+
+        public function allowsCoach(User $user): bool
+        {
+            return true;
+        }
+    });
+
+    $context = coachMessages($conversation, $turn)[1]['content'];
+
+    expect($context)->toMatch('/today_show\{\}\n\{"ok":false/')
+        ->and($context)->toMatch('/train_show\{\}\n\{"ok":true/');
+});
+
+it('AGT-024 leaves out the turn context when the conversation has no user', function () {
+    $store = app(ConversationStore::class);
+    $row = $store->createConversation('01JC0NVERSAT10N00000000009', null, null);
+    $store->createMessage($row, '01JMESSAGE0000000000000009', 'user', 'Hi.');
+    [$conversation, $turn] = [$row->ulid, $store->createQueuedTurn($row, '01JTURN0000000000000000009')->ulid];
+
+    $messages = coachMessages($conversation, $turn);
+
+    expect($messages)->toHaveCount(2)
+        ->and($messages[1])->toBe(['role' => 'user', 'content' => 'Hi.']);
+});
+
 /** A running mesocycle for a user, and the clock inside it. */
 function runningMesocycle(User $user): Mesocycle
 {
@@ -126,12 +176,26 @@ it('AGT-010 refuses mesocycle_end from the agent when the message carries no con
         ->and($mesocycle->fresh()->ended_on)->toBeNull();
 });
 
-it('AGT-010 lets the agent end the mesocycle when the message carries the matching confirm line', function () {
+it('AGT-010 refuses mesocycle_end when the confirm line is pasted inside a longer message', function () {
     $this->travelTo('2026-09-23 10:00:00');
     $user = TrainSeed::user();
     $mesocycle = runningMesocycle($user);
 
     $tool = sayToCoach($user, "Yes, end it.\nconfirm: mesocycle_end{\"mesocycle_id\":\"{$mesocycle->id}\"}", [
+        ['tool_calls' => [['name' => 'mesocycle_end', 'arguments' => ['mesocycle_id' => $mesocycle->id]]]],
+        ['content' => 'Please send the line on its own.'],
+    ]);
+
+    expect($tool)->toMatchArray(['name' => 'mesocycle_end', 'ok' => false])
+        ->and($mesocycle->fresh()->ended_on)->toBeNull();
+});
+
+it('AGT-010 lets the agent end the mesocycle when the message is the matching confirm line', function () {
+    $this->travelTo('2026-09-23 10:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = runningMesocycle($user);
+
+    $tool = sayToCoach($user, "confirm: mesocycle_end{\"mesocycle_id\":\"{$mesocycle->id}\"}", [
         ['tool_calls' => [['name' => 'mesocycle_end', 'arguments' => ['mesocycle_id' => $mesocycle->id]]]],
         ['content' => 'Ended.'],
     ]);

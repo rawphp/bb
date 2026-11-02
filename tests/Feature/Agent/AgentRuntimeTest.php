@@ -36,10 +36,12 @@ it('AGT-002 passes capabilities:integration-health with the production drivers',
 it('AGT-024 gives the model the conversation so far, oldest first', function () {
     $store = app(ConversationStore::class);
     $conversation = $store->createConversation('01JC0NVERSAT10N00000000000', null, (string) User::factory()->create()->id);
+    // As the package creates them: a user message, then its turn; the reply comes when the first turn ends.
     $store->createMessage($conversation, '01JMESSAGE0000000000000001', 'user', 'Swap bench for dumbbell press.');
+    $store->createQueuedTurn($conversation, '01JTURN0000000000000000001');
     $store->createMessage($conversation, '01JMESSAGE0000000000000002', 'assistant', 'Swapped, from this week on.');
     $store->createMessage($conversation, '01JMESSAGE0000000000000003', 'user', 'Thanks.');
-    $turn = $store->createQueuedTurn($conversation, '01JTURN0000000000000000001');
+    $turn = $store->createQueuedTurn($conversation, '01JTURN0000000000000000002');
 
     $messages = app(ConversationContextProvider::class)->messagesForTurn($conversation->ulid, $turn->ulid);
 
