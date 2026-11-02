@@ -7,7 +7,9 @@ use App\Domain\Model\MuscleGroup;
 use App\Domain\Progression\WorkoutStatus;
 use App\Domain\Retarget\Retargeting;
 use App\Domain\Retarget\RetargetRefused;
+use App\Models\ExerciseFeedback;
 use App\Models\Mesocycle;
+use App\Models\MuscleFeedback;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Today\DayPlans;
@@ -15,6 +17,7 @@ use App\Support\Today\RetargetDays;
 use App\Support\Today\SessionWeek;
 use App\Support\Workout\NextWeekSets;
 use App\Support\Workout\WorkoutSnapshot;
+use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DomainException;
@@ -70,6 +73,7 @@ final class FinishWorkout
             // OFF-007: a start can be up to a few minutes ahead of the server clock; a session never ends before it began.
             $end = max($start, DateTimeImmutable::createFromInterface($at));
             $session->forceFill(['actual_end_at' => $end])->save();
+            $this->markAnswersRead($session);
             // Today's session is sized by the sets it ran, so the day is re-targeted before next week's counts change.
             $meals = $this->retarget($user, $snapshot, $session, $start, $end);
             $sets = NextWeekSets::save($snapshot, $locked);
@@ -127,6 +131,22 @@ final class FinishWorkout
             'dates' => [$date],
             'week' => array_map(fn (DateTimeImmutable $day) => $day->format('Y-m-d'), $week->planWeek->days()),
         ];
+    }
+
+    /**
+     * CAP-013: the finish relies on the session's answers (WO-040, PROG-010), so it changes their rows: their
+     * updated_at moves on, at least a second, as timestamps keep whole seconds. Undo of an earlier answer then finds
+     * its rows changed since and is refused, and undoing the finish puts the timestamps back.
+     */
+    private function markAnswersRead(WorkoutSession $session): void
+    {
+        $now = CarbonImmutable::now();
+        foreach ([MuscleFeedback::class, ExerciseFeedback::class] as $model) {
+            foreach ($model::query()->where('workout_session_id', $session->id)->get() as $row) {
+                $last = CarbonImmutable::parse((string) $row->getRawOriginal('updated_at'));
+                $row->forceFill(['updated_at' => $now->greaterThan($last) ? $now : $last->addSecond()])->save();
+            }
+        }
     }
 
     /** @param  list<MuscleGroup>  $muscles */
