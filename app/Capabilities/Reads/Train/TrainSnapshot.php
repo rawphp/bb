@@ -14,6 +14,7 @@ use App\Domain\Model\Session;
 use App\Domain\Model\Soreness;
 use App\Domain\Model\VolumeFeedback;
 use App\Domain\Model\Workout;
+use App\Domain\Plan\DeloadCalories;
 use App\Domain\Plan\PlanWeekGrid;
 use App\Domain\Progress\PlanWeekDays;
 use App\Domain\Progression\ActiveRest;
@@ -222,6 +223,41 @@ final readonly class TrainSnapshot
             grid: $this->grid() ?? MesocycleCalendar::gridWithoutPlan($start),
             today: $this->today,
         );
+    }
+
+    /** A week of the mesocycle (0 is its first) is a deload: its last week, or a plan week flagged one. */
+    public function isDeloadWeek(MesocycleCalendar $calendar, int $index): bool
+    {
+        return $index + 1 === $calendar->weeks || ($this->planWeekRow($calendar->planWeek($index)->start)->is_deload ?? false);
+    }
+
+    /**
+     * MESO-041, PLAN-022: a week is a diet break when its plan week is flagged one, or it is a fat loss deload not
+     * turned off (PLAN-023). PLAN-002: that follows the phase covering the week, not the mesocycle's phase.
+     */
+    public function isDietBreakWeek(MesocycleCalendar $calendar, int $index): bool
+    {
+        $start = $calendar->planWeek($index)->start;
+        $row = $this->planWeekRow($start);
+        $type = $this->phaseCovering($start)?->type;
+
+        return ($row->is_diet_break ?? false)
+            || ($type !== null && DeloadCalories::isDietBreak($type, $this->isDeloadWeek($calendar, $index), $row->diet_break_off ?? false));
+    }
+
+    /** MESO-044: ending a fat loss mesocycle early offers a diet break next week, unless this week is one. */
+    public function endOffersDietBreak(Mesocycle $mesocycle): bool
+    {
+        $calendar = $this->calendar($mesocycle);
+
+        return ($this->phaseType($mesocycle)?->isFatLoss() ?? false)
+            && ! $this->isDietBreakWeek($calendar, $calendar->currentWeek() - 1);
+    }
+
+    /** The plan week row starting on a day, if the plan keeps one. */
+    public function planWeekRow(DateTimeImmutable $start): ?PlanWeek
+    {
+        return $this->planWeeks->first(fn (PlanWeek $week) => self::day($week->start_date) == $start);
     }
 
     /** PLAN-008: the plan's week grid; null without a plan. */

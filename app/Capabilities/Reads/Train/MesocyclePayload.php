@@ -32,12 +32,10 @@ use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\PhaseType;
 use App\Domain\Model\Priority;
 use App\Domain\Model\Session;
-use App\Domain\Plan\DeloadCalories;
 use App\Domain\Progression\Deload;
 use App\Models\DayTarget;
 use App\Models\Exercise;
 use App\Models\Mesocycle;
-use App\Models\PlanWeek;
 use App\Models\WorkoutSet;
 use DateTimeImmutable;
 
@@ -94,7 +92,6 @@ final class MesocyclePayload
         }
 
         $phaseType = $snapshot->phaseType($mesocycle);
-        $currentIsDietBreak = $weeks[$current - 1]->diet_break !== null;
 
         return new MesocycleDetail(
             phase_title: TrainWords::phase($phaseType),
@@ -105,17 +102,11 @@ final class MesocyclePayload
             can_add_day: $calendar->canAddDay(),
             end: $calendar->canEnd() ? new MesocycleEndPrompt(
                 warning: self::END_WARNING,
-                diet_break_offer: self::offersDietBreak($phaseType, $currentIsDietBreak) ? self::DIET_BREAK_OFFER : null,
+                diet_break_offer: $snapshot->endOffersDietBreak($mesocycle) ? self::DIET_BREAK_OFFER : null,
             ) : null,
             weeks: $weeks,
             priorities: self::priorityRows($mesocycle->muscle_priorities ?? []),
         );
-    }
-
-    /** MESO-044: ending early in fat loss offers a diet break next week, unless this week is one. */
-    public static function offersDietBreak(?PhaseType $phase, bool $currentWeekIsDietBreak): bool
-    {
-        return $phase !== null && $phase->isFatLoss() && ! $currentWeekIsDietBreak;
     }
 
     /**
@@ -126,9 +117,8 @@ final class MesocyclePayload
     {
         $number = $index + 1;
         $planWeek = $calendar->planWeek($index);
-        $row = $snapshot->planWeeks->first(fn (PlanWeek $week) => TrainSnapshot::day($week->start_date) == $planWeek->start);
         $isLast = $number === $calendar->weeks;
-        $deloaded = $isLast || ($row->is_deload ?? false);
+        $deloaded = $snapshot->isDeloadWeek($calendar, $index);
         $weekIsPast = ($planWeek->end() ?? $planWeek->start) < $snapshot->today;
         $lastDay = $calendar->lastDay();
         $ended = $calendar->endedOn !== null;
@@ -183,16 +173,11 @@ final class MesocyclePayload
             );
         }
 
-        $coveringType = $snapshot->phaseCovering($planWeek->start)?->type;
-        // PLAN-002, PLAN-022: a diet break follows the phase covering this week, not the mesocycle's phase.
-        $isDietBreak = ($row->is_diet_break ?? false)
-            || ($coveringType !== null && DeloadCalories::isDietBreak($coveringType, $deloaded, $row->diet_break_off ?? false));
-
         return new MesocycleWeek(
             number: $number,
             title: $isLast ? 'Deload' : "Week {$number}",
             now: $isNow ? new Pill('Now', Tone::Info->value) : null,
-            diet_break: $isDietBreak ? new Pill('Diet break', Tone::Info->value) : null,
+            diet_break: $snapshot->isDietBreakWeek($calendar, $index) ? new Pill('Diet break', Tone::Info->value) : null,
             calories_text: self::calories($snapshot, $planWeek->days()),
             muscle_sets: array_values(array_filter(array_map(
                 fn (MuscleGroup $muscle) => ($muscleSets[$muscle->value] ?? 0) > 0
