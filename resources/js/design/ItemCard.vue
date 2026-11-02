@@ -16,14 +16,23 @@ import { computed, useId } from 'vue';
 
 // Meals, workouts, weigh-ins and busy periods share this card (UI-002), ported
 // from rp-clone's ItemCard.swift. The icon and body are slots.
-const props = defineProps<{
-    title: string;
-    time?: string;
-    /** None for busy periods, which have no status control. */
-    status?: ItemCardStatus;
-    state?: 'loading' | 'error' | 'pending';
-    disabled?: boolean;
-}>();
+// VIEW-004 states take the same props as HelpButton and ChoiceList.
+const props = withDefaults(
+    defineProps<{
+        title: string;
+        time?: string;
+        /** None for busy periods, which have no status control. */
+        status?: ItemCardStatus;
+        /** The body is still loading: a busy placeholder shows in its place. */
+        loading?: boolean;
+        /** The body failed to load: this message shows in its place. */
+        error?: string | null;
+        /** A change is waiting to sync (OFF-008). */
+        pending?: boolean;
+        disabled?: boolean;
+    }>(),
+    { loading: false, error: null, pending: false, disabled: false },
+);
 
 const emit = defineEmits<{ action: [] }>();
 
@@ -59,24 +68,24 @@ const paths: Record<string, string> = {
     up: 'M12 16.5v-9M8 11.5l4-4 4 4',
 };
 
-const isReady = computed(() => props.state !== 'loading' && props.state !== 'error');
-const isPending = computed(() => props.state === 'pending');
+const isReady = computed(() => !props.loading && !props.error);
+const isPending = computed(() => isReady.value && props.pending);
 </script>
 
 <template>
     <article
         :aria-labelledby="titleId"
-        :aria-busy="props.state === 'loading' ? 'true' : undefined"
+        :aria-busy="props.loading ? 'true' : undefined"
         class="flex w-full flex-col gap-2.5 rounded-2xl bg-surface p-3.5 text-primary-text"
     >
         <div class="flex items-center gap-2.5">
             <span class="flex shrink-0 text-xl text-accent" aria-hidden="true"><slot name="icon" /></span>
-            <h3 :id="titleId" class="min-w-0 flex-1 text-[1.0625rem] font-semibold">{{ props.title }}</h3>
+            <h3 :id="titleId" class="min-w-0 flex-1 text-base font-semibold">{{ props.title }}</h3>
 
             <template v-if="isReady">
                 <span
                     v-if="props.time"
-                    class="text-[0.9375rem] text-secondary-text"
+                    class="text-sm text-secondary-text"
                     :class="{ 'opacity-50': isPending }"
                     >{{ props.time }}</span
                 >
@@ -107,7 +116,7 @@ const isPending = computed(() => props.state === 'pending');
                         <path
                             v-if="checkBox.shape !== 'empty'"
                             :d="paths[checkBox.shape]"
-                            class="stroke-surface"
+                            class="stroke-on-accent"
                             fill="none"
                             stroke-width="2"
                             stroke-linecap="round"
@@ -128,19 +137,19 @@ const isPending = computed(() => props.state === 'pending');
 
                 <span
                     v-else-if="props.status?.kind === 'value'"
-                    class="flex min-h-tap items-center text-[1.0625rem] font-semibold tabular-nums"
+                    class="flex min-h-tap items-center text-base font-semibold tabular-nums"
                     :class="{ 'opacity-50': isPending }"
                     >{{ props.status.text }}</span
                 >
             </template>
         </div>
 
-        <div v-if="props.state === 'loading'" class="flex flex-col gap-2">
+        <div v-if="props.loading" class="flex flex-col gap-2">
             <span class="sr-only">Loading</span>
             <span class="h-4 w-full animate-pulse rounded bg-background" />
             <span class="h-4 w-2/3 animate-pulse rounded bg-background" />
         </div>
-        <p v-else-if="props.state === 'error'" role="alert" class="text-secondary-text">Couldn't load this.</p>
+        <p v-else-if="props.error" role="alert" class="text-tone-warning">{{ props.error }}</p>
         <template v-else>
             <div v-if="$slots.default" :class="{ 'opacity-50': isPending }"><slot /></div>
             <span v-if="isPending" class="text-sm text-secondary-text">Waiting to sync</span>

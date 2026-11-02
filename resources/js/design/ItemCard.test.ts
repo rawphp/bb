@@ -34,6 +34,9 @@ describe('ItemCard', () => {
         const header = heading.element.parentElement!;
         expect([...header.children].map((el) => el.tagName)).toEqual(['SPAN', 'H3', 'SPAN', 'BUTTON']);
         expect(header.children[2]?.textContent).toBe('07:30');
+        // The type scale, as the other design components use it: no arbitrary sizes.
+        expect(heading.classes()).toContain('text-base');
+        expect(header.children[2]?.classList).toContain('text-sm');
         expect(article.text()).toContain('Oats 80 g');
     });
 
@@ -56,7 +59,7 @@ describe('ItemCard', () => {
 
         expect(box.attributes('aria-checked')).toBe('true');
         expect(box.classes()).toContain('text-accent');
-        expect(box.find('path').exists()).toBe(true);
+        expect(box.get('path').classes()).toContain('stroke-on-accent');
     });
 
     it('MEAL-047 the check-in box shows each state with its own shape and the server label', () => {
@@ -108,7 +111,7 @@ describe('ItemCard', () => {
     });
 
     it('VIEW-004 loading: the body is a busy placeholder announced as loading, with no control', () => {
-        const wrapper = card({ state: 'loading' });
+        const wrapper = card({ loading: true });
 
         expect(wrapper.get('article').attributes('aria-busy')).toBe('true');
         expect(wrapper.get('.sr-only').text()).toBe('Loading');
@@ -116,25 +119,32 @@ describe('ItemCard', () => {
         expect(wrapper.find('button').exists()).toBe(false);
     });
 
-    it('VIEW-004 error: the body is replaced by an error in words, with no control', () => {
-        const wrapper = card({ state: 'error' });
+    it('VIEW-004 error: the body is replaced by the error in words, in the warning tone, with no control', () => {
+        const wrapper = card({ error: "You're offline" });
 
-        expect(wrapper.get('[role="alert"]').text()).toBe("Couldn't load this.");
+        const alert = wrapper.get('[role="alert"]');
+        expect(alert.text()).toBe("You're offline");
+        expect(alert.classes()).toContain('text-tone-warning');
         expect(wrapper.text()).not.toContain('Oats 80 g');
         expect(wrapper.find('button').exists()).toBe(false);
     });
 
     it('VIEW-004 pending: the body and value are dimmed and the card says Waiting to sync (OFF-008)', () => {
-        const meal = card({ state: 'pending' });
+        const meal = card({ pending: true });
         expect(meal.get('.opacity-50 p').text()).toBe('Oats 80 g');
         expect(meal.text()).toContain('Waiting to sync');
 
-        const weighIn = card({ state: 'pending', status: { kind: 'value', text: '82.4 kg' } });
+        const weighIn = card({ pending: true, status: { kind: 'value', text: '82.4 kg' } });
         expect(weighIn.get('.tabular-nums').classes()).toContain('opacity-50');
     });
 
     it('VIEW-004 disabled: the status control is disabled and emits nothing', async () => {
-        for (const status of [checkbox, { kind: 'button', title: 'Start' }]) {
+        const statuses: ItemCardStatus[] = [
+            checkbox,
+            { kind: 'check-in', state: 'not_checked_in', label: 'Not checked in', mealName: 'Lunch' },
+            { kind: 'button', title: 'Start' },
+        ];
+        for (const status of statuses) {
             const wrapper = card({ status, disabled: true });
             const button = wrapper.get('button');
             expect(button.attributes('disabled')).toBeDefined();

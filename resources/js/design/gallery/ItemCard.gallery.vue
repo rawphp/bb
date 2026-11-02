@@ -22,9 +22,9 @@ const entries: Entry[] = [
     { name: 'weigh-in', props: { title: 'Weigh-in', time: '07:00', status: { kind: 'value', text: '82.4 kg' } } },
     { name: 'busy period', props: { title: 'Work', time: '09:00–17:00' } },
     { name: 'empty', props: meal },
-    { name: 'loading', props: { ...meal, state: 'loading' }, body: mealBody },
-    { name: 'error', props: { ...meal, state: 'error' }, body: mealBody },
-    { name: 'pending', props: { ...meal, state: 'pending' }, body: mealBody },
+    { name: 'loading', props: { ...meal, loading: true }, body: mealBody },
+    { name: 'error', props: { ...meal, error: "You're offline" }, body: mealBody },
+    { name: 'pending', props: { ...meal, pending: true }, body: mealBody },
     { name: 'disabled', props: { ...meal, disabled: true }, body: mealBody },
 ];
 </script>
