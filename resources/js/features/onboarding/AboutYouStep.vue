@@ -43,14 +43,14 @@ function typedCm(cm: number | null): void {
 }
 
 // A height saves both halves; the other half is the saved one, which is what its field
-// shows, since nothing is typed while a save is out. Whole feet, as rp-clone's field
-// takes them; inches keep their decimals.
+// shows, since nothing is typed while a save is out. An empty half is 0, as in rp-clone's
+// field. Whole feet, as rp-clone's field takes them; inches keep their decimals.
 function typedFeet(feet: number | null): void {
-    if (feet !== null) emit('answer', { height: { unit: 'feetInches', feet: Math.trunc(feet), inches: props.about.height.inches ?? null } });
+    if (feet !== null) emit('answer', { height: { unit: 'feetInches', feet: Math.trunc(feet), inches: props.about.height.inches ?? 0 } });
 }
 
 function typedInches(inches: number | null): void {
-    if (inches !== null) emit('answer', { height: { unit: 'feetInches', feet: props.about.height.feet ?? null, inches } });
+    if (inches !== null) emit('answer', { height: { unit: 'feetInches', feet: props.about.height.feet ?? 0, inches } });
 }
 
 function typedWeight(value: number | null): void {
