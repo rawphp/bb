@@ -35,6 +35,9 @@
     --bb-tone-info: light-dark(#0b4a8f, #9ccbff);
     --bb-tone-info-bg: light-dark(#d6e8ff, #0f2f55);
 
+    /* Dims the screen behind a bottom sheet in both appearances, as iOS does (PWA-023). */
+    --bb-scrim: rgb(0 0 0 / 0.4);
+
     --bb-font: -apple-system, system-ui, sans-serif;
     /* Minimum tap size for anything the workout screen uses (UI-020). */
     --bb-min-tap: 48px;
@@ -69,4 +72,5 @@
     --color-tone-warning-bg: var(--bb-tone-warning-bg);
     --color-tone-info: var(--bb-tone-info);
     --color-tone-info-bg: var(--bb-tone-info-bg);
+    --color-scrim: var(--bb-scrim);
 }

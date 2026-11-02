@@ -1,0 +1,20 @@
+{
+    "id": "01JA8Q0V3K2M4N6P8R0T2W4Y6K",
+    "name": "Landmine Press (my gym)",
+    "is_custom": true,
+    "video_url": null,
+    "muscle_group": "frontDelts",
+    "muscle_group_text": "Front delts",
+    "equipment": "barbell",
+    "equipment_text": "Barbell",
+    "load_type": "barbell",
+    "load_type_text": "Barbell",
+    "rep_range_text": null,
+    "pinned_note": null,
+    "load_step": {
+        "step": null,
+        "default_text": "2.5 kg",
+        "unit": "kg"
+    },
+    "history": []
+}

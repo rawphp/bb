@@ -1,0 +1,141 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "eating_window_start": {
+            "type": "string",
+            "description": "24-hour time, HH:mm"
+        },
+        "eating_window_end": {
+            "type": "string",
+            "description": "24-hour time, HH:mm"
+        },
+        "meal_count": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 6
+        },
+        "training_days": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "weekday": {
+                        "type": "integer",
+                        "description": "ISO weekday: 1 is Monday, 7 is Sunday",
+                        "minimum": 1,
+                        "maximum": 7
+                    },
+                    "start": {
+                        "type": "string",
+                        "description": "24-hour time, HH:mm"
+                    },
+                    "minutes": {
+                        "type": "integer",
+                        "minimum": 15,
+                        "maximum": 240
+                    }
+                },
+                "required": [
+                    "weekday",
+                    "start",
+                    "minutes"
+                ]
+            }
+        },
+        "busy_periods": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50
+                    },
+                    "start": {
+                        "type": "string",
+                        "description": "24-hour time, HH:mm"
+                    },
+                    "end": {
+                        "type": "string",
+                        "description": "24-hour time, HH:mm"
+                    },
+                    "weekdays": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "weekday": {
+                                    "type": "integer",
+                                    "description": "ISO weekday: 1 is Monday, 7 is Sunday",
+                                    "minimum": 1,
+                                    "maximum": 7
+                                }
+                            },
+                            "required": [
+                                "weekday"
+                            ]
+                        },
+                        "minItems": 1
+                    }
+                },
+                "required": [
+                    "label",
+                    "start",
+                    "end",
+                    "weekdays"
+                ]
+            }
+        },
+        "step_plan": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "weekday": {
+                        "type": "integer",
+                        "description": "ISO weekday: 1 is Monday, 7 is Sunday",
+                        "minimum": 1,
+                        "maximum": 7
+                    },
+                    "min": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "max": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "weekday",
+                    "min",
+                    "max"
+                ]
+            }
+        },
+        "review_weekday": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "description": "null leaves the review day as it is",
+            "minimum": 1,
+            "maximum": 7
+        }
+    },
+    "required": [
+        "eating_window_start",
+        "eating_window_end",
+        "meal_count",
+        "training_days",
+        "busy_periods",
+        "step_plan"
+    ]
+}
