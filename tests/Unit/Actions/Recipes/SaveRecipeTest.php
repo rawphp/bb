@@ -75,6 +75,21 @@ it('FOOD-027 RCP-020 a recipe passes a diet filter only when every ingredient do
         ->gluten_free->toBeFalse();
 });
 
+it('FOOD-061 FOOD-027 a food deleted since it was picked still counts for the diet flags and the cooked weight', function () {
+    $user = User::factory()->create();
+    $chicken = Food::factory()->custom($user)->create(['vegan' => false, 'cooked_ratio' => 0.75]);
+    $beans = Food::factory()->create(['vegan' => true]);
+    $chicken->delete();
+
+    $recipe = (new SaveRecipe)($user, null, (string) Str::ulid(), 'Bowl', 1, 'dinner', [
+        ['food_id' => $chicken->id, 'grams' => 300, 'is_cooked' => true],
+        ['food_id' => $beans->id, 'grams' => 100, 'is_cooked' => false],
+    ], []);
+
+    expect($recipe->fresh()->vegan)->toBeFalse()
+        ->and($recipe->ingredients->pluck('is_cooked')->all())->toBe([true, false]);
+});
+
 it('RCP-001 an edit replaces the whole recipe in place', function () {
     $user = User::factory()->create();
     [$oats, $whey, $berries] = Food::factory()->count(3)->create();

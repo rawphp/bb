@@ -162,6 +162,7 @@ it('RCP-020 an empty list says what to do', function () {
     expect($response->json('data'))->toBe(['rows' => [], 'empty_text' => 'No recipes yet. Create one, or import one from a web page.'])
         ->and(ScreenFixture::differences(ScreenFixture::load('recipes_show.empty'), $response->json('data')))->toBe([])
         ->and(recipeCall($user, 'recipes_show', ['meal_type' => 'snack'])->json('data.empty_text'))->toBe('No recipes match these filters.')
+        ->and(recipeCall($user, 'recipes_show', ['diets' => ['vegan']])->json('data.empty_text'))->toBe('No recipes match these filters.')
         ->and(recipeCall($user, 'recipes_show', ['segment' => 'library'])->json('data.empty_text'))->toBe('No library recipes match these filters.');
     assertMatchesScreenFixture('recipes_show', $response->json('data'));
 });
@@ -267,6 +268,23 @@ it('RCP-001 a recipe may use the user\'s own custom food', function () {
     recipeCall($user, 'recipe_save', recipeInput($bar))->assertOk();
 });
 
+it('FOOD-061 RCP-001 a recipe keeps the user\'s custom food deleted since, and can still be saved with it', function () {
+    $user = User::factory()->create();
+    $bar = Food::factory()->custom($user)->create();
+    $bar->delete();
+
+    recipeCall($user, 'recipe_save', recipeInput($bar))->assertOk();
+});
+
+it('FOOD-061 RCP-001 answers 404 for an ingredient that is another user\'s deleted custom food', function () {
+    $theirs = Food::factory()->custom(User::factory()->create())->create();
+    $theirs->delete();
+
+    recipeCall(User::factory()->create(), 'recipe_save', recipeInput($theirs))->assertNotFound();
+
+    expect(Recipe::query()->count())->toBe(0);
+});
+
 it('RCP-021 edits the user\'s own recipe under its id', function () {
     $user = User::factory()->create();
     $chicken = recipeChickenFood();
@@ -347,9 +365,9 @@ it('RCP-021 answers 422 naming recipe_id when it is not a string', function () {
 
 // recipe_generate and recipe_import take no row id, so they have no 404.
 
-it('RCP-010 generates a draft from the brief, its items matched to foods, at the meal type asked for', function () {
+it('RCP-010 generates a draft from the whole brief, its items matched to foods, at the meal type asked for', function () {
     $chicken = Food::factory()->create(['name' => 'Chicken breast', 'curated' => true]);
-    RecordingLlmClient::answering([
+    $llm = RecordingLlmClient::answering([
         'name' => 'Lemon chicken', 'servings' => 2, 'instructions' => ['Roast.'],
         'items' => [
             ['name' => 'Chicken', 'search' => 'chicken breast', 'grams' => 400],
@@ -357,16 +375,25 @@ it('RCP-010 generates a draft from the brief, its items matched to foods, at the
         ],
     ])->install();
 
-    $data = recipeCall(User::factory()->create(), 'recipe_generate', ['protein' => 68, 'fat' => 28, 'carbs' => 128, 'meal_type' => 'dinner', 'complexity' => 'moderate'])
-        ->assertOk()->json('data');
+    $data = recipeCall(User::factory()->create(), 'recipe_generate', [
+        'protein' => 68, 'fat' => 28, 'carbs' => 128, 'kcal' => 1040, 'meal_type' => 'dinner', 'complexity' => 'moderate',
+        'ingredients' => [' chicken breast ', 'broccoli'], 'preferences' => ' Not too spicy. ',
+    ])->assertOk()->json('data');
 
-    expect($data)->toEqual([
-        'name' => 'Lemon chicken', 'servings' => 2, 'meal_type' => 'dinner', 'steps' => ['Roast.'],
-        'items' => [
-            ['name' => 'Chicken', 'grams' => 400, 'food_id' => $chicken->id, 'match_text' => 'Chicken breast', 'detail' => null],
-            ['name' => 'Sumac', 'grams' => 5, 'food_id' => null, 'match_text' => 'No match', 'detail' => null],
-        ],
-    ]);
+    expect(json_decode($llm->userContent()[0]['text'], true))->toBe([
+        'target_macros_per_serving' => ['protein' => 68, 'fat' => 28, 'carbs' => 128, 'kcal' => 1040],
+        'meal_type' => 'dinner',
+        'ingredients_to_use' => ['chicken breast', 'broccoli'],
+        'complexity' => 'moderate',
+        'preferences' => 'Not too spicy.',
+    ])
+        ->and($data)->toEqual([
+            'name' => 'Lemon chicken', 'servings' => 2, 'meal_type' => 'dinner', 'steps' => ['Roast.'],
+            'items' => [
+                ['name' => 'Chicken', 'grams' => 400, 'food_id' => $chicken->id, 'match_text' => 'Chicken breast', 'detail' => null],
+                ['name' => 'Sumac', 'grams' => 5, 'food_id' => null, 'match_text' => 'No match', 'detail' => null],
+            ],
+        ]);
     expectRecipeSchema('recipe_generate', $data);
 });
 
