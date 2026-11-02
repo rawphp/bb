@@ -476,3 +476,54 @@ it('NUT-037 evening-weighted with the workout after the last meal changes nothin
 
     expect(mealSplitValues($items, 'carbsG'))->toEqual([20, 20, 20, 340]);
 });
+
+// Review round 2: the shake clamp and the smallest TBL-033 rows.
+
+it('TBL-033 three shakes empty the post share and the extra points come from every meal', function () {
+    $m = mealSplitIds(6);
+    $s = mealSplitIds(3);
+    $entries = [
+        DayEntry::meal($m[0]), DayEntry::meal($m[1]), DayEntry::workout(),
+        DayEntry::intraWorkoutShake($s[0]), DayEntry::intraWorkoutShake($s[1]), DayEntry::intraWorkoutShake($s[2]),
+        DayEntry::meal($m[2]), DayEntry::meal($m[3]), DayEntry::meal($m[4]), DayEntry::meal($m[5]),
+    ];
+    $items = MealSplit::split(mealSplitDay(protein: 180, fat: 80, carbs: 500), $entries);
+
+    // Post 25 - 30 clamps to 0, so the post meal sits on the 5 g floor. The weights add up to 105
+    // (pre 18, bedtime 18, rest 13 x 3, shakes 10 x 3), and the other 495 g split over them.
+    expect(mealSplitValues($items, 'carbsG'))->toEqual([60, 85, 50, 50, 45, 5, 60, 60, 85])
+        ->and(mealSplitSum($items, 'carbsG'))->toEqualWithDelta(500, 1e-9);
+});
+
+it('TBL-033 four shakes on the 4-meal row empty the post share', function () {
+    $m = mealSplitIds(4);
+    $s = mealSplitIds(4);
+    $entries = [
+        DayEntry::meal($m[0]), DayEntry::workout(),
+        ...array_map(fn (string $id) => DayEntry::intraWorkoutShake($id), $s),
+        DayEntry::meal($m[1]), DayEntry::meal($m[2]), DayEntry::meal($m[3]),
+    ];
+    $items = MealSplit::split(mealSplitDay(protein: 160, fat: 80, carbs: 400), $entries);
+
+    // Post 35 - 40 clamps to 0; pre 25, bedtime 25, rest 15, shakes 10 x 4 add up to 105 over 395 g.
+    expect(mealSplitValues($items, 'carbsG'))->toEqual([95, 40, 40, 35, 35, 5, 55, 95])
+        ->and(mealSplitSum($items, 'carbsG'))->toEqualWithDelta(400, 1e-9);
+});
+
+it('TBL-033 one meal and a shake on a training day: the shake takes its points from the meal', function () {
+    [$meal, $shake] = mealSplitIds(2);
+    $entries = [DayEntry::meal($meal), DayEntry::workout(), DayEntry::intraWorkoutShake($shake)];
+    $items = MealSplit::split(mealSplitDay(protein: 150, fat: 60, carbs: 300), $entries);
+
+    expect(mealSplitValues($items, 'carbsG'))->toEqual([270, 30])
+        ->and(mealSplitValues($items, 'proteinG'))->toEqual([75, 75])
+        ->and(mealSplitValues($items, 'fatG'))->toEqual([60, 0]);
+});
+
+it('NUT-031 the 2-meal row has no bedtime or rest share: pre 40, post 60', function () {
+    $m = mealSplitIds(2);
+    $entries = [DayEntry::meal($m[0]), DayEntry::workout(), DayEntry::meal($m[1])];
+    $items = MealSplit::split(mealSplitDay(protein: 160, fat: 80, carbs: 500), $entries);
+
+    expect(mealSplitValues($items, 'carbsG'))->toEqual([200, 300]);
+});
