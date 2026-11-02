@@ -46,6 +46,19 @@ describe('useRetryKey', () => {
     });
 
     it.each([
+        ['the throttle in front of the app', new CapabilityError('token_create', 429, { message: 'Too Many Attempts.' })],
+        ["the app's limit, before the write ran", new CapabilityError('token_create', 429, { ok: false, error: { code: 'rate_limited', retryable: true } })],
+    ])('CAP-014 a first try refused by %s keeps its key and is not unsure, since nothing ran', (_label, error) => {
+        const retry = useRetryKey('token_create');
+        const first = retry.key.value;
+
+        retry.settle(error);
+
+        expect(retry.key.value).toBe(first);
+        expect(retry.unsure.value).toBe(false);
+    });
+
+    it.each([
         ['a success', undefined],
         ['a refusal', new CapabilityError('account_delete', 422, { ok: false, error: { code: 'validation_failed' } })],
         ['a conflict the server keeps', new CapabilityError('account_delete', 409, { ok: false, error: { code: 'conflict', retryable: false } })],
