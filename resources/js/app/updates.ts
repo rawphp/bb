@@ -50,6 +50,16 @@ export function applyUpdate(): void {
         window.location.reload();
         return;
     }
-    workbox.addEventListener('controlling', () => window.location.reload());
+    // A tab the old worker controls reloads when the new one takes control of it. A tab no
+    // worker controls yet (opened before the first worker activated, since sw.ts never claims
+    // tabs) never sees that, so it reloads once the new version has activated.
+    if (navigator.serviceWorker.controller) {
+        workbox.addEventListener('controlling', () => window.location.reload());
+    } else {
+        const next = registration.waiting;
+        next.addEventListener('statechange', () => {
+            if (next.state === 'activated') window.location.reload();
+        });
+    }
     workbox.messageSkipWaiting();
 }

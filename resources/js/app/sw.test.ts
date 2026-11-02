@@ -50,6 +50,7 @@ const fakeCaches = {
 };
 
 const PREFIX = 'bb-previous-build-';
+const stamp = (name: string) => Number(name.slice(PREFIX.length).split('-')[0]);
 const at = (path: string) => new URL(path, self.location.origin).href;
 
 async function cache(name: string, paths: string[]) {
@@ -138,7 +139,7 @@ describe('sw', () => {
         return Object.fromEntries(
             [...stores.entries()]
                 .filter(([name]) => name.startsWith(PREFIX))
-                .sort(([a], [b]) => Number(a.slice(PREFIX.length)) - Number(b.slice(PREFIX.length)))
+                .sort(([a], [b]) => stamp(a) - stamp(b))
                 .map(([name, store]) => [name, [...store.entries.keys()].map((url) => new URL(url).pathname + new URL(url).search).sort()]),
         );
     }
@@ -201,8 +202,38 @@ describe('sw', () => {
         await expect(install()).resolves.toBeUndefined();
 
         expect(error).toHaveBeenCalledWith('The previous build was not kept', expect.any(DOMException));
-        expect(copies()[`${PREFIX}1`]).toEqual(['/build/assets/older-a.js']);
-        expect(copies()[`${PREFIX}2`]).toEqual(['/build/assets/older-b.js']);
+        // The half-made copy is gone, so it never counts as one of the two builds kept.
+        expect(copies()).toEqual({ [`${PREFIX}1`]: ['/build/assets/older-a.js'], [`${PREFIX}2`]: ['/build/assets/older-b.js'] });
+        vi.restoreAllMocks();
+    });
+
+    it('PWA-035 after a copy fails halfway, the next install still keeps the newest two whole builds', async () => {
+        await import('./sw');
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        await cache(`${PREFIX}1`, ['/build/assets/main-v1.js']);
+        await cache('precache', ['/build/assets/main-v2.js', '/build/assets/main-new.js']);
+        const put = vi.spyOn(FakeCache.prototype, 'put').mockRejectedValueOnce(new DOMException('full', 'QuotaExceededError'));
+        await install();
+        put.mockRestore();
+
+        await install();
+
+        expect(Object.values(copies())).toEqual([['/build/assets/main-v1.js'], ['/build/assets/main-v2.js']]);
+        error.mockRestore();
+    });
+
+    it('PWA-035 an install the browser retries copies nothing again, so the copy an older open tab needs stays', async () => {
+        await import('./sw');
+        // Tab A runs v1 from its copy; this version replaces v2.
+        await cache(`${PREFIX}1`, ['/build/assets/main-v1.js']);
+        await cache('precache', ['/build/assets/main-v2.js', '/build/assets/main-new.js']);
+
+        for (const now of [2, 3, 4]) {
+            vi.spyOn(Date, 'now').mockReturnValue(now);
+            await install();
+        }
+
+        expect(Object.values(copies())).toEqual([['/build/assets/main-v1.js'], ['/build/assets/main-v2.js']]);
         vi.restoreAllMocks();
     });
 

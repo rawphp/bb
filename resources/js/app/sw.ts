@@ -3,7 +3,7 @@ import { cacheNames } from 'workbox-core';
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { listenForPush } from '../features/notifications/serviceWorker';
-import { SERVER_PATHS, SHELL_URL, shellEntry } from './shell';
+import { hash, SERVER_PATHS, SHELL_URL, shellEntry } from './shell';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -23,9 +23,11 @@ self.addEventListener('message', (event) => {
 // of the build files it replaces, and a request for a file the precache no longer has is
 // answered from a copy, online or not.
 //
-// Each install's copy is its own cache, named by when it was made, and only the newest
-// KEPT_BUILDS stay: a tab held through two deploys still finds its files, and the copies
-// never grow past two builds however many deploys a device sees.
+// Each copy is its own cache, named bb-previous-build-<when>-<build>, where <build> is a
+// fingerprint of the files it holds. Only the newest KEPT_BUILDS stay: a tab held through
+// two deploys still finds its files, and the copies never grow past two builds however many
+// deploys a device sees. An install the browser retries finds its build already copied and
+// changes nothing, so retries never push out a copy an open tab needs.
 export const PREVIOUS_BUILD_PREFIX = 'bb-previous-build-';
 export const KEPT_BUILDS = 2;
 
@@ -45,13 +47,24 @@ async function keepPreviousBuild(): Promise<void> {
         // Nothing replaced (a first install, or a rebuild of the same files): keep the copies earlier updates made.
         if (replaced.length === 0) return;
 
+        // A retried install of the same version: the copy is already made.
+        const build = hash(replaced.map(plainUrl).sort().join('\n'));
+        if ((await previousBuilds()).some((name) => name.endsWith(`-${build}`))) return;
+
         // Make the new copy before dropping old ones, so a failure halfway leaves files to serve.
-        const copy = await caches.open(`${PREVIOUS_BUILD_PREFIX}${Date.now()}`);
-        for (const request of replaced) {
-            const response = await precache.match(request);
-            if (response) await copy.put(new Request(plainUrl(request)), response);
+        // A copy that fails halfway is deleted, so it never counts as one of the builds kept.
+        const name = `${PREVIOUS_BUILD_PREFIX}${Date.now()}-${build}`;
+        try {
+            const copy = await caches.open(name);
+            for (const request of replaced) {
+                const response = await precache.match(request);
+                if (response) await copy.put(new Request(plainUrl(request)), response);
+            }
+        } catch (error) {
+            await caches.delete(name);
+            throw error;
         }
-        for (const name of (await previousBuilds()).slice(KEPT_BUILDS)) await caches.delete(name);
+        for (const old of (await previousBuilds()).slice(KEPT_BUILDS)) await caches.delete(old);
     } catch (error) {
         console.error('The previous build was not kept', error);
     }
@@ -59,7 +72,7 @@ async function keepPreviousBuild(): Promise<void> {
 
 // The copies, newest first.
 async function previousBuilds(): Promise<string[]> {
-    const stamp = (name: string) => Number(name.slice(PREVIOUS_BUILD_PREFIX.length));
+    const stamp = (name: string) => Number(name.slice(PREVIOUS_BUILD_PREFIX.length).split('-')[0]);
 
     return (await caches.keys()).filter((name) => name.startsWith(PREVIOUS_BUILD_PREFIX)).sort((a, b) => stamp(b) - stamp(a));
 }

@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import { read, write } from '@/app/call';
+import { isStandalone } from '@/app/device';
 import type { PushShowInput, PushShowOutput } from '@/contracts/push_show';
 import type { PushSubscribeInput } from '@/contracts/push_subscribe';
 import type { PushUnsubscribeInput } from '@/contracts/push_unsubscribe';
@@ -111,10 +112,6 @@ function browserSupportsPush(): boolean {
 function isIos(): boolean {
     const agent = navigator.userAgent;
     return /iPhone|iPad|iPod/.test(agent) || (agent.includes('Macintosh') && navigator.maxTouchPoints > 1);
-}
-
-function isStandalone(): boolean {
-    return window.matchMedia?.('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
 }
 
 function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> {

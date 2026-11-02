@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { now } from './clock';
+import { isStandalone } from './device';
 
 // The install offer (PWA-003). Android gets Chrome's prompt; iPhone gets a sheet showing
 // Share, then Add to Home Screen. Dismissed means not offered again for 30 days.
@@ -33,7 +34,7 @@ export function listenForInstall(): void {
 }
 
 export async function offerInstall(): Promise<void> {
-    if (installed() || snoozed()) return;
+    if (isStandalone() || snoozed()) return;
     const agent = navigator.userAgent;
 
     if (/Android/.test(agent) && chromePrompt) {
@@ -42,6 +43,7 @@ export async function offerInstall(): Promise<void> {
         await event.prompt();
         if ((await event.userChoice).outcome === 'dismissed') snooze();
     } else if (/iPhone/.test(agent)) {
+        // PWA-003 offers the install on a phone, so iPhone only; an iPad keeps Safari's own menu.
         installSheet.value = true;
     }
 }
@@ -49,10 +51,6 @@ export async function offerInstall(): Promise<void> {
 export function dismissInstall(): void {
     installSheet.value = false;
     snooze();
-}
-
-function installed(): boolean {
-    return matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
 }
 
 function snoozed(): boolean {

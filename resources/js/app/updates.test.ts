@@ -2,13 +2,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Listener = (event: { isExternal?: boolean }) => void;
 
+// The waiting ServiceWorker: its state, and the statechange it fires.
+class FakeWorker extends EventTarget {
+    state = 'installed';
+    activate() {
+        this.state = 'activated';
+        this.dispatchEvent(new Event('statechange'));
+    }
+}
+
 const workbox = vi.hoisted(() => {
     const state = {
         url: '',
         options: {} as unknown,
         listeners: {} as Record<string, Listener[]>,
         // The registration register() resolves with; `waiting` is the version waiting to take over.
-        registration: { waiting: null as object | null },
+        registration: { waiting: null as FakeWorker | null },
         register: vi.fn(async (): Promise<unknown> => state.registration),
         update: vi.fn(async (): Promise<unknown> => undefined),
         messageSkipWaiting: vi.fn(),
@@ -48,15 +57,22 @@ const flushPromises = () => new Promise((resolve) => setTimeout(resolve));
 
 // A new version installed and is waiting, as workbox-window reports it.
 function newVersionWaits() {
-    workbox.state.registration.waiting = {};
+    const next = new FakeWorker();
+    workbox.state.registration.waiting = next;
     workbox.state.emit('waiting');
+    return next;
+}
+
+// The worker controlling this tab, or null in a tab opened before the first worker activated.
+function controlledBy(controller: object | null) {
+    Object.defineProperty(navigator, 'serviceWorker', { value: { controller }, configurable: true });
 }
 
 describe('updates', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         workbox.state.registration.waiting = null;
-        Object.defineProperty(navigator, 'serviceWorker', { value: {}, configurable: true });
+        controlledBy({});
         Object.defineProperty(window, 'location', { value: { reload }, configurable: true });
     });
 
@@ -139,6 +155,19 @@ describe('updates', () => {
         expect(reload).not.toHaveBeenCalled();
 
         workbox.state.emit('controlling');
+        expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('PWA-035 in a tab no worker controls yet, a tap reloads once the new version has activated', async () => {
+        controlledBy(null);
+        const { applyUpdate } = await load();
+        const next = newVersionWaits();
+
+        applyUpdate();
+        expect(workbox.state.messageSkipWaiting).toHaveBeenCalledTimes(1);
+        expect(reload).not.toHaveBeenCalled();
+
+        next.activate();
         expect(reload).toHaveBeenCalledTimes(1);
     });
 
