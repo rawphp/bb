@@ -19,7 +19,7 @@ final class RoughWeekSetCapability implements HostCapability
     {
         // SCH-063: the flag is stored and shown on the week strip; nothing else reads it yet.
         return HostDefinition::write('rough_week_set', affects: ['today_show', 'week_show'], reversible: true)
-            ->description('Mark the plan week in progress as a rough week, or unmark it. Only this plan week\'s start is accepted, and a deload or an away week cannot be marked. It records the flag and shows it on the week strip; it changes no targets and no training.')
+            ->description('Mark the plan week in progress as a rough week, or unmark it. Only this plan week\'s start is accepted (as the week strip shows it, when the plan began mid-week), and a deload or an away week cannot be marked. It records the flag and shows it on the week strip; it changes no targets and no training.')
             ->cli('week', 'rough-set')
             ->input(RoughWeekSetInput::class)
             ->run(function (RoughWeekSetInput $input, CapabilityContext $context): WriteResult {
