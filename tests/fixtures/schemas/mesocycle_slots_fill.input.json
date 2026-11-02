@@ -1,0 +1,13 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "mesocycle_id": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "mesocycle_id"
+    ]
+}
