@@ -2,21 +2,20 @@
 
 namespace App\Domain\Safety;
 
+use App\Domain\Macros\MacroRules;
 use App\Domain\Model\Meal;
 use App\Domain\Model\PhaseType;
 
 final class SafetyWarnings
 {
     /** SAFE-005: fastest allowed loss, percent of bodyweight per week. SAFE-013: unchanged on a GLP-1. */
-    public const MAX_FAT_LOSS_RATE_PERCENT = 1.0;
+    public const MAX_FAT_LOSS_RATE_PERCENT = MacroRules::MAX_FAT_LOSS_RATE_PERCENT;
 
     /** SAFE-009: fat never below this share of any day's calories. */
-    public const FAT_FLOOR_SHARE_OF_CALORIES = 0.15;
+    public const FAT_FLOOR_SHARE_OF_CALORIES = MacroRules::FAT_FLOOR_SHARE_OF_CALORIES;
 
     /** SAFE-010: minimum grams of fat and of carbs in every meal. */
-    public const MEAL_MINIMUM_G = 5.0;
-
-    public const KCAL_PER_GRAM_FAT = 9.0;
+    public const MEAL_MINIMUM_G = MacroRules::MEAL_MINIMUM_G;
 
     /** SAFE-013: consumed under this share of target counts as a low week. */
     public const GLP1_LOW_INTAKE_SHARE = 0.8;
@@ -71,7 +70,7 @@ final class SafetyWarnings
             $fatG += $meal->target->fatG;
         }
 
-        $floorG = $kcal * self::FAT_FLOOR_SHARE_OF_CALORIES / self::KCAL_PER_GRAM_FAT;
+        $floorG = MacroRules::fatShareFloorG($kcal);
         if ($fatG < $floorG) {
             $warnings[] = SafetyWarning::dayFatBelowFloor((int) ceil($floorG));
         }

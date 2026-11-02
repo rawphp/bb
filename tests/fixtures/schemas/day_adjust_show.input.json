@@ -1,0 +1,55 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "date": {
+            "type": "string",
+            "format": "date"
+        },
+        "mode": {
+            "type": "string",
+            "description": "Between meals of the day, or between days of the week.",
+            "enum": [
+                "meals",
+                "days"
+            ]
+        },
+        "from_meal_id": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "to_meal_id": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "other_date": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "date"
+        },
+        "direction": {
+            "type": "string",
+            "description": "Between days: the day gives calories to the other day or takes them.",
+            "enum": [
+                "give",
+                "take"
+            ]
+        },
+        "kcal": {
+            "type": [
+                "integer",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "date"
+    ]
+}

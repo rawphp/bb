@@ -13,12 +13,13 @@ export type CachedRead = { key: string; data: unknown; fetchedAt: number; versio
 
 // Each read's output schema version, from its generated contract. A copy cached
 // under another version was written for an older output shape and counts as missing.
-const versions = import.meta.glob<string>('../contracts/*.ts', { eager: true, import: 'outputVersion' });
+// A write with no output schema has no outputVersion, so each module is read whole.
+const contracts = import.meta.glob<{ outputVersion?: string }>('../contracts/*.ts', { eager: true });
 
 export function versionOf(key: string): string | undefined {
     const brace = key.indexOf('{');
 
-    return versions[`../contracts/${brace < 0 ? key : key.slice(0, brace)}.ts`];
+    return contracts[`../contracts/${brace < 0 ? key : key.slice(0, brace)}.ts`]?.outputVersion;
 }
 
 interface Schema extends DBSchema {

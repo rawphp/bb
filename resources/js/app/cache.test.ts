@@ -36,13 +36,15 @@ describe('cache', () => {
     it('OFF-003 stores a read under its key with the time it was fetched', async () => {
         await store('today_show{}', { title: 'Today' }, 1_000);
 
-        expect(await cached('today_show{}')).toEqual({ key: 'today_show{}', data: { title: 'Today' }, fetchedAt: 1_000, version: undefined });
+        expect(await cached('today_show{}')).toEqual({ key: 'today_show{}', data: { title: 'Today' }, fetchedAt: 1_000, version: versionOf('today_show{}') });
         expect(await cached('meal_show{}')).toBeUndefined();
     });
 
     it("OFF-003 stores a read with its output schema version and treats a copy of another version as missing", async () => {
         expect(versionOf('account_show{}')).toBe(accountShowVersion);
         expect(versionOf('account_show{"id":1}')).toBe(accountShowVersion);
+        // A write with only an input schema has no output version.
+        expect(versionOf('day_copy{}')).toBeUndefined();
 
         await store('account_show{}', { name: 'Sam' }, 1_000);
         expect(await cached('account_show{}')).toEqual({ key: 'account_show{}', data: { name: 'Sam' }, fetchedAt: 1_000, version: accountShowVersion });

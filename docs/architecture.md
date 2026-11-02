@@ -56,7 +56,7 @@ Parallel issues rely on these names.
 | Screen payload fixture | `tests/fixtures/screens/<capability_name>.json` |
 | Schema snapshot | `tests/fixtures/schemas/<capability_name>.input.json` and `.output.json` |
 | TS types | generated into `resources/js/contracts/` from the schema snapshots by `npm run contracts` |
-| Fixture check | Pest helper `assertMatchesScreenFixture($name, $payload)`: same keys and types at every depth, values free |
+| Fixture check | Pest helper `assertMatchesScreenFixture($name, $payload)`: same keys and types at every depth, values free, and valid against the output schema snapshot |
 | Feature routes | `resources/js/features/<feature>/routes.ts`, loaded by glob |
 | Dev screens | `/dev/screens/<capability_name>` renders the screen from its fixture (local and testing only) |
 | Gallery entries | `resources/js/design/gallery/<Component>.gallery.vue`, loaded by glob at `/dev/gallery` |

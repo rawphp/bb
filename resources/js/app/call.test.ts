@@ -187,7 +187,7 @@ describe('call', () => {
             await new Promise((resolve) => setTimeout(resolve, 0));
 
             expect(onUpdate).not.toHaveBeenCalled();
-            expect(await cached('today_show{}')).toEqual({ key: 'today_show{}', data: { title: 'cached' }, fetchedAt: 5 });
+            expect(await cached('today_show{}')).toMatchObject({ key: 'today_show{}', data: { title: 'cached' }, fetchedAt: 5 });
         });
 
         it('OFF-003 fails with status 0 when nothing is cached and there is no network', async () => {
