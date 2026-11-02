@@ -17,7 +17,7 @@ final readonly class ProgressionInput
      * @param  list<array{id: string, slots: list<array{id: string, exercise_id: ?int, muscle_group: string, sets: int}>}>  $days  the mesocycle's rotation as stored; its other days keep their counts
      * @param  int  $dayIndex  the session's day, from 0
      * @param  array<string, Priority>  $priorities  keyed by muscle; a muscle that is Off is left out
-     * @param  array<int, int>  $setCounts  the sets the session ran, by library exercise id
+     * @param  array<string, int>  $ranSets  the sets the session ran in each slot of the day, by slot id
      * @param  array<string, FeedbackAnswers>  $muscleAnswers  soreness, pump and volume by muscle (FB-003 to FB-005)
      * @param  array<int, JointPain>  $jointPain  FB-002 answers by library exercise id
      * @param  list<MuscleGroup>  $held  PROG-050: the muscles that missed their reps two sessions running
@@ -31,7 +31,7 @@ final readonly class ProgressionInput
         public int $weeks,
         public array $priorities,
         public ExperienceLevel $experience,
-        public array $setCounts,
+        public array $ranSets,
         public array $muscleAnswers,
         public array $jointPain,
         public array $held,

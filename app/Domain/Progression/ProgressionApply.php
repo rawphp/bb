@@ -13,8 +13,9 @@ use App\Domain\Model\Workout;
  * PROG-010 to PROG-019, PROG-050, PROG-051, UI-010: a finished session and its feedback, turned into the day's new slot
  * counts. From rp-clone's ProgressionApply.
  *
- * The base of each slot is the sets the session actually ran, not the count stored, so sets added or deleted in the
- * session carry forward (PROG-019) and applying again with the same answers gives the same counts.
+ * The base of each slot is the sets the session actually ran in it, not the count stored, so sets added or deleted in
+ * the session carry forward (PROG-019) and applying again with the same answers gives the same counts. A slot the
+ * session did not run keeps its count.
  */
 final class ProgressionApply
 {
@@ -25,30 +26,43 @@ final class ProgressionApply
             return new ProgressionResult($input->dayIndex, [], [], [], []);
         }
         $slots = $day['slots'];
-        $base = self::baseCounts($slots, $input->setCounts);
+        // PROG-019: a slot's base is the sets the session ran in it. A slot it did not run keeps its stored count and
+        // takes no part, so working the day out again never moves it.
+        $ran = [];
+        foreach ($slots as $position => $slot) {
+            $sets = $input->ranSets[$slot['id']] ?? 0;
+            if ($sets > 0) {
+                $ran[$position] = $sets;
+            }
+        }
 
-        // The domain tells slots apart by id; a slot's place makes it unique whatever its stored id looks like.
+        // The domain tells slots apart by id; a slot's place makes it unique whatever its stored id looks like. The
+        // day's slots that did not run sit in a session of their own, so they still count toward the week (PROG-015).
         $sessions = [];
+        $unrun = [];
         foreach ($input->days as $dayIndex => $storedDay) {
-            $sessions[] = new Session("day-{$dayIndex}", '', array_map(
-                fn (array $slot, int $position) => new ExerciseSlot(
-                    "{$dayIndex}-{$position}", '', MuscleGroup::from($slot['muscle_group']),
-                    $dayIndex === $input->dayIndex ? $base[$position] : (int) $slot['sets'],
-                ),
-                $storedDay['slots'],
-                array_keys($storedDay['slots']),
-            ));
+            $daySlots = [];
+            foreach ($storedDay['slots'] as $position => $slot) {
+                $slotSets = $dayIndex === $input->dayIndex ? ($ran[$position] ?? null) : (int) $slot['sets'];
+                $exerciseSlot = new ExerciseSlot("{$dayIndex}-{$position}", '', MuscleGroup::from($slot['muscle_group']), $slotSets ?? (int) $slot['sets']);
+                if ($slotSets === null) {
+                    $unrun[] = $exerciseSlot;
+                } else {
+                    $daySlots[] = $exerciseSlot;
+                }
+            }
+            $sessions[] = new Session("day-{$dayIndex}", '', $daySlots);
         }
         $session = $sessions[$input->dayIndex];
-        $mesocycle = new Mesocycle('', $input->phase, $input->weeks, $sessions, $input->priorities, $input->isResensitization);
+        $mesocycle = new Mesocycle('', $input->phase, $input->weeks, [...$sessions, new Session('unrun', '', $unrun)], $input->priorities, $input->isResensitization);
 
         $feedback = [];
         foreach ($input->muscleAnswers as $muscle => $answers) {
             $pain = [];
-            foreach ($slots as $position => $slot) {
-                $exercise = $slot['exercise_id'] ?? null;
-                if ($slot['muscle_group'] === $muscle && $exercise !== null && isset($input->jointPain[$exercise])) {
-                    $pain[$session->slots[$position]->id] = $input->jointPain[$exercise];
+            foreach (array_keys($ran) as $position) {
+                $exercise = $slots[$position]['exercise_id'] ?? null;
+                if ($slots[$position]['muscle_group'] === $muscle && $exercise !== null && isset($input->jointPain[$exercise])) {
+                    $pain["{$input->dayIndex}-{$position}"] = $input->jointPain[$exercise];
                 }
             }
             $feedback[$muscle] = new FeedbackAnswers($pain, $answers->soreness, $answers->pump, $answers->volume);
@@ -57,7 +71,10 @@ final class ProgressionApply
             new Workout('', $input->now, $session, $feedback), $mesocycle, $input->experience,
         );
 
-        $counts = array_map(fn (ExerciseSlot $slot) => $slot->sets, $next->session->slots);
+        $counts = array_map(fn (array $slot) => (int) $slot['sets'], $slots);
+        foreach ($next->session->slots as $slot) {
+            $counts[(int) substr($slot->id, strlen("{$input->dayIndex}-"))] = $slot->sets;
+        }
         $outcomes = $next->outcomes;
         // PROG-050, PROG-051: a held muscle gains no sets. Its slots go back to the base, and the messages of the add
         // that did not happen go too. A removal stands.
@@ -66,9 +83,9 @@ final class ProgressionApply
             if ($outcome === null || $outcome->change < 0) {
                 continue;
             }
-            foreach ($slots as $position => $slot) {
-                if ($slot['muscle_group'] === $muscle->value) {
-                    $counts[$position] = $base[$position];
+            foreach ($ran as $position => $sets) {
+                if ($slots[$position]['muscle_group'] === $muscle->value) {
+                    $counts[$position] = $sets;
                 }
             }
             unset($outcomes[$muscle->value]);
@@ -103,30 +120,6 @@ final class ProgressionApply
         }
 
         return new ProgressionResult($input->dayIndex, $slotSets, $previous, $changes, $lines);
-    }
-
-    /**
-     * PROG-019: each slot's base. The first slot of an exercise takes the sets the session ran of it; a slot whose
-     * exercise has none, or whose exercise an earlier slot took, keeps its stored count.
-     *
-     * @param  list<array{exercise_id: ?int, sets: int}>  $slots
-     * @param  array<int, int>  $setCounts
-     * @return list<int>
-     */
-    private static function baseCounts(array $slots, array $setCounts): array
-    {
-        $taken = [];
-
-        return array_map(function (array $slot) use ($setCounts, &$taken): int {
-            $exercise = $slot['exercise_id'] ?? null;
-            $ran = $exercise === null ? 0 : ($setCounts[$exercise] ?? 0);
-            if ($exercise === null || isset($taken[$exercise]) || $ran <= 0) {
-                return (int) $slot['sets'];
-            }
-            $taken[$exercise] = true;
-
-            return $ran;
-        }, $slots);
     }
 
     /** "+1 set", "−2 sets" (a true minus sign). */

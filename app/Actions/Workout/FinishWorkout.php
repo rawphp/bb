@@ -7,14 +7,13 @@ use App\Domain\Model\MuscleGroup;
 use App\Domain\Progression\WorkoutStatus;
 use App\Domain\Retarget\Retargeting;
 use App\Domain\Retarget\RetargetRefused;
+use App\Models\Mesocycle;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Today\DayPlans;
 use App\Support\Today\RetargetDays;
 use App\Support\Today\SessionWeek;
 use App\Support\Workout\NextWeekSets;
-use App\Support\Workout\WorkoutBlock;
-use App\Support\Workout\WorkoutSetRow;
 use App\Support\Workout\WorkoutSnapshot;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -43,31 +42,34 @@ final class FinishWorkout
      */
     public function __invoke(User $user, string $workoutId, DateTimeInterface $at): array
     {
-        $snapshot = WorkoutSnapshot::forWorkout($user, $workoutId);
-        $session = $snapshot->session();
-        $status = $snapshot->status();
-        if ($session === null || $status === WorkoutStatus::NotStarted || $status === WorkoutStatus::Skipped) {
-            throw new DomainException(self::NOT_STARTED);
-        }
-        if ($status === WorkoutStatus::Finished) {
-            throw new DomainException(self::FINISHED);
-        }
-        $sets = array_merge(...array_map(fn (WorkoutBlock $block) => $block->sets, $snapshot->blocks()));
-        if ($sets === [] || ! array_all($sets, fn (WorkoutSetRow $set) => $set->isDone())) {
-            throw new DomainException(self::SETS_LEFT);
-        }
-        $pending = $snapshot->pendingFeedback();
-        if ($pending !== []) {
-            throw new DomainException(WorkoutWords::FEEDBACK_REQUIRED.' for '.self::list($pending).'.');
-        }
+        $found = WorkoutSnapshot::forWorkout($user, $workoutId);
 
-        $start = DayPlans::instant((string) $session->getRawOriginal('actual_start_at'));
-        $end = max($start, DateTimeImmutable::createFromInterface($at));
+        return DB::transaction(function () use ($user, $found, $at): array {
+            // One write at a time per mesocycle, as workout_start does: a second Finish reads the first one's end.
+            Mesocycle::query()->whereKey($found->mesocycle->id)->lockForUpdate()->first();
+            $snapshot = WorkoutSnapshot::load($user, (string) $found->mesocycle->id, $found->week, $found->day);
+            $session = $snapshot->session();
+            $status = $snapshot->status();
+            if ($session === null || $status === WorkoutStatus::NotStarted || $status === WorkoutStatus::Skipped) {
+                throw new DomainException(self::NOT_STARTED);
+            }
+            if ($status === WorkoutStatus::Finished) {
+                throw new DomainException(self::FINISHED);
+            }
+            if (! $snapshot->allSetsDone()) {
+                throw new DomainException(self::SETS_LEFT);
+            }
+            $pending = $snapshot->pendingFeedback();
+            if ($pending !== []) {
+                throw new DomainException(WorkoutWords::FEEDBACK_REQUIRED.' for '.self::list($pending).'.');
+            }
 
-        return DB::transaction(function () use ($user, $snapshot, $session, $start, $end): array {
+            $start = DayPlans::instant((string) $session->getRawOriginal('actual_start_at'));
+            // OFF-007: a start can be up to a few minutes ahead of the server clock; a session never ends before it began.
+            $end = max($start, DateTimeImmutable::createFromInterface($at));
             $session->forceFill(['actual_end_at' => $end])->save();
             // Today's session is sized by the sets it ran, so the day is re-targeted before next week's counts change.
-            $meals = $this->retarget($user, $snapshot, $start, $end);
+            $meals = $this->retarget($user, $snapshot, $session, $start, $end);
             $sets = NextWeekSets::save($snapshot);
             $lines = array_values(array_filter([$sets, $meals['message']]));
 
@@ -87,13 +89,9 @@ final class FinishWorkout
      *
      * @return array{message: ?string, dates: list<string>, week: list<string>}
      */
-    private function retarget(User $user, WorkoutSnapshot $snapshot, DateTimeImmutable $start, DateTimeImmutable $end): array
+    private function retarget(User $user, WorkoutSnapshot $snapshot, WorkoutSession $session, DateTimeImmutable $start, DateTimeImmutable $end): array
     {
         $none = ['message' => null, 'dates' => [], 'week' => []];
-        $session = $snapshot->session();
-        if ($session === null) {
-            return $none;
-        }
         try {
             $week = SessionWeek::load($snapshot->train, $snapshot->mesocycle);
             $scheduled = $week->session($session->week, $session->day);

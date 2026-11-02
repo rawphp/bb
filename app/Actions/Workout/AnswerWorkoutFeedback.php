@@ -7,6 +7,7 @@ use App\Domain\Model\MuscleGroup;
 use App\Domain\Progression\FeedbackSheet;
 use App\Domain\Progression\WorkoutStatus;
 use App\Models\ExerciseFeedback;
+use App\Models\Mesocycle;
 use App\Models\MuscleFeedback;
 use App\Models\User;
 use App\Models\WorkoutSession;
@@ -30,32 +31,36 @@ final class AnswerWorkoutFeedback
     /** @return array{toast: ?string, session: WorkoutSession} the UI-010 lines when next week's sets changed, and the session */
     public function __invoke(User $user, WorkoutFeedbackAnswerInput $input): array
     {
-        $snapshot = WorkoutSnapshot::forWorkout($user, $input->workout_id);
-        $session = $snapshot->session();
-        $status = $snapshot->status();
+        $found = WorkoutSnapshot::forWorkout($user, $input->workout_id);
         $muscle = MuscleGroup::from($input->muscle_group);
 
-        if ($session === null || $status === WorkoutStatus::NotStarted || $status === WorkoutStatus::Skipped) {
-            throw new DomainException(self::NOT_STARTED);
-        }
-        if ($snapshot->isDeload()) {
-            throw new DomainException(self::DELOAD);
-        }
-        $sheet = array_find($snapshot->sheets(), fn (FeedbackSheet $sheet) => $sheet->muscle === $muscle);
-        if ($sheet === null || ! $sheet->isDue) {
-            throw new DomainException("{$muscle->title()} feedback isn't due yet. Log or skip every set of its last exercise first.");
-        }
-        $finished = $status === WorkoutStatus::Finished;
-        if ($finished && $snapshot->isLocked($muscle)) {
-            throw new DomainException("You've trained your ".mb_strtolower($muscle->title()).' since this workout, so its feedback can\'t change now.');
-        }
-        $asksSoreness = $snapshot->asksSoreness($muscle);
-        if ($asksSoreness && $input->soreness === null) {
-            throw new DomainException('Say how sore your '.mb_strtolower($muscle->title()).' got after you last trained them.');
-        }
-        $pain = $this->jointPain($input, $sheet);
+        return DB::transaction(function () use ($user, $input, $found, $muscle): array {
+            // One write at a time per mesocycle, as workout_start does: a second request reads what the first saved.
+            Mesocycle::query()->whereKey($found->mesocycle->id)->lockForUpdate()->first();
+            $snapshot = WorkoutSnapshot::load($user, (string) $found->mesocycle->id, $found->week, $found->day);
+            $session = $snapshot->session();
+            $status = $snapshot->status();
 
-        return DB::transaction(function () use ($user, $snapshot, $session, $input, $muscle, $asksSoreness, $pain, $finished): array {
+            if ($session === null || $status === WorkoutStatus::NotStarted || $status === WorkoutStatus::Skipped) {
+                throw new DomainException(self::NOT_STARTED);
+            }
+            if ($snapshot->isDeload()) {
+                throw new DomainException(self::DELOAD);
+            }
+            $sheet = array_find($snapshot->sheets(), fn (FeedbackSheet $sheet) => $sheet->muscle === $muscle);
+            if ($sheet === null || ! $sheet->isDue) {
+                throw new DomainException("{$muscle->title()} feedback isn't due yet. Log or skip every set of its last exercise first.");
+            }
+            $finished = $status === WorkoutStatus::Finished;
+            if ($finished && $snapshot->isLocked($muscle)) {
+                throw new DomainException("You've trained your ".mb_strtolower($muscle->title()).' since this workout, so its feedback can\'t change now.');
+            }
+            $asksSoreness = $snapshot->asksSoreness($muscle);
+            if ($asksSoreness && $input->soreness === null) {
+                throw new DomainException('Say how sore your '.mb_strtolower($muscle->title()).' got after you last trained them.');
+            }
+            $pain = $this->jointPain($input, $sheet);
+
             $row = $snapshot->muscleAnswers($muscle) ?? (new MuscleFeedback([
                 'workout_session_id' => $session->id, 'muscle_group' => $muscle,
             ]))->forceFill(['user_id' => $user->id]);

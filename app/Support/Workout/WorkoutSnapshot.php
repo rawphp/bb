@@ -71,6 +71,15 @@ final class WorkoutSnapshot
     /** @var ?list<WorkoutBlock> */
     private ?array $blocks = null;
 
+    /** @var ?list<list<LoggedExercise>> the earlier sessions as the flags read them, worked out once */
+    private ?array $earlierLogged = null;
+
+    /** @var ?array<int, JointPain> last week's same-day joint answers by exercise id, read once (PROG-018) */
+    private ?array $lastWeekPain = null;
+
+    /** @var array<int, list<JointPain>> each exercise's joint answers in order, read once per batch (EX-009) */
+    private array $painHistory = [];
+
     /**
      * @param  Collection<int, WorkoutExercise>  $blockRows  the session's exercises, by position
      * @param  Collection<int, ExerciseFeedback>  $exerciseFeedback  the session's joint answers
@@ -479,15 +488,26 @@ final class WorkoutSnapshot
      */
     public function pendingFeedback(): array
     {
-        $pending = [];
-        foreach ($this->sheets() as $sheet) {
-            $row = $this->muscleAnswers($sheet->muscle);
-            if ($sheet->isDue && ! FeedbackSheets::isAnswered($sheet, $this->asksSoreness($sheet->muscle), $row?->soreness, $row?->pump, $row?->volume, array_keys($this->jointAnswers()))) {
-                $pending[] = $sheet->muscle;
-            }
-        }
+        return array_values(array_map(
+            fn (FeedbackSheet $sheet) => $sheet->muscle,
+            array_filter($this->sheets(), fn (FeedbackSheet $sheet) => $sheet->isDue && ! $this->isAnswered($sheet)),
+        ));
+    }
 
-        return $pending;
+    /** WO-040: pump, volume, soreness when asked, and every joint question of the sheet. */
+    public function isAnswered(FeedbackSheet $sheet): bool
+    {
+        $row = $this->muscleAnswers($sheet->muscle);
+
+        return FeedbackSheets::isAnswered($sheet, $this->asksSoreness($sheet->muscle), $row?->soreness, $row?->pump, $row?->volume, array_keys($this->jointAnswers()));
+    }
+
+    /** WO-040: the session has sets and every one is logged or skipped. */
+    public function allSetsDone(): bool
+    {
+        $sets = array_merge(...array_map(fn (WorkoutBlock $block) => $block->sets, $this->blocks()));
+
+        return $sets !== [] && array_all($sets, fn (WorkoutSetRow $set) => $set->isDone());
     }
 
     // MARK: next week (PROG-010 to PROG-019, PROG-050, PROG-051) and recovery (PROG-018, PROG-051, PROG-053, EX-009)
@@ -507,11 +527,13 @@ final class WorkoutSnapshot
             return null;
         }
 
-        $counts = [];
-        foreach ($this->setsOf($session) as $set) {
-            if ($set->exercise_id !== null) {
-                $counts[(int) $set->exercise_id] = ($counts[(int) $set->exercise_id] ?? 0) + 1;
-            }
+        // PROG-019: the sets each slot ran: those of the exercise workout_start wrote for it, still its exercise.
+        $ran = [];
+        $sets = $this->setsOf($session);
+        foreach ($this->mesocycle->dayRows()[(int) $dayIndex]['slots'] as $slot) {
+            $block = WorkoutIds::block($this->workoutId(), $slot['id']);
+            $ran[$slot['id']] = $sets->filter(fn (WorkoutSet $set) => strcasecmp((string) $set->workout_exercise_id, $block) === 0
+                && $slot['exercise_id'] !== null && (int) $set->exercise_id === $slot['exercise_id'])->count();
         }
         $answers = [];
         foreach ($this->train->feedback as $row) {
@@ -532,7 +554,7 @@ final class WorkoutSnapshot
             weeks: (int) $this->mesocycle->weeks,
             priorities: TrainSnapshot::priorities($this->mesocycle),
             experience: ExperienceLevel::tryFrom((string) $this->train->profile?->experience) ?? ExperienceLevel::Intermediate,
-            setCounts: $counts,
+            ranSets: $ran,
             muscleAnswers: $answers,
             jointPain: $this->jointAnswers(),
             held: Underperformance::flaggedMuscles([...$this->earlierLogged(), $this->logged($session)]),
@@ -554,9 +576,6 @@ final class WorkoutSnapshot
         }
         $earlier = $this->earlierSessions();
         $flagged = Underperformance::flaggedMuscles($this->earlierLogged());
-        $lastWeekSession = $earlier->first(fn (WorkoutSession $s) => $s->week === $this->week - 1 && $s->day === $this->day);
-        $pain = $lastWeekSession === null ? null : ExerciseFeedback::query()->where('workout_session_id', $lastWeekSession->id)
-            ->where('exercise_id', $exercise->id)->value('joint_pain');
 
         return RecoveryLoad::apply(new RecoveryLoadInputs(
             planned: $planned,
@@ -568,7 +587,7 @@ final class WorkoutSnapshot
             muscle: $exercise->muscle_group,
             flaggedMuscle: in_array($exercise->muscle_group, $flagged, true) ? $exercise->muscle_group : null,
             history: $earlier->map(fn (WorkoutSession $s) => $this->loggedExercise($s, $exercise))->filter()->values()->all(),
-            lastWeekJointPain: JointPain::tryFrom((string) $pain),
+            lastWeekJointPain: $this->lastWeekPain()[(int) $exercise->id] ?? null,
         ));
     }
 
@@ -585,18 +604,54 @@ final class WorkoutSnapshot
      */
     public function swapSuggestion(Exercise $exercise): ?string
     {
+        $id = (int) $exercise->id;
+        if (! isset($this->painHistory[$id])) {
+            // One read for every exercise of the session, so the screen asks once rather than per exercise.
+            $ids = array_values(array_unique([$id, ...array_map(fn (WorkoutBlock $block) => (int) $block->exercise->id, $this->blocks())]));
+            $this->painHistory = array_replace($this->painHistory, $this->painHistoryOf($ids));
+        }
+
+        return JointPainSwap::isSuggested($this->painHistory[$id] ?? []) ? JointPainSwap::suggestion($exercise->name) : null;
+    }
+
+    /**
+     * EX-009: each exercise's joint answers, oldest first: by the start of their session (actual, else planned), then
+     * week, day and row id. An exercise with none has an empty list.
+     *
+     * @param  list<int>  $ids
+     * @return array<int, list<JointPain>>
+     */
+    private function painHistoryOf(array $ids): array
+    {
         $user = (int) $this->mesocycle->user_id;
-        $rows = ExerciseFeedback::query()->where('user_id', $user)->where('exercise_id', $exercise->id)->get();
-        // Each answer's place: its session's start (actual, else planned), week and day.
-        $places = WorkoutSession::query()->where('user_id', $user)->whereIn('id', $rows->pluck('workout_session_id'))->get()
+        $rows = ExerciseFeedback::query()->where('user_id', $user)->whereIn('exercise_id', $ids)->get();
+        $places = WorkoutSession::query()->where('user_id', $user)->whereIn('id', $rows->pluck('workout_session_id')->unique())->get()
             ->mapWithKeys(fn (WorkoutSession $session) => [$session->id => [
                 self::instant($session->actual_start_at ?? $session->planned_start_at)?->getTimestamp() ?? PHP_INT_MIN, $session->week, $session->day,
             ]]);
-        $answers = $rows->filter(fn (ExerciseFeedback $row) => $places->has($row->workout_session_id))
-            ->sortBy(fn (ExerciseFeedback $row) => [...$places->get($row->workout_session_id), (string) $row->id])
-            ->map(fn (ExerciseFeedback $row) => JointPain::tryFrom((string) $row->joint_pain))->filter()->values()->all();
+        $history = array_fill_keys($ids, []);
+        foreach ($rows->filter(fn (ExerciseFeedback $row) => $places->has($row->workout_session_id))
+            ->sortBy(fn (ExerciseFeedback $row) => [...$places->get($row->workout_session_id), (string) $row->id]) as $row) {
+            $pain = JointPain::tryFrom((string) $row->joint_pain);
+            if ($pain !== null) {
+                $history[(int) $row->exercise_id][] = $pain;
+            }
+        }
 
-        return JointPainSwap::isSuggested($answers) ? JointPainSwap::suggestion($exercise->name) : null;
+        return $history;
+    }
+
+    /** @return array<int, JointPain> PROG-018: last week's same-day joint answers, by exercise id */
+    private function lastWeekPain(): array
+    {
+        if ($this->lastWeekPain === null) {
+            $last = $this->earlierSessions()->first(fn (WorkoutSession $s) => $s->week === $this->week - 1 && $s->day === $this->day);
+            $this->lastWeekPain = $last === null ? [] : ExerciseFeedback::query()->where('workout_session_id', $last->id)->get()
+                ->mapWithKeys(fn (ExerciseFeedback $row) => [(int) $row->exercise_id => JointPain::tryFrom((string) $row->joint_pain)])
+                ->filter()->all();
+        }
+
+        return $this->lastWeekPain;
     }
 
     /** @return Collection<int, WorkoutSession> PROG-050: the mesocycle's sessions before this one, not skipped, oldest first */
@@ -610,7 +665,7 @@ final class WorkoutSnapshot
     /** @return list<list<LoggedExercise>> */
     private function earlierLogged(): array
     {
-        return $this->earlierSessions()->map(fn (WorkoutSession $s) => $this->logged($s))->values()->all();
+        return $this->earlierLogged ??= $this->earlierSessions()->map(fn (WorkoutSession $s) => $this->logged($s))->values()->all();
     }
 
     /** @return Collection<int, WorkoutSet> a session of this mesocycle's sets, in order */

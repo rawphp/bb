@@ -54,9 +54,10 @@ final class WorkoutPayload
         $rir = $s->rir();
         $isDeload = $s->isDeload();
         $sheets = self::feedback($s, $blocks, $status);
-        $pending = $editable && array_filter($sheets, fn (WorkoutFeedback $sheet) => $sheet->is_due && ! $sheet->is_answered) !== [];
+        // WO-040: the same rules workout_finish refuses by.
+        $pending = $editable && $s->pendingFeedback() !== [];
         $sets = array_merge(...array_map(fn (WorkoutBlock $block) => $block->sets, $blocks));
-        $allDone = $sets !== [] && array_filter($sets, fn (WorkoutSetRow $set) => ! $set->isDone()) === [];
+        $allDone = $s->allSetsDone();
         $anyDone = array_filter($sets, fn (WorkoutSetRow $set) => $set->isDone()) !== [];
         $date = $s->date();
 
@@ -122,7 +123,7 @@ final class WorkoutPayload
             },
             pinned_note: $s->pinnedNote($exercise),
             session_note: $block->note,
-            recovery_note: ($note = $s->recoveryNote($exercise, max(1, count($block->sets)))) === null ? null : new Pill($note, Tone::Info->value),
+            recovery_note: ($note = $s->recoveryNote($exercise, max(1, count($block->sets)))) === null ? null : new Pill($note, Tone::Neutral->value),
             swap_suggestion: ($swap = $s->swapSuggestion($exercise)) === null ? null : new Pill($swap, Tone::Warning->value),
             carries_first_weight: $editable && $exercise->load_type !== ExerciseLoadType::Bodyweight && $block->sets !== []
                 && array_filter($block->sets, fn (WorkoutSetRow $set) => $set->targetKg !== null) === [],
@@ -234,7 +235,7 @@ final class WorkoutPayload
                 title: $sheet->muscle->title(),
                 due_after_exercise_id: $sheet->dueAfter,
                 is_due: $sheet->isDue,
-                is_answered: FeedbackSheets::isAnswered($sheet, $asks, $soreness, $pump, $volume, array_keys(array_filter($joints->all(), fn ($answer) => $answer !== null))),
+                is_answered: $s->isAnswered($sheet),
                 can_edit: ! $s->isLocked($sheet->muscle),
                 questions: $questions,
             );
