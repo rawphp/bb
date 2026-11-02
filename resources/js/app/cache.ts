@@ -32,7 +32,8 @@ const DB_PREFIX = 'bodybuilder-reads-';
 
 let opened: { owner: string | null; db: Promise<IDBPDatabase<Schema>> | undefined } | undefined;
 
-function owner(): string | null {
+/** The signed-in user on this device, from the bb_cache_owner cookie, or null. */
+export function owner(): string | null {
     const match = document.cookie.match(new RegExp(`(?:^|; )${OWNER_COOKIE}=([0-9a-f]+)`));
 
     return match?.[1] ?? null;

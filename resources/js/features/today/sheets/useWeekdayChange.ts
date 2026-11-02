@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { CapabilityError, write } from '@/app/call';
+import { CapabilityError, writeNow } from '@/app/call';
 import { writeFailureMessage } from '@/app/errors';
 import { useRetryKey, type RetryKey } from '@/app/retryKey';
 import type { TrainingWeekdaysChangeInput } from '@/contracts/training_weekdays_change';
@@ -46,7 +46,7 @@ export function useWeekdayChange() {
         busy.value = true;
         error.value = null;
         try {
-            await write(NAME, input, { idempotencyKey: retry.key.value });
+            await writeNow(NAME, input, { idempotencyKey: retry.key.value });
             retry.settle();
             asking.value = null;
             return true;
