@@ -48,7 +48,18 @@ describe('ProgressScreen', () => {
         expect(chart.text()).toContain('Waist (cm)');
     });
 
-    it('ANA-001 asks for the other scope when it is picked', async () => {
+    it('ANA-001 WT-021 keeps a waist measured after the last weigh-in inside the chart', () => {
+        const payload = structuredClone(full);
+        payload.chart!.waist.push({ date: '2026-10-24', value: 86.5 });
+        const chart = render({ payload }).get('svg[role="img"]');
+
+        const xs = (chart.get('[data-waist]').attributes('d') ?? '').match(/[ML](-?[\d.]+)/g)!.map((m) => Number(m.slice(1)));
+        const weights = chart.findAll('[data-weight]').map((c) => Number(c.attributes('cx')));
+        expect(Math.max(...xs)).toBeLessThanOrEqual(310);
+        expect(Math.max(...weights)).toBeLessThan(310);
+    });
+
+        it('ANA-001 asks for the other scope when it is picked', async () => {
         const wrapper = render();
 
         await wrapper.findAll('[data-scope]')[1]!.trigger('click');
@@ -241,7 +252,17 @@ describe('ProgressScreen', () => {
         expect(wrapper.find('[data-share-card]').exists()).toBe(false);
     });
 
-    it('PWA-034 offers Share only when the server sends something to share', () => {
+    it('PWA-034 wraps the share message between words, each line short enough for the card', async () => {
+        vi.mocked(toPng).mockResolvedValue(new Blob());
+        render();
+        await flushPromises();
+
+        const card = vi.mocked(toPng).mock.calls[0]![0];
+        const lines = [...card.querySelectorAll('text')].map((t) => t.textContent ?? '').filter((t) => t.startsWith('Muscle') || t.startsWith('over'));
+        expect(lines).toEqual(['Muscle gain: 83.2 kg to 84.3 kg (+1.1 kg)', 'over 5 weeks']);
+    });
+
+        it('PWA-034 offers Share only when the server sends something to share', () => {
         const wrapper = render({ payload: { ...full, share: null } });
 
         expect(wrapper.find('svg[role="img"]').exists()).toBe(true);

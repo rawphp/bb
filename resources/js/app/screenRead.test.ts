@@ -12,6 +12,7 @@ describe('readFailure', () => {
     it.each([
         [new CapabilityError('x', 0, null), { offline: true, error: null, signedOut: false }],
         [new CapabilityError('x', 401, null), { offline: false, error: 'You are signed out.', signedOut: true }],
+        [new CapabilityError('x', 419, null), { offline: false, error: 'Your session has ended. Sign in again.', signedOut: true }],
         [new CapabilityError('x', 500, null), { offline: false, error: 'Nope.', signedOut: false }],
         [new Error('boom'), { offline: false, error: 'Nope.', signedOut: false }],
     ])('CAP-012 OFF-003 words a failed read for the screen', (error, failure) => {

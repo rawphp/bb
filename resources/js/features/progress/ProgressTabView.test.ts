@@ -106,8 +106,11 @@ describe('ProgressTabView', () => {
         expect(wrapper.find('[data-chart-card] [role="alert"]').exists()).toBe(false);
     });
 
-    it('CAP-012 a scope read that finds the user signed out stops showing their progress', async () => {
-        readMock.mockResolvedValueOnce(full).mockRejectedValueOnce(new CapabilityError('progress_show', 401, null));
+    it.each([
+        [401, 'You are signed out.'],
+        [419, 'Your session has ended. Sign in again.'],
+    ])('CAP-012 a scope read that finds the session gone (%i) stops showing their progress', async (status, message) => {
+        readMock.mockResolvedValueOnce(full).mockRejectedValueOnce(new CapabilityError('progress_show', status, null));
         const wrapper = render();
         await flushPromises();
 
@@ -115,7 +118,7 @@ describe('ProgressTabView', () => {
         await flushPromises();
 
         expect(wrapper.text()).not.toContain('+1.1 kg');
-        expect(wrapper.text()).toContain('You are signed out.');
+        expect(wrapper.text()).toContain(message);
     });
 
     it('OFF-003 a cached scope whose refresh is refused is taken away', async () => {

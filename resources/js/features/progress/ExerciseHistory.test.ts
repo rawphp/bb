@@ -118,7 +118,19 @@ describe('ExerciseListView', () => {
         expect(wrapper.text()).toContain('No exercises logged yet.');
     });
 
-    it('PWA-024 CAP-012 shows skeletons, then why the list did not load', async () => {
+    it.each([
+        [0, 'Exercise history needs a connection.'],
+        [401, 'You are signed out.'],
+    ])('OFF-003 CAP-012 says why the list did not load (%i)', async (status, message) => {
+        readMock.mockRejectedValueOnce(new CapabilityError('progress_show', status, null));
+        const wrapper = mount(ExerciseListView, stubs);
+        await flushPromises();
+
+        expect(wrapper.text()).toContain(message);
+        expect(wrapper.find('[data-placeholder]').exists()).toBe(false);
+    });
+
+        it('PWA-024 CAP-012 shows skeletons, then why the list did not load', async () => {
         readMock.mockRejectedValueOnce(new CapabilityError('progress_show', 500, null));
         const wrapper = mount(ExerciseListView, stubs);
         expect(wrapper.find('[data-placeholder]').exists()).toBe(true);

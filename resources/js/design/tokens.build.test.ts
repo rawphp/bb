@@ -34,5 +34,10 @@ describe('built design tokens', () => {
         // The tokens are declared again on .bb-light, so they resolve against its own switch, not :root's.
         expect(css).toMatch(/:root,\.bb-light\{[^}]*--bb-surface:var\(--lightningcss-light,#fff\)var\(--lightningcss-dark,#1c1c1e\)/);
         expect(css).toMatch(/\.bb-light\{--lightningcss-light:initial;--lightningcss-dark: ;/);
+        // Same specificity as the dark media rule, so .bb-light's light switch must come after it to win.
+        const darkMedia = css.search(/@media \(prefers-color-scheme:dark\)\{[^}]*\.bb-light/);
+        const lightSwitch = css.search(/(^|\})\.bb-light\{--lightningcss-light:initial;--lightningcss-dark: ;/);
+        expect(darkMedia).toBeGreaterThan(-1);
+        expect(lightSwitch).toBeGreaterThan(darkMedia);
     });
 });
