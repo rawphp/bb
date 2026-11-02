@@ -5,6 +5,7 @@ import type { DayAdjustInput } from '@/contracts/day_adjust';
 import type { DayAdjustShowInput, DayAdjustShowOutput } from '@/contracts/day_adjust_show';
 import BottomSheet from '@/design/BottomSheet.vue';
 import PendingMark from '@/design/PendingMark.vue';
+import SegmentedPicker from './SegmentedPicker.vue';
 import WarningLine from './WarningLine.vue';
 import { useSheet, useSheetRead, type SheetListeners } from './useSheet';
 
@@ -102,9 +103,6 @@ const directions: { value: Direction; label: string }[] = [
     { value: 'give', label: 'Give to' },
     { value: 'take', label: 'Take from' },
 ];
-const segment = 'min-h-9 rounded-md text-sm font-medium active:opacity-70';
-const segmentOn = 'bg-surface text-primary-text shadow-sm';
-const segmentOff = 'text-secondary-text';
 const pickerRow = 'flex min-h-tap items-center justify-between gap-2';
 const picker = 'max-w-[60%] truncate rounded-lg bg-transparent py-2 pl-2 text-right text-accent';
 </script>
@@ -122,20 +120,7 @@ const picker = 'max-w-[60%] truncate rounded-lg bg-transparent py-2 pl-2 text-ri
     >
         <!-- Locked while a save that got no answer may have worked (CAP-014): the retry sends the same move. -->
         <fieldset v-if="data" :disabled="locked" class="flex min-w-0 flex-col gap-4.5 p-4">
-            <div role="radiogroup" aria-label="Move calories" class="grid grid-cols-2 gap-0.5 rounded-lg bg-background p-0.5">
-                <button
-                    v-for="option in modes"
-                    :key="option.value"
-                    type="button"
-                    role="radio"
-                    :aria-checked="mode === option.value"
-                    :class="[segment, mode === option.value ? segmentOn : segmentOff]"
-                    :data-test="`mode-${option.value}`"
-                    @click="picked = option.value"
-                >
-                    {{ option.label }}
-                </button>
-            </div>
+            <SegmentedPicker label="Move calories" :options="modes" :model-value="mode" @update:model-value="picked = $event" />
 
             <div v-if="mode === 'meals'" class="flex flex-col gap-2">
                 <p v-if="data.meal_options.length < 2" class="text-sm text-secondary-text">
@@ -160,20 +145,7 @@ const picker = 'max-w-[60%] truncate rounded-lg bg-transparent py-2 pl-2 text-ri
             </div>
 
             <div v-else class="flex flex-col gap-2">
-                <div role="radiogroup" aria-label="Direction" class="grid grid-cols-2 gap-0.5 rounded-lg bg-background p-0.5">
-                    <button
-                        v-for="option in directions"
-                        :key="option.value"
-                        type="button"
-                        role="radio"
-                        :aria-checked="direction === option.value"
-                        :class="[segment, direction === option.value ? segmentOn : segmentOff]"
-                        :data-test="`direction-${option.value}`"
-                        @click="direction = option.value"
-                    >
-                        {{ option.label }}
-                    </button>
-                </div>
+                <SegmentedPicker v-model="direction" label="Direction" :options="directions" />
                 <label :class="pickerRow">
                     <span>Day</span>
                     <select v-model="otherDate" name="day" :class="picker">

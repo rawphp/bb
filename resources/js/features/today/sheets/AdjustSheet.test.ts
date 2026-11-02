@@ -34,6 +34,13 @@ function lastAsked(): Record<string, unknown> {
 }
 
 // The calorie field asks the server once typing stops (DEBOUNCE_MS), so a typed amount runs the clock past it.
+// A segment of one of the sheet's segmented pickers, found by the picker's label and its own text.
+function segment(wrapper: Awaited<ReturnType<typeof mountSheet>>['wrapper'], picker: string, text: string) {
+    const found = wrapper.findAll(`[role="radiogroup"][aria-label="${picker}"] [role="radio"]`).find((radio) => radio.text() === text);
+    expect(found, `${picker}: ${text}`).toBeDefined();
+    return found!;
+}
+
 async function typeKcal(wrapper: Awaited<ReturnType<typeof mountSheet>>['wrapper'], text: string) {
     await wrapper.get('input[name="kcal"]').setValue(text);
     vi.advanceTimersByTime(300);
@@ -76,8 +83,8 @@ describe('AdjustSheet', () => {
     it('DAY-020 between days offers the other days of the week, a finished one off', async () => {
         const { wrapper } = await mountSheet(AdjustSheet, { payload: content });
 
-        expect(wrapper.get('[data-test="mode-days"]').attributes('aria-checked')).toBe('true');
-        expect(wrapper.find('[data-test="direction-give"]').exists()).toBe(true);
+        expect(segment(wrapper, 'Move calories', 'Between days').attributes('aria-checked')).toBe('true');
+        expect(segment(wrapper, 'Direction', 'Give to').attributes('aria-checked')).toBe('true');
         const options = wrapper.findAll<HTMLOptionElement>('select[name="day"] option[value]:not([value=""])');
         expect(options.map((o) => o.text())).toEqual(['Tue, Sep 22 (finished)', 'Sat, Sep 26']);
         expect(options.map((o) => o.element.disabled)).toEqual([true, false]);
@@ -121,11 +128,11 @@ describe('AdjustSheet', () => {
         expect(freshMock).not.toHaveBeenCalled();
 
         await wrapper.get('select[name="day"]').setValue('2026-09-26');
-        await wrapper.get('[data-test="direction-take"]').trigger('click');
+        await segment(wrapper, 'Direction', 'Take from').trigger('click');
         await typeKcal(wrapper, '200');
         expect(lastAsked()).toEqual({ date: '2026-09-23', mode: 'days', direction: 'take', other_date: '2026-09-26', kcal: 200 });
 
-        await wrapper.get('[data-test="mode-meals"]').trigger('click');
+        await segment(wrapper, 'Move calories', 'Between meals').trigger('click');
         await flushPromises();
         await wrapper.get('select[name="from"]').setValue(content.meal_options[0]!.id);
         await wrapper.get('select[name="to"]').setValue(content.meal_options[2]!.id);
@@ -189,7 +196,7 @@ describe('AdjustSheet', () => {
         writeMock.mockResolvedValueOnce({ invalidates: [], toast: 'Moved 300 kcal', undo: null });
         const { wrapper } = await mountSheet(AdjustSheet, { payload: content, onSaved: vi.fn() });
 
-        await wrapper.get('[data-test="direction-take"]').trigger('click');
+        await segment(wrapper, 'Direction', 'Take from').trigger('click');
         await wrapper.get('select[name="day"]').setValue('2026-09-26');
         await typeKcal(wrapper, '300');
         await wrapper.get('[data-save]').trigger('click');
@@ -339,7 +346,7 @@ describe('AdjustSheet', () => {
         await wrapper.get('[data-save]').trigger('click');
         await flushPromises();
         expect(wrapper.get('input[name="kcal"]').element.matches(':disabled')).toBe(true);
-        expect(wrapper.get('[data-test="mode-meals"]').element.matches(':disabled')).toBe(true);
+        expect(segment(wrapper, 'Move calories', 'Between meals').element.matches(':disabled')).toBe(true);
         await wrapper.get('[data-save]').trigger('click');
         await flushPromises();
 
