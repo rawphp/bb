@@ -30,7 +30,7 @@ final class WorkoutFeedbackAnswerCapability implements HostCapability, OwnsInput
                 $user = $context->user();
                 $answered = ($this->answer)($user, $input);
 
-                return new WriteResult(invalidates: WorkoutReads::keys($answered['session']), toast: $answered['toast']);
+                return new WriteResult(invalidates: WorkoutReads::keys($user, $answered['session']), toast: $answered['toast']);
             });
     }
 

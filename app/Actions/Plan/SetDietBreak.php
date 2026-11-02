@@ -6,6 +6,7 @@ use App\Models\PlanWeek;
 use App\Models\User;
 use App\Support\Plan\PlanSnapshot;
 use DomainException;
+use Illuminate\Support\Facades\DB;
 
 /**
  * PLAN-023: turn a Fat loss or Mini-cut deload week's diet break off for that one week, after the deficit-deload
@@ -16,7 +17,14 @@ final class SetDietBreak
     /** @return list<string> the week's days, Y-m-d */
     public function __invoke(User $user, string $weekStart, bool $dietBreak): array
     {
-        $plan = PlanSnapshot::load($user) ?? throw new DomainException('There is no plan yet.');
+        // The plan is read and checked under its row lock, so two turns at the same week cannot both add its row.
+        return DB::transaction(fn (): array => $this->set($user, $weekStart, $dietBreak));
+    }
+
+    /** @return list<string> */
+    private function set(User $user, string $weekStart, bool $dietBreak): array
+    {
+        $plan = PlanSnapshot::load($user, lock: true) ?? throw new DomainException('There is no plan yet.');
         $start = PlanSnapshot::day($weekStart);
         $week = $plan->grid->isBoundary($start) ? $plan->grid->weekIndexContaining($start) : null;
         $marks = $week === null ? null : $plan->timelineWeek($week);

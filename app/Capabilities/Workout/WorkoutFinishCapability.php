@@ -36,7 +36,7 @@ final class WorkoutFinishCapability implements HostCapability, OwnsInput
 
                 return new WriteResult(
                     invalidates: [
-                        ...WorkoutReads::keys($session),
+                        ...WorkoutReads::keys($user, $session),
                         // OFF-023: Today shows the session done; SCH-054: the days whose meals changed.
                         ...TodayReads::keys([DayPlans::day((string) $session->getRawOriginal('actual_start_at'))->format('Y-m-d'), ...$finished['dates']], ['day_adjust_show', 'day_redistribute_show']),
                         ...TodayReads::weekKeys($finished['week']),

@@ -7,6 +7,7 @@ use App\Domain\Mesocycle\MesoBuilder;
 use App\Domain\Mesocycle\MesocycleCalendar;
 use App\Domain\Mesocycle\MesocycleRules;
 use App\Domain\Model\ExerciseSlot;
+use App\Domain\Model\ExperienceLevel;
 use App\Domain\Model\FeedbackAnswers;
 use App\Domain\Model\Mesocycle as DomainMesocycle;
 use App\Domain\Model\MuscleGroup;
@@ -413,7 +414,9 @@ final class TrainSnapshot
             id: (string) $mesocycle->id,
             phase: $this->phaseType($mesocycle) ?? PhaseType::Maintenance,
             weeks: (int) $mesocycle->weeks,
-            sessions: $sessions($mesocycle->dayRows()),
+            // MESO-034: an Off muscle's slots are left out of the rotation. Every change to the Off set stores the weeks
+            // that ran in earlier_weeks first, as they ran ({@see rotationAsRun()}), so those keep theirs.
+            sessions: MesocycleRules::withoutOff($sessions($mesocycle->dayRows()), self::off($mesocycle)),
             musclePriorities: self::priorities($mesocycle),
             isResensitization: $mesocycle->is_resensitization,
             earlierWeeks: array_map($sessions, $mesocycle->earlierWeekRows()),
@@ -480,6 +483,68 @@ final class TrainSnapshot
         }
 
         return ($this->named ??= ($this->exercises)($this->namedExerciseIds())->keyBy('id'))->get($id);
+    }
+
+    /** MESO-004: where a build starts: its start moved to the first day of its plan week, else the default start. */
+    public function buildStart(Mesocycle $build): DateTimeImmutable
+    {
+        return $build->start_date === null ? $this->defaultStart() : $this->snapped(self::day($build->start_date));
+    }
+
+    /** MESO-003, TBL-012: the defaults of the phase covering a build's start; balanced maintenance without one. */
+    public function buildColumn(Mesocycle $build): Column
+    {
+        return Column::for($this->phaseCovering($this->buildStart($build))->type ?? PhaseType::Maintenance, $build->is_resensitization);
+    }
+
+    /** TBL-020: the user's experience, intermediate until the profile says. */
+    public function experience(): ExperienceLevel
+    {
+        return ExperienceLevel::tryFrom((string) $this->profile?->experience) ?? ExperienceLevel::Intermediate;
+    }
+
+    /** @return list<MuscleGroup> MESO-034: the muscles set Off */
+    public static function off(Mesocycle $mesocycle): array
+    {
+        $off = [];
+        foreach ($mesocycle->muscle_priorities ?? [] as $muscle => $priority) {
+            if ($priority === null && ($group = MuscleGroup::tryFrom($muscle)) !== null) {
+                $off[] = $group;
+            }
+        }
+
+        return $off;
+    }
+
+    /**
+     * SCH-039, MESO-034: the rotation as it runs now, Off muscles left out. A week stored before the rotation changes
+     * (a day added, the Off set changed) is stored from this, so it keeps what ran.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function rotationAsRun(Mesocycle $mesocycle): array
+    {
+        return MesocycleRules::withoutMuscles($mesocycle->dayRows(), self::off($mesocycle));
+    }
+
+    /**
+     * MESO-003, MESO-020: the priorities a build shows and saves: the stored ones, else the preset of its phase.
+     *
+     * @return array<string, ?string>
+     */
+    public function buildPriorities(Mesocycle $build): array
+    {
+        $stored = $build->muscle_priorities ?? [];
+
+        return $stored !== [] ? $stored : array_map(fn (Priority $p) => $p->value, MesoBuilder::defaultPriorities($this->buildColumn($build)));
+    }
+
+    /** @return list<int> MESO-005: the ISO weekdays the user trains on, in plan-week order */
+    public function trainingWeekdaysInPlanOrder(): array
+    {
+        $grid = $this->grid();
+
+        return $grid === null ? $this->trainingWeekdays() : PlanWeekDays::inPlanWeekOrder($this->trainingWeekdays(), $this->reviewIsoWeekday($grid));
     }
 
     /** @return array<string, Priority> the stored priorities that are not Off, keyed by muscle */
