@@ -2,7 +2,7 @@
 
 Bodybuilder is one Laravel app that serves the PWA, holds every rule and all data, and runs the optional agent. A self-hosted instance runs the same code as the hosted version, with billing off.
 
-Some pieces below (Web Push, food import, billing) land in later milestones. The keys and commands are listed here so an instance can be set up once.
+Some pieces below (food import, billing) land in later milestones. The keys and commands are listed here so an instance can be set up once.
 
 ## Requirements
 
@@ -169,7 +169,7 @@ Copy it for `agent` with `queue:work agent --queue=agent --tries=1`. Restart bot
 
 ## Scheduler
 
-The scheduler reaps the agent's stale turns, prunes the audit log (`audit_records`, kept 90 days) and prunes expired undo tokens. With billing on it also reads the paywall's prices from Stripe every 15 minutes (`billing:refresh-prices`). Without cron, the paywall reads a price from Stripe itself when its kept copy is more than 15 minutes old, so a paywall request can wait on Stripe now and then. Sending due Web Push notifications is not scheduled yet. Run it every minute from cron, as the web server user:
+The scheduler reaps the agent's stale turns, prunes the audit log (`audit_records`, kept 90 days) and prunes expired undo tokens. With billing on it also reads the paywall's prices from Stripe every 15 minutes (`billing:refresh-prices`). Without cron, the paywall reads a price from Stripe itself when its kept copy is more than 15 minutes old, so a paywall request can wait on Stripe now and then. With the VAPID keys set, it runs `reminders:send` every minute, which queues each subscribed user's due reminders (weigh-ins, meals, workouts, the weekly review and the next mesocycle) on the `default` queue; each is sent once, and daily the log of sent reminders is pruned to two days. Reminder times are read as UTC. Run the scheduler every minute from cron, as the web server user:
 
 ```cron
 * * * * * cd /var/www/bodybuilder && php artisan schedule:run >> /dev/null 2>&1
