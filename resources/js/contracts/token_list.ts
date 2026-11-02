@@ -29,3 +29,5 @@ export interface TokenListOutput {
     description: string;
   }[];
 }
+
+export const outputVersion = '29283c4ffb0e';

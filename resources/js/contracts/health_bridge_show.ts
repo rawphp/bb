@@ -38,3 +38,5 @@ export interface HealthBridgeShowOutput {
     text: string;
   }[];
 }
+
+export const outputVersion = '6db906eabcba';

@@ -9,15 +9,26 @@ use Rawphp\Capabilities\Support\CapabilityResult;
 
 /**
  * The bus the HTTP surface and the in-app agent invoke through. It runs the
- * registry and words its failures with {@see ErrorWording}.
+ * registry and words its failures with {@see ErrorWording}. A refusal for
+ * another user's row ID is answered 404, not 403 (CAP-020 step 2, {@see Ownership}).
  */
 final class HostBus implements CapabilityBus
 {
-    public function __construct(private readonly CapabilityRegistry $registry) {}
+    public function __construct(
+        private readonly CapabilityRegistry $registry,
+        private readonly Ownership $ownership,
+    ) {}
 
     public function invoke(string $nameOrAlias, array $input = [], array $options = []): CapabilityResult
     {
-        return ErrorWording::apply($this->registry->invoke($nameOrAlias, $input, $options));
+        $this->ownership->pullDenied();
+        $result = $this->registry->invoke($nameOrAlias, $input, $options);
+
+        if ($this->ownership->pullDenied() && $result->errorCode() === 'forbidden') {
+            $result = CapabilityResult::failure(code: 'not_found', message: 'Not found.', meta: $result->meta);
+        }
+
+        return ErrorWording::apply($result);
     }
 
     public function catalog(): CatalogPresenter

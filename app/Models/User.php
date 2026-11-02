@@ -12,11 +12,20 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\Contracts\HasAbilities;
+use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
+    /**
+     * A session's token is transient, so not every current token is a PersonalAccessToken.
+     *
+     * @use HasApiTokens<HasAbilities>
+     */
+    use HasApiTokens;
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
@@ -33,6 +42,9 @@ class User extends Authenticatable
             foreach (['workout_sessions', 'off_plan_entries', 'planned_foods', 'recipes', 'mesocycles'] as $table) {
                 DB::table($table)->where('user_id', $user->id)->delete();
             }
+
+            // Tokens belong to the user through a morph, which no foreign key cascades.
+            PersonalAccessToken::ownedBy($user)->delete();
         });
     }
 

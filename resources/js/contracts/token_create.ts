@@ -31,3 +31,5 @@ export interface TokenCreateOutput {
     expires_text: string;
   };
 }
+
+export const outputVersion = '9a7aa8ff659e';

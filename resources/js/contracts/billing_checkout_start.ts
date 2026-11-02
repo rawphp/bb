@@ -13,3 +13,5 @@ export interface BillingCheckoutStartOutput {
   undo?: string | null;
   url: string;
 }
+
+export const outputVersion = 'd1ac9ea40c58';
