@@ -1,15 +1,15 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import type { AwayWeekShowOutput } from '@/contracts/away_week_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import AwayWeekSheet from './AwayWeekSheet.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
 const readFreshMock = vi.mocked(readFresh);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const marking = screenFixture<AwayWeekShowOutput>('away_week_show');
 const editing = screenFixture<AwayWeekShowOutput>('away_week_show.editing');
 

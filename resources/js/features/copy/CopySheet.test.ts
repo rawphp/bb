@@ -1,15 +1,15 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import type { CopyShowOutput } from '@/contracts/copy_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import CopySheet from './CopySheet.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
 const readFreshMock = vi.mocked(readFresh);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const foods = screenFixture<CopyShowOutput>('copy_show');
 const day = screenFixture<CopyShowOutput>('copy_show.day');
 const SOURCE_MEAL = '01JBX0M1N2P3Q4R5S6T7V8W9Z9';
