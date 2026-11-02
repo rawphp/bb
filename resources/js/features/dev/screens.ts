@@ -18,6 +18,12 @@ export function findScreen(name: string, routes: RouteRecordRaw[], view?: string
     return typeof component === 'function' ? defineAsyncComponent(component as Lazy) : (component as Component);
 }
 
+/** The props the screen's route sets itself (`props: { … }`), so a dev screen opens it as the app does. */
+export function routeProps(name: string, routes: RouteRecordRaw[], view?: string): Record<string, unknown> {
+    const props = screenRoute(name, routes, view)?.props;
+    return props !== null && typeof props === 'object' ? (props as Record<string, unknown>) : {};
+}
+
 /** Whether the screen renders from a fixture; one that reads nothing says meta.fixture false. */
 export function takesFixture(name: string, routes: RouteRecordRaw[], view?: string): boolean {
     return screenRoute(name, routes, view)?.meta?.fixture !== false;

@@ -10,8 +10,8 @@ const props = withDefaults(
     defineProps<{
         // Screen-reader name, "Calories" or "Sets".
         title: string;
-        // Short label before the bar, "Cal" or "P".
-        label: string;
+        // Short label before the bar, "Cal" or "P". None for a bar its row already names.
+        label?: string;
         // "45/40".
         valueText: string;
         // 0 to 1.
@@ -27,7 +27,7 @@ const props = withDefaults(
         pending?: boolean;
         disabled?: boolean;
     }>(),
-    { tone: 'neutral', tint: 'accent', loading: false, error: null, pending: false, disabled: false },
+    { label: '', tone: 'neutral', tint: 'accent', loading: false, error: null, pending: false, disabled: false },
 );
 
 const tints = {
@@ -66,7 +66,7 @@ const spoken = computed(() => {
         class="flex items-center gap-2 text-sm"
         :class="{ 'opacity-50': props.disabled }"
     >
-        <span aria-hidden="true" class="min-w-7 font-semibold" :class="[tint.text, { 'opacity-50': syncing }]">
+        <span v-if="props.label" aria-hidden="true" class="min-w-7 font-semibold" :class="[tint.text, { 'opacity-50': syncing }]">
             {{ props.label }}
         </span>
         <span

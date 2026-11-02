@@ -15,6 +15,13 @@ function fill(wrapper: ReturnType<typeof bar>) {
 }
 
 describe('ProgressBar', () => {
+    it('UI-003 draws no label slot when the bar has no short label', () => {
+        const wrapper = mount(ProgressBar, { props: { title: 'Phase progress', valueText: 'Week 7 of 12', fraction: 0.5 } });
+
+        expect(wrapper.find('span.font-semibold').exists()).toBe(false);
+        expect(wrapper.text()).toBe('Week 7 of 12');
+    });
+
     it('UI-003 shows the short label, a bar filled to the fraction and the value/target text', () => {
         const wrapper = bar();
 
