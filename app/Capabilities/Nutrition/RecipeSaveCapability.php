@@ -25,7 +25,7 @@ final class RecipeSaveCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('recipe_save', affects: ['recipes_show', 'recipe_show', 'today_show'])
+        return HostDefinition::write('recipe_save', affects: ['recipes_show', 'recipe_show', 'food_search', 'today_show'])
             ->description('Create a recipe, or replace one of the user\'s own, from its name, servings, meal type, ingredients (a food and its grams for the whole batch, weighed raw or cooked) and steps. Use it to save a recipe the user built, or a drafted one from recipe_generate or recipe_import once each item has a food. A new recipe takes a new id; an edit also updates every meal it is planned in that is not checked in.')
             ->cli('recipe', 'save')
             ->input(RecipeSaveInput::class)
