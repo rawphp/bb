@@ -474,6 +474,71 @@ describe('outbox', () => {
         expect(m.outbox.othersWaiting.value).toBe(0);
     });
 
+    // The device refuses every delete: the browser keeps the stored copy.
+    function deletesFail(): void {
+        vi.spyOn(IDBObjectStore.prototype, 'delete').mockImplementation(() => {
+            throw new DOMException('The transaction was aborted.', 'AbortError');
+        });
+    }
+
+    it('OFF-011 a discarded entry stays gone after a reload when the device could not delete it, and is never sent', async () => {
+        fetchMock.mockImplementation(async (url) => (url === '/capabilities/weigh_in_log' ? refused(422, 'Enter a weight above zero.', 'weight') : Promise.reject(new TypeError('offline'))));
+        await m.call.write('weigh_in_log', { weight: -5 }, { label });
+        await settle();
+        deletesFail();
+
+        await m.call.discardEntry(m.outbox.entries.value[0]!);
+
+        const reloaded = await boot();
+        await reloaded.outbox.loadOutbox();
+        expect(reloaded.outbox.entries.value).toEqual([]);
+        fetchMock.mockClear();
+        await reloaded.call.replay();
+        expect(sent()).toEqual([]);
+    });
+
+    it("OFF-012 another account's changes stay deleted after a reload when the device could not delete them", async () => {
+        await m.call.write('steps_log', { steps: 9000 }, { label });
+        await settle();
+        signIn('b2');
+        await m.outbox.loadOutbox();
+        deletesFail();
+
+        await m.outbox.removeOthers();
+
+        const reloaded = await boot();
+        await reloaded.outbox.loadOutbox();
+        expect(reloaded.outbox.othersWaiting.value).toBe(0);
+        signIn('a1');
+        await reloaded.outbox.loadOutbox();
+        expect(reloaded.outbox.entries.value).toEqual([]);
+    });
+
+    it('OFF-011 deletes a removed entry from the device on the next load once deleting works again', async () => {
+        await m.call.write('steps_log', { steps: 9000 }, { label });
+        await settle();
+        deletesFail();
+        await m.outbox.removeEntries(m.outbox.entries.value.map((entry) => entry.seq));
+        vi.restoreAllMocks();
+
+        const reloaded = await boot();
+        await reloaded.outbox.loadOutbox();
+
+        // Stored nothing more, and remembers nothing more: the delete landed.
+        const stored = await new Promise<unknown[]>((resolve) => {
+            const open = indexedDB.open('bodybuilder-outbox', 1);
+            open.onsuccess = () => {
+                const request = open.result.transaction('entries').objectStore('entries').getAll();
+                request.onsuccess = () => {
+                    open.result.close();
+                    resolve(request.result);
+                };
+            };
+        });
+        expect(stored).toEqual([]);
+        expect(JSON.parse(localStorage.getItem('bb.outbox.removed') ?? '[]')).toEqual([]);
+    });
+
     it("OFF-012 never sends another user's entries, and deletes them only when asked to", async () => {
         await m.call.write('steps_log', { steps: 9000 }, { label });
         await settle();
