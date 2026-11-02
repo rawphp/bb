@@ -46,7 +46,7 @@ it('LRN-001 lists every topic once in the index, each with its own title', funct
         ->toBe(['Using the app', 'Diet', 'Training', 'Training and diet together']);
 });
 
-it('LRN-003 links each feature screen to its matching article', function () {
+it('LRN-003 maps each feature screen\'s ? icon to its matching article', function () {
     expect(array_map(fn (LearnScreen $screen) => [$screen->value, $screen->topic()], LearnScreen::cases()))->toBe([
         ['today', LearnTopic::DayBalance],
         ['train', LearnTopic::Mesocycles],

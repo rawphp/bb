@@ -28,6 +28,13 @@ it('LRN-001 parses paragraphs, headings and bullets, with the first paragraph as
         ->and(learnPlainText($article))->toBe(['Weigh in every morning.', 'How', 'Use the toilet first', 'Same scale', 'Then log it.']);
 });
 
+it('LRN-001 ends a paragraph at the bullet or heading on the next line, keeping the article in order', function () {
+    $article = LearnArticle::parse("Intro.\n\nPick one:\n- A\n## Next\nText");
+
+    expect(array_column($article->blocks, 'kind'))->toBe(['paragraph', 'paragraph', 'bullet', 'heading', 'paragraph'])
+        ->and(learnPlainText($article))->toBe(['Intro.', 'Pick one:', 'A', 'Next', 'Text']);
+});
+
 it('LRN-001 splits a line into bold and italic spans, keeping the spaces between them', function () {
     $article = LearnArticle::parse("Intro.\n\n- **0 RIR:** you hit your limit. *No more clean reps.*\n- ***Both*** at once");
 

@@ -42,7 +42,7 @@ it('LRN-001 answers 422 naming an empty slug', function () {
         ->assertJsonPath('error.violations.0.field', 'slug');
 });
 
-it('CAP-005 learn_show and article_show are reads on every surface with a CLI verb', function () {
+it('CAP-003 CAP-005 learn_show and article_show are reads on every surface, with a CLI verb and a two or three sentence description', function () {
     $registry = app(CapabilityRegistry::class);
 
     foreach (['learn_show' => ['learn', 'show'], 'article_show' => ['article', 'show']] as $name => $cli) {
@@ -50,6 +50,7 @@ it('CAP-005 learn_show and article_show are reads on every surface with a CLI ve
 
         expect($definition->readOnly)->toBeTrue()
             ->and($definition->surfaces)->toBe(HostDefinition::SURFACES)
-            ->and([$definition->cliDomain, $definition->cliVerb])->toBe($cli);
+            ->and([$definition->cliDomain, $definition->cliVerb])->toBe($cli)
+            ->and(preg_split('/(?<=[.!?])\s+/', $definition->description))->toHaveCount(3);
     }
 });

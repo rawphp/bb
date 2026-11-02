@@ -1,7 +1,6 @@
 <?php
 
 use App\Capabilities\Reads\Learn\LearnLibrary;
-use App\Domain\Learn\LearnScreen;
 use App\Domain\Learn\LearnSection;
 use App\Domain\Learn\LearnTopic;
 
@@ -62,12 +61,6 @@ it('LRN-001 shows an article by its slug, in blocks of styled spans', function (
         ->and($article['title'])->toBe('Reps in reserve (RIR)')
         ->and($article['blocks'][1])->toBe(['kind' => 'heading', 'spans' => [['text' => 'What the numbers mean', 'bold' => false, 'italic' => false]]])
         ->and($article['blocks'][2]['spans'][0])->toBe(['text' => '3 RIR:', 'bold' => true, 'italic' => false]);
-});
-
-it('LRN-003 opens an article from every feature screen\'s ? icon', function () {
-    foreach (LearnScreen::cases() as $screen) {
-        expect(LearnLibrary::bundled()->article($screen->topic())->summary())->not->toBe('', $screen->value);
-    }
 });
 
 it('LRN-005 lists the tools you need in the tools article', function () {
