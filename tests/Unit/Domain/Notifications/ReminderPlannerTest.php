@@ -1,5 +1,6 @@
 <?php
 
+use App\Capabilities\Support\SettingsValues;
 use App\Domain\Model\Meal;
 use App\Domain\Model\MealTarget;
 use App\Domain\Notifications\PlannedReminder;
@@ -267,8 +268,7 @@ it('NOTIF-007 every kind has its own switch and a name, and only meals start off
     }
 
     expect(array_unique(array_map(fn (ReminderKind $k) => $k->title(), ReminderKind::cases())))->toHaveCount(count(ReminderKind::cases()))
-        ->and(array_map(fn (ReminderKind $k) => $k->value, ReminderKind::cases()))
-        ->toBe(['weigh_in', 'meal', 'workout', 'weekly_review', 'next_mesocycle', 'retarget']);
+        ->and(array_map(fn (ReminderKind $k) => $k->value, ReminderKind::cases()))->toBe(SettingsValues::NOTIFICATION_KINDS);
 });
 
 it('NOTIF-007 a kind switched off produces nothing, and the others still do', function () {
@@ -284,9 +284,10 @@ it('NOTIF-007 a kind switched off produces nothing, and the others still do', fu
 
     expect($kinds(remindPlan([$full], allSwitchesOn())))->toEqualCanonicalizing(['weigh_in', 'meal', 'workout', 'weekly_review', 'next_mesocycle']);
 
+    $planned = ['weigh_in', 'meal', 'workout', 'weekly_review', 'next_mesocycle'];
     foreach (ReminderKind::cases() as $kind) {
         $left = $kinds(remindPlan([$full], allSwitchesOn()->with($kind, false)));
-        expect($left)->not->toContain($kind->value);
+        expect($left)->toEqualCanonicalizing(array_values(array_diff($planned, [$kind->value])));
     }
 });
 

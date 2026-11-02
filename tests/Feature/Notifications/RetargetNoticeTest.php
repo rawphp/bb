@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Notifications\PushNotification;
 use App\Support\Today\RetargetDays;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Tests\Support\TodaySeed;
 
@@ -95,4 +96,19 @@ it('NOTIF-006 sends nothing to a user with no subscribed browser', function () {
     retargetWednesday($user, ['Breakfast' => 120]);
 
     Notification::assertNothingSent();
+});
+
+it('NOTIF-006 a re-target that rolls back sends nothing', function () {
+    $user = retargetUser();
+
+    try {
+        DB::transaction(function () use ($user) {
+            retargetWednesday($user, ['Breakfast' => 120]);
+            throw new RuntimeException('the rest of the write failed');
+        });
+    } catch (RuntimeException) {
+    }
+
+    Notification::assertNothingSent();
+    expect(DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-23')->sole()->meals[0]['kcal'])->toEqual(780);
 });
