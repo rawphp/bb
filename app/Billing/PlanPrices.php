@@ -39,6 +39,10 @@ final class PlanPrices
     {
         /** @var array{price: array{amount: int, currency: string, interval: string, interval_count: int}, at: int}|null $kept */
         $kept = Cache::get(self::key($price));
+        // A copy in another shape (kept before it recorded its read time) counts as missing.
+        if (! isset($kept['price'], $kept['at'])) {
+            $kept = null;
+        }
         $fresh = $kept !== null && CarbonImmutable::now()->getTimestamp() - $kept['at'] < self::REFRESH_SECONDS;
         if ($fresh || Cache::has(self::DOWN)) {
             return $kept['price'] ?? null;
