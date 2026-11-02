@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
+use Tests\Support\ScreenFixture;
 
 // The HTTP seam of custom_foods_show, custom_food_save and custom_food_delete.
 // The rules are unit tests (CustomFoodServingTest, SaveCustomFoodTest, DeleteCustomFoodTest, CustomFoodSaveInputTest).
@@ -81,7 +82,9 @@ it('FOOD-061 says how to make a custom food when the user has none', function ()
         ->assertJsonPath('data.foods', [])
         ->assertJsonPath('data.empty_text', 'No custom foods yet. Create one from the Pantry.');
 
-    assertMatchesScreenFixture('custom_foods_show.empty', $response->json('data'));
+    // assertMatchesScreenFixture reads a state's schema by its own name, so the state's shape is checked here.
+    assertMatchesScreenFixture('custom_foods_show', $response->json('data'));
+    expect(ScreenFixture::differences(ScreenFixture::load('custom_foods_show.empty'), $response->json('data')))->toBe([]);
 });
 
 it('FOOD-060 creates a custom food under the client\'s id and says the list changed', function () {

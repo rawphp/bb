@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Foods\CustomFoodServing;
 use App\Domain\Foods\FoodSource;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\FoodFactory;
@@ -40,6 +41,16 @@ class Food extends Model
     public function attribution(): ?string
     {
         return FoodSource::tryFrom((string) $this->source)?->attribution();
+    }
+
+    /** FOOD-060: the serving a custom food was entered with, or 100 g of the food when none was kept. */
+    public function customServing(): CustomFoodServing
+    {
+        $serving = $this->getAttribute('custom_serving');
+
+        return is_array($serving)
+            ? CustomFoodServing::fromArray($serving)
+            : new CustomFoodServing(100, 'g', 100, $this->protein, $this->fat, $this->carbs, $this->fiber);
     }
 
     /** @return HasMany<FoodServing, $this> */
