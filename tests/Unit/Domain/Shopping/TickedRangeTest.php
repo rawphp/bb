@@ -43,11 +43,10 @@ it('SHOP-005 passes over a ticked range that has ended for the last one still ru
         ->and(tickDays(TickedRange::rangeToShow($saved, tickDay(24, 12), new DateTimeZone('UTC'))))->toBe(['2026-10-24 00:00', '2026-10-30 00:00']);
 });
 
-it('SHOP-001 SHOP-005 a ticked range that has not started, or has no ticks left, does not take over the list', function () {
+it('SHOP-001 SHOP-005 a ticked range that has not started does not take over the list; one whose ticks were all taken back still holds it', function () {
     $saved = [
-        new TickedRange(tickRange(4, 10), ['food:broccoli']),
+        new TickedRange(tickRange(4, 10), []),
         new TickedRange(tickRange(11, 17), ['food:spinach']),
-        new TickedRange(tickRange(5, 11), []),
     ];
 
     expect(tickDays(TickedRange::rangeToShow($saved, tickDay(5, 12), new DateTimeZone('UTC'))))->toBe(['2026-10-04 00:00', '2026-10-10 00:00'])

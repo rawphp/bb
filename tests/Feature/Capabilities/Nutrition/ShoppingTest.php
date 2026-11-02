@@ -154,6 +154,17 @@ it('SHOP-005 a late tick, untick or delete in an earlier week does not move the 
     expect([$response->json('data.from'), $response->json('data.to')])->toBe(['2026-11-03', '2026-11-09']);
 });
 
+it('SHOP-005 taking back the last tick in a range keeps that range as the list shown with no dates', function () {
+    Carbon::setTestNow('2026-11-04 09:00:00');
+    $user = User::factory()->create();
+    shoppingCall($user, 'shopping_item_check', ['from' => '2026-11-03', 'to' => '2026-11-09', 'key' => 'food:01JBX5F0000000000000000002', 'ticked' => true])->assertOk();
+    Carbon::setTestNow('2026-11-06 09:00:00');
+    shoppingCall($user, 'shopping_item_check', ['from' => '2026-11-03', 'to' => '2026-11-09', 'key' => 'food:01JBX5F0000000000000000002', 'ticked' => false])->assertOk();
+
+    $response = shoppingCall($user, 'shopping_show')->assertOk();
+    expect([$response->json('data.from'), $response->json('data.to')])->toBe(['2026-11-03', '2026-11-09']);
+});
+
 it('SHOP-001 a tick planning next week leaves this week\'s list as the one shown with no dates', function () {
     Carbon::setTestNow('2026-11-04 09:00:00');
     $user = User::factory()->create();
