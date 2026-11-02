@@ -39,12 +39,8 @@ export interface FoodBarcodeLookupOutput {
     is_curated: boolean;
     is_favorite: boolean;
     is_in_meal: boolean;
-    /**
-     * The credit the food's dataset asks for, from Food::attribution(); shown in the food detail (ODbL for Open Food Facts). Null when the food's source is curated or custom; an imported food marked curated keeps its dataset's credit
-     */
-    attribution?: string | null;
   } | null;
   message?: string | null;
 }
 
-export const outputVersion = '3d19ce195ab5';
+export const outputVersion = '627f1b57b287';

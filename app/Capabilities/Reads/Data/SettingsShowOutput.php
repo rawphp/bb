@@ -44,8 +44,5 @@ final class SettingsShowOutput extends CapabilityData
         public readonly string $account_email,
         #[Field(description: 'true in local and testing only (SET-011)')]
         public readonly bool $developer,
-        /** @var list<string> */
-        #[Field(description: 'Settings → About: every food dataset credit, from FoodSource::attributions() (ODbL for Open Food Facts)')]
-        public readonly array $attributions,
     ) {}
 }

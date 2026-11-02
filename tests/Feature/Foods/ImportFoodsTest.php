@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Foods\SaveImportedFoods;
+use App\Domain\Foods\FoodSource;
 use App\Models\Food;
 use App\Models\FoodServing;
 use Illuminate\Database\QueryException;
@@ -29,6 +30,16 @@ it('FOOD-001 imports a USDA dump as shared foods with their servings', function 
         ->and($banana->kcal)->toBe(97.0)
         ->and($banana->vegan)->toBeTrue()
         ->and(foodsServingsOf($banana))->toBe([['medium', 118.0], ['1 cup, sliced', 150.0]]);
+});
+
+it('FOOD-001 gives every imported Open Food Facts food the ODbL credit, and every USDA food its own', function () {
+    $this->artisan('foods:import', ['source' => 'off', 'path' => foodsFixture('off.jsonl')])->assertSuccessful();
+    $this->artisan('foods:import', ['source' => 'usda', 'path' => foodsFixture('usda_foundation.json')])->assertSuccessful();
+
+    $credits = Food::query()->get()->groupBy('source')->map(fn ($foods) => $foods->map(fn (Food $food) => $food->attribution())->unique()->values()->all());
+    expect($credits['off'])->toBe([FoodSource::OpenFoodFacts->attribution()])
+        ->and($credits['off'][0])->toContain('Open Database License (ODbL)')
+        ->and($credits['usda'])->toBe([FoodSource::Usda->attribution()]);
 });
 
 it('FOOD-008 imports SR Legacy and Branded USDA dumps', function () {

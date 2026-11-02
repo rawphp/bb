@@ -41,18 +41,20 @@ use App\Domain\Model\DietFilter;
  *    or carries an upper-case brand (ABBOTT, ENSURE PLUS) gets none: its ingredients are unknown. Beef, pork, poultry,
  *    lamb/game and fish may get dairy_free, gluten_free, grain_free, low_fodmap and paleo.
  *    Dairy and Egg may get gluten_free, grain_free and vegetarian, plus dairy_free, low_fodmap
- *    and paleo for egg foods only (name has "egg" and no dairy word). Cereal Grains and Pasta
+ *    and paleo for plain egg only (name has "egg", one of raw, whole, dried, boiled, poached,
+ *    yolk or white, and no dairy word; scrambled, omelet and fried egg dishes are prepared). Cereal Grains and Pasta
  *    may get dairy_free, vegetarian and vegan (not vegan when the name has fresh, egg or noodle),
  *    plus gluten_free and low_fodmap when the name is rice, corn, quinoa, millet, sorghum,
  *    buckwheat, amaranth or teff (never oats). Any other or missing category (Baked Products,
  *    Sweets, Snacks, Sausages and Luncheon Meats...) gets every flag false.
- *  - Open Food Facts tags: en:vegan and en:vegetarian set those flags only when there is no
- *    ingredient text, so they never undo a "no" from the ingredients. The "no" signals always
- *    win, over keywords and positive tags alike: en:non-vegan, en:non-vegetarian, allergen
- *    en:gluten (gluten_free false), en:milk (dairy_free and vegan false), en:eggs (vegan false),
- *    en:fish, en:crustaceans and en:molluscs (vegetarian and vegan false). A trace (DumpRow
- *    passes trace:en:...) of gluten or milk rules out gluten_free or dairy_free only.
- *
+ *  - The "no" rules are one table, SIGNALS, applied last: dairy turns off dairy_free, vegan
+ *    and paleo; gluten turns off gluten_free, grain_free and paleo; egg and honey turn off
+ *    vegan; meat, fish and shellfish turn off vegetarian and vegan. The keywords give these
+ *    signals, and so do Open Food Facts tags (TAG_SIGNALS): en:milk, en:gluten, en:eggs,
+ *    en:fish, en:crustaceans, en:molluscs, en:non-vegetarian, en:non-vegan. A trace of gluten
+ *    or milk (DumpRow passes trace:en:...) turns off gluten_free or dairy_free only.
+ *  - en:vegan and en:vegetarian only ever set those flags true, before the table, so they
+ *    stand in for missing ingredients and never undo a "no". *
  * @phpstan-type DietFlags array{dairy_free: bool, gluten_free: bool, grain_free: bool, low_fodmap: bool, vegetarian: bool, paleo: bool, vegan: bool}
  */
 final class DietClassifier
@@ -68,7 +70,42 @@ final class DietClassifier
         'yoghurt', 'lactose', 'kefir', 'ghee', 'custard', 'ricotta', 'mascarpone', 'mozzarella', 'parmesan', 'cheddar',
         'paneer', 'curd', 'milkfat', 'milk solids', 'quark', 'skyr'];
 
-    private const EGG_HONEY = ['egg', 'honey', 'mayonnaise', 'mayo', 'albumen', 'albumin', 'meringue'];
+    private const EGG = ['egg', 'mayonnaise', 'mayo', 'albumen', 'albumin', 'meringue'];
+
+    private const HONEY = ['honey'];
+
+    /**
+     * The one table of "no" signals, applied last: each signal, from a keyword or an Open Food Facts tag,
+     * switches these flags off, and nothing switches them back on.
+     */
+    private const SIGNALS = [
+        'dairy' => ['dairy_free', 'vegan', 'paleo'],
+        'gluten' => ['gluten_free', 'grain_free', 'paleo'],
+        'egg' => ['vegan'],
+        'honey' => ['vegan'],
+        'meat' => ['vegetarian', 'vegan'],
+        'animal' => ['vegan'],
+        // A trace ("may contain") is a cross-contact risk: it matters for gluten and milk, not for vegan or paleo.
+        'gluten trace' => ['gluten_free'],
+        'milk trace' => ['dairy_free'],
+    ];
+
+    /** Open Food Facts tags that give a signal. DumpRow passes traces_tags as trace:en:... */
+    private const TAG_SIGNALS = [
+        'en:milk' => 'dairy',
+        'en:gluten' => 'gluten',
+        'en:eggs' => 'egg',
+        'en:fish' => 'meat',
+        'en:crustaceans' => 'meat',
+        'en:molluscs' => 'meat',
+        'en:non-vegetarian' => 'meat',
+        'en:non-vegan' => 'animal',
+        'trace:en:gluten' => 'gluten trace',
+        'trace:en:milk' => 'milk trace',
+    ];
+
+    /** A generic Dairy and Egg Products name is plain egg only with one of these words. */
+    private const PLAIN_EGG = ['raw', 'whole', 'dried', 'boiled', 'poached', 'yolk', 'white'];
 
     private const SUBSTITUTE_CATEGORY = '/\b(?:substitutes?|alternatives?|analogues?|analogs?|imitation|meatless|plant\s+based|non\s+dairy|dairy\s+free|vegan|vegetarian)\b/';
 
@@ -144,7 +181,9 @@ final class DietClassifier
         'gratin', 'scalloped', 'recipe', 'mix', 'supplement', 'formula', 'shake', 'smoothie', 'drink', 'puff', 'patty',
         'nugget', 'babyfood', 'entree',
         // Plurals other than -s and -es, and compounds, are listed: has() matches whole words.
-        'patties', 'meatloaf', 'meatball'];
+        'patties', 'meatloaf', 'meatball',
+        // Cooked egg dishes are made with milk and fat; an egg substitute is not egg.
+        'scrambled', 'omelet', 'omelette', 'fried', 'substitute'];
 
     /** Pasta that is probably made with egg. */
     private const EGG_PASTA = ['fresh', 'egg', 'noodle'];
@@ -161,21 +200,47 @@ final class DietClassifier
     public function classify(string $name, ?string $category, ?string $ingredients, array $tags = [], bool $generic = false): array
     {
         $flags = $this->none();
+        $signals = [];
         $ingredients = trim((string) $ingredients);
 
-        if ($generic) {
-            $flags = $this->limitToCategory($this->fromKeywords($name, $category, $ingredients), $name, $category);
-        } elseif ($ingredients !== '') {
-            $flags = $this->fromKeywords($name, $category, $ingredients);
+        if ($generic || $ingredients !== '') {
+            [$flags, $signals] = $this->fromKeywords($name, $category, $ingredients);
+            if ($generic) {
+                $flags = $this->limitToCategory($flags, $name, $category);
+            }
         }
 
-        return $this->applyTags($flags, $tags, fromIngredients: $generic || $ingredients !== '');
+        // Positive tags only ever set a flag true, and run before the signals, so they never undo a "no".
+        $tags = array_map('strtolower', $tags);
+        if (in_array('en:vegan', $tags, true)) {
+            $flags['vegan'] = $flags['vegetarian'] = true;
+        }
+        if (in_array('en:vegetarian', $tags, true)) {
+            $flags['vegetarian'] = true;
+        }
+        foreach ($tags as $tag) {
+            if (isset(self::TAG_SIGNALS[$tag])) {
+                $signals[] = self::TAG_SIGNALS[$tag];
+            }
+        }
+
+        foreach (array_unique($signals) as $signal) {
+            foreach (self::SIGNALS[$signal] as $flag) {
+                $flags[$flag] = false;
+            }
+        }
+
+        return $flags;
     }
 
-    /** @return DietFlags */
+    /**
+     * The flags the keywords allow, and the signals they found (keys of SIGNALS), which classify() applies last.
+     *
+     * @return array{DietFlags, list<string>}
+     */
     private function fromKeywords(string $name, ?string $category, string $ingredients): array
     {
-        $category = str_replace(self::UMBRELLA_CATEGORIES, '', mb_strtolower((string) $category));
+        $category = (string) preg_replace('/\b(?:'.implode('|', array_map(fn (string $c) => preg_quote($c, '/'), self::UMBRELLA_CATEGORIES)).')\b/', '', mb_strtolower((string) $category));
         // A category that names a substitute ("Plant Based Milk", "Vegetarian Frozen Meats", OFF's "meat analogues")
         // says what the food replaces, not what is in it, so its words must not rule a diet out.
         $category = implode(', ', array_filter(explode(',', $category), fn (string $part) => ! preg_match(self::SUBSTITUTE_CATEGORY, $part)));
@@ -184,27 +249,30 @@ final class DietClassifier
         $dairyText = $this->withoutPlantDairy($text);
         // The FODMAP check drops only the dairy word of a plant milk or butter: "cashew butter" keeps "cashew", "butter bean" keeps "bean".
         $fodmapText = $this->withoutPlantDairy($text, keepPlant: true);
-        $glutenText = preg_replace($this->flourPattern([...self::NON_GRAIN_FLOURS, ...self::GLUTEN_FREE_FLOURS]), '', $text);
-        $grainText = preg_replace($this->flourPattern(self::NON_GRAIN_FLOURS), '', $text);
+        $glutenText = (string) preg_replace($this->flourPattern([...self::NON_GRAIN_FLOURS, ...self::GLUTEN_FREE_FLOURS]), '', $text);
+        $grainText = (string) preg_replace($this->flourPattern(self::NON_GRAIN_FLOURS), '', $text);
 
-        $flesh = $this->has(self::FLESH, $text);
-        $dairy = $this->has(self::DAIRY, $dairyText);
-        $eggHoney = $this->has(self::EGG_HONEY, $text);
-        $gluten = $this->has(self::GLUTEN, $glutenText);
+        $signals = array_keys(array_filter([
+            'dairy' => $this->has(self::DAIRY, $dairyText),
+            'gluten' => $this->has(self::GLUTEN, $glutenText),
+            'egg' => $this->has(self::EGG, $text),
+            'honey' => $this->has(self::HONEY, $text),
+            'meat' => $this->has(self::FLESH, $text),
+        ]));
         $grain = $this->has([...self::GLUTEN, ...self::OTHER_GRAINS], $grainText);
-        $legume = $this->has(self::LEGUMES, $text);
-        $sugar = $this->has(self::SUGAR, $text);
 
         // On top of none(): a diet DietFilter gains later stays false until a rule here decides it.
-        return array_replace($this->none(), [
-            'dairy_free' => ! $dairy,
-            'gluten_free' => ! $gluten,
+        $flags = array_replace($this->none(), [
+            'dairy_free' => true,
+            'gluten_free' => true,
             'grain_free' => ! $grain,
             'low_fodmap' => ! $this->has(self::HIGH_FODMAP, $fodmapText),
-            'vegetarian' => ! $flesh,
-            'paleo' => ! $dairy && ! $grain && ! $legume && ! $sugar,
-            'vegan' => ! $flesh && ! $dairy && ! $eggHoney,
+            'vegetarian' => true,
+            'paleo' => ! $grain && ! $this->has(self::LEGUMES, $text) && ! $this->has(self::SUGAR, $text),
+            'vegan' => true,
         ]);
+
+        return [$flags, $signals];
     }
 
     /**
@@ -254,52 +322,13 @@ final class DietClassifier
         return $flags;
     }
 
-    /** The category mixes dairy and egg, so only a name with "egg" and no dairy word is trusted as an egg food. */
+    /** The category mixes dairy and egg, so only a plain egg name (raw, whole, boiled...) with no dairy word is trusted as an egg food. */
     private function isEggFood(string $name): bool
     {
         $name = mb_strtolower($name);
 
-        return $this->has(['egg'], $name) && ! $this->has(self::DAIRY, $this->withoutPlantDairy($name));
-    }
-
-    /**
-     * Open Food Facts tags beat the keyword rules; negative tags beat positive ones.
-     *
-     * @param  DietFlags  $flags
-     * @param  list<string>  $tags
-     * @return DietFlags
-     */
-    private function applyTags(array $flags, array $tags, bool $fromIngredients): array
-    {
-        $tags = array_map('strtolower', $tags);
-        $has = fn (string ...$any) => array_intersect($any, $tags) !== [];
-
-        // A positive tag only stands in for missing ingredients: it never undoes a "no" the ingredients gave.
-        if (! $fromIngredients) {
-            if ($has('en:vegan')) {
-                $flags['vegan'] = $flags['vegetarian'] = true;
-            }
-            if ($has('en:vegetarian')) {
-                $flags['vegetarian'] = true;
-            }
-        }
-
-        // Negative tags and allergens always win, also over a positive tag on the same product.
-        if ($has('en:non-vegan', 'en:milk', 'en:eggs')) {
-            $flags['vegan'] = false;
-        }
-        if ($has('en:non-vegetarian', 'en:fish', 'en:crustaceans', 'en:molluscs')) {
-            $flags['vegetarian'] = $flags['vegan'] = false;
-        }
-        // A trace ("may contain") is a cross-contact risk: it matters for gluten and milk, not for vegan.
-        if ($has('en:gluten', 'trace:en:gluten')) {
-            $flags['gluten_free'] = false;
-        }
-        if ($has('en:milk', 'trace:en:milk')) {
-            $flags['dairy_free'] = false;
-        }
-
-        return $flags;
+        return $this->has(['egg'], $name) && $this->has(self::PLAIN_EGG, $name)
+            && ! $this->has(self::DAIRY, $this->withoutPlantDairy($name));
     }
 
     /**

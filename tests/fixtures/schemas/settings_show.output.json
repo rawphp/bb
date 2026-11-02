@@ -832,10 +832,6 @@
         "developer": {
             "type": "boolean",
             "description": "true in local and testing only (SET-011)"
-        },
-        "attributions": {
-            "type": "array",
-            "description": "Settings \u2192 About: every food dataset credit, from FoodSource::attributions() (ODbL for Open Food Facts)"
         }
     },
     "required": [
@@ -852,7 +848,6 @@
         "tokens",
         "support_email",
         "account_email",
-        "developer",
-        "attributions"
+        "developer"
     ]
 }

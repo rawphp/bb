@@ -370,9 +370,5 @@
     "subscription": null,
     "support_email": "support@example.com",
     "account_email": "alex@example.com",
-    "developer": false,
-    "attributions": [
-        "Food data from USDA FoodData Central (fdc.nal.usda.gov), in the public domain.",
-        "Food data from Open Food Facts (openfoodfacts.org), available under the Open Database License (ODbL)."
-    ]
+    "developer": false
 }

@@ -74,8 +74,8 @@ it('FOOD-027 lets Open Food Facts "no" tags override the keyword rules, and neve
     'vegetarian tag does not undo gelatin' => ['sugar, gelatin', ['en:vegetarian'], ['vegetarian' => false]],
     'non-vegan tag' => ['sugar, cocoa, hazelnuts', ['en:non-vegan'], ['vegan' => false, 'vegetarian' => true]],
     'non-vegetarian tag' => ['sugar, cocoa, hazelnuts', ['en:non-vegetarian'], ['vegetarian' => false, 'vegan' => false]],
-    'gluten allergen' => ['sugar, cocoa, hazelnuts', ['en:gluten'], ['gluten_free' => false]],
-    'milk allergen' => ['sugar, cocoa, hazelnuts', ['en:milk'], ['dairy_free' => false, 'vegan' => false]],
+    'gluten allergen' => ['sugar, cocoa, hazelnuts', ['en:gluten'], ['gluten_free' => false, 'grain_free' => false, 'paleo' => false]],
+    'milk allergen' => ['sugar, cocoa, hazelnuts', ['en:milk'], ['dairy_free' => false, 'vegan' => false, 'paleo' => false]],
     'egg allergen' => ['sugar, cocoa, hazelnuts', ['en:eggs'], ['vegan' => false, 'vegetarian' => true]],
     'fish allergen' => ['sugar, cocoa, hazelnuts', ['en:fish'], ['vegetarian' => false, 'vegan' => false]],
 ]);
@@ -94,6 +94,15 @@ it('FOOD-027 lets an allergen beat a vegan tag on a product with no ingredients'
     'vegan and molluscs' => [['en:vegan', 'en:molluscs'], ['vegan' => false, 'vegetarian' => false]],
     'vegan and fish' => [['en:vegan', 'en:fish'], ['vegan' => false, 'vegetarian' => false]],
 ]);
+
+it('FOOD-027 applies the gluten and milk allergen signals in full when no keyword finds them', function () {
+    $flags = (new DietClassifier)->classify('Seasoning', null, 'natural flavouring, salt, spices', ['en:gluten', 'en:milk']);
+
+    expect($flags)->toMatchArray([
+        'gluten_free' => false, 'grain_free' => false, 'paleo' => false, 'dairy_free' => false, 'vegan' => false,
+        'vegetarian' => true, 'low_fodmap' => true,
+    ]);
+});
 
 it('FOOD-027 lets a vegetarian tag alone stand in for missing ingredients, and nothing more', function () {
     expect((new DietClassifier)->classify('Mystery', null, null, ['en:vegetarian']))->toBe(foodsDiets(['vegetarian' => true]));
@@ -281,6 +290,17 @@ it('FOOD-027 treats breaded and battered foods as gluten and grain', function (s
     'breaded' => ['Fish, catfish, channel, cooked, breaded and fried', 'Finfish and Shellfish Products'],
     'onion rings' => ['Onion rings, breaded, par fried, frozen, unprepared', 'Vegetables and Vegetable Products'],
 ]);
+
+it('FOOD-027 treats cooked egg dishes as prepared, so they are not dairy free or paleo', function (string $name) {
+    $flags = (new DietClassifier)->classify($name, 'Dairy and Egg Products', null, [], generic: true);
+
+    expect($flags['dairy_free'])->toBeFalse($name)->and($flags['paleo'])->toBeFalse($name);
+})->with(['Egg, scrambled', 'Omelet', 'Egg, whole, cooked, scrambled', 'Egg, whole, cooked, omelet', 'Egg, whole, cooked, fried', 'Egg substitute, powder']);
+
+it('FOOD-027 trusts a plain egg name as egg', function (string $name) {
+    expect((new DietClassifier)->classify($name, 'Dairy and Egg Products', null, [], generic: true))
+        ->toMatchArray(['dairy_free' => true, 'paleo' => true, 'vegan' => false, 'vegetarian' => true]);
+})->with(['Egg, whole, raw, fresh', 'Egg, whole, cooked, hard-boiled', 'Egg, yolk, raw, fresh', 'Egg, white, dried', 'Egg, whole, cooked, poached']);
 
 it('FOOD-027 only lets egg foods be dairy free or paleo in Dairy and Egg Products', function (string $name, bool $dairyFree) {
     $flags = (new DietClassifier)->classify($name, 'Dairy and Egg Products', null, [], generic: true);

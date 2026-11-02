@@ -21,7 +21,5 @@ final class FoodRow extends CapabilityData
         public readonly bool $is_curated,
         public readonly bool $is_favorite,
         public readonly bool $is_in_meal,
-        #[Field(description: 'The credit the food\'s dataset asks for, from Food::attribution(); shown in the food detail (ODbL for Open Food Facts). Null when the food\'s source is curated or custom; an imported food marked curated keeps its dataset\'s credit')]
-        public readonly ?string $attribution,
     ) {}
 }
