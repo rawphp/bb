@@ -12,12 +12,12 @@ use Tests\Support\ScreenFixture;
 beforeEach(fn () => Carbon::setTestNow('2026-10-10 12:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
-function libraryOf(User $user)
+function exercisesShowFor(User $user)
 {
     return test()->actingAs($user)->postJson('/capabilities/exercises_show', []);
 }
 
-function loggedOn(User $user, Exercise $exercise, string $at, bool $planned = false): WorkoutSet
+function exerciseLoggedOn(User $user, Exercise $exercise, string $at, bool $planned = false): WorkoutSet
 {
     $session = WorkoutSession::factory()->for($user)->create($planned ? ['actual_start_at' => null, 'planned_start_at' => $at] : ['actual_start_at' => $at]);
 
@@ -41,7 +41,7 @@ it('EX-003 shows the library and the user\'s own custom exercises, never another
     Exercise::factory()->custom($user)->create(['name' => 'My press']);
     Exercise::factory()->custom()->create(['name' => 'Their press']);
 
-    $names = array_column(libraryOf($user)->assertOk()->json('data.exercises'), 'name');
+    $names = array_column(exercisesShowFor($user)->assertOk()->json('data.exercises'), 'name');
 
     expect($names)->toBe(['My press', 'Squat']);
 });
@@ -51,11 +51,11 @@ it('EX-013 EX-001 shows a seeded library in the fixture\'s shape, with the newes
     $bench = Exercise::factory()->create(['name' => 'Barbell Bench Press', 'video_url' => 'https://example.com/bench']);
     $fly = Exercise::factory()->create(['name' => 'Cable Fly', 'video_url' => 'javascript:alert(1)']);
     Exercise::factory()->create(['name' => 'Arnold Press']);
-    loggedOn($user, $bench, '2026-10-01 09:00:00');
-    loggedOn($user, $bench, '2026-10-08 09:00:00');
-    loggedOn($user, $fly, '2026-10-06 09:00:00', planned: true);
+    exerciseLoggedOn($user, $bench, '2026-10-01 09:00:00');
+    exerciseLoggedOn($user, $bench, '2026-10-08 09:00:00');
+    exerciseLoggedOn($user, $fly, '2026-10-06 09:00:00', planned: true);
 
-    $data = libraryOf($user)->assertOk()->json('data');
+    $data = exercisesShowFor($user)->assertOk()->json('data');
 
     assertMatchesScreenFixture('exercises_show', $data);
     expect(array_column($data['exercises'], 'last_used_text', 'name'))->toBe([
@@ -67,18 +67,18 @@ it('EX-013 leaves out sets that are not logged, deleted, in a deleted session, o
     $user = User::factory()->create();
     $other = User::factory()->create();
     $bench = Exercise::factory()->create(['name' => 'Bench']);
-    loggedOn($user, $bench, '2026-10-01 09:00:00');
-    WorkoutSet::query()->whereKey(loggedOn($user, $bench, '2026-10-02 09:00:00')->id)->first()->delete();
-    loggedOn($user, $bench, '2026-10-03 09:00:00')->session->delete();
-    loggedOn($other, $bench, '2026-10-04 09:00:00');
-    $unlogged = loggedOn($user, $bench, '2026-10-05 09:00:00');
+    exerciseLoggedOn($user, $bench, '2026-10-01 09:00:00');
+    WorkoutSet::query()->whereKey(exerciseLoggedOn($user, $bench, '2026-10-02 09:00:00')->id)->first()->delete();
+    exerciseLoggedOn($user, $bench, '2026-10-03 09:00:00')->session->delete();
+    exerciseLoggedOn($other, $bench, '2026-10-04 09:00:00');
+    $unlogged = exerciseLoggedOn($user, $bench, '2026-10-05 09:00:00');
     $unlogged->update(['is_logged' => false]);
 
-    expect(libraryOf($user)->assertOk()->json('data.exercises.0.last_used_text'))->toBe('Last used 1 Oct 2026');
+    expect(exercisesShowFor($user)->assertOk()->json('data.exercises.0.last_used_text'))->toBe('Last used 1 Oct 2026');
 });
 
 it('EX-003 shows the empty library in the empty fixture\'s shape', function () {
-    $data = libraryOf(User::factory()->create())->assertOk()->json('data');
+    $data = exercisesShowFor(User::factory()->create())->assertOk()->json('data');
 
     assertMatchesScreenFixture('exercises_show', $data);
     expect(ScreenFixture::differences(ScreenFixture::load('exercises_show.empty'), $data))->toBe([])
