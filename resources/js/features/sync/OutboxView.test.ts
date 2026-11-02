@@ -80,8 +80,8 @@ describe('OutboxView', () => {
         expect(retryMock).toHaveBeenCalledWith(expect.objectContaining({ seq: failed.seq }), { weight: 80.5, unit: 'kg' });
     });
 
-    it('OFF-007 offers only Discard for a change the server refused for its age, since sending it again changes nothing', async () => {
-        const message = "This change was made more than 7 days ago, so it can't be saved.";
+    it('OFF-011 offers Try again and Discard for a change refused for when it was made, which a later try may pass', async () => {
+        const message = 'This change is dated in the future. Check the date and time on this device.';
         const failed = await queue({
             label: 'Logged 9,000 steps',
             refusal: { status: 422, body: { ok: false, error: { code: 'validation_failed', message, violations: [{ field: 'occurred_at', message }] } } },
@@ -89,8 +89,22 @@ describe('OutboxView', () => {
         const wrapper = await view();
 
         expect(row(wrapper, failed.seq).get('[role="alert"]').text()).toBe(message);
-        expect(row(wrapper, failed.seq).find('[data-test="retry"]').exists()).toBe(false);
         expect(row(wrapper, failed.seq).find('[data-test="edit"]').exists()).toBe(false);
+        expect(row(wrapper, failed.seq).find('[data-test="retry"]').exists()).toBe(true);
+        expect(row(wrapper, failed.seq).find('[data-test="discard"]').exists()).toBe(true);
+    });
+
+    it("OFF-011 says a change the server never finished may already be saved, before the user sends it again", async () => {
+        const failed = await queue({
+            label: 'Logged set 3 of Bench Press',
+            refusal: { status: 409, body: { ok: false, error: { code: 'conflict', message: 'This is still being processed.', retryable: true } } },
+        });
+        const wrapper = await view();
+
+        expect(row(wrapper, failed.seq).get('[role="alert"]').text()).toBe(
+            "The server didn't finish this change, so it may already be saved. Check before you send it again.",
+        );
+        expect(row(wrapper, failed.seq).find('[data-test="retry"]').exists()).toBe(true);
         expect(row(wrapper, failed.seq).find('[data-test="discard"]').exists()).toBe(true);
     });
 

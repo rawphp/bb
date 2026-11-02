@@ -126,13 +126,18 @@ describe('outbox', () => {
     });
 
     it('OFF-006 stores the entry on a fresh connection when the open one was lost', async () => {
-        const put = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementationOnce(() => {
-            throw new DOMException('Connection to Indexed Database server lost.', 'InvalidStateError');
+        // The first connection the outbox opens has died: every put on it throws.
+        let dead: IDBDatabase | undefined;
+        const put = IDBObjectStore.prototype.put;
+        vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (this: IDBObjectStore, ...args: Parameters<IDBObjectStore['put']>) {
+            dead ??= this.transaction.db;
+            if (this.transaction.db === dead) throw new DOMException('Connection to Indexed Database server lost.', 'InvalidStateError');
+            return put.apply(this, args);
         });
 
         await m.call.write('steps_log', { steps: 9000 }, { label });
 
-        expect(put).toHaveBeenCalledTimes(2);
+        vi.restoreAllMocks();
         const reloaded = await boot();
         await reloaded.outbox.loadOutbox();
         expect(reloaded.outbox.entries.value.map((entry) => entry.input)).toEqual([{ steps: 9000 }]);
@@ -229,9 +234,29 @@ describe('outbox', () => {
         await vi.waitFor(() => expect(m.outbox.entries.value).toEqual([]));
     });
 
+    it('OFF-011 keeps an entry the app\'s rate limit refused before running it, and sends it again under the same key after retry_after', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        let calls = 0;
+        fetchMock.mockImplementation(async (url) => {
+            if (url !== '/capabilities/steps_log') throw new TypeError('offline');
+            return ++calls === 1 ? json({ ok: false, error: { code: 'rate_limited', message: 'Slow down.', retryable: true, retry_after: 5 } }, 429) : ok();
+        });
+
+        await m.call.write('steps_log', { steps: 9000 }, { label });
+        await vi.advanceTimersByTimeAsync(0);
+        expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['waiting']);
+
+        await vi.advanceTimersByTimeAsync(4_999);
+        expect(calls).toBe(1);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(calls).toBe(2);
+        expect(headersOf(1)['Idempotency-Key']).toBe(headersOf(0)['Idempotency-Key']);
+        await vi.waitFor(() => expect(m.outbox.entries.value).toEqual([]));
+    });
+
     it.each([
         ['an error the app answered with', 500, { ok: false, error: { code: 'internal', message: 'Something went wrong on our side.' } }],
-        ['a limit the app answered with', 429, { ok: false, error: { code: 'rate_limited', message: 'Slow down.' } }],
+        ['a limit the app hit after the write ran', 429, { ok: false, error: { code: 'rate_limited', message: 'Slow down.', retryable: false } }],
         ['a conflict the app keeps', 409, { ok: false, error: { code: 'conflict', message: 'That set was deleted.', retryable: false } }],
     ])("OFF-011 moves an entry to Couldn't sync after %s, since the server keeps that answer under its key", async (_, status, body) => {
         fetchMock.mockImplementation(async (url) => (url === '/capabilities/steps_log' ? json(body, status) : Promise.reject(new TypeError('offline'))));
@@ -263,6 +288,26 @@ describe('outbox', () => {
         ]);
         expect(sent().filter(([name]) => name === 'steps_log')).toHaveLength(m.call.STUCK_AFTER);
         expect(sent().at(-1)?.[0]).toBe('weigh_in_log');
+    });
+
+    it("OFF-011 counts only the server's \"still running\" answers in a row: a try with no answer at all starts the count again", async () => {
+        const busy = { ok: false, error: { code: 'conflict', message: 'Still processing.', retryable: true } };
+        let tries = 0;
+        fetchMock.mockImplementation(async (url) => {
+            if (url !== '/capabilities/steps_log') throw new TypeError('offline');
+            tries++;
+            if (tries === m.call.STUCK_AFTER) throw new TypeError('Failed to fetch');
+            return json(busy, 409);
+        });
+        await m.call.write('steps_log', { steps: 9000 }, { label });
+        await settle();
+
+        while (tries < 2 * m.call.STUCK_AFTER - 1) await m.call.replay();
+        // Nineteen tries: nine 409s, no answer, nine 409s.
+        expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['waiting']);
+
+        await m.call.replay();
+        expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['failed']);
     });
 
     it('OFF-011 starts the backoff at 2 s again after an entry goes through', async () => {
@@ -476,18 +521,16 @@ describe('outbox', () => {
     });
 
     it('OFF-009 never shows input the server refused as if it were waiting', async () => {
-        fetchMock.mockImplementation(async (url, init) => {
-            if (url !== '/capabilities/workout_set_log') throw new TypeError('offline');
-            return (JSON.parse(String(init?.body)) as { reps: number }).reps > 50 ? refused(422, 'Too many reps.', 'reps') : Promise.reject(new TypeError('offline'));
-        });
         await m.call.write('workout_set_log', { set_id: 'a', reps: 8 }, { label });
-        await settle();
-        await m.call.write('workout_set_log', { set_id: 'b', reps: 99 }, { label });
-        await m.call.replay();
+        const newestForA = await m.call.write('workout_set_log', { set_id: 'a', reps: 99 }, { label });
+        const onlyForB = await m.call.write('workout_set_log', { set_id: 'b', reps: 99 }, { label });
+        const refusal = { status: 422, body: { ok: false, error: { message: 'Too many reps.' } } };
+        await m.outbox.updateEntry({ ...newestForA, refusal });
+        await m.outbox.updateEntry({ ...onlyForB, refusal });
         const forRow = (id: string) => m.outbox.pendingInput<{ set_id: string; reps: number }>('workout_set_log', (input) => input.set_id === id);
 
-        expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['waiting', 'waiting']);
         expect(forRow('a')?.reps).toBe(8);
+        expect(forRow('b')).toBeUndefined();
     });
 
     it('CAP-010 drops the cached reads a replayed answer invalidates, tells screens, and warms the cache after (OFF-004)', async () => {
@@ -528,6 +571,26 @@ describe('outbox', () => {
 
         expect(told).toHaveBeenCalledTimes(1);
         expect(told).toHaveBeenCalledWith(['today_show{}', 'week_show{}']);
+    });
+
+    it('CAP-010 tells screens what the answers so far invalidated when a replay stops partway', async () => {
+        // Made offline, so both wait.
+        await m.call.write('workout_set_log', { set: 1 }, { label });
+        await m.call.write('workout_set_log', { set: 2 }, { label });
+        await settle();
+        const told = vi.fn();
+        m.outbox.onReplayed(told);
+        fetchMock.mockImplementation(async (url, init) => {
+            if (url !== '/capabilities/workout_set_log') throw new TypeError('offline');
+            if ((JSON.parse(String(init?.body)) as { set: number }).set === 1) return ok({ invalidates: ['today_show{}'] });
+            throw new TypeError('Failed to fetch');
+        });
+
+        await m.call.replay();
+
+        expect(m.outbox.entries.value.map((entry) => entry.input)).toEqual([{ set: 2 }]);
+        expect(told).toHaveBeenCalledTimes(1);
+        expect(told).toHaveBeenCalledWith(['today_show{}']);
     });
 
     it('ACC-003 a sync whose replay stopped does not count as synced', async () => {
