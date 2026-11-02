@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Capabilities\Reads;
+namespace App\Capabilities\Nutrition;
 
 use App\Capabilities\HostCapability;
 use App\Capabilities\Nutrition\Data\FoodSearchInput;

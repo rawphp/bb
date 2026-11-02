@@ -40,8 +40,9 @@ final class FoodFavoriteSetCapability implements HostCapability, OwnsInput
     }
 
     /**
-     * Every list shows a food's star, and a search's key holds its text, so the write names the keys it can know: the
-     * Pantry as it opens, and each tab.
+     * Every Pantry list shows a food's star, but a food_search key holds its whole input (a search's text, the meal,
+     * the unit), so no write can name them all. This names the keys it can know: the Pantry as it opens, and each
+     * tab with no other input. A cached read under any other input is refreshed by the client's next read, not here.
      *
      * @return list<string>
      */

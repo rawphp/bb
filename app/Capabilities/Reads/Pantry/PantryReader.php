@@ -46,10 +46,10 @@ final class PantryReader
         $mealFoods = $input->meal_id === null ? [] : self::mealFoods($user, $input->meal_id);
 
         if ($input->collection === 'recipes') {
-            return new PantrySnapshot(diets: $diets, mealFoods: $mealFoods, recipes: self::recipes($user));
+            return new PantrySnapshot(diets: $diets, mealFoods: $mealFoods, recipes: self::recipes($user, $diets, $query));
         }
         if ($input->collection === 'saved_meals') {
-            return new PantrySnapshot(diets: $diets, mealFoods: $mealFoods, savedMeals: self::savedMeals($user));
+            return new PantrySnapshot(diets: $diets, mealFoods: $mealFoods, savedMeals: self::savedMeals($user, $query));
         }
 
         $suggestion = null;
@@ -151,10 +151,18 @@ final class PantryReader
         return $foods;
     }
 
-    /** @return list<PantryRecipe> RCP-020: the user's own recipes by name, then the library's. */
-    private static function recipes(User $user): array
+    /**
+     * RCP-020, FOOD-027: the user's own recipes by name, then the library's, that pass every diet filter on and hold
+     * the search text in their name.
+     *
+     * @param  list<DietFilter>  $diets
+     * @return list<PantryRecipe>
+     */
+    private static function recipes(User $user, array $diets, string $query): array
     {
-        $load = fn (?User $owner) => Recipe::query()->ownedBy($owner)->with('ingredients.food')->orderBy('name')->orderBy('id')->get();
+        $load = fn (?User $owner) => self::named(Recipe::query()->ownedBy($owner), $query)
+            ->filtered(null, array_column($diets, 'value'))
+            ->with('ingredients.food')->orderBy('name')->orderBy('id')->get();
 
         return $load($user)->concat($load(null))->map(fn (Recipe $recipe) => new PantryRecipe(
             id: (string) $recipe->id,
@@ -170,16 +178,29 @@ final class PantryReader
                 $recipe->servings,
             ),
             isLibrary: $recipe->user_id === null,
-            diets: self::dietsOf($recipe),
         ))->values()->all();
     }
 
-    /** @return list<PantrySavedMeal> MEAL-071: the user's saved meals by name. */
-    private static function savedMeals(User $user): array
+    /** @return list<PantrySavedMeal> MEAL-071: the user's saved meals by name that hold the search text in their name. */
+    private static function savedMeals(User $user, string $query): array
     {
-        return SavedMeal::query()->where('user_id', $user->id)->withCount('foods')->orderBy('name')->orderBy('id')->get()
+        return self::named(SavedMeal::query()->where('user_id', $user->id), $query)
+            ->withCount('foods')->orderBy('name')->orderBy('id')->get()
             ->map(fn (SavedMeal $meal) => new PantrySavedMeal((string) $meal->id, $meal->name, (int) $meal->getAttribute('foods_count')))
             ->values()->all();
+    }
+
+    /**
+     * Rows whose name holds the search text, in any case (the column's collation ignores case).
+     *
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $rows
+     * @return Builder<TModel>
+     */
+    private static function named(Builder $rows, string $query): Builder
+    {
+        return $query === '' ? $rows : $rows->where('name', 'like', '%'.addcslashes($query, '\\%_').'%');
     }
 
     private static function pantryFood(Food $food): PantryFood
@@ -206,8 +227,8 @@ final class PantryReader
         );
     }
 
-    /** @return list<DietFilter> the diet flags a food or recipe row has set */
-    private static function dietsOf(Food|Recipe $row): array
+    /** @return list<DietFilter> the diet flags a food has set */
+    private static function dietsOf(Food $row): array
     {
         return array_values(array_filter(DietFilter::cases(), fn (DietFilter $filter) => (bool) $row->getAttribute($filter->value)));
     }

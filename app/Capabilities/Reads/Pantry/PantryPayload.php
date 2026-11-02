@@ -35,16 +35,10 @@ final class PantryPayload
         $suggestion = $createCustomFood = $emptyText = null;
 
         if ($input->collection === 'recipes') {
-            $recipes = array_map(self::recipeRow(...), array_values(array_filter(
-                $snapshot->recipes,
-                fn (PantryRecipe $recipe) => Pantry::passesDiets($recipe->diets, $snapshot->diets) && Pantry::nameMatches($recipe->name, $query),
-            )));
+            $recipes = array_map(self::recipeRow(...), $snapshot->recipes);
             $emptyText = $recipes === [] ? Pantry::emptyCollectionText('recipes', $query) : null;
         } elseif ($input->collection === 'saved_meals') {
-            $savedMeals = array_map(self::savedMealRow(...), array_values(array_filter(
-                $snapshot->savedMeals,
-                fn (PantrySavedMeal $meal) => Pantry::nameMatches($meal->name, $query),
-            )));
+            $savedMeals = array_map(self::savedMealRow(...), $snapshot->savedMeals);
             $emptyText = $savedMeals === [] ? Pantry::emptyCollectionText('saved meals', $query) : null;
         } else {
             $rows = new FoodRows(FoodUnit::from($input->unit), $snapshot->favoriteIds, array_keys($snapshot->mealFoods));

@@ -20,8 +20,8 @@ final readonly class PantrySnapshot
      * @param  list<string>  $favoriteIds  the shown foods the user favourited
      * @param  array<string, string>  $mealFoods  the foods already in the meal, food id => name, in the meal's order
      * @param  ?string  $suggestion  FOOD-024's corrected query
-     * @param  list<PantryRecipe>  $recipes  the user's own recipes, then the library's
-     * @param  list<PantrySavedMeal>  $savedMeals
+     * @param  list<PantryRecipe>  $recipes  the user's own recipes, then the library's, that pass the diet filters and the search
+     * @param  list<PantrySavedMeal>  $savedMeals  the user's saved meals that match the search
      */
     public function __construct(
         public array $diets = [],

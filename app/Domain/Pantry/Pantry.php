@@ -108,12 +108,6 @@ final class Pantry
         return [$local, $more];
     }
 
-    /** FOOD-020: a recipe or a saved meal matches a search when its name holds the search text, in any case. */
-    public static function nameMatches(string $name, string $query): bool
-    {
-        return $query === '' || mb_stripos($name, $query) !== false;
-    }
-
     /** FOOD-024. */
     public static function didYouMean(string $corrected): string
     {
