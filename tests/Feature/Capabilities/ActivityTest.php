@@ -9,8 +9,10 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Route;
 use Rawphp\Capabilities\Contracts\AuditWriter;
 use Rawphp\Capabilities\Contracts\CapabilityBus;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
@@ -208,6 +210,28 @@ it('CAP-023 refuses a token whose only ability is not a capability name, such as
         ->postJson('/capabilities/tally_add', ['amount' => 3])->assertForbidden();
 
     expect(TallyAddCapability::$runs)->toBe(0);
+});
+
+it('CAP-022 never loads every user\'s audit rows through the writer', function () {
+    app(AuditWriter::class)->all();
+})->throws(LogicException::class, 'Query AuditRecord, scoped and limited');
+
+it('CAP-023 runs a CLI token whose abilities are capability names, and records it as the CLI', function () {
+    $user = User::factory()->create();
+
+    $this->withToken($user->createToken('cli', ['tally_add', 'activity_show'])->plainTextToken)
+        ->postJson('/capabilities/tally_add', ['amount' => 3])->assertOk();
+
+    expect(AuditRecord::sole())->user_id->toBe($user->id)->channel->toBe('cli');
+});
+
+it('CAP-023 mints no token through the package\'s CLI login or MCP until a token issuer is built', function () {
+    $this->postJson('/capabilities/auth/token', ['grant_type' => 'device_code'])->assertJsonPath('error.code', 'not_configured');
+    $this->postJson('/capabilities/auth/device', ['client_id' => 'capabilities-cli'])->assertJsonPath('error.code', 'not_configured');
+
+    $mcp = collect(Route::getRoutes()->getRoutes())->filter(fn ($route): bool => str_starts_with($route->uri(), 'mcp'));
+    expect($mcp)->toBeEmpty()
+        ->and(DB::table('personal_access_tokens')->count())->toBe(0);
 });
 
 it('CAP-022 dates an entry by the time it carries, not the time it is stored', function () {

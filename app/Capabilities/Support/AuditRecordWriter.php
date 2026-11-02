@@ -6,6 +6,7 @@ use App\Models\AuditRecord;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Laravel\Sanctum\Contracts\HasApiTokens;
+use LogicException;
 use Rawphp\Capabilities\Contracts\AuditWriter;
 
 /**
@@ -41,21 +42,15 @@ final class AuditRecordWriter implements AuditWriter
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * The contract lets a production writer refuse this. audit_records holds 90 days of
+     * every user's writes, so read it through AuditRecord, scoped to a user and limited,
+     * as activity_show does.
+     *
+     * @return never
      */
     public function all(): array
     {
-        return AuditRecord::query()->oldest()->oldest('id')->get()
-            ->map(fn (AuditRecord $record): array => [
-                'event' => $record->event,
-                'capability_name' => $record->capability,
-                'actor_type' => $record->user_id === null ? null : 'user',
-                'actor_id' => $record->user_id === null ? null : (string) $record->user_id,
-                'payload' => ['channel' => $record->channel, 'input' => $record->input, 'result' => $record->result],
-                'recorded_at' => $record->created_at->toIso8601String(),
-            ])
-            ->values()
-            ->all();
+        throw new LogicException('AuditRecordWriter does not list every audit row. Query AuditRecord, scoped and limited.');
     }
 
     /** @param  array<string, mixed>  $entry */
