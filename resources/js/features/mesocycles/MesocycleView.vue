@@ -52,8 +52,9 @@ async function addDay(): Promise<void> {
     dayId ??= ulid();
     const before = dayCount();
     const outcome = await send('mesocycle_day_add', { mesocycle_id: data.value!.id, day_id: dayId } satisfies MesocycleDayAddInput, 'The day could not be added.');
-    // The server answered, or the read after a timeout already shows the new day:
-    // the id is used, and the next Add day is a new day.
+    // The server answered, or its own copy read after no answer already shows the new
+    // day: the id is used, and the next Add day is a new day. A cached copy never decides
+    // this, as it may predate the write (useWrite reads the server after no answer).
     if (outcome === 'done' || outcome === 'refused' || (outcome === 'no-answer' && failure.value === null && dayCount() > before)) dayId = null;
 }
 

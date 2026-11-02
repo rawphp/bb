@@ -1,15 +1,16 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { MesocycleShowOutput } from '@/contracts/mesocycle_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import MesocycleView from './MesocycleView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
 const push = vi.fn();
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ push }) }));
 
 const readMock = vi.mocked(read);
+const readFreshMock = vi.mocked(readFresh);
 const writeMock = vi.mocked(write);
 const meso = screenFixture<MesocycleShowOutput>('mesocycle_show');
 
@@ -29,6 +30,7 @@ function lastWrite(): [string, Record<string, unknown>] {
 describe('MesocycleView', () => {
     beforeEach(() => {
         readMock.mockReset().mockResolvedValue(meso);
+        readFreshMock.mockReset().mockResolvedValue(meso);
         writeMock.mockReset().mockResolvedValue({});
         push.mockReset();
     });
@@ -200,14 +202,14 @@ describe('MesocycleView', () => {
         expect(ids[1]).not.toBe(ids[0]);
     });
 
-    it('OFF-003 reads the mesocycle again after a write timed out, and says it may have worked', async () => {
+    it('OFF-003 reads the server\'s mesocycle again after a write timed out, and says it may have worked', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', 0, { reason: 'timeout' }));
         const wrapper = show();
 
         await openMenu(wrapper, 'add-day');
         await flushPromises();
 
-        expect(readMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id }, expect.any(Function), expect.any(Function));
+        expect(readFreshMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id });
         expect(wrapper.find('[data-test="error"]').text()).toContain('may have worked');
     });
 
@@ -285,11 +287,11 @@ describe('MesocycleView', () => {
         expect(scrolls).toHaveBeenCalledTimes(1);
     });
 
-    it('CAP-019 starts a new day_id when the read after a timed-out Add day shows the day', async () => {
+    it('CAP-019 starts a new day_id when the server\'s answer after a timed-out Add day shows the day, whatever the cached copy says', async () => {
         const added = structuredClone(meso);
         for (const week of added.saved!.weeks) week.days.push({ ...week.days[0]!, day: 4, title: 'Day 4 · New', label: 'New', exercises: [] });
         writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', 0, { reason: 'timeout' })).mockResolvedValueOnce({});
-        readMock.mockResolvedValueOnce(added);
+        readFreshMock.mockResolvedValueOnce(added);
         const wrapper = show();
 
         await openMenu(wrapper, 'add-day');
@@ -299,6 +301,37 @@ describe('MesocycleView', () => {
 
         const ids = writeMock.mock.calls.map(([, input]) => (input as { day_id: string }).day_id);
         expect(ids[1]).not.toBe(ids[0]);
+    });
+
+    it.each([
+        ['a 504', new CapabilityError('mesocycle_day_add', 504, null)],
+        ['a 500', new CapabilityError('mesocycle_day_add', 500, { ok: false, error: { message: 'Server error.' } })],
+    ])('CAP-019 OFF-011 sends the same day_id again after %s, which may have added the day', async (_label, failure) => {
+        writeMock.mockRejectedValueOnce(failure).mockResolvedValueOnce({});
+        const wrapper = show();
+
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+
+        const ids = writeMock.mock.calls.map(([, input]) => (input as { day_id: string }).day_id);
+        expect(ids[1]).toBe(ids[0]);
+    });
+
+    it('CAP-019 keeps the day_id when the server\'s answer could not be read after a timed-out Add day', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', 0, { reason: 'timeout' })).mockResolvedValueOnce({});
+        readFreshMock.mockRejectedValueOnce(new CapabilityError('mesocycle_show', 0, { reason: 'timeout' }));
+        const wrapper = show();
+
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+        expect(wrapper.text()).toContain('Week 4');
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+
+        const ids = writeMock.mock.calls.map(([, input]) => (input as { day_id: string }).day_id);
+        expect(ids[1]).toBe(ids[0]);
     });
 
     it('CAP-019 keeps the day_id when the read after a timed-out Add day does not show the day yet', async () => {

@@ -1,5 +1,5 @@
 import { onMounted, ref, type Ref } from 'vue';
-import { CapabilityError, read, type CapabilityInput } from './call';
+import { CapabilityError, read, readFresh, removesCopy, type CapabilityInput } from './call';
 import { onScreenReturn } from './screenTop';
 
 export type ReadFailure = 'signed-out' | 'error';
@@ -9,13 +9,16 @@ export type ReadFailure = 'signed-out' | 'error';
  * payload (a /dev/screens fixture) it shows that and calls nothing; otherwise it reads
  * on mount, cached copy first (OFF-003), and again each time the screen comes back on
  * show, so a screen under a pushed one never acts on what it read before.
- * load() reads again, for Try again and after a write.
+ * load() reads again, for Try again and after a write. load({ fresh: true }) asks the
+ * server, not the cache, for when the cached copy may predate a write that got no answer.
+ * When that read fails, the screen keeps what it shows, unless the failure is one after
+ * which read() would also stop showing its cached copy (401, 419, 403, 404).
  */
 export function useScreenRead<T>(
     name: string,
     payload?: T,
     input: () => CapabilityInput = () => ({}),
-): { data: Ref<T | undefined>; failure: Ref<ReadFailure | null>; load: () => Promise<void> } {
+): { data: Ref<T | undefined>; failure: Ref<ReadFailure | null>; load: (options?: { fresh?: boolean }) => Promise<void> } {
     const data = ref(payload) as Ref<T | undefined>;
     const failure = ref<ReadFailure | null>(null);
     const fixture = payload !== undefined;
@@ -30,7 +33,7 @@ export function useScreenRead<T>(
     // fetched before a write never replaces one fetched after it.
     let latest = 0;
 
-    async function load(): Promise<void> {
+    async function load({ fresh = false }: { fresh?: boolean } = {}): Promise<void> {
         const mine = ++latest;
         const current = () => mine === latest;
         failure.value = null;
@@ -44,10 +47,11 @@ export function useScreenRead<T>(
             if (current()) fail(error);
         };
         try {
-            const copy = await read<T>(name, input(), refresh, refused);
+            const copy = fresh ? await readFresh<T>(name, input()) : await read<T>(name, input(), refresh, refused);
             // A refresh that already landed wins over the copy read() was handed.
             if (current() && failure.value === null && !refreshed) data.value = copy;
         } catch (error) {
+            if (fresh && data.value !== undefined && !removesCopy(error)) return;
             refused(error);
         }
     }

@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { MesocycleShowOutput } from '@/contracts/mesocycle_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import PriorityBarsView from './PriorityBarsView.vue';
@@ -8,9 +8,10 @@ import PriorityRowView from './PriorityRowView.vue';
 import ProgressionRatesView from './ProgressionRatesView.vue';
 import WarningLabel from './WarningLabel.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
 
 const readMock = vi.mocked(read);
+const readFreshMock = vi.mocked(readFresh);
 const writeMock = vi.mocked(write);
 const meso = screenFixture<MesocycleShowOutput>('mesocycle_show');
 
@@ -25,6 +26,7 @@ async function pick(wrapper: ReturnType<typeof mount>, muscle: string, title: st
 describe('ProgressionRatesView', () => {
     beforeEach(() => {
         readMock.mockReset().mockResolvedValue(meso);
+        readFreshMock.mockReset().mockResolvedValue(meso);
         writeMock.mockReset().mockResolvedValue({});
     });
 
@@ -83,13 +85,13 @@ describe('ProgressionRatesView', () => {
         expect(wrapper.findAll('select').every((s) => s.attributes('disabled') === undefined)).toBe(true);
     });
 
-    it('OFF-003 reads the priorities again when the save timed out', async () => {
+    it('OFF-003 reads the server\'s priorities again when the save timed out', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('priority_set', 0, { reason: 'timeout' }));
         const wrapper = mount(ProgressionRatesView, { props: { payload: meso } });
 
         await pick(wrapper, 'Chest', 'Grow');
 
-        expect(readMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id }, expect.any(Function), expect.any(Function));
+        expect(readFreshMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id });
         expect(wrapper.find('[role="alert"]').text()).toContain('may have worked');
     });
 

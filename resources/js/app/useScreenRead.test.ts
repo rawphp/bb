@@ -1,13 +1,14 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
-import { CapabilityError, read } from './call';
+import { CapabilityError, read, readFresh } from './call';
 import ScreenFrame from './ScreenFrame.vue';
 import { useScreenRead } from './useScreenRead';
 
-vi.mock('./call', async (original) => ({ ...(await original<typeof import('./call')>()), read: vi.fn() }));
+vi.mock('./call', async (original) => ({ ...(await original<typeof import('./call')>()), read: vi.fn(), readFresh: vi.fn() }));
 
 const readMock = vi.mocked(read);
+const readFreshMock = vi.mocked(readFresh);
 
 function screen(payload?: { n: number }) {
     let api!: ReturnType<typeof useScreenRead<{ n: number }>>;
@@ -21,7 +22,10 @@ function screen(payload?: { n: number }) {
 }
 
 describe('useScreenRead', () => {
-    beforeEach(() => readMock.mockReset());
+    beforeEach(() => {
+        readMock.mockReset();
+        readFreshMock.mockReset();
+    });
 
     it('CAP-002 shows a given payload and reads nothing', () => {
         const { wrapper } = screen({ n: 1 });
@@ -165,5 +169,66 @@ describe('useScreenRead', () => {
         handBackA({ n: 1 });
         await flushPromises();
         expect(wrapper.text()).toBe('2');
+    });
+
+    it('OFF-011 load({ fresh: true }) shows the server\'s answer, never the cached copy', async () => {
+        readMock.mockResolvedValueOnce({ n: 1 });
+        readFreshMock.mockResolvedValueOnce({ n: 5 });
+        const { wrapper, api } = screen();
+        await flushPromises();
+
+        await api().load({ fresh: true });
+        await flushPromises();
+
+        expect(readFreshMock).toHaveBeenCalledWith('probe_show', {});
+        expect(readMock).toHaveBeenCalledTimes(1);
+        expect(wrapper.text()).toBe('5');
+    });
+
+    it.each([0, 500])('OFF-003 keeps showing the screen when a fresh read gets no answer (%i)', async (status) => {
+        readMock.mockResolvedValueOnce({ n: 1 });
+        readFreshMock.mockRejectedValueOnce(new CapabilityError('probe_show', status, null));
+        const { wrapper, api } = screen();
+        await flushPromises();
+
+        await api().load({ fresh: true });
+        await flushPromises();
+
+        expect(wrapper.text()).toBe('1');
+    });
+
+    it('OFF-003 says a fresh read failed when there was nothing to keep showing', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('probe_show', 500, null));
+        readFreshMock.mockRejectedValueOnce(new CapabilityError('probe_show', 0, { reason: 'network' }));
+        const { wrapper, api } = screen();
+        await flushPromises();
+
+        await api().load({ fresh: true });
+        await flushPromises();
+
+        expect(wrapper.text()).toBe('error');
+    });
+
+    it('CAP-004 a plain read that fails stops showing the screen, as read() had no cached copy to give', async () => {
+        readMock.mockResolvedValueOnce({ n: 1 }).mockRejectedValueOnce(new CapabilityError('probe_show', 500, null));
+        const { wrapper, api } = screen();
+        await flushPromises();
+
+        await api().load();
+        await flushPromises();
+
+        expect(wrapper.text()).toBe('error');
+    });
+
+    it('OFF-003 stops showing the screen when a fresh read is refused', async () => {
+        readMock.mockResolvedValueOnce({ n: 1 });
+        readFreshMock.mockRejectedValueOnce(new CapabilityError('probe_show', 401, null));
+        const { wrapper, api } = screen();
+        await flushPromises();
+
+        await api().load({ fresh: true });
+        await flushPromises();
+
+        expect(wrapper.text()).toBe('signed-out');
     });
 });

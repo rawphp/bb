@@ -1,16 +1,20 @@
 import { ref, type Ref } from 'vue';
 import { CapabilityError, write, type CapabilityInput } from './call';
-import { failureMessage, isTimeout } from './errors';
+import { failureMessage, isRefusal, isTimeout } from './errors';
 
-/** How a write ended: the server took it, the server refused it, or no answer came. */
+/**
+ * How a write ended: the server took it, the server refused it (4xx), or no answer came.
+ * A 5xx or an answer that could not be read counts as no answer: the write may have happened (OFF-011).
+ */
 export type WriteOutcome = 'done' | 'refused' | 'no-answer';
 
 /**
  * A screen's writes (CAP-010): one at a time, then the screen's read again. A failure
- * leaves the server's words in `error` (CAP-012). A write past its deadline may have
- * happened, so the screen reads again to show what the server holds.
+ * leaves the server's words in `error` (CAP-012). A write that got no answer may have
+ * happened, and the cached reads predate it, so unless the device is offline the screen
+ * reads the server's copy, not the cache, to show what the server holds.
  */
-export function useWrite(load: () => Promise<void>): {
+export function useWrite(load: (options?: { fresh?: boolean }) => Promise<void>): {
     send: (name: string, input: CapabilityInput, fallback: string) => Promise<WriteOutcome | null>;
     busy: Ref<boolean>;
     error: Ref<string | null>;
@@ -29,8 +33,9 @@ export function useWrite(load: () => Promise<void>): {
             return 'done';
         } catch (failure) {
             error.value = failureMessage(failure, fallback);
-            if (isTimeout(failure)) await load();
-            return failure instanceof CapabilityError && failure.status === 0 ? 'no-answer' : 'refused';
+            if (!(failure instanceof CapabilityError) || isRefusal(failure)) return 'refused';
+            if (failure.status !== 0 || isTimeout(failure)) await load({ fresh: true });
+            return 'no-answer';
         } finally {
             busy.value = false;
         }

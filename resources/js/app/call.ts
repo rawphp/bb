@@ -76,6 +76,11 @@ const SESSION_GONE = [401, 419];
 const READ_GONE = [403, 404];
 const REMOVES_COPY = [...SESSION_GONE, ...READ_GONE];
 
+/** A failed read after which the screen may not keep showing what it read before. */
+export function removesCopy(error: unknown): boolean {
+    return hasStatus(error, REMOVES_COPY);
+}
+
 function hasStatus(error: unknown, statuses: readonly number[]): error is CapabilityError {
     return error instanceof CapabilityError && statuses.includes(error.status);
 }

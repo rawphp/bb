@@ -31,14 +31,30 @@ describe('useWrite', () => {
         expect(load).not.toHaveBeenCalled();
     });
 
-    it('OFF-003 reads again after a write timed out, which may have happened', async () => {
+    it('OFF-003 reads the server again, not the cached copy, after a write timed out, which may have happened', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('priority_set', 0, { reason: 'timeout' }));
         const load = vi.fn(async () => {});
         const { send, error } = useWrite(load);
 
         expect(await send('priority_set', {}, 'No.')).toBe('no-answer');
-        expect(load).toHaveBeenCalledTimes(1);
+        expect(load).toHaveBeenCalledExactlyOnceWith({ fresh: true });
         expect(error.value).toContain('may have worked');
+    });
+
+    it.each([500, 502, 504, 200])('OFF-011 counts a %i answer as no answer, not a refusal, and reads the server again', async (status) => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', status, null));
+        const load = vi.fn(async () => {});
+        const { send } = useWrite(load);
+
+        expect(await send('mesocycle_day_add', {}, 'No.')).toBe('no-answer');
+        expect(load).toHaveBeenCalledExactlyOnceWith({ fresh: true });
+    });
+
+    it.each([400, 404, 422, 499])('OFF-011 counts a %i answer as a refusal', async (status) => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', status, null));
+        const { send } = useWrite(vi.fn(async () => {}));
+
+        expect(await send('mesocycle_day_add', {}, 'No.')).toBe('refused');
     });
 
     it('OFF-003 does not read again when the device is offline', async () => {

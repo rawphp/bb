@@ -15,6 +15,11 @@ export function failureMessage(error: unknown, fallback: string): string {
     return typeof message === 'string' && message !== '' ? message : fallback;
 }
 
+/** The server answered and refused the call (4xx), so it did nothing. A 5xx or no answer may have done it (OFF-011). */
+export function isRefusal(error: unknown): boolean {
+    return error instanceof CapabilityError && error.status >= 400 && error.status < 500;
+}
+
 /** No answer before the deadline (call.ts TIMEOUT_MS): the server may still have done the write. */
 export function isTimeout(error: unknown): boolean {
     return error instanceof CapabilityError && error.status === 0 && (error.body as { reason?: unknown } | null)?.reason === 'timeout';
