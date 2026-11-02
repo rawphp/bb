@@ -61,7 +61,7 @@ it('FOOD-041 a found food that changes weight when cooked carries its cooked val
         ->and($food['is_favorite'])->toBeTrue();
 });
 
-it('FOOD-023 a food another user starred is not starred for the caller', function () {
+it('FOOD-041 a food another user starred is not starred for the caller', function () {
     $bar = Food::factory()->create(['barcode' => '124']);
     FoodFavorite::factory()->create(['user_id' => User::factory()->create()->id, 'food_id' => $bar->id]);
 
