@@ -130,7 +130,7 @@ describe('ExerciseListView', () => {
         expect(wrapper.find('[data-placeholder]').exists()).toBe(false);
     });
 
-        it('PWA-024 CAP-012 shows skeletons, then why the list did not load', async () => {
+    it('PWA-024 CAP-012 shows skeletons, then why the list did not load', async () => {
         readMock.mockRejectedValueOnce(new CapabilityError('progress_show', 500, null));
         const wrapper = mount(ExerciseListView, stubs);
         expect(wrapper.find('[data-placeholder]').exists()).toBe(true);

@@ -139,6 +139,30 @@ describe('ProgressTabView', () => {
         expect(wrapper.text()).toContain('Progress could not be loaded.');
     });
 
+    it('OFF-003 a cached scope refused after another scope was picked is taken away, though that scope then fails', async () => {
+        let failPhase: (error: CapabilityError) => void = () => {};
+        let failPlan: (error: CapabilityError) => void = () => {};
+        readMock
+            .mockImplementationOnce(async (_n, _i, _u, onError) => {
+                failPhase = onError as typeof failPhase;
+                return full;
+            })
+            .mockImplementationOnce(() => new Promise((_resolve, reject) => (failPlan = reject)));
+        const wrapper = render();
+        await flushPromises();
+        await wrapper.findAll('[data-scope]')[1]!.trigger('click');
+        await flushPromises();
+
+        failPhase(new CapabilityError('progress_show', 403, null));
+        await flushPromises();
+        expect(wrapper.text()).not.toContain('+1.1 kg');
+
+        failPlan(new CapabilityError('progress_show', 0, null));
+        await flushPromises();
+        expect(wrapper.text()).not.toContain('+1.1 kg');
+        expect(wrapper.text()).toContain('Progress needs a connection.');
+    });
+
     it.each([
         [new CapabilityError('progress_show', 0, null), 'Progress needs a connection.'],
         [new CapabilityError('progress_show', 401, null), 'You are signed out.'],

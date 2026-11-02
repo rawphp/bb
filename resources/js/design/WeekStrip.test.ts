@@ -220,13 +220,36 @@ describe('WeekStrip', () => {
         expect(wrapper.emitted('swipe')).toBeUndefined();
     });
 
+    it('UI-030 read-only: the days are a list a screen reader reads, not buttons that do nothing', async () => {
+        const wrapper = strip({ readonly: true, pending: true });
+        const items = wrapper.findAll('[role="list"] > [role="listitem"]');
+
+        expect(buttons(wrapper)).toHaveLength(0);
+        expect(wrapper.get('[role="list"]').attributes('aria-label')).toBe('Week');
+        expect(items.map((day) => day.attributes('aria-label'))).toEqual([
+            'M 26, waiting to sync',
+            'T 27, 2600 calories, completed, training day, waiting to sync',
+            'W 28, 2100 calories, today, not completed, waiting to sync',
+            'T 29, 2600 calories, not completed, training day, waiting to sync',
+        ]);
+        expect(items.map((day) => day.attributes('aria-pressed'))).toEqual([undefined, undefined, undefined, undefined]);
+        expect(items.map((day) => day.attributes('aria-current'))).toEqual([undefined, undefined, 'date', undefined]);
+        expect(items[3]!.get('[data-date]').classes()).toContain('bg-accent');
+
+        const target = wrapper.get('[role="list"]').element;
+        target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, clientX: 100, clientY: 100 }));
+        target.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, clientX: 40, clientY: 100 }));
+        await wrapper.vm.$nextTick();
+        expect(wrapper.emitted('swipe')).toBeUndefined();
+    });
+
     it('VIEW-004 the gallery lists WeekStrip with every state', () => {
         const gallery = mount(GalleryView);
         const section = gallery.findAll('section').find((s) => s.get('h2').text() === 'WeekStrip');
 
         expect(section).toBeDefined();
         expect(section!.findAll('h3').map((h) => h.text())).toEqual(
-            expect.arrayContaining(['Empty', 'Loading', 'Error', 'Pending', 'Disabled']),
+            expect.arrayContaining(['Empty', 'Loading', 'Error', 'Pending', 'Disabled', 'Read-only']),
         );
     });
 });

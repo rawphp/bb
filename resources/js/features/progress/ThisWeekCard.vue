@@ -9,7 +9,8 @@ import WeekStrip, { type WeekStripDay } from '@/design/WeekStrip.vue';
 const props = defineProps<{ week: NonNullable<ProgressShowOutput['this_week']>; pending?: boolean }>();
 const emit = defineEmits<{ 'edit-schedule': [] }>();
 
-// The strip's fields, renamed from progress_show's days. Today is the selected day, as in rp-clone.
+// The strip's fields, renamed from progress_show's days. The strip only shows the week, with
+// today drawn as the selected day, as in rp-clone (ProgressCards.swift).
 const days = computed<WeekStripDay[]>(() =>
     props.week.days.map((day) => ({
         date: day.date,
@@ -41,7 +42,7 @@ const days = computed<WeekStripDay[]>(() =>
                 :value-text="week.calories.value_label"
                 :fraction="week.calories.fraction"
             />
-            <WeekStrip :days="days" :label="week.title" class="-mx-2" />
+            <WeekStrip :days="days" :label="week.title" :pending="pending" readonly class="-mx-2" />
             <button data-edit-schedule type="button" class="min-h-tap self-start text-accent" @click="emit('edit-schedule')">
                 {{ week.edit_schedule_title }}
             </button>

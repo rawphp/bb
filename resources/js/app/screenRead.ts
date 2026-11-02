@@ -20,8 +20,9 @@ export function readFailure(error: unknown, message: string): ReadFailure {
  * A screen's read through call.ts: the cached copy at once, then the refresh or the
  * failure that takes it away (OFF-003). A refresh that lands before read() resolves
  * wins over the copy read() returns, and an answer to an older load (a scope picked
- * since) is ignored. `fail` learns whether this load had shown data: if it had, that
- * copy must go (OFF-003); if not, what the screen shows came from another read.
+ * since) is ignored, unless it takes away the copy still on screen. `fail` learns
+ * whether the data on screen came from this load: if it did, that copy must go
+ * (OFF-003); if not, what the screen shows came from another read.
  */
 export function screenRead<T>(
     name: string,
@@ -30,20 +31,23 @@ export function screenRead<T>(
     fail: (failure: ReadFailure, hadData: boolean) => void,
 ): (input?: CapabilityInput) => Promise<void> {
     let latest = 0;
+    // The load whose data is on screen.
+    let shown = 0;
 
     return async (input = {}) => {
         const ticket = ++latest;
         let settled = false;
-        let hadData = false;
         const onData = (data: T) => {
             settled = true;
             if (ticket !== latest) return;
-            hadData = true;
+            shown = ticket;
             show(data);
         };
+        // call.ts reports an error after a shown copy only when that copy is gone
+        // (401, 419, 403, 404), so an older load's error matters while its copy is shown.
         const onError = (error: unknown) => {
             settled = true;
-            if (ticket === latest) fail(readFailure(error, message), hadData);
+            if (ticket === latest || ticket === shown) fail(readFailure(error, message), ticket === shown);
         };
 
         try {

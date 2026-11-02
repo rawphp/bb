@@ -59,7 +59,7 @@ describe('ProgressScreen', () => {
         expect(Math.max(...weights)).toBeLessThan(310);
     });
 
-        it('ANA-001 asks for the other scope when it is picked', async () => {
+    it('ANA-001 asks for the other scope when it is picked', async () => {
         const wrapper = render();
 
         await wrapper.findAll('[data-scope]')[1]!.trigger('click');
@@ -83,11 +83,13 @@ describe('ProgressScreen', () => {
 
         expect(week.text()).toContain('This week');
         expect(week.text()).toContain('2410/18550');
-        expect(week.findAll('[role="group"] button')).toHaveLength(7);
-        expect(week.get('[role="group"]').text()).toContain('2650');
-        expect(week.findAll('[role="group"] button').map((b) => b.attributes('aria-pressed'))).toEqual([
-            'true', 'false', 'false', 'false', 'false', 'false', 'false',
-        ]);
+        // The strip only shows the week: its days are not buttons, and today is drawn as the selected day, as in rp-clone.
+        const days = week.findAll('[role="list"] > [role="listitem"]');
+        expect(days).toHaveLength(7);
+        expect(week.findAll('[role="list"] button')).toHaveLength(0);
+        expect(week.get('[role="list"]').text()).toContain('2650');
+        expect(days.map((day) => day.attributes('aria-current'))).toEqual(['date', undefined, undefined, undefined, undefined, undefined, undefined]);
+        expect(days[0]!.get('[data-date]').classes()).toContain('bg-accent');
 
         await week.get('[data-edit-schedule]').trigger('click');
         expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('Edit schedule');
@@ -192,6 +194,9 @@ describe('ProgressScreen', () => {
         expect(wrapper.get('[data-summary]').classes()).toContain('opacity-50');
         expect(wrapper.get('[data-chart-card]').text()).toContain('Waiting to sync');
         expect(wrapper.get('[data-this-week]').text()).toContain('Waiting to sync');
+        const days = wrapper.findAll('[data-this-week] [role="listitem"]');
+        expect(days.every((day) => day.attributes('aria-label')!.endsWith(', waiting to sync'))).toBe(true);
+        expect(days[0]!.get('[data-calories]').classes()).toContain('opacity-60');
         expect(wrapper.get('[data-steps]').text()).toContain('Waiting to sync');
         expect(wrapper.get('[data-phase-history]').text()).toContain('Waiting to sync');
         expect(wrapper.get('[data-mesocycle-history]').text()).toContain('Waiting to sync');
@@ -271,7 +276,7 @@ describe('ProgressScreen', () => {
         expect(vi.mocked(sharePng).mock.calls[0]![0]).toBe(plan);
     });
 
-        it('PWA-034 draws the picture on the tap when it was not ready yet', async () => {
+    it('PWA-034 draws the picture on the tap when it was not ready yet', async () => {
         const png = new Blob(['png'], { type: 'image/png' });
         vi.mocked(toPng).mockRejectedValueOnce(new Error('not yet')).mockResolvedValue(png);
         vi.mocked(sharePng).mockResolvedValue('shared');
@@ -310,7 +315,7 @@ describe('ProgressScreen', () => {
         expect(lines).toEqual(['Muscle gain: 83.2 kg to 84.3 kg (+1.1 kg)', 'over 5 weeks']);
     });
 
-        it('PWA-034 offers Share only when the server sends something to share', () => {
+    it('PWA-034 offers Share only when the server sends something to share', () => {
         const wrapper = render({ payload: { ...full, share: null } });
 
         expect(wrapper.find('svg[role="img"]').exists()).toBe(true);

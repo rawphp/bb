@@ -90,4 +90,40 @@ describe('screenRead', () => {
         expect(shown).toEqual(['old cached', 'new']);
         expect(failures).toEqual([]);
     });
+
+    it('OFF-003 an older load whose shown copy is refused takes it away while the newer one waits', async () => {
+        let failOld: Fail = () => {};
+        readMock
+            .mockImplementationOnce(async (_n, _i, _u, onError) => {
+                failOld = onError as Fail;
+                return 'old cached';
+            })
+            .mockImplementationOnce(() => new Promise(() => {}));
+        const loader = load();
+        await loader({ scope: 'phase' });
+        void loader({ scope: 'plan' });
+
+        failOld(new CapabilityError('x_show', 403, null));
+
+        expect(shown).toEqual(['old cached']);
+        expect(failures).toEqual([{ offline: false, error: 'Nope.', signedOut: false, hadData: true }]);
+    });
+
+    it('OFF-003 an older load refused after a newer one showed its copy changes nothing', async () => {
+        let failOld: Fail = () => {};
+        readMock
+            .mockImplementationOnce(async (_n, _i, _u, onError) => {
+                failOld = onError as Fail;
+                return 'old cached';
+            })
+            .mockResolvedValueOnce('new');
+        const loader = load();
+        await loader({ scope: 'phase' });
+        await loader({ scope: 'plan' });
+
+        failOld(new CapabilityError('x_show', 403, null));
+
+        expect(shown).toEqual(['old cached', 'new']);
+        expect(failures).toEqual([]);
+    });
 });
