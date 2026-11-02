@@ -150,6 +150,8 @@ it('SHOP-001 SHOP-005 shows only the user\'s own manual items and ticks', functi
 });
 
 it('CAP-010 refreshes the list shown, the list with no range and the range the ticks are in', function () {
+    // Another user's ticks come first, so a read of the ticks row that is not the caller's would find them.
+    ShoppingTicks::factory()->for(User::factory()->create())->create(['starts_on' => '2026-11-16', 'ends_on' => '2026-11-22']);
     $user = User::factory()->create();
     $item = ManualShoppingItem::factory()->for($user)->create();
     ShoppingTicks::factory()->for($user)->create(['starts_on' => '2026-11-02', 'ends_on' => '2026-11-08', 'keys' => []]);
@@ -162,6 +164,9 @@ it('CAP-010 refreshes the list shown, the list with no range and the range the t
     shoppingCall($user, 'shopping_item_delete', ['id' => $item->id, ...$shown])
         ->assertOk()
         ->assertJsonPath('data.invalidates', $keys);
+    shoppingCall($user, 'shopping_item_add', ['id' => (string) Str::ulid(), 'text' => 'Soap'])
+        ->assertOk()
+        ->assertJsonPath('data.invalidates', ['shopping_show{}', 'shopping_show{"from":"2026-11-02","to":"2026-11-08"}']);
     // A tick in another range clears the old one's ticks, so that list changes too.
     shoppingCall($user, 'shopping_item_check', [...$shown, 'key' => 'food:01JBX5F0000000000000000002', 'ticked' => true])
         ->assertOk()
