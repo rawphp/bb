@@ -108,6 +108,8 @@ it('SCH-020 SCH-021 the week strip reads only what it shows, and still finds the
         ]);
     }
 
+    // A test before it in the same warm worker can leave its queries in the log.
+    DB::flushQueryLog();
     DB::enableQueryLog();
     $data = $this->actingAs($user)->postJson('/capabilities/week_show')->assertOk()->json('data');
     $sql = implode("\n", array_column(DB::getQueryLog(), 'query'));
