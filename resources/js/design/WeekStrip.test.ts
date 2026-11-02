@@ -4,6 +4,7 @@ import type { WeekShowOutput } from '@/contracts/week_show';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import weekShow from '../../../tests/fixtures/screens/week_show.json';
 import weekShowEmpty from '../../../tests/fixtures/screens/week_show.empty.json';
+import { toneIcons } from './toneIcons';
 import WeekStrip, { type WeekStripDay } from './WeekStrip.vue';
 
 const days: WeekStripDay[] = [
@@ -90,8 +91,21 @@ describe('WeekStrip', () => {
     });
 
     it.each([
+        [-30, 0, 1],
+        [-60, 39, 1],
+    ])('SCH-020 a drag of %ipx (%ipx down) is just enough to emit %i', async (dx, dy, step) => {
+        const wrapper = strip();
+
+        await drag(wrapper, dx, dy);
+
+        expect(wrapper.emitted('swipe')).toEqual([[step]]);
+    });
+
+    it.each([
         ['too short', 20, 0],
+        ['just too short', -29, 0],
         ['too vertical', 60, 50],
+        ['exactly 1.5 times as wide as tall', 60, 40],
     ])('SCH-020 a drag that is %s is not a swipe', async (_, dx, dy) => {
         const wrapper = strip();
 
@@ -108,6 +122,33 @@ describe('WeekStrip', () => {
         await buttons(wrapper)[1]!.trigger('click');
 
         expect(wrapper.emitted('select')).toEqual([['2026-10-27']]);
+    });
+
+    it('SCH-020 a swipe whose click lands on the strip, not a day, does not swallow the next tap', async () => {
+        const wrapper = strip();
+
+        await drag(wrapper, -60, 0);
+        await wrapper.get('[role="group"]').trigger('click');
+        await buttons(wrapper)[3]!.trigger('click');
+
+        expect(wrapper.emitted('select')).toEqual([['2026-10-29']]);
+    });
+
+    it('SCH-020 a swipe with no click after it does not swallow a later keyboard tap', async () => {
+        const wrapper = strip();
+
+        await drag(wrapper, -60, 0);
+        await new Promise((resolve) => setTimeout(resolve));
+        await buttons(wrapper)[3]!.trigger('click');
+
+        expect(wrapper.emitted('select')).toEqual([['2026-10-29']]);
+    });
+
+    it('UI-001 a completed day draws the shared good-tone check', () => {
+        const [, complete, open] = buttons(strip());
+
+        expect(complete!.get('[data-completion] path').attributes('d')).toBe(toneIcons.good);
+        expect(open!.find('[data-completion] path').exists()).toBe(false);
     });
 
     it('UI-030 each day has one spoken label, the selected day is pressed and today is the current date', () => {

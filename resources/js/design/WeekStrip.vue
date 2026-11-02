@@ -25,6 +25,8 @@ export interface WeekStripDay {
 </script>
 
 <script setup lang="ts">
+import { toneIcons } from './toneIcons';
+
 // Day letter, date, calories, completion dot and training icon (UI-001), ported from rp-clone's WeekStrip.swift.
 const props = withDefaults(
     defineProps<{
@@ -72,17 +74,19 @@ function up(event: PointerEvent): void {
     const dy = event.clientY - start.y;
     start = null;
     if (props.loading || props.disabled || Math.hypot(dx, dy) < 30 || Math.abs(dx) <= Math.abs(dy) * 1.5) return;
+    // A mouse drag clicks the element it ended on in the same task as this
+    // pointerup. A touch drag sends no click, so the flag lapses before a later
+    // tap or a keyboard press.
     swiped = true;
+    setTimeout(() => (swiped = false));
     emit('swipe', dx < 0 ? 1 : -1);
 }
 
-// The click that ends a swipe is not a tap on a day.
-function pick(day: WeekStripDay): void {
-    if (swiped) {
-        swiped = false;
-        return;
-    }
-    emit('select', day.date);
+// The click that ends a swipe is not a tap on a day, wherever in the strip it lands.
+function endSwipe(event: MouseEvent): void {
+    if (!swiped) return;
+    swiped = false;
+    event.stopPropagation();
 }
 </script>
 
@@ -96,6 +100,7 @@ function pick(day: WeekStripDay): void {
             @pointerdown="down"
             @pointerup="up"
             @pointercancel="start = null"
+            @click.capture="endSwipe"
         >
             <template v-if="loading && days.length === 0">
                 <div
@@ -115,7 +120,7 @@ function pick(day: WeekStripDay): void {
                 :aria-current="day.is_today ? 'date' : undefined"
                 :disabled="loading || disabled"
                 class="flex min-h-tap min-w-0 flex-1 flex-col items-center gap-1 disabled:opacity-60"
-                @click="pick(day)"
+                @click="emit('select', day.date)"
             >
                 <span class="text-xs font-semibold text-secondary-text">{{ day.letter }}</span>
                 <span
@@ -141,10 +146,7 @@ function pick(day: WeekStripDay): void {
                     :data-completion="day.is_complete ? 'complete' : 'open'"
                     :class="[day.is_complete ? 'text-tone-good' : 'text-secondary-text', { invisible: day.is_before_plan }]"
                 >
-                    <template v-if="day.is_complete">
-                        <circle cx="12" cy="12" r="10" fill="currentColor" />
-                        <path d="M7.5 12.5l3 3 6-6.5" fill="none" class="stroke-surface" stroke-width="2.5" />
-                    </template>
+                    <path v-if="day.is_complete" :d="toneIcons.good" fill="currentColor" fill-rule="evenodd" />
                     <circle v-else cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" />
                 </svg>
                 <svg
