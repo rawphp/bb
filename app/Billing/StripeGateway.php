@@ -19,8 +19,8 @@ interface StripeGateway
      */
     public function checkout(string $customer, string $price, ?int $trialDays, string $returnUrl): array;
 
-    /** Closes a Checkout page if it is still open; true when the user had already paid on it. */
-    public function closeCheckout(string $session): bool;
+    /** Closes a Checkout page if it is still open; when the user had already paid on it, the subscription it made. */
+    public function closeCheckout(string $session): ?string;
 
     /** A Stripe customer portal page, where the customer switches plan or cancels (SUB-007). */
     public function portalUrl(string $customer, string $returnUrl): string;

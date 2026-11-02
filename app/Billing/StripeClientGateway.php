@@ -56,15 +56,19 @@ final class StripeClientGateway implements StripeGateway
         return ['id' => $session->id, 'url' => (string) $session->url];
     }
 
-    public function closeCheckout(string $session): bool
+    public function closeCheckout(string $session): ?string
     {
-        return self::call(function () use ($session): bool {
-            $status = $this->stripe->checkout->sessions->retrieve($session)->status;
-            if ($status === 'open') {
+        return self::call(function () use ($session): ?string {
+            $found = $this->stripe->checkout->sessions->retrieve($session);
+            if ($found->status === 'open') {
                 $this->stripe->checkout->sessions->expire($session);
             }
 
-            return $status === 'complete';
+            $subscription = $found->subscription;
+
+            return $found->status === 'complete' && $subscription !== null
+                ? (is_string($subscription) ? $subscription : $subscription->id)
+                : null;
         });
     }
 

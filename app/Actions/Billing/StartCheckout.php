@@ -57,14 +57,12 @@ final class StartCheckout
             (new SyncStripeSubscription($this->stripe))($subscription->stripe_customer_id);
             $subscription->refresh();
 
-            if ($subscription->checkout_session_id !== null && $this->stripe->closeCheckout($subscription->checkout_session_id)) {
-                // The page opened last was paid. Its subscription decides: read Stripe again in
-                // case it was paid since the read above, and refuse while Stripe lists nothing yet.
-                (new SyncStripeSubscription($this->stripe))($subscription->stripe_customer_id);
-                $subscription->refresh();
-                if ($subscription->status === null) {
-                    throw CapabilityFailure::conflict(self::SUBSCRIBED);
-                }
+            // The page opened last may have been paid, even since the read above. Until
+            // the subscription it made is the one Stripe's list gave the account, it counts
+            // as live, so a new page cannot sell a second one.
+            $paidFor = $subscription->checkout_session_id === null ? null : $this->stripe->closeCheckout($subscription->checkout_session_id);
+            if ($paidFor !== null && $paidFor !== $subscription->stripe_subscription_id) {
+                throw CapabilityFailure::conflict(self::SUBSCRIBED);
             }
         }
 
