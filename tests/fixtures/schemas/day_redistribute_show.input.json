@@ -1,0 +1,18 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "date": {
+            "type": "string",
+            "format": "date"
+        },
+        "excluded_meal_ids": {
+            "type": "array",
+            "description": "Ids of meals left out."
+        }
+    },
+    "required": [
+        "date"
+    ]
+}
