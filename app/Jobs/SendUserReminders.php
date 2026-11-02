@@ -12,9 +12,9 @@ use Illuminate\Support\Facades\Log;
 /**
  * One user's reminders for one pass of reminders:send (NOTIF-001 to NOTIF-005). A job per user, so one user's data
  * cannot stop or slow the others' reminders. The job judges what is due when it runs, so a job held up in the queue
- * never sends a reminder more than the catch-up window late; one run more than that window after its pass is dropped
- * without reading the plan, and logged, so a queue that stays behind can be seen. A retry sends nothing twice, as
- * each reminder is claimed when it is sent.
+ * never queues a push for a reminder more than the catch-up window late; the push then waits its turn on the same
+ * queue. A job run more than that window after its pass is dropped without reading the plan, and logged, so a queue
+ * that stays behind can be seen. A retry sends nothing twice, as each reminder is claimed when it is sent.
  */
 final class SendUserReminders implements ShouldQueue
 {
