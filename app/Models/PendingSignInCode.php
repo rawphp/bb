@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
+use Database\Factories\PendingSignInCodeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -18,6 +20,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['user_id', 'code_hash', 'failed_tries', 'issued_at'])]
 class PendingSignInCode extends Model
 {
+    /** @use HasFactory<PendingSignInCodeFactory> */
+    use HasFactory;
+
     public $timestamps = false;
 
     protected function casts(): array
