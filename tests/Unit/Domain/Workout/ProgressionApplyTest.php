@@ -7,6 +7,7 @@ use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\PhaseType;
 use App\Domain\Model\Priority;
 use App\Domain\Model\Pump;
+use App\Domain\Model\Soreness;
 use App\Domain\Model\VolumeFeedback;
 use App\Domain\Workout\ProgressionApply;
 use App\Domain\Workout\ProgressionInput;
@@ -198,7 +199,7 @@ it('PROG-050 a hold keeps the sets the user added by hand', function () {
 
 it('PROG-014 Dr. Mike\'s example: Grow, 3 sets, never sore with a low pump, gives 4 next week', function () {
     $days = [['id' => 'day-1', 'label' => 'Back', 'weekday' => 1, 'slots' => [applySlot('row', 25, 'back', 3)]]];
-    $answers = ['back' => new FeedbackAnswers(soreness: App\Domain\Model\Soreness::NeverGotSore, pump: Pump::Low, volume: VolumeFeedback::JustRight)];
+    $answers = ['back' => new FeedbackAnswers(soreness: Soreness::NeverGotSore, pump: Pump::Low, volume: VolumeFeedback::JustRight)];
 
     $result = ProgressionApply::apply(applyInput($days, [25 => 3], $answers));
 

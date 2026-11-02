@@ -1,9 +1,9 @@
 <?php
 
+use App\Domain\Defaults\TBL040LoadSteps\LoadType;
 use App\Domain\Model\ClosedRange;
 use App\Domain\Model\WeightUnit;
 use App\Domain\Progression\LoadRules;
-use App\Domain\Defaults\TBL040LoadSteps\LoadType;
 use App\Domain\Progression\PlannedLoad;
 use App\Domain\Progression\RecoveryLoad;
 use App\Models\Exercise;

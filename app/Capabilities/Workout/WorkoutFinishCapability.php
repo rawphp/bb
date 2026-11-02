@@ -11,6 +11,7 @@ use App\Capabilities\Today\TodayReads;
 use App\Capabilities\Workout\Data\WorkoutFinishInput;
 use App\Models\User;
 use App\Models\WorkoutSession;
+use App\Support\Today\DayPlans;
 use Carbon\CarbonImmutable;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
@@ -37,7 +38,7 @@ final class WorkoutFinishCapability implements HostCapability, OwnsInput
                     invalidates: [
                         ...WorkoutReads::keys($session),
                         // OFF-023: Today shows the session done; SCH-054: the days whose meals changed.
-                        ...TodayReads::keys([$session->actual_start_at->format('Y-m-d'), ...$finished['dates']], ['day_adjust_show', 'day_redistribute_show']),
+                        ...TodayReads::keys([DayPlans::day((string) $session->getRawOriginal('actual_start_at'))->format('Y-m-d'), ...$finished['dates']], ['day_adjust_show', 'day_redistribute_show']),
                         ...TodayReads::weekKeys($finished['week']),
                     ],
                     toast: $finished['toast'],

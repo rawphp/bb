@@ -56,12 +56,11 @@ final class FinishWorkout
             throw new DomainException(WorkoutHelp::FEEDBACK_REQUIRED.' for '.self::list($pending).'.');
         }
 
-        $start = DateTimeImmutable::createFromInterface($session->actual_start_at);
+        $start = DayPlans::instant((string) $session->getRawOriginal('actual_start_at'));
         $end = max($start, DateTimeImmutable::createFromInterface($at));
 
         return DB::transaction(function () use ($user, $snapshot, $start, $end): array {
-            $snapshot->session->actual_end_at = $end;
-            $snapshot->session->save();
+            $snapshot->session->forceFill(['actual_end_at' => $end])->save();
             $sets = NextWeekSets::save($snapshot);
             $meals = $this->retarget($user, $snapshot, $start, $end);
             $lines = array_values(array_filter([$sets, $meals['message']]));

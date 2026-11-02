@@ -21,6 +21,7 @@ use App\Models\ExerciseFeedback;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
+use App\Support\Today\DayPlans;
 use Illuminate\Support\Collection;
 
 /**
@@ -117,7 +118,9 @@ final class SessionRecovery
             ->sortBy(function (ExerciseFeedback $row) use ($sessions) {
                 $session = $sessions->get($row->workout_session_id);
 
-                return [($session->actual_start_at ?? $session->planned_start_at)?->getTimestamp() ?? PHP_INT_MIN, $session->week, $session->day, $row->id];
+                $start = $session->getRawOriginal('actual_start_at') ?? $session->getRawOriginal('planned_start_at');
+
+                return [$start === null ? PHP_INT_MIN : DayPlans::instant((string) $start)->getTimestamp(), $session->week, $session->day, $row->id];
             })
             ->map(fn (ExerciseFeedback $row) => JointPain::from($row->joint_pain))->values()->all();
 

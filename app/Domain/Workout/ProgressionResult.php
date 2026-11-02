@@ -28,10 +28,8 @@ final readonly class ProgressionResult
      * The rotation with the day's new counts. Slots are matched by place, so a stored day whose slots carry no ids
      * takes them too.
      *
-     * @template T of array
-     *
-     * @param  list<T>  $days
-     * @return list<T>
+     * @param  list<array<string, mixed>>  $days
+     * @return list<array<string, mixed>>
      */
     public function applying(array $days): array
     {

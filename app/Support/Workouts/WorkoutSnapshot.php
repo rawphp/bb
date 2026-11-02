@@ -29,6 +29,7 @@ use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\Today\DayPlans;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -153,7 +154,7 @@ final class WorkoutSnapshot
             isDeload: $this->isDeload(),
             isSkipped: $this->session->is_skipped,
             others: $this->others->map(fn (WorkoutSession $other) => new OtherSession(
-                startedAt: $other->actual_start_at?->toDateTimeImmutable(),
+                startedAt: self::startOf($other),
                 isSkipped: $other->is_skipped,
                 isLaterInMesocycle: $other->mesocycle_id !== null && $other->mesocycle_id === $this->session->mesocycle_id
                     && [$other->week, $other->day] > [$this->session->week, $this->session->day],
@@ -172,9 +173,8 @@ final class WorkoutSnapshot
     public function progression(): ?ProgressionResult
     {
         $mesocycle = $this->mesocycle;
-        $days = array_values($mesocycle->days ?? []);
         $dayIndex = $this->session->day - 1;
-        if ($mesocycle === null || $this->train === null || $this->isDeload() || ! isset($days[$dayIndex])) {
+        if ($mesocycle === null || $this->train === null || $this->isDeload() || ! isset($mesocycle->dayRows()[$dayIndex])) {
             return null;
         }
 
@@ -222,7 +222,14 @@ final class WorkoutSnapshot
     /** The session's start, as FB-007 and FB-009 compare it; now when it has not started. */
     private function start(): DateTimeImmutable
     {
-        return ($this->session->actual_start_at ?? CarbonImmutable::now())->toDateTimeImmutable();
+        return self::startOf($this->session) ?? CarbonImmutable::now()->toDateTimeImmutable();
+    }
+
+    private static function startOf(WorkoutSession $session): ?DateTimeImmutable
+    {
+        $start = $session->getRawOriginal('actual_start_at');
+
+        return $start === null ? null : DayPlans::instant((string) $start);
     }
 
     /**

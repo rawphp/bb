@@ -25,19 +25,19 @@ final class ProgressionApply
         if ($day === null) {
             return new ProgressionResult($input->dayIndex, [], [], [], []);
         }
-        $slots = array_values($day['slots']);
+        $slots = $day['slots'];
         $base = self::baseCounts($slots, $input->setCounts);
 
         // The domain tells slots apart by id; a slot's place makes it unique whatever its stored id looks like.
         $sessions = [];
-        foreach (array_values($input->days) as $dayIndex => $storedDay) {
+        foreach ($input->days as $dayIndex => $storedDay) {
             $sessions[] = new Session("day-{$dayIndex}", '', array_map(
                 fn (array $slot, int $position) => new ExerciseSlot(
                     "{$dayIndex}-{$position}", '', MuscleGroup::from($slot['muscle_group']),
                     $dayIndex === $input->dayIndex ? $base[$position] : (int) $slot['sets'],
                 ),
-                array_values($storedDay['slots']),
-                array_keys(array_values($storedDay['slots'])),
+                $storedDay['slots'],
+                array_keys($storedDay['slots']),
             ));
         }
         $session = $sessions[$input->dayIndex];

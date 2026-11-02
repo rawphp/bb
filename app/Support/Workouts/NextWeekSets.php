@@ -15,7 +15,7 @@ final class NextWeekSets
         if ($result === null || $mesocycle === null || ! $result->changed()) {
             return null;
         }
-        $mesocycle->days = $result->applying(array_values($mesocycle->days ?? []));
+        $mesocycle->days = $result->applying($mesocycle->days ?? []);
         $mesocycle->save();
 
         return $result->lines === [] ? null : implode("\n", $result->lines);
