@@ -95,6 +95,12 @@ describe('Toast', () => {
         expect(undoButton(wrapper).text()).toBe('Undo');
     });
 
+    it('UI-010 shows a toast of several changes as one line each', () => {
+        const wrapper = toast({}, { toast: 'Chest +2 sets next week\nMeals updated for your 5:30 PM workout', undo: 'tok-1' });
+
+        expect(wrapper.findAll('[data-toast-line]').map((line) => line.text())).toEqual(['Chest +2 sets next week', 'Meals updated for your 5:30 PM workout']);
+    });
+
     it('UI-010 in TOAST_HOST the toast adds no live region of its own and draws nothing without a message', async () => {
         const host = withHost();
         const wrapper = inHost();

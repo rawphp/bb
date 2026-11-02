@@ -15,8 +15,14 @@ import { selectedIndex, useLeave } from './planScreen';
 // that fill it look like and where training starts. The server sends every option
 // with its end date, warnings and mesocycles (`plan_show.add_phase`), so picking one
 // only shows what it already sent. `pending` dims the server's dates while a write
-// waits to sync (OFF-008). Ported from rp-clone's AddPhaseView.
-const props = withDefaults(defineProps<{ payload?: PlanShowOutput; pending?: boolean }>(), { pending: false });
+// waits to sync (OFF-008). `type` and `weeks` come from a link that suggests a phase
+// (PH-045, ?type=maintenance&weeks=4): it opens on that type and length when the server
+// offers them, else on the server's own. Ported from rp-clone's AddPhaseView.
+const props = withDefaults(defineProps<{ payload?: PlanShowOutput; pending?: boolean; type?: string; weeks?: string }>(), {
+    pending: false,
+    type: undefined,
+    weeks: undefined,
+});
 
 type PhaseType = PhaseAddInput['type'];
 
@@ -32,8 +38,20 @@ const lengthPick = ref<number | null>(null);
 const ratePick = ref<number | null>(null);
 
 const addPhase = computed(() => data.value?.add_phase);
-const type = computed(() => addPhase.value?.types.find((t) => t.type === (picked.value ?? addPhase.value?.default_type)) ?? addPhase.value?.types[0]);
-const lengthIndex = computed(() => selectedIndex(lengthPick.value, type.value?.lengths ?? []));
+const suggested = computed(() => addPhase.value?.types.find((t) => t.type === props.type));
+const type = computed(
+    () =>
+        addPhase.value?.types.find((t) => t.type === picked.value) ??
+        suggested.value ??
+        addPhase.value?.types.find((t) => t.type === addPhase.value?.default_type) ??
+        addPhase.value?.types[0],
+);
+// The suggested length, while the suggested type shows and the user has picked no length.
+const suggestedLength = computed(() => {
+    const index = type.value && type.value === suggested.value ? type.value.lengths.findIndex((l) => String(l.weeks) === props.weeks) : -1;
+    return index >= 0 ? index : null;
+});
+const lengthIndex = computed(() => selectedIndex(lengthPick.value ?? suggestedLength.value, type.value?.lengths ?? []));
 const rateIndex = computed(() => selectedIndex(ratePick.value, type.value?.rates ?? []));
 const length = computed(() => type.value?.lengths[lengthIndex.value]);
 const rate = computed(() => type.value?.rates[rateIndex.value]);

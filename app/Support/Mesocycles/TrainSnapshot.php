@@ -38,6 +38,7 @@ use Closure;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 
@@ -91,26 +92,30 @@ final class TrainSnapshot
     /**
      * Everything for one user. The sessions, sets and feedback are those of `$mesocycleId` and of the current
      * mesocycle; day targets come only with `$mesocycleId`.
+     *
+     * `$locked` reads every user row with a shared lock, which returns the latest commit even inside a transaction
+     * that has read before (MySQL's REPEATABLE READ keeps its first view for plain reads). A write that waited on a lock
+     * reads this way so it sees what the write before it saved; the library's exercises are read plainly.
      */
-    public static function load(User $user, ?string $mesocycleId = null): self
+    public static function load(User $user, ?string $mesocycleId = null, bool $locked = false): self
     {
         $base = new self(
             today: self::day(CarbonImmutable::now()),
-            plan: Plan::query()->where('user_id', $user->id)->first(),
-            profile: Profile::query()->where('user_id', $user->id)->first(),
-            mesocycles: Mesocycle::query()->where('user_id', $user->id)->get(),
-            phases: Phase::query()->where('user_id', $user->id)->orderBy('start_date')->get(),
+            plan: self::read(Plan::query()->where('user_id', $user->id), $locked)->first(),
+            profile: self::read(Profile::query()->where('user_id', $user->id), $locked)->first(),
+            mesocycles: self::read(Mesocycle::query()->where('user_id', $user->id), $locked)->get(),
+            phases: self::read(Phase::query()->where('user_id', $user->id)->orderBy('start_date'), $locked)->get(),
             sessions: new Collection,
             sets: new Collection,
             feedback: new Collection,
-            planWeeks: PlanWeek::query()->where('user_id', $user->id)->get(),
+            planWeeks: self::read(PlanWeek::query()->where('user_id', $user->id), $locked)->get(),
             dayTargets: new Collection,
             exercises: new Collection,
         );
 
         $focus = $mesocycleId === null ? null : $base->findMesocycle($mesocycleId);
         $ids = array_values(array_filter([$focus?->id, $base->current()?->id]));
-        $sessions = WorkoutSession::query()->whereIn('mesocycle_id', $ids)->get();
+        $sessions = self::read(WorkoutSession::query()->whereIn('mesocycle_id', $ids), $locked)->get();
         $sessionIds = $sessions->modelKeys();
 
         return new self(
@@ -120,10 +125,10 @@ final class TrainSnapshot
             mesocycles: $base->mesocycles,
             phases: $base->phases,
             sessions: $sessions,
-            sets: WorkoutSet::query()->whereIn('workout_session_id', $sessionIds)->orderBy('position')->get(),
-            feedback: MuscleFeedback::query()->whereIn('workout_session_id', $sessionIds)->get(),
+            sets: self::read(WorkoutSet::query()->whereIn('workout_session_id', $sessionIds)->orderBy('position'), $locked)->get(),
+            feedback: self::read(MuscleFeedback::query()->whereIn('workout_session_id', $sessionIds), $locked)->get(),
             planWeeks: $base->planWeeks,
-            dayTargets: fn (): Collection => $focus === null ? new Collection : $base->dayTargetsFor($user, $focus),
+            dayTargets: fn (): Collection => $focus === null ? new Collection : $base->dayTargetsFor($user, $focus, $locked),
             exercises: fn (?array $ids): Collection => Exercise::query()->visibleTo($user)
                 ->when($ids !== null, fn ($query) => $query->whereIn('id', $ids))
                 ->orderBy('name')->get(),
@@ -605,7 +610,7 @@ final class TrainSnapshot
     }
 
     /** @return Collection<int, DayTarget> the day targets over the mesocycle's weeks */
-    private function dayTargetsFor(User $user, Mesocycle $mesocycle): Collection
+    private function dayTargetsFor(User $user, Mesocycle $mesocycle, bool $locked = false): Collection
     {
         if ($mesocycle->start_date === null || $mesocycle->weeks === null) {
             return new Collection;
@@ -616,6 +621,21 @@ final class TrainSnapshot
 
         return DayTarget::query()->where('user_id', $user->id)
             ->whereBetween('date', [$first->format('Y-m-d'), $last->format('Y-m-d')])
+            ->when($locked, fn (Builder $query) => $query->sharedLock())
             ->get(['id', 'date', 'kcal']);
+    }
+
+    /**
+     * A shared-lock read when `$locked`: it returns the latest commit, as a plain read inside a transaction that has
+     * read before does not (REPEATABLE READ).
+     *
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    private static function read(Builder $query, bool $locked): Builder
+    {
+        return $locked ? $query->sharedLock() : $query;
     }
 }

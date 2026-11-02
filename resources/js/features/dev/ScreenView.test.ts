@@ -11,6 +11,7 @@ vi.mock('@/app/router', () => ({
         { path: '/probe', component: defineComponent({ template: '<p />' }), meta: { screen: 'probe_show' } },
         { path: '/meal', component: defineComponent({ props: ['payload', 'mealId'], template: '<p>{{ mealId }} {{ payload !== undefined }}</p>' }), meta: { screen: 'food_search' } },
         { path: '/form', component: defineComponent({ props: ['payload'], template: '<p>form {{ payload === undefined }}</p>' }), meta: { screen: 'form', fixture: false } },
+        { path: '/act', name: 'act', component: defineComponent({ props: ['action'], template: '<p>act {{ action }}</p>' }), props: { action: 'end' }, meta: { screen: 'form', fixture: false } },
     ],
 }));
 
@@ -41,6 +42,13 @@ describe('ScreenView', () => {
         await flushPromises();
 
         expect(wrapper.text()).toBe('form true');
+    });
+
+    it('CAP-001 gives a screen the props its route sets, so ?view=<name> opens that route as the app does', async () => {
+        const wrapper = mount(ScreenView, { props: { name: 'form', view: 'act' } });
+        await flushPromises();
+
+        expect(wrapper.text()).toBe('act end');
     });
 
     it('CAP-001 passes the screen its props from the query, beside the fixture', async () => {
