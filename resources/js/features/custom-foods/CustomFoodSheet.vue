@@ -8,13 +8,16 @@ import BottomSheet from '@/design/BottomSheet.vue';
 
 // Create a custom food, or edit one (FOOD-060), ported from rp-clone's CustomFoodSheet.swift.
 // The server checks every value and works out the calories the list shows; this form only
-// turns what was typed into numbers (a comma counts as a decimal point).
+// turns what was typed into numbers (a comma counts as a decimal point). `reload` is the
+// read of the screen underneath, which useWrite runs after a save, or fresh after one that
+// got no final answer (CAP-014), so a food that save may have made shows up there.
 type Food = CustomFoodsShowOutput['foods'][number];
 type Unit = CustomFoodSaveInput['serving_unit'];
 
 const props = withDefaults(
     defineProps<{
         open: boolean;
+        reload: (options?: { fresh?: boolean }) => Promise<void>;
         /** The food to change; null creates a new one. */
         food?: Food | null;
         /** A new food's starting name, for example the search text that found nothing (FOOD-062). */
@@ -52,7 +55,7 @@ const code = ref('');
 const unit = ref<Unit>('g');
 const numbers = ref<Record<NumberKey, string>>(blankNumbers());
 
-const { send, busy, error } = useWrite(async () => {});
+const { send, busy, error } = useWrite((options) => props.reload(options));
 
 function blankNumbers(): Record<NumberKey, string> {
     return { serving_size: '', serving_grams: '', protein: '', fat: '', carbs: '', fiber: '' };

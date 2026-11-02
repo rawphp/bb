@@ -275,7 +275,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside));
                     </div>
                     <div class="flex min-w-0 grow flex-col gap-0.5 py-1.5">
                         <span class="text-base text-primary-text">{{ label }}</span>
-                        <span v-if="detail" class="text-sm text-secondary-text">{{ detail }}</span>
+                        <span v-if="detail" class="text-sm whitespace-pre-line text-secondary-text">{{ detail }}</span>
                         <span v-if="pending" :id="`${uid}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
                     </div>
                     <label

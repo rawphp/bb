@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { watch } from 'vue';
 import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
 import type { MealSavedMealLoadInput } from '@/contracts/meal_saved_meal_load';
@@ -9,13 +10,28 @@ import SavedMealsStatus from './SavedMealsStatus.vue';
 
 // MEAL-070: the sheet that picks a saved meal to load into a meal, ported from rp-clone's
 // SavedMealPickerSheet. The server keeps locked foods at their saved amounts and re-fits the
-// rest; the sheet sends the pick and says when it is done, so the meal screen can read again.
-const props = defineProps<{ open: boolean; mealId: string; payload?: SavedMealsShowOutput }>();
+// rest. `reload` is the meal screen's read, which useWrite runs after the load, or fresh after
+// one that got no final answer (CAP-014). The list is read again each time the sheet opens.
+const props = defineProps<{
+    open: boolean;
+    mealId: string;
+    reload: (options?: { fresh?: boolean }) => Promise<void>;
+    payload?: SavedMealsShowOutput;
+}>();
 
 const emit = defineEmits<{ cancel: []; loaded: [] }>();
 
 const { data, failure, load } = useRead<SavedMealsShowOutput>('saved_meals_show', {}, 'Your saved meals could not be loaded.', props.payload);
-const { send, busy, error } = useWrite(async () => {});
+const { send, busy, error } = useWrite((options) => props.reload(options));
+
+watch(
+    () => props.open,
+    (open) => {
+        if (!open) return;
+        error.value = null;
+        if (!props.payload) void load().catch(() => undefined);
+    },
+);
 
 async function pick(savedMealId: string): Promise<void> {
     const input: MealSavedMealLoadInput = { meal_id: props.mealId, saved_meal_id: savedMealId };
@@ -35,9 +51,8 @@ async function pick(savedMealId: string): Promise<void> {
     >
         <div class="space-y-3 p-4">
             <SavedMealsStatus
-                :loaded="data !== undefined"
+                :data="data"
                 :failure="failure"
-                :empty-text="data && !data.meals.length ? (data.empty_text ?? null) : null"
                 :error="null"
                 @retry="load"
             />

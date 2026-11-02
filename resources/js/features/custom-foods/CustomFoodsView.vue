@@ -32,10 +32,6 @@ function act(food: Food, action: string): void {
     if (action === 'delete') void send('custom_food_delete', { food_id: food.food_id } satisfies CustomFoodDeleteInput, 'The food could not be deleted. Try again.');
 }
 
-async function saved(): Promise<void> {
-    form.value = null;
-    await load().catch(() => undefined);
-}
 </script>
 
 <template>
@@ -60,7 +56,7 @@ async function saved(): Promise<void> {
                 <li v-for="food in data.foods" :key="food.food_id">
                     <ValueRow
                         :label="food.name"
-                        :detail="food.brand ? `${food.brand} · ${food.detail}` : food.detail"
+                        :detail="food.brand ? `${food.brand}\n${food.detail}` : food.detail"
                         :fields="[]"
                         :swipe-actions="ACTIONS"
                         :pending="pending"
@@ -87,6 +83,6 @@ async function saved(): Promise<void> {
         </template>
         <ReadState v-else :failure="failure" what="Your custom foods" @retry="load" />
 
-        <CustomFoodSheet :open="form !== null" :food="form?.food ?? null" @cancel="form = null" @saved="saved" />
+        <CustomFoodSheet :open="form !== null" :food="form?.food ?? null" :reload="load" @cancel="form = null" @saved="form = null" />
     </main>
 </template>

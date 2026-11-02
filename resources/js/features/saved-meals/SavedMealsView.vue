@@ -58,9 +58,8 @@ async function rename(): Promise<void> {
         <h1 class="text-3xl font-bold">Saved meals</h1>
 
         <SavedMealsStatus
-            :loaded="data !== undefined"
+            :data="data"
             :failure="failure"
-            :empty-text="data && !data.meals.length ? (data.empty_text ?? null) : null"
             :error="error"
             @retry="load"
         />
