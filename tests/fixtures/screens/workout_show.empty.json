@@ -1,0 +1,105 @@
+{
+    "workout_id": "01JB8W3Q000000000000000901",
+    "mesocycle_id": "01JB8W3Q000000000000000900",
+    "title": "Week 1 · Day 1 · Upper A · Mon 14 Sep",
+    "day_label": "Upper A",
+    "status": "not_started",
+    "is_editable": true,
+    "active_bar_text": null,
+    "weight_unit": "kg",
+    "deload_banner": null,
+    "feedback_banner": null,
+    "can_finish": false,
+    "next_meal": null,
+    "warm_up": null,
+    "rir_info": {
+        "title": "Reps in reserve",
+        "body": "This week's target is 3 RIR: stop each set with 3 reps left in the tank.",
+        "article": "rir"
+    },
+    "exercises": [],
+    "feedback": [],
+    "set_type_choices": [
+        {
+            "value": "regular_straight",
+            "label": "Regular · Straight",
+            "note": null
+        },
+        {
+            "value": "regular_down",
+            "label": "Regular · Down",
+            "note": null
+        },
+        {
+            "value": "regular_ascending",
+            "label": "Regular · Ascending",
+            "note": null
+        },
+        {
+            "value": "myorep",
+            "label": "Myorep (M)",
+            "note": "Rest 5 to 15 seconds between mini-sets, and log the total reps."
+        },
+        {
+            "value": "myorep_match",
+            "label": "Myorep match (MM)",
+            "note": "Do as many mini-sets as you need to match the first set's reps."
+        }
+    ],
+    "add_set_choices": [
+        {
+            "value": "regular_straight",
+            "label": "Regular",
+            "note": null
+        },
+        {
+            "value": "myorep",
+            "label": "Myorep (M)",
+            "note": "Rest 5 to 15 seconds between mini-sets, and log the total reps."
+        },
+        {
+            "value": "myorep_match",
+            "label": "Myorep match (MM)",
+            "note": "Do as many mini-sets as you need to match the first set's reps."
+        }
+    ],
+    "help": [
+        {
+            "title": "Resting by feel",
+            "body": "There is no rest timer. Rest until your breathing is back to normal, you feel mentally ready, no supporting muscle is cramping, and you can hit at least 3 to 5 reps. That is usually 30 seconds to 5 minutes. Paired exercises go back to back: note it on the exercise or reorder them.",
+            "article": "rest-times"
+        },
+        {
+            "title": "Warm-ups",
+            "body": "12 reps at a weight you could lift 30 or more times. 8 reps at a weight you could lift about 20 times. 4 reps at about your 10-rep max. Then your working sets, at 3 RIR. Warm-up sets are not logged.",
+            "article": "warm-ups"
+        },
+        {
+            "title": "Dumbbells and one side at a time",
+            "body": "For dumbbells, enter the weight of one dumbbell. For exercises done one side at a time, start with your weaker side, match its reps on the other side, and log one side's reps.",
+            "article": null
+        },
+        {
+            "title": "Deload week",
+            "body": "The deload is meant to feel easy. Push the 0 RIR week as hard as possible before it.",
+            "article": "deloads"
+        },
+        {
+            "title": "Training while sick",
+            "body": "Feeling unwell? Train lighter or skip the session. A missed workout costs less than a sick week.",
+            "article": "training-while-sick"
+        },
+        {
+            "title": "Training alongside a sport",
+            "body": "Training alongside a sport? Tell the app your sport days in your schedule, and expect to take sets off the muscles the sport hits hard.",
+            "article": "training-alongside-sport"
+        },
+        {
+            "title": "Long workouts",
+            "body": "Sessions running long? Answer \"Pushed my limits\" honestly in the feedback, or lower the priority of a muscle. Both cut the sets the app plans.",
+            "article": "long-workouts"
+        }
+    ],
+    "swap_advice": "Swap an exercise only for a good reason, such as pain or equipment you can't use. Changing exercises often makes your progress harder to see.",
+    "look_back": []
+}

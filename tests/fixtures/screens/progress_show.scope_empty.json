@@ -1,0 +1,211 @@
+{
+    "title": "Progress",
+    "scopes": [
+        {
+            "value": "phase",
+            "title": "Phase",
+            "selected": true
+        },
+        {
+            "value": "plan",
+            "title": "Whole plan",
+            "selected": false
+        }
+    ],
+    "empty": null,
+    "scope_message": "No weigh-ins in this phase yet",
+    "chart": null,
+    "summary": [],
+    "share": null,
+    "this_week": {
+        "title": "This week",
+        "calories": {
+            "title": "Calories this week",
+            "short_label": "Cal",
+            "value_label": "2410/18550",
+            "fraction": 0.13
+        },
+        "days": [
+            {
+                "date": "2026-10-10",
+                "letter": "S",
+                "day_label": "10",
+                "calories_label": "2650",
+                "is_complete": true,
+                "is_today": true
+            },
+            {
+                "date": "2026-10-11",
+                "letter": "S",
+                "day_label": "11",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-12",
+                "letter": "M",
+                "day_label": "12",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-13",
+                "letter": "T",
+                "day_label": "13",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-14",
+                "letter": "W",
+                "day_label": "14",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-15",
+                "letter": "T",
+                "day_label": "15",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-16",
+                "letter": "F",
+                "day_label": "16",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            }
+        ],
+        "edit_schedule_title": "Edit schedule"
+    },
+    "review_card": {
+        "title": "Weekly review available",
+        "action_title": "Open"
+    },
+    "steps": {
+        "title": "Steps",
+        "bar": {
+            "title": "Steps today",
+            "short_label": "Steps",
+            "value_label": "6,240/10,000",
+            "fraction": 0.62
+        },
+        "target_label": "Target 8,000 to 10,000"
+    },
+    "phase_history": [
+        {
+            "id": "01JA0000000000000000PHASE1",
+            "title": "Fat loss",
+            "dates_label": "6 Jul 2026 – 30 Aug 2026",
+            "lines": [
+                {
+                    "label": "Weight change",
+                    "value": "-2.8 kg",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Average rate",
+                    "value": "-0.41% per week",
+                    "tone": "neutral"
+                }
+            ],
+            "mesocycles": [
+                {
+                    "label": "Cut base",
+                    "value": "4 weeks",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Cut peak",
+                    "value": "4 weeks",
+                    "tone": "neutral"
+                }
+            ]
+        }
+    ],
+    "mesocycle_history": [
+        {
+            "id": "01JA00000000000000000MESO3",
+            "title": "Lean gain A",
+            "dates_label": "31 Aug 2026 – 4 Oct 2026",
+            "phase": {
+                "text": "Muscle gain",
+                "tone": "info"
+            },
+            "sets_title": "Average sets per week",
+            "sets": [
+                {
+                    "label": "Chest",
+                    "value": "3.0",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Back",
+                    "value": "5.0",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Quads",
+                    "value": "3.0",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Biceps",
+                    "value": "4.0",
+                    "tone": "neutral"
+                }
+            ]
+        },
+        {
+            "id": "01JA00000000000000000MESO2",
+            "title": "Cut peak",
+            "dates_label": "3 Aug 2026 – 30 Aug 2026",
+            "phase": {
+                "text": "Fat loss",
+                "tone": "info"
+            },
+            "sets_title": "Average sets per week",
+            "sets": [
+                {
+                    "label": "Chest",
+                    "value": "3.0",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Back",
+                    "value": "5.0",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Quads",
+                    "value": "3.0",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Biceps",
+                    "value": "4.0",
+                    "tone": "neutral"
+                }
+            ]
+        }
+    ],
+    "exercises": [
+        {
+            "id": "01JA000000000000000000EX01",
+            "name": "Bench Press",
+            "muscle": "Chest"
+        },
+        {
+            "id": "01JA000000000000000000EX02",
+            "name": "Barbell Row",
+            "muscle": "Back"
+        }
+    ]
+}

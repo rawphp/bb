@@ -1,0 +1,129 @@
+{
+    "exercises": [],
+    "muscle_groups": [
+        {
+            "value": "chest",
+            "label": "Chest"
+        },
+        {
+            "value": "back",
+            "label": "Back"
+        },
+        {
+            "value": "quads",
+            "label": "Quads"
+        },
+        {
+            "value": "hamstrings",
+            "label": "Hamstrings"
+        },
+        {
+            "value": "glutes",
+            "label": "Glutes"
+        },
+        {
+            "value": "sideDelts",
+            "label": "Side delts"
+        },
+        {
+            "value": "rearDelts",
+            "label": "Rear delts"
+        },
+        {
+            "value": "frontDelts",
+            "label": "Front delts"
+        },
+        {
+            "value": "biceps",
+            "label": "Biceps"
+        },
+        {
+            "value": "triceps",
+            "label": "Triceps"
+        },
+        {
+            "value": "calves",
+            "label": "Calves"
+        },
+        {
+            "value": "abs",
+            "label": "Abs"
+        },
+        {
+            "value": "traps",
+            "label": "Traps"
+        },
+        {
+            "value": "forearms",
+            "label": "Forearms"
+        }
+    ],
+    "equipment": [
+        {
+            "value": "barbell",
+            "label": "Barbell"
+        },
+        {
+            "value": "ezBar",
+            "label": "EZ bar"
+        },
+        {
+            "value": "trapBar",
+            "label": "Trap bar"
+        },
+        {
+            "value": "dumbbell",
+            "label": "Dumbbell"
+        },
+        {
+            "value": "kettlebell",
+            "label": "Kettlebell"
+        },
+        {
+            "value": "machine",
+            "label": "Machine"
+        },
+        {
+            "value": "cable",
+            "label": "Cable"
+        },
+        {
+            "value": "smithMachine",
+            "label": "Smith machine"
+        },
+        {
+            "value": "bodyweight",
+            "label": "Bodyweight"
+        }
+    ],
+    "load_types": [
+        {
+            "value": "barbell",
+            "label": "Barbell"
+        },
+        {
+            "value": "dumbbell",
+            "label": "Dumbbell"
+        },
+        {
+            "value": "machine",
+            "label": "Machine"
+        },
+        {
+            "value": "cable",
+            "label": "Cable"
+        },
+        {
+            "value": "bodyweight",
+            "label": "Bodyweight"
+        },
+        {
+            "value": "bodyweightPlusLoad",
+            "label": "Bodyweight plus load"
+        },
+        {
+            "value": "smithMachine",
+            "label": "Smith machine"
+        }
+    ]
+}

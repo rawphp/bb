@@ -1,0 +1,719 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "workout_id": {
+            "type": "string"
+        },
+        "mesocycle_id": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "day_label": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string",
+            "enum": [
+                "not_started",
+                "in_progress",
+                "finished",
+                "skipped"
+            ]
+        },
+        "is_editable": {
+            "type": "boolean"
+        },
+        "active_bar_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "weight_unit": {
+            "type": "string",
+            "enum": [
+                "kg",
+                "lb"
+            ]
+        },
+        "deload_banner": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ]
+        },
+        "feedback_banner": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ]
+        },
+        "can_finish": {
+            "type": "boolean"
+        },
+        "next_meal": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "warm_up": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "workout_exercise_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "text"
+                        ]
+                    }
+                },
+                "note": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "workout_exercise_id",
+                "title",
+                "steps",
+                "note"
+            ]
+        },
+        "rir_info": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "body": {
+                    "type": "string"
+                },
+                "article": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "title",
+                "body"
+            ]
+        },
+        "exercises": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "exercise_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "detail": {
+                        "type": "string"
+                    },
+                    "muscle_group": {
+                        "type": "string",
+                        "enum": [
+                            "chest",
+                            "back",
+                            "quads",
+                            "hamstrings",
+                            "glutes",
+                            "sideDelts",
+                            "rearDelts",
+                            "frontDelts",
+                            "biceps",
+                            "triceps",
+                            "calves",
+                            "abs",
+                            "traps",
+                            "forearms"
+                        ]
+                    },
+                    "weight_label": {
+                        "type": "string"
+                    },
+                    "pinned_note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "session_note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "recovery_note": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ]
+                    },
+                    "swap_suggestion": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ]
+                    },
+                    "carries_first_weight": {
+                        "type": "boolean"
+                    },
+                    "can_move_up": {
+                        "type": "boolean"
+                    },
+                    "can_move_down": {
+                        "type": "boolean"
+                    },
+                    "sets": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "number": {
+                                    "type": "integer"
+                                },
+                                "set_type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "regular_straight",
+                                        "regular_down",
+                                        "regular_ascending",
+                                        "myorep",
+                                        "myorep_match"
+                                    ]
+                                },
+                                "badge": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "weight": {
+                                    "type": [
+                                        "object",
+                                        "null"
+                                    ],
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "value": {
+                                            "type": "number"
+                                        },
+                                        "unit": {
+                                            "type": "string"
+                                        },
+                                        "text": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "value",
+                                        "unit",
+                                        "text"
+                                    ]
+                                },
+                                "reps": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                },
+                                "target_weight": {
+                                    "type": [
+                                        "object",
+                                        "null"
+                                    ],
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "value": {
+                                            "type": "number"
+                                        },
+                                        "unit": {
+                                            "type": "string"
+                                        },
+                                        "text": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "value",
+                                        "unit",
+                                        "text"
+                                    ]
+                                },
+                                "target_text": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "reps_placeholder": {
+                                    "type": "string"
+                                },
+                                "rep_table": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "weight": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "value": {
+                                                        "type": "number"
+                                                    },
+                                                    "unit": {
+                                                        "type": "string"
+                                                    },
+                                                    "text": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "value",
+                                                    "unit",
+                                                    "text"
+                                                ]
+                                            },
+                                            "reps": {
+                                                "type": "integer"
+                                            }
+                                        },
+                                        "required": [
+                                            "weight",
+                                            "reps"
+                                        ]
+                                    }
+                                },
+                                "off_table_text": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "is_logged": {
+                                    "type": "boolean"
+                                },
+                                "is_skipped": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "number",
+                                "set_type",
+                                "reps_placeholder",
+                                "rep_table",
+                                "is_logged",
+                                "is_skipped"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "exercise_id",
+                    "name",
+                    "detail",
+                    "muscle_group",
+                    "weight_label",
+                    "carries_first_weight",
+                    "can_move_up",
+                    "can_move_down",
+                    "sets"
+                ]
+            }
+        },
+        "feedback": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "muscle_group": {
+                        "type": "string",
+                        "enum": [
+                            "chest",
+                            "back",
+                            "quads",
+                            "hamstrings",
+                            "glutes",
+                            "sideDelts",
+                            "rearDelts",
+                            "frontDelts",
+                            "biceps",
+                            "triceps",
+                            "calves",
+                            "abs",
+                            "traps",
+                            "forearms"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "due_after_exercise_id": {
+                        "type": "string"
+                    },
+                    "is_due": {
+                        "type": "boolean"
+                    },
+                    "is_answered": {
+                        "type": "boolean"
+                    },
+                    "can_edit": {
+                        "type": "boolean"
+                    },
+                    "questions": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                        "joint",
+                                        "soreness",
+                                        "pump",
+                                        "volume"
+                                    ]
+                                },
+                                "exercise_id": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "text": {
+                                    "type": "string"
+                                },
+                                "help": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "body": {
+                                            "type": "string"
+                                        },
+                                        "article": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "body"
+                                    ]
+                                },
+                                "choices": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "value": {
+                                                "type": "string"
+                                            },
+                                            "label": {
+                                                "type": "string"
+                                            },
+                                            "note": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ]
+                                            }
+                                        },
+                                        "required": [
+                                            "value",
+                                            "label"
+                                        ]
+                                    }
+                                },
+                                "answer": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "kind",
+                                "text",
+                                "help",
+                                "choices"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "muscle_group",
+                    "title",
+                    "due_after_exercise_id",
+                    "is_due",
+                    "is_answered",
+                    "can_edit",
+                    "questions"
+                ]
+            }
+        },
+        "set_type_choices": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "value": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "value",
+                    "label"
+                ]
+            }
+        },
+        "add_set_choices": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "value": {
+                        "type": "string"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "value",
+                    "label"
+                ]
+            }
+        },
+        "help": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "article": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "title",
+                    "body"
+                ]
+            }
+        },
+        "swap_advice": {
+            "type": "string"
+        },
+        "look_back": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "week": {
+                        "type": "integer"
+                    },
+                    "day": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ]
+                    }
+                },
+                "required": [
+                    "week",
+                    "day",
+                    "title",
+                    "status"
+                ]
+            }
+        }
+    },
+    "required": [
+        "workout_id",
+        "mesocycle_id",
+        "title",
+        "day_label",
+        "status",
+        "is_editable",
+        "weight_unit",
+        "can_finish",
+        "rir_info",
+        "exercises",
+        "feedback",
+        "set_type_choices",
+        "add_set_choices",
+        "help",
+        "swap_advice",
+        "look_back"
+    ]
+}

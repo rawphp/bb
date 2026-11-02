@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
+import { listenForPush } from '../features/notifications/serviceWorker';
 import { SERVER_PATHS, SHELL_URL, shellEntry } from './shell';
 
 declare const self: ServiceWorkerGlobalScope;
@@ -13,3 +14,5 @@ const manifest = self.__WB_MANIFEST;
 cleanupOutdatedCaches();
 precacheAndRoute([...manifest, shellEntry(manifest)]);
 registerRoute(new NavigationRoute(createHandlerBoundToURL(SHELL_URL), { denylist: [SERVER_PATHS] }));
+
+listenForPush(self);
