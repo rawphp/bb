@@ -9,6 +9,7 @@ use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\OwnsInput;
 use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Support\WriteResult;
+use App\Capabilities\Today\TodayReads;
 use App\Models\DayTargetMeal;
 use App\Models\SavedMeal;
 use App\Models\User;
@@ -21,7 +22,7 @@ final class MealSavedMealLoadCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('meal_saved_meal_load', affects: ['today_show', 'food_search'])
+        return HostDefinition::write('meal_saved_meal_load', affects: ['today_show', 'day_redistribute_show', 'day_adjust_show', 'food_search'])
             ->description('Load one of the user\'s saved meals into a planned meal: its foods join the meal\'s foods, skipping any food the meal already has. Locked foods keep their saved amounts, and every unlocked food and recipe serving in the meal is re-fitted to the meal\'s targets.')
             ->cli('meal', 'saved-meal-load')
             ->input(MealSavedMealLoadInput::class)
@@ -35,10 +36,10 @@ final class MealSavedMealLoadCapability implements HostCapability, OwnsInput
                 }
 
                 return new WriteResult(
-                    // The Pantry opened from this meal marks the foods already in it (FOOD-028).
+                    // The day's sheets read which meals have foods and whether all are locked; the Pantry opened from
+                    // this meal marks the foods already in it (FOOD-028).
                     invalidates: [
-                        ReadKey::for('today_show'),
-                        ReadKey::for('today_show', ['date' => $loaded['date']]),
+                        ...TodayReads::keys([$loaded['date']], ['day_redistribute_show', 'day_adjust_show']),
                         ReadKey::for('food_search', ['meal_id' => $input->meal_id]),
                     ],
                     toast: "Loaded {$loaded['name']}",
