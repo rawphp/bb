@@ -64,3 +64,12 @@ it('DAY-001 deletes the user\'s own entry', function () {
 
     expect(OffPlanEntry::query()->find($entry->id))->toBeNull();
 });
+
+it('DAY-001 an entry with no name is deleted as "Off-plan food"', function () {
+    $user = User::factory()->create();
+    $entry = OffPlanEntry::factory()->for($user)->create(['name' => null]);
+
+    offPlanOver($user, 'off_plan_delete', ['id' => $entry->id])
+        ->assertOk()
+        ->assertJsonPath('data.toast', 'Off-plan food deleted');
+});
