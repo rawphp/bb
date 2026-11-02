@@ -107,6 +107,8 @@ interface Schema extends DBSchema {
 }
 
 let db: Promise<IDBPDatabase<Schema>> | undefined;
+// Removed this page load, so a stored copy whose delete hasn't landed yet never comes back.
+const removed = new Set<number>();
 
 function open(): Promise<IDBPDatabase<Schema>> {
     db ??= openDB<Schema>('bodybuilder-outbox', 1, {
@@ -127,7 +129,7 @@ export async function loadOutbox(): Promise<void> {
     const stored = await open()
         .then((database) => database.getAll('entries'))
         .catch(() => []);
-    const bySeq = new Map(stored.map((entry) => [entry.seq, entry]));
+    const bySeq = new Map(stored.filter((entry) => !removed.has(entry.seq)).map((entry) => [entry.seq, entry]));
     for (const entry of all.value) bySeq.set(entry.seq, entry);
     all.value = [...bySeq.values()].sort((a, b) => a.seq - b.seq);
 }
@@ -153,6 +155,7 @@ export async function updateEntry(entry: OutboxEntry): Promise<void> {
 }
 
 export async function removeEntries(seqs: readonly number[]): Promise<void> {
+    for (const seq of seqs) removed.add(seq);
     all.value = all.value.filter((entry) => !seqs.includes(entry.seq));
     await open()
         .then(async (database) => {
