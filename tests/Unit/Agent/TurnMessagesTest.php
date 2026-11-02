@@ -23,13 +23,10 @@ it('AGT-024 leaves a message sent after the turn to the turn that answers it', f
         ['user', 'First.', '2026-11-03 08:00:00'],
         ['assistant', 'Reply.', '2026-11-03 08:00:05'],
         ['user', 'Later.', '2026-11-03 09:30:00'],
-    ]);
+    ], '2026-11-03 08:00:00');
 
     expect($messages->userMessage('TURN'))->toBe('First.')
-        ->and($messages->history('TURN'))->toBe([
-            ['role' => 'user', 'content' => 'First.'],
-            ['role' => 'assistant', 'content' => 'Reply.'],
-        ]);
+        ->and($messages->history('TURN'))->toBe([['role' => 'user', 'content' => 'First.']]);
 });
 
 it('AGT-024 has no user message when none came before the turn, or the turn is unknown', function () {
