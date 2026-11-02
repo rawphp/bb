@@ -42,6 +42,9 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Rawphp\CapabilitiesAi\Contracts\ConversationStore;
+use Rawphp\CapabilitiesAi\Models\Message;
+use Rawphp\CapabilitiesAi\Models\Turn;
 
 /** Every model in app/Models, by class name. */
 function allModels(): array
@@ -94,6 +97,12 @@ function fillAccount(User $user): void
 
     PendingSignInCode::factory()->for($user)->create();
     PushSubscription::factory()->for($user)->create();
+
+    // A Coach conversation with a message and a turn (the package's tables).
+    $store = app(ConversationStore::class);
+    $conversation = $store->createConversation(strtoupper(Str::random(26)), null, (string) $user->id);
+    $store->createMessage($conversation, strtoupper(Str::random(26)), 'user', 'Hi');
+    $store->createQueuedTurn($conversation, strtoupper(Str::random(26)));
 }
 
 it('has a factory for every model that saves a row', function () {
@@ -131,7 +140,9 @@ it('ACC-005 deleting a user removes every row of theirs and nothing of anyone el
         ->and(RecipeIngredient::count())->toBe(1)
         ->and(SavedMealFood::count())->toBe(1)
         ->and(DayTargetMeal::count())->toBe(1)
-        ->and(TemplateSlot::count())->toBe(1);
+        ->and(TemplateSlot::count())->toBe(1)
+        ->and(Message::count())->toBe(1)
+        ->and(Turn::count())->toBe(1);
 });
 
 it('ACC-005 every user_id column cascades on delete', function () {

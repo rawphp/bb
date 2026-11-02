@@ -1,0 +1,41 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "enabled": {
+            "type": "boolean"
+        },
+        "turns_left": {
+            "type": [
+                "integer",
+                "null"
+            ]
+        },
+        "tokens_left": {
+            "type": [
+                "integer",
+                "null"
+            ]
+        },
+        "at_cap": {
+            "type": "boolean"
+        },
+        "resets_at": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "notice": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "enabled",
+        "at_cap"
+    ]
+}
