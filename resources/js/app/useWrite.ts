@@ -27,7 +27,8 @@ export function useWrite(load: (options?: { fresh?: boolean }) => Promise<void>)
     const busy = ref(false);
     const error = ref<string | null>(null);
     // The last write sent. Its key outlives an attempt only while that attempt got no
-    // final answer (RetryKey.settle), so a retry of the same write reuses it.
+    // final answer, or a limit refused it before it ran (RetryKey.settle), so a retry of
+    // the same write reuses it.
     let last: { name: string; body: string; retry: RetryKey } | null = null;
 
     function keyFor(name: string, input: CapabilityInput): RetryKey {

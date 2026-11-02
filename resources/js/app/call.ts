@@ -390,7 +390,8 @@ async function deliver(entry: OutboxEntry, invalidated: string[]): Promise<Capab
 }
 
 // No answer to this entry yet: no response, a gateway's 5xx, the app still running it,
-// or a limit that refused it before it ran. Anything else the app keeps under the key.
+// or a limit that refused it before it ran. Any other answer is final: the same write
+// sent again gets it again, replayed from the key or checked again (CAP-014).
 function retryable(error: CapabilityError): boolean {
     return unanswered(error) || limitedBeforeRun(error);
 }

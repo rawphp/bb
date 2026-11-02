@@ -13,7 +13,7 @@ use SplFileInfo;
 final class CapabilityParity
 {
     /** `read('name'` or `write<T>("name"`, not a method such as `cache.read(` or `fetchRead(`. */
-    private const CALL = '/(?<![\w.$])(?:read|readFresh|write|writeNow)\s*(?:<[^()]*?>)?\s*\(\s*([\'"`])([a-z][a-z0-9_]*)\1/';
+    private const CALL = '/(?<![\w.$])(?:read|write|writeNow)\s*(?:<[^()]*?>)?\s*\(\s*([\'"`])([a-z][a-z0-9_]*)\1/';
 
     /**
      * @return list<string> the capability names in the source, in order, each once

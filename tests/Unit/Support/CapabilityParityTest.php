@@ -3,12 +3,11 @@
 use Illuminate\Filesystem\Filesystem;
 use Tests\Support\CapabilityParity;
 
-it('CAP-030 finds each capability name passed to read(, readFresh(, write( or writeNow( in app source', function () {
+it('CAP-030 finds each capability name passed to read(, write( or writeNow( in app source', function () {
     $source = <<<'TS'
         const a = await read<AccountShowOutput>('account_show', {}, onUpdate);
         await write("meal_add", { ulid });
         await writeNow<TokenCreateOutput>('token_create', input);
-        const fresh = await readFresh('mesocycles_show');
         await read(
             'today_show',
             { date },
@@ -19,7 +18,7 @@ it('CAP-030 finds each capability name passed to read(, readFresh(, write( or wr
         read(name, input);
         TS;
 
-    expect(CapabilityParity::calledIn($source))->toBe(['account_show', 'meal_add', 'token_create', 'mesocycles_show', 'today_show', 'week_show']);
+    expect(CapabilityParity::calledIn($source))->toBe(['account_show', 'meal_add', 'token_create', 'today_show', 'week_show']);
 });
 
 it('CAP-030 scans .ts and .vue app files at any depth and leaves out test and spec files', function () {
