@@ -5,6 +5,7 @@ use App\Enums\MesocycleRoute;
 use App\Models\Mesocycle;
 use App\Models\Phase;
 use App\Models\User;
+use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -69,6 +70,26 @@ it('MESO-061 MESO-062 each slot carries the old week-1 load of its exercise', fu
     expect($days[1]['slots'][0]['carried'])->toBe(['weight_kg' => 81.0, 'reps' => 10])
         ->and($days[1]['slots'][1]['carried'])->toBeNull()
         ->and($days[0]['slots'][0]['carried'])->toBeNull();
+});
+
+it('MESO-061 MESO-062 the load carried is the first set lifted on the first day, not one skipped, unlogged or later', function () {
+    [$user, $source] = copyWorld();
+    $bench = $source->dayRows()[0]['slots'][0]['exercise_id'];
+    $session = fn (int $day) => WorkoutSession::factory()->for($user)->create([
+        'mesocycle_id' => $source->id, 'week' => 1, 'day' => $day,
+        'actual_start_at' => '2026-09-0'.(6 + $day).' 17:30:00', 'actual_end_at' => '2026-09-0'.(6 + $day).' 18:30:00',
+    ]);
+    $set = fn (WorkoutSession $s, int $position, float $kg, bool $logged = true, bool $skipped = false) => WorkoutSet::factory()->create([
+        'workout_session_id' => $s->id, 'exercise_id' => $bench, 'position' => $position,
+        'actual_weight_kg' => $kg, 'actual_reps' => 10, 'is_logged' => $logged, 'is_skipped' => $skipped,
+    ]);
+    $set($session(2), 1, 90.0);
+    $day1 = $session(1);
+    $set($day1, 1, 100.0, skipped: true);
+    $set($day1, 2, 95.0, logged: false);
+    $set($day1, 3, 81.0);
+
+    expect(copyOf($user, $source)->dayRows()[0]['slots'][0]['carried'])->toBe(['weight_kg' => 81.0, 'reps' => 10]);
 });
 
 it('MESO-061 MESO-063 the copy carries the load as lifted, leaving the rise and the dumbbell hold to the planned targets', function () {

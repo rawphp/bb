@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\DayTarget;
 use App\Models\Exercise;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -44,6 +45,18 @@ it('MESO-040 MESO-041 MESO-043 MESO-044 shows a saved mesocycle in fat loss, wee
         ->and(array_column($data['saved']['weeks'][0]['days'], 'state'))->toBe(['done', 'missed'])
         ->and($data['saved']['weeks'][0]['muscle_sets'])->toBe([['muscle_title' => 'Chest', 'sets' => 2]])
         ->and(array_column($data['saved']['weeks'][1]['days'][1]['exercises'], 'name'))->toBe(['Back Squat', 'Exercise not chosen yet']);
+});
+
+it('MESO-041 a week\'s calories are the user\'s own targets, never another user\'s', function () {
+    Carbon::setTestNow('2026-09-22 10:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+    DayTarget::factory()->for($user)->create(['date' => '2026-09-14', 'kcal' => 2400]);
+    DayTarget::factory()->for(User::factory()->create())->create(['date' => '2026-09-15', 'kcal' => 3000]);
+
+    $weeks = $this->actingAs($user)->postJson('/capabilities/mesocycle_show', ['mesocycle_id' => $mesocycle->id])->json('data.saved.weeks');
+
+    expect(array_column($weeks, 'calories_text'))->toBe([null, '2,400 kcal/day', null, null, null]);
 });
 
 it('MESO-007 MESO-004 shows an empty draft at the start of the build', function () {

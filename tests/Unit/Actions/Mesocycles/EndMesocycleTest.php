@@ -87,7 +87,34 @@ it('MESO-044 refuses a diet break the end does not offer, and ends nothing', fun
 ]);
 
 it('MESO-043 only touches the user\'s own row', function () {
-    endMeso('2026-09-23');
+    Carbon::setTestNow('2026-09-23 10:00:00');
+    $user = TrainSeed::user();
+    $past = TrainSeed::mesocycle($user, ['name' => 'Meso 1', 'start_date' => '2026-06-01']);
+    $mesocycle = TrainSeed::mesocycle($user);
+    $theirs = TrainSeed::mesocycle(TrainSeed::user());
 
-    expect(Mesocycle::query()->whereNotNull('ended_on')->count())->toBe(1);
+    app(EndMesocycle::class)($user, $mesocycle->id, false);
+
+    expect($mesocycle->fresh()->ended_on->format('Y-m-d'))->toBe('2026-09-23')
+        ->and($past->fresh()->ended_on)->toBeNull()
+        ->and($theirs->fresh()->ended_on)->toBeNull();
+});
+
+it('MESO-044 a diet break makes the user\'s own plan week one, never another user\'s row in the same week', function () {
+    Carbon::setTestNow('2026-09-23 10:00:00');
+    $other = TrainSeed::user();
+    TrainSeed::phase($other, 'muscleGain', '2026-08-31');
+    $theirs = PlanWeek::factory()->for($other)->create(['start_date' => '2026-09-28', 'is_deload' => true]);
+    $before = $theirs->fresh()->getAttributes();
+    $user = TrainSeed::user();
+    $phase = TrainSeed::phase($user, 'fatLoss', '2026-08-31');
+    $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => $phase->id]);
+
+    app(EndMesocycle::class)($user, $mesocycle->id, true);
+    $mine = PlanWeek::query()->where('user_id', $user->id)->sole();
+
+    expect($theirs->fresh()->getAttributes())->toBe($before)
+        ->and(PlanWeek::query()->count())->toBe(2)
+        ->and($mine->start_date->format('Y-m-d'))->toBe('2026-09-28')
+        ->and([$mine->is_diet_break, $mine->is_deload])->toBe([true, false]);
 });

@@ -122,6 +122,13 @@ it('MESO-041 PLAN-002 a week\'s diet break follows the phase covering that week,
         ->and($saved['weeks'][4]['diet_break'])->not->toBeNull();
 });
 
+it('MESO-041 PLAN-002 a deload past the last phase\'s end follows the mesocycle\'s own phase', function () {
+    // Fat loss ends on 12 October, as the deload week starts, and no phase follows it.
+    $saved = saved(meso: ['phase_id' => W::CUT], world: ['phases' => [W::phase(W::CUT, 'fatLoss', '2026-07-27', '2026-10-12')], 'planWeeks' => []]);
+
+    expect($saved['weeks'][4]['diet_break'])->toBe(['text' => 'Diet break', 'tone' => 'info']);
+});
+
 it('MESO-042 the length runs from the current week plus one to eight', function () {
     $week2 = saved('2026-09-23');
 
