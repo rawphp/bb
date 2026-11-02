@@ -51,7 +51,6 @@ const COUNTERS: Record<BuildRoute, Partial<Record<BuildStep, string>>> = {
     scratch: { scratch: 'Step 1 of 3', ...THREE },
     copy_previous: { slots: 'Step 1 of 2', details: 'Step 2 of 2' },
 };
-const FIRST_STEP: Record<BuildRoute, BuildStep> = { template: 'template', builder: 'builder', scratch: 'scratch', copy_previous: 'slots' };
 // A first step belongs to one route, whatever the draft says (the dev screens open any step on any fixture).
 const OWN_ROUTE: Partial<Record<BuildStep, BuildRoute>> = { template: 'template', builder: 'builder', scratch: 'scratch' };
 
@@ -89,26 +88,33 @@ const newId = (): string => (startId ??= ulid());
 // The step the user is on. It starts on the address's step, the template library for a
 // template build with no draft yet, or where the draft was left, then follows the user.
 const startsWithTemplate = !props.payload && !props.draft && props.route === 'template';
-const chosen = ref<BuildStep | null>(isStep(props.step) ? props.step : startsWithTemplate ? 'template' : null);
+const step = ref<BuildStep | null>(isStep(props.step) ? props.step : startsWithTemplate ? 'template' : null);
 watch(
     () => build.value?.resume_step,
     (resume) => {
-        if (chosen.value === null && resume) chosen.value = resume;
+        if (step.value === null && resume) step.value = resume;
     },
     { immediate: true },
 );
-const step = computed<BuildStep | null>(() => chosen.value);
 const flowRoute = computed<BuildRoute>(() => (step.value && OWN_ROUTE[step.value]) || build.value?.route || (isRoute(props.route) ? props.route : 'builder'));
 
 const templateId = ref<string | null>(null);
-const nameText = ref<string | null>(props.payload?.name ?? null);
+// The name as typed, or null while the field shows the server's. It is sent with Create or
+// with the next write to the details; typing and leaving the field send nothing.
+const nameText = ref<string | null>(null);
+const shownName = computed(() => nameText.value ?? data.value?.name ?? '');
+const nameEdited = computed(() => shownName.value !== (data.value?.name ?? ''));
+
+// The id a start write is sending: the draft once the server has it is this one, whether
+// the draft is new or was already there.
+let startingId: string | null = null;
 
 // A write that makes or adopts the draft: once the server has it, it is the draft the
 // address names and the screen reads. After a write with no answer it reads nothing, as
 // the draft may not exist; Try again sends the same write and the server replays it.
 async function adopt(options: { fresh?: boolean } = {}): Promise<void> {
     if (options.fresh) return;
-    draftId.value = newId();
+    draftId.value = startingId!;
     await router.replace({ query: { draft: draftId.value } });
     await load();
 }
@@ -121,7 +127,7 @@ const writeError = computed(() => editing.error.value ?? starting.error.value);
 const canStart = computed(() => !props.payload && !props.draft && (props.route === 'builder' || props.route === 'scratch' || (props.route === 'copy_previous' && !!props.copy)));
 
 function create(): Promise<unknown> {
-    const id = newId();
+    const id = (startingId = newId());
     if (props.route === 'copy_previous') {
         return starting.send('mesocycle_copy', { mesocycle_id: id, source_mesocycle_id: props.copy! } satisfies MesocycleCopyInput, 'The mesocycle could not be copied.');
     }
@@ -139,6 +145,11 @@ function change(fields: Omit<MesocycleBuildInput, 'mesocycle_id'>, message: stri
     return editing.send('mesocycle_build', { mesocycle_id: draftId.value!, ...fields } satisfies MesocycleBuildInput, message);
 }
 
+/** A change on the details step: the name typed goes with it, so it is not lost. */
+function changeDetails(fields: Omit<MesocycleBuildInput, 'mesocycle_id'>, message: string): Promise<unknown> {
+    return change(nameEdited.value ? { ...fields, name: shownName.value } : fields, message);
+}
+
 function setPriority(muscle: PrioritySetInput['muscle'], priority: PrioritySetInput['priority']): void {
     void editing.send('priority_set', { mesocycle_id: draftId.value!, muscle, priority } satisfies PrioritySetInput, 'The priority could not be saved.');
 }
@@ -147,25 +158,33 @@ function saveDays(days: BuildDaysInput): void {
     void change({ days }, 'The exercises could not be saved.');
 }
 
+const building = ref(false);
+
 async function generate(): Promise<void> {
-    const outcome = await editing.send('mesocycle_structure_generate', { mesocycle_id: draftId.value! } satisfies MesocycleStructureGenerateInput, 'The sessions could not be built.');
-    if (outcome === 'done') chosen.value = 'slots';
+    building.value = true;
+    try {
+        const outcome = await editing.send('mesocycle_structure_generate', { mesocycle_id: draftId.value! } satisfies MesocycleStructureGenerateInput, 'The sessions could not be built.');
+        if (outcome === 'done') step.value = 'slots';
+    } finally {
+        building.value = false;
+    }
 }
 
 async function useTemplate(): Promise<void> {
+    startingId = draftId.value ?? newId();
     const outcome = await starting.send(
         'mesocycle_build',
-        { mesocycle_id: draftId.value ?? newId(), route: 'template', template_id: templateId.value } satisfies MesocycleBuildInput,
+        { mesocycle_id: startingId, route: 'template', template_id: templateId.value } satisfies MesocycleBuildInput,
         'The template could not be used.',
     );
     if (outcome === 'done') {
         templateId.value = null;
-        chosen.value = 'slots';
+        step.value = 'slots';
     }
 }
 
 async function finish(): Promise<void> {
-    const outcome = await change({ name: nameText.value ?? data.value?.name ?? '', finish: true }, 'The mesocycle could not be created.');
+    const outcome = await change({ name: shownName.value, finish: true }, 'The mesocycle could not be created.');
     if (outcome === 'done') void router.replace(`/train/mesocycles/${draftId.value}`);
 }
 
@@ -184,7 +203,7 @@ function goNext(): void {
             void generate();
             break;
         case 'slots':
-            chosen.value = 'details';
+            step.value = 'details';
             break;
         case 'details':
             void finish();
@@ -193,8 +212,7 @@ function goNext(): void {
 }
 
 function goBack(): void {
-    if (step.value === 'details') chosen.value = 'slots';
-    else if (step.value === 'slots') chosen.value = FIRST_STEP[flowRoute.value];
+    if (step.value === 'details') step.value = 'slots';
     else if (step.value === 'template') templateId.value = null;
 }
 
@@ -204,9 +222,8 @@ const flow = computed<StepFlowStep>(() => {
     if (current === 'template') {
         return { ...base, next_title: templateId.value ? 'Use this template' : 'Continue', can_go_back: templateId.value !== null, can_continue: templateId.value !== null, continue_hint: 'Pick a template to continue.' };
     }
-    if (current === 'slots') return { ...base, can_go_back: flowRoute.value !== 'copy_previous' };
     if (current === 'details') {
-        return { ...base, next_title: 'Create mesocycle', can_go_back: true, can_continue: build.value?.can_finish ?? false, continue_hint: 'Name it and start it in a phase to create it.' };
+        return { ...base, next_title: 'Create mesocycle', can_go_back: true, can_continue: (build.value?.can_finish ?? false) || nameEdited.value, continue_hint: 'Name it and start it in a phase to create it.' };
     }
 
     return base;
@@ -237,7 +254,6 @@ const startFailed = computed(() => canStart.value && !draftId.value && !starting
                     :build="build"
                     :disabled="busy"
                     @days="(days_per_week) => change({ days_per_week }, 'The sessions could not be saved.')"
-                    @label-style="(label_style) => change({ label_style }, 'The day labels could not be saved.')"
                 />
                 <SlotsStepView
                     v-else-if="step === 'slots'"
@@ -251,15 +267,15 @@ const startFailed = computed(() => canStart.value && !draftId.value && !starting
                 <DetailsStepView
                     v-else
                     :build="build"
-                    :name="data.name ?? ''"
+                    :name="shownName"
                     :disabled="busy"
                     @edit="(text) => (nameText = text)"
-                    @save="(name) => change({ name }, 'The name could not be saved.')"
-                    @weeks="(weeks) => change({ weeks }, 'The length could not be saved.')"
-                    @start="(start_date) => change({ start_date }, 'The start date could not be saved.')"
-                    @label-style="(label_style) => change({ label_style }, 'The day labels could not be saved.')"
+                    @weeks="(weeks) => changeDetails({ weeks }, 'The length could not be saved.')"
+                    @start="(start_date) => changeDetails({ start_date }, 'The start date could not be saved.')"
+                    @label-style="(label_style) => changeDetails({ label_style }, 'The day labels could not be saved.')"
                 />
             </template>
+            <p v-if="building" role="status" class="mt-3 text-sm text-secondary-text">Building your sessions…</p>
             <p v-if="flowError" role="alert" class="mt-3 text-sm text-tone-warning">{{ flowError }}</p>
         </StepFlow>
 

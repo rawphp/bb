@@ -6,12 +6,16 @@ import type { Build } from './types';
 
 // Meso Builder: days per week and a priority per muscle (MESO-020 to MESO-023), ported
 // from rp-clone's BuilderStepView. The warnings are the server's and never block (MESO-021).
-defineProps<{ build: Build; priorityOptions: PriorityOption[]; disabled?: boolean }>();
+const props = defineProps<{ build: Build; priorityOptions: PriorityOption[]; disabled?: boolean }>();
 
 const emit = defineEmits<{ days: [days: number]; priority: [muscle: Build['priorities'][number]['muscle'], priority: Priority] }>();
 
+// The picker shows what the server last said, so a refused save leaves nothing picked that was never saved.
 function chooseDays(event: Event): void {
-    emit('days', Number((event.target as HTMLSelectElement).value));
+    const select = event.target as HTMLSelectElement;
+    const picked = Number(select.value);
+    select.value = String(props.build.days_per_week);
+    if (picked !== props.build.days_per_week) emit('days', picked);
 }
 </script>
 

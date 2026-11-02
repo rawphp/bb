@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import LabelStylePicker from './LabelStylePicker.vue';
-import type { Build, LabelStyle } from './types';
+import type { Build } from './types';
 
-// Build from scratch: how many sessions, and how to label them (MESO-005). Ported from
-// rp-clone's ScratchStepView.
-defineProps<{ build: Build; disabled?: boolean }>();
+// Build from scratch: how many sessions (MESO-005). Ported from rp-clone's ScratchStepView.
+// The day labels are chosen on the details step, once there are days to label. The picker
+// shows what the server last said, so a refused save leaves nothing picked that was never saved.
+const props = defineProps<{ build: Build; disabled?: boolean }>();
 
-const emit = defineEmits<{ days: [days: number]; labelStyle: [style: LabelStyle] }>();
+const emit = defineEmits<{ days: [days: number] }>();
 
 function chooseDays(event: Event): void {
-    emit('days', Number((event.target as HTMLSelectElement).value));
+    const select = event.target as HTMLSelectElement;
+    const picked = Number(select.value);
+    select.value = String(props.build.days_per_week);
+    if (picked !== props.build.days_per_week) emit('days', picked);
 }
 </script>
 
@@ -21,9 +24,5 @@ function chooseDays(event: Event): void {
                 <option v-for="option in build.days_per_week_options" :key="option.value" :value="option.value" :selected="option.value === build.days_per_week">{{ option.text }}</option>
             </select>
         </label>
-        <section class="space-y-1.5">
-            <h3 class="text-sm text-secondary-text">Day labels</h3>
-            <LabelStylePicker :build="build" :disabled="disabled" @change="emit('labelStyle', $event)" />
-        </section>
     </div>
 </template>
