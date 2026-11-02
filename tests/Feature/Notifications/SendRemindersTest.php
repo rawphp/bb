@@ -7,6 +7,7 @@ use App\Jobs\SendUserReminders;
 use App\Models\DayTarget;
 use App\Models\Mesocycle;
 use App\Models\NotificationPref;
+use App\Models\Plan;
 use App\Models\PlanWeek;
 use App\Models\Profile;
 use App\Models\PushSubscription;
@@ -223,6 +224,17 @@ it('NOTIF-004 NOTIF-005 at 09:00 only a user on a plan-week start may be due, an
     Carbon::setTestNow('2026-09-26 09:01:00');
     $this->artisan('reminders:send')->assertSuccessful();
     Queue::assertPushed(SendUserReminders::class, 1);
+});
+
+it('NOTIF-005 a plan starting mid-week may have its morning reminder on the start day, not the day after', function () {
+    $user = remindedUser();
+    // Week 0 begins on the start, a Thursday; later weeks begin on Monday, the review day.
+    Plan::query()->where('user_id', $user->id)->update(['start_date' => '2026-09-10', 'review_weekday' => 1]);
+    $at = fn (string $date) => ReminderDays::mayHaveDue([$user->id], new DateTimeImmutable("{$date} 08:50:00"), new DateTimeImmutable("{$date} 09:00:00"));
+
+    expect($at('2026-09-10'))->toBe([$user->id])
+        ->and($at('2026-09-11'))->toBe([])
+        ->and($at('2026-09-14'))->toBe([$user->id]);
 });
 
 it('NOTIF-001 reminders:send queues one job per subscribed user, so one user\'s failure cannot hold up the rest', function () {
