@@ -4,14 +4,17 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\UndoTokenFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 /**
  * A reversible write's inverse, kept under its undo token until it is applied
- * or 24 hours pass (CAP-013). Written and read only by UndoLog.
+ * or 24 hours pass (CAP-013). Written and read only by UndoLog; expired ones are
+ * pruned by the scheduled model:prune.
  *
  * @property string $id
  * @property int $user_id
@@ -22,9 +25,15 @@ use Illuminate\Support\Carbon;
 class UndoToken extends Model
 {
     /** @use HasFactory<UndoTokenFactory> */
-    use BelongsToUser, HasFactory, HasUlids;
+    use BelongsToUser, HasFactory, HasUlids, MassPrunable;
 
     protected $guarded = [];
+
+    /** @return Builder<static> */
+    public function prunable(): Builder
+    {
+        return static::query()->where('expires_at', '<=', now());
+    }
 
     /** @return array<string, mixed> */
     protected function casts(): array

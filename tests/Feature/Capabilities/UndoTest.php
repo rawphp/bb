@@ -8,14 +8,21 @@
 // before the test harness swapped it, and using it drops the test's
 // RefreshDatabase transaction. UndoApplyTest covers the HTTP seam.
 
+use App\Capabilities\Support\UndoLog;
 use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Undo\Data\UndoApplyInput;
 use App\Capabilities\Undo\UndoApplyCapability;
+use App\Models\DayTarget;
 use App\Models\Step;
+use App\Models\UndoToken;
 use App\Models\User;
 use App\Models\WeighIn;
+use App\Models\WorkoutSession;
+use App\Models\WorkoutSet;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Rawphp\Capabilities\Support\CapabilityContext;
 use Rawphp\Capabilities\Support\CapabilityFailure;
 use Tests\Support\Fixtures\Undo\StepCountSetCapability;
@@ -40,6 +47,16 @@ function undoAs(User $user, string $token): WriteResult
     $run = app(UndoApplyCapability::class)->definition()->toDefinition()->run;
 
     return $run(new UndoApplyInput($token), CapabilityContext::make(['caller' => 'http', 'actor' => $user]));
+}
+
+/** Run a write through UndoLog::record() for the user, as a reversible write's run() does. */
+function recordAs(User $user, Closure $write): WriteResult
+{
+    return app(UndoLog::class)->record($user, function () use ($write): WriteResult {
+        $write();
+
+        return new WriteResult(invalidates: ['steps_show{}']);
+    });
 }
 
 /** @return list<array<string, mixed>> every step and weigh-in row as stored */
@@ -123,11 +140,153 @@ it('CAP-013 does not find another user\'s token', function () {
         ->and(Step::query()->find($this->step->id)->count)->toBe(9000);
 });
 
-it('CAP-013 removes a user\'s expired tokens when it stores a new one', function () {
-    $old = setStepsAs($this->user, 9000)->undo;
-    $this->travel(25)->hours();
+it('CAP-013 rolls a reversible write back when it fails, and the next write still gets a token', function () {
+    expect(fn () => recordAs($this->user, function () {
+        $this->step->update(['count' => 9000]);
+        throw new RuntimeException('The write failed.');
+    }))->toThrow(RuntimeException::class, 'The write failed.');
 
-    setStepsAs($this->user, 9500);
+    expect(Step::query()->find($this->step->id)->count)->toBe(4000)
+        ->and(UndoToken::query()->count())->toBe(0)
+        ->and(setStepsAs($this->user, 9000)->undo)->toBeString();
+});
 
-    $this->assertDatabaseMissing('undo_tokens', ['id' => $old]);
+it('CAP-013 gives no undo token to a reversible write that changes nothing', function () {
+    setStepsAs($this->user, 9000);
+
+    expect(setStepsAs($this->user, 9000)->undo)->toBeNull()
+        ->and(UndoToken::query()->count())->toBe(1);
+});
+
+it('CAP-013 shares one token between a reversible write and one it runs inside it, and undoes both', function () {
+    $before = storedRows();
+
+    $inner = null;
+    $outer = recordAs($this->user, function () use (&$inner) {
+        Step::factory()->for($this->user)->create(['date' => '2026-11-04', 'count' => 100]);
+        $inner = setStepsAs($this->user, 9000);
+    });
+
+    expect($inner->undo)->toBeNull()
+        ->and($outer->undo)->toBeString()
+        ->and(UndoToken::query()->count())->toBe(1);
+
+    undoAs($this->user, $outer->undo);
+
+    expect(storedRows())->toEqual($before);
+});
+
+it('CAP-013 fails a reversible write that changes rows without a model, and changes nothing', function () {
+    expect(fn () => recordAs($this->user, fn () => Step::query()->whereKey($this->step->id)->update(['count' => 9000])))
+        ->toThrow(LogicException::class, 'A reversible write changed rows without an Eloquent model');
+
+    expect(Step::query()->find($this->step->id)->count)->toBe(4000)
+        ->and(UndoToken::query()->count())->toBe(0);
+});
+
+it('CAP-013 fails a reversible write that saves a day target, whose meal index is kept without models', function () {
+    expect(fn () => recordAs($this->user, fn () => DayTarget::factory()->for($this->user)->create()))
+        ->toThrow(LogicException::class, 'A reversible write changed rows without an Eloquent model');
+
+    expect(DayTarget::query()->count())->toBe(0);
+});
+
+it('CAP-013 fails a reversible write whose delete would cascade to rows it did not delete first', function () {
+    $session = WorkoutSession::factory()->for($this->user)->create();
+    WorkoutSet::factory()->create(['workout_session_id' => $session->id]);
+
+    expect(fn () => recordAs($this->user, fn () => $session->forceDelete()))
+        ->toThrow(LogicException::class, 'A reversible write deleted a workout_sessions row that other rows still point at.');
+
+    expect(WorkoutSet::query()->count())->toBe(1)
+        ->and(WorkoutSession::query()->count())->toBe(1);
+});
+
+it('CAP-013 undoes a delete of a row and the rows that pointed at it, deleted first', function () {
+    $session = WorkoutSession::factory()->for($this->user)->create();
+    WorkoutSet::factory()->create(['workout_session_id' => $session->id]);
+    $rows = fn () => [DB::table('workout_sessions')->get()->all(), DB::table('workout_sets')->get()->all()];
+    $before = $rows();
+
+    $token = recordAs($this->user, function () use ($session) {
+        $session->sets()->get()->each->forceDelete();
+        $session->forceDelete();
+    })->undo;
+    undoAs($this->user, $token);
+
+    expect($rows())->toEqual($before);
+});
+
+it('CAP-013 refuses undo, and keeps the later rows, when a later write added a row that points at a row it created', function () {
+    $session = null;
+    $token = recordAs($this->user, function () use (&$session) {
+        $session = WorkoutSession::factory()->for($this->user)->create();
+    })->undo;
+    WorkoutSet::factory()->create(['workout_session_id' => $session->id]);
+
+    expect(fn () => undoAs($this->user, $token))
+        ->toThrow(CapabilityFailure::class, 'This can\'t be undone because something added since depends on it.');
+
+    expect(WorkoutSession::query()->count())->toBe(1)
+        ->and(WorkoutSet::query()->count())->toBe(1);
+});
+
+it('CAP-013 refuses undo of a delete when a later write added a row with the same unique key', function () {
+    $token = recordAs($this->user, fn () => $this->step->delete())->undo;
+    $later = Step::factory()->for($this->user)->create(['date' => '2026-11-02', 'count' => 6000]);
+
+    expect(fn () => undoAs($this->user, $token))
+        ->toThrow(CapabilityFailure::class, 'This can\'t be undone because it has changed since.');
+
+    expect(Step::query()->pluck('id')->all())->toBe([$later->id]);
+});
+
+it('CAP-013 reads the rows it checks with a lock, so no other write lands between the check and the undo', function () {
+    $token = setStepsAs($this->user, 9000)->undo;
+
+    $reads = [];
+    DB::listen(function ($query) use (&$reads) {
+        if (str_starts_with($query->sql, 'select') && str_contains($query->sql, '`steps`')) {
+            $reads[] = $query->sql;
+        }
+    });
+    undoAs($this->user, $token);
+
+    expect($reads)->not->toBeEmpty()->each->toContain('for update');
+});
+
+it('CAP-013 reads the rows a write changed once per table, not once per row', function () {
+    Step::factory()->for($this->user)->count(5)->sequence(fn ($sequence) => ['date' => '2026-10-0'.($sequence->index + 1)])->create();
+
+    $reads = 0;
+    DB::listen(function ($query) use (&$reads) {
+        if (str_starts_with($query->sql, 'select') && str_contains($query->sql, '`steps`')) {
+            $reads++;
+        }
+    });
+    $token = recordAs($this->user, fn () => Step::query()->whereBelongsTo($this->user)->get()->each->update(['count' => 1]))->undo;
+
+    // One to load the steps for the write, one to read them back after it.
+    expect($token)->toBeString()->and($reads)->toBe(2);
+});
+
+it('CAP-013 prunes expired undo tokens, every user\'s, and keeps the live ones', function () {
+    $other = User::factory()->create();
+    $expired = UndoToken::factory()->for($this->user)->create(['expires_at' => now()]);
+    $otherExpired = UndoToken::factory()->for($other)->create(['expires_at' => now()->subHour()]);
+    $live = UndoToken::factory()->for($this->user)->create(['expires_at' => now()->addMinute()]);
+    $otherLive = UndoToken::factory()->for($other)->create();
+
+    Artisan::call('model:prune', ['--model' => [UndoToken::class]]);
+
+    expect(UndoToken::query()->pluck('id')->sort()->values()->all())
+        ->toBe(collect([$live->id, $otherLive->id])->sort()->values()->all());
+    $this->assertDatabaseMissing('undo_tokens', ['id' => $expired->id])
+        ->assertDatabaseMissing('undo_tokens', ['id' => $otherExpired->id]);
+});
+
+it('CAP-013 schedules pruning of expired undo tokens', function () {
+    Artisan::call('schedule:list');
+
+    expect(Artisan::output())->toContain('model:prune');
 });
