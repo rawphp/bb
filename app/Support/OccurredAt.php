@@ -12,6 +12,10 @@ use Throwable;
  * a date or time (the day a set or check-in belongs to, a workout's start and end)
  * reads it from here, not from the clock. {@see AcceptOccurredAt}
  * checks the window and keeps it for the request; anywhere else it is now.
+ *
+ * No Action calls this yet: the writes that record when a user acted arrive with
+ * their own issues (sets and a workout's start #83, finishing #84, meal check-ins
+ * #71, weigh-ins and steps #88), and each must read the instant here.
  */
 final class OccurredAt
 {
