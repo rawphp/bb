@@ -112,7 +112,8 @@ final class DietClassifier
     /** USDA umbrella categories that mix grains with non-grains, or dairy with egg; they say nothing about one food. */
     private const UMBRELLA_CATEGORIES = ['cereal grains and pasta', 'dairy and egg products'];
 
-    private const ALL_FLAGS = ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'paleo', 'vegan'];
+    /** In GENERIC_CATEGORIES: the category allows every DietFilter flag (a keyword still decides each one). */
+    private const ALL_FLAGS = true;
 
     /** Generic foods: the only flags a USDA food category allows to be true (a keyword can still switch them off). */
     private const MEAT_FLAGS = ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'paleo'];
@@ -159,7 +160,7 @@ final class DietClassifier
      */
     public function classify(string $name, ?string $category, ?string $ingredients, array $tags = [], bool $generic = false): array
     {
-        $flags = array_fill_keys(array_column(DietFilter::cases(), 'value'), false);
+        $flags = $this->none();
         $ingredients = trim((string) $ingredients);
 
         if ($generic) {
@@ -194,7 +195,8 @@ final class DietClassifier
         $legume = $this->has(self::LEGUMES, $text);
         $sugar = $this->has(self::SUGAR, $text);
 
-        return [
+        // On top of none(): a diet DietFilter gains later stays false until a rule here decides it.
+        return array_replace($this->none(), [
             'dairy_free' => ! $dairy,
             'gluten_free' => ! $gluten,
             'grain_free' => ! $grain,
@@ -202,7 +204,18 @@ final class DietClassifier
             'vegetarian' => ! $flesh,
             'paleo' => ! $dairy && ! $grain && ! $legume && ! $sugar,
             'vegan' => ! $flesh && ! $dairy && ! $eggHoney,
-        ];
+        ]);
+    }
+
+    /**
+     * Every DietFilter flag, false: the one list of diets, so the classifier never drifts from the enum.
+     *
+     * @return DietFlags
+     */
+    private function none(): array
+    {
+        /** @var DietFlags */
+        return array_fill_keys(array_column(DietFilter::cases(), 'value'), false);
     }
 
     /**
@@ -229,6 +242,9 @@ final class DietClassifier
             $allowed = $this->isEggFood($name) ? ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'paleo'] : ['gluten_free', 'grain_free', 'vegetarian'];
         } else {
             $allowed = self::GENERIC_CATEGORIES[$category] ?? [];
+            if ($allowed === self::ALL_FLAGS) {
+                $allowed = array_keys($flags);
+            }
         }
 
         foreach ($flags as $flag => $value) {

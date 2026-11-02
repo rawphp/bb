@@ -1,6 +1,8 @@
 <?php
 
 use App\Domain\Foods\DietClassifier;
+use App\Domain\Model\DietFilter;
+use App\Models\Food;
 
 const FOODS_ALL_DIETS_FALSE = [
     'dairy_free' => false, 'gluten_free' => false, 'grain_free' => false, 'low_fodmap' => false,
@@ -89,7 +91,13 @@ it('FOOD-027 lets an allergen beat a vegan tag on a product with no ingredients'
     'vegan and milk' => [['en:vegan', 'en:milk'], ['vegan' => false, 'vegetarian' => true, 'dairy_free' => false]],
     'vegan and eggs' => [['en:vegan', 'en:eggs'], ['vegan' => false, 'vegetarian' => true]],
     'vegan and crustaceans' => [['en:vegan', 'en:crustaceans'], ['vegan' => false, 'vegetarian' => false]],
+    'vegan and molluscs' => [['en:vegan', 'en:molluscs'], ['vegan' => false, 'vegetarian' => false]],
+    'vegan and fish' => [['en:vegan', 'en:fish'], ['vegan' => false, 'vegetarian' => false]],
 ]);
+
+it('FOOD-027 lets a vegetarian tag alone stand in for missing ingredients, and nothing more', function () {
+    expect((new DietClassifier)->classify('Mystery', null, null, ['en:vegetarian']))->toBe(foodsDiets(['vegetarian' => true]));
+});
 
 it('FOOD-027 uses tags alone when a packaged product has no ingredients text', function () {
     $flags = (new DietClassifier)->classify('Mystery', null, null, ['en:vegan']);
@@ -291,4 +299,17 @@ it('FOOD-027 makes fresh, egg and noodle pasta non-vegan', function (string $nam
     'fresh pasta' => ['Pasta, fresh-refrigerated, plain, as purchased', false],
     'egg noodles' => ['Noodles, egg, dry, enriched', false],
     'dry pasta' => ['Pasta, dry, enriched', true],
+]);
+
+it('FOOD-027 gives exactly the DietFilter diets on every path, and the food model stores the same list', function (?string $category, ?string $ingredients, array $tags, bool $generic) {
+    $diets = array_column(DietFilter::cases(), 'value');
+    $flags = (new DietClassifier)->classify('Bananas, raw', $category, $ingredients, $tags, $generic);
+
+    expect(array_keys($flags))->toBe($diets)
+        ->and(Food::DIETS)->toBe($diets);
+})->with([
+    'generic' => ['Fruits and Fruit Juices', null, [], true],
+    'ingredients' => [null, 'banana', [], false],
+    'tags only' => [null, null, ['en:vegan'], false],
+    'nothing' => [null, null, [], false],
 ]);
