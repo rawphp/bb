@@ -3,75 +3,39 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-        "available": {
-            "type": "boolean",
-            "description": "the instance has the agent on (AGT-002)"
+        "enabled": {
+            "type": "boolean"
         },
-        "on": {
-            "type": "boolean",
-            "description": "available and this user has not turned it off (AGT-020)"
-        },
-        "status": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-                "text": {
-                    "type": "string"
-                },
-                "tone": {
-                    "type": "string",
-                    "enum": [
-                        "good",
-                        "neutral",
-                        "warning",
-                        "info"
-                    ]
-                }
-            },
-            "required": [
-                "text",
-                "tone"
+        "turns_left": {
+            "type": [
+                "integer",
+                "null"
             ]
         },
-        "usage": {
+        "tokens_left": {
             "type": [
-                "object",
+                "integer",
                 "null"
-            ],
-            "additionalProperties": false,
-            "properties": {
-                "text": {
-                    "type": "string"
-                },
-                "tone": {
-                    "type": "string",
-                    "enum": [
-                        "good",
-                        "neutral",
-                        "warning",
-                        "info"
-                    ]
-                }
-            },
-            "required": [
-                "text",
-                "tone"
-            ],
-            "description": "what is left of the caps; null when uncapped (AGT-005)"
+            ]
         },
-        "note": {
-            "type": "string",
-            "description": "what the Coach can and cannot do (AGT-020)"
-        },
-        "has_conversation": {
+        "at_cap": {
             "type": "boolean"
+        },
+        "resets_at": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "notice": {
+            "type": [
+                "string",
+                "null"
+            ]
         }
     },
     "required": [
-        "available",
-        "on",
-        "status",
-        "note",
-        "has_conversation"
+        "enabled",
+        "at_cap"
     ]
 }
