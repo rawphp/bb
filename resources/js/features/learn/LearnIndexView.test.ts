@@ -73,7 +73,19 @@ describe('LearnIndexView', () => {
         const { wrapper } = await mountIndex();
         await flushPromises();
 
-        expect(wrapper.find('[role="alert"]').text()).toBe(message);
+        expect(wrapper.get('[role="alert"]').text()).toContain(message);
+    });
+
+    it('CAP-010 Try again reads the index again after a failed read', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('learn_show', 500, null)).mockResolvedValueOnce(content as LearnShowOutput);
+        const { wrapper } = await mountIndex();
+        await flushPromises();
+
+        await wrapper.get('[data-test="retry"]').trigger('click');
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledTimes(2);
+        expect(wrapper.text()).toContain('Weighing in');
     });
 
     it('OFF-003 offline with nothing cached says Learn needs a connection', async () => {

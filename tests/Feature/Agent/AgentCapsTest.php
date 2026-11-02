@@ -78,7 +78,7 @@ it('AGT-005 says how much is left near the cap, and the chat still takes the mes
             'tokens_left' => 992_000,
             'at_cap' => false,
             'resets_at' => null,
-            'notice' => '2 Coach messages left today.',
+            'notice' => ['text' => '2 Coach messages left today.', 'tone' => 'info'],
         ]);
 
     $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
@@ -177,7 +177,8 @@ it('AGT-005 runs the day and the month in the app timezone', function () {
             ->assertJsonPath('data.turns_left', 1)
             ->assertJsonPath('data.tokens_left', 0)
             ->assertJsonPath('data.resets_at', '2026-12-01T00:00:00+11:00')
-            ->assertJsonPath('data.notice', 'You\'ve reached this month\'s Coach limit. It resets at 00:00 AEDT on 1 Dec. Everything else still works.');
+            ->assertJsonPath('data.notice.text', 'You\'ve reached this month\'s Coach limit. It resets at 00:00 AEDT on 1 Dec. Everything else still works.')
+            ->assertJsonPath('data.notice.tone', 'warning');
         $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertStatus(429);
 
         // Ten minutes after local midnight, a new day and a new month.
@@ -186,7 +187,8 @@ it('AGT-005 runs the day and the month in the app timezone', function () {
             ->assertOk()
             ->assertJsonPath('data.turns_left', 3)
             ->assertJsonPath('data.tokens_left', 10_000)
-            ->assertJsonPath('data.at_cap', false);
+            ->assertJsonPath('data.at_cap', false)
+            ->assertJsonPath('data.notice', null);
         $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
     } finally {
         date_default_timezone_set($zone);

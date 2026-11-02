@@ -9,7 +9,7 @@ import { useRead } from '@/app/useRead';
 import type { EligibilityRecheckInput, EligibilityRecheckOutput } from '@/contracts/eligibility_recheck';
 import type { EligibilityRecheckShowOutput } from '@/contracts/eligibility_recheck_show';
 import StatusPill from '@/design/StatusPill.vue';
-import ReadState from './ReadState.vue';
+import ReadState from '@/app/ReadState.vue';
 import { toneClasses } from '@/design/tones';
 
 // Settings → Re-check eligibility (SAFE-017). The screening again; the server decides

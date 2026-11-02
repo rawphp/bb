@@ -2,6 +2,8 @@
 
 namespace App\Capabilities\Reads\Data;
 
+use App\Capabilities\Reads\Data\Today\Status;
+use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
 final class AgentStatusShowOutput extends CapabilityData
@@ -12,6 +14,7 @@ final class AgentStatusShowOutput extends CapabilityData
         public readonly ?int $tokens_left,
         public readonly bool $at_cap,
         public readonly ?string $resets_at,
-        public readonly ?string $notice,
+        /** How much is left, or that a cap is reached, with its tone picked here (CAP-018). */
+        #[Field(of: Status::class)] public readonly ?Status $notice,
     ) {}
 }

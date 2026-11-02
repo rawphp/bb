@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityError, read, write } from '@/app/call';
 import type { AgentStatusShowOutput } from '@/contracts/agent_status_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
+import { toneClasses } from '@/design/tones';
 import CoachSettingsView from './CoachSettingsView.vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
@@ -60,6 +61,12 @@ describe('CoachSettingsView', () => {
         const wrapper = mount(CoachSettingsView, { global, props: { payload: nearCap } });
 
         expect(wrapper.text()).toContain('3 Coach messages left today.');
+    });
+
+    it.each(['info', 'warning'] as const)('CAP-018 shows the notice in the %s tone the server picked', (tone) => {
+        const wrapper = mount(CoachSettingsView, { global, props: { payload: { ...nearCap, notice: { text: '3 Coach messages left today.', tone } } } });
+
+        expect(wrapper.get('[data-test="notice"]').classes()).toEqual(expect.arrayContaining(toneClasses[tone].split(' ')));
     });
 
     it.each([

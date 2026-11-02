@@ -78,7 +78,7 @@ describe('ArticleView', () => {
         const wrapper = mount(ArticleView, { props: { slug: 'missing' } });
         await flushPromises();
 
-        expect(wrapper.find('[role="alert"]').text()).toBe(message);
+        expect(wrapper.get('[role="alert"]').text()).toContain(message);
     });
 
     it('OFF-003 offline with nothing cached says the article needs a connection', async () => {

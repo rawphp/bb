@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useRead } from '@/app/useRead';
 import type { ArticleShowOutput } from '@/contracts/article_show';
-import OfflineNotice from '@/design/OfflineNotice.vue';
+import ReadState from '@/app/ReadState.vue';
 
 // One Learn article, in the blocks article_show returns (LRN-001). Ported from
 // rp-clone's ArticleView. /dev/screens/article_show hands it a fixture as payload.
@@ -11,7 +11,7 @@ type Span = Block['spans'][number];
 
 const props = defineProps<{ slug?: string; payload?: ArticleShowOutput }>();
 
-const { data: article, failure } = useRead<ArticleShowOutput>('article_show', { slug: props.slug ?? '' }, props.payload);
+const { data: article, failure, load } = useRead<ArticleShowOutput>('article_show', { slug: props.slug ?? '' }, props.payload);
 
 // Consecutive bullet blocks render as one list; every other block stands alone.
 const groups = computed(() => {
@@ -46,15 +46,14 @@ function spanTag(span: Span): 'strong' | 'em' | 'span' {
             </template>
         </article>
 
-        <OfflineNotice v-else-if="failure === 'offline'" needs="This article will load when you're back online." />
-        <p v-else-if="failure" role="alert" class="text-tone-warning">
-            {{ failure === 'signed-out' ? 'You are signed out.' : 'This article could not be loaded.' }}
-        </p>
-
-        <div v-else aria-busy="true" class="flex flex-col gap-3">
-            <span class="sr-only">Loading</span>
-            <span aria-hidden="true" class="mx-auto block h-4 w-40 animate-pulse rounded bg-background" />
-            <span v-for="(w, n) in ['w-full', 'w-full', 'w-2/3']" :key="n" aria-hidden="true" class="block h-4 animate-pulse rounded bg-background" :class="w" />
-        </div>
+        <ReadState v-else :failure="failure" what="This article" @retry="load">
+            <template #loading>
+                <div aria-busy="true" class="flex flex-col gap-3">
+                    <span class="sr-only">Loading</span>
+                    <span aria-hidden="true" class="mx-auto block h-4 w-40 animate-pulse rounded bg-background" />
+                    <span v-for="(w, n) in ['w-full', 'w-full', 'w-2/3']" :key="n" aria-hidden="true" class="block h-4 animate-pulse rounded bg-background" :class="w" />
+                </div>
+            </template>
+        </ReadState>
     </main>
 </template>

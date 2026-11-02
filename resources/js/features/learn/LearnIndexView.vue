@@ -2,13 +2,13 @@
 import { RouterLink } from 'vue-router';
 import { useRead } from '@/app/useRead';
 import type { LearnShowOutput } from '@/contracts/learn_show';
-import OfflineNotice from '@/design/OfflineNotice.vue';
+import ReadState from '@/app/ReadState.vue';
 
 // The Learn index, grouped by section (LRN-001, LRN-002, LRN-005). Ported from
 // rp-clone's LearnIndexView. /dev/screens/learn_show hands it a fixture as payload.
 const props = defineProps<{ payload?: LearnShowOutput }>();
 
-const { data: learn, failure } = useRead<LearnShowOutput>('learn_show', {}, props.payload);
+const { data: learn, failure, load } = useRead<LearnShowOutput>('learn_show', {}, props.payload);
 </script>
 
 <template>
@@ -32,17 +32,18 @@ const { data: learn, failure } = useRead<LearnShowOutput>('learn_show', {}, prop
             </section>
         </template>
 
-        <OfflineNotice v-else-if="failure === 'offline'" class="mt-6" needs="Learn will load when you're back online." />
-        <p v-else-if="failure" role="alert" class="mt-6 px-2 text-tone-warning">
-            {{ failure === 'signed-out' ? 'You are signed out.' : 'Learn could not be loaded.' }}
-        </p>
-
-        <div v-else aria-busy="true" class="mt-6">
-            <span class="sr-only">Loading</span>
-            <div v-for="n in 2" :key="n" aria-hidden="true" class="mt-6">
-                <span class="mx-4 mb-2 block h-3 w-24 animate-pulse rounded bg-surface" />
-                <span class="block h-[calc(var(--spacing-tap)*3)] animate-pulse rounded-xl bg-surface" />
-            </div>
+        <div v-else class="mt-6">
+            <ReadState :failure="failure" what="Learn" @retry="load">
+                <template #loading>
+                    <div aria-busy="true">
+                        <span class="sr-only">Loading</span>
+                        <div v-for="n in 2" :key="n" aria-hidden="true" class="mt-6">
+                            <span class="mx-4 mb-2 block h-3 w-24 animate-pulse rounded bg-surface" />
+                            <span class="block h-[calc(var(--spacing-tap)*3)] animate-pulse rounded-xl bg-surface" />
+                        </div>
+                    </div>
+                </template>
+            </ReadState>
         </div>
     </main>
 </template>

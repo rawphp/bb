@@ -11,7 +11,7 @@ import type { TokenRevokeInput } from '@/contracts/token_revoke';
 import BottomSheet from '@/design/BottomSheet.vue';
 import ChoiceList from '@/design/ChoiceList.vue';
 import StatusPill from '@/design/StatusPill.vue';
-import ReadState from './ReadState.vue';
+import ReadState from '@/app/ReadState.vue';
 import { toneClasses } from '@/design/tones';
 
 // Settings → Personal access tokens (CAP-021): create one, see it once, list and revoke.

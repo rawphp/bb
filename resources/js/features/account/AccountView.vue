@@ -1,31 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { CapabilityError, read } from '@/app/call';
+import ReadState from '@/app/ReadState.vue';
+import { useRead } from '@/app/useRead';
 import type { AccountShowOutput } from '@/contracts/account_show';
 
 // Placeholder screen for account_show. A screen takes its payload as a prop so
 // /dev/screens/account_show can render it from a fixture; otherwise it reads.
 const props = defineProps<{ payload?: AccountShowOutput }>();
 
-const account = ref<AccountShowOutput | undefined>(props.payload);
-const failure = ref<'signed-out' | 'error' | null>(null);
-
-function fail(error: unknown): void {
-    account.value = undefined;
-    failure.value = error instanceof CapabilityError && error.status === 401 ? 'signed-out' : 'error';
-}
-
-onMounted(async () => {
-    if (account.value) return;
-    try {
-        // A cached copy shows at once; the refresh replaces it, or takes it away when it fails (OFF-003).
-        const data = await read<AccountShowOutput>('account_show', {}, (fresh) => (account.value = fresh), fail);
-        // A refresh that already landed wins over the copy read() was handed.
-        if (failure.value === null) account.value ??= data;
-    } catch (error) {
-        fail(error);
-    }
-});
+const { data: account, failure, load } = useRead<AccountShowOutput>('account_show', {}, props.payload);
 </script>
 
 <template>
@@ -41,8 +23,6 @@ onMounted(async () => {
                 <dd>{{ account.email }}</dd>
             </div>
         </dl>
-        <p v-else-if="failure === 'signed-out'" class="mt-4">You are signed out.</p>
-        <p v-else-if="failure === 'error'" class="mt-4">Your account could not be loaded.</p>
-        <p v-else class="mt-4" aria-busy="true">Loading…</p>
+        <div v-else class="mt-4"><ReadState :failure="failure" what="Your account" @retry="load" /></div>
     </main>
 </template>

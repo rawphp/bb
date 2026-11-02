@@ -8,7 +8,7 @@ import type { CoachConversationClearInput } from '@/contracts/coach_conversation
 import type { CoachEnabledSetInput } from '@/contracts/coach_enabled_set';
 import BottomSheet from '@/design/BottomSheet.vue';
 import Toast, { type ToastResult } from '@/design/Toast.vue';
-import ReadState from './ReadState.vue';
+import ReadState from '@/app/ReadState.vue';
 import { toneClasses } from '@/design/tones';
 
 // Settings → Coach (AGT-020): this user's Coach on or off, clear the conversation,
@@ -91,7 +91,7 @@ async function clear(): Promise<void> {
                 Turning the Coach off for your account isn't available on this server yet.
             </p>
 
-            <p v-if="status.notice" class="rounded-2xl p-4" :class="toneClasses[status.at_cap ? 'warning' : 'info']">{{ status.notice }}</p>
+            <p v-if="status.notice" class="rounded-2xl p-4" :class="toneClasses[status.notice.tone]" data-test="notice">{{ status.notice.text }}</p>
             <p v-if="error" class="rounded-2xl p-4" :class="toneClasses.warning" role="alert">{{ error }}</p>
 
             <section class="space-y-3 rounded-2xl bg-surface p-4" aria-labelledby="coach-can">
