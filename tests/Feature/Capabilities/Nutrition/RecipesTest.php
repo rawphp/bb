@@ -140,10 +140,10 @@ it('RCP-020 a meal type and diet filters narrow either list', function () {
     $user = User::factory()->create();
     $beans = recipeBeansFood();
     $chicken = recipeChickenFood();
-    recipeWith($user, 'Bean bowl', 'lunch', 1, [[$beans, 200]])->update(['vegan' => true]);
+    recipeWith($user, 'Bean bowl', 'lunch', 1, [[$beans, 200]])->forceFill(['vegan' => true])->save();
     recipeWith($user, 'Chicken lunch', 'lunch', 1, [[$chicken, 200]]);
-    recipeWith($user, 'Bean dinner', 'dinner', 1, [[$beans, 200]])->update(['vegan' => true]);
-    recipeWith(null, 'Library beans', 'lunch', 1, [[$beans, 200]])->update(['vegan' => true]);
+    recipeWith($user, 'Bean dinner', 'dinner', 1, [[$beans, 200]])->forceFill(['vegan' => true])->save();
+    recipeWith(null, 'Library beans', 'lunch', 1, [[$beans, 200]])->forceFill(['vegan' => true])->save();
 
     $names = fn (array $input) => array_column(recipeCall($user, 'recipes_show', $input)->assertOk()->json('data.rows'), 'name');
 

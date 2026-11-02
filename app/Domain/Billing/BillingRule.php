@@ -30,11 +30,12 @@ final class BillingRule
     public const BILLING_PREFIX = 'billing_';
 
     /**
-     * Reads that send the user's photo or words to the instance's AI key (FOOD-042 to FOOD-044). They change
-     * nothing, but each one costs the operator, so they come with the plan like a write (SUB-001): a lapsed
-     * user or one who has never subscribed is refused them, and keeps every other read (SUB-010).
+     * Reads that send the user's photo, words or a web page to the instance's AI key (FOOD-042 to FOOD-044,
+     * RCP-003, RCP-010). They change nothing, but each one costs the operator, so they come with the plan like
+     * a write (SUB-001): a lapsed user or one who has never subscribed is refused them, and keeps every other
+     * read (SUB-010).
      */
-    public const AI_READS = ['scan_photo', 'scan_describe', 'scan_label'];
+    public const AI_READS = ['scan_photo', 'scan_describe', 'scan_label', 'recipe_generate', 'recipe_import'];
 
     /** The write a user who has never subscribed may make besides those, to reach the paywall (SUB-004). */
     public const ONBOARDING = 'onboarding_answer';
