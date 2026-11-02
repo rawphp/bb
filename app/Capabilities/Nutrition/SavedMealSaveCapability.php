@@ -8,7 +8,6 @@ use App\Capabilities\Nutrition\Data\SavedMealFood;
 use App\Capabilities\Nutrition\Data\SavedMealSaveInput;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\OwnsInput;
-use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Support\UsesClientUlid;
 use App\Capabilities\Support\WriteResult;
 use App\Models\DayTargetMeal;
@@ -26,7 +25,7 @@ final class SavedMealSaveCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('saved_meal_save', affects: ['saved_meals_show'])
+        return HostDefinition::write('saved_meal_save', affects: SavedMealReads::AFFECTS)
             ->description('Save a meal\'s foods under a name as a saved meal, with their amounts, cooked state and locks, so they can be loaded into any meal later. Give meal_id to save a planned meal\'s foods (recipe servings are left out), or foods to save a list of foods and grams, such as a scanned meal, locked. A new saved meal takes a new id; sending the id of one the user already has changes nothing (use saved_meal_rename to rename it).')
             ->cli('saved-meal', 'save')
             ->input(SavedMealSaveInput::class)
@@ -44,7 +43,7 @@ final class SavedMealSaveCapability implements HostCapability, OwnsInput
                     array_map(fn (SavedMealFood $food) => ['food_id' => $food->food_id, 'grams' => $food->grams], $input->foods),
                 );
 
-                return new WriteResult(invalidates: [ReadKey::for('saved_meals_show')], toast: "Saved {$saved->name}");
+                return new WriteResult(invalidates: SavedMealReads::keys(), toast: "Saved {$saved->name}");
             });
     }
 

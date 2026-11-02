@@ -7,7 +7,6 @@ use App\Capabilities\HostCapability;
 use App\Capabilities\Nutrition\Data\SavedMealRenameInput;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\OwnsInput;
-use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Support\WriteResult;
 use App\Models\SavedMeal;
 use App\Models\User;
@@ -20,7 +19,7 @@ final class SavedMealRenameCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('saved_meal_rename', affects: ['saved_meals_show'])
+        return HostDefinition::write('saved_meal_rename', affects: SavedMealReads::AFFECTS)
             ->description('Rename one of the user\'s saved meals. The name is trimmed and cannot be blank; the foods stay as they are.')
             ->cli('saved-meal', 'rename')
             ->input(SavedMealRenameInput::class)
@@ -29,7 +28,7 @@ final class SavedMealRenameCapability implements HostCapability, OwnsInput
                 $user = $context->user();
                 ($this->rename)($user, $input->saved_meal_id, $input->name);
 
-                return new WriteResult(invalidates: [ReadKey::for('saved_meals_show')]);
+                return new WriteResult(invalidates: SavedMealReads::keys());
             });
     }
 

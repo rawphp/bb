@@ -7,7 +7,6 @@ use App\Capabilities\HostCapability;
 use App\Capabilities\Nutrition\Data\SavedMealDeleteInput;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\OwnsInput;
-use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Support\WriteResult;
 use App\Models\SavedMeal;
 use App\Models\User;
@@ -21,7 +20,7 @@ final class SavedMealDeleteCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         // AGT-010: it deletes, so the coach needs the user's say-so.
-        return HostDefinition::write('saved_meal_delete', affects: ['saved_meals_show'], destructive: true)
+        return HostDefinition::write('saved_meal_delete', affects: SavedMealReads::AFFECTS, destructive: true)
             ->description('Delete one of the user\'s saved meals and its list of foods. Meals it was already loaded into keep their foods. It cannot be undone.')
             ->cli('saved-meal', 'delete')
             ->input(SavedMealDeleteInput::class)
@@ -30,7 +29,7 @@ final class SavedMealDeleteCapability implements HostCapability, OwnsInput
                 $user = $context->user();
                 ($this->delete)($user, $input->saved_meal_id);
 
-                return new WriteResult(invalidates: [ReadKey::for('saved_meals_show')]);
+                return new WriteResult(invalidates: SavedMealReads::keys());
             });
     }
 

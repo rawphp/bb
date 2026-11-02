@@ -21,7 +21,7 @@ final class MealSavedMealLoadCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('meal_saved_meal_load', affects: ['today_show'])
+        return HostDefinition::write('meal_saved_meal_load', affects: ['today_show', 'food_search'])
             ->description('Load one of the user\'s saved meals into a planned meal: its foods join the meal\'s foods, skipping any food the meal already has. Locked foods keep their saved amounts, and every unlocked food and recipe serving in the meal is re-fitted to the meal\'s targets.')
             ->cli('meal', 'saved-meal-load')
             ->input(MealSavedMealLoadInput::class)
@@ -35,7 +35,12 @@ final class MealSavedMealLoadCapability implements HostCapability, OwnsInput
                 }
 
                 return new WriteResult(
-                    invalidates: [ReadKey::for('today_show'), ReadKey::for('today_show', ['date' => $loaded['date']])],
+                    // The Pantry opened from this meal marks the foods already in it (FOOD-020).
+                    invalidates: [
+                        ReadKey::for('today_show'),
+                        ReadKey::for('today_show', ['date' => $loaded['date']]),
+                        ReadKey::for('food_search', ['meal_id' => $input->meal_id]),
+                    ],
                     toast: "Loaded {$loaded['name']}",
                 );
             });
