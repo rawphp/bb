@@ -21,7 +21,7 @@ final class DomainArch
         'now',
         'today',
         'config',
-        // Every PHP function that reads the clock when it is not handed a timestamp.
+        // Every PHP function that reads the clock when it is not handed a timestamp, or fills a partial format from it.
         'time',
         'microtime',
         'hrtime',
@@ -37,6 +37,12 @@ final class DomainArch
         'gmstrftime',
         'date_create',
         'date_create_immutable',
+        'date_create_from_format',
+        'date_create_immutable_from_format',
+        'gettimeofday',
+        'unixtojd',
+        'easter_date',
+        'easter_days',
     ];
 
     /**
