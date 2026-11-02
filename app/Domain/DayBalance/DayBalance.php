@@ -21,13 +21,14 @@ final class DayBalance
      */
     public static function remaining(MealTarget $day, array $spent): MealTarget
     {
-        $sum = fn (string $macro): float => array_sum(array_map(fn (MealTarget $t) => $t->{$macro}, $spent));
+        /** @param callable(MealTarget): float $macro */
+        $sum = fn (callable $macro): float => array_sum(array_map($macro, $spent));
 
         return new MealTarget(
-            kcal: $day->kcal - $sum('kcal'),
-            proteinG: $day->proteinG - $sum('proteinG'),
-            fatG: $day->fatG - $sum('fatG'),
-            carbsG: $day->carbsG - $sum('carbsG'),
+            kcal: $day->kcal - $sum(fn (MealTarget $t) => $t->kcal),
+            proteinG: $day->proteinG - $sum(fn (MealTarget $t) => $t->proteinG),
+            fatG: $day->fatG - $sum(fn (MealTarget $t) => $t->fatG),
+            carbsG: $day->carbsG - $sum(fn (MealTarget $t) => $t->carbsG),
         );
     }
 
@@ -46,17 +47,21 @@ final class DayBalance
             return [];
         }
 
-        $spread = function (float $left, string $macro) use ($among): array {
-            $weights = array_map(fn (Slot $s) => $s->target->{$macro}, $among);
+        /**
+         * @param  callable(MealTarget): float  $macro
+         * @return list<float>
+         */
+        $spread = function (float $left, callable $macro) use ($among): array {
+            $weights = array_map(fn (Slot $s) => $macro($s->target), $among);
             $total = array_sum($weights);
 
             return $total > 0
                 ? array_map(fn (float $w) => $left * $w / $total, $weights)
                 : array_fill(0, count($among), $left / count($among));
         };
-        $protein = $spread($remaining->proteinG, 'proteinG');
-        $fat = $spread($remaining->fatG, 'fatG');
-        $carbs = $spread($remaining->carbsG, 'carbsG');
+        $protein = $spread($remaining->proteinG, fn (MealTarget $t) => $t->proteinG);
+        $fat = $spread($remaining->fatG, fn (MealTarget $t) => $t->fatG);
+        $carbs = $spread($remaining->carbsG, fn (MealTarget $t) => $t->carbsG);
 
         return array_map(function (int $index) use ($among, $protein, $fat, $carbs): Slot {
             $proteinG = max(0.0, $protein[$index]);
@@ -75,7 +80,8 @@ final class DayBalance
     /**
      * DAY-020: changes the carbs of a day's meals by `$by` grams in all, spread in proportion to the meals' carbs, or
      * equally when they have none. A meal's calories follow its carbs, and its protein and fat hold (NUT-022). A meal
-     * that would lose carbs and keep under 5 g refuses the change (SAFE-010). A meal that gains carbs, or keeps what
+     * that would lose carbs and keep under 5 g refuses the change (SAFE-010); one that lands within float rounding of
+     * 5 g holds exactly 5 g. A meal that gains carbs, or keeps what
      * it has, never refuses, even when it was under 5 g already.
      *
      * @param  list<Slot>  $over
@@ -98,8 +104,13 @@ final class DayBalance
             $share = $total > 0 ? $slot->target->carbsG / $total : 1 / count($over);
             $change = $by * $share;
             $carbsG = $slot->target->carbsG + $change;
-            if ($change < 0 && $carbsG < MacroRules::MEAL_MINIMUM_G - self::TOLERANCE) {
-                throw MealMoveRefusal::belowCarbMinimum($slot->id);
+            if ($change < 0 && $carbsG < MacroRules::MEAL_MINIMUM_G) {
+                if ($carbsG < MacroRules::MEAL_MINIMUM_G - self::TOLERANCE) {
+                    throw MealMoveRefusal::belowCarbMinimum($slot->id);
+                }
+                // Float rounding only: hold exactly the floor, so SafetyWarnings' plain `< 5` check agrees.
+                $carbsG = MacroRules::MEAL_MINIMUM_G;
+                $change = $carbsG - $slot->target->carbsG;
             }
 
             return new Slot($slot->id, new MealTarget(

@@ -5,7 +5,10 @@ use App\Domain\DayBalance\MealMoveRefusal;
 use App\Domain\DayBalance\MealMoveRefusalReason;
 use App\Domain\DayBalance\Slot;
 use App\Domain\Macros\MacroRules;
+use App\Domain\Model\Meal;
 use App\Domain\Model\MealTarget;
+use App\Domain\Safety\SafetyWarning;
+use App\Domain\Safety\SafetyWarnings;
 
 // DAY-020: moving calories between a day's meals, and spreading a day's change in carbs over its meals. Calories go
 // through carbs, so protein and fat hold (NUT-022) and every meal keeps 5 g of carbs (SAFE-010).
@@ -126,10 +129,15 @@ it('DAY-020 a spread needs a finite amount of carbs', function (float $by) {
 ]);
 
 it('SAFE-010 the 5 g carb floor allows for float rounding', function () {
-    // 8.2 - 3.2 is 4.999999999999999 in floating point: still 5 g.
+    // 8.2 - 3.2 is 4.999999999999999 in floating point: the move is accepted and the meal holds exactly 5 g, so
+    // SafetyWarnings (a plain `< 5` check) does not flag a meal this move was allowed to make.
+    $meal = moveSlot('a', carbs: 8.2);
+    $moved = DayBalance::shiftingCarbs(by: -3.2, over: [$meal])[0];
     expect(8.2 - 3.2)->toBeLessThan(MacroRules::MEAL_MINIMUM_G)
-        ->and(DayBalance::shiftingCarbs(by: -3.2, over: [moveSlot('a', carbs: 8.2)])[0]->target->carbsG)
-        ->toEqualWithDelta(5, MOVE_ACC);
+        ->and($moved->target->carbsG)->toBe(MacroRules::MEAL_MINIMUM_G)
+        ->and($moved->target->kcal)->toEqualWithDelta($meal->target->kcal - 4 * 3.2, MOVE_ACC)
+        ->and(SafetyWarnings::nutrients([new Meal($moved->id, 'Lunch', $moved->target)]))
+        ->not->toContainEqual(SafetyWarning::mealCarbsBelowMinimum('Lunch'));
 
     // A thousandth of a gram under is not rounding.
     expect(moveRefusal(fn () => DayBalance::shiftingCarbs(by: -3.201, over: [moveSlot('a', carbs: 8.2)])))

@@ -80,6 +80,16 @@ it('DAY-002 a macro every receiving meal has none of is split equally', function
         ->and(slotMacro($result, 'carbsG'))->toEqual([45, 45]);
 });
 
+it('DAY-002 only the macro no receiving meal has is split equally', function () {
+    // Neither meal has fat, so fat splits 50 : 50 while protein and carbs still follow the meals' targets.
+    $left = new MealTarget(kcal: 0, proteinG: 90, fatG: 30, carbsG: 200);
+    $result = DayBalance::redistribute(remaining: $left, among: [redistributeSlot('a', 30, 0, 150), redistributeSlot('b', 60, 0, 50)]);
+
+    expect(slotMacro($result, 'fatG'))->toEqual([15, 15])
+        ->and(slotMacro($result, 'proteinG'))->toEqual([30, 60])
+        ->and(slotMacro($result, 'carbsG'))->toEqual([150, 50]);
+});
+
 it('DAY-002 one receiving meal takes the whole remainder', function () {
     $left = new MealTarget(kcal: 0, proteinG: 47, fatG: 22, carbsG: 92);
     $result = DayBalance::redistribute(remaining: $left, among: [redistributeSlot('a', 51, 21, 96)]);
