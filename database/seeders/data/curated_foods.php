@@ -51,7 +51,7 @@ return [
     ['Beef short ribs', 'protein_sparingly', 295, 14.4, 26.0, 0, 0, 0.6, ['rib' => 100], 'dgrlp'],
     ['Pork belly', 'protein_sparingly', 518, 9.3, 53.0, 0, 0, 0.5, ['4 oz' => 113], 'dgrlp'],
     ['Pork shoulder', 'protein_sparingly', 236, 16.5, 18.5, 0, 0, 0.65, ['4 oz' => 113], 'dgrlp'],
-    ['Bacon', 'protein_sparingly', 417, 12.6, 40.0, 1.4, 0, 0.35, ['slice' => 12], 'dgrl'],
+    ['Bacon', 'protein_sparingly', 417, 12.6, 40.0, 1.4, 0, 0.35, ['slice' => 12], 'd'],
     ['Pork sausage', 'protein_sparingly', 339, 13.8, 31.0, 0.8, 0, 0.7, ['link' => 70], 'd'],
     ['Italian sausage', 'protein_sparingly', 346, 14.2, 31.3, 1.0, 0, 0.7, ['link' => 83], 'd'],
     ['Chicken thigh with skin', 'protein_sparingly', 221, 16.7, 16.7, 0, 0, 0.75, ['thigh' => 130], 'dgrlp'],

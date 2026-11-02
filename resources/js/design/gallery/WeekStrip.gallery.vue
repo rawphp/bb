@@ -44,5 +44,9 @@ const swipes = ref(0);
             <h3 class="mb-2 text-sm text-secondary-text">Disabled</h3>
             <WeekStrip :days="days" disabled />
         </div>
+        <div>
+            <h3 class="mb-2 text-sm text-secondary-text">Read-only</h3>
+            <WeekStrip :days="days" readonly />
+        </div>
     </div>
 </template>

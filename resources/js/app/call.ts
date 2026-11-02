@@ -72,7 +72,7 @@ export function readFresh<T = unknown>(name: string, input: CapabilityInput = {}
 
 // The statuses after which a cached copy may not be shown. A gone session clears
 // every read (forget()); a refused or missing read drops that one (fetchRead()).
-const SESSION_GONE = [401, 419];
+export const SESSION_GONE = [401, 419];
 const READ_GONE = [403, 404];
 const REMOVES_COPY = [...SESSION_GONE, ...READ_GONE];
 

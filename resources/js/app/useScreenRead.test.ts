@@ -250,4 +250,28 @@ describe('useScreenRead', () => {
 
         expect(wrapper.text()).toBe('signed-out');
     });
+
+    // Cases from main's first useScreenRead (Learn screens, #180), on this signature.
+    it.each([
+        [new CapabilityError('probe_show', 404, null), 'error'],
+        [new CapabilityError('probe_show', 0, null), 'error'],
+        [new Error('boom'), 'error'],
+    ])('CAP-004 a read that throws %s ends in %s', async (error, failure) => {
+        readMock.mockRejectedValueOnce(error);
+        const { wrapper } = screen();
+        await flushPromises();
+
+        expect(wrapper.text()).toBe(failure);
+    });
+
+    it('OFF-003 a refusal that lands before read() returns keeps the cached copy away', async () => {
+        readMock.mockImplementationOnce(async (_name, _input, _onUpdate, onError) => {
+            (onError as (error: CapabilityError) => void)(new CapabilityError('probe_show', 404, null));
+            return { n: 1 };
+        });
+        const { wrapper } = screen();
+        await flushPromises();
+
+        expect(wrapper.text()).toBe('error');
+    });
 });

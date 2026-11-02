@@ -586,7 +586,8 @@ it('CAP-013 prunes expired undo tokens, every user\'s, and keeps the live ones',
 
 it('CAP-013 schedules pruning of expired undo tokens every hour', function () {
     $prune = collect(app(Schedule::class)->events())
-        ->filter(fn ($event) => str_contains((string) $event->command, 'model:prune'))
+        // Other models are pruned too (AuditRecord, CAP-022), so find this one's entry.
+        ->filter(fn ($event) => str_contains((string) $event->command, 'model:prune') && str_contains((string) $event->command, 'UndoToken'))
         ->sole();
 
     expect($prune->command)->toContain("--model='".UndoToken::class."'")

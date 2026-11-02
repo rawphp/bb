@@ -28,3 +28,7 @@ it('FOOD-027 treats a flag a food does not name as not passing', function () {
         'vegan' => true,
     ]);
 });
+
+it('FOOD-027 passes an empty mix through no diet filter', function () {
+    expect(DietFilter::sharedBy([]))->toBe(array_fill_keys(array_column(DietFilter::cases(), 'value'), false));
+});

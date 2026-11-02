@@ -1,0 +1,39 @@
+{
+  "BrandedFoods": [
+    {
+      "fdcId": 1990001,
+      "dataType": "Branded",
+      "description": "WHOLE WHEAT BREAD",
+      "brandOwner": "Bakery Co",
+      "brandName": "GOOD LOAF",
+      "gtinUpc": "012345678905",
+      "ingredients": "WHOLE WHEAT FLOUR, WATER, YEAST, SALT.",
+      "brandedFoodCategory": "Bread & Buns",
+      "servingSize": 43.0,
+      "servingSizeUnit": "g",
+      "householdServingFullText": "1 slice",
+      "foodNutrients": [
+        {"nutrient": {"id": 1008, "number": "208", "name": "Energy", "unitName": "kcal"}, "amount": 256.0},
+        {"nutrient": {"id": 1003, "number": "203", "name": "Protein", "unitName": "g"}, "amount": 11.6},
+        {"nutrient": {"id": 1004, "number": "204", "name": "Total lipid (fat)", "unitName": "g"}, "amount": 4.65},
+        {"nutrient": {"id": 1005, "number": "205", "name": "Carbohydrate, by difference", "unitName": "g"}, "amount": 41.9},
+        {"nutrient": {"id": 1079, "number": "291", "name": "Fiber, total dietary", "unitName": "g"}, "amount": 7.0}
+      ]
+    },
+    {
+      "fdcId": 1990002,
+      "dataType": "Branded",
+      "description": "CHICKEN SANDWICH",
+      "brandOwner": "Burger Chain Inc",
+      "brandName": "BURGER CHAIN",
+      "gtinUpc": "",
+      "brandedFoodCategory": "Restaurant Foods",
+      "foodNutrients": [
+        {"nutrient": {"id": 1008, "number": "208", "name": "Energy", "unitName": "kcal"}, "amount": 230.0},
+        {"nutrient": {"id": 1003, "number": "203", "name": "Protein", "unitName": "g"}, "amount": 12.0},
+        {"nutrient": {"id": 1004, "number": "204", "name": "Total lipid (fat)", "unitName": "g"}, "amount": 9.0},
+        {"nutrient": {"id": 1005, "number": "205", "name": "Carbohydrate, by difference", "unitName": "g"}, "amount": 26.0}
+      ]
+    }
+  ]
+}

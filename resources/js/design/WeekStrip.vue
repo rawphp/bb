@@ -40,8 +40,10 @@ const props = withDefaults(
         /** The calories are server-derived and an outbox entry is waiting (OFF-008). */
         pending?: boolean;
         disabled?: boolean;
+        /** The strip only shows the week: its days are a list, not buttons, and nothing is emitted. */
+        readonly?: boolean;
     }>(),
-    { label: 'Week', loading: false, error: null, pending: false, disabled: false },
+    { label: 'Week', loading: false, error: null, pending: false, disabled: false, readonly: false },
 );
 
 const emit = defineEmits<{
@@ -74,7 +76,7 @@ function up(event: PointerEvent): void {
     const dx = event.clientX - start.x;
     const dy = event.clientY - start.y;
     start = null;
-    if (props.loading || props.disabled || Math.hypot(dx, dy) < 30 || Math.abs(dx) <= Math.abs(dy) * 1.5) return;
+    if (props.loading || props.disabled || props.readonly || Math.hypot(dx, dy) < 30 || Math.abs(dx) <= Math.abs(dy) * 1.5) return;
     // A mouse drag clicks the element it ended on in the same task as this
     // pointerup. A touch drag sends no click, so the flag lapses before a later
     // tap or a keyboard press.
@@ -94,7 +96,7 @@ function endSwipe(event: MouseEvent): void {
 <template>
     <div>
         <div
-            role="group"
+            :role="readonly ? 'list' : 'group'"
             :aria-label="label"
             :aria-busy="loading ? 'true' : undefined"
             class="flex touch-pan-y gap-0.5 rounded-2xl bg-surface p-2"
@@ -112,16 +114,18 @@ function endSwipe(event: MouseEvent): void {
                     class="min-h-tap flex-1 animate-pulse rounded-xl bg-secondary-text/15 motion-reduce:animate-none"
                 />
             </template>
-            <button
+            <component
+                :is="readonly ? 'div' : 'button'"
                 v-for="day in days"
                 :key="day.date"
-                type="button"
+                :type="readonly ? undefined : 'button'"
+                :role="readonly ? 'listitem' : undefined"
                 :aria-label="spokenLabel(day)"
-                :aria-pressed="day.is_selected"
+                :aria-pressed="readonly ? undefined : day.is_selected"
                 :aria-current="day.is_today ? 'date' : undefined"
-                :disabled="loading || disabled"
+                :disabled="readonly ? undefined : loading || disabled"
                 class="flex min-h-tap min-w-0 flex-1 flex-col items-center gap-1 disabled:opacity-60"
-                @click="emit('select', day.date)"
+                @click="readonly || emit('select', day.date)"
             >
                 <span class="text-xs font-semibold text-secondary-text">{{ day.letter }}</span>
                 <span
@@ -160,7 +164,7 @@ function endSwipe(event: MouseEvent): void {
                 >
                     <path d="M1 10h2V7h3v10H3v-3H1zm22 0h-2V7h-3v10h3v-3h2zM7 5h3v14H7zm7 0h3v14h-3zm-4 6h4v2h-4z" />
                 </svg>
-            </button>
+            </component>
         </div>
         <!-- Each day's label already says it is waiting to sync. -->
         <p v-if="pending" class="mt-1" aria-hidden="true"><PendingMark /></p>
