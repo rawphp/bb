@@ -11,6 +11,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
@@ -103,15 +104,27 @@ it('CAP-022 lists a write whose reply failed its schema as done, with a server e
         ->{0}->toMatchArray(['title' => 'Tally broken', 'result' => ['text' => 'Done, with a server error', 'tone' => 'warning']]);
 });
 
-it('CAP-022 derives the channel on the server, ignoring a caller the client claims', function () {
+it('CAP-022 derives the channel on the server, ignoring a caller the client claims, and lists the write', function (string $claimed, bool $bridgeToken, string $channel) {
+    registerStepsLog();
     $user = User::factory()->create();
+    $request = $bridgeToken
+        ? $this->withToken(bearerToken($user, TokenScope::HealthBridge, TokenScope::HEALTH_BRIDGE))
+        : $this->actingAs($user);
 
-    $this->actingAs($user)
-        ->postJson('/capabilities/tally_add', ['amount' => 3], ['X-Capabilities-Caller' => 'agent'])
-        ->assertOk();
+    $request->postJson('/capabilities/steps_log', ['amount' => 3], ['X-Capabilities-Caller' => $claimed])->assertOk();
 
-    expect(AuditRecord::sole()->channel)->toBe('ui');
-});
+    expect(AuditRecord::sole())->user_id->toBe($user->id)->channel->toBe($channel);
+    Auth::forgetGuards();
+    expect($this->actingAs($user)->postJson('/capabilities/activity_show')->json('data.entries'))
+        ->toHaveCount(1)->{0}->channel->toBe($channel);
+})->with([
+    'a session claiming agent' => ['agent', false, 'ui'],
+    'a session claiming job' => ['job', false, 'ui'],
+    'a session claiming artisan' => ['artisan', false, 'ui'],
+    'a bridge token claiming agent' => ['agent', true, 'bridge'],
+    'a bridge token claiming job' => ['job', true, 'bridge'],
+    'a bridge token claiming artisan' => ['artisan', true, 'bridge'],
+]);
 
 it('CAP-022 records the agent, MCP and CLI channels from the caller their adapters set, and none for a server job', function () {
     Exceptions::fake();
@@ -240,6 +253,24 @@ it('CAP-022 stores a write\'s input with its secrets redacted', function () {
         ->and(json_encode($input))->not->toContain('hunter2');
 });
 
+it('CAP-022 stores no token_create secret in the audit row, so the audit log holds no working credential', function () {
+    $user = User::factory()->create();
+
+    $secret = $this->actingAs($user)->postJson('/capabilities/token_create', [
+        'id' => '01JBX8Z6Q7M0V2K3N4P5R6S7T8',
+        'name' => 'Laptop MCP',
+        'expires_in_days' => 90,
+        'scope' => 'everything',
+        'capabilities' => [],
+    ], ['Idempotency-Key' => (string) Str::ulid()])->assertOk()->json('data.token.plain_text');
+
+    $record = AuditRecord::query()->where('capability', 'token_create')->sole();
+    expect($secret)->toBeString()->not->toBe('')
+        ->and(json_encode($record->result))->not->toContain($secret)
+        ->and(json_encode($record->result))->not->toContain(explode('|', $secret)[1])
+        ->and(json_encode($record->input))->not->toContain($secret);
+});
+
 it('CAP-023 refuses a token whose only ability is not a capability name, such as the package\'s capabilities:cli', function () {
     $user = User::factory()->create();
 
@@ -293,6 +324,12 @@ it('CAP-022 dates an entry by the time it carries, not the time it is stored', f
         'actor_type' => 'user', 'actor_id' => (string) $user->id,
         'recorded_at' => '2026-11-01T23:50:00+00:00',
     ]);
+
+    expect(AuditRecord::sole()->created_at->toIso8601String())->toBe('2026-11-01T23:50:00+00:00');
+});
+
+it('CAP-022 stores an entry\'s time in UTC, whatever offset it carries', function () {
+    app(AuditWriter::class)->write(['event' => 'capability.invoked', 'capability_name' => 'tally_add', 'caller' => 'cli', 'recorded_at' => '2026-11-02T09:50:00+10:00']);
 
     expect(AuditRecord::sole()->created_at->toIso8601String())->toBe('2026-11-01T23:50:00+00:00');
 });

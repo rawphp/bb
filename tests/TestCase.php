@@ -37,23 +37,29 @@ abstract class TestCase extends BaseTestCase
         // live connection and silently rolls back the test's RefreshDatabase
         // transaction. Reconnect it as soon as the migration ends, before that
         // transaction begins.
-        $app->make('events')->listen(DatabaseRefreshed::class, function () use ($app): void {
-            $connection = $app->make(CapabilityRegistry::class)->transactionConnection();
-
-            if ($connection instanceof Connection) {
-                $connection->reconnectIfMissingConnection();
-            }
-        });
+        $app->make('events')->listen(DatabaseRefreshed::class, fn () => self::reconnectPackageStores($app));
 
         // An isolated app, or a warm base booted after one, boots before Warp points it at
         // the snapshot database, so a connection resolved during boot still has the old
         // settings. The warm base usually loses it to the first test's migrate:fresh, but
-        // after an isolated test the database is already migrated. Drop it.
+        // after an isolated test the database is already migrated. Drop it, and reconnect the
+        // package's stores now: no migrate:fresh will, and their first query would otherwise
+        // reconnect mid-test and roll back its RefreshDatabase transaction.
         if ($this->warpShouldIsolate() || WarmApplicationFactory::bootCount() !== $boots) {
             $app['db']->purge();
+            self::reconnectPackageStores($app);
         }
 
         return $app;
+    }
+
+    private static function reconnectPackageStores(Application $app): void
+    {
+        $connection = $app->make(CapabilityRegistry::class)->transactionConnection();
+
+        if ($connection instanceof Connection) {
+            $connection->reconnectIfMissingConnection();
+        }
     }
 
     protected function createClassicApplication(): Application

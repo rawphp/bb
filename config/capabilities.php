@@ -213,7 +213,7 @@ return [
         'oauth' => [],
         // No ability names a caller. A token's abilities are capability names (CAP-023), or `*`,
         // and HostAuthorizer limits it to them, so a `capabilities:cli` ability would allow
-        // nothing. A token's audit channel is derived from its abilities (Channel, CAP-022).
+        // nothing. A token's audit channel is derived from its scope (Channel, CAP-022).
         // No AuthTokenIssuer is bound yet, so auth/token and auth/device mint nothing; the CLI
         // login that binds one (#11) must issue `*` or capability names, never capabilities:cli.
         'token_abilities' => [],

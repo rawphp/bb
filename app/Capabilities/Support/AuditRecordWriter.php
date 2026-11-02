@@ -87,7 +87,7 @@ final class AuditRecordWriter implements AuditWriter
     {
         $at = $entry['recorded_at'] ?? null;
 
-        return is_string($at) && $at !== '' ? CarbonImmutable::parse($at) : CarbonImmutable::now();
+        return is_string($at) && $at !== '' ? CarbonImmutable::parse($at)->utc() : CarbonImmutable::now();
     }
 
     /** Over http the actor is the signed-in user; their token tells a script from the app. */
