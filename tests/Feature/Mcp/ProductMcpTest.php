@@ -7,6 +7,7 @@ use App\Models\AuditRecord;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
@@ -121,6 +122,69 @@ it('AGT-040 holds an MCP tool call to the token\'s scope (CAP-023), in plain wor
     expect($result['isError'])->toBeTrue()
         ->and($result['content'][0]['text'])->toBe('You can\'t do that.')
         ->and(TallyAddCapability::$runs)->toBe(0);
+});
+
+it('AGT-040 refuses an MCP tool call whose arguments claim another user, and runs nothing for either user', function () {
+    [$sam, $alex] = User::factory()->count(2)->create();
+    $secret = mcpToken($sam);
+
+    foreach ([['user_id' => $alex->id], ['actor' => $alex->id], ['user_id' => $alex->id, 'actor' => $alex->id]] as $claim) {
+        $result = mcpCall($secret, 'tools/call', ['name' => 'tally_add', 'arguments' => ['amount' => 3] + $claim])->assertOk()->json('result');
+        expect($result['isError'])->toBeTrue();
+    }
+    $shown = mcpCall($secret, 'tools/call', ['name' => 'account_show', 'arguments' => ['user_id' => $alex->id]])->assertOk()->json('result');
+
+    expect($shown['isError'])->toBeTrue()
+        ->and($shown['content'][0]['text'])->not->toContain($alex->email)
+        ->and(TallyAddCapability::$runs)->toBe(0)
+        ->and(AuditRecord::query()->where('user_id', $alex->id)->exists())->toBeFalse();
+
+    // The same call without the claim runs, as the token's user.
+    $own = mcpCall($secret, 'tools/call', ['name' => 'account_show', 'arguments' => []])->assertOk()->json('result');
+    expect($own['isError'])->toBeFalse()
+        ->and($own['content'][0]['text'])->toContain($sam->email)->not->toContain($alex->email);
+});
+
+it('AGT-040 stops an MCP client as soon as its token is revoked', function () {
+    $user = User::factory()->create();
+    $secret = mcpToken($user);
+    mcpCall($secret, 'tools/call', ['name' => 'tally_add', 'arguments' => ['amount' => 3]])->assertOk();
+    Auth::forgetGuards();
+
+    $this->actingAs($user)->postJson('/capabilities/token_revoke', ['id' => explode('|', $secret)[0]], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+    Auth::forgetGuards();
+
+    mcpCall($secret, 'tools/call', ['name' => 'tally_add', 'arguments' => ['amount' => 3]])->assertUnauthorized();
+    expect(TallyAddCapability::$runs)->toBe(1);
+});
+
+it('AGT-040 stops an MCP client once its token has expired', function () {
+    $this->freezeTime();
+    $secret = mcpToken(User::factory()->create());
+    PersonalAccessToken::query()->whereKey(explode('|', $secret)[0])->update(['expires_at' => now()->addDay()]);
+
+    mcpCall($secret, 'tools/call', ['name' => 'tally_add', 'arguments' => ['amount' => 3]])->assertOk();
+    Auth::forgetGuards();
+    $this->travel(2)->days();
+
+    mcpCall($secret, 'tools/call', ['name' => 'tally_add', 'arguments' => ['amount' => 3]])->assertUnauthorized();
+    mcpCall($secret, 'tools/list')->assertUnauthorized();
+    expect(TallyAddCapability::$runs)->toBe(1);
+});
+
+it('AGT-040 lets a Read only token read over MCP and refuses it every write, changing nothing', function () {
+    $user = User::factory()->create();
+    $secret = mcpToken($user, TokenScope::ReadOnly, ['account_show', 'activity_show']);
+
+    $write = mcpCall($secret, 'tools/call', ['name' => 'tally_add', 'arguments' => ['amount' => 3]])->assertOk()->json('result');
+    $read = mcpCall($secret, 'tools/call', ['name' => 'account_show', 'arguments' => []])->assertOk()->json('result');
+
+    expect($write['isError'])->toBeTrue()
+        ->and($write['content'][0]['text'])->toBe('You can\'t do that.')
+        ->and(TallyAddCapability::$runs)->toBe(0)
+        ->and(TallyAddCapability::$total)->toBe(0)
+        ->and($read['isError'])->toBeFalse()
+        ->and($read['content'][0]['text'])->toContain($user->email);
 });
 
 it('AGT-040 neither offers nor runs a CAP-031 exclusion over MCP', function () {
