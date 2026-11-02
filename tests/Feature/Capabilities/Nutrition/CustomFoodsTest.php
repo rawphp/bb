@@ -39,8 +39,8 @@ it('FOOD-061 AGT-010 custom_food_delete is destructive and neither write is reve
         ->and(HostDefinition::isDestructive($registry->get('custom_food_save')))->toBeFalse()
         ->and(HostDefinition::isReversible($registry->get('custom_food_delete')))->toBeFalse()
         ->and(HostDefinition::isReversible($registry->get('custom_food_save')))->toBeFalse()
-        ->and(HostDefinition::affects($registry->get('custom_food_save')))->toBe(['custom_foods_show'])
-        ->and(HostDefinition::affects($registry->get('custom_food_delete')))->toBe(['custom_foods_show']);
+        ->and(HostDefinition::affects($registry->get('custom_food_save')))->toBe(['custom_foods_show', 'food_search'])
+        ->and(HostDefinition::affects($registry->get('custom_food_delete')))->toBe(['custom_foods_show', 'food_search']);
 });
 
 it('FOOD-061 refuses every custom food capability when signed out', function (string $name, array $input) {
@@ -115,13 +115,20 @@ it('FOOD-060 FOOD-061 answers 404 for saving over or deleting a food the user ow
     expect($owned->fresh())->name->toBe('Owned import')->kind->toBe('generic')->trashed()->toBeFalse();
 });
 
-it('FOOD-060 creates a custom food under the client\'s id and says the list changed', function () {
+it('FOOD-060 creates a custom food under the client\'s id and says the list and the Pantry changed', function () {
     $user = User::factory()->create();
     $input = customFoodInput();
 
     customFoodCall($user, 'custom_food_save', $input)
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['custom_foods_show{}']);
+        ->assertJsonPath('data.invalidates', [
+            'custom_foods_show{}',
+            'food_search{}',
+            'food_search{"tab":"curated"}',
+            'food_search{"tab":"recents"}',
+            'food_search{"tab":"favorites"}',
+            'food_search{"tab":"custom"}',
+        ]);
 
     // Protein and carbs are both 4 kcal a gram, so each value is read back, not only the calories.
     expect(Food::query()->findOrFail($input['id']))->user_id->toBe($user->id)
@@ -166,13 +173,20 @@ it('FOOD-060 answers 422 naming the macro that weighs more than the serving', fu
     expect(Food::query()->count())->toBe(0);
 });
 
-it('FOOD-061 deletes the user\'s custom food and says the list changed', function () {
+it('FOOD-061 deletes the user\'s custom food and says the list and the Pantry changed', function () {
     $user = User::factory()->create();
     $food = Food::factory()->custom($user)->create();
 
     customFoodCall($user, 'custom_food_delete', ['food_id' => $food->id])
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['custom_foods_show{}']);
+        ->assertJsonPath('data.invalidates', [
+            'custom_foods_show{}',
+            'food_search{}',
+            'food_search{"tab":"curated"}',
+            'food_search{"tab":"recents"}',
+            'food_search{"tab":"favorites"}',
+            'food_search{"tab":"custom"}',
+        ]);
 
     expect($food->fresh()->trashed())->toBeTrue()
         ->and(customFoodCall($user, 'custom_foods_show')->json('data.foods'))->toBe([]);
