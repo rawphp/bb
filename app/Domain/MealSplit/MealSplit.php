@@ -33,7 +33,8 @@ final class MealSplit
     /**
      * NUT-030, NUT-035: the fewest kcal a free meal may read, as a share of its food's kcal at the day's own
      * kcal-to-food ratio, when hand-edited meals have taken most of the day. The spec leaves this open; 0.5 is a
-     * guess that only binds when an edit leaves the other meals far less than their food carries.
+     * guess that only binds when an edit leaves the other meals far less than their food carries. It departs from
+     * rp-clone, which shares whatever is left; docs/architecture.md lists it under "Open questions".
      */
     public const MIN_FREE_KCAL_SHARE = 0.5;
 
@@ -384,7 +385,7 @@ final class MealSplit
      * MIN_FREE_KCAL_SHARE of the day's own ratio (day kcal / kcal of the day's grams). Only there do the free meals
      * take that floor, rounded to 5, and the day is overspent. The scale is the larger of the two, so a small change
      * in the edit makes a small change in the kcal. rp-clone scales to whatever kcal is left and falls back to the
-     * food's kcal at or below zero; this departs from it on purpose and leaves every rp-clone test value unchanged.     *
+     * food's kcal at or below zero; this departs from it on purpose and leaves every rp-clone test value unchanged.
      *
      * @param  list<DayEntry>  $slots
      * @param  list<float>  $protein
