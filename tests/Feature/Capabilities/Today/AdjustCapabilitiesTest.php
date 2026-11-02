@@ -107,7 +107,10 @@ it('DAY-020 day_adjust between meals moves carbs from one meal to the other and 
 
     adjustOver($user, 'day_adjust', ['date' => '2026-09-23', 'mode' => 'meals', 'kcal' => 100, 'from_meal_id' => TodaySeed::LUNCH, 'to_meal_id' => TodaySeed::DINNER])
         ->assertOk()
-        ->assertJsonPath('data.toast', 'Moved 100 kcal');
+        ->assertJsonPath('data.toast', 'Moved 100 kcal')
+        ->assertJsonPath('data.invalidates', [
+            'today_show{"date":"2026-09-23"}', 'today_show{}', 'day_adjust_show{"date":"2026-09-23"}', 'day_redistribute_show{"date":"2026-09-23"}',
+        ]);
 
     $day = DayTarget::query()->whereDate('date', '2026-09-23')->sole();
     expect([$day->kcal, $day->carbs_g])->toBe([2600.0, 320.0])

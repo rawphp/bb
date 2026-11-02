@@ -62,12 +62,18 @@ it('SCH-055 a meal whose planned foods are all locked keeps its target when toda
     [$user, $mesocycle] = missedWorld('2026-09-22');
     $day = TodaySeed::day($user, '2026-09-22', ['day_type' => 'rest']);
     $dinner = TodaySeed::id(TodaySeed::DINNER, '260922');
+    $lunch = TodaySeed::id(TodaySeed::LUNCH, '260922');
     TodaySeed::food($dinner, locked: true);
-    $before = collect($day->meals)->firstWhere('id', $dinner);
+    // Lunch has a locked food and an unlocked one, so it can still be re-fitted.
+    TodaySeed::food($lunch, locked: true);
+    TodaySeed::food($lunch);
+    $before = collect($day->meals)->keyBy('id');
 
     resolveMissed($user, $mesocycle, 'do_it_today', '2026-09-22');
 
-    expect(collect($day->fresh()->meals)->firstWhere('id', $dinner))->toEqual($before);
+    $after = collect($day->fresh()->meals)->keyBy('id');
+    expect($after[$dinner])->toEqual($before[$dinner])
+        ->and($after[$lunch]['kcal'])->not->toEqual($before[$lunch]['kcal']);
 });
 
 it('SCH-057 a session moved earlier keeps its row when it is answered', function () {

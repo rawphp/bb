@@ -58,6 +58,18 @@ it('DAY-002 DAY-021 SAFE-018 day_redistribute_show matches its screen fixture', 
         ->and($response->json('data.can_confirm'))->toBeTrue();
 });
 
+it('DAY-002 a meal left out in capitals is left out', function () {
+    $user = User::factory()->create();
+    TodaySeed::day($user, '2026-09-23', ['meals' => [
+        ['id' => strtolower(TodaySeed::CLIENT_MEAL), 'name' => 'Dinner', 'time' => '19:00', 'kcal' => 900, 'protein_g' => 60, 'fat_g' => 25, 'carbs_g' => 100],
+    ]]);
+
+    redistributeOver($user, 'day_redistribute_show', ['date' => '2026-09-23', 'excluded_meal_ids' => [TodaySeed::CLIENT_MEAL]])
+        ->assertOk()
+        ->assertJsonPath('data.rows.0.selected', false)
+        ->assertJsonPath('data.can_confirm', false);
+});
+
 it('DAY-002 day_redistribute_show lists nothing on a day with no targets', function () {
     redistributeOver(User::factory()->create(), 'day_redistribute_show', ['date' => '2026-09-23'])
         ->assertOk()
