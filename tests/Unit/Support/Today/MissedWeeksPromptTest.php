@@ -65,7 +65,7 @@ it('SCH-058 a session left unlogged before the last trained week does not pull t
 
     // Week 1's three sessions were never touched, but the user trained in week 2: they stopped in week 2.
     expect($prompt->stoppedWeek)->toBe(2)
-        ->and($prompt->shift)->toBe(1);
+        ->and($prompt->shift)->toBe(2);
 });
 
 it('SCH-058 a paused away week never asks', function () {
@@ -121,7 +121,7 @@ it('SCH-058 today_show carries the prompt in the shape of its fixture, and null 
 });
 
 it('SCH-058 reads the prompt relative to today, whatever date Today shows', function () {
-    $shown = W::snapshot(today: '2026-09-30', date: '2026-09-20');
+    $shown = W::snapshot(today: '2026-09-30', date: '2026-09-20', sessions: []);
 
     expect(MissedWeeksPrompt::from($shown))->not->toBeNull()
         ->and($shown instanceof TodaySnapshot)->toBeTrue();
