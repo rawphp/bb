@@ -165,9 +165,23 @@ describe('PhaseDetailView', () => {
         await wrapper.find('[data-test="end-phase"]').trigger('click');
         await wrapper.find('[data-save]').trigger('click');
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        await wrapper.find('[data-cancel]').trigger('click');
         await flushPromises();
 
         expect(wrapper.find('[data-test="end-sheet"]').exists()).toBe(true);
+    });
+
+    it('UI-022 keeps the event date sheet open while its write is in flight', async () => {
+        writeMock.mockImplementationOnce(() => new Promise(() => undefined));
+        const wrapper = show();
+        await wrapper.find('[data-test="add-event"]').trigger('click');
+        await wrapper.find('input[type="date"]').setValue('2026-11-15');
+        await wrapper.find('[data-save]').trigger('click');
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        await wrapper.find('[data-cancel]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="event-sheet"]').exists()).toBe(true);
     });
 
     it('PH-007 sends nothing when the user keeps going', async () => {
