@@ -79,7 +79,7 @@ it('ONB-018 joins neighbouring days with the same step range in one row', functi
     $blocks = onboardingBlocks(F::atReview()->with(stepRanges: [new StepRangeChoice(3, 8_000, 13_000)]));
 
     expect(onboardingRows($blocks['Steps']))->toBe([
-        'Mon, Tue' => '5,000 to 8,000', 'Wed' => '8,000 to 13,000', 'Thu to Fri' => '5,000 to 8,000', 'Sat and Sun' => '8,000 to 10,000',
+        'Mon and Tue' => '5,000 to 8,000', 'Wed' => '8,000 to 13,000', 'Thu and Fri' => '5,000 to 8,000', 'Sat and Sun' => '8,000 to 10,000',
     ]);
 });
 
