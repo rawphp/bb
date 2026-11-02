@@ -42,7 +42,7 @@ final class ProgressSnapshot
      * @param  TodaySnapshot  $week  the plan, profile, phases, mesocycles and plan weeks, and the week around today
      * @param  Collection<int, WeighIn>  $weighIns  all of them
      * @param  ?int  $steps  today's step count; null when none is stored
-     * @param  Collection<int, stdClass>  $sets  one row (mesocycle_id, week, exercise_id, is_logged, is_skipped) per set of a live session in a mesocycle that names an exercise
+     * @param  Collection<int, stdClass>  $sets  the working sets (WO-025) of live mesocycle sessions, one row (mesocycle_id, week, exercise_id, sets) per mesocycle week and exercise
      * @param  Collection<int, Exercise>  $exercises  the visible exercises that occur in `$sets` or `$lastUsed`
      * @param  array<int, string>  $lastUsed  exercise id => start of the latest session with a logged set of it
      */
@@ -75,8 +75,9 @@ final class ProgressSnapshot
     }
 
     /**
-     * ANA-007: the user's sets of live sessions in a mesocycle that name an exercise, one joined read and no models.
-     * Which of them are working sets is {@see workingSets()}'s to say.
+     * ANA-007: the user's working sets of live sessions in a mesocycle, counted per mesocycle, week and exercise in one
+     * grouped read, so the rows grow with mesocycle weeks and exercises, not with every set ever logged. A working set
+     * is logged and not skipped (WO-025, {@see WorkingSet::counts()}).
      *
      * @return Collection<int, stdClass>
      */
@@ -85,12 +86,16 @@ final class ProgressSnapshot
         return WorkoutSet::query()
             ->join('workout_sessions as s', 's.id', '=', 'workout_sets.workout_session_id')
             ->where('workout_sets.user_id', $user->id)
+            ->where('workout_sets.is_logged', true)
+            ->where('workout_sets.is_skipped', false)
             ->whereNotNull('workout_sets.exercise_id')
             ->where('s.user_id', $user->id)
             ->whereNotNull('s.mesocycle_id')
             ->whereNull('s.deleted_at')
+            ->groupBy('s.mesocycle_id', 's.week', 'workout_sets.exercise_id')
+            ->selectRaw('s.mesocycle_id as mesocycle_id, s.week as week, workout_sets.exercise_id as exercise_id, count(*) as sets')
             ->toBase()
-            ->get(['s.mesocycle_id', 's.week', 'workout_sets.exercise_id', 'workout_sets.is_logged', 'workout_sets.is_skipped']);
+            ->get();
     }
 
     /**
@@ -205,8 +210,8 @@ final class ProgressSnapshot
     }
 
     /**
-     * ANA-007, WO-025: the working sets (logged, not skipped) of sessions that belong to a mesocycle, whose exercise
-     * still exists, with the muscle of the exercise.
+     * ANA-007, WO-025: the working sets of sessions that belong to a mesocycle, one per set the loader counted, with the
+     * muscle of their exercise; a set of an exercise the user cannot see is left out.
      *
      * @return list<LoggedWorkingSet>
      */
@@ -214,12 +219,14 @@ final class ProgressSnapshot
     {
         $muscles = $this->exercises->mapWithKeys(fn (Exercise $exercise) => [(int) $exercise->id => $exercise->muscle_group]);
         $working = [];
-        foreach ($this->sets as $set) {
-            $muscle = $muscles->get((int) $set->exercise_id);
-            if (! WorkingSet::counts((bool) $set->is_logged, (bool) $set->is_skipped) || $muscle === null) {
+        foreach ($this->sets as $row) {
+            $muscle = $muscles->get((int) $row->exercise_id);
+            if ($muscle === null) {
                 continue;
             }
-            $working[] = new LoggedWorkingSet((string) $set->mesocycle_id, (int) $set->week, $muscle);
+            for ($count = (int) $row->sets; $count > 0; $count--) {
+                $working[] = new LoggedWorkingSet((string) $row->mesocycle_id, (int) $row->week, $muscle);
+            }
         }
 
         return $working;
