@@ -1,6 +1,7 @@
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { expect, vi } from 'vitest';
 import type { Component } from 'vue';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import { writeNow } from '@/app/call';
 import type { TodayShowOutput } from '@/contracts/today_show';
 import type { WeekShowOutput } from '@/contracts/week_show';
@@ -14,6 +15,15 @@ export const week = (state?: string) => screenFixture<WeekShowOutput>(state ? `w
 
 export function sheet(component: Component, props: Record<string, unknown> = {}): VueWrapper {
     return mount(component, { props, attachTo: document.body, global: { stubs: { teleport: true } } });
+}
+
+/** A day-balance sheet (useSheet.ts), which needs a router to go back to Today, mounted under a plain one. */
+export async function mountSheet(component: Component, props: Record<string, unknown> = {}) {
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:any(.*)*', component: { template: '<p />' } }] });
+    await router.push('/today/2026-09-23/sheet');
+    const wrapper = mount(component, { props, global: { plugins: [router], stubs: { teleport: true } } });
+
+    return { wrapper, router };
 }
 
 /** Each write sent, as [name, input], checked against that write's schema snapshot. */
