@@ -111,7 +111,7 @@ it('MESO-064 MESO-065 a moved copy keeps the priorities the user kept or edited'
     expect($draft->start_date->format('Y-m-d'))->toBe('2026-10-19')
         ->and($draft->phase_id)->toBe($cut->id)
         ->and($draft->muscle_priorities)->toBe($before)
-        ->and($draft->muscle_priorities)->toBe($edited ?? $mesocycle->muscle_priorities);
+        ->and($draft->muscle_priorities)->toEqual($edited ?? $mesocycle->muscle_priorities);
 })->with([
     // Fat loss from 12 October: the copy is offered the preset and keeps Meso 2's priorities instead.
     'kept' => ['2026-10-12', true, null],

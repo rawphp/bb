@@ -229,7 +229,8 @@ final class MesocyclePayload
         $stored = $mesocycle->muscle_priorities ?? [];
         $priorities = $stored !== [] ? $stored : array_map(fn (Priority $p) => $p->value, MesoBuilder::defaultPriorities($column));
         $training = $snapshot->trainingWeekdays();
-        $weekdayLabels = array_all($days, fn (array $day) => $day['weekday'] !== null);
+        // MESO-005: a day is labelled on its own terms, as the saved view does, so a mixed split keeps its weekdays.
+        $pinned = array_any($days, fn (array $day) => $day['weekday'] !== null);
 
         return new MesocycleBuild(
             route: $route->value,
@@ -238,7 +239,7 @@ final class MesocyclePayload
             weeks_options: self::options($weeksRange, 'week'),
             start_date: $start->format('Y-m-d'),
             start_text: TrainWords::date($start),
-            label_style: $weekdayLabels ? 'weekdays' : 'floating',
+            label_style: $pinned ? 'weekdays' : 'floating',
             weekdays_available: $training !== [],
             phase_title: $phase?->type->title(),
             rep_range_text: $phase === null ? null : self::repRanges(TBL012TrainingDefaults::row($column)->repRangeBias),
@@ -256,7 +257,7 @@ final class MesocyclePayload
             priority_notice: self::draftPriorityNotice($snapshot, $mesocycle, $start, $priorities),
             days: array_map(fn (array $day, int $index) => new MesocycleBuildDayRow(
                 id: $day['id'],
-                label: $weekdayLabels ? MesocycleRules::weekdayName((int) $day['weekday']) : 'Day '.($index + 1),
+                label: $day['weekday'] !== null ? MesocycleRules::weekdayName($day['weekday']) : ($day['label'] ?: 'Day '.($index + 1)),
                 slots: array_map(fn (array $slot) => new MesocycleBuildSlotRow(
                     id: $slot['id'],
                     muscle: $slot['muscle_group'],

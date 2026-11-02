@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * MESO-064: takes the active rest train_show recommends: the deload week plus a week off, so the next mesocycle
  * starts one plan week later. A copy already made to start with the next mesocycle (MESO-060) moves with it, into the
- * phase covering its new start (MESO-003). When that phase has a different type from the copy's old one, the copy
- * takes its priorities again from the mesocycle taking the rest, as a copy made now would (MESO-065).
+ * phase covering its new start (MESO-003). A copy whose priorities are still the ones it was given takes them again
+ * from the mesocycle taking the rest, as a copy made now would (MESO-065); priorities the user kept or edited stay.
  */
 final class TakeActiveRest
 {
@@ -35,13 +35,15 @@ final class TakeActiveRest
 
         $phase = $snapshot->phaseCovering($start);
 
-        DB::transaction(function () use ($snapshot, $mesocycle, $start, $waiting, $phase) {
+        DB::transaction(function () use ($snapshot, $mesocycle, $next, $start, $waiting, $phase) {
             $mesocycle->update(['active_rest' => true]);
             foreach ($waiting as $draft) {
+                // Priorities the user kept or edited are not what the copy wrote on its own, and stay.
+                $untouched = $draft->muscle_priorities == $snapshot->copyPriorities($mesocycle, $next->start);
                 $draft->update([
                     'start_date' => $start->format('Y-m-d'),
                     'phase_id' => $phase?->id,
-                    ...($phase?->type === $snapshot->phaseType($draft) ? [] : ['muscle_priorities' => $snapshot->copyPriorities($mesocycle, $start)]),
+                    ...($untouched ? ['muscle_priorities' => $snapshot->copyPriorities($mesocycle, $start)] : []),
                 ]);
             }
         });
