@@ -71,9 +71,14 @@ final class ShoppingList
             }
             foreach ($day->items as $item) {
                 foreach ($item->foodAmounts() as $amount) {
+                    // A negative amount would take grams off the same food planned elsewhere.
+                    $raw = $amount->rawGrams();
+                    if ($raw <= 0) {
+                        continue;
+                    }
                     $id = $amount->food->id;
                     $foods[$id] ??= $amount->food;
-                    $rawGrams[$id] = ($rawGrams[$id] ?? 0.0) + $amount->rawGrams();
+                    $rawGrams[$id] = ($rawGrams[$id] ?? 0.0) + $raw;
                 }
             }
         }

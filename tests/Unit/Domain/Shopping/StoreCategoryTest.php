@@ -1,9 +1,10 @@
 <?php
 
+use App\Domain\MealFit\CuratedGroup;
 use App\Domain\Shopping\StoreCategory;
 
 /** SHOP-003: which store category a food belongs to. Name keywords first, then the curated group, else other. */
-function storeCategory(string $name, ?string $curatedGroup = null): StoreCategory
+function storeCategory(string $name, ?CuratedGroup $curatedGroup = null): StoreCategory
 {
     return StoreCategory::of($name, $curatedGroup);
 }
@@ -23,8 +24,8 @@ it('SHOP-003 yogurt, milk and cheese are dairy by name', function () {
 });
 
 it('SHOP-003 the name beats the curated group', function () {
-    expect(storeCategory('Greek yogurt, nonfat', 'protein_recommended'))->toBe(StoreCategory::Dairy)
-        ->and(storeCategory('Chicken breast', 'carbs_sparingly'))->toBe(StoreCategory::Protein);
+    expect(storeCategory('Greek yogurt, nonfat', CuratedGroup::ProteinRecommended))->toBe(StoreCategory::Dairy)
+        ->and(storeCategory('Chicken breast', CuratedGroup::CarbsSparingly))->toBe(StoreCategory::Protein);
 });
 
 it('SHOP-003 matching ignores case and punctuation', function () {
@@ -78,14 +79,14 @@ it('SHOP-003 every category has name keywords', function () {
 });
 
 it('SHOP-003 a name with no keyword uses the curated group', function () {
-    expect(storeCategory('Whey protein', 'protein_recommended'))->toBe(StoreCategory::Protein)
-        ->and(storeCategory('Mystery meat', 'protein_sparingly'))->toBe(StoreCategory::Protein)
-        ->and(storeCategory('Bedtime shake', 'protein_before_bed'))->toBe(StoreCategory::Protein)
-        ->and(storeCategory('Garden mix', 'veggies'))->toBe(StoreCategory::Produce)
-        ->and(storeCategory('Mystery grain', 'carbs_recommended'))->toBe(StoreCategory::GrainsAndBread)
-        ->and(storeCategory('Mystery grain', 'carbs_sparingly'))->toBe(StoreCategory::GrainsAndBread)
-        ->and(storeCategory('Mystery spread', 'fat_recommended'))->toBe(StoreCategory::Pantry)
-        ->and(storeCategory('Mystery spread', 'fat_sparingly'))->toBe(StoreCategory::Pantry);
+    expect(storeCategory('Whey protein', CuratedGroup::ProteinRecommended))->toBe(StoreCategory::Protein)
+        ->and(storeCategory('Mystery meat', CuratedGroup::ProteinSparingly))->toBe(StoreCategory::Protein)
+        ->and(storeCategory('Bedtime shake', CuratedGroup::ProteinBeforeBed))->toBe(StoreCategory::Protein)
+        ->and(storeCategory('Garden mix', CuratedGroup::Veggies))->toBe(StoreCategory::Produce)
+        ->and(storeCategory('Mystery grain', CuratedGroup::CarbsRecommended))->toBe(StoreCategory::GrainsAndBread)
+        ->and(storeCategory('Mystery grain', CuratedGroup::CarbsSparingly))->toBe(StoreCategory::GrainsAndBread)
+        ->and(storeCategory('Mystery spread', CuratedGroup::FatRecommended))->toBe(StoreCategory::Pantry)
+        ->and(storeCategory('Mystery spread', CuratedGroup::FatSparingly))->toBe(StoreCategory::Pantry);
 });
 
 it('SHOP-003 a name with no keyword and no group is other', function () {

@@ -2,28 +2,25 @@
 
 namespace App\Domain\Shopping;
 
+use App\Domain\MealFit\Weighing;
+
 /** An amount of one food, weighed raw or cooked. */
 final readonly class FoodAmount
 {
     public function __construct(
         public ShoppingFood $food,
         public float $grams,
-        public Weighed $weighed = Weighed::Raw,
+        public Weighing $weighing = Weighing::Raw,
     ) {}
 
     /** SHOP-004: the raw weight to buy. */
     public function rawGrams(): float
     {
-        $ratio = $this->food->cookedRatio;
-        if ($this->weighed !== Weighed::Cooked || $ratio === null || $ratio <= 0) {
-            return $this->grams;
-        }
-
-        return $this->grams / $ratio;
+        return $this->weighing->rawGrams($this->grams, $this->food->cookedRatio);
     }
 
     public function scaled(float $scale): self
     {
-        return new self($this->food, $this->grams * $scale, $this->weighed);
+        return new self($this->food, $this->grams * $scale, $this->weighing);
     }
 }

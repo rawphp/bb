@@ -2,6 +2,8 @@
 
 namespace App\Domain\Shopping;
 
+use App\Domain\MealFit\CuratedGroup;
+
 /** SHOP-003: store categories, in the order the list shows them. */
 enum StoreCategory: string
 {
@@ -54,10 +56,9 @@ enum StoreCategory: string
 
     /**
      * SHOP-003: the store category of a food. Name keywords decide first, so "Greek yogurt" is dairy although it is
-     * curated as protein; then the curated group (FOOD-003, the server's raw value such as `protein_recommended`);
-     * anything left is other.
+     * curated as protein; then the curated group (FOOD-003); anything left is other.
      */
-    public static function of(string $name, ?string $curatedGroup): self
+    public static function of(string $name, ?CuratedGroup $curatedGroup): self
     {
         $words = preg_split('/[^\p{L}]+/u', mb_strtolower($name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
@@ -70,11 +71,11 @@ enum StoreCategory: string
         }
 
         return match ($curatedGroup) {
-            'protein_recommended', 'protein_sparingly', 'protein_before_bed' => self::Protein,
-            'veggies' => self::Produce,
-            'carbs_recommended', 'carbs_sparingly' => self::GrainsAndBread,
-            'fat_recommended', 'fat_sparingly' => self::Pantry,
-            default => self::Other,
+            CuratedGroup::ProteinRecommended, CuratedGroup::ProteinSparingly, CuratedGroup::ProteinBeforeBed => self::Protein,
+            CuratedGroup::Veggies => self::Produce,
+            CuratedGroup::CarbsRecommended, CuratedGroup::CarbsSparingly => self::GrainsAndBread,
+            CuratedGroup::FatRecommended, CuratedGroup::FatSparingly => self::Pantry,
+            null => self::Other,
         };
     }
 

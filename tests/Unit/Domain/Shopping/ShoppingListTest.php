@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\MealFit\Weighing;
 use App\Domain\Shopping\DateRange;
 use App\Domain\Shopping\FoodAmount;
 use App\Domain\Shopping\PlannedFoodDay;
@@ -10,7 +11,6 @@ use App\Domain\Shopping\ShoppingGroup;
 use App\Domain\Shopping\ShoppingItem;
 use App\Domain\Shopping\ShoppingList;
 use App\Domain\Shopping\StoreCategory;
-use App\Domain\Shopping\Weighed;
 
 function shoppingDay(int $offset, int $hour = 12): DateTimeImmutable
 {
@@ -33,9 +33,9 @@ function shoppingFood(string $id): ShoppingFood
     };
 }
 
-function plannedFood(string $id, float $grams, Weighed $weighed = Weighed::Raw): PlannedItem
+function plannedFood(string $id, float $grams, Weighing $weighing = Weighing::Raw): PlannedItem
 {
-    return PlannedItem::food(new FoodAmount(shoppingFood($id), $grams, $weighed));
+    return PlannedItem::food(new FoodAmount(shoppingFood($id), $grams, $weighing));
 }
 
 /**
@@ -91,6 +91,26 @@ it('SHOP-001 the default range is the next 7 days starting today', function () {
     expect(shoppingGrams(shoppingList($planned, $range)))->toEqual(['apple' => 700]);
 });
 
+it('SHOP-001 counts days and the default range on the calendar of the given time zone', function () {
+    $sydney = new DateTimeZone('Australia/Sydney');
+    $local = fn (string $at) => new DateTimeImmutable($at, $sydney);
+    $utc = fn (string $at) => new DateTimeImmutable($at, new DateTimeZone('UTC'));
+
+    // 23:00 UTC on 3 March is 4 March in Sydney, after the range; 13:00 UTC on 28 February is 1 March there, inside it.
+    $planned = [
+        new PlannedFoodDay($utc('2026-03-03 23:00'), [plannedFood('apple', 100)]),
+        new PlannedFoodDay($utc('2026-02-28 13:00'), [plannedFood('yogurt', 200)]),
+    ];
+    $range = new DateRange($local('2026-03-01 09:00'), $local('2026-03-03 20:00'));
+    expect(shoppingGrams(ShoppingList::build($planned, $range, $sydney)))->toEqual(['yogurt' => 200]);
+
+    // 15:00 UTC on 1 March is already 2 March in Sydney.
+    $default = ShoppingList::defaultRange($utc('2026-03-01 15:00'), $sydney);
+    expect($default->lower)->toEqual($local('2026-03-02 00:00'))
+        ->and($default->lower->format('Y-m-d H:i e'))->toBe('2026-03-02 00:00 Australia/Sydney')
+        ->and($default->upper)->toEqual($local('2026-03-08 00:00'));
+});
+
 // SHOP-002
 
 it('SHOP-002 breaks recipes into their ingredients scaled to the servings planned', function () {
@@ -123,6 +143,20 @@ it('SHOP-002 a recipe with no servings adds nothing', function () {
     expect(shoppingList([new PlannedFoodDay(shoppingDay(0), [PlannedItem::recipe($broken, servings: 1)])]))->toBe([]);
 });
 
+it('SHOP-002 no or negative planned servings, and negative amounts, take nothing off the list', function () {
+    $stirFry = new Recipe('Chicken stir fry', 4, [new FoodAmount(shoppingFood('chicken'), 600)]);
+
+    expect(PlannedItem::recipe($stirFry, servings: 0)->foodAmounts())->toBe([])
+        ->and(PlannedItem::recipe($stirFry, servings: -1)->foodAmounts())->toBe([]);
+
+    $planned = [new PlannedFoodDay(shoppingDay(0), [
+        plannedFood('chicken', 300),
+        PlannedItem::recipe($stirFry, servings: -1),
+        plannedFood('chicken', -100),
+    ])];
+    expect(shoppingGrams(shoppingList($planned)))->toEqual(['chicken' => 300]);
+});
+
 // SHOP-003
 
 it('SHOP-003 groups by store category in store order', function () {
@@ -145,6 +179,14 @@ it('SHOP-003 groups by store category in store order', function () {
     $byName = shoppingList([new PlannedFoodDay(shoppingDay(0), $produce)]);
     expect(array_map(fn (ShoppingItem $item) => $item->food->name, $byName[0]->items))
         ->toBe(['Apple', 'Banana', 'Carrot', 'Kale', 'Onion', 'Spinach', 'Zucchini']);
+
+    // Case does not matter, and numbers sort by value, as localizedStandardCompare does.
+    $mixed = array_map(
+        fn (string $name) => PlannedItem::food(new FoodAmount(new ShoppingFood($name, $name, StoreCategory::Produce), 100)),
+        ['Egg 10', 'banana', 'Egg 2', 'Apple'],
+    );
+    expect(array_map(fn (ShoppingItem $item) => $item->food->name, shoppingList([new PlannedFoodDay(shoppingDay(0), $mixed)])[0]->items))
+        ->toBe(['Apple', 'banana', 'Egg 2', 'Egg 10']);
 
     // Empty categories are left out.
     expect(array_map(
@@ -187,15 +229,18 @@ it('SHOP-003 leaves out foods with nothing to buy', function () {
 // SHOP-004
 
 it('SHOP-004 converts cooked amounts to the raw weight to buy', function () {
-    expect((new FoodAmount(shoppingFood('chicken'), 150, Weighed::Cooked))->rawGrams())->toEqualWithDelta(200, 1e-9)
-        ->and((new FoodAmount(shoppingFood('rice'), 300, Weighed::Cooked))->rawGrams())->toEqualWithDelta(100, 1e-9)
-        ->and((new FoodAmount(shoppingFood('chicken'), 150, Weighed::Raw))->rawGrams())->toEqual(150)
+    expect((new FoodAmount(shoppingFood('chicken'), 150, Weighing::Cooked))->rawGrams())->toEqualWithDelta(200, 1e-9)
+        ->and((new FoodAmount(shoppingFood('rice'), 300, Weighing::Cooked))->rawGrams())->toEqualWithDelta(100, 1e-9)
+        ->and((new FoodAmount(shoppingFood('chicken'), 150, Weighing::Raw))->rawGrams())->toEqual(150)
         // A food that does not change weight when cooked is bought as weighed.
-        ->and((new FoodAmount(shoppingFood('broccoli'), 150, Weighed::Cooked))->rawGrams())->toEqual(150);
+        ->and((new FoodAmount(shoppingFood('broccoli'), 150, Weighing::Cooked))->rawGrams())->toEqual(150)
+        // So is one whose ratio is 0 or less, rather than dividing by it.
+        ->and((new FoodAmount(new ShoppingFood('odd', 'Odd', StoreCategory::Other, cookedRatio: 0.0), 150, Weighing::Cooked))->rawGrams())->toEqual(150)
+        ->and((new FoodAmount(new ShoppingFood('odd', 'Odd', StoreCategory::Other, cookedRatio: -2.0), 150, Weighing::Cooked))->rawGrams())->toEqual(150);
 
     $planned = [
-        new PlannedFoodDay(shoppingDay(0), [plannedFood('chicken', 225, Weighed::Cooked), plannedFood('rice', 450, Weighed::Cooked)]),
-        new PlannedFoodDay(shoppingDay(1), [plannedFood('chicken', 200, Weighed::Raw), plannedFood('rice', 60, Weighed::Raw)]),
+        new PlannedFoodDay(shoppingDay(0), [plannedFood('chicken', 225, Weighing::Cooked), plannedFood('rice', 450, Weighing::Cooked)]),
+        new PlannedFoodDay(shoppingDay(1), [plannedFood('chicken', 200, Weighing::Raw), plannedFood('rice', 60, Weighing::Raw)]),
     ];
 
     // Chicken 300 + 200 raw; rice 150 + 60 raw = 210, bought as 250.
@@ -203,7 +248,7 @@ it('SHOP-004 converts cooked amounts to the raw weight to buy', function () {
 });
 
 it('SHOP-004 converts cooked recipe ingredients too', function () {
-    $bowl = new Recipe('Rice bowl', 2, [new FoodAmount(shoppingFood('rice'), 600, Weighed::Cooked)]);
+    $bowl = new Recipe('Rice bowl', 2, [new FoodAmount(shoppingFood('rice'), 600, Weighing::Cooked)]);
 
     expect(shoppingGrams(shoppingList([new PlannedFoodDay(shoppingDay(0), [PlannedItem::recipe($bowl, servings: 1)])])))
         ->toEqual(['rice' => 100]);

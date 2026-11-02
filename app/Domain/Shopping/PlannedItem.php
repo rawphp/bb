@@ -22,7 +22,8 @@ final readonly class PlannedItem
     }
 
     /**
-     * SHOP-002: recipes break down into their ingredients, scaled to the servings planned.
+     * SHOP-002: recipes break down into their ingredients, scaled to the servings planned. No servings, of the recipe
+     * or planned, give nothing.
      *
      * @return list<FoodAmount>
      */
@@ -32,7 +33,7 @@ final readonly class PlannedItem
             return [$this->food];
         }
 
-        if ($this->recipe === null || $this->recipe->servings <= 0) {
+        if ($this->recipe === null || $this->recipe->servings <= 0 || $this->servings <= 0) {
             return [];
         }
 
