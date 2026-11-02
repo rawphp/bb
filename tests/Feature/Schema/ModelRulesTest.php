@@ -86,6 +86,20 @@ it('removing a meal drops only that meal\'s foods, check-in and planning state',
         ->and(mealChildren($lunch))->toBe(MEAL_HAS_ONE_OF_EACH);
 });
 
+it('a meal holds one check-in: a second one for the same meal is refused', function () {
+    $day = DayTarget::factory()->create(['meals' => [['name' => 'Breakfast'], ['name' => 'Lunch']]]);
+    [$breakfast, $lunch] = array_column($day->meals, 'id');
+    $on = fn (string $meal) => ['meal_id' => $meal, 'user_id' => $day->user_id];
+    MealCheckIn::factory()->create($on($breakfast));
+
+    expect(fn () => DB::transaction(fn () => MealCheckIn::factory()->create($on($breakfast))))
+        ->toThrow(QueryException::class);
+
+    MealCheckIn::factory()->create($on($lunch));
+    expect(MealCheckIn::where('meal_id', $breakfast)->count())->toBe(1)
+        ->and(MealCheckIn::where('meal_id', $lunch)->count())->toBe(1);
+});
+
 it('a soft-deleted day keeps its meals for a restore, and a force delete removes them', function () {
     $day = DayTarget::factory()->create();
     $meal = $day->meals[0]['id'];
