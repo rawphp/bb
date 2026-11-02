@@ -234,4 +234,25 @@ describe('CopySheet', () => {
         expect(wrapper.emitted('close')).toBeUndefined();
         expect(wrapper.findAll('[role="dialog"]')).toHaveLength(1);
     });
+
+    it('OFF-004 reads the week again when the device reconnects after an offline failure, and not once it is closed', async () => {
+        const wrapper = show();
+        readMock.mockRejectedValueOnce(new CapabilityError('copy_show', 0, { reason: 'network' })).mockResolvedValueOnce(foods);
+        await wrapper.get('[aria-label="Next week"]').trigger('click');
+        await flushPromises();
+        expect(wrapper.text()).toContain("back online");
+
+        window.dispatchEvent(new Event('online'));
+        await flushPromises();
+        expect(readMock).toHaveBeenLastCalledWith('copy_show', { meal_id: SOURCE_MEAL, source_date: null, shown_date: '2026-10-01' }, expect.any(Function), expect.any(Function));
+        expect(wrapper.find('[data-test="source"]').exists()).toBe(true);
+
+        readMock.mockRejectedValueOnce(new CapabilityError('copy_show', 0, { reason: 'network' }));
+        await wrapper.get('[aria-label="Next week"]').trigger('click');
+        await flushPromises();
+        wrapper.unmount();
+        window.dispatchEvent(new Event('online'));
+        await flushPromises();
+        expect(readMock).toHaveBeenCalledTimes(3);
+    });
 });

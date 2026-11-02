@@ -203,4 +203,13 @@ describe('AwayWeekSheet', () => {
         expect(wrapper.emitted('close')).toBeUndefined();
         expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
     });
+
+    it('PLAN-025 leaves keep_phase_end out of a Save when the user has not set it', async () => {
+        const wrapper = show({ payload: { ...editing, shows_keep_phase_end: true } });
+
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(sent('away_week_set')).toEqual({ week_starts: ['2026-09-26'], away: true, training: 'pause', calories: 'rest' });
+    });
 });
