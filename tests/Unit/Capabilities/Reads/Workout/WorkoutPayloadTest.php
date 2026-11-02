@@ -236,6 +236,20 @@ it('PROG-025 a weight far from last week\'s keeps only the RIR when the screen i
         ->and($set['off_table_text'])->toBe('1 RIR, just log reps');
 });
 
+it('CAP-016 PROG-024 a rebuilt set shows the rep table\'s reps for the weight it holds, and only the RIR off the table', function () {
+    $table = array_column(array_map(fn (array $row) => [$row['weight']['text'], $row['reps']], woExercise(woShow(), 'Bench Press')['sets'][0]['rep_table']), 1, 0);
+    $rebuilt = fn (float $kg) => woExercise(woShow(...woStarted([
+        woRow('slot-12', 0, W::BENCH, ['target_weight_kg' => 82.5, 'target_reps' => 10, 'actual_weight_kg' => $kg]),
+    ])), 'Bench Press')['sets'][0];
+
+    // The table runs to 92.5 kg, 15% above the planned 82.5 kg, though that is 15.6% above last week's 80 kg.
+    expect(array_key_last($table))->toBe('92.5 kg')
+        ->and($rebuilt(92.5)['reps'])->toBe($table['92.5 kg'])
+        ->and($rebuilt(72.5)['reps'])->toBe($table['72.5 kg'])
+        ->and($rebuilt(95.0)['reps'])->toBeNull()
+        ->and($rebuilt(95.0)['off_table_text'])->toBe('1 RIR, just log reps');
+});
+
 it('OFF-022 a set logged at another weight changes no other set\'s target or rep table', function () {
     $planned = woExercise(woShow(), 'Bench Press')['sets'];
     $payload = woShow(...woStarted([
