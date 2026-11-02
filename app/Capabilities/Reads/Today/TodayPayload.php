@@ -14,6 +14,7 @@ use App\Capabilities\Reads\Data\Today\DaySchedule;
 use App\Capabilities\Reads\Data\Today\ManualCheckIn;
 use App\Capabilities\Reads\Data\Today\MealCheckInState;
 use App\Capabilities\Reads\Data\Today\MealMenuItem;
+use App\Capabilities\Reads\Data\Today\MissedWeeks;
 use App\Capabilities\Reads\Data\Today\MoveDayOption;
 use App\Capabilities\Reads\Data\Today\NextMesocycle;
 use App\Capabilities\Reads\Data\Today\NextMesocycleOption;
@@ -45,6 +46,7 @@ use App\Domain\Progress\DayTotals;
 use App\Models\OffPlanEntry as OffPlanRow;
 use App\Models\OtherActivity;
 use App\Models\WeighInScheduleEntry;
+use App\Support\Today\MissedWeeksPrompt;
 use App\Support\Today\TodayMealItem;
 use App\Support\Today\TodaySnapshot;
 use App\Support\Today\TodayWorkoutItem;
@@ -115,6 +117,21 @@ final class TodayPayload
 
     private const WEEKDAYS = [1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun'];
 
+    /** SCH-058: the question after a plan week or more without training; null when none is due. */
+    private static function missedWeeks(TodaySnapshot $snapshot): ?MissedWeeks
+    {
+        $prompt = MissedWeeksPrompt::from($snapshot);
+
+        return $prompt === null ? null : new MissedWeeks(
+            mesocycle_id: (string) $prompt->mesocycle->id,
+            title: $prompt->title(),
+            text: $prompt->text(),
+            can_restart: $prompt->canRestart(),
+            end_warning: $prompt->endWarning(),
+            offers_diet_break: $prompt->offersDietBreak,
+        );
+    }
+
     public static function build(TodaySnapshot $snapshot): TodayShowOutput
     {
         $day = $snapshot->date;
@@ -159,7 +176,7 @@ final class TodayPayload
             add_workout: $addWorkout,
             schedule: self::schedule($snapshot, $workout),
             missed_session: null,
-            missed_weeks: null,
+            missed_weeks: self::missedWeeks($snapshot),
         );
     }
 
