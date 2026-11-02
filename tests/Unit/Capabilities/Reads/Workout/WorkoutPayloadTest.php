@@ -150,7 +150,7 @@ it('PROG-020 PROG-026 a set count beyond last week\'s keeps dropping reps', func
     expect(woReps(woExercise(woShow(meso: ['days' => $days]), 'Bench Press')))->toBe([10, 9, 8, 6]);
 });
 
-it('PROG-020 history follows the exercise, not the slot', function () {
+it('MESO-062 PROG-020 history follows the exercise, not the slot', function () {
     $days = W::days();
     $days[0]['slots'] = [W::slot(W::CURL, 'biceps', 2), W::slot(W::BENCH, 'chest', 3)];
     $payload = woShow(meso: ['days' => $days]);
@@ -170,7 +170,7 @@ it('WO-025 PROG-020 only logged sets that were not skipped count as last week\'s
     expect(woReps(woExercise(woShow(sets: $sets), 'Bench Press')))->toBe([10, 9, 8]);
 });
 
-it('PROG-021 CAP-015 targets are worked and shown in the pounds the user sees', function () {
+it('SET-001 PROG-021 CAP-015 targets are worked and shown in the pounds the user sees', function () {
     $bench = woExercise(woShow(profile: ['weight_unit' => 'lb']), 'Bench Press');
 
     // 80 kg is 176.4 lb; 2% more is 179.9, which rounds to 180 lb on a 5 lb step.
@@ -179,7 +179,7 @@ it('PROG-021 CAP-015 targets are worked and shown in the pounds the user sees', 
         ->and($bench['sets'][0]['rep_table'][0]['weight']['unit'])->toBe('lb');
 });
 
-it('PROG-027 a load step of the exercise replaces the default', function () {
+it('EX-012 PROG-027 a load step of the exercise replaces the default', function () {
     $step = (new ExerciseLoadStep)->forceFill(['user_id' => 1, 'exercise_id' => W::BENCH, 'step_kg' => 5.0]);
     $bench = woExercise(woShow(loadSteps: [$step]), 'Bench Press');
 
@@ -311,6 +311,21 @@ it('WO-006 PROG-026 a copied mesocycle fills week 1 from the old week 1, reps dr
     expect(woWeights($bench))->toBe([85.0, 85.0, 85.0])
         ->and(woReps($bench))->toBe([10, 8, 6])
         ->and($bench['carries_first_weight'])->toBeFalse();
+});
+
+it('MESO-061 an advanced lifter\'s copied week 1 starts 2.5% above the old week 1', function () {
+    // 80 kg plus 2.5% is 82, which rounds to 82.5.
+    expect(woWeights(woExercise(woShow(week: 1, now: '2026-09-14 17:35', profile: ['experience' => 'advanced']), 'Bench Press')))->toBe([82.5, 82.5, 82.5]);
+});
+
+it('MESO-063 a light dumbbell that cannot step keeps its weight and chases reps', function () {
+    $days = W::days();
+    $days[0]['slots'][2] = W::slot(W::CURL, 'biceps', 2, ['weight_kg' => 14.0, 'reps' => 12]);
+    $curl = woExercise(woShow(week: 1, now: '2026-09-14 17:35', meso: ['days' => $days]), 'Dumbbell Curl');
+
+    // 14 kg plus 5% is 14.7, which rounds back to 14 on a 2 kg step: same weight, one more rep.
+    expect(woWeights($curl))->toBe([14.0, 14.0])
+        ->and(woReps($curl))->toBe([13, 11]);
 });
 
 it('WO-006 a week with no history falls back to the week 1 rule', function () {
