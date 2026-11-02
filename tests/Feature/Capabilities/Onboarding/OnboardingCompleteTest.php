@@ -65,3 +65,17 @@ it('ONB-020 answers 409 once the plan has started', function () {
     onboardingComplete($user)->assertStatus(409)->assertJsonPath('error.message', 'Your plan has already started.');
     expect(Phase::query()->where('user_id', $user->id)->count())->toBe(1);
 });
+
+it('CAP-014 ONB-020 a retry with the same Idempotency-Key replays the first start instead of refusing it', function () {
+    $user = User::factory()->create();
+    W::draft($user);
+    $key = ['Idempotency-Key' => (string) Str::ulid()];
+
+    $first = $this->actingAs($user)->postJson('/capabilities/onboarding_complete', [], $key)->assertOk();
+    $replay = $this->actingAs($user)->postJson('/capabilities/onboarding_complete', [], $key)
+        ->assertOk()
+        ->assertJsonPath('meta.idempotent_replay', true);
+
+    expect($replay->json('data'))->toEqual($first->json('data'))
+        ->and(Phase::query()->where('user_id', $user->id)->count())->toBe(1);
+});
