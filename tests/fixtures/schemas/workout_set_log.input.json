@@ -42,6 +42,8 @@
     },
     "required": [
         "set_id",
-        "is_logged"
+        "is_logged",
+        "weight",
+        "reps"
     ]
 }

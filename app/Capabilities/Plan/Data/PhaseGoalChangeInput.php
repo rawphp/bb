@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Plan\Data;
 
-use App\Domain\Model\PhaseType;
+use App\Capabilities\Support\DomainValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -16,7 +16,7 @@ final class PhaseGoalChangeInput extends CapabilityData
 {
     public function __construct(
         public readonly string $phase_id,
-        #[Field(enum: [PhaseType::FatLoss->value, PhaseType::MuscleGain->value, PhaseType::Maintenance->value, PhaseType::MiniCut->value])]
+        #[Field(enum: DomainValues::PHASE_TYPES)]
         public readonly string $type,
         public readonly string $new_phase_id,
     ) {}

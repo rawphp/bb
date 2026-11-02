@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Workout\Data;
 
-use App\Domain\Model\JointPain;
+use App\Capabilities\Support\DomainValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -13,7 +13,7 @@ final class WorkoutJointPainAnswer extends CapabilityData
 {
     public function __construct(
         public readonly string $exercise_id,
-        #[Field(enum: [JointPain::None->value, JointPain::Low->value, JointPain::Moderate->value, JointPain::ALot->value])]
+        #[Field(enum: DomainValues::JOINT_PAIN)]
         public readonly string $answer,
     ) {}
 }

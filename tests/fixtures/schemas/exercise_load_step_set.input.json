@@ -23,6 +23,7 @@
     },
     "required": [
         "exercise_id",
-        "unit"
+        "unit",
+        "step"
     ]
 }

@@ -2,7 +2,8 @@
 
 namespace App\Capabilities\Exercises\Data;
 
-use App\Domain\Model\WeightUnit;
+use App\Capabilities\Support\DomainValues;
+use App\Capabilities\Support\ExplicitNulls;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -14,11 +15,13 @@ use Rawphp\Capabilities\Support\CapabilityData;
  */
 final class ExerciseLoadStepSetInput extends CapabilityData
 {
+    use ExplicitNulls;
+
     public function __construct(
         public readonly string $exercise_id,
         #[Field(minimum: 0.25)]
         public readonly ?float $step,
-        #[Field(enum: [WeightUnit::Kg->value, WeightUnit::Lb->value])]
+        #[Field(enum: DomainValues::WEIGHT_UNITS)]
         public readonly string $unit,
     ) {}
 }

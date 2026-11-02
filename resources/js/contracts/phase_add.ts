@@ -3,6 +3,6 @@
 export interface PhaseAddInput {
   phase_id: string;
   type: "fatLoss" | "muscleGain" | "maintenance" | "miniCut";
-  weeks?: number | null;
-  rate_percent_per_week?: number | null;
+  weeks: number | null;
+  rate_percent_per_week: number | null;
 }

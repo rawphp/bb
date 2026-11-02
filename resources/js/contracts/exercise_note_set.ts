@@ -2,5 +2,5 @@
 
 export interface ExerciseNoteSetInput {
   exercise_id: string;
-  note?: string | null;
+  note: string | null;
 }

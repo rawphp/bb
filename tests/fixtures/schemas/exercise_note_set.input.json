@@ -16,6 +16,7 @@
         }
     },
     "required": [
-        "exercise_id"
+        "exercise_id",
+        "note"
     ]
 }

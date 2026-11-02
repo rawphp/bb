@@ -2,10 +2,10 @@
 
 export interface WorkoutSetLogInput {
   set_id: string;
-  weight?: {
+  weight: {
     value: number;
     unit: "kg" | "lb";
   } | null;
-  reps?: number | null;
+  reps: number | null;
   is_logged: boolean;
 }

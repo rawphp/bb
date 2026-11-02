@@ -24,6 +24,7 @@
     },
     "required": [
         "phase_id",
-        "fix"
+        "fix",
+        "weeks"
     ]
 }

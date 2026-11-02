@@ -2,5 +2,5 @@
 
 export interface WorkoutExerciseNoteSetInput {
   workout_exercise_id: string;
-  note?: string | null;
+  note: string | null;
 }

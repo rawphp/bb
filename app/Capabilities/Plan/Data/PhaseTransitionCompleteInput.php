@@ -2,8 +2,8 @@
 
 namespace App\Capabilities\Plan\Data;
 
+use App\Capabilities\Support\DomainValues;
 use App\Capabilities\Support\ExplicitNulls;
-use App\Domain\Model\PhaseType;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -24,7 +24,7 @@ final class PhaseTransitionCompleteInput extends CapabilityData
     public function __construct(
         public readonly string $phase_id,
         public readonly string $next_phase_id,
-        #[Field(enum: [PhaseType::FatLoss->value, PhaseType::MuscleGain->value, PhaseType::Maintenance->value, PhaseType::MiniCut->value])]
+        #[Field(enum: DomainValues::PHASE_TYPES)]
         public readonly string $choice,
         public readonly bool $gain_first,
         #[Field(minimum: 1)]

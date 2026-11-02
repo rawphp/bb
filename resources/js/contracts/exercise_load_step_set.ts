@@ -2,6 +2,6 @@
 
 export interface ExerciseLoadStepSetInput {
   exercise_id: string;
-  step?: number | null;
+  step: number | null;
   unit: "kg" | "lb";
 }

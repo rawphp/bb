@@ -2,8 +2,8 @@
 
 namespace App\Capabilities\Mesocycles\Data;
 
+use App\Capabilities\Support\DomainValues;
 use App\Capabilities\Support\ExplicitNulls;
-use App\Domain\Model\Sex;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -21,7 +21,7 @@ final class TemplatesShowInput extends CapabilityData
         public readonly ?string $template_id = null,
         #[Field(enum: ['2', '3', '4', '5', '6'])]
         public readonly ?string $days = null,
-        #[Field(enum: [Sex::Female->value, Sex::Male->value])]
+        #[Field(enum: DomainValues::SEXES)]
         public readonly ?string $sex = null,
         #[Field(enum: ['whole_body', 'emphasis'])]
         public readonly ?string $focus = null,

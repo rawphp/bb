@@ -2,6 +2,6 @@
 
 export interface PhaseLengthSetInput {
   phase_id: string;
-  weeks?: number | null;
+  weeks: number | null;
   fix: "keep_end" | "move_end_to_deload" | "change_mesocycle_length";
 }

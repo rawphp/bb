@@ -2,7 +2,8 @@
 
 namespace App\Capabilities\Plan\Data;
 
-use App\Domain\Model\PhaseType;
+use App\Capabilities\Support\DomainValues;
+use App\Capabilities\Support\ExplicitNulls;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -14,9 +15,11 @@ use Rawphp\Capabilities\Support\CapabilityData;
  */
 final class PhaseAddInput extends CapabilityData
 {
+    use ExplicitNulls;
+
     public function __construct(
         public readonly string $phase_id,
-        #[Field(enum: [PhaseType::FatLoss->value, PhaseType::MuscleGain->value, PhaseType::Maintenance->value, PhaseType::MiniCut->value])]
+        #[Field(enum: DomainValues::PHASE_TYPES)]
         public readonly string $type,
         #[Field(minimum: 1)]
         public readonly ?int $weeks,

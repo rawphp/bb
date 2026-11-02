@@ -2,8 +2,8 @@
 
 namespace App\Capabilities\Plan\Data;
 
+use App\Capabilities\Support\DomainValues;
 use App\Capabilities\Train\Data\Pill;
-use App\Domain\Model\PhaseType;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -21,7 +21,7 @@ final class PhaseGoalChoice extends CapabilityData
      * @param  list<PlanTextLine>  $training_lines
      */
     public function __construct(
-        #[Field(enum: [PhaseType::FatLoss->value, PhaseType::MuscleGain->value, PhaseType::Maintenance->value, PhaseType::MiniCut->value])]
+        #[Field(enum: DomainValues::PHASE_TYPES)]
         public readonly string $type,
         public readonly string $title,
         public readonly string $from_text,

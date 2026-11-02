@@ -1,9 +1,16 @@
 <?php
 
+use App\Capabilities\Exercises\Data\CustomExerciseSaveInput;
 use App\Capabilities\Exercises\Data\ExerciseLoadStepSetInput;
+use App\Capabilities\Exercises\Data\ExerciseNoteSetInput;
 use App\Capabilities\Mesocycles\Data\MesocycleBuildInput;
 use App\Capabilities\Mesocycles\Data\MesocycleLengthSetInput;
+use App\Capabilities\Plan\Data\PhaseAddInput;
+use App\Capabilities\Plan\Data\PhaseLengthSetInput;
+use App\Capabilities\Plan\Data\PhaseTransitionCompleteInput;
 use App\Capabilities\Support\Tone;
+use App\Capabilities\Workout\Data\WorkoutDayRelabelInput;
+use App\Capabilities\Workout\Data\WorkoutExerciseNoteSetInput;
 use App\Capabilities\Workout\Data\WorkoutExerciseReorderInput;
 use App\Capabilities\Workout\Data\WorkoutSetLogInput;
 use App\Capabilities\Workout\Data\WorkoutShowInput;
@@ -159,7 +166,58 @@ it('CAP-012 refuses a train input outside its bounds and names the field', funct
     'negative reps' => [WorkoutSetLogInput::class, 'reps', -1],
     'week 0' => [WorkoutShowInput::class, 'week', 0],
     'day 0' => [WorkoutShowInput::class, 'day', 0],
+    'a phase of 0 weeks' => [PhaseAddInput::class, 'weeks', 0],
+    'a phase length of 0 weeks' => [PhaseLengthSetInput::class, 'weeks', 0],
+    'a next phase of 0 weeks' => [PhaseTransitionCompleteInput::class, 'weeks', 0],
+    'an empty day label' => [WorkoutDayRelabelInput::class, 'label', ''],
+    'a 61-character day label' => [WorkoutDayRelabelInput::class, 'label', str_repeat('x', 61)],
+    'an empty exercise name' => [CustomExerciseSaveInput::class, 'name', ''],
+    'a 256-character exercise name' => [CustomExerciseSaveInput::class, 'name', str_repeat('x', 256)],
+    'an empty exercise note' => [ExerciseNoteSetInput::class, 'note', ''],
+    'a 1001-character exercise note' => [ExerciseNoteSetInput::class, 'note', str_repeat('x', 1001)],
+    'an empty session note' => [WorkoutExerciseNoteSetInput::class, 'note', ''],
+    'a 1001-character session note' => [WorkoutExerciseNoteSetInput::class, 'note', str_repeat('x', 1001)],
 ]);
+
+it('CAP-012 takes the values at a train input\'s bounds, and the null that clears or resets', function (string $input, string $field, mixed $value) {
+    $data = trainExample($input::jsonSchema());
+    data_set($data, $field, $value);
+
+    expect(trainInputViolations($input, $data))->toBe([]);
+})->with([
+    'the smallest load step' => [ExerciseLoadStepSetInput::class, 'step', 0.25],
+    'a null load step, back to the default' => [ExerciseLoadStepSetInput::class, 'step', null],
+    'a null exercise note, which clears it' => [ExerciseNoteSetInput::class, 'note', null],
+    'a null session note, which clears it' => [WorkoutExerciseNoteSetInput::class, 'note', null],
+    'a 1000-character note' => [ExerciseNoteSetInput::class, 'note', str_repeat('x', 1000)],
+    'a 60-character day label' => [WorkoutDayRelabelInput::class, 'label', str_repeat('x', 60)],
+    'an 8-week mesocycle' => [MesocycleLengthSetInput::class, 'weeks', 8],
+    'a slot of 20 sets' => [MesocycleBuildInput::class, 'days.0.slots.0.sets', 20],
+    'a phase with no end' => [PhaseAddInput::class, 'weeks', null],
+]);
+
+// A nullable field with no default means something when null (a cleared note,
+// no end, the default step), so a payload that leaves the key out is refused
+// rather than read as that command.
+it('CAP-012 refuses a train input that leaves out a nullable field with no default', function () {
+    $checked = [];
+
+    foreach (trainInputs() as $name => $input) {
+        foreach ((new ReflectionClass($input))->getConstructor()?->getParameters() ?? [] as $parameter) {
+            if (! $parameter->allowsNull() || $parameter->isDefaultValueAvailable()) {
+                continue;
+            }
+
+            $data = trainExample($input::jsonSchema());
+            unset($data[$parameter->getName()]);
+
+            expect(trainInputViolations($input, $data))->toBe([$parameter->getName()], "{$name} accepts a missing {$parameter->getName()}");
+            $checked[] = "{$name}.{$parameter->getName()}";
+        }
+    }
+
+    expect($checked)->toContain('exercise_note_set.note', 'phase_length_set.weeks', 'phase_event_date_set.event_date', 'priority_set.priority');
+});
 
 // A contract value the API maps with Enum::from() must be one of the enum's
 // values, or the request ends in a ValueError. Each property name below holds

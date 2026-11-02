@@ -2,8 +2,8 @@
 
 namespace App\Capabilities\Mesocycles\Data;
 
+use App\Capabilities\Support\DomainValues;
 use App\Capabilities\Support\ExplicitNulls;
-use App\Domain\Model\Priority;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -16,7 +16,7 @@ final class MesocyclePriorityOption extends CapabilityData
     use ExplicitNulls;
 
     public function __construct(
-        #[Field(enum: [Priority::Emphasize->value, Priority::Grow->value, Priority::Maintain->value])]
+        #[Field(enum: DomainValues::PRIORITIES)]
         public readonly ?string $priority,
         public readonly string $title,
     ) {}

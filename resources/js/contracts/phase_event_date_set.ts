@@ -2,5 +2,5 @@
 
 export interface PhaseEventDateSetInput {
   phase_id: string;
-  event_date?: string | null;
+  event_date: string | null;
 }

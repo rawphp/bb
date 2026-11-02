@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Exercises\Data;
 
+use App\Capabilities\Support\ExplicitNulls;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -11,6 +12,8 @@ use Rawphp\Capabilities\Support\CapabilityData;
  */
 final class ExerciseNoteSetInput extends CapabilityData
 {
+    use ExplicitNulls;
+
     public function __construct(
         public readonly string $exercise_id,
         #[Field(minLength: 1, maxLength: 1000)]

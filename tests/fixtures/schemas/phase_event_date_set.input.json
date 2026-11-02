@@ -15,6 +15,7 @@
         }
     },
     "required": [
-        "phase_id"
+        "phase_id",
+        "event_date"
     ]
 }

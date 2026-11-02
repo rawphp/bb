@@ -3,6 +3,6 @@
 export interface WorkoutSetAddInput {
   set_id: string;
   workout_exercise_id: string;
-  after_set_id?: string | null;
+  after_set_id: string | null;
   set_type: "regular_straight" | "regular_down" | "regular_ascending" | "myorep" | "myorep_match";
 }

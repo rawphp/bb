@@ -29,6 +29,7 @@
     "required": [
         "set_id",
         "workout_exercise_id",
-        "set_type"
+        "set_type",
+        "after_set_id"
     ]
 }

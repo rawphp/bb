@@ -2,9 +2,7 @@
 
 namespace App\Capabilities\Exercises\Data;
 
-use App\Domain\Model\Equipment;
-use App\Domain\Model\ExerciseLoadType;
-use App\Domain\Model\MuscleGroup;
+use App\Capabilities\Support\DomainValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -28,13 +26,13 @@ final class ExerciseShowOutput extends CapabilityData
         public readonly string $name,
         public readonly bool $is_custom,
         public readonly ?string $video_url,
-        #[Field(enum: [MuscleGroup::Chest->value, MuscleGroup::Back->value, MuscleGroup::Quads->value, MuscleGroup::Hamstrings->value, MuscleGroup::Glutes->value, MuscleGroup::SideDelts->value, MuscleGroup::RearDelts->value, MuscleGroup::FrontDelts->value, MuscleGroup::Biceps->value, MuscleGroup::Triceps->value, MuscleGroup::Calves->value, MuscleGroup::Abs->value, MuscleGroup::Traps->value, MuscleGroup::Forearms->value])]
+        #[Field(enum: DomainValues::MUSCLE_GROUPS)]
         public readonly string $muscle_group,
         public readonly string $muscle_group_text,
-        #[Field(enum: [Equipment::Barbell->value, Equipment::EzBar->value, Equipment::TrapBar->value, Equipment::Dumbbell->value, Equipment::Kettlebell->value, Equipment::Machine->value, Equipment::Cable->value, Equipment::SmithMachine->value, Equipment::Bodyweight->value])]
+        #[Field(enum: DomainValues::EQUIPMENT)]
         public readonly string $equipment,
         public readonly string $equipment_text,
-        #[Field(enum: [ExerciseLoadType::Barbell->value, ExerciseLoadType::Dumbbell->value, ExerciseLoadType::Machine->value, ExerciseLoadType::Cable->value, ExerciseLoadType::Bodyweight->value, ExerciseLoadType::BodyweightPlusLoad->value, ExerciseLoadType::SmithMachine->value])]
+        #[Field(enum: DomainValues::LOAD_TYPES)]
         public readonly string $load_type,
         public readonly string $load_type_text,
         public readonly ?string $rep_range_text,

@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Workout\Data;
 
+use App\Capabilities\Support\ExplicitNulls;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -12,6 +13,8 @@ use Rawphp\Capabilities\Support\CapabilityData;
  */
 final class WorkoutSetLogInput extends CapabilityData
 {
+    use ExplicitNulls;
+
     public function __construct(
         public readonly string $set_id,
         public readonly ?WorkoutWeight $weight,
