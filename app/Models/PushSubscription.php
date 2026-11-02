@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\PushSubscriptionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Http\Request;
 use NotificationChannels\WebPush\PushSubscription as WebPushSubscription;
 
 /**
@@ -17,6 +18,13 @@ class PushSubscription extends WebPushSubscription
 {
     /** @use HasFactory<PushSubscriptionFactory> */
     use BelongsToUser, HasFactory;
+
+    /**
+     * Names this browser's endpoint. usePush() sets it when it saves the
+     * subscription, so sign-in and sign-out can find this browser's row.
+     * Plain, not encrypted: the app writes it.
+     */
+    public const BROWSER_COOKIE = 'bb_push_endpoint';
 
     protected $fillable = [
         'user_id',
@@ -43,5 +51,13 @@ class PushSubscription extends WebPushSubscription
         }
 
         return false;
+    }
+
+    /** The endpoint the browser behind this request named, if it has one. */
+    public static function browserEndpoint(Request $request): ?string
+    {
+        $endpoint = $request->cookie(self::BROWSER_COOKIE);
+
+        return is_string($endpoint) && $endpoint !== '' ? $endpoint : null;
     }
 }

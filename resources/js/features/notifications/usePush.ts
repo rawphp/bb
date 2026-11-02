@@ -49,6 +49,8 @@ export function usePush() {
             public_key: keys?.p256dh ?? '',
             auth_token: keys?.auth ?? '',
         } satisfies PushSubscribeInput);
+
+        nameBrowserEndpoint(endpoint ?? subscription.endpoint);
     }
 
     async function enable(): Promise<PushState> {
@@ -82,12 +84,25 @@ export function usePush() {
         try {
             if (subscription) await write('push_unsubscribe', { endpoint: subscription.endpoint } satisfies PushUnsubscribeInput);
         } finally {
+            nameBrowserEndpoint(null);
             await subscription?.unsubscribe();
             if (state.value === 'on') state.value = 'off';
         }
     }
 
     return { state, needsHomeScreen: computed(() => state.value === 'needs-home-screen'), refresh, enable, disable };
+}
+
+// Tells the server which subscription is this browser's, so signing out stops
+// it and signing in as someone else stops the previous account's (NOTIF-010).
+const ENDPOINT_COOKIE = 'bb_push_endpoint';
+
+function nameBrowserEndpoint(endpoint: string | null): void {
+    const secure = location.protocol === 'https:' ? '; secure' : '';
+    document.cookie =
+        endpoint === null
+            ? `${ENDPOINT_COOKIE}=; path=/; max-age=0; samesite=lax${secure}`
+            : `${ENDPOINT_COOKIE}=${encodeURIComponent(endpoint)}; path=/; max-age=34560000; samesite=lax${secure}`;
 }
 
 function browserSupportsPush(): boolean {

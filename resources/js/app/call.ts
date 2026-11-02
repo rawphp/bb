@@ -226,22 +226,11 @@ async function send<T>(name: string, input: CapabilityInput, signal: AbortSignal
     return body.data as T;
 }
 
-/** End this browser's session (ACC-006): the host's sign-out route, not a capability (CAP-004). A 401 or 419 means it had already ended. */
-export async function endSession(): Promise<void> {
-    const response = await fetch('/sign-out', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': await csrfToken() },
-    });
-
-    if (!response.ok && !SESSION_GONE.includes(response.status)) throw new CapabilityError('sign-out', response.status, { reason: 'sign-out' });
-}
-
 function isSuccess(body: unknown): body is { ok: true; data: unknown } {
     return typeof body === 'object' && body !== null && (body as { ok?: unknown }).ok === true;
 }
 
-async function csrfToken(signal?: AbortSignal): Promise<string> {
+async function csrfToken(signal: AbortSignal): Promise<string> {
     let token = cookie('XSRF-TOKEN');
 
     if (token === null) {

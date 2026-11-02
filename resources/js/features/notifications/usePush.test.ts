@@ -47,7 +47,10 @@ describe('usePush', () => {
         writeMock.mockReset().mockResolvedValue({ invalidates: ['push_show{}'], toast: null, undo: null });
     });
 
-    afterEach(() => vi.unstubAllGlobals());
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        document.cookie = 'bb_push_endpoint=; path=/; max-age=0';
+    });
 
     it('NOTIF-010 never asks for permission until the user opts in', async () => {
         const { requestPermission } = installBrowser();
@@ -153,5 +156,36 @@ describe('usePush', () => {
         expect(writeMock).toHaveBeenCalledWith('push_unsubscribe', { endpoint: 'https://push.example.com/send/device-1' });
         expect((subscription as unknown as FakeSubscription).unsubscribe).toHaveBeenCalledOnce();
         expect(push.state.value).toBe('off');
+    });
+
+    it('NOTIF-010 a saved subscription names this browser\'s endpoint in a cookie, so sign-in and sign-out can stop it on the server', async () => {
+        installBrowser();
+        const push = usePush();
+
+        await push.enable();
+
+        expect(document.cookie).toContain('bb_push_endpoint=https%3A%2F%2Fpush.example.com%2Fsend%2Fdevice-1');
+    });
+
+    it('NOTIF-010 a subscription the server refused leaves no endpoint cookie', async () => {
+        installBrowser();
+        writeMock.mockRejectedValueOnce(new Error('network'));
+        const push = usePush();
+
+        await expect(push.enable()).rejects.toThrow('network');
+
+        expect(document.cookie).not.toContain('bb_push_endpoint');
+    });
+
+    it('NOTIF-010 turning off removes the endpoint cookie, even when the server cannot be told', async () => {
+        installBrowser({ permission: 'granted', subscribed: true });
+        const push = usePush();
+        await push.refresh();
+        expect(document.cookie).toContain('bb_push_endpoint=');
+        writeMock.mockRejectedValueOnce(new Error('network'));
+
+        await expect(push.disable()).rejects.toThrow('network');
+
+        expect(document.cookie).not.toContain('bb_push_endpoint');
     });
 });
