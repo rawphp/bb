@@ -44,9 +44,9 @@ function authorizeAs(string $capability, object $actor, array $input = [], ?Host
 function ownedIds(array $ids): Builder
 {
     $query = Mockery::mock(Builder::class);
-    $query->shouldReceive('whereKey')->andReturnUsing(function (mixed $id) use ($ids) {
+    $query->shouldReceive('whereKey')->andReturnUsing(function (array $keys) use ($ids) {
         $found = Mockery::mock(Builder::class);
-        $found->shouldReceive('exists')->andReturn(in_array($id, $ids, true));
+        $found->shouldReceive('count')->andReturn(count(array_intersect($keys, $ids)));
 
         return $found;
     });
@@ -105,6 +105,25 @@ it('CAP-020 refuses a row ID the actor does not own, and reports it to the watch
         ->and($ownership->watch(fn () => authorizeAs('account_show', authorizerUser(), ['row_id' => 'theirs'], $authorizer)))->toBe([false, true])
         ->and($ownership->watch(fn () => authorizeAs('account_show', authorizerUser(), [], $authorizer)))->toBe([true, false]);
 });
+
+it('CAP-020 checks every ID in a list, and lets an empty list through', function (mixed $ids, bool $allowed) {
+    $ownership = new Ownership;
+    $ownership->declare('account_show', new class implements OwnsInput
+    {
+        public function owned(User $user): array
+        {
+            return ['row_ids' => ownedIds(['a', 'b'])];
+        }
+    });
+
+    expect(authorizeAs('account_show', authorizerUser(), ['row_ids' => $ids], hostAuthorizer($ownership)))->toBe($allowed);
+})->with([
+    'all mine' => [['a', 'b'], true],
+    'mine, repeated' => [['a', 'a', 'b'], true],
+    'empty' => [[], true],
+    'one not mine' => [['a', 'theirs'], false],
+    'not an ID' => [['a', ['b']], false],
+]);
 
 it('CAP-020 checks ownership before the token scope', function () {
     $ownership = new Ownership;

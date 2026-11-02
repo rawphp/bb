@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Domain\Tokens\TokenScope;
 use Database\Factories\PersonalAccessTokenFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,22 +19,17 @@ use Laravel\Sanctum\PersonalAccessToken as SanctumToken;
  * @property TokenScope $scope
  * @property list<string> $abilities
  */
+#[Fillable(['id', 'tokenable_type', 'tokenable_id', 'name', 'token', 'abilities', 'scope', 'expires_at'])]
 class PersonalAccessToken extends SanctumToken
 {
     /** @use HasFactory<PersonalAccessTokenFactory> */
     use HasFactory, HasUlids;
 
-    protected $table = 'personal_access_tokens';
-
-    protected $fillable = ['id', 'tokenable_type', 'tokenable_id', 'name', 'token', 'abilities', 'scope', 'expires_at'];
-
-    /** @var array<string, string> */
-    protected $casts = [
-        'abilities' => 'json',
-        'scope' => TokenScope::class,
-        'last_used_at' => 'datetime',
-        'expires_at' => 'datetime',
-    ];
+    /** @return array<string, string> Sanctum's casts, plus the scope */
+    protected function casts(): array
+    {
+        return ['abilities' => 'json', 'scope' => TokenScope::class];
+    }
 
     /** @return Builder<self> the user's tokens */
     public static function ownedBy(User $user): Builder

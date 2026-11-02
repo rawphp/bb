@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 interface OwnsInput
 {
     /**
-     * Each top-level input field holding a row ID, and a query for the rows the user owns.
-     * A null or missing field is not checked.
+     * Each top-level input field holding a row ID, or a list of them, and a query for
+     * the rows the user owns. A null or missing field, or an empty list, is not checked.
      *
      * @return array<string, Builder<*>|Relation<*, *, *>>
      */

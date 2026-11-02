@@ -3,6 +3,8 @@
 namespace App\Capabilities\Support;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Rawphp\Capabilities\Support\CapabilityData;
 
 /**
@@ -47,7 +49,7 @@ final class Ownership
                 continue;
             }
 
-            if ((! is_string($id) && ! is_int($id)) || ! $query->whereKey($id)->exists()) {
+            if (! self::ownsAll($query, is_array($id) ? $id : [$id])) {
                 if ($this->denied !== null) {
                     $this->denied = true;
                 }
@@ -57,6 +59,25 @@ final class Ownership
         }
 
         return true;
+    }
+
+    /**
+     * Whether the user owns every ID: a field holds one ID, or a list of them (`*_ids`).
+     *
+     * @param  Builder<*>|Relation<*, *, *>  $query
+     * @param  array<mixed>  $ids
+     */
+    private static function ownsAll(Builder|Relation $query, array $ids): bool
+    {
+        foreach ($ids as $id) {
+            if (! is_string($id) && ! is_int($id)) {
+                return false;
+            }
+        }
+
+        $distinct = array_values(array_unique(array_map('strval', $ids)));
+
+        return $distinct === [] || (clone $query)->whereKey($distinct)->count() === count($distinct);
     }
 
     /**

@@ -51,7 +51,7 @@ it('CAP-020 answers another user\'s row ID with 404, not 403', function () {
         public function owned(User $user): array
         {
             $query = Mockery::mock(Builder::class);
-            $query->shouldReceive('whereKey->exists')->andReturn(false);
+            $query->shouldReceive('whereKey->count')->andReturn(0);
 
             return ['id' => $query];
         }
@@ -106,7 +106,7 @@ function foreignRows(): Ownership
         public function owned(User $user): array
         {
             $query = Mockery::mock(Builder::class);
-            $query->shouldReceive('whereKey->exists')->andReturn(false);
+            $query->shouldReceive('whereKey->count')->andReturn(0);
 
             return ['id' => $query];
         }

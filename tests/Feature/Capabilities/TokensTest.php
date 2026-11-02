@@ -322,3 +322,29 @@ it('CAP-020 makes every capability that takes an existing row\'s ID check its ow
         expect(array_values(array_diff($fields, $owned, $creates[$name] ?? [])))->toBe([], "{$name} takes a row ID it does not declare in OwnsInput");
     }
 });
+
+it('CAP-020 refuses another user\'s token ID in the authorizer, before revoke runs', function () {
+    [$owner, $other] = User::factory()->count(2)->create();
+    createToken($owner, 'everything');
+
+    $response = $this->actingAs($other)->postJson('/capabilities/token_revoke', ['id' => TOKEN_ID], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertNotFound()
+        ->assertJsonPath('error.code', 'not_found');
+
+    // The stages stop at authorize: revoke's own owner query never got the chance to hide a gap.
+    expect($response->json('meta.stages'))->toContain('authorize')->not->toContain('run')
+        ->and(PersonalAccessToken::query()->whereKey(TOKEN_ID)->exists())->toBeTrue();
+});
+
+it('CAP-021 mints every token through token_create, so each has a scope', function () {
+    $user = User::factory()->create();
+
+    expect(fn () => $user->createToken('cli'))->toThrow(LogicException::class);
+
+    // The host binds no AuthTokenIssuer, so the package's sign-in routes mint nothing.
+    foreach (['/capabilities/auth/token', '/capabilities/auth/device'] as $route) {
+        $this->postJson($route, ['email' => $user->email])->assertJsonPath('error.code', 'not_configured');
+    }
+
+    expect(PersonalAccessToken::query()->count())->toBe(0);
+});
