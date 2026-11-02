@@ -23,8 +23,9 @@ async function openMenu(wrapper: ReturnType<typeof show>, item: string): Promise
     await wrapper.find(`[data-test="item-${item}"]`).trigger('click');
 }
 
+// The capability and input of the last write; its idempotency key is checked on its own.
 function lastWrite(): [string, Record<string, unknown>] {
-    return writeMock.mock.calls.at(-1) as [string, Record<string, unknown>];
+    return writeMock.mock.calls.at(-1)!.slice(0, 2) as [string, Record<string, unknown>];
 }
 
 describe('MesocycleView', () => {
@@ -189,6 +190,20 @@ describe('MesocycleView', () => {
         expect(ids[2]).not.toBe(ids[1]);
     });
 
+    it('CAP-019 CAP-014 starts a new day_id after the app\'s own 500, a final answer', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', 500, { ok: false, error: { message: 'Server error.' } }));
+        const wrapper = show();
+
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+        expect(wrapper.find('[data-test="error"]').text()).toContain('Server error.');
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+
+        const ids = writeMock.mock.calls.map(([, input]) => (input as { day_id: string }).day_id);
+        expect(ids[1]).not.toBe(ids[0]);
+    });
+
     it('CAP-019 starts a new day_id after the server refused one', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', 422, { error: { message: 'No room for another day.' } }));
         const wrapper = show();
@@ -304,9 +319,9 @@ describe('MesocycleView', () => {
     });
 
     it.each([
-        ['a 504', new CapabilityError('mesocycle_day_add', 504, null)],
-        ['a 500', new CapabilityError('mesocycle_day_add', 500, { ok: false, error: { message: 'Server error.' } })],
-    ])('CAP-019 OFF-011 sends the same day_id again after %s, which may have added the day', async (_label, failure) => {
+        ['a gateway\'s 504', new CapabilityError('mesocycle_day_add', 504, null)],
+        ['the app\'s retryable 409', new CapabilityError('mesocycle_day_add', 409, { ok: false, error: { message: 'Still working.', retryable: true } })],
+    ])('CAP-019 CAP-014 sends the same day_id again after %s, which may have added the day', async (_label, failure) => {
         writeMock.mockRejectedValueOnce(failure).mockResolvedValueOnce({});
         const wrapper = show();
 

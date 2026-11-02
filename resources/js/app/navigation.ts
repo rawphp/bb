@@ -194,6 +194,11 @@ export function attachNavigation(router: Router, history: TrackedHistory): Navig
     return navigation;
 }
 
+/** The router's navigation, if makeRouter() made it; a screen rendered outside the shell has none. */
+export function findNavigation(router: Router): Navigation | undefined {
+    return navigations.get(router);
+}
+
 export function useNavigation(): Navigation {
     const navigation = navigations.get(useRouter());
     if (!navigation) throw new Error('The router was not made by makeRouter(), so it has no navigation.');

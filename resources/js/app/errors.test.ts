@@ -23,10 +23,10 @@ describe('failureMessage', () => {
         expect(failureMessage(error, 'Could not save.')).toBe('No connection. Try again when you are online.');
     });
 
-    it('OFF-003 says a call past its deadline may have worked, rather than that the device is offline', () => {
+    it('OFF-003 says a write past its deadline may have worked, rather than that the device is offline', () => {
         const error = new CapabilityError('mesocycle_day_add', 0, { reason: 'timeout' });
 
-        expect(failureMessage(error, 'Could not save.')).toBe('The server did not answer in time, so this may have worked. Check, then try again.');
+        expect(writeFailureMessage(error, 'Could not save.')).toBe('The server did not answer in time, so this may have worked. Check, then try again.');
         expect(isTimeout(error)).toBe(true);
         expect(isTimeout(new CapabilityError('mesocycle_day_add', 0, { reason: 'network' }))).toBe(false);
         expect(isTimeout(new CapabilityError('mesocycle_day_add', 504, { reason: 'timeout' }))).toBe(false);
@@ -36,14 +36,14 @@ describe('failureMessage', () => {
 describe('writeFailureMessage', () => {
     it.each([
         [new CapabilityError('mesocycle_day_add', 504, null)],
-        [new CapabilityError('mesocycle_day_add', 500, { ok: false, error: { message: 'Server error.' } })],
-        [new CapabilityError('mesocycle_day_add', 200, null)],
-    ])('OFF-011 says a write that got a 5xx or an unreadable answer may have worked', (error) => {
-        expect(writeFailureMessage(error, 'The day could not be added.')).toBe('The server had a problem answering, so this may have worked. Check, then try again.');
+        [new CapabilityError('mesocycle_day_add', 409, { ok: false, error: { message: 'Still working.', retryable: true } })],
+    ])('CAP-014 says a write with no final answer from the app may have worked', (error) => {
+        expect(writeFailureMessage(error, 'The day could not be added.')).toBe('The server gave no final answer, so this may have worked. Check, then try again.');
     });
 
     it.each([
         [new CapabilityError('mesocycle_day_add', 422, { ok: false, error: { message: 'No room for another day.' } }), 'No room for another day.'],
+        [new CapabilityError('mesocycle_day_add', 500, { ok: false, error: { message: 'Server error.' } }), 'Server error.'],
         [new CapabilityError('mesocycle_day_add', 0, { reason: 'network' }), 'No connection. Try again when you are online.'],
         [new CapabilityError('mesocycle_day_add', 0, { reason: 'timeout' }), 'The server did not answer in time, so this may have worked. Check, then try again.'],
         [new Error('boom'), 'The day could not be added.'],

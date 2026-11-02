@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { toneIcons } from './toneIcons';
+import { toneClasses as tones } from './tones';
 
 // One pill for every status, four tones (UI-004). Ported from rp-clone's
 // StatusPill.swift. The server sends the text and the tone (CAP-018), so the
@@ -22,13 +23,6 @@ const props = withDefaults(
     { loading: false, error: null, pending: false, disabled: false },
 );
 
-// Whole class names, so Tailwind finds every token utility in this file.
-const tones = {
-    good: 'text-tone-good bg-tone-good-bg',
-    neutral: 'text-tone-neutral bg-tone-neutral-bg',
-    warning: 'text-tone-warning bg-tone-warning-bg',
-    info: 'text-tone-info bg-tone-info-bg',
-} as const;
 
 // Loading and disabled show no decided status, so they stay neutral. An error
 // uses the warning tone, as the other components' errors do.

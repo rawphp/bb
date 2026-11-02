@@ -62,11 +62,11 @@ describe('ArticleView', () => {
         readMock.mockResolvedValueOnce(payload);
         const wrapper = mount(ArticleView, { props: { slug: 'rir' } });
 
-        expect(wrapper.find('[aria-busy="true"]').exists()).toBe(true);
+        expect(wrapper.find('[data-test="skeleton"]').exists()).toBe(true);
         await flushPromises();
 
         expect(readMock).toHaveBeenCalledWith('article_show', { slug: 'rir' }, expect.any(Function), expect.any(Function));
-        expect(wrapper.find('[aria-busy="true"]').exists()).toBe(false);
+        expect(wrapper.find('[data-test="skeleton"]').exists()).toBe(false);
         expect(wrapper.find('h1').text()).toBe('Reps in reserve (RIR)');
     });
 
@@ -78,7 +78,16 @@ describe('ArticleView', () => {
         const wrapper = mount(ArticleView, { props: { slug: 'missing' } });
         await flushPromises();
 
-        expect(wrapper.find('[role="alert"]').text()).toBe(message);
+        expect(wrapper.get('[role="alert"]').text()).toContain(message);
+    });
+
+    it('OFF-003 offline with nothing cached says the article needs a connection', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('article_show', 0, null));
+        const wrapper = mount(ArticleView, { props: { slug: 'rir' } });
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('Not available offline');
+        expect(wrapper.text()).toContain("This article will load when you're back online.");
     });
 
     it('OFF-003 shows the cached article at once, then the refreshed one', async () => {

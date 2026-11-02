@@ -5,7 +5,10 @@ import ScreenView from './ScreenView.vue';
 
 // A screen no fixture under tests/fixtures/screens/ will ever exist for.
 vi.mock('@/app/router', () => ({
-    featureRoutes: [{ path: '/probe', component: defineComponent({ template: '<p />' }), meta: { screen: 'probe_show' } }],
+    featureRoutes: [
+        { path: '/probe', component: defineComponent({ template: '<p />' }), meta: { screen: 'probe_show' } },
+        { path: '/form', component: defineComponent({ props: ['payload'], template: '<p>form {{ payload === undefined }}</p>' }), meta: { screen: 'form', fixture: false } },
+    ],
 }));
 
 describe('ScreenView', () => {
@@ -28,5 +31,12 @@ describe('ScreenView', () => {
         await flushPromises();
 
         expect(wrapper.text()).toBe('No fixture at tests/fixtures/screens/probe_show.empty.json.');
+    });
+
+    it('CAP-001 renders a screen that reads nothing without a fixture', async () => {
+        const wrapper = mount(ScreenView, { props: { name: 'form' } });
+        await flushPromises();
+
+        expect(wrapper.text()).toBe('form true');
     });
 });

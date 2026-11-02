@@ -1,13 +1,12 @@
 import { CapabilityError } from './call';
+import { unanswered } from './retryKey';
 
 /**
  * The server's own words for a failed call (CAP-012), else the fallback.
- * With no answer (status 0) there are none: offline, it says the call needs a
- * connection; past the deadline, the server may have done it, so it says so.
+ * Offline (status 0) there are none, so it says the call needs a connection.
  */
 export function failureMessage(error: unknown, fallback: string): string {
     if (!(error instanceof CapabilityError)) return fallback;
-    if (isTimeout(error)) return 'The server did not answer in time, so this may have worked. Check, then try again.';
     if (error.status === 0) return 'No connection. Try again when you are online.';
 
     const message = (error.body as { error?: { message?: unknown } } | null)?.error?.message;
@@ -16,20 +15,17 @@ export function failureMessage(error: unknown, fallback: string): string {
 }
 
 /**
- * A failed write's message. A 5xx or an answer that could not be read may have come
- * after the write was done (OFF-011), so it says that rather than that the write failed.
+ * A failed write's message. A write past its deadline, or with no final answer from the
+ * app (a gateway that gave up, the app's retryable 409), may have run (unanswered(),
+ * CAP-014), so it says that rather than that the write failed.
  */
 export function writeFailureMessage(error: unknown, fallback: string): string {
-    if (error instanceof CapabilityError && error.status !== 0 && !isRefusal(error)) {
-        return 'The server had a problem answering, so this may have worked. Check, then try again.';
+    if (isTimeout(error)) return 'The server did not answer in time, so this may have worked. Check, then try again.';
+    if (error instanceof CapabilityError && error.status !== 0 && unanswered(error)) {
+        return 'The server gave no final answer, so this may have worked. Check, then try again.';
     }
 
     return failureMessage(error, fallback);
-}
-
-/** The server answered and refused the call (4xx), so it did nothing. A 5xx or no answer may have done it (OFF-011). */
-export function isRefusal(error: unknown): boolean {
-    return error instanceof CapabilityError && error.status >= 400 && error.status < 500;
 }
 
 /** No answer before the deadline (call.ts TIMEOUT_MS): the server may still have done the write. */

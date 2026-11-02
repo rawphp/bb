@@ -48,7 +48,7 @@ describe('ProgressionRatesView', () => {
 
         await pick(wrapper, 'Chest', 'Grow');
 
-        expect(writeMock).toHaveBeenCalledWith('priority_set', { mesocycle_id: meso.id, muscle: 'chest', priority: 'grow' });
+        expect(writeMock).toHaveBeenCalledWith('priority_set', { mesocycle_id: meso.id, muscle: 'chest', priority: 'grow' }, { idempotencyKey: expect.stringMatching(/^priority_set:/) });
         expect(inputViolations('priority_set', writeMock.mock.calls[0]![1])).toEqual([]);
         expect(readMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id }, expect.any(Function), expect.any(Function));
     });
@@ -58,7 +58,7 @@ describe('ProgressionRatesView', () => {
 
         await pick(wrapper, 'Back', 'Off');
 
-        expect(writeMock).toHaveBeenCalledWith('priority_set', { mesocycle_id: meso.id, muscle: 'back', priority: null });
+        expect(writeMock).toHaveBeenCalledWith('priority_set', { mesocycle_id: meso.id, muscle: 'back', priority: null }, { idempotencyKey: expect.stringMatching(/^priority_set:/) });
         expect(inputViolations('priority_set', writeMock.mock.calls[0]![1])).toEqual([]);
     });
 

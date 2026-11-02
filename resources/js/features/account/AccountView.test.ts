@@ -33,6 +33,7 @@ describe('AccountView', () => {
     it.each([
         [new CapabilityError('account_show', 401, null), 'You are signed out.'],
         [new CapabilityError('account_show', 500, null), 'Your account could not be loaded.'],
+        [new CapabilityError('account_show', 0, null), "Your account will load when you're back online."],
     ])('CAP-004 says why the account did not load', async (error, message) => {
         readMock.mockRejectedValueOnce(error);
         const wrapper = mount(AccountView);

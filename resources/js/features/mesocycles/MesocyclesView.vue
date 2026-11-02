@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { failureMessage } from '@/app/errors';
 import ReadState from '@/app/ReadState.vue';
-import { useScreenRead } from '@/app/useScreenRead';
+import { useRead } from '@/app/useRead';
 import type { TrainShowOutput } from '@/contracts/train_show';
 import BottomSheet from '@/design/BottomSheet.vue';
 import ActionMenu, { type ActionMenuItem } from '@/design/ActionMenu.vue';
@@ -19,7 +19,7 @@ type CreateRoute = TrainShowOutput['create_routes'][number];
 const BUILD_PATH = '/train/mesocycles/build';
 
 const router = useRouter();
-const { data, failure, load } = useScreenRead<TrainShowOutput>('train_show', props.payload);
+const { data, failure, load } = useRead<TrainShowOutput>('train_show', {}, 'Your mesocycles could not be loaded.', props.payload);
 
 const replacing = ref<CreateRoute | null>(null);
 const checking = ref(false);

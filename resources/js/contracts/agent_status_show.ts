@@ -9,6 +9,10 @@ export interface AgentStatusShowOutput {
   at_cap: boolean;
   resets_at?: string | null;
   notice?: string | null;
+  notice_status?: {
+    text: string;
+    tone: "good" | "neutral" | "warning" | "info";
+  } | null;
 }
 
-export const outputVersion = '5e6fdb8ffe60';
+export const outputVersion = 'e0f5b7c815c9';

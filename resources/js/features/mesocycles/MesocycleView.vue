@@ -3,7 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ReadState from '@/app/ReadState.vue';
 import { ulid } from '@/app/ulid';
-import { useScreenRead } from '@/app/useScreenRead';
+import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
 import type { MesocycleDayAddInput } from '@/contracts/mesocycle_day_add';
 import type { MesocycleEndInput } from '@/contracts/mesocycle_end';
@@ -23,9 +23,12 @@ import WeekColumn from './WeekColumn.vue';
 const props = withDefaults(defineProps<{ payload?: MesocycleShowOutput; mesocycleId?: string; pending?: boolean }>(), { pending: false });
 
 const router = useRouter();
-const { data, failure, load } = useScreenRead<MesocycleShowOutput>('mesocycle_show', props.payload, () => ({
-    mesocycle_id: props.mesocycleId ?? props.payload?.id,
-}));
+const { data, failure, load } = useRead<MesocycleShowOutput>(
+    'mesocycle_show',
+    { mesocycle_id: props.mesocycleId ?? props.payload?.id },
+    'The mesocycle could not be loaded.',
+    props.payload,
+);
 
 const { send, busy, error: errorMessage } = useWrite(load);
 const endOpen = ref(false);

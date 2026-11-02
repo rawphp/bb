@@ -4,16 +4,19 @@ import type { PrioritySetInput } from '@/contracts/priority_set';
 import PriorityRowView from './PriorityRowView.vue';
 import ReadState from '@/app/ReadState.vue';
 import type { Priority, PriorityRow } from './types';
-import { useScreenRead } from '@/app/useScreenRead';
+import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
 
 // Progression rates: change a muscle's priority on a saved mesocycle, from the next
 // session (MESO-032), or set it Off (MESO-034). Ported from rp-clone's ProgressionRatesView.
 const props = defineProps<{ payload?: MesocycleShowOutput; mesocycleId?: string }>();
 
-const { data, failure, load } = useScreenRead<MesocycleShowOutput>('mesocycle_show', props.payload, () => ({
-    mesocycle_id: props.mesocycleId ?? props.payload?.id,
-}));
+const { data, failure, load } = useRead<MesocycleShowOutput>(
+    'mesocycle_show',
+    { mesocycle_id: props.mesocycleId ?? props.payload?.id },
+    'The mesocycle could not be loaded.',
+    props.payload,
+);
 
 const { send, busy: saving, error: saveError } = useWrite(load);
 
