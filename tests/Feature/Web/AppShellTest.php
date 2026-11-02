@@ -10,6 +10,14 @@ it('CAP-004 serves the app shell for every non-API path', function (string $path
         ->assertSee('<div id="app"></div>', escape: false);
 })->with(['/', '/account', '/train/plan/week-2']);
 
+it('PWA-002 serves the manifest and iOS web app tags with the shell', function () {
+    $this->get('/account')
+        ->assertOk()
+        ->assertSee('<link rel="manifest" href="/manifest.webmanifest">', escape: false)
+        ->assertSee('<meta name="apple-mobile-web-app-capable" content="yes">', escape: false)
+        ->assertSee('rel="apple-touch-startup-image"', escape: false);
+});
+
 it('CAP-004 keeps capability, MCP and API paths off the app shell', function (string $path) {
     $this->get($path)->assertDontSee('<div id="app"></div>', escape: false);
 })->with(['/capabilities/not_a_capability', '/mcp/unknown', '/api/anything', '/api']);

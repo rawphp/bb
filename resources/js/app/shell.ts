@@ -22,7 +22,7 @@ export function shellEntry(manifest: readonly ManifestEntry[]): { url: string; r
 }
 
 // FNV-1a: a short, stable fingerprint, not a security boundary.
-function hash(text: string): string {
+export function hash(text: string): string {
     let h = 0x811c9dc5;
     for (let i = 0; i < text.length; i++) {
         h ^= text.charCodeAt(i);
