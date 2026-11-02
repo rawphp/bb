@@ -1,0 +1,93 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "mode": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ]
+        },
+        "reasons": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "text"
+                ]
+            },
+            "description": "why the user is training only, if they are"
+        },
+        "questions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "item": {
+                        "type": "string",
+                        "enum": [
+                            "ageOutOfRange",
+                            "heightOutOfRange",
+                            "weightOverLimit",
+                            "bmiUnderLimit",
+                            "pregnantOrBreastfeeding",
+                            "tryingToConceive",
+                            "transgenderOnHormoneTherapy",
+                            "heartThyroidOrPCOS",
+                            "weightLossSurgery",
+                            "gallbladderDisease",
+                            "autoimmuneDisease",
+                            "diabetes",
+                            "eatingDisorderHistory"
+                        ]
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "applies": {
+                        "type": "boolean"
+                    },
+                    "measured": {
+                        "type": "boolean",
+                        "description": "worked out from the profile, so it cannot be ticked"
+                    }
+                },
+                "required": [
+                    "item",
+                    "label",
+                    "applies",
+                    "measured"
+                ]
+            }
+        }
+    },
+    "required": [
+        "mode",
+        "reasons",
+        "questions"
+    ]
+}

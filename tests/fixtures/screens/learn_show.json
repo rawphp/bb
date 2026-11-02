@@ -1,0 +1,49 @@
+{
+    "sections": [
+        {
+            "title": "Using the app",
+            "articles": [
+                {
+                    "slug": "notATracker",
+                    "title": "How this app differs from a tracker",
+                    "summary": "A tracker counts what you ate. This app plans what you eat and train, then adjusts."
+                },
+                {
+                    "slug": "toolsYouNeed",
+                    "title": "Tools you need",
+                    "summary": "A gram food scale, a bathroom scale and access to a gym."
+                }
+            ]
+        },
+        {
+            "title": "Diet",
+            "articles": [
+                {
+                    "slug": "weighingIn",
+                    "title": "Weighing in",
+                    "summary": "Weigh yourself under the same conditions each time, and watch the trend."
+                }
+            ]
+        },
+        {
+            "title": "Training",
+            "articles": [
+                {
+                    "slug": "rir",
+                    "title": "Reps in reserve (RIR)",
+                    "summary": "RIR means reps in reserve: how many more good reps you could have done when you stopped a set."
+                }
+            ]
+        },
+        {
+            "title": "Training and diet together",
+            "articles": [
+                {
+                    "slug": "trainingOnACut",
+                    "title": "Training on a cut",
+                    "summary": "Keep lifting heavy on a cut; it tells your body to keep its muscle."
+                }
+            ]
+        }
+    ]
+}

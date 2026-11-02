@@ -6,7 +6,7 @@ use App\Capabilities\HostCapability;
 use App\Capabilities\Reads\Data\ActivityShowInput;
 use App\Capabilities\Reads\Data\ActivityShowOutput;
 use App\Capabilities\Reads\Data\Settings\ActivityEntry;
-use App\Capabilities\Reads\Data\Settings\Status;
+use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Support\Channel;
 use App\Capabilities\Support\ErrorWording;
 use App\Capabilities\Support\HostDefinition;

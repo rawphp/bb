@@ -1,0 +1,44 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "answers": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "item": {
+                        "type": "string",
+                        "enum": [
+                            "ageOutOfRange",
+                            "heightOutOfRange",
+                            "weightOverLimit",
+                            "bmiUnderLimit",
+                            "pregnantOrBreastfeeding",
+                            "tryingToConceive",
+                            "transgenderOnHormoneTherapy",
+                            "heartThyroidOrPCOS",
+                            "weightLossSurgery",
+                            "gallbladderDisease",
+                            "autoimmuneDisease",
+                            "diabetes",
+                            "eatingDisorderHistory"
+                        ]
+                    },
+                    "applies": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "item",
+                    "applies"
+                ]
+            }
+        }
+    },
+    "required": [
+        "answers"
+    ]
+}
