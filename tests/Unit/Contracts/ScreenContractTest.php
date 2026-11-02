@@ -1,5 +1,6 @@
 <?php
 
+use App\Capabilities\Support\Tone;
 use Rawphp\Capabilities\Support\SchemaSnapshot;
 use Tests\Support\SchemaCheck;
 use Tests\Support\ScreenFixture;
@@ -76,4 +77,26 @@ it('CAP-002 gives each contract name in an owners file one owner and a schema sn
             $seen[$name] = basename($path);
         }
     }
+});
+
+it('CAP-018 sends every tone as one of the UI-004 tones', function () {
+    $tones = array_column(Tone::cases(), 'value');
+    $found = 0;
+
+    foreach (glob(base_path('tests/fixtures/schemas/*.output.json')) ?: [] as $path) {
+        $walk = function (array $node) use (&$walk, $tones, &$found, $path): void {
+            foreach ($node as $key => $value) {
+                if ($key === 'tone' && is_array($value)) {
+                    expect($value['enum'] ?? null)->toBe($tones, basename($path));
+                    $found++;
+                }
+                if (is_array($value)) {
+                    $walk($value);
+                }
+            }
+        };
+        $walk(decodeJsonFile($path));
+    }
+
+    expect($found)->toBeGreaterThan(0);
 });

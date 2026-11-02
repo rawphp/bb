@@ -1,0 +1,38 @@
+{
+    "status": {
+        "text": "Last post today, 06:02",
+        "tone": "good"
+    },
+    "scope_text": "The token can log weigh-ins and steps. It cannot read anything or change anything else.",
+    "token": {
+        "id": "01JBQ2W8E4R6T8Y0U2I4O6P8A0",
+        "name": "Health bridge",
+        "expires_text": "Expires 3 October 2027",
+        "last_used_text": "Last used today, 06:02"
+    },
+    "last_post": {
+        "when_text": "Today, 06:02",
+        "items": [
+            {
+                "label": "Body weight",
+                "value": "81.4 kg at 06:00"
+            },
+            {
+                "label": "Steps",
+                "value": "8,412 steps on 1 November"
+            }
+        ]
+    },
+    "shortcut_url": "https://www.icloud.com/shortcuts/example",
+    "steps": [
+        {
+            "text": "In the Shortcuts app, make a personal automation that runs every morning."
+        },
+        {
+            "text": "Add \"Find Health Samples\" for yesterday's steps and the latest body weight."
+        },
+        {
+            "text": "Add \"Get Contents of URL\" to post them to this server with your token."
+        }
+    ]
+}

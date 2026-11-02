@@ -1,0 +1,21 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "phase_id": {
+            "type": "string"
+        },
+        "event_date": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "date"
+        }
+    },
+    "required": [
+        "phase_id",
+        "event_date"
+    ]
+}

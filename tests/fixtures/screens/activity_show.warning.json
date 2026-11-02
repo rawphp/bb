@@ -1,0 +1,64 @@
+{
+    "entries": [
+        {
+            "id": "01JBXK3V8Q2M5T7W9Y1A3C5E7G",
+            "title": "Logged set 3 of Bench Press, 100 kg × 8",
+            "channel": "ui",
+            "channel_label": "App",
+            "occurred_at": "2026-11-02T18:14:00+00:00",
+            "when_text": "Today, 18:14",
+            "result": {
+                "text": "Done",
+                "tone": "good"
+            }
+        },
+        {
+            "id": "01JBXJ9R4N6P8S0U2W4Y6A8C0E",
+            "title": "Moved Monday's workout to Tuesday at 07:00",
+            "channel": "agent",
+            "channel_label": "Coach",
+            "occurred_at": "2026-11-02T08:02:00+00:00",
+            "when_text": "Today, 08:02",
+            "result": {
+                "text": "Refused: this workout was already finished",
+                "tone": "warning"
+            }
+        },
+        {
+            "id": "01JBXH1M2K4N6Q8S0U2W4Y6A8C",
+            "title": "Logged weigh-in, 81.4 kg",
+            "channel": "bridge",
+            "channel_label": "Health bridge",
+            "occurred_at": "2026-11-02T06:02:00+00:00",
+            "when_text": "Today, 06:02",
+            "result": {
+                "text": "Done",
+                "tone": "good"
+            }
+        },
+        {
+            "id": "01JBVZ7F3H5K7M9P1R3T5V7X9Z",
+            "title": "Logged 8,412 steps for 1 November",
+            "channel": "mcp",
+            "channel_label": "MCP",
+            "occurred_at": "2026-11-01T21:30:00+00:00",
+            "when_text": "Yesterday, 21:30",
+            "result": {
+                "text": "Done",
+                "tone": "good"
+            }
+        },
+        {
+            "id": "01JBVY5D1F3H5K7M9P1R3T5V7X",
+            "title": "Checked in meal 2",
+            "channel": "cli",
+            "channel_label": "CLI",
+            "occurred_at": "2026-11-01T12:45:00+00:00",
+            "when_text": "Yesterday, 12:45",
+            "result": {
+                "text": "Done",
+                "tone": "good"
+            }
+        }
+    ]
+}
