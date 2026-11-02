@@ -18,6 +18,11 @@ return new class extends Migration
         $this->collate('utf8mb4_bin');
     }
 
+    /**
+     * Back to the folding collation. This fails on the unique index while two foods' source ids differ
+     * only by case or accent, which the binary collation allows: restore the backup taken before the
+     * import instead (docs/self-hosting.md, "Food data").
+     */
     public function down(): void
     {
         $this->collate((string) config('database.connections.mysql.collation', 'utf8mb4_unicode_ci'));
