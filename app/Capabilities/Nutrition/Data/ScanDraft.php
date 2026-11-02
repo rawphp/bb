@@ -22,7 +22,7 @@ abstract class ScanDraft extends CapabilityData
         public readonly Macros $totals,
         public readonly ?string $unmatched_note,
         /** @var list<SavedMealFood> */
-        #[Field(items: SavedMealFood::class, description: 'The matched foods, merged per food: what Add to meal and Save as saved meal send')]
+        #[Field(items: SavedMealFood::class, description: 'The matched foods, merged per food, by raw weight (FOOD-006): what Add to meal and Save as saved meal send')]
         public readonly array $matched,
         public readonly string $saved_meal_name,
         public readonly ?string $empty_text,
