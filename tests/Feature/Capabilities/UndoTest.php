@@ -14,6 +14,8 @@ use App\Capabilities\Undo\Data\UndoApplyInput;
 use App\Capabilities\Undo\UndoApplyCapability;
 use App\Enums\MeasurementSource;
 use App\Models\DayTarget;
+use App\Models\MealCheckIn;
+use App\Models\PlannedFood;
 use App\Models\Step;
 use App\Models\UndoToken;
 use App\Models\User;
@@ -26,6 +28,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Rawphp\Capabilities\Support\CapabilityContext;
 use Rawphp\Capabilities\Support\CapabilityFailure;
 use Tests\Support\Fixtures\Undo\StepCountSetCapability;
@@ -187,11 +190,55 @@ it('CAP-013 fails a reversible write that changes rows without a model, and chan
         ->and(UndoToken::query()->count())->toBe(0);
 });
 
-it('CAP-013 fails a reversible write that saves a day target, whose meal index is kept without models', function () {
-    expect(fn () => recordAs($this->user, fn () => DayTarget::factory()->for($this->user)->create()))
-        ->toThrow(LogicException::class, 'A reversible write changed rows without an Eloquent model');
+it('CAP-013 undoes a write that re-targets a day\'s meals, with the meal index and the plan of a meal it removed', function () {
+    $meal = fn (string $name, int $kcal) => ['name' => $name, 'time' => '08:00', 'kcal' => $kcal, 'protein_g' => 30, 'fat_g' => 10, 'carbs_g' => 50];
+    $day = DayTarget::factory()->for($this->user)->create(['meals' => [$meal('Breakfast', 500), $meal('Lunch', 700), $meal('Dinner', 800)]]);
+    [$breakfast, $lunch, $dinner] = array_column($day->meals, 'id');
+    PlannedFood::factory()->create(['meal_id' => $dinner]);
+    MealCheckIn::factory()->create(['meal_id' => $dinner]);
+    $tables = ['day_targets', 'day_target_meals', 'planned_foods', 'meal_check_ins'];
+    $rows = fn () => collect($tables)->mapWithKeys(fn (string $table) => [$table => DB::table($table)->get()->sortBy(fn ($row) => json_encode($row))->values()->all()])->all();
+    $before = $rows();
 
-    expect(DayTarget::query()->count())->toBe(0);
+    // Lunch moves first and takes Dinner's kcal, Dinner goes with its plan, and a snack is added.
+    $token = recordAs($this->user, fn () => $day->update(['meals' => [
+        ['id' => $lunch] + $meal('Lunch', 800),
+        ['id' => $breakfast] + $meal('Breakfast', 700),
+        ['id' => (string) Str::uuid7()] + $meal('Snack', 200),
+    ]]))->undo;
+    expect(DB::table('planned_foods')->count())->toBe(0)
+        ->and(DB::table('day_target_meals')->count())->toBe(3);
+
+    undoAs($this->user, $token);
+
+    expect($rows())->toEqual($before);
+});
+
+it('CAP-013 refreshes the reads of a reversible write run inside another, on the write and on its undo', function () {
+    $outer = app(UndoLog::class)->record($this->user, function () {
+        $this->weighIn->update(['weight_kg' => 80.0]);
+        setStepsAs($this->user, 9000);
+
+        return new WriteResult(invalidates: ['weigh_ins_show{}']);
+    });
+
+    expect($outer->invalidates)->toBe(['weigh_ins_show{}', 'steps_show{}'])
+        ->and(undoAs($this->user, $outer->undo)->invalidates)->toBe(['weigh_ins_show{}', 'steps_show{}']);
+});
+
+it('CAP-013 undoes a write that moves an existing row onto a row it created, putting it back before removing that row', function () {
+    $sessionA = WorkoutSession::factory()->for($this->user)->create();
+    $set = WorkoutSet::factory()->create(['workout_session_id' => $sessionA->id]);
+    $rows = fn () => [DB::table('workout_sessions')->get()->all(), DB::table('workout_sets')->get()->all()];
+    $before = $rows();
+
+    $token = recordAs($this->user, function () use ($set) {
+        $sessionB = WorkoutSession::factory()->for($this->user)->create();
+        $set->update(['workout_session_id' => $sessionB->id]);
+    })->undo;
+    undoAs($this->user, $token);
+
+    expect($rows())->toEqual($before);
 });
 
 it('CAP-013 fails a reversible write whose delete would cascade to rows it did not delete first', function () {

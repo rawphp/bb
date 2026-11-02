@@ -25,6 +25,20 @@ class DayTargetMeal extends Model
 
     public $timestamps = false;
 
+    /**
+     * A meal's plan goes with it, through its models, before the foreign keys would cascade:
+     * so a reversible write's undo sees every row removed (CAP-013).
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $meal) {
+            $meal->plannedFoods()->get()->each->delete();
+            $meal->plannedRecipes()->get()->each->delete();
+            $meal->checkIn()->get()->each->delete();
+            $meal->planningState()->get()->each->delete();
+        });
+    }
+
     /** @return BelongsTo<DayTarget, $this> */
     public function dayTarget(): BelongsTo
     {

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\UndoTokenFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,12 +23,11 @@ use Illuminate\Support\Carbon;
  * @property list<string> $invalidates
  * @property Carbon $expires_at
  */
+#[Fillable(['changes', 'invalidates', 'expires_at'])]
 class UndoToken extends Model
 {
     /** @use HasFactory<UndoTokenFactory> */
     use BelongsToUser, HasFactory, HasUlids, MassPrunable;
-
-    protected $guarded = [];
 
     /** @return Builder<static> */
     public function prunable(): Builder

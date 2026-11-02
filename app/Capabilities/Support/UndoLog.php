@@ -27,7 +27,7 @@ use Rawphp\Capabilities\Support\CapabilityFailure;
  *
  * Only changes made through Eloquent models are seen, so a reversible write
  * that changes rows any other way fails instead of returning a token: a query
- * builder or mass write (DayTarget's meal index, for one), or a delete that
+ * builder or mass write, or a delete that
  * would cascade to rows the write did not delete first.
  */
 #[Singleton]
@@ -44,6 +44,9 @@ final class UndoLog
     private int $statements = 0;
 
     private int $modelStatements = 0;
+
+    /** @var list<string> the read keys of the writes recorded inside the one being recorded */
+    private array $nestedInvalidates = [];
 
     /** @var array<string, array<string, list<array{table: string, columns: list<string>, parent_columns: list<string>}>>> each connection's foreign keys, by the table they point at, loaded once per record or apply */
     private array $foreignKeys = [];
@@ -70,14 +73,19 @@ final class UndoLog
 
     /**
      * Run a reversible write and give its result an undo token. A write that
-     * changes nothing gets none. A write recorded inside another shares its token.
+     * changes nothing gets none. A write recorded inside another shares its token, which
+     * then names both writes' reads.
      *
      * @param  Closure(): WriteResult  $write
      */
     public function record(User $user, Closure $write): WriteResult
     {
         if ($this->seen !== null) {
-            return $write();
+            $result = $write();
+            // The outer write's token undoes this one's rows too, so undo must name its reads.
+            $this->nestedInvalidates = [...$this->nestedInvalidates, ...$result->invalidates];
+
+            return $result;
         }
 
         return DB::transaction(function () use ($user, $write): WriteResult {
@@ -87,14 +95,17 @@ final class UndoLog
 
             $this->seen = [];
             $this->statements = $this->modelStatements = 0;
+            $this->nestedInvalidates = [];
             try {
                 $result = $write();
+                $invalidates = array_values(array_unique([...$result->invalidates, ...$this->nestedInvalidates]));
                 if ($this->statements !== $this->modelStatements) {
                     throw new LogicException('A reversible write changed rows without an Eloquent model, so undo could not put them back.');
                 }
                 $seen = $this->seen;
             } finally {
                 $this->seen = null;
+                $this->nestedInvalidates = [];
             }
 
             $now = $this->load($seen, lock: false);
@@ -106,17 +117,17 @@ final class UndoLog
             }
 
             if ($changes === []) {
-                return $result;
+                return new WriteResult(invalidates: $invalidates, toast: $result->toast);
             }
 
             $token = new UndoToken([
                 'changes' => $changes,
-                'invalidates' => $result->invalidates,
+                'invalidates' => $invalidates,
                 'expires_at' => now()->addHours(self::LIFETIME_HOURS),
             ]);
             $token->user()->associate($user)->save();
 
-            return new WriteResult(invalidates: $result->invalidates, toast: $result->toast, undo: $token->id);
+            return new WriteResult(invalidates: $invalidates, toast: $result->toast, undo: $token->id);
         });
     }
 
