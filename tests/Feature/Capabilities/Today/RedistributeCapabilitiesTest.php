@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\DayTarget;
+use App\Models\MealPlanningState;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -105,6 +106,22 @@ it('DAY-002 CAP-013 meal_redistribute saves, says what changed, and its undo put
     redistributeOver($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
 
     expect(DayTarget::query()->find($day->id)->meals)->toEqual($before);
+});
+
+it('DAY-003 DAY-004 CAP-013 undo puts back the planning states meal_redistribute set, a new one and a changed one', function () {
+    $user = User::factory()->create();
+    SheetSeed::day($user);
+    SheetSeed::food(SheetSeed::BREAKFAST);
+    SheetSeed::food(SheetSeed::DINNER);
+    MealPlanningState::factory()->create(['meal_id' => SheetSeed::DINNER, 'state' => 'done_planning']);
+
+    $response = redistributeOver($user, 'meal_redistribute', ['date' => '2026-09-23', 'meal_ids' => [SheetSeed::BREAKFAST, SheetSeed::DINNER]])->assertOk();
+    expect(MealPlanningState::query()->pluck('state', 'meal_id')->all())
+        ->toEqual([SheetSeed::BREAKFAST => 'still_planning', SheetSeed::DINNER => 'still_planning']);
+
+    redistributeOver($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
+
+    expect(MealPlanningState::query()->pluck('state', 'meal_id')->all())->toBe([SheetSeed::DINNER => 'done_planning']);
 });
 
 it('DAY-002 answers 422 in plain words for a meal that is checked in', function () {

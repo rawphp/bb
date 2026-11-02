@@ -1,9 +1,12 @@
 <?php
 
+use App\Actions\Today\AdjustDay;
+use App\Capabilities\Today\Data\DayAdjustInput;
 use App\Models\DayTarget;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Tests\Support\SheetSeed;
 
@@ -124,4 +127,44 @@ it('NUT-024 day_adjust refuses a move to a finished day in plain words and saves
     adjustOver($user, 'day_adjust', ['date' => '2026-09-23', 'mode' => 'days', 'kcal' => 200, 'other_date' => '2026-09-22'])
         ->assertStatus(422)
         ->assertJsonPath('error.message', 'Tuesday is finished, so its calories can\'t move.');
+});
+
+it('NUT-021 without a plan the week is the day alone, so a move between days is refused, and a move between meals still works', function () {
+    $user = User::factory()->create();
+    SheetSeed::day($user, '2026-09-23');
+    SheetSeed::day($user, '2026-09-26');
+
+    adjustOver($user, 'day_adjust', ['date' => '2026-09-23', 'mode' => 'days', 'kcal' => 200, 'other_date' => '2026-09-26'])
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'Choose another day of this plan week.');
+    adjustOver($user, 'day_adjust', ['date' => '2026-09-23', 'mode' => 'meals', 'kcal' => 100, 'from_meal_id' => SheetSeed::LUNCH, 'to_meal_id' => SheetSeed::DINNER])
+        ->assertOk();
+});
+
+it('NUT-021 a move between days works with no weight on record', function () {
+    $user = adjustUser();
+
+    adjustOver($user, 'day_adjust', ['date' => '2026-09-23', 'mode' => 'days', 'kcal' => 200, 'other_date' => '2026-09-26'])->assertOk();
+
+    expect(DayTarget::query()->orderBy('date')->pluck('kcal')->all())->toBe([2600.0, 2400.0, 2800.0]);
+});
+
+it('NUT-021 both days are saved together: a failed second save leaves the first as it was', function () {
+    $user = adjustUser();
+    $armed = true;
+    // Left registered and disarmed after: Event::forget would also drop the model's own listeners.
+    Event::listen('eloquent.saving: '.DayTarget::class, function (DayTarget $day) use (&$armed) {
+        if ($armed && $day->date->format('Y-m-d') === '2026-09-26') {
+            throw new RuntimeException('second day failed');
+        }
+    });
+
+    try {
+        expect(fn () => app(AdjustDay::class)($user, new DayAdjustInput(date: '2026-09-23', mode: 'days', kcal: 200, other_date: '2026-09-26')))
+            ->toThrow(RuntimeException::class, 'second day failed');
+    } finally {
+        $armed = false;
+    }
+
+    expect(DayTarget::query()->orderBy('date')->pluck('kcal')->all())->toBe([2600.0, 2600.0, 2600.0]);
 });

@@ -4,10 +4,13 @@ use App\Actions\Today\ResolveMissedSession;
 use App\Capabilities\Today\Data\MissedSessionResolveInput;
 use App\Models\DayTarget;
 use App\Models\Mesocycle;
+use App\Models\PlanWeek;
 use App\Models\User;
 use App\Models\WorkoutSession;
+use App\Support\Today\RetargetDays;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event;
 use Tests\Support\SheetSeed;
 use Tests\Support\TrainSeed;
 
@@ -167,3 +170,72 @@ it('SCH-057 refuses a session that is not missed: not yet due, due today, alread
     ]), 3, 1],
     'another mesocycle week' => ['2026-09-22', fn () => null, 2, 1],
 ]);
+
+it('SCH-041 the re-target keeps meals out of a busy period on the day it moves to, and ignores one on other weekdays', function () {
+    $times = function (array $weekdays): array {
+        [$user, $mesocycle] = missedWorld('2026-09-22');
+        $user->profile->update(['busy_periods' => [['label' => 'School run', 'start' => '15:00', 'end' => '16:30', 'weekdays' => $weekdays]]]);
+        $day = SheetSeed::day($user, '2026-09-22', ['day_type' => 'rest']);
+        resolveMissed($user, $mesocycle, 'do_it_today', '2026-09-22');
+
+        $times = array_column($day->fresh()->meals, 'time');
+        $day->forceDelete(); // meal ids are unique across users, and the next run seeds the same ones
+
+        return $times;
+    };
+
+    // Without the period the pre-workout meal sits at 4 PM, inside it.
+    expect($times([3]))->toBe(['07:00', '16:00', '18:30'])
+        ->and(array_filter($times([2]), fn (string $time) => $time >= '15:00' && $time < '16:30'))->toBe([]);
+});
+
+it('SCH-060 an away week on rest-day calories leaves the workout\'s energy out of the day it moves to', function () {
+    $kcal = function (string $calories): float {
+        [$user, $mesocycle] = missedWorld('2026-09-22');
+        PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-21', 'is_away' => true, 'away_training' => 'deload', 'away_calories' => $calories]);
+        $day = SheetSeed::day($user, '2026-09-22', ['day_type' => 'rest']);
+        resolveMissed($user, $mesocycle, 'do_it_today', '2026-09-22');
+
+        $kcal = $day->fresh()->kcal;
+        $day->forceDelete(); // meal ids are unique across users, and the next run seeds the same ones
+
+        return $kcal;
+    };
+
+    expect($kcal('rest_days'))->toBeLessThan($kcal('maintenance'));
+});
+
+it('SCH-057 a move is refused in plain words when the eating window can\'t be read, and saves nothing', function (array $profile) {
+    [$user, $mesocycle] = missedWorld('2026-09-22');
+    $user->profile->update($profile);
+    $day = SheetSeed::day($user, '2026-09-22', ['day_type' => 'rest']);
+    $before = $day->fresh()->getAttributes();
+
+    expect(fn () => resolveMissed($user, $mesocycle, 'do_it_today', '2026-09-22'))->toThrow(DomainException::class, RetargetDays::CANNOT)
+        ->and(WorkoutSession::query()->count())->toBe(0)
+        ->and($day->fresh()->getAttributes())->toBe($before);
+})->with([
+    'an empty eating window' => [['eating_window' => []]],
+    'a window start that is not a time' => [['eating_window' => ['start' => 'late', 'end' => '20:00']]],
+]);
+
+it('SCH-056 the day and the session row are saved together: a failed row save leaves the day as it was', function () {
+    [$user, $mesocycle] = missedWorld('2026-09-22');
+    $day = SheetSeed::day($user, '2026-09-22', ['day_type' => 'rest']);
+    $before = $day->fresh()->getAttributes();
+    $armed = true;
+    // Left registered and disarmed after: Event::forget would also drop the model's own listeners.
+    Event::listen('eloquent.saving: '.WorkoutSession::class, function () use (&$armed) {
+        if ($armed) {
+            throw new RuntimeException('row save failed');
+        }
+    });
+
+    try {
+        expect(fn () => resolveMissed($user, $mesocycle, 'do_it_today', '2026-09-22'))->toThrow(RuntimeException::class, 'row save failed');
+    } finally {
+        $armed = false;
+    }
+
+    expect($day->fresh()->getAttributes())->toBe($before);
+});

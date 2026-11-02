@@ -5,6 +5,7 @@ use App\Models\MealPlanningState;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event;
 use Tests\Support\SheetSeed;
 
 // What meal_redistribute saves (DAY-002, DAY-003, DAY-004). How the share is worked out is RedistributionTest's.
@@ -61,4 +62,36 @@ it('DAY-002 needs at least one meal, and a day with a target', function () {
 
     expect(fn () => app(RedistributeMeals::class)($user, '2026-09-23', []))->toThrow(DomainException::class, 'Choose at least one meal')
         ->and(fn () => app(RedistributeMeals::class)($user, '2026-09-24', [SheetSeed::BREAKFAST]))->toThrow(DomainException::class, 'no meals planned');
+});
+
+it('DAY-002 refuses a meal of another day in plain words', function () {
+    $user = User::factory()->create();
+    SheetSeed::day($user);
+    SheetSeed::day($user, '2026-09-24');
+
+    expect(fn () => app(RedistributeMeals::class)($user, '2026-09-23', [SheetSeed::id(SheetSeed::DINNER, '260924')]))
+        ->toThrow(DomainException::class, 'That meal can\'t take a share');
+});
+
+it('DAY-002 DAY-004 the day and the planning states are saved together: a failed state save leaves the day as it was', function () {
+    $user = User::factory()->create();
+    $day = SheetSeed::day($user);
+    SheetSeed::food(SheetSeed::BREAKFAST);
+    $before = $day->fresh()->meals;
+    $armed = true;
+    // Left registered and disarmed after: Event::forget would also drop the model's own listeners.
+    Event::listen('eloquent.saving: '.MealPlanningState::class, function () use (&$armed) {
+        if ($armed) {
+            throw new RuntimeException('state save failed');
+        }
+    });
+
+    try {
+        expect(fn () => app(RedistributeMeals::class)($user, '2026-09-23', [SheetSeed::BREAKFAST, SheetSeed::DINNER]))
+            ->toThrow(RuntimeException::class, 'state save failed');
+    } finally {
+        $armed = false;
+    }
+
+    expect($day->fresh()->meals)->toBe($before);
 });
