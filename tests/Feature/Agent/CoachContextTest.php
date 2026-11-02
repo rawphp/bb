@@ -112,8 +112,8 @@ it('AGT-011 holds today, the current phase and mesocycle, last week and this wee
         ->and($context)->toContain("train_show{}\n")
         ->and($context)->toContain("week_show{\"date\":\"2026-10-27\"}\n")
         ->and($context)->toContain("week_show{}\n")
-        ->and($context)->not->toContain('settings_show')
-        ->and($context)->not->toContain('plan_show');
+        ->and($context)->toContain("plan_show{}\n")
+        ->and($context)->not->toContain('settings_show');
 });
 
 it('AGT-011 AGT-004 builds the context from the conversation owner\'s data only, every read as that owner', function () {
@@ -148,7 +148,7 @@ it('AGT-011 AGT-004 builds the context from the conversation owner\'s data only,
 
     expect($context)->toContain('Blair Hypertrophy Block')
         ->and($context)->not->toContain('Alex Strength Block')
-        ->and((array) $actors)->toHaveCount(4)
+        ->and((array) $actors)->toHaveCount(5)
         ->and(array_unique(array_column((array) $actors, 2)))->toBe([$blair->getKey()])
         ->and(array_unique(array_column((array) $actors, 1)))->toBe(['agent']);
 });
