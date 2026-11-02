@@ -5,6 +5,7 @@ use App\Domain\Model\ExperienceLevel;
 use App\Domain\Model\PhaseType;
 use App\Domain\Onboarding\BusyPeriodChoice;
 use App\Domain\Onboarding\Draft;
+use App\Domain\Onboarding\OnboardingCalories;
 use App\Domain\Onboarding\OnboardingSteps;
 use App\Domain\Onboarding\StepMove;
 use App\Domain\Onboarding\StepRangeChoice;
@@ -281,4 +282,12 @@ it('ONB-002 any step can be checked, not only the current one', function () {
     expect($steps->canContinueOn(12))->toBeTrue()
         ->and(onboardingSteps(F::atReview()->with(weighIns: []))->canContinueOn(12))->toBeFalse()
         ->and(onboardingSteps(F::atReview()->with(weighIns: []))->continueHintOn(12))->toBe('Too few weigh-ins to continue');
+});
+
+it('ONB-017 step 13 reads the calorie state the read built, so one onboarding_show builds the week once', function () {
+    $given = new OnboardingCalories(F::atStep13()->with(choosesOwnCalories: true), F::today(), F::catalogue());
+    $steps = new OnboardingSteps(F::atStep13(), F::today(), F::catalogue(), $given);
+
+    expect($steps->canContinueOn(13))->toBeFalse()
+        ->and($steps->continueHintOn(13))->toBe('Enter your average daily calories to continue.');
 });

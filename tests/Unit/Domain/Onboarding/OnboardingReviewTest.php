@@ -156,3 +156,12 @@ it('ONB-018 has no sections until the answers the plan needs are in', function (
     expect(onboardingReview(F::atStep3())->blocks())->toBe([])
         ->and(onboardingReview(F::atStep7())->blocks())->toBe([]);
 });
+
+it('ONB-018 the Calories block reads the calorie state the read built, so one onboarding_show builds the week once', function () {
+    $given = new OnboardingCalories(F::atReview()->with(choosesOwnCalories: true, ownDailyKcal: 2500), F::today(), F::catalogue());
+    $review = new OnboardingReview(F::atReview()->with(choosesOwnCalories: true, ownDailyKcal: 2000), F::today(), F::catalogue(), $given);
+    $calories = array_values(array_filter($review->blocks(), fn ($block) => $block->title === 'Calories'))[0];
+
+    expect($calories->rows[1]->label)->toBe('Your choice')
+        ->and($calories->rows[1]->value)->toBe('2,500 kcal a day');
+});
