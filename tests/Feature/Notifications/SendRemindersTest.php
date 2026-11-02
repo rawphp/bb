@@ -10,6 +10,7 @@ use App\Models\Profile;
 use App\Models\PushSubscription;
 use App\Models\SentReminder;
 use App\Models\User;
+use App\Models\WeighInScheduleEntry;
 use App\Models\WorkoutSession;
 use App\Notifications\PushNotification;
 use Carbon\CarbonImmutable;
@@ -219,6 +220,61 @@ it('NOTIF-002 a meal moved later after its reminder went out is reminded again a
     app(SendDueReminders::class)($user, CarbonImmutable::now());
 
     expect(sentLines($user))->toBe(['Lunch | Time to eat | /today?date=2026-09-24', 'Lunch | Time to eat | /today?date=2026-09-24']);
+});
+
+it('NOTIF-002 a meal moved earlier, inside the window, after its reminder went out is not reminded twice', function () {
+    $user = remindedUser();
+    NotificationPref::query()->create(['user_id' => $user->id, 'kind' => 'meal', 'on' => true]);
+
+    Carbon::setTestNow('2026-09-24 12:30:00');
+    app(SendDueReminders::class)($user, CarbonImmutable::now());
+    $day = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-24')->sole();
+    $meals = $day->meals;
+    $meals[1]['time'] = '12:25';
+    $day->update(['meals' => $meals]);
+    Carbon::setTestNow('2026-09-24 12:32:00');
+    app(SendDueReminders::class)($user, CarbonImmutable::now());
+
+    expect(sentLines($user))->toBe(['Lunch | Time to eat | /today?date=2026-09-24']);
+});
+
+it('NOTIF-001 a queued pass that runs more than 10 minutes late sends nothing, and the newest pass covers it', function () {
+    $user = remindedUser();
+    $job = new SendUserReminders($user, CarbonImmutable::parse('2026-09-26 07:00:00'));
+
+    Carbon::setTestNow('2026-09-26 07:11:00');
+    app()->call([$job, 'handle']);
+    expect(sentLines($user))->toBe([]);
+
+    Carbon::setTestNow('2026-09-26 07:05:00');
+    app()->call([$job, 'handle']);
+    expect(sentLines($user))->toBe(['Weigh-in | Time to weigh in | /today?date=2026-09-26&open=weigh-in']);
+});
+
+it('NOTIF-001 a pass just after midnight still sends what fell due late the evening before', function () {
+    $user = remindedUser();
+    WeighInScheduleEntry::query()->where('user_id', $user->id)->update(['time' => '23:55']);
+
+    Carbon::setTestNow('2026-09-27 00:02:00');
+    app(SendDueReminders::class)($user, CarbonImmutable::now());
+
+    expect(sentLines($user))->toBe(['Weigh-in | Time to weigh in | /today?date=2026-09-26&open=weigh-in']);
+});
+
+it('NOTIF-001 NOTIF-004 a plan whose targets ended still reminds in today\'s week, as Today shows it', function () {
+    $user = TodaySeed::user();
+    TodaySeed::targets($user, '2026-09-20');
+    PushSubscription::factory()->for($user)->create();
+
+    foreach (['2026-10-24 07:00:00', '2026-10-24 09:00:00'] as $at) {
+        Carbon::setTestNow($at);
+        app(SendDueReminders::class)($user, CarbonImmutable::now());
+    }
+
+    expect(sentLines($user))->toBe([
+        'Weigh-in | Time to weigh in | /today?date=2026-10-24&open=weigh-in',
+        'Weekly review available | Your week is ready to review | /today?date=2026-10-24',
+    ]);
 });
 
 it('NOTIF-001 a pass that runs 9 minutes late still sends what fell due', function () {

@@ -24,6 +24,7 @@ it('NOTIF-007 registers notification_prefs_set on every host surface as a write 
         ->and(HostDefinition::affects($definition))->toBe(['settings_show'])
         ->and(HostDefinition::isReversible($definition))->toBeFalse()
         ->and(HostDefinition::isDestructive($definition))->toBeFalse()
+        ->and([$definition->cliDomain, $definition->cliVerb])->toBe(['notification', 'prefs-set'])
         ->and($definition->description)->not->toBe('');
 });
 
