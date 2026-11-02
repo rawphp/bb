@@ -234,16 +234,23 @@ it('SCH-056 refuses a new start for a session that has started, is skipped, or w
     'on a past day' => [[], 1],
 ]);
 
-it('SCH-038 a move named by the mesocycle id in capitals saves the row under the stored id', function () {
+it('SCH-038 SCH-056 a move or a new start named by the mesocycle id in capitals saves the row under the stored id', function (string $write, string $date, string $time) {
     [$user, $mesocycle] = sessionWorld();
     SheetSeed::day($user, '2026-09-24');
     SheetSeed::day($user, '2026-09-26');
+    $id = strtoupper($mesocycle->id);
 
-    app(MoveWorkout::class)($user, new WorkoutMoveInput(strtoupper($mesocycle->id), 3, 2, '2026-09-26'));
+    $write === 'move'
+        ? app(MoveWorkout::class)($user, new WorkoutMoveInput($id, 3, 2, $date))
+        : app(SetWorkoutTime::class)($user, new WorkoutTimeSetInput($id, 3, 2, '12:00'));
 
+    $workout = TodaySnapshot::load($user, $date)->workout(DayPlans::day($date));
     expect(WorkoutSession::query()->sole()->mesocycle_id)->toBe($mesocycle->id)
-        ->and(TodaySnapshot::load($user, '2026-09-26')->workout(DayPlans::day('2026-09-26'))?->day)->toBe(2);
-});
+        ->and([$workout?->day, $workout?->time->shortText()])->toBe([2, $time]);
+})->with([
+    'move' => ['move', '2026-09-26', '5:30 PM'],
+    'time' => ['time', '2026-09-24', '12:00 PM'],
+]);
 
 it('SCH-038 refuses a move onto a day whose session is skipped: a skipped session still holds its day', function () {
     [$user, $mesocycle] = sessionWorld('2026-09-21');

@@ -6,6 +6,7 @@ use App\Actions\Today\SaveOtherActivity;
 use App\Capabilities\Today\Data\OtherActivitySaveInput;
 use App\Models\Mesocycle;
 use App\Models\OtherActivity;
+use App\Models\PlanWeek;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Today\DayPlans;
@@ -157,7 +158,11 @@ it('SCH-032 a past day\'s activity is not deleted', function () {
 
 it('SCH-038 SCH-053 a skipped session\'s energy is not on its day: the activity alone sets the day type', function () {
     $user = activityWorld();
+    // Twelve working sets: a Moderate session, which would raise the day if it were still on it.
     $mesocycle = Mesocycle::query()->sole();
+    $days = $mesocycle->days;
+    $days[1]['slots'][0]['sets'] = 12;
+    $mesocycle->update(['days' => $days]);
     WorkoutSession::factory()->for($user)->create([
         'mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 2, 'is_skipped' => true,
         'planned_start_at' => '2026-09-24 17:30:00', 'planned_end_at' => '2026-09-24 18:30:00',
@@ -202,3 +207,15 @@ it('SCH-032 a save or a delete whose activity row fails leaves the day as it was
         ->toThrow(RuntimeException::class, 'the activity could not be saved')
         ->and($day->fresh()->only(['day_type', 'kcal', 'meals']))->toEqual($before);
 })->with(['save', 'delete']);
+
+it('SCH-060 NUT-005 an activity in an away week on rest-day calories adds no energy, and still sets the day type', function () {
+    $user = activityWorld();
+    PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-21', 'is_away' => true, 'away_training' => 'deload', 'away_calories' => 'rest_days']);
+    $day = SheetSeed::day($user, '2026-09-23', ['day_type' => 'rest']);
+
+    saveActivity($user);
+
+    expect($day->fresh()->kcal)->toBe(2600.0)
+        ->and($day->fresh()->carbs_g)->toBe(320.0)
+        ->and($day->fresh()->day_type->value)->toBe('moderate');
+});
