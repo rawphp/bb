@@ -162,3 +162,20 @@ it('MESO-005 a floating day with no training weekday left has no date', function
         ->and(MesocycleCalendar::dayDates(new PlanWeek(calDay('2026-10-08')), [null, null], [1, 4], 4))
         ->toEqual([calDay('2026-10-08'), calDay('2026-10-12')]);
 });
+
+it('MESO-043 MESO-060 a mesocycle starting in a short first plan week runs to the end of its last plan week', function () {
+    // The plan starts on Wednesday 16 September with Monday weeks, so its first week runs Wednesday to Sunday and
+    // a 5-week mesocycle from that day has its deload from 12 to 18 October.
+    $grid = new PlanWeekGrid(calDay('2026-09-16'), 2);
+    $on = fn (string $today, ?string $endedOn = null) => new MesocycleCalendar(
+        calDay('2026-09-16'), 5, $endedOn === null ? null : calDay($endedOn), $grid, calDay($today),
+    );
+
+    expect($on('2026-10-18')->lastDay())->toEqual(calDay('2026-10-18'))
+        ->and($on('2026-10-18')->isRunning())->toBeTrue()
+        ->and($on('2026-10-19')->nextMesocycleStart(activeRest: false))->toEqual(calDay('2026-10-19'))
+        ->and($on('2026-10-19')->isRunning())->toBeFalse()
+        ->and($on('2026-10-19')->canEnd())->toBeFalse()
+        ->and($on('2026-10-19')->canAddDay())->toBeFalse()
+        ->and($on('2026-10-07', endedOn: '2026-10-07')->lastDay())->toEqual(calDay('2026-10-06'));
+});

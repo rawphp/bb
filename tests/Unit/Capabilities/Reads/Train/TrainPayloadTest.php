@@ -82,6 +82,13 @@ it('MESO-043 an ended mesocycle is past and ends the day before it was ended', f
         ->and($endsLater['sections'][0]['rows'][0]['dates_text'])->toBe('5 Oct – 14 Oct 2026');
 });
 
+it('MESO-043 a mesocycle ended on its first day is past and lists that day only', function () {
+    $payload = train(listWorld([W::mesocycle(['id' => 'a', 'start_date' => '2026-10-10', 'ended_on' => '2026-10-10'])]));
+
+    expect($payload['sections'][0]['status'])->toBe('past')
+        ->and($payload['sections'][0]['rows'][0]['dates_text'])->toBe('10 Oct – 10 Oct 2026');
+});
+
 it('MESO-002 offers four routes in order', function () {
     $routes = train(listWorld([]))['create_routes'];
 
@@ -157,6 +164,17 @@ it('MESO-060 MESO-043 a mesocycle ended early prompts at once, starting the plan
     expect($current['id'])->toBe(W::MESO)
         ->and($current['dates_text'])->toBe('14 Sep – 5 Oct 2026')
         ->and($current['next_mesocycle']['start_date'])->toBe('2026-10-12');
+});
+
+it('MESO-060 MESO-043 once ended, the card says when it ended instead of counting on into the deload', function () {
+    $current = train(W::snapshot(today: '2026-10-14', mesocycles: [W::mesocycle(['ended_on' => '2026-10-06'])]))['current'];
+
+    expect($current['week_text'])->toBe('Ended 6 Oct')
+        ->and($current['next_mesocycle'])->not->toBeNull();
+});
+
+it('MESO-060 once its last week is over, the card says when it finished', function () {
+    expect(train(W::snapshot(today: '2026-10-20'))['current']['week_text'])->toBe('Finished 18 Oct');
 });
 
 it('MESO-060 the template filter follows the phase that week 1 of the next mesocycle falls in', function (?array $phase, string $filter) {
