@@ -346,8 +346,9 @@ it('CAP-020 makes every capability that takes an existing row\'s ID check its ow
     // mesocycle_copy's new draft is such a create (ownedOrNew); a day_id names a new day inside a mesocycle
     // whose own ID is checked. custom_food_save, off_plan_log and recipe_save create or edit under the client's ULID (ownedOrNew);
     // saved_meal_save and weigh_in_log create under it and return the user's existing one unchanged.
+    // mesocycle_build starts or edits a draft under the client's ULID (ownedOrNew), and names its new days and slots.
     // phase_goal_change's new_phase_id names the phase a goal change creates (ownedOrNew).
-    $exempt = ['token_create' => ['id'], 'mesocycle_copy' => ['mesocycle_id'], 'mesocycle_day_add' => ['day_id'], 'custom_food_save' => ['id'], 'off_plan_log' => ['id'], 'saved_meal_save' => ['id'], 'recipe_save' => ['id'], 'phase_goal_change' => ['new_phase_id'], 'weigh_in_log' => ['id']];
+    $exempt = ['token_create' => ['id'], 'mesocycle_copy' => ['mesocycle_id'], 'mesocycle_build' => ['mesocycle_id', 'days.*.day_id', 'days.*.slots.*.slot_id'], 'mesocycle_day_add' => ['day_id'], 'custom_food_save' => ['id'], 'off_plan_log' => ['id'], 'saved_meal_save' => ['id'], 'recipe_save' => ['id'], 'phase_goal_change' => ['new_phase_id'], 'weigh_in_log' => ['id']];
     $declared = (fn (): array => $this->capabilities)->call(app(Ownership::class));
 
     foreach (app(CapabilityRegistry::class)->all() as $name => $definition) {
