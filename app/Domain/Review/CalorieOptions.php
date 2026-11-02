@@ -41,7 +41,7 @@ final readonly class CalorieOptions
     }
 
     /** PLAN-022: a Fat loss deload runs at maintenance, so it is a diet break however the week is marked. */
-    private static function isDietBreak(PlanWeek $week, PhaseType $phase): bool
+    public static function isDietBreak(PlanWeek $week, PhaseType $phase): bool
     {
         return $week->isDietBreak || ($week->isDeload && $phase->isFatLoss());
     }

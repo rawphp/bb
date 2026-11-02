@@ -34,6 +34,6 @@ final readonly class ReviewWeek
     /** A diet break, deload (which runs at maintenance, PLAN-022 and PLAN-024) or away week. */
     public function isBreakOrAway(): bool
     {
-        return $this->week->isDietBreak || $this->week->isDeload || $this->week->isAway;
+        return ReviewNextWeek::isPlanned($this->week);
     }
 }

@@ -20,12 +20,25 @@ final class RepeatThisWeek
         if (! $reviewed->isBreakOrAway()) {
             return $reviewed->targetKcal;
         }
+
+        $lastOrdinary = self::lastOrdinaryBeforeNewest($weeks);
+
+        return $lastOrdinary === null ? $reviewed->targetKcal : $lastOrdinary->targetKcal;
+    }
+
+    /**
+     * The newest week before the newest that is not a break, deload or away week.
+     *
+     * @param  list<ReviewWeek>  $weeks  oldest first
+     */
+    public static function lastOrdinaryBeforeNewest(array $weeks): ?ReviewWeek
+    {
         for ($i = count($weeks) - 2; $i >= 0; $i--) {
             if (! $weeks[$i]->isBreakOrAway()) {
-                return $weeks[$i]->targetKcal;
+                return $weeks[$i];
             }
         }
 
-        return $reviewed->targetKcal;
+        return null;
     }
 }

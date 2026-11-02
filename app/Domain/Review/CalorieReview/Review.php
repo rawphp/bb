@@ -13,10 +13,12 @@ use App\Domain\Model\PhaseType;
 use App\Domain\Model\PlanWeek;
 use App\Domain\Model\Profile;
 use App\Domain\Phases\MaintenanceHold;
+use App\Domain\Review\CalorieOptions;
 use App\Domain\Review\CalorieReview;
 use App\Domain\Review\MeasuredExpenditure;
 use App\Domain\Review\RecommendationReason;
 use App\Domain\Review\RecommendationReasonKind;
+use App\Domain\Review\RepeatThisWeek;
 use App\Domain\Review\ReviewWeek;
 use App\Domain\Review\StallChange;
 use App\Domain\Review\StallOptions;
@@ -77,7 +79,7 @@ final class Review
     {
         // REV-023 exception: the week after a diet break goes straight back, uncapped, with no water hold.
         // PLAN-022: a fat loss deload runs at maintenance, so it is a diet break however the week is marked.
-        if ($this->week->week->isDietBreak || ($this->week->week->isDeload && $this->phase->type->isFatLoss())) {
+        if (CalorieOptions::isDietBreak($this->week->week, $this->phase->type)) {
             $last = $this->lastNormalWeekBeforeThis();
             if ($last !== null) {
                 return new Decision($last->targetKcal, RecommendationReason::returnFromBreak());
@@ -126,13 +128,7 @@ final class Review
     /** The newest week before the reviewed one that is not a break, deload or away week. */
     private function lastNormalWeekBeforeThis(): ?ReviewWeek
     {
-        for ($index = count($this->weeks) - 2; $index >= 0; $index--) {
-            if (! $this->weeks[$index]->isBreakOrAway()) {
-                return $this->weeks[$index];
-            }
-        }
-
-        return null;
+        return RepeatThisWeek::lastOrdinaryBeforeNewest($this->weeks);
     }
 
     /** REV-025: the average consumed is more than 10% off target, or nothing was logged. */
