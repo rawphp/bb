@@ -32,12 +32,28 @@ export function usePush() {
         if (Notification.permission === 'denied') return 'denied';
 
         const registration = await navigator.serviceWorker.getRegistration();
-        return (await registration?.pushManager.getSubscription()) ? 'on' : 'off';
+        const subscription = await registration?.pushManager.getSubscription();
+        if (!subscription) return 'off';
+
+        // The server's row follows whoever is signed in on this browser, so a
+        // browser that switched accounts moves to this one. The save is an upsert.
+        await save(subscription);
+        return 'on';
+    }
+
+    async function save(subscription: PushSubscription): Promise<void> {
+        const { endpoint, keys } = subscription.toJSON();
+
+        await write('push_subscribe', {
+            endpoint: endpoint ?? subscription.endpoint,
+            public_key: keys?.p256dh ?? '',
+            auth_token: keys?.auth ?? '',
+        } satisfies PushSubscribeInput);
     }
 
     async function enable(): Promise<PushState> {
         const before = await refresh();
-        if ((before !== 'off' && before !== 'on') || publicKey === null) return before;
+        if (before !== 'off' || publicKey === null) return before;
 
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
@@ -49,13 +65,9 @@ export function usePush() {
         const subscription =
             (await registration.pushManager.getSubscription()) ??
             (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(publicKey) }));
-        const { endpoint, keys } = subscription.toJSON();
 
-        await write('push_subscribe', {
-            endpoint: endpoint ?? subscription.endpoint,
-            public_key: keys?.p256dh ?? '',
-            auth_token: keys?.auth ?? '',
-        } satisfies PushSubscribeInput);
+        // A failed save leaves the state 'off' and rejects; the next refresh() saves again.
+        await save(subscription);
 
         state.value = 'on';
         return state.value;
@@ -65,12 +77,14 @@ export function usePush() {
         const registration = await navigator.serviceWorker?.getRegistration();
         const subscription = await registration?.pushManager.getSubscription();
 
-        if (subscription) {
-            await write('push_unsubscribe', { endpoint: subscription.endpoint } satisfies PushUnsubscribeInput);
-            await subscription.unsubscribe();
+        // The browser stops receiving even when the server can't be told: its
+        // endpoint is then dead, and the next send deletes the row.
+        try {
+            if (subscription) await write('push_unsubscribe', { endpoint: subscription.endpoint } satisfies PushUnsubscribeInput);
+        } finally {
+            await subscription?.unsubscribe();
+            if (state.value === 'on') state.value = 'off';
         }
-
-        if (state.value === 'on') state.value = 'off';
     }
 
     return { state, needsHomeScreen: computed(() => state.value === 'needs-home-screen'), refresh, enable, disable };

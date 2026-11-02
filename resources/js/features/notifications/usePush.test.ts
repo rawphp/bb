@@ -108,6 +108,40 @@ describe('usePush', () => {
         expect(requestPermission).not.toHaveBeenCalled();
     });
 
+    it('NOTIF-010 a subscribed browser saves its subscription again, so it follows the signed-in account', async () => {
+        installBrowser({ permission: 'granted', subscribed: true });
+        const push = usePush();
+
+        expect(await push.refresh()).toBe('on');
+        expect(writeMock).toHaveBeenCalledWith('push_subscribe', {
+            endpoint: 'https://push.example.com/send/device-1',
+            public_key: 'p256dh-key',
+            auth_token: 'auth-key',
+        });
+    });
+
+    it('NOTIF-010 does not report on when the server refuses to save the subscription', async () => {
+        installBrowser();
+        writeMock.mockRejectedValueOnce(new Error('network'));
+        const push = usePush();
+
+        await expect(push.enable()).rejects.toThrow('network');
+        expect(push.state.value).toBe('off');
+    });
+
+    it('NOTIF-010 turning off still stops this browser when the server cannot be told', async () => {
+        installBrowser({ permission: 'granted', subscribed: true });
+        const push = usePush();
+        expect(await push.refresh()).toBe('on');
+        const subscription = await (await navigator.serviceWorker.getRegistration())!.pushManager.getSubscription();
+        writeMock.mockRejectedValueOnce(new Error('network'));
+
+        await expect(push.disable()).rejects.toThrow('network');
+
+        expect((subscription as unknown as FakeSubscription).unsubscribe).toHaveBeenCalledOnce();
+        expect(push.state.value).toBe('off');
+    });
+
     it('NOTIF-010 turning off removes the subscription from the server and the browser', async () => {
         installBrowser({ permission: 'granted', subscribed: true });
         const push = usePush();

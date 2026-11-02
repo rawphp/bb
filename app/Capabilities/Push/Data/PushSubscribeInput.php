@@ -2,6 +2,8 @@
 
 namespace App\Capabilities\Push\Data;
 
+use App\Models\PushSubscription;
+use Closure;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -19,6 +21,10 @@ final class PushSubscribeInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['endpoint' => ['starts_with:https://']];
+        return ['endpoint' => [function (string $attribute, mixed $value, Closure $fail): void {
+            if (! is_string($value) || ! PushSubscription::allowedEndpoint($value)) {
+                $fail('The endpoint must be an https URL on a known push service.');
+            }
+        }]];
     }
 }

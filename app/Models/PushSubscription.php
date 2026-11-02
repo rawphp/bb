@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Concerns\BelongsToUser;
+use Database\Factories\PushSubscriptionFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use NotificationChannels\WebPush\PushSubscription as WebPushSubscription;
 
 /**
@@ -13,6 +15,9 @@ use NotificationChannels\WebPush\PushSubscription as WebPushSubscription;
  */
 class PushSubscription extends WebPushSubscription
 {
+    /** @use HasFactory<PushSubscriptionFactory> */
+    use BelongsToUser, HasFactory;
+
     protected $fillable = [
         'user_id',
         'endpoint',
@@ -21,9 +26,22 @@ class PushSubscription extends WebPushSubscription
         'content_encoding',
     ];
 
-    /** @return BelongsTo<User, $this> */
-    public function user(): BelongsTo
+    /** Whether the endpoint is an https URL on one of `webpush.push_services`. */
+    public static function allowedEndpoint(string $endpoint): bool
     {
-        return $this->belongsTo(User::class);
+        $parts = parse_url($endpoint);
+        if (($parts['scheme'] ?? null) !== 'https' || ! isset($parts['host'])) {
+            return false;
+        }
+
+        $host = strtolower($parts['host']);
+
+        foreach (config()->array('webpush.push_services') as $service) {
+            if ($host === $service || str_ends_with($host, '.'.$service)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

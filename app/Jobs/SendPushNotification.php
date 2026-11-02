@@ -16,6 +16,9 @@ final class SendPushNotification implements ShouldQueue
 {
     use Queueable;
 
+    /** A user who deleted their account while this waited has nothing to send to (ACC-005). */
+    public bool $deleteWhenMissingModels = true;
+
     private readonly PushNotification $notification;
 
     public function __construct(

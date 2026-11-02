@@ -63,13 +63,16 @@ class User extends Authenticatable
     }
 
     /**
-     * Where the Web Push channel sends this user's notifications.
+     * Where the Web Push channel sends this user's notifications: only
+     * endpoints on a push service still in `webpush.push_services`.
      *
      * @return Collection<int, PushSubscription>
      */
     public function routeNotificationForWebPush(): Collection
     {
-        return $this->pushSubscriptions;
+        return $this->pushSubscriptions()->get()
+            ->filter(fn (PushSubscription $subscription): bool => PushSubscription::allowedEndpoint($subscription->endpoint))
+            ->values();
     }
 
     /** @return HasOne<Profile, $this> */

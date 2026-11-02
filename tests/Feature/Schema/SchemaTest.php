@@ -24,6 +24,7 @@ use App\Models\PlannedFood;
 use App\Models\PlannedRecipe;
 use App\Models\PlanWeek;
 use App\Models\Profile;
+use App\Models\PushSubscription;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\SavedMeal;
@@ -92,6 +93,7 @@ function fillAccount(User $user): void
     Step::factory()->for($user)->create();
 
     PendingSignInCode::factory()->for($user)->create();
+    PushSubscription::factory()->for($user)->create();
 }
 
 it('has a factory for every model that saves a row', function () {
