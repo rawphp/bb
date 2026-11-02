@@ -9,14 +9,13 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class BillingCheckoutStartOutput extends CapabilityData
 {
     /**
-     * @param  list<string>  $invalidates
+     * @param  list<string>  $invalidates  read keys whose data changed, as WriteResult (CAP-010)
      */
     public function __construct(
-        #[Field(description: 'read keys whose data changed (CAP-010)')]
-        public readonly array $invalidates,
-        public readonly ?string $toast,
-        public readonly ?string $undo,
         #[Field(format: 'uri')]
         public readonly string $url,
+        public readonly array $invalidates,
+        public readonly ?string $toast = null,
+        public readonly ?string $undo = null,
     ) {}
 }

@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Reads\Data\Settings;
 
+use App\Domain\Safety\ScreeningItem;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -9,7 +10,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class ScreeningQuestion extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: ['ageOutOfRange', 'heightOutOfRange', 'weightOverLimit', 'bmiUnderLimit', 'pregnantOrBreastfeeding', 'tryingToConceive', 'transgenderOnHormoneTherapy', 'heartThyroidOrPCOS', 'weightLossSurgery', 'gallbladderDisease', 'autoimmuneDisease', 'diabetes', 'eatingDisorderHistory'])]
+        #[Field(enum: [ScreeningItem::AgeOutOfRange->value, ScreeningItem::HeightOutOfRange->value, ScreeningItem::WeightOverLimit->value, ScreeningItem::BmiUnderLimit->value, ScreeningItem::PregnantOrBreastfeeding->value, ScreeningItem::TryingToConceive->value, ScreeningItem::TransgenderOnHormoneTherapy->value, ScreeningItem::HeartThyroidOrPCOS->value, ScreeningItem::WeightLossSurgery->value, ScreeningItem::GallbladderDisease->value, ScreeningItem::AutoimmuneDisease->value, ScreeningItem::Diabetes->value, ScreeningItem::EatingDisorderHistory->value])]
         public readonly string $item,
         public readonly string $label,
         public readonly bool $applies,

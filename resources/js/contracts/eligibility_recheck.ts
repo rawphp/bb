@@ -21,18 +21,15 @@ export interface EligibilityRecheckInput {
 }
 
 export interface EligibilityRecheckOutput {
-  /**
-   * read keys whose data changed (CAP-010)
-   */
-  invalidates: unknown[];
-  toast?: string | null;
-  undo?: string | null;
-  outcome: "keep" | "switch_to_training_only" | "run_nutrition_setup" | "leave_fat_loss";
+  outcome: "keep" | "switchToTrainingOnly" | "runNutritionSetup" | "leaveFatLoss";
   message: string;
   /**
    * onboarding: onboarding_show holds the steps this outcome needs
    */
   next: "done" | "onboarding";
+  invalidates: unknown[];
+  toast?: string | null;
+  undo?: string | null;
 }
 
-export const outputVersion = 'd5d639efd6f7';
+export const outputVersion = '9891be1e0f51';

@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Settings\Data;
 
+use App\Domain\Model\DietFilter;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -9,7 +10,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class DietFilterInput extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'paleo', 'vegan'])]
+        #[Field(enum: [DietFilter::DairyFree->value, DietFilter::GlutenFree->value, DietFilter::GrainFree->value, DietFilter::LowFodmap->value, DietFilter::Vegetarian->value, DietFilter::Paleo->value, DietFilter::Vegan->value])]
         public readonly string $filter,
     ) {}
 }

@@ -3,22 +3,6 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-        "invalidates": {
-            "type": "array",
-            "description": "read keys whose data changed (CAP-010)"
-        },
-        "toast": {
-            "type": [
-                "string",
-                "null"
-            ]
-        },
-        "undo": {
-            "type": [
-                "string",
-                "null"
-            ]
-        },
         "token": {
             "type": "object",
             "additionalProperties": false,
@@ -46,10 +30,25 @@
                 "scope_text",
                 "expires_text"
             ]
+        },
+        "invalidates": {
+            "type": "array"
+        },
+        "toast": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "undo": {
+            "type": [
+                "string",
+                "null"
+            ]
         }
     },
     "required": [
-        "invalidates",
-        "token"
+        "token",
+        "invalidates"
     ]
 }

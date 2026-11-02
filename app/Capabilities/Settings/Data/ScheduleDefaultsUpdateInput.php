@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Settings\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -29,4 +30,15 @@ final class ScheduleDefaultsUpdateInput extends CapabilityData
         #[Field(description: 'null leaves the review day as it is', minimum: 1, maximum: 7)]
         public readonly ?int $review_weekday,
     ) {}
+
+    public static function rules(): array
+    {
+        return [
+            'eating_window_start' => [Rule::date()->format('H:i')],
+            'eating_window_end' => [Rule::date()->format('H:i')],
+            'training_days.*.start' => [Rule::date()->format('H:i')],
+            'busy_periods.*.start' => [Rule::date()->format('H:i')],
+            'busy_periods.*.end' => [Rule::date()->format('H:i')],
+        ];
+    }
 }

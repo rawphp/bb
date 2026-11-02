@@ -92,7 +92,7 @@
                         },
                         "cm": {
                             "type": [
-                                "integer",
+                                "number",
                                 "null"
                             ]
                         },
@@ -104,7 +104,7 @@
                         },
                         "inches": {
                             "type": [
-                                "integer",
+                                "number",
                                 "null"
                             ]
                         }

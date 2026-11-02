@@ -3,13 +3,10 @@
 export interface BillingPortalOpenInput {}
 
 export interface BillingPortalOpenOutput {
-  /**
-   * read keys whose data changed (CAP-010)
-   */
+  url: string;
   invalidates: unknown[];
   toast?: string | null;
   undo?: string | null;
-  url: string;
 }
 
-export const outputVersion = 'd1ac9ea40c58';
+export const outputVersion = 'be50aa6e17a6';

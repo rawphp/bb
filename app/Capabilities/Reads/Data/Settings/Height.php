@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Reads\Data\Settings;
 
+use App\Domain\Model\HeightUnit;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -9,12 +10,12 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class Height extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: ['cm', 'feetInches'])]
+        #[Field(enum: [HeightUnit::Cm->value, HeightUnit::FeetInches->value])]
         public readonly string $unit,
         #[Field(description: 'for example "178 cm" or "5 ft 10 in"')]
         public readonly string $text,
-        public readonly ?int $cm,
+        public readonly ?float $cm,
         public readonly ?int $feet,
-        public readonly ?int $inches,
+        public readonly ?float $inches,
     ) {}
 }

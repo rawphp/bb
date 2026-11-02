@@ -3,9 +3,12 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
+        "url": {
+            "type": "string",
+            "format": "uri"
+        },
         "invalidates": {
-            "type": "array",
-            "description": "read keys whose data changed (CAP-010)"
+            "type": "array"
         },
         "toast": {
             "type": [
@@ -18,14 +21,10 @@
                 "string",
                 "null"
             ]
-        },
-        "url": {
-            "type": "string",
-            "format": "uri"
         }
     },
     "required": [
-        "invalidates",
-        "url"
+        "url",
+        "invalidates"
     ]
 }

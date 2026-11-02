@@ -3,29 +3,13 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-        "invalidates": {
-            "type": "array",
-            "description": "read keys whose data changed (CAP-010)"
-        },
-        "toast": {
-            "type": [
-                "string",
-                "null"
-            ]
-        },
-        "undo": {
-            "type": [
-                "string",
-                "null"
-            ]
-        },
         "outcome": {
             "type": "string",
             "enum": [
                 "keep",
-                "switch_to_training_only",
-                "run_nutrition_setup",
-                "leave_fat_loss"
+                "switchToTrainingOnly",
+                "runNutritionSetup",
+                "leaveFatLoss"
             ]
         },
         "message": {
@@ -38,12 +22,27 @@
                 "done",
                 "onboarding"
             ]
+        },
+        "invalidates": {
+            "type": "array"
+        },
+        "toast": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "undo": {
+            "type": [
+                "string",
+                "null"
+            ]
         }
     },
     "required": [
-        "invalidates",
         "outcome",
         "message",
-        "next"
+        "next",
+        "invalidates"
     ]
 }

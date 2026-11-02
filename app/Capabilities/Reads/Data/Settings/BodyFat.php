@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Reads\Data\Settings;
 
+use App\Domain\Model\BodyFatBucket;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -9,7 +10,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class BodyFat extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: ['lowest', 'low', 'high', 'highest'])]
+        #[Field(enum: [BodyFatBucket::Lowest->value, BodyFatBucket::Low->value, BodyFatBucket::High->value, BodyFatBucket::Highest->value])]
         public readonly string $value,
         public readonly string $text,
         public readonly BodyFatChoices $choices,
