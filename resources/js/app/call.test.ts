@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cached, clearReads, MAX_AGE_MS, store } from './cache';
-import { CapabilityError, keepWarm, read, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, write } from './call';
+import { CapabilityError, keepWarm, postHost, read, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, write } from './call';
 import { clearWalk, walkDays } from './clock';
 
 function json(body: unknown, status = 200): Response {
@@ -437,5 +437,87 @@ describe('call', () => {
             target.dispatchEvent(new Event('online'));
             await vi.waitFor(() => expect(manifestCalls()).toBe(2));
         });
+    });
+});
+
+describe('postHost', () => {
+    const fetchMock = vi.fn<typeof fetch>();
+
+    beforeEach(() => {
+        clearCookies();
+        fetchMock.mockReset();
+        vi.stubGlobal('fetch', fetchMock);
+    });
+
+    afterEach(() => vi.unstubAllGlobals());
+
+    // A sign-in screen left open outlives its session, so its CSRF cookie may be stale.
+    function freshCookie(): void {
+        document.cookie = 'XSRF-TOKEN=stale; path=/';
+        fetchMock.mockImplementationOnce(async () => {
+            document.cookie = 'XSRF-TOKEN=fresh%3D; path=/';
+            return new Response(null, { status: 204 });
+        });
+    }
+
+    it('CAP-004 posts to the host route with a freshly fetched CSRF cookie', async () => {
+        freshCookie();
+        fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+        await postHost('/sign-in', { email: 'sam@example.com', password: 'secret' });
+
+        expect(fetchMock.mock.calls[0]![0]).toBe('/sanctum/csrf-cookie');
+        const [url, init] = fetchMock.mock.calls[1]!;
+        expect(url).toBe('/sign-in');
+        expect(init?.method).toBe('POST');
+        expect(init?.credentials).toBe('same-origin');
+        expect(init?.body).toBe(JSON.stringify({ email: 'sam@example.com', password: 'secret' }));
+        expect(init?.headers).toMatchObject({
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-XSRF-TOKEN': 'fresh=',
+        });
+    });
+
+    it('ACC-001 a refused host call throws a CapabilityError with the status and body', async () => {
+        freshCookie();
+        const body = { message: 'That code is wrong.', errors: { code: ['That code is wrong.'] } };
+        fetchMock.mockResolvedValueOnce(json(body, 422));
+
+        await expect(postHost('/sign-in/code/verify', { email: 'a@b.c', code: '123456' })).rejects.toMatchObject({
+            capability: '/sign-in/code/verify',
+            status: 422,
+            body,
+        });
+    });
+
+    it('ACC-001 a host call with no answer throws status 0', async () => {
+        freshCookie();
+        fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+        const error = await postHost('/sign-in/code', { email: 'a@b.c' }).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(CapabilityError);
+        expect(error).toMatchObject({ status: 0, body: { reason: 'network' } });
+    });
+
+    it('CAP-004 a host call gives up on a stalled server', async () => {
+        vi.useFakeTimers();
+        fetchMock.mockImplementation(
+            (_url, init) =>
+                new Promise<Response>((_resolve, reject) => {
+                    init?.signal?.addEventListener('abort', () => reject(init.signal!.reason));
+                }),
+        );
+
+        try {
+            const error = postHost('/sign-in', {}).catch((e: unknown) => e);
+            await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+
+            expect(await error).toMatchObject({ status: 0, body: { reason: 'timeout' } });
+        } finally {
+            vi.useRealTimers();
+        }
     });
 });

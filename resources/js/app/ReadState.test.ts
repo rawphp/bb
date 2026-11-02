@@ -19,8 +19,10 @@ describe('ReadState', () => {
     ])('CAP-004 a gone session (%i) says so, with no Try again', (status, words) => {
         const wrapper = mount(ReadState, { props: { failure: failed(status), what: 'Your tokens' } });
 
-        expect(wrapper.get('[role="alert"]').text()).toBe(words);
+        expect(wrapper.get('[role="alert"] p').text()).toBe(words);
         expect(wrapper.find('[data-test="retry"]').exists()).toBe(false);
+        // ACC-001: the way out of a gone session is the sign-in screen.
+        expect(wrapper.get('[data-test="sign-in"]').attributes('href')).toBe('/sign-in');
     });
 
 
@@ -37,6 +39,7 @@ describe('ReadState', () => {
         const wrapper = mount(ReadState, { props: { failure: failed(500), what: 'Your tokens' } });
 
         expect(wrapper.get('[role="alert"]').text()).toContain('Your tokens could not be loaded.');
+        expect(wrapper.find('[data-test="sign-in"]').exists()).toBe(false);
         await wrapper.get('[data-test="retry"]').trigger('click');
 
         expect(wrapper.emitted('retry')).toHaveLength(1);
