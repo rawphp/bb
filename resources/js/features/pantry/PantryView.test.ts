@@ -481,20 +481,24 @@ describe('PantryView', () => {
         expect(back).toHaveBeenCalledOnce();
     });
 
-    it('NAV-002 an Add that finishes after the user left does not go back a second time', async () => {
+    it('FOOD-028 NAV-002 a swipe back during Add still adds every pick, and does not go back again', async () => {
         let finish: (value: unknown) => void = () => {};
         writeMock.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
         const wrapper = show();
 
         await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+        await wrapper.find('select[aria-label="Show"]').setValue('saved_meals');
+        await flushPromises();
+        await wrapper.find('[data-test="collection-row"]').trigger('click');
         await wrapper.find('[data-test="confirm"]').trigger('click');
         await flushPromises();
-        await wrapper.find('[data-test="cancel"]').trigger('click');
+        // The edge swipe pops the Pantry from outside it.
         wrapper.unmount();
         finish({});
         await flushPromises();
 
-        expect(back).toHaveBeenCalledOnce();
+        expect(writes().map(([name]) => name)).toEqual(['meal_food_add', 'meal_saved_meal_load']);
+        expect(back).not.toHaveBeenCalled();
     });
 
     it('NAV-002 an Add that finishes after the user opened another tab or screen does not go back', async () => {
@@ -513,7 +517,7 @@ describe('PantryView', () => {
         expect(wrapper.find('[data-test="basket"]').exists()).toBe(false);
     });
 
-    it('FOOD-028 leaving during Add stops the saved meals not yet sent, and they stay in the basket', async () => {
+    it('FOOD-028 another tab during Add still loads every saved meal it confirmed', async () => {
         let finish: (value: unknown) => void = () => {};
         writeMock.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
         const twoMeals = structuredClone(curated);
@@ -530,8 +534,11 @@ describe('PantryView', () => {
         finish({});
         await flushPromises();
 
-        expect(writes().map(([name, input]) => [name, input.saved_meal_id])).toEqual([['meal_saved_meal_load', '01JBX5S0000000000000000001']]);
-        expect(wrapper.find('[data-test="basket"]').findAll('li').map((li) => li.text())).toEqual(['Cut lunchSaved meal']);
+        expect(writes().map(([name, input]) => [name, input.saved_meal_id])).toEqual([
+            ['meal_saved_meal_load', '01JBX5S0000000000000000001'],
+            ['meal_saved_meal_load', '01JBX5S0000000000000000002'],
+        ]);
+        expect(wrapper.find('[data-test="basket"]').exists()).toBe(false);
         expect(back).not.toHaveBeenCalled();
     });
 
