@@ -19,6 +19,7 @@ final readonly class ReviewWorld
      * @param  Mesocycle  $mesocycle  The mesocycle covering the week; a review that moves the deload (REV-011) hands
      *                                over the shortened one.
      * @param  int  $nextWeek  The plan week the review sets, from 0.
+     * @param  Closure(): string  $newId  An id for each meal a build places. The rules never make an id.
      * @param  ?AwayWeek  $away  SCH-060: the week was marked away ahead.
      * @param  bool  $storedDietBreak  MESO-044: the week's row was marked a diet break ahead.
      * @param  bool  $storedDeload  The week's row is flagged a deload.
@@ -26,7 +27,6 @@ final readonly class ReviewWorld
      * @param  list<int>  $pausedWeeks  SCH-060: the plan weeks that pause training; they do not count as mesocycle weeks.
      * @param  array<string, OtherActivity>  $otherActivities  SCH-038: the stored Other activities by day ("Y-m-d" in
      *                                                         the plan's time zone); their energy joins the day's.
-     * @param  ?Closure(): string  $newId  An id for each meal a build places; null counts "n1", "n2", ... per build.
      */
     public function __construct(
         public Plan $plan,
@@ -35,12 +35,12 @@ final readonly class ReviewWorld
         public Mesocycle $mesocycle,
         public int $mesocycleStartWeek,
         public int $nextWeek,
+        public Closure $newId,
         public ?AwayWeek $away = null,
         public bool $storedDietBreak = false,
         public bool $storedDeload = false,
         public bool $dietBreakTurnedOff = false,
         public array $pausedWeeks = [],
         public array $otherActivities = [],
-        public ?Closure $newId = null,
     ) {}
 }

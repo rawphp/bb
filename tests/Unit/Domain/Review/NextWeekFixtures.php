@@ -27,6 +27,7 @@ use App\Domain\WeekBuilder\NutritionSchedule;
 use App\Domain\WeekBuilder\WeekDay;
 use App\Domain\WeekBuilder\WeekSchedule;
 use Tests\Unit\Domain\Plan\PlanFixtures;
+use Tests\Unit\Domain\WeekBuilder\WeekBuilderFixtures;
 
 /** The helpers of rp-clone's ReviewNextWeekTests. */
 final class NextWeekFixtures
@@ -101,7 +102,7 @@ final class NextWeekFixtures
                 id: 'meso', phase: $phase, weeks: $mesocycleWeeks,
                 sessions: [self::session('A'), self::session('B'), self::session('C')], musclePriorities: [],
             ),
-            mesocycleStartWeek: 0, nextWeek: $nextWeek, away: $away, storedDietBreak: $dietBreak,
+            mesocycleStartWeek: 0, nextWeek: $nextWeek, newId: WeekBuilderFixtures::newId(), away: $away, storedDietBreak: $dietBreak,
             otherActivities: $otherActivities,
         );
     }

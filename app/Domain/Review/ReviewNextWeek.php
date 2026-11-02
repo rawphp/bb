@@ -10,7 +10,6 @@ use App\Domain\WeekBuilder\BuiltWeek;
 use App\Domain\WeekBuilder\CalorieMove;
 use App\Domain\WeekBuilder\WeekBuilder;
 use App\Domain\WeekBuilder\WeekBuildRefusal;
-use Closure;
 use DateTimeImmutable;
 
 /**
@@ -131,20 +130,10 @@ final class ReviewNextWeek
         return WeekBuilder::build(
             plan: $world->plan, profile: $world->profile, mesocycle: $world->mesocycle,
             mesocycleStartWeek: $world->mesocycleStartWeek, week: $world->nextWeek, schedule: $world->schedule,
-            newId: $world->newId ?? self::counter(), away: $world->away,
+            newId: $world->newId, away: $world->away,
             isDietBreak: $dietBreak || $world->storedDietBreak, flaggedDeload: $world->storedDeload,
             dietBreakTurnedOff: $world->dietBreakTurnedOff, calorieChangePerDay: $change, moves: $moves,
             pausedWeeks: $world->pausedWeeks, otherActivities: $world->otherActivities,
         );
-    }
-
-    /** @return Closure(): string */
-    private static function counter(): Closure
-    {
-        $next = 0;
-
-        return function () use (&$next): string {
-            return 'n'.++$next;
-        };
     }
 }
