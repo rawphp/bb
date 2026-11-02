@@ -2,6 +2,7 @@
 
 namespace Tests\Support;
 
+use InvalidArgumentException;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
@@ -79,10 +80,17 @@ final class CapabilityParity
     public static function owners(string $dir): array
     {
         $owners = [];
+        $files = [];
         foreach (glob($dir.'/*.owners.json') ?: [] as $path) {
             /** @var array<string, int> $area */
             $area = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
-            $owners = [...$owners, ...$area];
+            foreach ($area as $name => $issue) {
+                if (isset($files[$name])) {
+                    throw new InvalidArgumentException("{$name} is owned in {$files[$name]} and ".basename($path));
+                }
+                $files[$name] = basename($path);
+                $owners[$name] = $issue;
+            }
         }
 
         return $owners;
@@ -92,7 +100,9 @@ final class CapabilityParity
      * A name the app calls passes when it is registered, or when it is a contract
      * waiting for its API issue: a schema snapshot, and an owners entry naming
      * the issue that registers it. That issue's own gate then checks the name
-     * is registered, at which point the agent check below applies to it.
+     * is registered (docs/plan/build-plan.md, API step 1), at which point the
+     * agent check below applies to it. This test cannot see whether that issue
+     * is still open, so the owner's gate, not this one, ends the wait.
      *
      * @param  array<string, list<string>>  $ui  names the app calls => the files that call them
      * @param  list<string>  $registered  every registered capability

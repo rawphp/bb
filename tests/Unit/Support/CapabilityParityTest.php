@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Filesystem\Filesystem;
 use Tests\Support\CapabilityParity;
 
 it('CAP-030 finds each capability name passed to read( or write( in app source', function () {
@@ -19,12 +20,30 @@ it('CAP-030 finds each capability name passed to read( or write( in app source',
     expect(CapabilityParity::calledIn($source))->toBe(['account_show', 'meal_add', 'today_show', 'week_show']);
 });
 
-it('CAP-030 reads app files under resources/js and leaves out test files', function () {
-    $names = CapabilityParity::calledInApp(resource_path('js'));
+it('CAP-030 scans .ts and .vue app files at any depth and leaves out test and spec files', function () {
+    $root = sys_get_temp_dir().'/parity-'.bin2hex(random_bytes(6));
+    $files = [
+        'app/call.ts' => "write('from_ts')",
+        'features/a/AView.vue' => "read('from_vue'); read('from_both')",
+        'design/B.vue' => "write('from_both')",
+        'app/call.test.ts' => "read('from_test')",
+        'features/a/AView.spec.ts' => "read('from_spec')",
+        'notes.md' => "read('from_markdown')",
+    ];
+    foreach ($files as $path => $source) {
+        @mkdir(dirname("{$root}/{$path}"), recursive: true);
+        file_put_contents("{$root}/{$path}", $source);
+    }
 
-    expect($names)->toHaveKey('account_show')
-        ->and($names)->not->toHaveKey('workout_set_log')
-        ->and($names['account_show'])->toContain('features/account/AccountView.vue');
+    try {
+        expect(CapabilityParity::calledInApp($root))->toBe([
+            'from_both' => ['design/B.vue', 'features/a/AView.vue'],
+            'from_ts' => ['app/call.ts'],
+            'from_vue' => ['features/a/AView.vue'],
+        ]);
+    } finally {
+        (new Filesystem)->deleteDirectory($root);
+    }
 });
 
 $excluded = fn (string $name): ?string => $name === 'account_delete' ? 'A person must do it.' : null;
@@ -61,6 +80,19 @@ it('CAP-030 reads snapshot names and owner issues from the schema fixtures', fun
         ->and(CapabilityParity::snapshotNames($dir))->not->toContain('today.owners')
         ->and(CapabilityParity::owners($dir))->toHaveKey('today_show')
         ->and(CapabilityParity::owners($dir)['today_show'])->toBeInt();
+});
+
+it('CAP-030 fails on a name two owners files both claim', function () {
+    $dir = sys_get_temp_dir().'/owners-'.bin2hex(random_bytes(6));
+    mkdir($dir);
+    file_put_contents("{$dir}/a.owners.json", '{"meal_add": 68}');
+    file_put_contents("{$dir}/b.owners.json", '{"meal_add": 71}');
+
+    try {
+        expect(fn () => CapabilityParity::owners($dir))->toThrow(InvalidArgumentException::class, 'meal_add is owned in a.owners.json and b.owners.json');
+    } finally {
+        (new Filesystem)->deleteDirectory($dir);
+    }
 });
 
 it('AGT-001 fails a registered capability the agent cannot call', function () use ($excluded) {
