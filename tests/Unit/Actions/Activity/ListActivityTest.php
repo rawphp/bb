@@ -1,6 +1,6 @@
 <?php
 
-use App\Capabilities\Reads\ActivityShowCapability;
+use App\Actions\Activity\ListActivity;
 use App\Models\AuditRecord;
 use Carbon\CarbonImmutable;
 
@@ -21,7 +21,7 @@ function auditRecord(array $attributes): AuditRecord
 $now = CarbonImmutable::parse('2026-11-02T20:00:00Z');
 
 it('CAP-022 titles a write with its toast and shows the channel in words', function () use ($now) {
-    $entry = ActivityShowCapability::entry(auditRecord([
+    $entry = ListActivity::entry(auditRecord([
         'channel' => 'bridge',
         'result' => ['ok' => true, 'summary' => ['invalidates' => [], 'toast' => 'Logged weigh-in, 81.4 kg', 'undo' => null]],
     ]), $now);
@@ -38,11 +38,11 @@ it('CAP-022 titles a write with its toast and shows the channel in words', funct
 });
 
 it('CAP-022 titles a write without a toast with its capability name in words', function () use ($now) {
-    expect(ActivityShowCapability::entry(auditRecord([]), $now)->title)->toBe('Weigh in log');
+    expect(ListActivity::entry(auditRecord([]), $now)->title)->toBe('Weigh in log');
 });
 
 it('CAP-022 shows a refused write with the server\'s plain message', function () use ($now) {
-    $entry = ActivityShowCapability::entry(auditRecord([
+    $entry = ListActivity::entry(auditRecord([
         'result' => ['ok' => false, 'code' => 'conflict', 'message' => 'This workout was already finished.'],
     ]), $now);
 
@@ -51,7 +51,7 @@ it('CAP-022 shows a refused write with the server\'s plain message', function ()
 });
 
 it('CAP-012 words a package refusal plainly in Activity too', function () use ($now) {
-    $entry = ActivityShowCapability::entry(auditRecord([
+    $entry = ListActivity::entry(auditRecord([
         'result' => ['ok' => false, 'code' => 'forbidden', 'message' => 'Not authorized to invoke "weigh_in_log".'],
     ]), $now);
 
@@ -59,7 +59,7 @@ it('CAP-012 words a package refusal plainly in Activity too', function () use ($
 });
 
 it('CAP-022 says when a write happened relative to today', function (string $at, string $text) use ($now) {
-    expect(ActivityShowCapability::entry(auditRecord(['created_at' => CarbonImmutable::parse($at)]), $now)->when_text)->toBe($text);
+    expect(ListActivity::entry(auditRecord(['created_at' => CarbonImmutable::parse($at)]), $now)->when_text)->toBe($text);
 })->with([
     'today' => ['2026-11-02T00:05:00Z', 'Today, 00:05'],
     'yesterday' => ['2026-11-01T21:30:00Z', 'Yesterday, 21:30'],
@@ -68,7 +68,7 @@ it('CAP-022 says when a write happened relative to today', function (string $at,
 ]);
 
 it('CAP-022 shows a write whose reply failed the output schema as done, with a server error, not refused', function () use ($now) {
-    $entry = ActivityShowCapability::entry(auditRecord([
+    $entry = ListActivity::entry(auditRecord([
         'event' => 'capability.output_invalid',
         'result' => ['ok' => false, 'code' => 'output_invalid', 'message' => 'Output failed validation.'],
     ]), $now);
@@ -78,7 +78,7 @@ it('CAP-022 shows a write whose reply failed the output schema as done, with a s
 });
 
 it('CAP-022 still names an entry with no capability or no result', function () use ($now) {
-    $entry = ActivityShowCapability::entry(auditRecord(['capability' => null, 'result' => null]), $now);
+    $entry = ListActivity::entry(auditRecord(['capability' => null, 'result' => null]), $now);
 
     expect($entry->title)->toBe('Change')
         ->and($entry->result->toArray())->toBe(['text' => 'No result recorded', 'tone' => 'neutral']);
