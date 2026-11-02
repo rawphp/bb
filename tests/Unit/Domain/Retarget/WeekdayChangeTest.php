@@ -301,6 +301,11 @@ it('SCH-039 more days restructure rebuilds for the new day count', function () {
         ->and(TrainingWeekdays::underTrained($result, week: 2))->toBe([]);
 });
 
+it('SCH-039 restructuring from a week past the end changes nothing', function () {
+    expect(TrainingWeekdays::restructured(wdMesocycle(), daysPerWeek: 3, fromWeek: 6, exercises: [], newId: wdNewId()))
+        ->toEqual(wdMesocycle());
+});
+
 it('SCH-039 more days keep all sessions leaves the extra weekdays free and the length unchanged', function () {
     $new = wdDays([2, 3, 4, 6, 7]);
     $result = TrainingWeekdays::keepingAllSessions(wdMesocycle(), daysPerWeek: 5, fromWeek: 2);
@@ -351,7 +356,8 @@ it('SCH-039 this week\'s unchecked days are re-targeted against the new schedule
 
     // The checked day is left out, as it was.
     expect(array_map(fn (RetargetDay $d) => $d->day->date, $result->days))->toEqual([$monday, $tuesday, $wednesday])
-        ->and($result->undo)->toEqual(array_slice($days, 0, 3));
+        ->and($result->undo)->toEqual(array_slice($days, 0, 3))
+        ->and($result->message)->toBe('Meals updated for your new schedule');
 
     // Monday keeps its session and takes the new 12:00 time: its meals are placed around it.
     $mon = $result->days[0];

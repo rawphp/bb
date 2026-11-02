@@ -2,6 +2,7 @@
 
 use App\Domain\Model\DayType;
 use App\Domain\Model\MealTarget;
+use App\Domain\Model\PlanWeek;
 use App\Domain\Placement\ClockRange;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Placement\WorkoutTime;
@@ -129,6 +130,24 @@ it('SCH-051 moving the workout to another day retargets both days', function () 
         ->toBe(RetargetRefusal::OutsidePlanWeek);
 });
 
+it('SCH-051 a session from outside the plan week is refused', function () {
+    $lastWeek = F::day(PlanFixtures::date(2026, 1, 12));
+    expect(F::refusal(fn () => Retargeting::move($lastWeek, F::restDay(F::wednesday()), ClockTime::at(12), F::week(), F::context(), F::newId())))
+        ->toBe(RetargetRefusal::OutsidePlanWeek);
+});
+
+it('SCH-051 a date from another zone is read on the calendar of the plan week', function () {
+    // A Brisbane plan week (UTC+10). Monday 5 January there starts at 14:00 UTC on Sunday the 4th, which is outside the week in UTC.
+    $week = new PlanWeek(PlanFixtures::date(2026, 1, 5, zone: 'Australia/Brisbane'));
+    $mondayUtc = PlanFixtures::date(2026, 1, 4, 14, zone: 'UTC');
+    $source = F::day(PlanFixtures::date(2026, 1, 7, zone: 'Australia/Brisbane'));
+
+    $result = Retargeting::move($source, F::restDay($mondayUtc), ClockTime::at(12), $week, F::context(), F::newId());
+
+    expect($result->days)->toHaveCount(2)
+        ->and($result->days[1]->session->time->start)->toEqual(ClockTime::at(12));
+});
+
 it('SCH-051 the source day keeps its other activity', function () {
     $activity = new OtherActivity('Run', 60, DayType::Moderate); // 450 kcal.
     $source = F::day(session: F::session(sets: 24), activity: $activity); // 70 min hard: 630 kcal.
@@ -223,6 +242,10 @@ it('SCH-054 a long session retargets from the actual length', function () {
         ->and(F::mealOfKind(WeekMealKind::PostWorkout, $long)?->time)->toEqual(ClockTime::at(18, 50))
         // Over 60 minutes now: the day gains an intra-workout shake at the start.
         ->and(F::mealOfKind(WeekMealKind::IntraWorkoutShake, $long)?->time)->toEqual(ClockTime::at(17, 30));
+    // The new shake takes the first id the caller hands out, and its name.
+    $shake = F::mealOfKind(WeekMealKind::IntraWorkoutShake, $long);
+    expect($shake->id())->toBe('n1')
+        ->and($shake->meal->name)->toBe(MealNames::INTRA_WORKOUT_SHAKE);
 });
 
 it('SCH-054 a short session retargets and keeps its sets intensity', function () {
@@ -304,6 +327,28 @@ it('SCH-055 SCH-043 a checked-in shake never changes', function () {
             ->and(F::kcal($changed->meals))->toEqualWithDelta($changed->target->kcal, F::ACC)
             ->and(F::carbs($changed->meals))->toEqualWithDelta($changed->target->carbsG, F::ACC);
     }
+});
+
+it('SCH-055 SCH-043 a checked-in shake before the session leaves the peri-workout meals around the workout', function () {
+    $session = F::session(sets: 24, start: ClockTime::at(17)); // 70 minutes.
+    $shake = F::meal(
+        17, 10, kind: WeekMealKind::IntraWorkoutShake,
+        target: new MealTarget(kcal: 200, proteinG: 20, fatG: 0, carbsG: 30), checkedIn: true,
+    );
+    $meals = [F::meal(7), F::meal(10), F::meal(15, 30, kind: WeekMealKind::PreWorkout), $shake,
+        F::meal(18, 15, kind: WeekMealKind::PostWorkout), F::meal(21)];
+
+    // The workout moves to 19:00, after the shake's 17:10: the shake is no longer inside the session.
+    $moved = Retargeting::retime(F::day(session: $session, meals: $meals), ClockTime::at(19), F::context(), F::newId())->days[0];
+    $pre = F::mealOfKind(WeekMealKind::PreWorkout, $moved);
+    $post = F::mealOfKind(WeekMealKind::PostWorkout, $moved);
+    $regular = array_filter($moved->meals, fn (RetargetMeal $m) => $m->kind === WeekMealKind::Regular);
+
+    expect(F::mealWithId($shake->id(), $moved)->time)->toEqual($shake->time)
+        // The peri-workout meals get the workout carbs, not the shake or a regular meal.
+        ->and($pre->meal->target->carbsG)->toBeGreaterThan(max(array_map(fn (RetargetMeal $m) => $m->meal->target->carbsG, $regular)))
+        ->and($post->meal->target->carbsG)->toBeGreaterThan($pre->meal->target->carbsG)
+        ->and(F::kcal($moved->meals))->toEqualWithDelta($moved->target->kcal, F::ACC);
 });
 
 it('SCH-055 SCH-044 a hand-timed shake keeps its time', function () {
@@ -391,7 +436,23 @@ it('SCH-057 missed day options', function () {
         // No rest day left before the week ends.
         ->and($options(9, 10, [9, 10, 11]))->toEqual([MissedDayOption::skip()])
         // Missed on the week's last day: today is in the next plan week.
-        ->and($options(11, 12, [11]))->toEqual([MissedDayOption::skip()]);
+        ->and($options(11, 12, [11]))->toEqual([MissedDayOption::skip()])
+        // Missed the day before the week, with today its first day.
+        ->and($options(4, 5, [4]))->toEqual([MissedDayOption::skip()]);
+});
+
+it('SCH-057 dates from another zone are read on the calendar of the plan week', function () {
+    // A Brisbane plan week (UTC+10): each of its days begins at 14:00 UTC the day before.
+    $week = new PlanWeek(PlanFixtures::date(2026, 1, 5, zone: 'Australia/Brisbane'));
+    $utc = fn (int $day) => PlanFixtures::date(2026, 1, $day, 14, zone: 'UTC'); // 14:00 UTC on $day is midnight on $day + 1 in Brisbane.
+
+    // Missed Monday 5, today Wednesday 7 (a training day), trained Monday and Wednesday: Thursday is the next rest day.
+    $options = Retargeting::missedDayOptions(missed: $utc(4), today: $utc(6), week: $week, trainingDates: [$utc(4), $utc(6)]);
+
+    expect($options)->toEqual([
+        MissedDayOption::nextRestDay(PlanFixtures::date(2026, 1, 8, zone: 'Australia/Brisbane')),
+        MissedDayOption::skip(),
+    ]);
 });
 
 // SCH-031 add meal
