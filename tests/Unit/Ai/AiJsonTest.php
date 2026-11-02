@@ -88,26 +88,27 @@ it('fails when the answer does not match the schema', function (mixed $arguments
 
 it('FOOD-043 gives a call that holds the user\'s request open a deadline of 60 seconds', function () {
     RecordingLlmClient::answering([])->install();
-    $client = new class implements DeadlineAwareLlmClient
+    // Like the package's clients, withDeadline() returns a copy and leaves the original as it was.
+    $seen = new ArrayObject;
+    $client = new class($seen) implements DeadlineAwareLlmClient
     {
         use LlmClientDefaults;
 
-        public ?int $deadline = null;
+        private ?int $deadline = null;
+
+        public function __construct(private readonly ArrayObject $seen) {}
 
         public function withDeadline(int $deadlineNs): static
         {
             $copy = clone $this;
             $copy->deadline = $deadlineNs;
-            $this->deadline = $deadlineNs;
 
             return $copy;
         }
 
         public function complete(array $messages, array $tools = []): array
         {
-            if ($this->deadline === null) {
-                throw new RuntimeException('Called without a deadline.');
-            }
+            $this->seen[] = $this->deadline;
 
             return ['tool_calls' => [['id' => 't', 'name' => 'answer', 'arguments' => ['ok' => true]]]];
         }
@@ -118,7 +119,8 @@ it('FOOD-043 gives a call that holds the user\'s request open a deadline of 60 s
     expect(app(AiJson::class)->ask('describe', [], AI_JSON_SCHEMA))->toBe(['ok' => true]);
     $after = hrtime(true);
 
-    expect($client->deadline)->toBeGreaterThanOrEqual($before + AiJson::DEADLINE_SECONDS * 1_000_000_000)
-        ->and($client->deadline)->toBeLessThanOrEqual($after + AiJson::DEADLINE_SECONDS * 1_000_000_000)
+    expect($seen)->toHaveCount(1)
+        ->and($seen[0])->toBeGreaterThanOrEqual($before + AiJson::DEADLINE_SECONDS * 1_000_000_000)
+        ->and($seen[0])->toBeLessThanOrEqual($after + AiJson::DEADLINE_SECONDS * 1_000_000_000)
         ->and(AiJson::DEADLINE_SECONDS)->toBe(60);
 });

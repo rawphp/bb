@@ -215,6 +215,7 @@ it('FOOD-042 FOOD-043 FOOD-044 RCP-010 RCP-003 says AI is not set up, and fetche
     'label' => [fn (FoodAi $ai) => $ai->label(PLATE_JPEG)],
     'label of an unreadable photo' => [fn (FoodAi $ai) => $ai->label('not a photo')],
     'photo' => [fn (FoodAi $ai, User $user) => $ai->photo($user, PLATE_JPEG)],
+    'photo of an unreadable photo' => [fn (FoodAi $ai, User $user) => $ai->photo($user, 'not a photo')],
     'describe' => [fn (FoodAi $ai, User $user) => $ai->describe($user, 'eggs')],
     'recipe' => [fn (FoodAi $ai, User $user) => $ai->recipe($user, recipeBrief())],
     'recipe import' => [fn (FoodAi $ai, User $user) => $ai->recipeImport($user, 'https://recipes.example/pie')],
@@ -224,4 +225,16 @@ it('FOOD-043 refuses an answer with more items than a meal or recipe holds', fun
     RecordingLlmClient::answering(['items' => array_fill(0, 51, ['name' => 'Rice', 'search' => 'rice', 'grams' => 1])])->install();
 
     expect(fn () => app(FoodAi::class)->describe(User::factory()->create(), 'a lot of rice'))->toThrow(AiFailed::class);
+});
+
+it('FOOD-043 FOOD-044 refuses an item with negative grams', function () {
+    RecordingLlmClient::answering(['items' => [['name' => 'Chicken', 'search' => 'chicken', 'grams' => -5]]])->install();
+
+    expect(fn () => app(FoodAi::class)->describe(User::factory()->create(), 'chicken'))->toThrow(AiFailed::class);
+});
+
+it('RCP-010 RCP-003 refuses a recipe of no servings', function () {
+    RecordingLlmClient::answering(['name' => 'Bowl', 'servings' => 0, 'instructions' => [], 'items' => []])->install();
+
+    expect(fn () => app(FoodAi::class)->recipe(User::factory()->create(), recipeBrief()))->toThrow(AiFailed::class);
 });

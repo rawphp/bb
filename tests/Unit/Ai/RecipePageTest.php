@@ -111,9 +111,29 @@ it('RCP-003 pins a named host on its own port and leaves an IP literal unpinned'
     });
 
     recipePage()->text('https://recipes.example:8443/pie');
+    recipePage()->text('https://recipes.example/pie');
     recipePage()->text('https://93.184.216.34/pie');
 
-    expect($sent)->toBe([[CURLOPT_RESOLVE => ['recipes.example:8443:93.184.216.34']], null]);
+    expect($sent)->toBe([
+        [CURLOPT_RESOLVE => ['recipes.example:8443:93.184.216.34']],
+        [CURLOPT_RESOLVE => ['recipes.example:443:93.184.216.34']],
+        null,
+    ]);
+});
+
+it('RCP-003 pins every redirect hop to the address checked for its own host', function () {
+    $sent = [];
+    Http::fake(function ($request, $opts) use (&$sent) {
+        $sent[] = $opts['curl'][CURLOPT_RESOLVE] ?? null;
+
+        return $request->url() === 'http://a.example/pie'
+            ? Http::response('', 302, ['Location' => 'https://b.example/pie'])
+            : Http::response('<p>Pie</p>');
+    });
+    $page = new RecipePage(fn (string $host) => $host === 'a.example' ? ['93.184.216.34'] : ['93.184.216.35']);
+
+    expect($page->text('http://a.example/pie'))->toBe('Pie')
+        ->and($sent)->toBe([['a.example:80:93.184.216.34'], ['b.example:443:93.184.216.35']]);
 });
 
 it('RCP-003 accepts a body just under the size cap', function () {
