@@ -167,6 +167,21 @@ describe('PlanView', () => {
         expect(sent()).toEqual([['plan_diet_break_set', { week_start: '2026-11-16', diet_break: true }]]);
     });
 
+    it('PLAN-023 keeps the switch at the server\'s state until the server answers', async () => {
+        writeMock.mockImplementationOnce(() => new Promise(() => undefined));
+        const wrapper = show(warning);
+        await wrapper.findAll('[data-test="deload"]')[1]!.trigger('click');
+        const toggle = wrapper.find<HTMLInputElement>('input[type="checkbox"]').element;
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event('change'));
+        await flushPromises();
+
+        // The switch the user tapped: the teleport stub may render a new one on each update.
+        expect(writeMock).toHaveBeenCalledTimes(1);
+        expect(toggle.checked).toBe(false);
+        expect(wrapper.find<HTMLInputElement>('input[type="checkbox"]').element.checked).toBe(false);
+    });
+
     it('CAP-012 shows the server\'s refusal in the deload sheet', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('plan_diet_break_set', 422, { error: { code: 'validation_failed', message: 'This deload has passed.', violations: [] } }));
         const wrapper = show(warning);
