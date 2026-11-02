@@ -120,3 +120,15 @@ it('SCH-020 after the plan\'s last target, today\'s week opens but swipes stay i
         ->and($payload['next_week'])->toBeNull()
         ->and(weekPayload(W::snapshot(today: '2026-10-25', date: '2026-10-02'))['next_week'])->toBe('2026-10-09');
 });
+
+it('SCH-020 SCH-023 a date opens in a week of the plan or in today\'s week; any other goes to the nearest plan edge', function () {
+    $snapshot = W::snapshot(today: '2026-10-25');
+    $day = fn (string $date) => $snapshot->insidePlan(new DateTimeImmutable($date))->format('Y-m-d');
+
+    expect($day('2026-10-05'))->toBe('2026-10-05')
+        ->and($day('2026-10-26'))->toBe('2026-10-26')
+        // Between the plan's last week and today's week: no swipe leads in or out, so it goes to the last target.
+        ->and($day('2026-10-19'))->toBe('2026-10-09')
+        ->and($day('2026-12-25'))->toBe('2026-10-09')
+        ->and($day('2026-01-01'))->toBe('2026-09-12');
+});
