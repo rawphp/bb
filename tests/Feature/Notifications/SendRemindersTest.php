@@ -3,6 +3,7 @@
 use App\Actions\Notifications\SendDueReminders;
 use App\Models\Mesocycle;
 use App\Models\NotificationPref;
+use App\Models\PlanWeek;
 use App\Models\PushSubscription;
 use App\Models\SentReminder;
 use App\Models\User;
@@ -142,13 +143,20 @@ it('NOTIF-005 sends next mesocycle on the first day of the deload week only', fu
 });
 
 it('NOTIF-005 has no next mesocycle reminder when the mesocycle ended before its deload', function () {
+    // As rp-clone's test: no plan week is flagged a deload, so the deload is the mesocycle's own last week.
     $user = remindedUser();
+    PlanWeek::query()->where('user_id', $user->id)->delete();
+    $control = remindedUser();
+    PlanWeek::query()->where('user_id', $control->id)->delete();
     Mesocycle::query()->where('user_id', $user->id)->update(['ended_on' => '2026-09-25']);
 
     Carbon::setTestNow('2026-10-03 09:00:00');
     app(SendDueReminders::class)($user, CarbonImmutable::now());
 
-    expect(array_filter(sentLines($user), fn (string $line) => str_starts_with($line, 'Build your next')))->toBe([]);
+    app(SendDueReminders::class)($control, CarbonImmutable::now());
+
+    expect(array_filter(sentLines($user), fn (string $line) => str_starts_with($line, 'Build your next')))->toBe([])
+        ->and(array_filter(sentLines($control), fn (string $line) => str_starts_with($line, 'Build your next')))->toHaveCount(1);
 });
 
 it('NOTIF-007 a kind switched off is not sent', function () {
