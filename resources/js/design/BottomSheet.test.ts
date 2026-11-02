@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import BottomSheet from './BottomSheet.vue';
 import HelpButton from './HelpButton.vue';
+import { anySheetOpen } from './openSheets';
 
 let mounted: VueWrapper | null = null;
 
@@ -81,9 +82,33 @@ describe('BottomSheet', () => {
         expect(header.findAll(':scope > *')).toHaveLength(3);
     });
 
+    it('UI-005 the Cancel button can be renamed, and still cancels', async () => {
+        const wrapper = sheet({ cancelTitle: 'Not now' });
+
+        expect(get('button[data-cancel]').text()).toBe('Not now');
+        await get('button[data-cancel]').trigger('click');
+        expect(wrapper.emitted('cancel')).toHaveLength(1);
+    });
+
     it('UI-005 the Save button can be renamed', () => {
         sheet({ saveTitle: 'Add' });
         expect(get('button[data-save]').text()).toBe('Add');
+    });
+
+    it('PWA-035 an open sheet counts as open until it closes or unmounts, so the app can keep its update banner away', async () => {
+        const wrapper = sheet({ open: false });
+        expect(anySheetOpen.value).toBe(false);
+
+        await wrapper.setProps({ open: true });
+        expect(anySheetOpen.value).toBe(true);
+
+        await wrapper.setProps({ open: false });
+        expect(anySheetOpen.value).toBe(false);
+
+        await wrapper.setProps({ open: true });
+        wrapper.unmount();
+        mounted = null;
+        expect(anySheetOpen.value).toBe(false);
     });
 
     it('UI-005 a closed sheet renders nothing', () => {
