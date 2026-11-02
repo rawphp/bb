@@ -15,6 +15,12 @@ final class FakeStripe implements StripeGateway
     /** @var list<array{customer: string, price: string, trial_days: int|null, return_url: string}> */
     public array $checkouts = [];
 
+    /** @var list<string> Checkout pages closed */
+    public array $closed = [];
+
+    /** @var list<string> Checkout pages the user paid */
+    public array $paid = [];
+
     /** @var list<array{customer: string, return_url: string}> */
     public array $portals = [];
 
@@ -38,11 +44,22 @@ final class FakeStripe implements StripeGateway
         return 'cus_test_'.count($this->customers);
     }
 
-    public function checkoutUrl(string $customer, string $price, ?int $trialDays, string $returnUrl): string
+    public function checkout(string $customer, string $price, ?int $trialDays, string $returnUrl): array
     {
         $this->checkouts[] = ['customer' => $customer, 'price' => $price, 'trial_days' => $trialDays, 'return_url' => $returnUrl];
+        $id = 'cs_test_'.count($this->checkouts);
 
-        return 'https://checkout.stripe.com/c/pay/cs_test_'.count($this->checkouts);
+        return ['id' => $id, 'url' => 'https://checkout.stripe.com/c/pay/'.$id];
+    }
+
+    public function closeCheckout(string $session): bool
+    {
+        if (in_array($session, $this->paid, true)) {
+            return true;
+        }
+        $this->closed[] = $session;
+
+        return false;
     }
 
     public function portalUrl(string $customer, string $returnUrl): string

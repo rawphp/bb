@@ -41,3 +41,9 @@ it('SUB-010 an ended subscription decides over a new one whose first payment has
 
     expect(CurrentSubscription::pick([sub('sub_new', 'incomplete', 200), $ended]))->toBe($ended);
 });
+
+it('SUB-003 a trial decides over an ended subscription, even a newer one', function () {
+    $trial = sub('sub_trial', 'trialing', 100);
+
+    expect(CurrentSubscription::pick([sub('sub_old', 'canceled', 200), $trial]))->toBe($trial);
+});

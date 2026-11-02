@@ -35,6 +35,7 @@ function stripeApi(array $bodies): object
 }
 
 beforeEach(function () {
+    Cache::forget('billing:price:price_monthly:last');
     Cache::forget('billing:price:price_yearly');
     Cache::forget('billing:price:price_yearly:last');
     Cache::forget(StripeClientGateway::DOWN);
@@ -58,7 +59,7 @@ it('SUB-021 creates the Stripe customer with the account\'s email and user id', 
 it('SUB-003 opens a subscription Checkout with the trial, promotion codes and the plan\'s price', function () {
     $api = stripeApi([['id' => 'cs_1', 'object' => 'checkout.session', 'url' => 'https://checkout.stripe.com/c/pay/cs_1']]);
 
-    expect(stripeClientGateway()->checkoutUrl('cus_123', 'price_yearly', 7, 'https://bb.test'))->toBe('https://checkout.stripe.com/c/pay/cs_1')
+    expect(stripeClientGateway()->checkout('cus_123', 'price_yearly', 7, 'https://bb.test'))->toBe(['id' => 'cs_1', 'url' => 'https://checkout.stripe.com/c/pay/cs_1'])
         ->and($api->requests[0]['url'])->toEndWith('/v1/checkout/sessions')
         ->and($api->requests[0]['params'])->toBe([
             'mode' => 'subscription',
@@ -78,7 +79,7 @@ it('SUB-003 opens a subscription Checkout with the trial, promotion codes and th
 it('SUB-009 sends no trial when the user has had one, and still takes promotion codes', function () {
     $api = stripeApi([['id' => 'cs_2', 'object' => 'checkout.session', 'url' => 'https://checkout.stripe.com/c/pay/cs_2']]);
 
-    stripeClientGateway()->checkoutUrl('cus_123', 'price_monthly', null, 'https://bb.test');
+    stripeClientGateway()->checkout('cus_123', 'price_monthly', null, 'https://bb.test');
 
     expect($api->requests[0]['params'])->not->toHaveKey('subscription_data')
         ->and($api->requests[0]['params']['allow_promotion_codes'])->toBe('true');
@@ -106,13 +107,48 @@ it('SUB-021 lists every subscription of the customer, ended ones too', function 
         ->and($api->requests[0]['params'])->toBe(['customer' => 'cus_123', 'status' => 'all', 'limit' => 100]);
 });
 
-it('SUB-021 reports a Stripe failure and tells the user only that payments are unavailable', function () {
+it('SUB-021 reports a Stripe failure and tells the user only that payments are unavailable', function (Closure $call) {
     Exceptions::fake();
     stripeApi([['_status' => 401, 'error' => ['message' => 'Invalid API Key provided: sk_live_****abcd', 'type' => 'invalid_request_error']]]);
 
-    expect(fn () => stripeClientGateway()->portalUrl('cus_123', 'https://bb.test'))
+    expect(fn () => $call(stripeClientGateway()))
         ->toThrow(RuntimeException::class, 'Payments are unavailable right now. Try again shortly.');
     Exceptions::assertReported(AuthenticationException::class);
+})->with([
+    'customer' => fn () => fn (StripeClientGateway $stripe) => $stripe->createCustomer('sam@example.com', 'Sam', 1),
+    'checkout' => fn () => fn (StripeClientGateway $stripe) => $stripe->checkout('cus_123', 'price_monthly', null, 'https://bb.test'),
+    'close checkout' => fn () => fn (StripeClientGateway $stripe) => $stripe->closeCheckout('cs_1'),
+    'portal' => fn () => fn (StripeClientGateway $stripe) => $stripe->portalUrl('cus_123', 'https://bb.test'),
+    'subscriptions' => fn () => fn (StripeClientGateway $stripe) => $stripe->subscriptions('cus_123'),
+]);
+
+it('SUB-007 closes an open Checkout page, and says whether an earlier one was paid', function (string $status, bool $paid, int $calls) {
+    $api = stripeApi([
+        ['id' => 'cs_1', 'object' => 'checkout.session', 'status' => $status],
+        ['id' => 'cs_1', 'object' => 'checkout.session', 'status' => 'expired'],
+    ]);
+
+    expect(stripeClientGateway()->closeCheckout('cs_1'))->toBe($paid)
+        ->and($api->requests)->toHaveCount($calls);
+    if ($calls === 2) {
+        expect($api->requests[1]['url'])->toEndWith('/v1/checkout/sessions/cs_1/expire');
+    }
+})->with([
+    'open' => ['open', false, 2],
+    'paid' => ['complete', true, 1],
+    'expired' => ['expired', false, 1],
+]);
+
+it('SUB-002 after Stripe fails, shows the last prices for a minute without asking Stripe again', function () {
+    Exceptions::fake();
+    Cache::forever('billing:price:price_monthly:last', ['amount' => 3499, 'currency' => 'usd', 'interval' => 'month', 'interval_count' => 1]);
+    Cache::forget('billing:price:price_monthly');
+    $api = stripeApi([['_status' => 500, 'error' => ['message' => 'Stripe is down', 'type' => 'api_error']]]);
+
+    expect(fn () => stripeClientGateway()->price('price_yearly'))->toThrow(RuntimeException::class);
+    expect(stripeClientGateway()->price('price_monthly'))->toBe(['amount' => 3499, 'currency' => 'usd', 'interval' => 'month', 'interval_count' => 1])
+        ->and($api->requests)->toHaveCount(1)
+        ->and(Cache::has(StripeClientGateway::DOWN))->toBeTrue();
 });
 
 it('SUB-002 shows the last price Stripe gave while Stripe cannot be reached', function () {

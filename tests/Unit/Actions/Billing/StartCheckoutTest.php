@@ -68,3 +68,24 @@ it('SUB-003 gives no second trial to a customer Stripe has billed, even when its
 
     expect($this->stripe->checkouts[0])->toMatchArray(['customer' => 'cus_before', 'trial_days' => null]);
 });
+
+it('SUB-007 closes the Checkout page it opened before, so only one can be paid', function () {
+    $user = User::factory()->create();
+
+    (new StartCheckout($this->stripe))($user, 'monthly');
+    $url = (new StartCheckout($this->stripe))($user, 'yearly');
+
+    expect($url)->toBe('https://checkout.stripe.com/c/pay/cs_test_2')
+        ->and($this->stripe->closed)->toBe(['cs_test_1'])
+        ->and(Subscription::of($user)?->checkout_session_id)->toBe('cs_test_2');
+});
+
+it('SUB-007 refuses a new Checkout when the page opened before was paid and Stripe has not listed it yet', function () {
+    $user = User::factory()->create();
+    (new StartCheckout($this->stripe))($user, 'monthly');
+    $this->stripe->paid = ['cs_test_1'];
+
+    expect(fn () => (new StartCheckout($this->stripe))($user, 'yearly'))
+        ->toThrow(CapabilityFailure::class, 'You already have a subscription. Switch plans in Manage subscription.');
+    expect($this->stripe->checkouts)->toHaveCount(1);
+});
