@@ -9,7 +9,7 @@ import { useDaySheet, type DaySheetProps } from './useDaySheet';
 // SCH-051: the workout menu's Move to another day lists the days of the plan week. A day
 // that holds a session is not offered and says why (SCH-038). A tap moves it at once.
 // Ported from rp-clone's TodayMoveDaySheet.
-const props = withDefaults(defineProps<DaySheetProps & { workoutId?: string; open?: boolean }>(), { open: true });
+const props = defineProps<DaySheetProps & { workoutId?: string }>();
 
 const emit = defineEmits<{ close: [saved: boolean] }>();
 
@@ -32,7 +32,7 @@ async function move(date: string): Promise<void> {
 
 <template>
     <BottomSheet
-        :open="open"
+        :open="true"
         title="Move to another day"
         :save-title="null"
         :cancel-disabled="busy"

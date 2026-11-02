@@ -24,7 +24,7 @@ type Draft = { window_start: string; window_end: string; meal_count: number; bus
 // (NUT-024). For all future days the weekday can also become a training or a rest day,
 // which changes the training weekdays (SCH-039) before the schedule is saved, and asks
 // first when the server says the mesocycle must change shape. Ported from rp-clone's EditScheduleSheet.
-const props = withDefaults(defineProps<DaySheetProps & { open?: boolean }>(), { open: true });
+const props = defineProps<DaySheetProps>();
 
 const emit = defineEmits<{ close: [saved: boolean] }>();
 
@@ -38,6 +38,8 @@ const iso = ref<number>();
 // Whether this weekday trains: as saved, and as the switch now says.
 const trained = ref(false);
 const trains = ref(false);
+// A write of this sheet landed (the weekdays), so closing it must say so, saved or not.
+const landed = ref(false);
 let nextKey = 0;
 
 function draft(day: Schedule['this_day']): Draft {
@@ -73,7 +75,12 @@ const canSave = computed(() => {
     if (!day || busy.value) return false;
     const filled = (period: { start: string; end: string }) => period.start !== '' && period.end !== '' && period.start !== period.end;
 
-    return filled({ start: day.window_start, end: day.window_end }) && day.busy_periods.every((period) => period.label.trim() !== '' && filled(period));
+    // A training time shown must be set: a rest weekday made a training day starts empty.
+    return (
+        filled({ start: day.window_start, end: day.window_end }) &&
+        day.busy_periods.every((period) => period.label.trim() !== '' && filled(period)) &&
+        (!showsTrainingTime.value || day.training_start !== '')
+    );
 });
 
 function addBusyPeriod(): void {
@@ -87,18 +94,25 @@ function removeBusyPeriod(key: number): void {
 
 async function save(): Promise<void> {
     if (!canSave.value || !schedule.value) return;
+    // An earlier refusal of the weekdays says nothing about this save.
+    weekdays.cancel();
     if (future.value && trains.value !== trained.value) {
         const changed = schedule.value.training_weekdays.filter((day) => (day.iso === iso.value ? trains.value : day.selected)).map((day) => day.iso);
         if (!(await weekdays.change(changed))) return;
-        trained.value = trains.value;
+        weekdaysChanged();
     }
     await saveSchedule();
 }
 
 async function choose(fewerDays: Parameters<typeof weekdays.choose>[0]): Promise<void> {
     if (!(await weekdays.choose(fewerDays))) return;
-    trained.value = trains.value;
+    weekdaysChanged();
     await saveSchedule();
+}
+
+function weekdaysChanged(): void {
+    trained.value = trains.value;
+    landed.value = true;
 }
 
 async function saveSchedule(): Promise<void> {
@@ -121,13 +135,13 @@ const field = 'min-h-tap w-full bg-transparent py-2 text-primary-text placeholde
 
 <template>
     <BottomSheet
-        :open="open"
+        :open="true"
         title="Edit schedule"
         :save-disabled="!canSave"
         :cancel-disabled="busy"
         :dismissible="!busy"
         :pending="pending"
-        @cancel="emit('close', false)"
+        @cancel="emit('close', landed)"
         @save="save"
     >
         <SheetBody :loaded="!!data" :failure="failure" what="This day" @retry="load">
@@ -194,6 +208,11 @@ const field = 'min-h-tap w-full bg-transparent py-2 text-primary-text placeholde
             </template>
             <p v-else-if="data" class="px-4 text-secondary-text">There is no schedule to change yet.</p>
         </SheetBody>
-        <WeekdayChangeSheet :open="weekdays.asking.value !== null" :busy="busy" :error="weekdays.error.value" @choose="choose" @cancel="weekdays.cancel" />
+        <WeekdayChangeSheet
+            :open="weekdays.asking.value !== null"
+            :busy="busy"
+            :error="weekdays.error.value"
+            :question="weekdays.question.value"
+            @choose="choose" @cancel="weekdays.cancel" />
     </BottomSheet>
 </template>

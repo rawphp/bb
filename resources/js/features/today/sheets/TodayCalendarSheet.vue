@@ -8,7 +8,7 @@ import SheetBody from './SheetBody.vue';
 // SCH-023: the calendar icon's month view, to jump to any date of the plan. It opens on
 // the selected day and offers only the plan's dates (week_show.calendar). Go hands the
 // date to the screen, which shows that day. Ported from rp-clone's TodayCalendarSheet.
-const props = withDefaults(defineProps<{ payload?: WeekShowOutput; date?: string; open?: boolean }>(), { open: true });
+const props = defineProps<{ payload?: WeekShowOutput; date?: string }>();
 
 const emit = defineEmits<{ pick: [date: string]; close: [saved: boolean] }>();
 
@@ -27,7 +27,7 @@ watch(
 
 <template>
     <BottomSheet
-        :open="open"
+        :open="true"
         title="Jump to date"
         save-title="Go"
         :save-disabled="!data?.calendar || !picked"

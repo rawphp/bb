@@ -8,7 +8,7 @@ import { useDaySheet, type DaySheetProps } from './useDaySheet';
 
 // SCH-050: the workout menu's Change time picks the session's new start. The server
 // re-places and re-targets the day's unchecked meals. Ported from rp-clone's TodayWorkoutTimeSheet.
-const props = withDefaults(defineProps<DaySheetProps & { workoutId?: string; open?: boolean }>(), { open: true });
+const props = defineProps<DaySheetProps & { workoutId?: string }>();
 
 const emit = defineEmits<{ close: [saved: boolean] }>();
 
@@ -28,7 +28,7 @@ async function save(): Promise<void> {
 
 <template>
     <BottomSheet
-        :open="open"
+        :open="true"
         title="Change time"
         :save-disabled="!workout || !time || busy"
         :cancel-disabled="busy"

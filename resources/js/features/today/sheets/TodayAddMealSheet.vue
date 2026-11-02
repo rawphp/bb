@@ -9,7 +9,7 @@ import { useDaySheet, type DaySheetProps } from './useDaySheet';
 
 // SCH-031: the schedule menu's Add meal picks the time of an extra meal. The server shares
 // the day's macros across the meals not yet checked in. Ported from rp-clone's TodayAddMealSheet.
-const props = withDefaults(defineProps<DaySheetProps & { open?: boolean }>(), { open: true });
+const props = defineProps<DaySheetProps>();
 
 const emit = defineEmits<{ close: [saved: boolean] }>();
 
@@ -29,7 +29,7 @@ async function save(): Promise<void> {
 
 <template>
     <BottomSheet
-        :open="open"
+        :open="true"
         title="Add meal"
         :save-disabled="!data?.add_meal_time || !time || busy"
         :cancel-disabled="busy"

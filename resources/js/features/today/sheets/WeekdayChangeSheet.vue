@@ -4,10 +4,15 @@ import ChoiceList, { type Choice } from '@/design/ChoiceList.vue';
 import type { FewerDays } from './useWeekdayChange';
 
 // SCH-039: what a change to fewer training weekdays does to the running mesocycle, asked
-// when the server answers that it must change shape. A tap answers at once; Cancel saves
-// nothing. Shown by Edit schedule and Settings through useWeekdayChange. Ported from
+// when the server answers that it must change shape, with the server's words on what each
+// choice does (`question`). A tap answers at once; Cancel saves nothing. Shown by Edit schedule and Settings through useWeekdayChange. Ported from
 // rp-clone's WeekdayChangeSheet.
-withDefaults(defineProps<{ open?: boolean; busy?: boolean; error?: string | null }>(), { open: true, busy: false, error: null });
+withDefaults(defineProps<{ open?: boolean; busy?: boolean; error?: string | null; question?: string | null }>(), {
+    open: true,
+    busy: false,
+    error: null,
+    question: null,
+});
 
 const emit = defineEmits<{ choose: [fewerDays: FewerDays]; cancel: [] }>();
 
@@ -30,6 +35,7 @@ const choices: Choice<FewerDays>[] = [
     >
         <div class="flex flex-col gap-4 p-4">
             <p class="text-sm text-secondary-text">Your new training days start next plan week. What should your mesocycle do?</p>
+            <p v-if="question" class="text-sm text-primary-text">{{ question }}</p>
             <ChoiceList label="What your mesocycle does" :choices="choices" :model-value="null" :disabled="busy" :error="error" @update:model-value="(id) => emit('choose', id)" />
         </div>
     </BottomSheet>

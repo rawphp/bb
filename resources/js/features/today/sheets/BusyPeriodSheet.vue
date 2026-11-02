@@ -14,7 +14,7 @@ import WeekdayChips from './WeekdayChips.vue';
 // SCH-033: the schedule menu's Add busy period. A label, a start and end, and the
 // weekdays it repeats on, starting with this day's. It joins the schedule, so it applies
 // from tomorrow (SET-004). Ported from rp-clone's BusyPeriodSheet.
-const props = withDefaults(defineProps<DaySheetProps & { open?: boolean }>(), { open: true });
+const props = defineProps<DaySheetProps>();
 
 const emit = defineEmits<{ close: [saved: boolean] }>();
 
@@ -51,7 +51,7 @@ async function save(): Promise<void> {
 
 <template>
     <BottomSheet
-        :open="open"
+        :open="true"
         title="Add busy period"
         :save-disabled="!canSave"
         :cancel-disabled="busy"

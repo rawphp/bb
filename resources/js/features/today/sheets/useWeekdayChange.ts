@@ -8,25 +8,30 @@ export type FewerDays = NonNullable<TrainingWeekdaysChangeInput['fewer_days']>;
 
 const NAME = 'training_weekdays_change';
 
-/** The server refused the change to ask what the mesocycle does with fewer days (SCH-039). */
-function asksFewerDays(failure: unknown): boolean {
-    if (!(failure instanceof CapabilityError) || failure.status !== 422) return false;
-    const violations = (failure.body as { error?: { violations?: { field?: unknown }[] } } | null)?.error?.violations;
+/**
+ * The server refused the change to ask what the mesocycle does with fewer days (SCH-039):
+ * its words on what each choice does, or null when it is not asking.
+ */
+function fewerDaysQuestion(failure: unknown): string | null {
+    if (!(failure instanceof CapabilityError) || failure.status !== 422) return null;
+    const error = (failure.body as { error?: { message?: unknown; violations?: { field?: unknown }[] } } | null)?.error;
+    const asks = Array.isArray(error?.violations) && error.violations.some((violation) => violation.field === 'fewer_days');
 
-    return Array.isArray(violations) && violations.some((violation) => violation.field === 'fewer_days');
+    return asks ? (typeof error?.message === 'string' ? error.message : '') : null;
 }
 
 /**
  * SCH-039: a change of training weekdays while a mesocycle runs, for Edit schedule and
  * Settings (rp-clone's weekdayChangeSheet modifier). change() sends the new weekdays.
- * When the server answers that the mesocycle must change shape, `asking` holds them and
- * the screen shows WeekdayChangeSheet; choose() sends them again with the answer, and
+ * When the server answers that the mesocycle must change shape, `asking` holds them,
+ * `question` the server's words on it, and the screen shows WeekdayChangeSheet; choose() sends them again with the answer, and
  * cancel() drops the question, so nothing is saved. Like useWrite, a retry of the same
  * change after no final answer reuses its idempotency key (CAP-014). It reads nothing
  * again: the screen saves the rest of its change, then reads.
  */
 export function useWeekdayChange() {
     const asking = ref<number[] | null>(null);
+    const question = ref<string | null>(null);
     const busy = ref(false);
     const error = ref<string | null>(null);
     let last: { body: string; retry: RetryKey } | null = null;
@@ -47,8 +52,11 @@ export function useWeekdayChange() {
             return true;
         } catch (failure) {
             retry.settle(failure);
-            if (fewerDays === null && asksFewerDays(failure)) asking.value = weekdays;
-            else error.value = writeFailureMessage(failure, 'Your training days could not be changed.');
+            const asked = fewerDays === null ? fewerDaysQuestion(failure) : null;
+            if (asked !== null) {
+                asking.value = weekdays;
+                question.value = asked;
+            } else error.value = writeFailureMessage(failure, 'Your training days could not be changed.');
             return false;
         } finally {
             busy.value = false;
@@ -59,10 +67,12 @@ export function useWeekdayChange() {
         return asking.value ? change(asking.value, fewerDays) : Promise.resolve(false);
     }
 
+    /** Drops the question and any error, so nothing of this change shows. */
     function cancel(): void {
         asking.value = null;
+        question.value = null;
         error.value = null;
     }
 
-    return { asking, busy, error, change, choose, cancel };
+    return { asking, question, busy, error, change, choose, cancel };
 }

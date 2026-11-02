@@ -18,7 +18,7 @@ type Intensity = OtherActivitySaveInput['intensity'];
 // nutrition only, at the intensity the user picks (NUT-005). A day holds one activity, so
 // on a day that has one the sheet edits it. The server says when no session can come here
 // (SCH-038) and offers nothing on a past day (NUT-024). Ported from rp-clone's AddWorkoutSheet.
-const props = withDefaults(defineProps<DaySheetProps & { open?: boolean }>(), { open: true });
+const props = defineProps<DaySheetProps>();
 
 const emit = defineEmits<{ close: [saved: boolean] }>();
 
@@ -71,7 +71,7 @@ async function save(): Promise<void> {
 
 <template>
     <BottomSheet
-        :open="open"
+        :open="true"
         :title="adding?.activity ? 'Edit activity' : 'Add workout'"
         :save-disabled="!canSave"
         :cancel-disabled="busy"
