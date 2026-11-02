@@ -11,6 +11,7 @@ use App\Models\Mesocycle;
 use App\Models\Template;
 use App\Models\TemplateSlot;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Support\TrainSeed;
@@ -133,7 +134,7 @@ it('MESO-012 a template that does not exist is not found', function () {
     $user = buildWorld();
 
     build($user, ['template_id' => '999999']);
-})->throws(Illuminate\Database\Eloquent\ModelNotFoundException::class);
+})->throws(ModelNotFoundException::class);
 
 it('MESO-014 days replace every day and slot, each keeping the ids the client gave', function () {
     $user = buildWorld();
@@ -182,7 +183,7 @@ it('MESO-013 another user\'s custom exercise is not found', function () {
     $user = buildWorld();
     $theirs = Exercise::factory()->custom()->create(['muscle_group' => 'chest']);
 
-    expect(fn () => build($user, ['days' => buildDays($theirs->id)]))->toThrow(Illuminate\Database\Eloquent\ModelNotFoundException::class);
+    expect(fn () => build($user, ['days' => buildDays($theirs->id)]))->toThrow(ModelNotFoundException::class);
 });
 
 it('MESO-004 MESO-020 refuses a length outside the experience\'s range and days per week outside 2 to 6', function (array $input, string $message) {
@@ -190,8 +191,9 @@ it('MESO-004 MESO-020 refuses a length outside the experience\'s range and days 
 
     expect(fn () => build($user, $input))->toThrow(DomainException::class, $message);
 })->with([
-    'too short' => [['weeks' => 3], 'A mesocycle runs 4 to 8 weeks, the deload included.'],
-    'too long' => [['weeks' => 9], 'A mesocycle runs 4 to 8 weeks, the deload included.'],
+    // TBL-020: an intermediate lifter runs 5 to 8 weeks.
+    'too short' => [['weeks' => 4], 'A mesocycle runs 5 to 8 weeks, the deload included.'],
+    'too long' => [['weeks' => 9], 'A mesocycle runs 5 to 8 weeks, the deload included.'],
     'one day' => [['days_per_week' => 1], 'The Meso Builder plans 2 to 6 days a week.'],
     'seven days' => [['days_per_week' => 7], 'The Meso Builder plans 2 to 6 days a week.'],
 ]);

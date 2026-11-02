@@ -7,6 +7,7 @@ use App\Enums\SfrRating;
 use App\Models\Exercise;
 use App\Models\Mesocycle;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Support\TrainSeed;
@@ -125,6 +126,7 @@ function fillDraft(): Mesocycle
 {
     $draft = structureDraft();
     $chest = TrainSeed::exercise('Bench Press', MuscleGroup::Chest);
+    $chest->update(['sfr_rating' => SfrRating::Low]);
     $draft->update(['days' => [
         ['id' => 'd1', 'label' => null, 'weekday' => 1, 'slots' => [
             ['id' => 's1', 'exercise_id' => $chest->id, 'muscle_group' => 'chest', 'sets' => 3],
@@ -170,7 +172,7 @@ it('MESO-013 pick for me is for a build, not a saved mesocycle', function () {
     $saved = TrainSeed::mesocycle(TrainSeed::user());
 
     expect(fn () => app(FillMesocycleSlots::class)($saved->user, $saved->id))
-        ->toThrow(Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        ->toThrow(ModelNotFoundException::class);
 });
 
 it('MESO-013 MESO-022 an unknown draft is not found', function () {
@@ -178,5 +180,5 @@ it('MESO-013 MESO-022 an unknown draft is not found', function () {
     $user = User::factory()->create();
 
     expect(fn () => app(GenerateMesocycleStructure::class)($user, '01JE0000000000000000000000'))
-        ->toThrow(Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        ->toThrow(ModelNotFoundException::class);
 });
