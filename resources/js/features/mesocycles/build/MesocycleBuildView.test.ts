@@ -1,5 +1,5 @@
-import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { enableAutoUnmount, flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { MesocycleShowOutput } from '@/contracts/mesocycle_show';
 import type { TemplatesShowOutput } from '@/contracts/templates_show';
@@ -50,6 +50,12 @@ async function click(wrapper: ReturnType<typeof show>, selector: string): Promis
     await flushPromises();
 }
 
+// Typing in a field fires input events only; VTU's setValue also fires change, which is leaving the field.
+async function type(field: ReturnType<ReturnType<typeof show>['find']>, text: string): Promise<void> {
+    (field.element as HTMLInputElement).value = text;
+    await field.trigger('input');
+}
+
 const next = '[data-step="next"]';
 const back = '[data-step="back"]';
 
@@ -60,6 +66,9 @@ function slotsOf(day: number) {
 function allDays() {
     return warning.build!.days.map((d, index) => ({ day_id: d.id, slots: slotsOf(index) }));
 }
+
+// A screen left mounted would send its name after the typing pause, into a later test.
+enableAutoUnmount(afterEach);
 
 describe('MesocycleBuildView', () => {
     beforeEach(() => {
@@ -388,7 +397,7 @@ describe('MesocycleBuildView', () => {
             const wrapper = details();
             const field = wrapper.find('input[aria-label="Name"]');
 
-            await field.setValue('Summer Cut');
+            await type(field, 'Summer Cut');
             await field.trigger('change');
             await flushPromises();
 
@@ -402,9 +411,9 @@ describe('MesocycleBuildView', () => {
             const wrapper = details();
             const field = wrapper.find('input[aria-label="Name"]');
 
-            await field.setValue('Sum');
+            await type(field, 'Sum');
             vi.advanceTimersByTime(300);
-            await field.setValue('Summer');
+            await type(field, 'Summer');
             vi.advanceTimersByTime(399);
             expect(writeMock).not.toHaveBeenCalled();
             vi.advanceTimersByTime(1);
@@ -419,7 +428,7 @@ describe('MesocycleBuildView', () => {
             onTestFinished(() => void vi.useRealTimers());
             const wrapper = details();
 
-            await wrapper.find('input[aria-label="Name"]').setValue('Sum');
+            await type(wrapper.find('input[aria-label="Name"]'), 'Sum');
             wrapper.unmount();
             vi.advanceTimersByTime(1000);
 
@@ -447,8 +456,7 @@ describe('MesocycleBuildView', () => {
 
         it('MESO-004 Create mesocycle sends finish with the name in the field, then opens the mesocycle', async () => {
             const wrapper = details({ can_finish: true });
-            await wrapper.find('input[aria-label="Name"]').setValue('Summer Cut');
-            writeMock.mockClear();
+            await type(wrapper.find('input[aria-label="Name"]'), 'Summer Cut');
 
             expect(wrapper.find(next).text()).toBe('Create mesocycle');
             await click(wrapper, next);
