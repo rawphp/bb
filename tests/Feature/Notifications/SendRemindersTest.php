@@ -181,6 +181,29 @@ it('NOTIF-007 a kind switched off is not sent', function () {
     Notification::assertNothingSent();
 });
 
+it('NOTIF-001 reminders:send queues a job only for users who may have something due, with a few queries for them all', function () {
+    $weighsNow = remindedUser();
+    $weighsLater = remindedUser();
+    WeighInScheduleEntry::query()->where('user_id', $weighsLater->id)->update(['time' => '08:00']);
+    Queue::fake();
+
+    // 03:00: nothing can be due for anyone, so nothing is queued.
+    Carbon::setTestNow('2026-09-26 03:00:00');
+    DB::enableQueryLog();
+    $this->artisan('reminders:send')->assertSuccessful();
+    $queries = count(DB::getQueryLog());
+    DB::disableQueryLog();
+    DB::flushQueryLog();
+    Queue::assertNothingPushed();
+    expect($queries)->toBeLessThanOrEqual(6);
+
+    // 07:00: only the user whose weigh-in is at 07:00.
+    Carbon::setTestNow('2026-09-26 07:00:00');
+    $this->artisan('reminders:send')->assertSuccessful();
+    Queue::assertPushed(SendUserReminders::class, 1);
+    Queue::assertPushed(SendUserReminders::class, fn (SendUserReminders $job) => $job->user->is($weighsNow));
+});
+
 it('NOTIF-001 reminders:send queues one job per subscribed user, so one user\'s failure cannot hold up the rest', function () {
     $first = remindedUser();
     $second = remindedUser();
@@ -432,7 +455,7 @@ it('NOTIF-001 the cheap check finds every reminder the full plan makes, across a
         ->toBe(['meal', 'next_mesocycle', 'weekly_review', 'weigh_in', 'workout'])
         ->and(collect($planned)->contains(fn (PlannedReminder $r) => $r->fireAt->format('Y-m-d H:i') === '2026-09-28 05:15'))->toBeTrue();
     foreach ($planned as $reminder) {
-        expect(ReminderDays::mayHaveDue($user, $reminder->fireAt->modify('-10 minutes'), $reminder->fireAt))->toBeTrue($reminder->id);
+        expect(ReminderDays::mayHaveDue([$user->id], $reminder->fireAt->modify('-10 minutes'), $reminder->fireAt))->toBe([$user->id], $reminder->id);
     }
 });
 
@@ -440,7 +463,7 @@ it('NOTIF-001 a minute with nothing due skips the full read of the plan', functi
     $user = remindedUser();
 
     Carbon::setTestNow('2026-09-26 03:00:00');
-    expect(ReminderDays::mayHaveDue($user, CarbonImmutable::now()->subMinutes(10)->toDateTimeImmutable(), CarbonImmutable::now()->toDateTimeImmutable()))->toBeFalse();
+    expect(ReminderDays::mayHaveDue([$user->id], CarbonImmutable::now()->subMinutes(10)->toDateTimeImmutable(), CarbonImmutable::now()->toDateTimeImmutable()))->toBe([]);
 
     DB::enableQueryLog();
     app(SendDueReminders::class)($user, CarbonImmutable::now());
