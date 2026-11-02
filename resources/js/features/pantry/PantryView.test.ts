@@ -1,0 +1,434 @@
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CapabilityError, read, write } from '@/app/call';
+import type { FoodSearchInput, FoodSearchOutput } from '@/contracts/food_search';
+import { inputViolations, screenFixture } from '@/testing/schemas';
+import PantryView from './PantryView.vue';
+
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+const back = vi.fn();
+vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back }) }));
+
+const readMock = vi.mocked(read);
+const writeMock = vi.mocked(write);
+const search = screenFixture<FoodSearchOutput>('food_search');
+const curated = screenFixture<FoodSearchOutput>('food_search.curated');
+const didYouMean = screenFixture<FoodSearchOutput>('food_search.did-you-mean');
+const empty = screenFixture<FoodSearchOutput>('food_search.empty');
+const MEAL = '01JBX5M0000000000000000001';
+
+function show(props: Record<string, unknown> = { payload: curated, mealId: MEAL }) {
+    return mount(PantryView, { props, attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub, teleport: true } } });
+}
+
+function lastRead(): FoodSearchInput {
+    return readMock.mock.calls.at(-1)![1] as FoodSearchInput;
+}
+
+function writes(): [string, Record<string, unknown>][] {
+    return writeMock.mock.calls.map((call) => call.slice(0, 2) as [string, Record<string, unknown>]);
+}
+
+function row(wrapper: ReturnType<typeof show>, name: string) {
+    const found = wrapper.findAll('[data-test="food-row"]').find((r) => r.find('[data-test="food-name"]').text() === name);
+    if (!found) throw new Error(`No row for ${name}`);
+    return found;
+}
+
+describe('PantryView', () => {
+    beforeEach(() => {
+        readMock.mockReset().mockResolvedValue(curated);
+        writeMock.mockReset().mockResolvedValue({});
+        back.mockReset();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        document.body.innerHTML = '';
+    });
+
+    it('FOOD-020 has the Curated, Recents, Favorites and Custom tabs, and a tab reads food_search for it', async () => {
+        const wrapper = show();
+
+        const tabs = wrapper.findAll('[role="tab"]');
+        expect(tabs.map((t) => t.text())).toEqual(['Curated', 'Recents', 'Favorites', 'Custom']);
+        expect(tabs[0]!.attributes('aria-selected')).toBe('true');
+        expect(readMock).not.toHaveBeenCalled();
+
+        await tabs[1]!.trigger('click');
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledWith('food_search', expect.anything(), expect.any(Function), expect.any(Function));
+        expect(lastRead()).toMatchObject({ tab: 'recents', meal_id: MEAL, query: '' });
+        expect(inputViolations('food_search', lastRead())).toEqual([]);
+        expect(wrapper.findAll('[role="tab"]')[1]!.attributes('aria-selected')).toBe('true');
+    });
+
+    it('FOOD-020 shows Recipes and Saved Meals as a filter, in place of the tabs', async () => {
+        const wrapper = show();
+
+        await wrapper.find('select[aria-label="Show"]').setValue('recipes');
+        await flushPromises();
+
+        expect(lastRead()).toMatchObject({ collection: 'recipes' });
+        expect(wrapper.find('[role="tablist"]').exists()).toBe(false);
+        expect(wrapper.find('select[aria-label="Source filter"]').exists()).toBe(false);
+        const recipe = wrapper.find('[data-test="collection-row"]');
+        expect(recipe.text()).toContain('Overnight oats');
+        expect(recipe.text()).toContain('Breakfast · 330 kcal · P 28 · F 3 · C 47');
+        const links = wrapper.findAllComponents(RouterLinkStub).map((l) => l.props('to'));
+        expect(links).toContainEqual({ path: '/nutrition/recipes/generate', query: { meal: MEAL } });
+        expect(links).toContainEqual('/nutrition/recipes/import');
+
+        await wrapper.find('select[aria-label="Show"]').setValue('saved_meals');
+        await flushPromises();
+
+        expect(lastRead()).toMatchObject({ collection: 'saved_meals' });
+        expect(wrapper.find('[data-test="collection-row"]').text()).toContain('Bulk dinner');
+        expect(wrapper.find('[data-test="collection-row"]').text()).toContain('3 foods');
+    });
+
+    it('FOOD-021 shows each curated group with a Show 25 more link that opens the group', async () => {
+        const wrapper = show();
+
+        const sections = wrapper.findAll('[data-test="food-section"]');
+        expect(sections.map((s) => s.find('h2').text())).toEqual(['Protein · Recommended', 'Veggies']);
+        expect(sections[0]!.findAll('[data-test="food-row"]')).toHaveLength(2);
+        const more = sections[0]!.find('[data-test="show-more"]');
+        expect(more.text()).toBe('Show 25 more');
+        expect(more.attributes('aria-label')).toBe('Show 25 more in Protein · Recommended');
+        expect(sections[1]!.find('[data-test="show-more"]').exists()).toBe(false);
+
+        await more.trigger('click');
+        await flushPromises();
+
+        expect(lastRead()).toMatchObject({ expanded_groups: ['protein_recommended'] });
+        expect(inputViolations('food_search', lastRead())).toEqual([]);
+    });
+
+    it('FOOD-022 favorites a food by tapping its picture, sending a valid food_favorite_set', async () => {
+        const wrapper = show();
+
+        const breast = row(wrapper, 'Chicken breast');
+        expect(breast.find('[data-test="favorite"]').attributes('aria-label')).toBe('Unfavorite Chicken breast');
+        expect(breast.find('[data-test="favorite-star"]').exists()).toBe(true);
+        await breast.find('[data-test="favorite"]').trigger('click');
+        await flushPromises();
+
+        expect(writes()).toEqual([['food_favorite_set', { food_id: '01JBX5F0000000000000000002', favorite: false }]]);
+        expect(inputViolations('food_favorite_set', writes()[0]![1])).toEqual([]);
+        expect(readMock).toHaveBeenCalled();
+    });
+
+    it('FOOD-022 favorites a food by swiping its row', async () => {
+        const wrapper = show();
+
+        const eggs = row(wrapper, 'Egg whites');
+        expect(eggs.find('[data-test="swipe-favorite"]').attributes('aria-hidden')).toBe('true');
+        await eggs.find('[data-test="swipe"]').trigger('pointerdown', { clientX: 300, clientY: 10, pointerId: 1 });
+        await eggs.find('[data-test="swipe"]').trigger('pointermove', { clientX: 200, clientY: 12, pointerId: 1 });
+        await eggs.find('[data-test="swipe"]').trigger('pointerup', { clientX: 200, clientY: 12, pointerId: 1 });
+
+        const action = row(wrapper, 'Egg whites').find('[data-test="swipe-favorite"]');
+        expect(action.attributes('aria-hidden')).toBeUndefined();
+        expect(action.text()).toBe('Favorite');
+        await action.trigger('click');
+        await flushPromises();
+
+        expect(writes()).toEqual([['food_favorite_set', { food_id: '01JBX5F0000000000000000007', favorite: true }]]);
+    });
+
+    it('FOOD-022 a vertical drag scrolls and does not open the swipe action', async () => {
+        const wrapper = show();
+
+        const swipe = row(wrapper, 'Egg whites').find('[data-test="swipe"]');
+        await swipe.trigger('pointerdown', { clientX: 300, clientY: 10, pointerId: 1 });
+        await swipe.trigger('pointermove', { clientX: 280, clientY: 120, pointerId: 1 });
+        await swipe.trigger('pointerup', { clientX: 280, clientY: 120, pointerId: 1 });
+
+        expect(row(wrapper, 'Egg whites').find('[data-test="swipe-favorite"]').attributes('aria-hidden')).toBe('true');
+    });
+
+    it('FOOD-023 searches as the user types, showing the matches first and then More results', async () => {
+        vi.useFakeTimers();
+        readMock.mockResolvedValue(search);
+        const wrapper = show();
+
+        await wrapper.find('input[type="search"]').setValue('chicken');
+        expect(readMock).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(300);
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledTimes(1);
+        expect(lastRead()).toMatchObject({ query: 'chicken', tab: 'curated', meal_id: MEAL });
+        expect(inputViolations('food_search', lastRead())).toEqual([]);
+        const sections = wrapper.findAll('[data-test="food-section"]');
+        expect(sections[0]!.find('h2').exists()).toBe(false);
+        expect(sections[0]!.findAll('[data-test="food-name"]').map((n) => n.text())).toEqual(['Chicken noodle soup', 'Chicken breast', 'Chicken thigh']);
+        expect(sections[1]!.find('h2').text()).toBe('More results');
+        expect(row(wrapper, 'Chicken noodle soup').text()).toContain("Campbell's");
+    });
+
+    it('FOOD-023 a later search that fails keeps the foods on screen and says why', async () => {
+        const wrapper = show();
+        readMock.mockRejectedValueOnce(new CapabilityError('food_search', 500, { ok: false }));
+
+        await wrapper.findAll('[role="tab"]')[2]!.trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="search-error"]').text()).toBe('The foods could not be loaded.');
+        expect(wrapper.findAll('[data-test="food-row"]')).toHaveLength(3);
+    });
+
+    it('FOOD-024 offers the typo correction, and tapping it searches for that', async () => {
+        const wrapper = show({ payload: didYouMean, mealId: MEAL });
+
+        const suggestion = wrapper.find('[data-test="suggestion"]');
+        expect(suggestion.text()).toBe('Did you mean chicken breast?');
+        expect(wrapper.find('[data-test="empty"]').text()).toBe('No foods match chiken brest.');
+        await suggestion.trigger('click');
+        await flushPromises();
+
+        expect(lastRead()).toMatchObject({ query: 'chicken breast' });
+        expect((wrapper.find('input[type="search"]').element as HTMLInputElement).value).toBe('chicken breast');
+    });
+
+    it('FOOD-025 narrows by source, and says the filter needs a search', async () => {
+        const wrapper = show();
+
+        const chips = wrapper.find('select[aria-label="Source filter"]');
+        expect(chips.findAll('option').map((o) => o.text())).toEqual(['All sources', 'Recents', 'Favorites', 'Curated', 'Custom', 'Restaurants', 'Packaged']);
+        await chips.setValue('restaurants');
+        await flushPromises();
+
+        expect(lastRead()).toMatchObject({ source: 'restaurants' });
+        expect(inputViolations('food_search', lastRead())).toEqual([]);
+        expect(wrapper.find('[data-test="source-chip"]').text()).toBe('Restaurants');
+        expect(wrapper.text()).toContain('The source filter narrows search results. Type to search.');
+    });
+
+    it('FOOD-026 narrows by curated group, and opens on the group it was asked for', async () => {
+        readMock.mockReturnValue(new Promise(() => {}));
+        show({ mealId: MEAL, group: 'carbs_recommended', search: 'rice' });
+        await flushPromises();
+
+        expect(lastRead()).toMatchObject({ group: 'carbs_recommended', query: 'rice', meal_id: MEAL });
+
+        readMock.mockResolvedValue(curated);
+        const wrapper = show();
+        const groups = wrapper.find('select[aria-label="Group filter"]');
+        expect(groups.findAll('option').map((o) => o.text())).toContain('Protein · Before bed');
+        await groups.setValue('veggies');
+        await flushPromises();
+
+        expect(lastRead()).toMatchObject({ group: 'veggies' });
+        expect(wrapper.find('[data-test="group-chip"]').text()).toBe('Veggies');
+    });
+
+    it('FOOD-027 shows the diet filters that are on, and a toggle saves them all with a valid diet_filters_set', async () => {
+        const wrapper = show();
+
+        expect(wrapper.find('[data-test="diet-chip"]').text()).toBe('Diet · 1');
+        await wrapper.find('[data-test="diet-chip"]').trigger('click');
+        const toggles = wrapper.findAll('[data-test="diet"]');
+        expect(toggles.map((t) => t.text())).toEqual(['Dairy free', 'Gluten free', 'Grain free', 'Low FODMAP', 'Ovo-lacto vegetarian', 'Paleo', 'Vegan']);
+        expect(toggles[1]!.attributes('aria-pressed')).toBe('true');
+
+        await toggles[6]!.trigger('click');
+        await flushPromises();
+
+        expect(writes()).toEqual([['diet_filters_set', { filters: [{ filter: 'gluten_free' }, { filter: 'vegan' }] }]]);
+        expect(inputViolations('diet_filters_set', writes()[0]![1])).toEqual([]);
+        expect(readMock).toHaveBeenCalled();
+
+        await wrapper.findAll('[data-test="diet"]')[1]!.trigger('click');
+        await flushPromises();
+        expect(writes()[1]).toEqual(['diet_filters_set', { filters: [] }]);
+    });
+
+    it('FOOD-028 collects picks in Adding to meal, marks Already in meal, and adds them all at once', async () => {
+        const wrapper = show({ payload: search, mealId: MEAL });
+
+        expect(wrapper.find('[data-test="already-in-meal"]').text()).toContain('Already in meal');
+        expect(wrapper.find('[data-test="already-in-meal"]').text()).toContain('Beef eye of round');
+        const confirm = wrapper.find('[data-test="confirm"]');
+        expect(confirm.text()).toBe('Add to meal');
+        expect(confirm.attributes('disabled')).toBeDefined();
+
+        await row(wrapper, 'Chicken breast').find('[data-test="weighing-cooked"]').trigger('click');
+        await row(wrapper, 'Chicken breast').find('[data-test="pick"]').trigger('click');
+        await row(wrapper, 'Chicken noodle soup').find('[data-test="pick"]').trigger('click');
+
+        const basket = wrapper.find('[data-test="basket"]');
+        expect(basket.find('h2').text()).toBe('Adding to meal');
+        expect(basket.findAll('li').map((li) => li.text())).toEqual(['Chicken breastCooked', "Chicken noodle soupCampbell's"]);
+        expect(row(wrapper, 'Chicken breast').find('[data-test="pick"]').attributes('aria-label')).toBe('Remove Chicken breast from meal');
+        expect(wrapper.find('[data-test="confirm"]').text()).toBe('Add 2 to meal');
+
+        await wrapper.find('[data-test="confirm"]').trigger('click');
+        await flushPromises();
+
+        const [[name, input]] = writes() as [[string, { meal_id: string; entries: { id: string }[] }]];
+        expect(name).toBe('meal_food_add');
+        expect(input).toEqual({
+            meal_id: MEAL,
+            entries: [
+                { id: expect.stringMatching(/^[0-9A-HJKMNP-TV-Z]{26}$/), food_id: '01JBX5F0000000000000000002', weighing: 'cooked' },
+                { id: expect.stringMatching(/^[0-9A-HJKMNP-TV-Z]{26}$/), food_id: '01JBX5F0000000000000000003', weighing: 'raw' },
+            ],
+        });
+        expect(input.entries[0]!.id).not.toBe(input.entries[1]!.id);
+        expect(inputViolations(name, input)).toEqual([]);
+        expect(back).toHaveBeenCalledOnce();
+    });
+
+    it('FOOD-028 a basket pick comes out again from its row or its minus button', async () => {
+        const wrapper = show();
+
+        await row(wrapper, 'Broccoli').find('[data-test="pick"]').trigger('click');
+        expect(wrapper.find('[data-test="basket"]').text()).toContain('BroccoliRaw');
+        await row(wrapper, 'Broccoli').find('[data-test="weighing-cooked"]').trigger('click');
+        expect(wrapper.find('[data-test="basket"]').text()).toContain('BroccoliCooked');
+
+        await wrapper.find('[data-test="basket"] button[aria-label="Remove Broccoli"]').trigger('click');
+        expect(wrapper.find('[data-test="basket"]').exists()).toBe(false);
+        expect(row(wrapper, 'Broccoli').find('[data-test="pick"]').attributes('aria-label')).toBe('Add Broccoli to meal');
+    });
+
+    it('FOOD-028 adds a recipe with the foods and loads a saved meal on its own write', async () => {
+        const wrapper = show();
+
+        await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+        await wrapper.find('select[aria-label="Show"]').setValue('recipes');
+        await flushPromises();
+        await wrapper.find('[data-test="collection-row"]').trigger('click');
+        await wrapper.find('select[aria-label="Show"]').setValue('saved_meals');
+        await flushPromises();
+        await wrapper.find('[data-test="collection-row"]').trigger('click');
+
+        expect(wrapper.find('[data-test="basket"]').findAll('li').map((li) => li.text())).toEqual(['Egg whitesRaw', 'Overnight oatsRecipe', 'Bulk dinnerSaved meal']);
+        expect(wrapper.find('[data-test="collection-row"]').attributes('aria-pressed')).toBe('true');
+        await wrapper.find('[data-test="confirm"]').trigger('click');
+        await flushPromises();
+
+        expect(writes().map(([name]) => name)).toEqual(['meal_food_add', 'meal_saved_meal_load']);
+        expect(writes()[0]![1]).toMatchObject({ entries: [{ food_id: '01JBX5F0000000000000000007' }, { recipe_id: '01JBX5R0000000000000000001' }] });
+        expect(writes()[1]![1]).toEqual({ meal_id: MEAL, saved_meal_id: '01JBX5S0000000000000000001' });
+        for (const [name, input] of writes()) expect(inputViolations(name, input)).toEqual([]);
+        expect(back).toHaveBeenCalledOnce();
+    });
+
+    it('CAP-019 sends the same entry ids again after Add got no answer, and stays open', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('meal_food_add', 0, { reason: 'network' })).mockResolvedValueOnce({});
+        const wrapper = show();
+
+        await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+        await wrapper.find('[data-test="confirm"]').trigger('click');
+        await flushPromises();
+        expect(back).not.toHaveBeenCalled();
+        expect(wrapper.find('[data-test="confirm-error"]').exists()).toBe(true);
+        await wrapper.find('[data-test="confirm"]').trigger('click');
+        await flushPromises();
+
+        const ids = writes().map(([, input]) => (input as { entries: { id: string }[] }).entries[0]!.id);
+        expect(ids[1]).toBe(ids[0]);
+        expect(back).toHaveBeenCalledOnce();
+    });
+
+    it('FOOD-006 switches a food with a cooked value between raw and cooked numbers', async () => {
+        const wrapper = show();
+
+        const breast = row(wrapper, 'Chicken breast');
+        expect(breast.find('[data-test="nutrition"]').text()).toBe('120 kcal · P 22.5 · F 2.6 · C 0 · per 100 g');
+        expect(row(wrapper, 'Egg whites').find('[data-test="weighing-raw"]').exists()).toBe(false);
+        await breast.find('[data-test="weighing-cooked"]').trigger('click');
+
+        expect(row(wrapper, 'Chicken breast').find('[data-test="nutrition"]').text()).toBe('165 kcal · P 31 · F 3.6 · C 0 · per 100 g');
+        expect(row(wrapper, 'Chicken breast').find('[data-test="weighing-cooked"]').attributes('aria-pressed')).toBe('true');
+    });
+
+    it('FOOD-009 switches the amounts between g and oz', async () => {
+        const wrapper = show();
+
+        await wrapper.find('[data-test="unit-oz"]').trigger('click');
+        await flushPromises();
+
+        expect(lastRead()).toMatchObject({ unit: 'oz' });
+        expect(wrapper.find('[data-test="unit-oz"]').attributes('aria-pressed')).toBe('true');
+    });
+
+    it('FOOD-028 marks a food that is already in the meal', () => {
+        const inMeal = structuredClone(curated);
+        inMeal.sections[1]!.rows[0]!.is_in_meal = true;
+        const wrapper = show({ payload: inMeal, mealId: MEAL });
+
+        expect(row(wrapper, 'Broccoli').text()).toContain('In meal');
+        expect(row(wrapper, 'Egg whites').text()).not.toContain('In meal');
+    });
+
+    it('FOOD-062 offers a custom food named after the search', () => {
+        const wrapper = show({ payload: search, mealId: MEAL });
+
+        const link = wrapper.findAllComponents(RouterLinkStub).find((l) => l.text() === "Can't find it? Create a custom food");
+        expect(link!.props('to')).toEqual({ path: '/nutrition/custom-foods/new', query: { name: 'chicken' } });
+    });
+
+    it('NAV-001 browsing from the Nutrition tab has Done and no basket', async () => {
+        const wrapper = show({ payload: curated });
+
+        expect(wrapper.find('[data-test="cancel"]').text()).toBe('Done');
+        expect(wrapper.find('[data-test="confirm"]').exists()).toBe(false);
+        expect(wrapper.find('[data-test="pick"]').exists()).toBe(false);
+        expect(wrapper.find('[data-test="favorite"]').exists()).toBe(true);
+        await wrapper.find('[data-test="cancel"]').trigger('click');
+        expect(back).toHaveBeenCalledOnce();
+    });
+
+    it('FOOD-020 says when a list has nothing in it', () => {
+        const wrapper = show({ payload: empty });
+
+        expect(wrapper.find('[data-test="empty"]').text()).toBe('No custom foods yet.');
+        expect(wrapper.find('[data-test="food-row"]').exists()).toBe(false);
+    });
+
+    it('PWA-024 shows a skeleton while the Pantry loads', async () => {
+        readMock.mockReturnValue(new Promise(() => {}));
+        const wrapper = show({ mealId: MEAL });
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="skeleton"]').exists()).toBe(true);
+        expect(lastRead()).toEqual({
+            query: '',
+            tab: 'curated',
+            collection: null,
+            source: null,
+            group: null,
+            unit: 'g',
+            meal_id: MEAL,
+            expanded_groups: [],
+        });
+        expect(inputViolations('food_search', lastRead())).toEqual([]);
+    });
+
+    it('OFF-003 says why the Pantry did not load, and Try again reads it again', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('food_search', 500, { ok: false }));
+        const wrapper = show({ mealId: MEAL });
+        await flushPromises();
+
+        expect(wrapper.find('[role="alert"]').text()).toContain('The foods could not be loaded.');
+        await wrapper.find('[data-test="retry"]').trigger('click');
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledTimes(2);
+        expect(wrapper.findAll('[data-test="food-row"]')).toHaveLength(3);
+    });
+
+    it('OFF-008 dims the server\'s numbers while a write waits to sync', () => {
+        const wrapper = show({ payload: curated, mealId: MEAL, pending: true });
+
+        const nutrition = row(wrapper, 'Chicken breast').find('[data-test="nutrition"]');
+        expect(nutrition.find('[data-value]').classes()).toContain('opacity-60');
+        expect(nutrition.text()).toContain('Waiting to sync');
+        expect(show({ payload: curated }).text()).not.toContain('Waiting to sync');
+    });
+});
