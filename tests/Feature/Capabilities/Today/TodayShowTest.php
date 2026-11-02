@@ -174,3 +174,22 @@ it('SCH-020 a day of a week the plan can show opens as given, even past the last
     expect($friday['date'])->toBe('2026-10-16')
         ->and($tuesday['date'])->toBe('2026-09-08');
 });
+
+it('SCH-003 SCH-040 a past mesocycle\'s week shows its logged session once another mesocycle is current', function () {
+    Carbon::setTestNow('2026-10-14 10:00:00');
+    $user = TodaySeed::user();
+    $first = TodaySeed::mesocycle($user);
+    TodaySeed::mesocycle($user)->update(['name' => 'Next block', 'start_date' => '2026-10-10']);
+    TodaySeed::targets($user, last: '2026-11-06');
+    TrainSeed::trained($first, 2, 1, '2026-09-21');
+
+    $day = $this->actingAs($user)->postJson('/capabilities/today_show', ['date' => '2026-09-21'])->assertOk()->json('data');
+    $week = $this->actingAs($user)->postJson('/capabilities/week_show', ['date' => '2026-09-21'])->assertOk()->json('data');
+
+    expect($day['workouts'][0]['mesocycle_id'])->toBe($first->id)
+        ->and($day['workouts'][0]['title'])->toBe('Week 2 · Day 1 · Upper A')
+        ->and($day['workouts'][0]['state'])->toBe('done')
+        ->and($day['workouts'][0]['completed']['text'])->toBe('2 of 4 sets completed')
+        ->and($week['days'][2]['date'])->toBe('2026-09-21')
+        ->and($week['days'][2]['has_training'])->toBeTrue();
+});

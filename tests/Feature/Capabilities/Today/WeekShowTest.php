@@ -1,7 +1,10 @@
 <?php
 
 use App\Models\User;
+use App\Models\DayTarget;
+use App\Models\MealCheckIn;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Tests\Support\ScreenFixture;
 use Tests\Support\TodaySeed;
 
@@ -90,4 +93,31 @@ it('CAP-020 shows only the signed-in user\'s rows', function () {
         ->and(array_filter(array_column($data['days'], 'has_training')))->toBe([])
         ->and(array_filter(array_column($data['days'], 'is_complete')))->toBe([])
         ->and($data['calendar'])->toBe(['first' => '2026-09-12', 'last' => '2026-10-09']);
+});
+
+it('SCH-020 SCH-021 the week strip reads only what it shows, and still finds the green dots', function () {
+    Carbon::setTestNow('2026-09-23 10:00:00');
+    $user = TodaySeed::user();
+    TodaySeed::targets($user);
+    TodaySeed::wednesday($user, TodaySeed::mesocycle($user));
+    $tuesday = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-22')->firstOrFail();
+    foreach ($tuesday->meals as $meal) {
+        MealCheckIn::factory()->create([
+            'meal_id' => $meal['id'], 'kcal' => $meal['kcal'], 'protein_g' => $meal['protein_g'], 'fat_g' => $meal['fat_g'],
+            'carbs_g' => $meal['carbs_g'], 'is_manual' => false,
+        ]);
+    }
+
+    DB::enableQueryLog();
+    $data = $this->actingAs($user)->postJson('/capabilities/week_show')->assertOk()->json('data');
+    $sql = implode("\n", array_column(DB::getQueryLog(), 'query'));
+
+    expect(array_column($data['days'], 'is_complete', 'date')['2026-09-22'])->toBeTrue()
+        ->and($sql)->toContain('meal_check_ins')
+        ->and($sql)->not->toContain('weigh_ins')
+        ->and($sql)->not->toContain('weigh_in_schedule_entries')
+        ->and($sql)->not->toContain('`steps`')
+        ->and($sql)->not->toContain('other_activities')
+        ->and($sql)->not->toContain('planned_foods')
+        ->and($sql)->not->toContain('planned_recipes');
 });
