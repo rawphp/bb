@@ -314,6 +314,13 @@ it('MESO-013 pick for me fills every empty slot and keeps picked ones', function
     // No exercise for a muscle: the slot stays empty.
     $none = MesoBuilder::pickForSessions($sessions, []);
     expect(mesoSlotFor($none[1], MuscleGroup::Chest)?->exerciseName)->toBe('');
+
+    // A filled slot keeps its id and its set count.
+    $planned = MesoBuilder::pickForSessions(
+        [new Session('day-1', 'Day 1', [new ExerciseSlot('slot-1', '', MuscleGroup::Hamstrings, 3)])],
+        [mesoStiffLeg()],
+    );
+    expect($planned[0]->slots[0])->toEqual(new ExerciseSlot('slot-1', 'Stiff-leg deadlift', MuscleGroup::Hamstrings, 3));
 });
 
 // MESO-046
@@ -363,4 +370,18 @@ it('MESO-046 order slots uses the exercise list and unpicked slots rank lowest',
     expect($ordered->id)->toBe($session->id)
         ->and(array_map(fn (ExerciseSlot $slot) => $slot->exerciseName, $ordered->slots))
         ->toBe(['Stiff-leg deadlift', 'Cable fly', 'Bench press', '']);
+});
+
+it('MESO-046 order slots ranks an unpicked or unknown slot below every rated one of its priority', function () {
+    // 'Deadlift' is in the library, but as a Hamstrings exercise, so on a Chest slot it is unknown.
+    $session = new Session('day-1', 'Day 1', [
+        new ExerciseSlot('a', '', MuscleGroup::Chest, 0),
+        new ExerciseSlot('b', 'Deadlift', MuscleGroup::Chest, 0),
+        new ExerciseSlot('c', 'Bench press', MuscleGroup::Chest, 0),
+    ]);
+
+    $ordered = MesoBuilder::orderSession($session, ['chest' => Priority::Grow], [mesoDeadlift(), mesoBench()]);
+
+    // The rated slot first; the two unknown ones after it, in list order.
+    expect(array_map(fn (ExerciseSlot $slot) => $slot->id, $ordered->slots))->toBe(['c', 'a', 'b']);
 });
