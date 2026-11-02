@@ -24,7 +24,7 @@ final class WorkoutSetAddCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('workout_set_add', affects: ['workout_show', 'today_show', 'train_show', 'mesocycle_show'])
+        return HostDefinition::write('workout_set_add', affects: WorkoutReads::AFFECTS)
             ->description('Add a set to an exercise of a session under way, below after_set_id or at the end, as a regular, myorep or myorep match set. It starts from the weight and reps of the set above. Added sets carry forward to later weeks once the session is finished.')
             ->cli('workout', 'set-add')
             ->input(WorkoutSetAddInput::class)
@@ -34,7 +34,7 @@ final class WorkoutSetAddCapability implements HostCapability, OwnsInput
                 $this->ownedOrNew(WorkoutSet::class, $input->set_id, $user);
                 $session = ($this->add)($user, $input->set_id, $input->workout_exercise_id, $input->after_set_id, WorkoutSetType::from($input->set_type));
 
-                return new WriteResult(invalidates: WorkoutReads::keys($session));
+                return new WriteResult(invalidates: WorkoutReads::keys($user, $session));
             });
     }
 

@@ -20,7 +20,7 @@ final class WorkoutSetDeleteCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         // AGT-010: it deletes what the user logged, so the coach needs the user's say-so.
-        return HostDefinition::write('workout_set_delete', affects: ['workout_show', 'today_show', 'train_show', 'mesocycle_show'], destructive: true)
+        return HostDefinition::write('workout_set_delete', affects: WorkoutReads::AFFECTS, destructive: true)
             ->description('Delete a set from a session under way, with whatever was logged on it; it cannot be undone. Use skip instead when the user only did not do the set. Removed sets drop from later weeks once the session is finished.')
             ->cli('workout', 'set-delete')
             ->input(WorkoutSetDeleteInput::class)
@@ -28,7 +28,7 @@ final class WorkoutSetDeleteCapability implements HostCapability, OwnsInput
                 /** @var User $user */
                 $user = $context->user();
 
-                return new WriteResult(invalidates: WorkoutReads::keys(($this->delete)($user, $input->set_id)));
+                return new WriteResult(invalidates: WorkoutReads::keys($user, ($this->delete)($user, $input->set_id)));
             });
     }
 

@@ -512,7 +512,8 @@ final class WorkoutSnapshot
         return $rows->first(fn (WorkoutSession $s) => $s->actual_start_at !== null || $s->is_skipped) ?? $rows->first();
     }
 
-    private static function dateOf(TrainSnapshot $train, Mesocycle $mesocycle, int $week, int $day): ?DateTimeImmutable
+    /** The day the plan puts session `$week` / `$day` of a saved mesocycle on; null when it puts it on none. */
+    public static function dateOf(TrainSnapshot $train, Mesocycle $mesocycle, int $week, int $day): ?DateTimeImmutable
     {
         $calendar = $train->calendar($mesocycle);
         $sessions = $train->domain($mesocycle)->sessionsInWeek($week - 1);

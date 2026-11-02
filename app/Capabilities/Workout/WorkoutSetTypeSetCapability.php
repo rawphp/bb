@@ -20,7 +20,7 @@ final class WorkoutSetTypeSetCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('workout_set_type_set', affects: ['workout_show', 'today_show', 'train_show', 'mesocycle_show'])
+        return HostDefinition::write('workout_set_type_set', affects: WorkoutReads::AFFECTS)
             ->description('Change a set\'s type in a session under way: regular (straight, down or ascending), myorep or myorep match. For myoreps the user rests 5 to 15 seconds between mini-sets and logs the total reps; for myorep match they do mini-sets until they match the first set\'s reps.')
             ->cli('workout', 'set-type')
             ->input(WorkoutSetTypeSetInput::class)
@@ -28,7 +28,7 @@ final class WorkoutSetTypeSetCapability implements HostCapability, OwnsInput
                 /** @var User $user */
                 $user = $context->user();
 
-                return new WriteResult(invalidates: WorkoutReads::keys(($this->setType)($user, $input->set_id, WorkoutSetType::from($input->set_type))));
+                return new WriteResult(invalidates: WorkoutReads::keys($user, ($this->setType)($user, $input->set_id, WorkoutSetType::from($input->set_type))));
             });
     }
 

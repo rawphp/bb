@@ -19,7 +19,7 @@ final class WorkoutSetSkipCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('workout_set_skip', affects: ['workout_show', 'today_show', 'train_show', 'mesocycle_show'])
+        return HostDefinition::write('workout_set_skip', affects: WorkoutReads::AFFECTS)
             ->description('Skip or unskip a set in a session under way. A skipped set stays on the screen, greyed, is unlogged and never counts as a working set.')
             ->cli('workout', 'set-skip')
             ->input(WorkoutSetSkipInput::class)
@@ -27,7 +27,7 @@ final class WorkoutSetSkipCapability implements HostCapability, OwnsInput
                 /** @var User $user */
                 $user = $context->user();
 
-                return new WriteResult(invalidates: WorkoutReads::keys(($this->skip)($user, $input->set_id, $input->is_skipped)));
+                return new WriteResult(invalidates: WorkoutReads::keys($user, ($this->skip)($user, $input->set_id, $input->is_skipped)));
             });
     }
 
