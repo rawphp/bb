@@ -1,15 +1,18 @@
+import 'fake-indexeddb/auto';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter } from 'vue-router';
-import { CapabilityError, write } from '@/app/call';
+import { CapabilityError, writeNow } from '@/app/call';
 import { clearReads } from '@/app/cache';
+import { entries } from '@/app/outbox';
+import { queue, resetOutbox } from '@/testing/outbox';
 import { inputViolations } from '@/testing/schemas';
 import DeleteAccountView from './DeleteAccountView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), writeNow: vi.fn() }));
 vi.mock('@/app/cache', async (original) => ({ ...(await original<typeof import('@/app/cache')>()), clearReads: vi.fn() }));
 
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 
 async function view() {
     const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:any(.*)*', component: { template: '<p />' } }] });
@@ -19,9 +22,10 @@ async function view() {
 }
 
 describe('DeleteAccountView', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         writeMock.mockReset();
         vi.mocked(clearReads).mockReset().mockResolvedValue(undefined);
+        await resetOutbox();
     });
 
     it('ACC-005 says what deleting removes, with the button off until DELETE is typed', async () => {
@@ -52,6 +56,31 @@ describe('DeleteAccountView', () => {
         expect(inputViolations('account_delete', input)).toEqual([]);
         expect(clearReads).toHaveBeenCalled();
         expect(router.currentRoute.value.path).toBe('/');
+    });
+
+    it('OFF-031 says earlier changes must sync first when the delete was held back, and knows it was not sent', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('account_delete', 0, { reason: 'waiting' }));
+        const { wrapper, router } = await view();
+
+        await wrapper.get('input').setValue('DELETE');
+        await wrapper.get('[data-test="delete"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[role="alert"]').text()).toBe("Earlier changes haven't synced yet. Try again once they have.");
+        expect(clearReads).not.toHaveBeenCalled();
+        expect(router.currentRoute.value.path).toBe('/settings/delete-account');
+    });
+
+    it("ACC-005 deletes the account's entries left in the outbox, since there is no account to sync them to", async () => {
+        await queue({ label: 'Logged a weigh-in', refusal: { status: 422, body: null } });
+        writeMock.mockResolvedValueOnce(undefined);
+        const { wrapper } = await view();
+
+        await wrapper.get('input').setValue('DELETE');
+        await wrapper.get('[data-test="delete"]').trigger('click');
+        await flushPromises();
+
+        expect(entries.value).toEqual([]);
     });
 
     it('CAP-012 shows a refused delete in the server\'s words and stays', async () => {

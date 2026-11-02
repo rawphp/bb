@@ -54,12 +54,22 @@ final class AuditRecordWriter implements AuditWriter
         throw new LogicException('AuditRecordWriter does not list every audit row. Query AuditRecord, scoped and limited.');
     }
 
-    /** @param  array<string, mixed>  $entry */
+    /**
+     * The user the entry is for. account_delete is audited after the account is gone (ACC-005), so its row names
+     * no user once that user no longer exists; its foreign key would refuse the row otherwise.
+     *
+     * @param  array<string, mixed>  $entry
+     */
     private function userId(array $entry): ?int
     {
         $id = $entry['actor_id'] ?? null;
+        $userId = ($entry['actor_type'] ?? null) === 'user' && is_string($id) && ctype_digit($id) ? (int) $id : null;
 
-        return ($entry['actor_type'] ?? null) === 'user' && is_string($id) && ctype_digit($id) ? (int) $id : null;
+        if ($userId !== null && ($entry['capability_name'] ?? null) === 'account_delete' && ! User::query()->whereKey($userId)->exists()) {
+            return null;
+        }
+
+        return $userId;
     }
 
     /**

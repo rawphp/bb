@@ -1,6 +1,6 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import type { CustomFoodsShowOutput } from '@/contracts/custom_foods_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import { useRouter } from 'vue-router';
@@ -8,11 +8,11 @@ import CustomFoodsView from './CustomFoodsView.vue';
 
 const back = vi.fn();
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: vi.fn(() => ({ back })) }));
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
 const readFreshMock = vi.mocked(readFresh);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const content = screenFixture<CustomFoodsShowOutput>('custom_foods_show');
 const empty = screenFixture<CustomFoodsShowOutput>('custom_foods_show.empty');
 

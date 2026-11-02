@@ -1,11 +1,14 @@
+import 'fake-indexeddb/auto';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter } from 'vue-router';
-import { CapabilityError, postHost, warm } from '@/app/call';
+import { CapabilityError, postHost, sync } from '@/app/call';
+import { entries, othersWaiting } from '@/app/outbox';
+import { queue, resetOutbox } from '@/testing/outbox';
 import routes from './routes';
 import SignInView from './SignInView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), postHost: vi.fn(), warm: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), postHost: vi.fn(), sync: vi.fn() }));
 
 const postMock = vi.mocked(postHost);
 
@@ -40,9 +43,10 @@ async function sendCode(wrapper: VueWrapper, email = 'sam@example.com'): Promise
 }
 
 describe('SignInView', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
         postMock.mockReset();
-        vi.mocked(warm).mockReset().mockResolvedValue(undefined);
+        vi.mocked(sync).mockReset().mockResolvedValue(undefined);
+        await resetOutbox();
     });
 
     afterEach(() => vi.useRealTimers());
@@ -71,7 +75,7 @@ describe('SignInView', () => {
         expect(button(wrapper, 'submit').element.disabled).toBe(false);
     });
 
-    it('ACC-001 signs in with email and password, warms the cache and opens the app', async () => {
+    it('ACC-001 signs in with email and password, syncs and opens the app', async () => {
         postMock.mockResolvedValueOnce(undefined);
         const { wrapper, router } = await view();
 
@@ -80,7 +84,7 @@ describe('SignInView', () => {
         await flushPromises();
 
         expect(postMock).toHaveBeenCalledWith('/sign-in', { email: 'sam@example.com', password: 'secret' });
-        expect(warm).toHaveBeenCalled();
+        expect(sync).toHaveBeenCalled();
         expect(router.currentRoute.value.path).toBe('/');
     });
 
@@ -94,7 +98,7 @@ describe('SignInView', () => {
 
         expect(wrapper.get('[data-test="error-email"]').text()).toBe(NO_MATCH);
         expect(router.currentRoute.value.path).toBe('/sign-in');
-        expect(warm).not.toHaveBeenCalled();
+        expect(sync).not.toHaveBeenCalled();
         // The fields keep what was typed, so a typo is one fix away.
         expect(wrapper.get<HTMLInputElement>('input[name="password"]').element.value).toBe('wrong');
     });
@@ -139,7 +143,7 @@ describe('SignInView', () => {
         await flushPromises();
 
         expect(postMock).toHaveBeenLastCalledWith('/sign-in/code/verify', { email: 'sam@example.com', code: '123456' });
-        expect(warm).toHaveBeenCalled();
+        expect(sync).toHaveBeenCalled();
         expect(router.currentRoute.value.path).toBe('/');
     });
 
@@ -232,7 +236,7 @@ describe('SignInView', () => {
 
         expect(wrapper.get('[role="alert"]').text()).toContain('You are already signed in on this device.');
         expect(wrapper.get('[data-test="open-app"]').attributes('href')).toBe('/');
-        expect(warm).not.toHaveBeenCalled();
+        expect(sync).not.toHaveBeenCalled();
         expect(router.currentRoute.value.path).toBe('/sign-in');
     });
 
@@ -249,9 +253,9 @@ describe('SignInView', () => {
         expect(router.currentRoute.value.path).toBe('/sign-in');
     });
 
-    it('OFF-004 a warm that fails after sign-in still opens the app', async () => {
+    it('OFF-004 a sync that fails after sign-in still opens the app', async () => {
         postMock.mockResolvedValueOnce(undefined);
-        vi.mocked(warm).mockRejectedValueOnce(new CapabilityError('sync_manifest', 0, { reason: 'network' }));
+        vi.mocked(sync).mockRejectedValueOnce(new CapabilityError('sync_manifest', 0, { reason: 'network' }));
         const { wrapper, router } = await view();
 
         await fill(wrapper, { email: 'sam@example.com', password: 'secret' });
@@ -260,6 +264,76 @@ describe('SignInView', () => {
 
         expect(router.currentRoute.value.path).toBe('/');
         expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    });
+
+    // The sign-in answer names its user in the owner cookie (NameCacheOwner).
+    function signsInAs(owner: string): void {
+        postMock.mockImplementationOnce(async () => {
+            document.cookie = `bb_cache_owner=${owner}; path=/`;
+        });
+    }
+
+    async function signIn(wrapper: VueWrapper): Promise<void> {
+        await fill(wrapper, { email: 'sam@example.com', password: 'secret' });
+        await wrapper.get('form').trigger('submit');
+        // Reading the outbox is on the device's storage, which answers in its own time.
+        await vi.waitFor(() => expect(postMock).toHaveBeenCalled());
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        await flushPromises();
+    }
+
+    it("OFF-012 warns that another account's unsynced changes will be deleted, and deletes them only once confirmed", async () => {
+        await queue({ user: 'z9', label: 'Logged 9,000 steps' });
+        await queue({ user: 'z9', label: 'Logged a weigh-in' });
+        signsInAs('a1');
+        const { wrapper, router } = await view();
+
+        await signIn(wrapper);
+
+        expect(wrapper.get('[role="alertdialog"]').text()).toContain('2 changes made on this device by another account');
+        expect(router.currentRoute.value.path).toBe('/sign-in');
+        expect(sync).not.toHaveBeenCalled();
+        expect(othersWaiting.value).toBe(2);
+
+        await button(wrapper, 'discard-others').trigger('click');
+        // The delete is on the device's storage, which answers in its own time.
+        await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/'));
+
+        expect(othersWaiting.value).toBe(0);
+        expect(sync).toHaveBeenCalled();
+    });
+
+    it('OFF-012 signs out instead and keeps the changes, so their account can sign in and sync them', async () => {
+        await queue({ user: 'z9', label: 'Logged 9,000 steps' });
+        signsInAs('a1');
+        const { wrapper, router } = await view();
+        await signIn(wrapper);
+
+        postMock.mockImplementationOnce(async () => {
+            document.cookie = 'bb_cache_owner=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+        });
+        await button(wrapper, 'sign-out-instead').trigger('click');
+        await vi.waitFor(() => expect(wrapper.find('input[name="email"]').exists()).toBe(true));
+
+        expect(postMock).toHaveBeenLastCalledWith('/sign-out', {});
+        expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false);
+        expect(wrapper.find('input[name="email"]').exists()).toBe(true);
+        expect(othersWaiting.value).toBe(1);
+        expect(sync).not.toHaveBeenCalled();
+        expect(router.currentRoute.value.path).toBe('/sign-in');
+    });
+
+    it("OFF-012 the user's own unsynced changes are no warning: they sync", async () => {
+        await queue({ label: 'Logged 9,000 steps' });
+        signsInAs('a1');
+        const { wrapper, router } = await view();
+
+        await signIn(wrapper);
+
+        expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false);
+        expect(entries.value).toHaveLength(1);
+        expect(sync).toHaveBeenCalled();
+        expect(router.currentRoute.value.path).toBe('/');
     });
 
     it('ACC-001 Use a password instead goes back to the password form with the email kept', async () => {
