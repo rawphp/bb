@@ -10,6 +10,7 @@ vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@
 
 const readMock = vi.mocked(read);
 const templates = screenFixture<TemplatesShowOutput>('templates_show');
+const noTemplate = screenFixture<TemplatesShowOutput>('templates_show.empty');
 const detail = templates.detail!;
 
 function show(props: Record<string, unknown> = { payload: templates }) {
@@ -68,7 +69,7 @@ describe('TemplateDetailView', () => {
     });
 
     it('MESO-012 says so when the template is not found', () => {
-        const wrapper = show({ payload: { ...templates, detail: null } });
+        const wrapper = show({ payload: noTemplate });
 
         expect(wrapper.text()).toContain('This template could not be found.');
     });

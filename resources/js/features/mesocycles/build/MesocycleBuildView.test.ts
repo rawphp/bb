@@ -1,5 +1,5 @@
-import { enableAutoUnmount, flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
-import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { MesocycleShowOutput } from '@/contracts/mesocycle_show';
 import type { TemplatesShowOutput } from '@/contracts/templates_show';
@@ -66,9 +66,6 @@ function slotsOf(day: number) {
 function allDays() {
     return warning.build!.days.map((d, index) => ({ day_id: d.id, slots: slotsOf(index) }));
 }
-
-// A screen left mounted would send its name after the typing pause, into a later test.
-enableAutoUnmount(afterEach);
 
 describe('MesocycleBuildView', () => {
     beforeEach(() => {
@@ -152,6 +149,30 @@ describe('MesocycleBuildView', () => {
             expect(wrapper.text()).toContain('Step 2 of 3');
         });
 
+        it('MESO-022 shows it building while the sessions are built, with the controls off', async () => {
+            let answer: (value: unknown) => void = () => {};
+            writeMock.mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+            const wrapper = show();
+
+            expect(wrapper.find('[role="status"]').exists()).toBe(false);
+            await click(wrapper, next);
+
+            expect(wrapper.find('[role="status"]').text()).toBe('Building your sessions…');
+            expect(wrapper.find(next).attributes('disabled')).toBeDefined();
+            answer({});
+            await flushPromises();
+            expect(wrapper.find('[role="status"]').exists()).toBe(false);
+        });
+
+        it('CAP-012 shows the server\'s days per week again when the save is refused', async () => {
+            writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_build', 422, { error: { message: 'Not that many days.' } }));
+            const wrapper = show();
+
+            await choose(wrapper, 'Days per week', '5 days');
+
+            expect((wrapper.find('select[aria-label="Days per week"]').element as HTMLSelectElement).selectedOptions[0]!.text).toBe('4 days');
+        });
+
         it('MESO-022 stays on the step and says why when the structure could not be built', async () => {
             writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_structure_generate', 422, { error: { message: 'Pick a number of days first.' } }));
             const wrapper = show();
@@ -166,20 +187,15 @@ describe('MesocycleBuildView', () => {
     describe('Build from scratch step', () => {
         const scratch = () => show({ payload: empty, step: 'scratch' });
 
-        it('MESO-005 asks for sessions per week and the day labels, then builds the sessions', async () => {
+        it('MESO-005 asks for sessions per week (labels are chosen on Details), then builds the sessions', async () => {
             const wrapper = scratch();
 
             expect(wrapper.find('h2').text()).toBe('Build from scratch');
             expect(wrapper.text()).toContain('Step 1 of 3');
-            expect(wrapper.find('[role="radiogroup"]').attributes('aria-label')).toBe('Day labels');
+            expect(wrapper.find('[role="radiogroup"]').exists()).toBe(false);
 
             await choose(wrapper, 'Sessions per week', '3 days');
             expect(lastWrite()).toEqual(['mesocycle_build', { mesocycle_id: ID, days_per_week: 3 }]);
-            expect(inputViolations(...lastWrite())).toEqual([]);
-
-            await wrapper.find('[role="radio"][aria-label="Day 1, Day 2"]').trigger('click');
-            await flushPromises();
-            expect(lastWrite()).toEqual(['mesocycle_build', { mesocycle_id: ID, label_style: 'floating' }]);
             expect(inputViolations(...lastWrite())).toEqual([]);
 
             await click(wrapper, next);
@@ -188,10 +204,10 @@ describe('MesocycleBuildView', () => {
         });
 
         it('MESO-005 turns weekday names off, and says why, when no training days are set', () => {
-            const floating = structuredClone(empty);
+            const floating = structuredClone(warning);
             floating.build!.weekdays_available = false;
             floating.build!.label_style = 'floating';
-            const wrapper = show({ payload: floating, step: 'scratch' });
+            const wrapper = show({ payload: floating, step: 'details' });
 
             const weekdays = wrapper.find('[role="radio"][aria-label="Weekdays"]');
             expect(weekdays.attributes('disabled')).toBeDefined();
@@ -346,9 +362,8 @@ describe('MesocycleBuildView', () => {
             expect(idle.find('[data-test="sets"]').classes()).not.toContain('opacity-60');
         });
 
-        it('MESO-013 Continue goes to the Details step without a write, and Back to Meso Builder', async () => {
+        it('MESO-013 Continue goes to the Details step without a write, and Back returns to the Exercises', async () => {
             const wrapper = slots();
-            expect(wrapper.find(back).attributes('disabled')).toBeUndefined();
 
             await click(wrapper, next);
             expect(wrapper.find('h2').text()).toBe('Details');
@@ -356,9 +371,15 @@ describe('MesocycleBuildView', () => {
 
             await click(wrapper, back);
             expect(wrapper.find('h2').text()).toBe('Exercises');
-            await click(wrapper, back);
-            expect(wrapper.find('h2').text()).toBe('Meso Builder');
-            expect(wrapper.find(back).attributes('disabled')).toBeDefined();
+        });
+
+        it('MESO-013 has no Back on the Exercises step on any route, as going back would build the sessions over the picks', () => {
+            for (const route of ['builder', 'scratch', 'template', 'copy_previous'] as const) {
+                const wrapper = show({ payload: { ...warning, build: { ...warning.build!, route } } });
+
+                expect(wrapper.find('h2').text()).toBe('Exercises');
+                expect(wrapper.find(back).attributes('disabled')).toBeDefined();
+            }
         });
     });
 
@@ -393,46 +414,28 @@ describe('MesocycleBuildView', () => {
             expect(wrapper.text()).toContain('None on this date');
         });
 
-        it('MESO-004 saves the name when the field is left, with a valid mesocycle_build', async () => {
-            const wrapper = details();
+        it('MESO-004 shows the name the server holds when a draft is read, and sends nothing for typing or leaving the field', async () => {
+            const wrapper = show({ draft: ID, step: 'details' });
+            await flushPromises();
             const field = wrapper.find('input[aria-label="Name"]');
+            expect((field.element as HTMLInputElement).value).toBe(warning.name);
 
             await type(field, 'Summer Cut');
             await field.trigger('change');
             await flushPromises();
 
-            expect(lastWrite()).toEqual(['mesocycle_build', { mesocycle_id: ID, name: 'Summer Cut' }]);
+            expect(writeMock).not.toHaveBeenCalled();
+            expect((field.element as HTMLInputElement).value).toBe('Summer Cut');
+        });
+
+        it('MESO-004 sends the name typed along with the next change to the details, so it is not lost', async () => {
+            const wrapper = details();
+            await type(wrapper.find('input[aria-label="Name"]'), 'Summer Cut');
+
+            await choose(wrapper, 'Weeks', '7 weeks');
+
+            expect(lastWrite()).toEqual(['mesocycle_build', { mesocycle_id: ID, weeks: 7, name: 'Summer Cut' }]);
             expect(inputViolations(...lastWrite())).toEqual([]);
-        });
-
-        it('MESO-004 saves the name after a typing pause of 400 ms, once', async () => {
-            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-            onTestFinished(() => void vi.useRealTimers());
-            const wrapper = details();
-            const field = wrapper.find('input[aria-label="Name"]');
-
-            await type(field, 'Sum');
-            vi.advanceTimersByTime(300);
-            await type(field, 'Summer');
-            vi.advanceTimersByTime(399);
-            expect(writeMock).not.toHaveBeenCalled();
-            vi.advanceTimersByTime(1);
-            await flushPromises();
-
-            expect(sent()).toEqual(['mesocycle_build']);
-            expect(lastWrite()[1]).toEqual({ mesocycle_id: ID, name: 'Summer' });
-        });
-
-        it('MESO-004 sends no name once the screen is gone', async () => {
-            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-            onTestFinished(() => void vi.useRealTimers());
-            const wrapper = details();
-
-            await type(wrapper.find('input[aria-label="Name"]'), 'Sum');
-            wrapper.unmount();
-            vi.advanceTimersByTime(1000);
-
-            expect(writeMock).not.toHaveBeenCalled();
         });
 
         it('MESO-004 sends the length, the start date and the day labels as valid writes', async () => {
@@ -452,6 +455,7 @@ describe('MesocycleBuildView', () => {
             await wrapper.find('[role="radio"][aria-label="Day 1, Day 2"]').trigger('click');
             await flushPromises();
             expect(lastWrite()).toEqual(['mesocycle_build', { mesocycle_id: ID, label_style: 'floating' }]);
+            expect(inputViolations(...lastWrite())).toEqual([]);
         });
 
         it('MESO-004 Create mesocycle sends finish with the name in the field, then opens the mesocycle', async () => {
@@ -461,9 +465,33 @@ describe('MesocycleBuildView', () => {
             expect(wrapper.find(next).text()).toBe('Create mesocycle');
             await click(wrapper, next);
 
+            expect(sent()).toEqual(['mesocycle_build']);
             expect(lastWrite()).toEqual(['mesocycle_build', { mesocycle_id: ID, name: 'Summer Cut', finish: true }]);
             expect(inputViolations(...lastWrite())).toEqual([]);
             expect(router.replace).toHaveBeenCalledWith(`/train/mesocycles/${ID}`);
+        });
+
+        it('MESO-004 turns Create mesocycle on once a name is typed, and the server judges the draft', async () => {
+            const wrapper = details({ can_finish: false });
+            expect(wrapper.find(next).attributes('disabled')).toBeDefined();
+
+            await type(wrapper.find('input[aria-label="Name"]'), 'Summer Cut');
+            expect(wrapper.find(next).attributes('disabled')).toBeUndefined();
+            await click(wrapper, next);
+
+            expect(sent()).toEqual(['mesocycle_build']);
+            expect(lastWrite()).toEqual(['mesocycle_build', { mesocycle_id: ID, name: 'Summer Cut', finish: true }]);
+        });
+
+        it('MESO-004 Create mesocycle on a draft read from the server sends the name it holds, untouched', async () => {
+            draft = { ...warning, build: { ...warning.build!, can_finish: true } };
+            const wrapper = show({ draft: ID, step: 'details' });
+            await flushPromises();
+
+            await click(wrapper, next);
+
+            expect(lastWrite()).toEqual(['mesocycle_build', { mesocycle_id: ID, name: warning.name, finish: true }]);
+            expect(inputViolations(...lastWrite())).toEqual([]);
         });
 
         it('MESO-004 turns Create mesocycle off, with a hint, while the server says it cannot finish', async () => {
@@ -500,6 +528,8 @@ describe('MesocycleBuildView', () => {
             expect(readMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: (input as { mesocycle_id: string }).mesocycle_id }, expect.any(Function), expect.any(Function));
             expect(writeMock).toHaveBeenCalledTimes(1);
             expect(wrapper.find('h2').text()).toBe('Meso Builder');
+            await wrapper.setProps({ route: undefined, copy: undefined, draft: (input as { mesocycle_id: string }).mesocycle_id });
+            expect(wrapper.text()).toContain('Step 1 of 3');
         });
 
         it('MESO-002 Build from scratch: makes the draft with route scratch and opens the scratch step', async () => {
@@ -510,6 +540,8 @@ describe('MesocycleBuildView', () => {
             expect(lastWrite()[1]).toEqual({ mesocycle_id: expect.stringMatching(ULID), route: 'scratch' });
             expect(inputViolations(...lastWrite())).toEqual([]);
             expect(wrapper.find('h2').text()).toBe('Build from scratch');
+            await wrapper.setProps({ route: undefined, copy: undefined, draft: (lastWrite()[1] as { mesocycle_id: string }).mesocycle_id });
+            expect(wrapper.text()).toContain('Step 1 of 3');
         });
 
         it('MESO-002 Copy previous: copies the source with a valid mesocycle_copy and opens on the exercises, with no Back', async () => {
@@ -523,10 +555,11 @@ describe('MesocycleBuildView', () => {
             expect(wrapper.text()).toContain('Step 1 of 2');
             expect(wrapper.find(back).attributes('disabled')).toBeDefined();
 
+            await wrapper.setProps({ route: undefined, copy: undefined, draft: (lastWrite()[1] as { mesocycle_id: string }).mesocycle_id });
+            expect(wrapper.text()).toContain('Step 1 of 2');
+
             await click(wrapper, next);
             expect(wrapper.text()).toContain('Step 2 of 2');
-            await click(wrapper, back);
-            expect(wrapper.find('h2').text()).toBe('Exercises');
         });
 
         it('CAP-014 shows why the draft could not be made, and Try again sends the same draft again', async () => {
@@ -567,6 +600,7 @@ describe('MesocycleBuildView', () => {
         });
 
         it('MESO-012 MESO-013 a tapped template shows its detail, Back returns to the library, and Use this template starts the draft from it', async () => {
+            draft = { ...warning, build: { ...warning.build!, route: 'template' } };
             const wrapper = show({ route: 'template' });
             await flushPromises();
 
@@ -590,6 +624,8 @@ describe('MesocycleBuildView', () => {
             expect(router.replace).toHaveBeenCalledWith({ query: { draft: (input as { mesocycle_id: string }).mesocycle_id } });
             expect(wrapper.find('h2').text()).toBe('Exercises');
             expect(wrapper.text()).toContain('Step 2 of 3');
+            await wrapper.setProps({ route: undefined, copy: undefined, draft: (input as { mesocycle_id: string }).mesocycle_id });
+            expect(wrapper.text()).toContain('Step 2 of 3');
         });
 
         it('CAP-012 keeps the library and says why when the template could not be used', async () => {
@@ -604,6 +640,50 @@ describe('MesocycleBuildView', () => {
             expect(wrapper.find('[role="alert"]').text()).toBe('That template is gone.');
             expect(wrapper.find('h2').text()).toBe('Choose a template');
             expect(router.replace).not.toHaveBeenCalled();
+        });
+
+        it('MESO-002 a draft that already exists is started from a template under its own id', async () => {
+            const wrapper = show({ draft: ID, step: 'template' });
+            await flushPromises();
+            await wrapper.findAll('[data-test="template"]')[0]!.trigger('click');
+            await flushPromises();
+
+            await click(wrapper, next);
+
+            expect(lastWrite()).toEqual(['mesocycle_build', { mesocycle_id: ID, route: 'template', template_id: '01J9TPL0000000000000000000' }]);
+            for (const call of router.replace.mock.calls) expect(call[0]).toEqual({ query: { draft: ID } });
+            const reads = readMock.mock.calls.filter((call) => call[0] === 'mesocycle_show').map((call) => call[1]);
+            expect(reads.length).toBeGreaterThan(0);
+            for (const input of reads) expect(input).toEqual({ mesocycle_id: ID });
+            expect(wrapper.find('h2').text()).toBe('Exercises');
+        });
+
+        it('MESO-002 with no answer from the first write, nothing is read and Try again sends the same draft', async () => {
+            writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_build', 502, null));
+            draft = empty;
+            const wrapper = show({ route: 'builder' });
+            await flushPromises();
+
+            expect(router.replace).not.toHaveBeenCalled();
+            expect(readMock.mock.calls.filter((call) => call[0] === 'mesocycle_show')).toEqual([]);
+            expect(wrapper.find('[data-test="retry"]').exists()).toBe(true);
+
+            await click(wrapper, '[data-test="retry"]');
+
+            expect(writeMock).toHaveBeenCalledTimes(2);
+            expect(writeMock.mock.calls[1]![1]).toEqual(writeMock.mock.calls[0]![1]);
+            expect(wrapper.find('h2').text()).toBe('Meso Builder');
+        });
+
+        it('MESO-007 a copy-previous draft opened by its address counts two steps and has no Back', async () => {
+            draft = { ...warning, build: { ...warning.build!, route: 'copy_previous', resume_step: 'slots' } };
+            const wrapper = show({ draft: ID });
+            await flushPromises();
+
+            expect(wrapper.text()).toContain('Step 1 of 2');
+            expect(wrapper.find(back).attributes('disabled')).toBeDefined();
+            await click(wrapper, next);
+            expect(wrapper.text()).toContain('Step 2 of 2');
         });
 
         it('MESO-007 opens the unfinished draft where it was left, with no write', async () => {
