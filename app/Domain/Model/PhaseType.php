@@ -10,6 +10,17 @@ enum PhaseType: string
     case Maintenance = 'maintenance';
     case MuscleGain = 'muscleGain';
 
+    /** The name a user reads (PH-001). */
+    public function title(): string
+    {
+        return match ($this) {
+            self::FatLoss => 'Fat loss',
+            self::MiniCut => 'Mini-cut',
+            self::Maintenance => 'Maintenance',
+            self::MuscleGain => 'Muscle gain',
+        };
+    }
+
     /** PLAN-009: wherever a rule says "Fat loss" it also applies to Mini-cut. */
     public function isFatLoss(): bool
     {
