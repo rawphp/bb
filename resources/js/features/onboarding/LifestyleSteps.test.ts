@@ -185,17 +185,22 @@ describe('lifestyle steps', () => {
             expect(write).not.toHaveBeenCalled();
         });
 
-        it('ONB-014 a label being typed is not wiped by a refresh', async () => {
+        it('ONB-014 a label is saved when it is left, not while it is typed, and a re-read meanwhile does not wipe it', async () => {
+            const refreshed = structuredClone(meals);
+            refreshed.meals.meal_count = { ...refreshed.meals.meal_count, value: 4, text: 'Meals a day: 4' };
             wrapper = view(meals);
             const label = wrapper.get('input[aria-label="Label"]');
 
             await label.trigger('focus');
-            await label.setValue('Scho');
-            const refreshed = structuredClone(meals);
-            refreshed.meals.meal_count = { ...refreshed.meals.meal_count, value: 4, text: 'Meals a day: 4' };
-            await wrapper.setProps({ payload: refreshed });
+            (label.element as HTMLInputElement).value = 'Scho';
+            await label.trigger('input');
+            vi.mocked(read).mockResolvedValue(refreshed);
+            await stepper(wrapper, 'Meals a day', 'Fewer').trigger('click');
+            await flushPromises();
 
+            expect(wrapper.text()).toContain('Meals a day: 4');
             expect((label.element as HTMLInputElement).value).toBe('Scho');
+            expect(answers()).toEqual([{ meal_count: 4 }]);
         });
     });
 
@@ -297,12 +302,13 @@ describe('lifestyle steps', () => {
             expect(wrapper.text()).not.toContain('Your week');
         });
 
-        it('OFF-008 marks the week the server worked out while a change waits to sync', () => {
+        it('OFF-008 marks the daily average and the week the server worked out while a change waits to sync', () => {
             wrapper = view(calories, { pending: true });
 
             expect(wrapper.text()).toContain('Waiting to sync');
             const kcal = wrapper.findAll('span').filter((span) => span.text() === calories.calories.week[0]!.kcal_text);
             expect(kcal[0]!.classes()).toContain('opacity-60');
+            expect(wrapper.get('[role="radiogroup"][aria-label="Calories"]').element.closest('.opacity-60')).not.toBeNull();
         });
     });
 });

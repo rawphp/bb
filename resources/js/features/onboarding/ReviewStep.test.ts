@@ -2,6 +2,7 @@ import { flushPromises, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityError, read, write } from '@/app/call';
 import { offerInstall } from '@/app/install';
+import { toneIcons } from '@/design/toneIcons';
 import { back, fixture, next, sent, testRouter, view, writes } from './onboardingTesting';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
@@ -31,14 +32,14 @@ describe('the review', () => {
         }
     });
 
-    it('ONB-018 shows the calorie target marked Selected next to Recommended, in the server\'s tones', () => {
+    it('ONB-018 UI-004 shows the calorie target marked Selected next to Recommended, as status pills in the server\'s tones', () => {
         wrapper = view(review);
 
-        const badges = wrapper.findAll('span.rounded-full').map((badge) => [badge.text(), badge.classes().includes('text-tone-good') ? 'good' : 'info']);
-        expect(badges).toEqual([
-            ['Recommended', 'good'],
-            ['Selected', 'info'],
-        ]);
+        const calories = wrapper.findAll('[data-test="review-section"]').at(-1)!;
+        const icons = calories.findAll('svg path').map((path) => path.attributes('d'));
+        expect(calories.text()).toContain('Recommended');
+        expect(calories.text()).toContain('Selected');
+        expect(icons).toEqual([toneIcons.good, toneIcons.info]);
     });
 
     it('ONB-019 says exact meal times and amounts can be fine-tuned after starting', () => {
@@ -136,13 +137,44 @@ describe('the review', () => {
             expect(replace).toHaveBeenCalledWith('/');
         });
 
-        it('PWA-003 offers the install on the Start my plan tap', async () => {
+        it('PWA-003 offers the install on the Start my plan tap, before the plan is sent', async () => {
+            vi.mocked(write).mockReturnValueOnce(new Promise(() => {}));
+            wrapper = view(review);
+
+            await next(wrapper).trigger('click');
+
+            expect(offerInstall).toHaveBeenCalledOnce();
+            expect(vi.mocked(offerInstall).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(write).mock.invocationCallOrder[0]!);
+        });
+
+        it('CAP-012 after a refused start the answers open again, and the reason goes once one is saved', async () => {
+            vi.mocked(write).mockRejectedValueOnce(new CapabilityError('onboarding_complete', 422, { ok: false, error: { message: 'Answer every step first.' } }));
+            vi.mocked(read).mockResolvedValue(goal);
             wrapper = view(review);
 
             await next(wrapper).trigger('click');
             await flushPromises();
+            await wrapper.get('button[aria-label="Edit Goal"]').trigger('click');
+            await flushPromises();
 
-            expect(offerInstall).toHaveBeenCalledOnce();
+            expect(wrapper.get('h2').text()).toBe(goal.step.title);
+            expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+        });
+
+        it('CAP-014 after a start that got no answer, Edit and Back stay off, so a retry replays the answers it was sent with', async () => {
+            vi.mocked(write).mockRejectedValueOnce(new CapabilityError('onboarding_complete', 0, { reason: 'timeout' }));
+            wrapper = view(review);
+
+            await next(wrapper).trigger('click');
+            await flushPromises();
+            await wrapper.get('button[aria-label="Edit Phase"]').trigger('click');
+            await back(wrapper).trigger('click');
+            await flushPromises();
+
+            expect(wrapper.get('button[aria-label="Edit Phase"]').attributes('disabled')).toBeDefined();
+            expect(back(wrapper).attributes('disabled')).toBeDefined();
+            expect(next(wrapper).attributes('disabled')).toBeUndefined();
+            expect(writes().map(([name]) => name)).toEqual(['onboarding_complete']);
         });
 
         it('CAP-012 a refused start stays on the review with the server\'s reason', async () => {

@@ -75,6 +75,22 @@ describe('step 6, rate and length', () => {
         vi.mocked(read).mockResolvedValue(custom());
         wrapper = view(custom());
 
+        for (const [label, value] of [
+            ['Custom rate', '0.5'],
+            ['Length in weeks', '10'],
+        ]) {
+            const slider = wrapper.get(`input[aria-label="${label}"]`);
+            (slider.element as HTMLInputElement).value = value!;
+            await slider.trigger('input');
+            await flushPromises();
+            expect(write, `${label} is sent while it is dragged`).not.toHaveBeenCalled();
+            await slider.trigger('change');
+            await flushPromises();
+            vi.mocked(write).mockClear();
+        }
+
+        wrapper.unmount();
+        wrapper = view(custom());
         await commit(wrapper.get('input[aria-label="Custom rate"]'), '0.5');
         await flushPromises();
         await commit(wrapper.get('input[aria-label="Length in weeks"]'), '10');
@@ -123,6 +139,14 @@ describe('step 6, rate and length', () => {
         expect(wrapper.text()).toContain('A steady weight has no target to change.');
     });
 
+    it('SAFE-017 a locked last day cannot be picked', () => {
+        const locked = structuredClone(rateLength);
+        locked.rate_length.last_day.is_locked = true;
+        wrapper = view(locked);
+
+        expect(wrapper.findAll('input[type="date"]')[1]!.attributes('disabled')).toBeDefined();
+    });
+
     it('ONB-009 shows no recommended range when the goal has none', () => {
         const none = structuredClone(rateLength);
         none.rate_length.recommended_text = '';
@@ -131,12 +155,22 @@ describe('step 6, rate and length', () => {
         expect(wrapper.text()).not.toContain('Recommended:');
     });
 
-    it('OFF-008 marks the length and rate the server worked out while a change waits to sync', () => {
+    it('OFF-008 marks every number the server worked out while a change waits to sync: rates, length, dates and target', () => {
         wrapper = view(custom(), { pending: true });
 
         expect(wrapper.text()).toContain('Waiting to sync');
         const dimmed = wrapper.findAll('[data-value]').map((value) => value.text());
         expect(dimmed).toEqual(['Lose 0.75% of body weight per week', '12 weeks']);
+        expect(wrapper.get('[role="radiogroup"][aria-label="Rate"]').element.closest('.opacity-60')).not.toBeNull();
+        for (const date of wrapper.findAll('input[type="date"]')) expect(date.element.closest('.opacity-60')).not.toBeNull();
+        expect(wrapper.get('input[aria-label="Target weight in lb"]').element.closest('.opacity-60')).not.toBeNull();
+    });
+
+    it('OFF-008 dims nothing when nothing waits to sync', () => {
+        wrapper = view(custom());
+
+        expect(wrapper.find('.opacity-60').exists()).toBe(false);
+        expect(wrapper.text()).not.toContain('Waiting to sync');
     });
 
     it('CAP-010 the sliders, dates and target take no input while an answer saves', async () => {
