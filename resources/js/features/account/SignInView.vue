@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { CapabilityError, postHost, warm } from '@/app/call';
+import { postHost, warm } from '@/app/call';
+import { hostFailure } from '@/app/hostFailure';
 import { toneClasses } from '@/design/tones';
 
 // Sign in (ACC-001), ported from rp-clone's SignInView without Sign in with Apple:
 // email and password, an emailed 6-digit code, or a new account. It posts AUTH's host
-// routes (CAP-004), and the server decides every answer; this script holds only what
-// is typed, which form shows, and the server's words.
+// routes (CAP-004), and the server decides who gets in; this script holds what is typed,
+// which form shows, the answer to show, and the 30-second wait before Resend that the
+// issue sets for this screen (the server has its own limit on codes sent).
 type Mode = 'signIn' | 'createAccount' | 'code';
 type Field = 'name' | 'email' | 'password' | 'code';
 
@@ -27,6 +29,8 @@ const busy = ref(false);
 const fieldErrors = ref<Partial<Record<Field, string>>>({});
 // A problem that belongs to no field: offline, throttled, a server failure.
 const generalError = ref<string | null>(null);
+// The device is already signed in, so the screen offers the app instead.
+const signedIn = ref(false);
 // A friendly answer, such as where the reset link went.
 const info = ref<string | null>(null);
 const resendIn = ref(0);
@@ -48,10 +52,11 @@ const subtitle = computed(() => {
 function clearMessages(): void {
     fieldErrors.value = {};
     generalError.value = null;
+    signedIn.value = false;
     info.value = null;
 }
 
-/** Runs one call to the server at a time, and shows its refusal in the server's words. */
+/** Runs one call to the server at a time, and shows its refusal (app/hostFailure.ts). */
 async function run(work: () => Promise<void>): Promise<void> {
     if (busy.value) return;
     clearMessages();
@@ -59,32 +64,13 @@ async function run(work: () => Promise<void>): Promise<void> {
     try {
         await work();
     } catch (failed) {
-        present(failed);
+        const failure = hostFailure(failed, FIELDS);
+        fieldErrors.value = failure.fields;
+        generalError.value = failure.message;
+        signedIn.value = failure.signedIn;
     } finally {
         busy.value = false;
     }
-}
-
-function present(failed: unknown): void {
-    const status = failed instanceof CapabilityError ? failed.status : null;
-    if (status === 0) {
-        generalError.value = "Can't reach the server. Check your connection and try again.";
-        return;
-    }
-    if (status === 429) {
-        generalError.value = 'Too many tries. Wait a few minutes, then try again.';
-        return;
-    }
-    const body = failed instanceof CapabilityError ? (failed.body as { message?: unknown; errors?: Record<string, unknown> } | null) : null;
-    if (status === 422) {
-        for (const field of FIELDS) {
-            const first = (body?.errors?.[field] as unknown[] | undefined)?.[0];
-            if (typeof first === 'string') fieldErrors.value[field] = first;
-        }
-        if (Object.keys(fieldErrors.value).length > 0) return;
-    }
-    // A 422 on a field this form does not show still has the server's words.
-    generalError.value = status === 422 && typeof body?.message === 'string' && body.message !== '' ? body.message : 'Something went wrong. Try again.';
 }
 
 async function submit(): Promise<void> {
@@ -198,8 +184,19 @@ const linkClass = 'min-h-tap px-2 text-accent active:opacity-70 disabled:opacity
                     <template v-else>
                         <div v-if="mode === 'createAccount'">
                             <label for="sign-in-name" class="sr-only">Name</label>
-                            <input id="sign-in-name" v-model="name" name="name" type="text" autocomplete="name" autocapitalize="words" placeholder="Name" :class="fieldClass" />
-                            <p v-if="fieldErrors.name" class="mt-1.5 text-[13px] text-tone-warning" data-test="error-name">{{ fieldErrors.name }}</p>
+                            <input
+                                id="sign-in-name"
+                                v-model="name"
+                                name="name"
+                                type="text"
+                                autocomplete="name"
+                                autocapitalize="words"
+                                placeholder="Name"
+                                :class="fieldClass"
+                                :aria-invalid="fieldErrors.name !== undefined"
+                                :aria-describedby="fieldErrors.name ? 'error-name' : undefined"
+                            />
+                            <p v-if="fieldErrors.name" id="error-name" class="mt-1.5 text-[13px] text-tone-warning" data-test="error-name">{{ fieldErrors.name }}</p>
                         </div>
                         <div>
                             <label for="sign-in-email" class="sr-only">Email</label>
@@ -251,7 +248,10 @@ const linkClass = 'min-h-tap px-2 text-accent active:opacity-70 disabled:opacity
                     </template>
                 </fieldset>
 
-                <p v-if="generalError" class="flex gap-2 rounded-xl p-3 text-[13px]" :class="toneClasses.warning" role="alert">{{ generalError }}</p>
+                <div v-if="generalError" class="flex flex-col gap-2 rounded-xl p-3 text-[13px]" :class="toneClasses.warning" role="alert">
+                    <p>{{ generalError }}</p>
+                    <RouterLink v-if="signedIn" to="/" replace class="font-semibold underline" data-test="open-app">Open the app</RouterLink>
+                </div>
                 <p v-if="info" class="rounded-xl bg-surface p-3 text-[13px] text-secondary-text" role="status">{{ info }}</p>
 
                 <button

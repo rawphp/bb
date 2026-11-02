@@ -13,7 +13,8 @@ defineEmits<{ retry: [] }>();
     <OfflineNotice v-if="failure?.offline" :needs="`${what} will load when you're back online.`" />
     <div v-else-if="failure" class="space-y-3 rounded-2xl p-4" :class="toneClasses.warning" role="alert">
         <p>{{ failure.error }}</p>
-        <!-- A gone session needs a sign-in, not another read. -->
+        <!-- A gone session needs a sign-in, not another read. A plain link: the page loads
+             again, so nothing of the session that ended stays in memory. -->
         <a
             v-if="failure.signedOut"
             href="/sign-in"

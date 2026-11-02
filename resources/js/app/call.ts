@@ -199,28 +199,12 @@ async function forget(error: unknown): Promise<void> {
 }
 
 async function send<T>(name: string, input: CapabilityInput, signal: AbortSignal, idempotencyKey?: string): Promise<T> {
-    let response: Response;
-
-    try {
-        response = await fetch(`/capabilities/${encodeURIComponent(name)}`, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-XSRF-TOKEN': await csrfToken(signal),
-                ...(isWalked() ? { 'X-BB-Now': now().toISOString() } : {}),
-                ...(idempotencyKey === undefined ? {} : { 'Idempotency-Key': idempotencyKey }),
-            },
-            body: JSON.stringify(input),
-            signal,
-        });
-    } catch {
-        // Status 0: no response arrived, because the deadline passed or the network failed.
-        throw new CapabilityError(name, 0, { reason: signal.aborted ? 'timeout' : 'network' });
-    }
-
+    const response = await post(name, `/capabilities/${encodeURIComponent(name)}`, input, signal, {
+        headers: {
+            ...(isWalked() ? { 'X-BB-Now': now().toISOString() } : {}),
+            ...(idempotencyKey === undefined ? {} : { 'Idempotency-Key': idempotencyKey }),
+        },
+    });
     const body: unknown = await response.json().catch(() => null);
 
     if (!response.ok || !isSuccess(body)) {
@@ -230,12 +214,40 @@ async function send<T>(name: string, input: CapabilityInput, signal: AbortSignal
     return body.data as T;
 }
 
+type PostOptions = { headers?: Record<string, string>; freshCsrf?: boolean; redirect?: RequestRedirect };
+
+/**
+ * One JSON POST with Sanctum's CSRF header, shared by capabilities and host routes.
+ * No answer is status 0: the deadline passed or the network failed.
+ */
+async function post(label: string, url: string, input: CapabilityInput, signal: AbortSignal, options: PostOptions = {}): Promise<Response> {
+    try {
+        return await fetch(url, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': await csrfToken(signal, options.freshCsrf),
+                ...options.headers,
+            },
+            body: JSON.stringify(input),
+            signal,
+            ...(options.redirect === undefined ? {} : { redirect: options.redirect }),
+        });
+    } catch {
+        throw new CapabilityError(label, 0, { reason: signal.aborted ? 'timeout' : 'network' });
+    }
+}
+
 function isSuccess(body: unknown): body is { ok: true; data: unknown } {
     return typeof body === 'object' && body !== null && (body as { ok?: unknown }).ok === true;
 }
 
-async function csrfToken(signal: AbortSignal): Promise<string> {
-    let token = cookie('XSRF-TOKEN');
+/** The XSRF-TOKEN cookie, fetched first when missing, or always when `fresh`. */
+async function csrfToken(signal: AbortSignal, fresh = false): Promise<string> {
+    let token = fresh ? null : cookie('XSRF-TOKEN');
 
     if (token === null) {
         await fetch('/sanctum/csrf-cookie', { credentials: 'same-origin', signal });
@@ -254,34 +266,24 @@ function cookie(name: string): string | null {
 /**
  * POST to one of AUTH's host routes (CAP-004): /sign-in, /register, the code routes and
  * /forgot-password. They sit outside the capability rail, so they answer Laravel's own
- * shape: 204, or 422 with `errors` per field, or 429 from the throttle. A sign-in screen
- * left open outlives its session, so the CSRF cookie is fetched fresh first.
- * A refusal throws a CapabilityError named after the path; no answer is status 0.
+ * shape: 204, or 422 with `errors` per field, or 429 from the throttle (app/hostFailure.ts
+ * reads those). A sign-in screen left open outlives its session, so the CSRF cookie is
+ * fetched fresh. No X-BB-Now: the walked clock applies to capabilities only.
+ *
+ * The routes sit behind `guest`, which redirects a session that is already signed in.
+ * That redirect is not followed: it is a refusal (status 302, reason signed_in), never a
+ * sign-in, so nobody lands in an account that is not theirs.
  */
 export async function postHost(path: string, input: CapabilityInput): Promise<void> {
     const deadline = new AbortController();
     const timer = setTimeout(() => deadline.abort(), TIMEOUT_MS);
-    let response: Response;
 
     try {
-        await fetch('/sanctum/csrf-cookie', { credentials: 'same-origin', signal: deadline.signal });
-        response = await fetch(path, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-XSRF-TOKEN': cookie('XSRF-TOKEN') ?? '',
-            },
-            body: JSON.stringify(input),
-            signal: deadline.signal,
-        });
-    } catch {
-        throw new CapabilityError(path, 0, { reason: deadline.signal.aborted ? 'timeout' : 'network' });
+        const response = await post(path, path, input, deadline.signal, { freshCsrf: true, redirect: 'manual' });
+        if (response.type === 'opaqueredirect') throw new CapabilityError(path, 302, { reason: 'signed_in' });
+        // The body is read before the deadline is cleared, so a stalled body can't hang the form.
+        if (!response.ok) throw new CapabilityError(path, response.status, await response.json().catch(() => null));
     } finally {
         clearTimeout(timer);
     }
-
-    if (!response.ok) throw new CapabilityError(path, response.status, await response.json().catch(() => null));
 }
