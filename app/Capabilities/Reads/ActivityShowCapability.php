@@ -14,6 +14,8 @@ use Rawphp\Capabilities\Support\CapabilityContext;
 
 final class ActivityShowCapability implements HostCapability
 {
+    public function __construct(private readonly ListActivity $listActivity) {}
+
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::read('activity_show')
@@ -29,6 +31,6 @@ final class ActivityShowCapability implements HostCapability
         /** @var User $user */
         $user = $context->user();
 
-        return new ActivityShowOutput(entries: (new ListActivity)($user, CarbonImmutable::now()));
+        return new ActivityShowOutput(entries: ($this->listActivity)($user, CarbonImmutable::now()));
     }
 }

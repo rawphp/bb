@@ -21,19 +21,23 @@ enum Channel: string
     public const BRIDGE_ABILITIES = ['weigh_in_log', 'steps_log'];
 
     /**
+     * Null for the server itself: CAP-022's five channels are ways a person reaches the
+     * app, and a queued job or an artisan command is neither the user nor the Coach. Its
+     * row is still audited, with the user, but Activity does not list it under a channel
+     * the user never used.
+     *
      * @param  string  $caller  the invoke's caller: http, agent, mcp, cli, artisan or job
      * @param  object|null  $token  over http, the signed-in user's current access token
      */
-    public static function derive(string $caller, ?object $token): self
+    public static function derive(string $caller, ?object $token): ?self
     {
         return match ($caller) {
-            // The in-app agent's tool calls invoke as caller=agent (AGT-004). CAP-022 has
-            // five channels and no server one, so a queued job acting for the user counts
-            // as the agent: it is not the user at the app, a script or the bridge.
-            'agent', 'job' => self::Agent,
+            // The in-app agent's tool calls invoke as caller=agent (AGT-004).
+            'agent' => self::Agent,
             'mcp' => self::Mcp,
-            'cli', 'artisan' => self::Cli,
+            'cli' => self::Cli,
             'http' => self::overHttp($token),
+            'job', 'artisan' => null,
             // A new caller needs a decision here, not a guess that would show it as the app.
             default => throw new UnexpectedValueException("No audit channel for caller \"{$caller}\"."),
         };

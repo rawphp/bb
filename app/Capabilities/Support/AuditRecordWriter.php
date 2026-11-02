@@ -63,8 +63,9 @@ final class AuditRecordWriter implements AuditWriter
     }
 
     /**
-     * Null for an event with no caller. A caller with no channel yet keeps its row with
-     * a null channel, so the write is still audited, and the missing mapping is reported.
+     * Null for an event with no caller and for the server itself (a job or artisan). A
+     * caller with no channel yet keeps its row with a null channel, so the write is still
+     * audited, and the missing mapping is reported.
      */
     private function channel(?string $caller): ?string
     {
@@ -73,7 +74,7 @@ final class AuditRecordWriter implements AuditWriter
         }
 
         try {
-            return Channel::derive($caller, $caller === 'http' ? $this->currentToken() : null)->value;
+            return Channel::derive($caller, $caller === 'http' ? $this->currentToken() : null)?->value;
         } catch (UnexpectedValueException $e) {
             report($e);
 

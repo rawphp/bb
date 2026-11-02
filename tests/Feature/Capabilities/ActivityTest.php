@@ -100,7 +100,8 @@ it('CAP-022 derives the channel on the server, ignoring a caller the client clai
     expect(AuditRecord::sole()->channel)->toBe('ui');
 });
 
-it('CAP-022 records the agent, MCP and CLI channels from the caller their adapters set', function () {
+it('CAP-022 records the agent, MCP and CLI channels from the caller their adapters set, and none for a server job', function () {
+    Exceptions::fake();
     $user = User::factory()->create();
     $registry = app(CapabilityRegistry::class);
 
@@ -108,8 +109,10 @@ it('CAP-022 records the agent, MCP and CLI channels from the caller their adapte
         expect($registry->invoke('tally_add', ['amount' => 1], ['caller' => $caller, 'actor' => $user])->isOk())->toBeTrue();
     }
 
-    expect(AuditRecord::query()->orderBy('id')->pluck('channel')->all())->toBe(['agent', 'mcp', 'cli', 'agent'])
+    expect(AuditRecord::query()->orderBy('id')->pluck('channel')->all())->toBe(['agent', 'mcp', 'cli', null])
         ->and(AuditRecord::query()->distinct()->pluck('user_id')->all())->toBe([$user->id]);
+    // A server job is a known caller with no channel, not a missing mapping.
+    Exceptions::assertNothingReported();
 });
 
 it('CAP-022 records a Health bridge token\'s write as the bridge and a full token\'s as the CLI', function (array $abilities, string $capability, string $channel) {

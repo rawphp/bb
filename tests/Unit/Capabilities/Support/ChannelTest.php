@@ -14,11 +14,13 @@ it('CAP-022 names the channel from the server-set caller', function (string $cal
 })->with([
     'the PWA' => ['http', Channel::Ui],
     'the in-app agent (AGT-004)' => ['agent', Channel::Agent],
-    'a queued job acting for the user (CAP-022 has no server channel)' => ['job', Channel::Agent],
     'product MCP' => ['mcp', Channel::Mcp],
     'the product CLI' => ['cli', Channel::Cli],
-    'an artisan command' => ['artisan', Channel::Cli],
 ]);
+
+it('CAP-022 names no channel for the server itself, a queued job or an artisan command', function (string $caller) {
+    expect(Channel::derive($caller, null))->toBeNull();
+})->with(['job', 'artisan']);
 
 it('CAP-022 refuses to guess the channel of a caller it does not know', function () {
     Channel::derive('webhook', null);
