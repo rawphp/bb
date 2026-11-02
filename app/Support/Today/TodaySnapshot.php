@@ -212,29 +212,23 @@ final class TodaySnapshot
     }
 
     /**
-     * SCH-020, SCH-023: the last day to browse to: the last day with a target, or today after it, so today's week can
-     * always be opened.
-     */
-    public function browseEnd(): ?DateTimeImmutable
-    {
-        $last = $this->lastDay();
-
-        return $last === null ? null : max($last, $this->today());
-    }
-
-    /**
-     * SCH-023: a date in a week outside the weeks the plan can show goes to its nearest edge; a date in one of those
-     * weeks is shown as it is. Without a plan, any day.
+     * SCH-020, SCH-023: a date opens as given in a week of the plan (from the first day's week to the last target's)
+     * or in today's week, which is always shown. Any other date goes to the nearest edge of the plan (rp-clone jump).
+     * Without a plan, any day.
      */
     public function insidePlan(DateTimeImmutable $day): DateTimeImmutable
     {
         $lower = $this->firstDay();
-        $upper = $this->browseEnd();
-        if ($lower !== null && $this->weekStart($day) < $this->weekStart($lower)) {
+        $upper = $this->lastDay();
+        $week = $this->weekStart($day);
+        if ($lower === null || $upper === null || $week == $this->weekStart($this->today())) {
+            return $day;
+        }
+        if ($week < $this->weekStart($lower)) {
             return $lower;
         }
 
-        return $upper !== null && $this->weekStart($day) > $this->weekStart($upper) ? $upper : $day;
+        return $week > $this->weekStart($upper) ? $upper : $day;
     }
 
     /**
