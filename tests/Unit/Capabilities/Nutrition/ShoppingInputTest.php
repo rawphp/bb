@@ -3,6 +3,7 @@
 use App\Capabilities\Nutrition\Data\ShoppingItemAddInput;
 use App\Capabilities\Nutrition\Data\ShoppingItemCheckInput;
 use App\Capabilities\Nutrition\Data\ShoppingItemDeleteInput;
+use App\Capabilities\Nutrition\Data\ShoppingRange;
 use App\Capabilities\Nutrition\Data\ShoppingShowInput;
 use Rawphp\Capabilities\Registry\CapabilityDefinition;
 use Rawphp\Capabilities\Schema\IlluminateServerRuleChecker;
@@ -81,3 +82,7 @@ it('SHOP-005 adds or deletes a manual item with the range of the list shown, or 
     'shopping_item_add' => ['shopping_item_add', ShoppingItemAddInput::class, ['id' => '01JBX5H0000000000000000001', 'text' => 'Soap']],
     'shopping_item_delete' => ['shopping_item_delete', ShoppingItemDeleteInput::class, ['id' => '01JBX5H0000000000000000001']],
 ]);
+
+it('SHOP-001 every shopping input checks its date range by the one rule set', function (string $input) {
+    expect($input::rules())->toMatchArray(ShoppingRange::rules());
+})->with([ShoppingShowInput::class, ShoppingItemCheckInput::class, ShoppingItemAddInput::class, ShoppingItemDeleteInput::class]);
