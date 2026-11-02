@@ -1,0 +1,77 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "entries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "for example \"Logged set 3 of Bench Press, 100 kg x 8\""
+                    },
+                    "channel": {
+                        "type": "string",
+                        "enum": [
+                            "ui",
+                            "agent",
+                            "mcp",
+                            "cli",
+                            "bridge"
+                        ]
+                    },
+                    "channel_label": {
+                        "type": "string"
+                    },
+                    "occurred_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "when_text": {
+                        "type": "string"
+                    },
+                    "result": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "channel",
+                    "channel_label",
+                    "occurred_at",
+                    "when_text",
+                    "result"
+                ]
+            }
+        }
+    },
+    "required": [
+        "entries"
+    ]
+}
