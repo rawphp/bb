@@ -80,7 +80,8 @@ final class WeighInSchedule
     /**
      * WT-004: the scheduled days with no weigh-in, newest first, each at the start of its day. They run from the
      * first weigh-in's day up to yesterday: nothing before the first weigh-in counts, and today is not over yet.
-     * A weigh-in counts for the calendar day of its own wall-clock time.
+     * A weigh-in counts for the calendar day of the time it is given in. The caller passes times and today in the app's
+     * time zone (UTC), the day today_show and every other read count by: the app has no per-user time zone.
      *
      * @param  list<int>  $weekdays  the scheduled ISO weekdays
      * @param  list<DateTimeImmutable>  $weighedAt  every weigh-in's time

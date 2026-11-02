@@ -19,7 +19,7 @@ final class WeighInReads
     public const WEIGH_IN_AFFECTS = [...self::AFFECTS, 'phase_show'];
 
     /**
-     * @param  list<string>  $dates  Y-m-d
+     * @param  list<string>  $dates  Y-m-d, in the app's time zone (UTC), as today_show's dates are
      * @return list<string>
      */
     public static function keys(array $dates): array
@@ -28,7 +28,7 @@ final class WeighInReads
     }
 
     /**
-     * @param  list<string>  $dates  Y-m-d
+     * @param  list<string>  $dates  Y-m-d, in the app's time zone (UTC), as today_show's dates are
      * @return list<string>
      */
     public static function weighInKeys(User $user, array $dates): array
