@@ -55,7 +55,7 @@ it('SCH-058 restart moves the start by whole plan weeks so the stopped week is t
     expect($mesocycle->fresh()->start_date->format('Y-m-d'))->toBe('2026-09-28')
         ->and($mesocycle->fresh()->ended_on)->toBeNull()
         ->and($resolved['toast'])->toBe('Week restarted')
-        ->and($resolved['week'])->toBe(['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04']);
+        ->and($resolved['dates'])->toBe(['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04']);
 });
 
 it('SCH-058 restart refuses when nothing is due', function () {
