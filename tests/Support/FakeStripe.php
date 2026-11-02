@@ -2,7 +2,9 @@
 
 namespace Tests\Support;
 
+use App\Billing\StripeClientGateway;
 use App\Billing\StripeGateway;
+use RuntimeException;
 
 /** Stripe without the network: it records each call and answers with the prices a hosted instance sells (SUB-002). */
 final class FakeStripe implements StripeGateway
@@ -18,6 +20,9 @@ final class FakeStripe implements StripeGateway
 
     /** @var array<string, list<array<string, mixed>>> each customer's subscriptions, as Stripe would list them now */
     public array $subscriptions = [];
+
+    /** Stripe cannot be reached: reading subscriptions fails as the real gateway does. */
+    public bool $down = false;
 
     /** @var array<string, array{amount: int, currency: string, interval: string, interval_count: int}> */
     public array $prices = [
@@ -49,6 +54,10 @@ final class FakeStripe implements StripeGateway
 
     public function subscriptions(string $customer): array
     {
+        if ($this->down) {
+            throw new RuntimeException(StripeClientGateway::UNAVAILABLE);
+        }
+
         return $this->subscriptions[$customer] ?? [];
     }
 

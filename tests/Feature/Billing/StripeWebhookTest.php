@@ -64,6 +64,15 @@ it('SUB-021 an event that arrives late cannot undo a newer state: the state come
     expect($this->row->refresh()->status)->toBe('canceled');
 });
 
+it('SUB-021 fails a verified event it cannot read back from Stripe, so Stripe sends it again', function () {
+    $this->row->update(['status' => 'active']);
+    $this->stripe->down = true;
+
+    postStripeEvent('customer.subscription.deleted', stripeSubscription(['status' => 'canceled']))->assertServerError();
+
+    expect($this->row->refresh()->status)->toBe('active');
+});
+
 it('SUB-021 refuses a webhook it cannot verify, and changes nothing', function (string $signature) {
     $this->stripe->subscriptions['cus_1'] = [stripeSubscription(['status' => 'canceled'])];
     $payload = json_encode(['type' => 'customer.subscription.deleted', 'created' => time(), 'data' => ['object' => stripeSubscription(['status' => 'canceled'])]]);

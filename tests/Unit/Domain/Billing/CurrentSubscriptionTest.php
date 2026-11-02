@@ -35,3 +35,9 @@ it('SUB-010 among subscriptions alike, the newest decides', function () {
 
     expect(CurrentSubscription::pick([sub('sub_1', 'canceled', 100), $newer]))->toBe($newer);
 });
+
+it('SUB-010 an ended subscription decides over a new one whose first payment has not gone through', function () {
+    $ended = sub('sub_old', 'canceled', 100);
+
+    expect(CurrentSubscription::pick([sub('sub_new', 'incomplete', 200), $ended]))->toBe($ended);
+});

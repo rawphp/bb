@@ -47,3 +47,24 @@ it('SUB-002 refuses a plan the instance does not sell, before calling Stripe', f
     expect($this->stripe->customers)->toBe([])
         ->and($this->stripe->checkouts)->toBe([]);
 });
+
+it('SUB-007 asks Stripe before selling a second subscription: one Stripe holds counts before its webhook arrives', function () {
+    $user = User::factory()->create();
+    $row = Subscription::factory()->for($user)->create(['stripe_customer_id' => 'cus_paid']);
+    $this->stripe->subscriptions['cus_paid'] = [['id' => 'sub_1', 'customer' => 'cus_paid', 'status' => 'trialing', 'created' => 1_793_000_000]];
+
+    expect(fn () => (new StartCheckout($this->stripe))($user, 'yearly'))
+        ->toThrow(CapabilityFailure::class, 'You already have a subscription. Switch plans in Manage subscription.');
+    expect($this->stripe->checkouts)->toBe([])
+        ->and($row->refresh()->status)->toBe('trialing');
+});
+
+it('SUB-003 gives no second trial to a customer Stripe has billed, even when its webhook never arrived', function () {
+    $user = User::factory()->create();
+    Subscription::factory()->for($user)->create(['stripe_customer_id' => 'cus_before']);
+    $this->stripe->subscriptions['cus_before'] = [['id' => 'sub_1', 'customer' => 'cus_before', 'status' => 'canceled', 'created' => 1_700_000_000]];
+
+    (new StartCheckout($this->stripe))($user, 'monthly');
+
+    expect($this->stripe->checkouts[0])->toMatchArray(['customer' => 'cus_before', 'trial_days' => null]);
+});

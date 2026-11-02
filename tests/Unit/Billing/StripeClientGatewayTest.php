@@ -37,6 +37,7 @@ function stripeApi(array $bodies): object
 beforeEach(function () {
     Cache::forget('billing:price:price_yearly');
     Cache::forget('billing:price:price_yearly:last');
+    Cache::forget(StripeClientGateway::DOWN);
 });
 
 afterEach(fn () => ApiRequestor::setHttpClient(null));
@@ -67,8 +68,11 @@ it('SUB-003 opens a subscription Checkout with the trial, promotion codes and th
             'allow_promotion_codes' => 'true',
             'success_url' => 'https://bb.test',
             'cancel_url' => 'https://bb.test',
+            'expires_at' => $api->requests[0]['params']['expires_at'],
             'subscription_data' => ['trial_period_days' => 7],
-        ]);
+        ])
+        // A page left open closes within the hour, rather than Stripe's 24, so an old tab cannot sell a second subscription.
+        ->and($api->requests[0]['params']['expires_at'])->toBeGreaterThanOrEqual(time() + 3500)->toBeLessThanOrEqual(time() + 3600);
 });
 
 it('SUB-009 sends no trial when the user has had one, and still takes promotion codes', function () {
