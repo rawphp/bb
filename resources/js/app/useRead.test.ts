@@ -340,4 +340,25 @@ describe('useRead', () => {
         await flushPromises();
         expect(wrapper.text()).toBe('loading');
     });
+
+    it('CAP-010 reads again on coming back on top when a pushed screen cached a newer copy than the one shown', async () => {
+        readMock.mockResolvedValueOnce({ n: 1 }).mockResolvedValueOnce({ n: 2 });
+        const top = ref(true);
+        const Probe = defineComponent(() => {
+            const api = useRead<{ n: number }>('probe_show', {}, 'No.');
+            return () => h('p', String(api.data.value?.n ?? 'loading'));
+        });
+        const wrapper = mount(defineComponent(() => () => h(ScreenFrame, { top: top.value }, () => h(Probe))));
+        await flushPromises();
+        // The pushed screen's read after its write stored this copy after ours was shown.
+        cachedMock.mockResolvedValue({ key: 'probe_show', data: { n: 2 }, fetchedAt: Date.now() + 1_000 });
+
+        top.value = false;
+        await flushPromises();
+        top.value = true;
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledTimes(2);
+        expect(wrapper.text()).toBe('2');
+    });
 });

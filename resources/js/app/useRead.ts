@@ -8,9 +8,10 @@ import { onScreenReturn } from './screenTop';
  * A screen's one read (CAP-002, CAP-004), as refs over screenRead(), which owns the
  * cached-copy, refresh and stale-load rules (OFF-003) and what a failure means. Given a
  * payload (a /dev/screens fixture) it shows that and calls nothing; otherwise it reads
- * on mount, and again when the screen comes back on top of its stack, if a write dropped
- * its cached copy (CAP-010) or the copy is older than a warm keeps (OFF-004), so a screen
- * under a pushed one never acts on what it read before. load() reads again, for
+ * on mount, and again when the screen comes back on top of its stack, unless the cached
+ * copy is no newer than what it shows and younger than a warm keeps (OFF-004). So a
+ * screen under a pushed one never acts on what it read before: a write there drops the
+ * copy (CAP-010) or that screen's re-read stores a newer one. load() reads again, for
  * Try again and after a write. load({ fresh: true }) reads the server's copy (see
  * screenRead) and rejects when it did not get it. Offline with nothing cached it reads
  * again when the device reconnects (OFF-004).
@@ -23,12 +24,16 @@ export function useRead<T>(
 ): { data: Ref<T | undefined>; failure: Ref<ReadFailure | null>; load: (options?: { fresh?: boolean }) => Promise<void> } {
     const data = ref(payload) as Ref<T | undefined>;
     const failure = ref<ReadFailure | null>(null);
+    // When this screen last showed an answer. A read stores its answer before it is shown,
+    // so a cached copy fetched after this came from another screen's read.
+    let shownAt = 0;
     const read = screenRead<T>(
         name,
         message,
         (fresh) => {
             failure.value = null;
             data.value = fresh;
+            shownAt = Date.now();
         },
         (why) => {
             data.value = undefined;
@@ -57,7 +62,7 @@ export function useRead<T>(
     onScreenReturn(async () => {
         if (fixture) return;
         const hit = await cached(readKey(name, input)).catch(() => undefined);
-        if (hit !== undefined && Date.now() - hit.fetchedAt < WARM_FRESH_MS) return;
+        if (hit !== undefined && hit.fetchedAt <= shownAt && Date.now() - hit.fetchedAt < WARM_FRESH_MS) return;
         void load();
     });
     onUnmounted(() => window.removeEventListener('online', reconnected));
