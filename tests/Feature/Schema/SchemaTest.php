@@ -12,6 +12,7 @@ use App\Models\Food;
 use App\Models\FoodFavorite;
 use App\Models\FoodRecent;
 use App\Models\FoodServing;
+use App\Models\ManualShoppingItem;
 use App\Models\MealCheckIn;
 use App\Models\MealPlanningState;
 use App\Models\Mesocycle;
@@ -33,6 +34,7 @@ use App\Models\ReminderMorning;
 use App\Models\SavedMeal;
 use App\Models\SavedMealFood;
 use App\Models\SentReminder;
+use App\Models\ShoppingTicks;
 use App\Models\Step;
 use App\Models\Subscription;
 use App\Models\Template;
@@ -90,6 +92,8 @@ function fillAccount(User $user): void
     SavedMealFood::factory()->for($saved)->create(['food_id' => $food->id]);
     FoodFavorite::factory()->for($user)->create(['food_id' => $food->id]);
     FoodRecent::factory()->for($user)->create(['food_id' => $food->id]);
+    ManualShoppingItem::factory()->for($user)->create();
+    ShoppingTicks::factory()->for($user)->create();
 
     $session = WorkoutSession::factory()->for($user)->create();
     $block = WorkoutExercise::factory()->for($session, 'session')->create(['exercise_id' => $exercise->id]);
@@ -193,6 +197,7 @@ it('CAP-019 keys every row the outbox creates by a ULID and keeps a client-made 
     'custom foods' => Food::class,
     'saved meals' => SavedMeal::class,
     'recipes' => Recipe::class,
+    'manual shopping items' => ManualShoppingItem::class,
 ]);
 
 it('WT-020 keeps one step count per user per day, typed or from the bridge', function () {
