@@ -138,6 +138,15 @@ it('MESO-007 a new copy replaces the user\'s other draft, and the same id update
         ->and(Mesocycle::query()->find(COPY)->start_date->format('Y-m-d'))->toBe('2026-10-19');
 });
 
+it('MESO-007 a copy replaces a row saved without dates too, as it is unfinished', function () {
+    [$user, $source] = copyWorld();
+    $undated = TrainSeed::mesocycle($user, ['start_date' => null, 'weeks' => null]);
+
+    expect(app(CopyMesocycle::class)($user, null, COPY, $source->id, null, false))->toBe([$undated->id])
+        ->and(Mesocycle::withTrashed()->find($undated->id)->trashed())->toBeTrue()
+        ->and($source->fresh()->trashed())->toBeFalse();
+});
+
 it('MESO-007 refuses to copy over a saved mesocycle', function () {
     [$user, $source] = copyWorld();
 

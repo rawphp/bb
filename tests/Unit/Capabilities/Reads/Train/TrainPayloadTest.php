@@ -71,6 +71,16 @@ it('MESO-001 MESO-007 keeps the draft out of the list and offers to resume it, w
         ->and(train(listWorld([]))['sections'])->toBe([]);
 });
 
+it('MESO-007 a row saved without dates is unfinished: it is the draft to resume, not a listed mesocycle', function () {
+    $payload = train(listWorld([
+        W::mesocycle(['id' => 'a', 'name' => 'Block A', 'start_date' => '2026-10-05']),
+        W::mesocycle(['id' => 'undated', 'name' => 'Half built', 'start_date' => null, 'weeks' => null]),
+    ]));
+
+    expect(array_column($payload['sections'][0]['rows'], 'id'))->toBe(['a'])
+        ->and($payload['draft']['id'])->toBe('undated');
+});
+
 it('MESO-043 an ended mesocycle is past and ends the day before it was ended', function () {
     $ended = train(listWorld([W::mesocycle(['id' => 'a', 'start_date' => '2026-10-05', 'ended_on' => '2026-10-10'])]));
     $endsLater = train(listWorld([W::mesocycle(['id' => 'a', 'start_date' => '2026-10-05', 'ended_on' => '2026-10-15'])]));
