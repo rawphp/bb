@@ -7,7 +7,10 @@ type Listener = (event: { isExternal?: boolean }) => void;
 class FakeWorker extends EventTarget {
     state = 'installed';
     activate() {
-        this.state = 'activated';
+        this.become('activated');
+    }
+    become(state: string) {
+        this.state = state;
         this.dispatchEvent(new Event('statechange'));
     }
 }
@@ -32,6 +35,8 @@ const workbox = vi.hoisted(() => {
         state.listeners = {};
         Object.assign(this, {
             addEventListener: (type: string, listener: Listener) => (state.listeners[type] ??= []).push(listener),
+            removeEventListener: (type: string, listener: Listener) =>
+                (state.listeners[type] = (state.listeners[type] ?? []).filter((each) => each !== listener)),
             register: state.register,
             update: state.update,
             messageSkipWaiting: state.messageSkipWaiting,
@@ -232,6 +237,23 @@ describe('updates', () => {
         // The screen goes away by any path, still active: the hold goes with it.
         scope.stop();
         expect(updateBanner.value).toBe(true);
+    });
+
+    it('PWA-035 a tapped version replaced before it takes over leaves no stuck tap, and the next version brings the banner back', async () => {
+        const { applyUpdate, updateBanner } = await load();
+        const replaced = newVersionWaits();
+
+        applyUpdate();
+        replaced.become('redundant');
+        workbox.state.emit('controlling');
+        expect(reload).not.toHaveBeenCalled();
+        expect(updateBanner.value).toBe(false);
+
+        newVersionWaits();
+        expect(updateBanner.value).toBe(true);
+        applyUpdate();
+        workbox.state.emit('controlling');
+        expect(reload).toHaveBeenCalledTimes(1);
     });
 
     it('PWA-035 a tap reloads at once when another tab already activated the new version', async () => {

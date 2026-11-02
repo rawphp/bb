@@ -86,14 +86,19 @@ export function applyUpdate(): void {
     // A tab the old worker controls reloads when the new one takes control of it. A tab no
     // worker controls yet (opened before the first worker activated, since sw.ts never claims
     // tabs) never sees that, so it reloads once the new version has activated.
-    if (navigator.serviceWorker.controller) {
-        workbox.addEventListener('controlling', reloadWhenFree);
-    } else {
-        const next = registration.waiting;
-        next.addEventListener('statechange', () => {
-            if (next.state === 'activated') reloadWhenFree();
-        });
-    }
+    const controlled = navigator.serviceWorker.controller !== null;
+    if (controlled) workbox.addEventListener('controlling', reloadWhenFree);
+    const next = registration.waiting;
+    next.addEventListener('statechange', () => {
+        if (next.state === 'activated' && !controlled) reloadWhenFree();
+        // Replaced by a newer version before it took over (or it failed): this tap is spent.
+        // The banner goes; a newer version's 'waiting' brings it back.
+        if (next.state === 'redundant' && !reloading) {
+            workbox?.removeEventListener('controlling', reloadWhenFree);
+            applying.value = false;
+            waiting.value = false;
+        }
+    });
     workbox.messageSkipWaiting();
 }
 
