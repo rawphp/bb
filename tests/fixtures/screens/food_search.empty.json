@@ -1,0 +1,46 @@
+{
+    "already_in_meal": [],
+    "sections": [],
+    "recipes": [],
+    "saved_meals": [],
+    "suggestion": null,
+    "create_custom_food": null,
+    "diets": [
+        {
+            "key": "dairy_free",
+            "title": "Dairy free",
+            "is_on": false
+        },
+        {
+            "key": "gluten_free",
+            "title": "Gluten free",
+            "is_on": false
+        },
+        {
+            "key": "grain_free",
+            "title": "Grain free",
+            "is_on": false
+        },
+        {
+            "key": "low_fodmap",
+            "title": "Low FODMAP",
+            "is_on": false
+        },
+        {
+            "key": "vegetarian",
+            "title": "Ovo-lacto vegetarian",
+            "is_on": false
+        },
+        {
+            "key": "paleo",
+            "title": "Paleo",
+            "is_on": false
+        },
+        {
+            "key": "vegan",
+            "title": "Vegan",
+            "is_on": false
+        }
+    ],
+    "empty_text": "No custom foods yet."
+}

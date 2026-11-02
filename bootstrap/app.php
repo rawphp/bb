@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Middleware\EncryptCookies;
+use App\Http\Middleware\NameCacheOwner;
 use App\Http\Middleware\UseRequestClock;
+use Illuminate\Cookie\Middleware\EncryptCookies as BaseEncryptCookies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,8 +18,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Sanctum SPA cookie auth for the PWA on the same domain.
         $middleware->statefulApi();
+        // Whose read cache the PWA opens (OFF-003): set on sign-in, cleared on sign-out.
+        // Outside cookie encryption (Sanctum's, in api), so its cookie stays readable.
+        $middleware->prependToGroup('web', NameCacheOwner::class);
+        $middleware->prependToGroup('api', NameCacheOwner::class);
         // First, so everything after it runs at X-BB-Now in local and testing (SET-011).
         $middleware->prependToGroup('api', UseRequestClock::class);
+        // Sign-in and sign-out read the push endpoint cookie the app writes (NOTIF-010).
+        $middleware->web(replace: [BaseEncryptCookies::class => EncryptCookies::class]);
         // There is no login page: the PWA shows sign-in itself, so a signed-out
         // request gets a 401, never a redirect.
         $middleware->redirectGuestsTo(null);

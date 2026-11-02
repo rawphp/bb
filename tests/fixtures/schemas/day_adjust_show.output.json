@@ -1,0 +1,188 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "date": {
+            "type": "string",
+            "format": "date"
+        },
+        "mode": {
+            "type": "string",
+            "enum": [
+                "meals",
+                "days"
+            ]
+        },
+        "note": {
+            "type": "string",
+            "description": "DAY-021: small misses are fine."
+        },
+        "meal_options": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "time_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            }
+        },
+        "day_options": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "description": "false once the day is finished (NUT-024)."
+                    }
+                },
+                "required": [
+                    "date",
+                    "label",
+                    "enabled"
+                ]
+            }
+        },
+        "day": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "kcal_text": {
+                    "type": "string"
+                },
+                "protein_text": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "label",
+                "kcal_text",
+                "protein_text"
+            ]
+        },
+        "other_day": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "kcal_text": {
+                    "type": "string"
+                },
+                "protein_text": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "label",
+                "kcal_text",
+                "protein_text"
+            ]
+        },
+        "projected_meals": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "kcal_text": {
+                        "type": "string"
+                    },
+                    "protein_text": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "kcal_text",
+                    "protein_text"
+                ]
+            }
+        },
+        "refusal": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Why the move is not allowed."
+        },
+        "warnings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "tone": {
+                        "type": "string",
+                        "enum": [
+                            "good",
+                            "neutral",
+                            "warning",
+                            "info"
+                        ]
+                    }
+                },
+                "required": [
+                    "text",
+                    "tone"
+                ]
+            }
+        },
+        "can_save": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "date",
+        "mode",
+        "note",
+        "meal_options",
+        "day_options",
+        "day",
+        "projected_meals",
+        "warnings",
+        "can_save"
+    ]
+}

@@ -1,0 +1,152 @@
+{
+    "meal_id": "01JBX5M0000000000000000003",
+    "title": "Dinner",
+    "time_text": "6:30 PM",
+    "bars": [
+        {
+            "label": "Cal",
+            "value_text": "550/1040",
+            "fraction": 0.53,
+            "tone": "neutral"
+        },
+        {
+            "label": "P",
+            "value_text": "68/68",
+            "fraction": 1.0,
+            "tone": "neutral"
+        },
+        {
+            "label": "F",
+            "value_text": "28/28",
+            "fraction": 1.0,
+            "tone": "neutral"
+        },
+        {
+            "label": "C",
+            "value_text": "0/128",
+            "fraction": 0.0,
+            "tone": "neutral"
+        }
+    ],
+    "pills": [
+        {
+            "text": "Calories 490 under",
+            "tone": "warning"
+        },
+        {
+            "text": "Protein on track",
+            "tone": "good"
+        }
+    ],
+    "targets_met": null,
+    "adjust_badge": {
+        "text": "Adjust foods",
+        "tone": "warning"
+    },
+    "peri_workout": {
+        "kind": "post",
+        "title": "Post-workout",
+        "detail": "Workout 5:30 PM",
+        "help": "These meals carry most of the day's carbs."
+    },
+    "check_in": {
+        "state": "notCheckedIn",
+        "text": "Not checked in",
+        "tone": "neutral"
+    },
+    "hints": [
+        {
+            "text": "Short 128 g carbs. Add a food from Carbs · Recommended.",
+            "group": "carbs_recommended"
+        }
+    ],
+    "entries": [
+        {
+            "id": "01JBX5E0000000000000000001",
+            "kind": "food",
+            "name": "Chicken breast",
+            "amount_text": "296 g (about 2 fillets)",
+            "amount": 296,
+            "amount_unit": "g",
+            "household_unit": "fillet",
+            "weighing": "raw",
+            "macros": {
+                "kcal": "355 kcal",
+                "protein": "P 68",
+                "fat": "F 6",
+                "carbs": "C 0"
+            },
+            "is_locked": false
+        },
+        {
+            "id": "01JBX5E0000000000000000003",
+            "kind": "food",
+            "name": "Olive oil",
+            "amount_text": "22 g (about 1.6 tbsps)",
+            "amount": 22,
+            "amount_unit": "g",
+            "household_unit": "tbsp",
+            "weighing": "raw",
+            "macros": {
+                "kcal": "194 kcal",
+                "protein": "P 0",
+                "fat": "F 22",
+                "carbs": "C 0"
+            },
+            "is_locked": false
+        }
+    ],
+    "empty": null,
+    "menu": [
+        {
+            "item": "edit_macros_time",
+            "title": "Edit macros/time",
+            "is_enabled": true
+        },
+        {
+            "item": "load_saved_meal",
+            "title": "Load saved meal",
+            "is_enabled": true
+        },
+        {
+            "item": "save_as_saved_meal",
+            "title": "Save as saved meal",
+            "is_enabled": true
+        },
+        {
+            "item": "copy_foods",
+            "title": "Copy foods",
+            "is_enabled": true
+        },
+        {
+            "item": "remove_foods",
+            "title": "Remove foods",
+            "is_enabled": true
+        },
+        {
+            "item": "check_in_meal",
+            "title": "Check in meal",
+            "is_enabled": false
+        },
+        {
+            "item": "check_in_manual",
+            "title": "Check in at manual macros",
+            "is_enabled": true
+        },
+        {
+            "item": "remove_check_in",
+            "title": "Remove check-in",
+            "is_enabled": false
+        },
+        {
+            "item": "still_planning",
+            "title": "Still planning foods",
+            "is_enabled": true
+        },
+        {
+            "item": "delete_meal",
+            "title": "Delete meal",
+            "is_enabled": true
+        }
+    ]
+}

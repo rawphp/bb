@@ -1,0 +1,86 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "date": {
+            "type": "string",
+            "format": "date"
+        },
+        "note": {
+            "type": "string"
+        },
+        "rows": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "time_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "selected": {
+                        "type": "boolean"
+                    },
+                    "kcal_text": {
+                        "type": "string"
+                    },
+                    "protein_text": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "selected",
+                    "kcal_text",
+                    "protein_text"
+                ]
+            }
+        },
+        "warnings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "tone": {
+                        "type": "string",
+                        "enum": [
+                            "good",
+                            "neutral",
+                            "warning",
+                            "info"
+                        ]
+                    }
+                },
+                "required": [
+                    "text",
+                    "tone"
+                ]
+            }
+        },
+        "can_confirm": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "date",
+        "note",
+        "rows",
+        "warnings",
+        "can_confirm"
+    ]
+}

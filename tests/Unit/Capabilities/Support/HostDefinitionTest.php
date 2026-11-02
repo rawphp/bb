@@ -44,14 +44,14 @@ it('CAP-010 gives a write the WriteResult output and every surface', function ()
 
     expect($definition->output)->toBe(WriteResult::class)
         ->and($definition->readOnly)->toBeFalse()
-        ->and($definition->surfaces)->toBe(['http', 'job', 'mcp', 'cli']);
+        ->and($definition->surfaces)->toBe(['http', 'job', 'mcp', 'cli', 'agent']);
 });
 
 it('CAP-011 gives a read no affects', function () {
     $definition = HostDefinition::read('weigh_ins_show')->toDefinition();
 
     expect($definition->readOnly)->toBeTrue()
-        ->and($definition->surfaces)->toBe(['http', 'job', 'mcp', 'cli'])
+        ->and($definition->surfaces)->toBe(['http', 'job', 'mcp', 'cli', 'agent'])
         ->and(HostDefinition::affects($definition))->toBe([]);
 });
 
