@@ -18,7 +18,7 @@ final class RecipeShowCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::read('recipe_show')
-            ->description('Show one recipe: its servings, one serving\'s calories and macros, each ingredient with its amount weighed raw or cooked, and its steps. A library recipe is read-only; the user\'s own can be edited with recipe_save or deleted with recipe_delete. It changes nothing.')
+            ->description('Show one recipe: its servings, one serving\'s calories and macros, each ingredient with its amount weighed raw or cooked, and its steps. Use it to open a recipe from recipes_show, or before editing one with recipe_save or deleting it with recipe_delete; a library recipe is read-only. It changes nothing.')
             ->cli('recipe', 'show')
             ->input(RecipeShowInput::class)
             ->output(RecipeShowOutput::class)

@@ -21,7 +21,7 @@ final class RecipeDeleteCapability implements HostCapability, OwnsInput
     {
         // AGT-010: it deletes, so the coach needs the user's say-so.
         return HostDefinition::write('recipe_delete', affects: ['recipes_show', 'recipe_show'], destructive: true)
-            ->description('Delete one of the user\'s own recipes, so the recipe lists stop showing it. Meals it is already planned in keep their copy. Library recipes cannot be deleted, and this cannot be undone.')
+            ->description('Delete one of the user\'s own recipes, so the recipe lists stop showing it. Use it only when the user asks to delete that recipe; meals it is already planned in keep their copy. Library recipes cannot be deleted, and this cannot be undone.')
             ->cli('recipe', 'delete')
             ->input(RecipeDeleteInput::class)
             ->run(function (RecipeDeleteInput $input, CapabilityContext $context): WriteResult {

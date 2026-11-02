@@ -31,7 +31,7 @@ final class RecipeEdit
         return $isCooked && self::hasCookedValue($cookedRatio);
     }
 
-    /** RCP-003, RCP-010: a drafted recipe starts at 1 to 100 servings, so the editor can save it as it is. */
+    /** RCP-003, RCP-010: a drafted recipe starts at 1 to 100 servings, the range recipe_save takes. */
     public static function draftServings(float $servings): float
     {
         return min(max($servings, 1.0), self::MAX_SERVINGS);

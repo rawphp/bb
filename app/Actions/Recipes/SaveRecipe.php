@@ -54,7 +54,7 @@ final class SaveRecipe
             $recipe->load('ingredients');
             PlannedRecipe::query()
                 ->where('recipe_id', $recipe->id)
-                ->whereNotIn('meal_id', MealCheckIn::query()->select('meal_id'))
+                ->whereNotIn('meal_id', MealCheckIn::query()->where('user_id', $user->id)->select('meal_id'))
                 ->update(['recipe' => json_encode($recipe->plannedCopy(), JSON_THROW_ON_ERROR), 'updated_at' => now()]);
 
             return $recipe;
