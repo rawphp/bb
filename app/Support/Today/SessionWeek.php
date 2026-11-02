@@ -101,11 +101,17 @@ final readonly class SessionWeek
     /** TBL-031: the session with its length and intensity, Light in a deload week. */
     public function workout(ScheduledSession $session): WeekWorkout
     {
+        return self::weekWorkout($session, $this->result->isDeload);
+    }
+
+    /** TBL-031: a placed session with its length and intensity, Light in a deload week. */
+    public static function weekWorkout(ScheduledSession $session, bool $isDeload): WeekWorkout
+    {
         $sets = array_sum(array_map(fn ($slot) => $slot->sets, $session->session->slots));
 
         return new WeekWorkout(
             $session->session, $session->time, $sets,
-            EnergyRules::sessionIntensity($sets, (float) $session->time->lengthMinutes, $this->result->isDeload),
+            EnergyRules::sessionIntensity($sets, (float) $session->time->lengthMinutes, $isDeload),
         );
     }
 

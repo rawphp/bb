@@ -1,5 +1,6 @@
 <?php
 
+use App\Capabilities\Support\ReadKey;
 use App\Models\DayTarget;
 use App\Models\User;
 use App\Models\WorkoutSession;
@@ -48,7 +49,8 @@ it('SCH-056 CAP-013 a move shows the re-target toast, and its undo puts the day 
     $response = missedOver($user, ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1, 'choice' => 'do_it_today', 'date' => '2026-09-22'])
         ->assertOk()
         ->assertJsonPath('data.toast', 'Meals updated for your 5:30 PM workout');
-    expect($response->json('data.invalidates'))->toContain('today_show{"date":"2026-09-22"}', 'today_show{"date":"2026-09-21"}', 'train_show{}', 'week_show{"date":"2026-09-27"}', 'week_show{}')
+    expect($response->json('data.invalidates'))->toContain('today_show{"date":"2026-09-22"}', 'today_show{"date":"2026-09-21"}', 'train_show{}', 'week_show{"date":"2026-09-27"}', 'week_show{}',
+        ReadKey::for('workout_show', ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1]))
         ->and(WorkoutSession::query()->count())->toBe(1);
 
     $this->actingAs($user)->postJson('/capabilities/undo_apply', ['token' => $response->json('data.undo')], ['Idempotency-Key' => (string) Str::ulid()])
