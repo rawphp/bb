@@ -1,0 +1,161 @@
+{
+    "already_in_meal": [
+        {
+            "food_id": "01JBX5F0000000000000000001",
+            "name": "Beef eye of round"
+        }
+    ],
+    "sections": [
+        {
+            "id": "matches",
+            "title": null,
+            "group": null,
+            "show_more_title": null,
+            "rows": [
+                {
+                    "food_id": "01JBX5F0000000000000000003",
+                    "name": "Chicken noodle soup",
+                    "detail": "Campbell's",
+                    "raw": {
+                        "kcal": "45 kcal",
+                        "protein": "P 3",
+                        "fat": "F 1.5",
+                        "carbs": "C 5"
+                    },
+                    "cooked": null,
+                    "basis_text": "per 100 g",
+                    "is_curated": false,
+                    "is_favorite": false,
+                    "is_in_meal": false
+                },
+                {
+                    "food_id": "01JBX5F0000000000000000002",
+                    "name": "Chicken breast",
+                    "detail": null,
+                    "raw": {
+                        "kcal": "120 kcal",
+                        "protein": "P 22.5",
+                        "fat": "F 2.6",
+                        "carbs": "C 0"
+                    },
+                    "cooked": {
+                        "kcal": "165 kcal",
+                        "protein": "P 31",
+                        "fat": "F 3.6",
+                        "carbs": "C 0"
+                    },
+                    "basis_text": "per 100 g",
+                    "is_curated": true,
+                    "is_favorite": true,
+                    "is_in_meal": false
+                },
+                {
+                    "food_id": "01JBX5F0000000000000000004",
+                    "name": "Chicken thigh",
+                    "detail": null,
+                    "raw": {
+                        "kcal": "121 kcal",
+                        "protein": "P 19.7",
+                        "fat": "F 4.1",
+                        "carbs": "C 0"
+                    },
+                    "cooked": {
+                        "kcal": "179 kcal",
+                        "protein": "P 24.8",
+                        "fat": "F 8.2",
+                        "carbs": "C 0"
+                    },
+                    "basis_text": "per 100 g",
+                    "is_curated": true,
+                    "is_favorite": false,
+                    "is_in_meal": false
+                }
+            ]
+        },
+        {
+            "id": "more",
+            "title": "More results",
+            "group": null,
+            "show_more_title": null,
+            "rows": [
+                {
+                    "food_id": "01JBX5F0000000000000000005",
+                    "name": "Chicken stock",
+                    "detail": null,
+                    "raw": {
+                        "kcal": "8 kcal",
+                        "protein": "P 1",
+                        "fat": "F 0.3",
+                        "carbs": "C 0.5"
+                    },
+                    "cooked": null,
+                    "basis_text": "per 100 g",
+                    "is_curated": false,
+                    "is_favorite": false,
+                    "is_in_meal": false
+                },
+                {
+                    "food_id": "01JBX5F0000000000000000006",
+                    "name": "Chicken nuggets",
+                    "detail": "Generic",
+                    "raw": {
+                        "kcal": "250 kcal",
+                        "protein": "P 15",
+                        "fat": "F 16",
+                        "carbs": "C 12"
+                    },
+                    "cooked": null,
+                    "basis_text": "per 100 g",
+                    "is_curated": false,
+                    "is_favorite": false,
+                    "is_in_meal": false
+                }
+            ]
+        }
+    ],
+    "recipes": [],
+    "saved_meals": [],
+    "suggestion": null,
+    "create_custom_food": {
+        "title": "Can't find it? Create a custom food",
+        "name": "chicken"
+    },
+    "diets": [
+        {
+            "key": "dairy_free",
+            "title": "Dairy free",
+            "is_on": false
+        },
+        {
+            "key": "gluten_free",
+            "title": "Gluten free",
+            "is_on": false
+        },
+        {
+            "key": "grain_free",
+            "title": "Grain free",
+            "is_on": false
+        },
+        {
+            "key": "low_fodmap",
+            "title": "Low FODMAP",
+            "is_on": false
+        },
+        {
+            "key": "vegetarian",
+            "title": "Ovo-lacto vegetarian",
+            "is_on": false
+        },
+        {
+            "key": "paleo",
+            "title": "Paleo",
+            "is_on": false
+        },
+        {
+            "key": "vegan",
+            "title": "Vegan",
+            "is_on": false
+        }
+    ],
+    "empty_text": null
+}

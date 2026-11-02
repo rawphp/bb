@@ -1,0 +1,98 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "from": {
+            "type": "string",
+            "format": "date"
+        },
+        "to": {
+            "type": "string",
+            "format": "date"
+        },
+        "range_text": {
+            "type": "string"
+        },
+        "sections": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "category": {
+                        "type": "string",
+                        "enum": [
+                            "protein",
+                            "produce",
+                            "grains_and_bread",
+                            "dairy",
+                            "pantry",
+                            "frozen",
+                            "other"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "rows": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "key": {
+                                    "type": "string",
+                                    "description": "food:<id> or manual:<id>"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "amount_text": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "1100 g; null for a manual item"
+                                },
+                                "is_ticked": {
+                                    "type": "boolean"
+                                },
+                                "is_manual": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "key",
+                                "name",
+                                "is_ticked",
+                                "is_manual"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "category",
+                    "title",
+                    "rows"
+                ]
+            }
+        },
+        "share_text": {
+            "type": "string"
+        },
+        "empty_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "from",
+        "to",
+        "range_text",
+        "sections",
+        "share_text"
+    ]
+}

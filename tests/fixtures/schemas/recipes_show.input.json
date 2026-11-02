@@ -1,0 +1,25 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "segment": {
+            "type": "string",
+            "enum": [
+                "mine",
+                "library"
+            ]
+        },
+        "meal_type": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "One of: breakfast, lunch, dinner, snack; or null"
+        },
+        "diets": {
+            "type": "array",
+            "description": "Diet filter keys"
+        }
+    }
+}

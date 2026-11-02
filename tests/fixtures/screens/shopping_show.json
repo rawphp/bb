@@ -1,0 +1,55 @@
+{
+    "from": "2026-11-02",
+    "to": "2026-11-08",
+    "range_text": "Nov 2 – Nov 8",
+    "sections": [
+        {
+            "category": "protein",
+            "title": "Protein",
+            "rows": [
+                {
+                    "key": "food:01JBX5F0000000000000000002",
+                    "name": "Chicken breast",
+                    "amount_text": "2100 g",
+                    "is_ticked": true,
+                    "is_manual": false
+                },
+                {
+                    "key": "food:01JBX5F0000000000000000007",
+                    "name": "Egg whites",
+                    "amount_text": "1000 g",
+                    "is_ticked": false,
+                    "is_manual": false
+                }
+            ]
+        },
+        {
+            "category": "grains_and_bread",
+            "title": "Grains and bread",
+            "rows": [
+                {
+                    "key": "food:01JBX5F0000000000000000011",
+                    "name": "White rice",
+                    "amount_text": "1100 g",
+                    "is_ticked": false,
+                    "is_manual": false
+                }
+            ]
+        },
+        {
+            "category": "other",
+            "title": "Other",
+            "rows": [
+                {
+                    "key": "manual:01JBX5H0000000000000000001",
+                    "name": "Paper towels",
+                    "amount_text": null,
+                    "is_ticked": false,
+                    "is_manual": true
+                }
+            ]
+        }
+    ],
+    "share_text": "Protein\nEgg whites — 1000 g\n\nGrains and bread\nWhite rice — 1100 g\n\nOther\nPaper towels",
+    "empty_text": null
+}

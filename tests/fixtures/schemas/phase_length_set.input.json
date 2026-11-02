@@ -1,0 +1,30 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "phase_id": {
+            "type": "string"
+        },
+        "weeks": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 1
+        },
+        "fix": {
+            "type": "string",
+            "enum": [
+                "keep_end",
+                "move_end_to_deload",
+                "change_mesocycle_length"
+            ]
+        }
+    },
+    "required": [
+        "phase_id",
+        "fix",
+        "weeks"
+    ]
+}
