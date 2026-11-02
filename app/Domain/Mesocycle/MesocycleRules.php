@@ -2,9 +2,13 @@
 
 namespace App\Domain\Mesocycle;
 
+use App\Domain\Model\ExerciseSlot;
+use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\PhaseType;
+use App\Domain\Model\Session;
 use App\Domain\Plan\DeloadCalories;
 use App\Domain\Plan\PlanWeekGrid;
+use App\Models\Mesocycle;
 use DateTimeImmutable;
 
 /**
@@ -131,5 +135,56 @@ final class MesocycleRules
     public static function weekdayName(int $weekday): string
     {
         return self::WEEKDAYS[$weekday] ?? 'Day';
+    }
+
+    /**
+     * MESO-005: weekday names need one training day per session.
+     *
+     * @param  list<int>  $trainingWeekdays
+     */
+    public static function canUseWeekdays(int $sessionCount, array $trainingWeekdays): bool
+    {
+        return $sessionCount > 0 && count($trainingWeekdays) === $sessionCount;
+    }
+
+    /**
+     * MESO-005: a build's days as the style labels them. A weekday split maps the days to the training weekdays in
+     * order, and each reads as its weekday's name; when the counts differ, or the split floats, the days are "Day 1,
+     * Day 2" with no weekday. Either way no label is stored ({@see Mesocycle::dayRows()}).
+     *
+     * @param  list<array<string, mixed>>  $days
+     * @param  'weekdays'|'floating'  $style
+     * @param  list<int>  $trainingWeekdays  ISO, in plan-week order
+     * @return list<array<string, mixed>>
+     */
+    public static function labelDays(array $days, string $style, array $trainingWeekdays): array
+    {
+        $weekdays = $style === 'weekdays' && self::canUseWeekdays(count($days), $trainingWeekdays);
+
+        return array_map(
+            fn (array $day, int $index) => array_replace($day, ['label' => null, 'weekday' => $weekdays ? $trainingWeekdays[$index] : null]),
+            $days,
+            array_keys($days),
+        );
+    }
+
+    /**
+     * MESO-034: an Off muscle's slots are left out of every session. A session left with none plans no sets; it keeps
+     * its place, so the days keep their numbers.
+     *
+     * @param  list<Session>  $sessions
+     * @param  list<MuscleGroup>  $off
+     * @return list<Session>
+     */
+    public static function withoutOff(array $sessions, array $off): array
+    {
+        if ($off === []) {
+            return $sessions;
+        }
+
+        return array_map(fn (Session $session) => new Session($session->id, $session->name, array_values(array_filter(
+            $session->slots,
+            fn (ExerciseSlot $slot) => ! in_array($slot->muscle, $off, true),
+        ))), $sessions);
     }
 }

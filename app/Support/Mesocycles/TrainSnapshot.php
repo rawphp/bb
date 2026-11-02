@@ -413,7 +413,8 @@ final class TrainSnapshot
             id: (string) $mesocycle->id,
             phase: $this->phaseType($mesocycle) ?? PhaseType::Maintenance,
             weeks: (int) $mesocycle->weeks,
-            sessions: $sessions($mesocycle->dayRows()),
+            // MESO-034: an Off muscle's slots are left out of the sessions still to come; the weeks that ran keep theirs.
+            sessions: MesocycleRules::withoutOff($sessions($mesocycle->dayRows()), self::off($mesocycle)),
             musclePriorities: self::priorities($mesocycle),
             isResensitization: $mesocycle->is_resensitization,
             earlierWeeks: array_map($sessions, $mesocycle->earlierWeekRows()),
@@ -480,6 +481,27 @@ final class TrainSnapshot
         }
 
         return ($this->named ??= ($this->exercises)($this->namedExerciseIds())->keyBy('id'))->get($id);
+    }
+
+    /** @return list<MuscleGroup> MESO-034: the muscles set Off */
+    public static function off(Mesocycle $mesocycle): array
+    {
+        $off = [];
+        foreach ($mesocycle->muscle_priorities ?? [] as $muscle => $priority) {
+            if ($priority === null && ($group = MuscleGroup::tryFrom($muscle)) !== null) {
+                $off[] = $group;
+            }
+        }
+
+        return $off;
+    }
+
+    /** @return list<int> MESO-005: the ISO weekdays the user trains on, in plan-week order */
+    public function trainingWeekdaysInPlanOrder(): array
+    {
+        $grid = $this->grid();
+
+        return $grid === null ? $this->trainingWeekdays() : PlanWeekDays::inPlanWeekOrder($this->trainingWeekdays(), $this->reviewIsoWeekday($grid));
     }
 
     /** @return array<string, Priority> the stored priorities that are not Off, keyed by muscle */

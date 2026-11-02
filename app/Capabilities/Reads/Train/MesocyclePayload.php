@@ -244,7 +244,7 @@ final class MesocyclePayload
             phase_title: $phase?->type->title(),
             rep_range_text: $phase === null ? null : self::repRanges(TBL012TrainingDefaults::row($column)->repRangeBias),
             phase_warning: $phase === null ? new Pill(self::NO_PHASE, Tone::Warning->value) : null,
-            days_per_week: max(self::DAYS_PER_WEEK[0], min(self::DAYS_PER_WEEK[1], count($days) ?: (count($training) ?: 3))),
+            days_per_week: $mesocycle->days_per_week ?? self::daysPerWeek($days, $training),
             days_per_week_options: self::options(new ClosedRange(...self::DAYS_PER_WEEK), 'day'),
             priorities: self::priorityRows($priorities),
             warnings: array_map(
@@ -281,6 +281,17 @@ final class MesocyclePayload
             can_pick_for_me: array_any($days, fn (array $day) => array_any($day['slots'], fn (array $slot) => $slot['exercise_id'] === null)),
             can_finish: trim((string) $mesocycle->name) !== '' && $days !== [] && $phase !== null,
         );
+    }
+
+    /**
+     * MESO-020: a build's days per week until the user picks some: its days, else the training days, else 3.
+     *
+     * @param  list<mixed>  $days
+     * @param  list<int>  $training
+     */
+    public static function daysPerWeek(array $days, array $training): int
+    {
+        return max(self::DAYS_PER_WEEK[0], min(self::DAYS_PER_WEEK[1], count($days) ?: (count($training) ?: 3)));
     }
 
     /**
@@ -361,10 +372,6 @@ final class MesocyclePayload
 
     private static function priorityTitle(Priority $priority): string
     {
-        return match ($priority) {
-            Priority::Emphasize => 'Emphasize',
-            Priority::Grow => 'Grow',
-            Priority::Maintain => 'Maintain',
-        };
+        return $priority->title();
     }
 }

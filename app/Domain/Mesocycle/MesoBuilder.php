@@ -23,6 +23,9 @@ use Closure;
  */
 final class MesoBuilder
 {
+    /** MESO-022: a generated slot starts at 2 sets. */
+    public const DEFAULT_SETS = 2;
+
     /** MESO-023: back, quads, hamstrings and glutes recover slower and go 2x a week. */
     private const SLOWER_RECOVERING = [MuscleGroup::Back, MuscleGroup::Quads, MuscleGroup::Hamstrings, MuscleGroup::Glutes];
 
@@ -55,6 +58,31 @@ final class MesoBuilder
         $priorities = [];
         foreach (MuscleGroup::cases() as $muscle) {
             $priorities[$muscle->value] = $priority;
+        }
+
+        return $priorities;
+    }
+
+    /**
+     * MESO-003, MESO-020, MESO-034: the priorities a build works from. None stored follows the phase's preset; with
+     * some stored, a muscle left out is at Maintain and an Off one (null) is left out.
+     *
+     * @param  array<string, ?string>  $stored
+     * @return array<string, Priority>
+     */
+    public static function priorities(array $stored, Column $column): array
+    {
+        if ($stored === []) {
+            return self::defaultPriorities($column);
+        }
+
+        $priorities = [];
+        foreach (MuscleGroup::cases() as $muscle) {
+            if (! array_key_exists($muscle->value, $stored)) {
+                $priorities[$muscle->value] = Priority::Maintain;
+            } elseif ($stored[$muscle->value] !== null) {
+                $priorities[$muscle->value] = Priority::from($stored[$muscle->value]);
+            }
         }
 
         return $priorities;
