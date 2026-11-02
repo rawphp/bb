@@ -1,11 +1,24 @@
 import type { SyncManifestOutput } from '@/contracts/sync_manifest';
-import { cached, clearReads, drop, evict, isCurrent, parseReadKey, readKey, requestPersistentStorage, stamp, store } from './cache';
+import { cached, clearReads, drop, evict, isCurrent, owner, parseReadKey, readKey, requestPersistentStorage, stamp, store } from './cache';
 import { isWalked, now } from './clock';
+import {
+    addEntry,
+    affectsOf,
+    announceReplayed,
+    loadOutbox,
+    markSynced,
+    nextToSend,
+    rememberAffects,
+    removeEntries,
+    updateEntry,
+    type OutboxEntry,
+} from './outbox';
+import { ulid } from './ulid';
 
 // The only way the app talks to the server (CAP-004): POST /capabilities/{name}
 // with Sanctum SPA cookie auth, plus X-BB-Now while the clock is walked (SET-011).
-// read() goes through the IndexedDB cache (OFF-003), and OUTBOX (#58) puts write()
-// behind the outbox.
+// read() goes through the IndexedDB cache (OFF-003), and write() through the
+// outbox (OFF-006).
 
 export type CapabilityInput = Record<string, unknown>;
 
@@ -146,16 +159,60 @@ async function inBatches<T>(items: readonly T[], limit: number, task: (item: T) 
     await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
 }
 
-/** Warm the cache now and on every reconnect (OFF-004). OUTBOX warms it after each replay. */
-export function keepWarm(target: Window = window): void {
+/**
+ * Open, reconnect and sign-in: read the outbox, learn what each write affects, replay
+ * it, then warm the cache (OFF-004, OFF-006). Rejects when the warm does (signed out,
+ * offline); the outbox has done what it can by then.
+ */
+export async function sync(): Promise<void> {
+    await loadOutbox();
+    await learnAffects();
+    await replay();
+    await warm();
+    markSynced();
+}
+
+/** Sync now and on every reconnect, which also retries the outbox at once (OFF-004, OFF-011). */
+export function keepSynced(target: Window = window): void {
     const run = () => {
-        warm().catch(() => {
+        sync().catch(() => {
             // Signed out or offline: the next open or reconnect tries again.
         });
     };
 
     run();
     target.addEventListener('online', run);
+}
+
+let affectsLearned = false;
+
+/**
+ * Each write's `affects`, from the catalog's `affects:<read>` tags (CAP-011), so an
+ * entry can mark its reads pending before the server answers (OFF-008). Once a page
+ * load: the catalog changes only with a deploy, which reloads the app.
+ */
+async function learnAffects(): Promise<void> {
+    if (affectsLearned) return;
+    const deadline = new AbortController();
+    const timer = setTimeout(() => deadline.abort(), TIMEOUT_MS);
+
+    try {
+        const response = await fetch('/capabilities', { credentials: 'same-origin', headers: { Accept: 'application/json' }, signal: deadline.signal });
+        if (!response.ok) return;
+        const body = (await response.json()) as { data?: { capabilities?: { name?: unknown; tags?: unknown }[] } };
+        const byName: Record<string, string[]> = {};
+        for (const { name, tags } of body.data?.capabilities ?? []) {
+            if (typeof name !== 'string' || !Array.isArray(tags)) continue;
+            const reads = tags.filter((tag): tag is string => typeof tag === 'string' && tag.startsWith('affects:')).map((tag) => tag.slice('affects:'.length));
+            if (reads.length > 0) byName[name] = reads;
+        }
+        rememberAffects(byName);
+        affectsLearned = true;
+    } catch {
+        // Offline or signed out: entries use what was learned before.
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 async function fetchRead<T>(name: string, input: CapabilityInput, key: string): Promise<T> {
@@ -176,27 +233,187 @@ async function fetchRead<T>(name: string, input: CapabilityInput, key: string): 
     return data;
 }
 
-/**
- * A write drops the cached reads its WriteResult invalidates (CAP-010), so the next read of them waits for the server.
- * With an idempotency key, a retry after a lost answer returns the first result instead of running again (CAP-014).
- */
-export async function write<T = unknown>(name: string, input: CapabilityInput = {}, options: { idempotencyKey?: string } = {}): Promise<T> {
-    const data = await invoke<T>(name, input, options.idempotencyKey);
-    const invalidates = (data as { invalidates?: unknown } | null)?.invalidates;
+export type WriteOptions = {
+    /** What the write does, in plain words, for the outbox list (OFF-010). */
+    label: string;
+    /** The ULIDs of the rows it creates (CAP-019). */
+    creates?: string[];
+};
 
-    if (Array.isArray(invalidates)) {
-        await drop(invalidates.filter((key) => typeof key === 'string')).catch(() => undefined);
+/**
+ * OFF-006: every write goes into the outbox, online or not, so there is one path. The
+ * entry holds the input, a new idempotency key (CAP-014), the ULIDs it creates
+ * (CAP-019), when the user acted (OFF-007) and who they are (OFF-012). It resolves once
+ * the entry is stored, and replay sends it in its turn. Until the server answers, the
+ * reads it affects are pending (outbox.isPending, OFF-008) and the screen shows the
+ * user's own input on its row (outbox.pendingInput, OFF-009).
+ */
+export async function write(name: string, input: CapabilityInput, options: WriteOptions): Promise<OutboxEntry> {
+    const user = owner();
+    if (user === null) throw new CapabilityError(name, 401, null);
+
+    const entry = await addEntry({
+        user,
+        name,
+        input,
+        idempotencyKey: newKey(name),
+        creates: options.creates ?? [],
+        occurredAt: now().toISOString(),
+        label: options.label,
+        affects: affectsOf(name),
+    });
+    void replay();
+
+    return entry;
+}
+
+/**
+ * A write the user waits on, for what needs the network and says so (OFF-031): token
+ * and account changes, settings, undo. It takes its turn behind the outbox, so it never
+ * overtakes a write made before it, but it is never kept: with no answer it fails at
+ * once, and when earlier entries can't be sent it fails without sending (status 0,
+ * reason `waiting`). It resolves with the server's answer and drops the cached reads
+ * that answer invalidates (CAP-010). Pass the idempotency key of a retry after no
+ * answer, so the server replays the first attempt rather than running it twice (CAP-014).
+ */
+export async function writeNow<T = unknown>(name: string, input: CapabilityInput = {}, options: { idempotencyKey?: string } = {}): Promise<T> {
+    const stalled = await replay();
+    if (stalled !== undefined) {
+        // Signed out stays signed out; anything else is the outbox still waiting.
+        throw SESSION_GONE.includes(stalled.status)
+            ? new CapabilityError(name, stalled.status, stalled.body)
+            : new CapabilityError(name, 0, { reason: 'waiting' });
     }
+
+    const data = await invoke<T>(name, input, { 'Idempotency-Key': options.idempotencyKey ?? newKey(name) });
+    await drop(invalidatesOf(data)).catch(() => undefined);
 
     return data;
 }
 
-async function invoke<T>(name: string, input: CapabilityInput, idempotencyKey?: string): Promise<T> {
+function newKey(name: string): string {
+    return `${name}:${ulid()}`;
+}
+
+function invalidatesOf(data: unknown): string[] {
+    const invalidates = (data as { invalidates?: unknown } | null)?.invalidates;
+
+    return Array.isArray(invalidates) ? invalidates.filter((key) => typeof key === 'string') : [];
+}
+
+// OFF-011: after a network failure or a 5xx, the outbox tries again in 2 s, then
+// doubling up to 5 minutes, and at once on reconnect (keepSynced).
+export const RETRY_FIRST_MS = 2_000;
+export const RETRY_MAX_MS = 5 * 60_000;
+
+let replaying: Promise<CapabilityError | undefined> | undefined;
+let retries = 0;
+let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * Send the signed-in user's entries one at a time, oldest first (OFF-006). Resolves with
+ * undefined once nothing is left to send, or with the error that stopped it: no answer
+ * or a 5xx (retried with backoff), or a gone session (401, 419), after which the outbox
+ * waits for that user to sign in again (OFF-012). A refusal moves the entry to "Couldn't
+ * sync" and goes on (OFF-011). A call while it runs joins it; the loop picks up entries
+ * added meanwhile. After it sends anything it warms the cache (OFF-004).
+ */
+export function replay(): Promise<CapabilityError | undefined> {
+    replaying ??= replayAll();
+
+    return replaying;
+}
+
+async function replayAll(): Promise<CapabilityError | undefined> {
+    // Never settle synchronously, so `replaying` is set before the loop clears it.
+    await Promise.resolve();
+    clearTimeout(retryTimer);
+    retryTimer = undefined;
+    let sent = false;
+
+    try {
+        for (;;) {
+            const entry = nextToSend();
+            if (entry === undefined) {
+                if (sent) markSynced();
+                return undefined;
+            }
+            const stalled = await deliver(entry);
+            if (stalled !== undefined) return stalled;
+            sent = true;
+        }
+    } finally {
+        // Cleared in the same step the loop ends, so an entry added after it starts a new one.
+        replaying = undefined;
+        if (sent) {
+            warm().catch(() => {
+                // Offline or signed out: the next sync warms again.
+            });
+        }
+    }
+}
+
+/** Sends one entry, and resolves with the error that must stop the replay, if any. */
+async function deliver(entry: OutboxEntry): Promise<CapabilityError | undefined> {
+    try {
+        const data = await invoke(entry.name, entry.input, { 'Idempotency-Key': entry.idempotencyKey, 'X-BB-Occurred-At': entry.occurredAt });
+        retries = 0;
+        const keys = invalidatesOf(data);
+        await drop(keys).catch(() => undefined);
+        await removeEntries([entry.seq]);
+        announceReplayed(keys);
+
+        return undefined;
+    } catch (failure) {
+        const error = failure instanceof CapabilityError ? failure : new CapabilityError(entry.name, 0, { reason: 'network' });
+        if (SESSION_GONE.includes(error.status)) return error;
+        if (retryable(error)) {
+            retryLater();
+            return error;
+        }
+        await updateEntry({ ...entry, refusal: { status: error.status, body: error.body } });
+
+        return undefined;
+    }
+}
+
+// No answer, a 5xx, the throttle, or the app's "already processing" 409 (CAP-014):
+// the entry may still go through, so it stays and is sent again.
+function retryable(error: CapabilityError): boolean {
+    if (error.status === 0 || error.status >= 500 || error.status === 429) return true;
+    const envelope = (error.body as { error?: { retryable?: unknown } } | null)?.error;
+
+    return error.status === 409 && envelope?.retryable === true;
+}
+
+function retryLater(): void {
+    const delay = Math.min(RETRY_FIRST_MS * 2 ** retries, RETRY_MAX_MS);
+    retries++;
+    retryTimer = setTimeout(() => void replay(), delay);
+}
+
+/**
+ * OFF-011: send a failed entry again in its place, with the input the user fixed, if
+ * any. It gets a new idempotency key, since the server keeps the refusal under the old one.
+ */
+export async function retryEntry(entry: OutboxEntry, input: CapabilityInput = entry.input): Promise<void> {
+    const { refusal: _, ...rest } = entry;
+    await updateEntry({ ...rest, input, idempotencyKey: newKey(entry.name) });
+    void replay();
+}
+
+/** OFF-011: drop a failed entry. Entries that waited on it are sent in their turn. */
+export async function discardEntry(entry: OutboxEntry): Promise<void> {
+    await removeEntries([entry.seq]);
+    void replay();
+}
+
+async function invoke<T>(name: string, input: CapabilityInput, headers: Record<string, string> = {}): Promise<T> {
     const deadline = new AbortController();
     const timer = setTimeout(() => deadline.abort(), TIMEOUT_MS);
 
     try {
-        return await send<T>(name, input, deadline.signal, idempotencyKey);
+        return await send<T>(name, input, deadline.signal, headers);
     } catch (error) {
         await forget(error);
         throw error;
@@ -212,12 +429,9 @@ async function forget(error: unknown): Promise<void> {
     if (hasStatus(error, SESSION_GONE)) await clearReads().catch(() => undefined);
 }
 
-async function send<T>(name: string, input: CapabilityInput, signal: AbortSignal, idempotencyKey?: string): Promise<T> {
+async function send<T>(name: string, input: CapabilityInput, signal: AbortSignal, headers: Record<string, string>): Promise<T> {
     const response = await post(name, `/capabilities/${encodeURIComponent(name)}`, input, signal, {
-        headers: {
-            ...(isWalked() ? { 'X-BB-Now': now().toISOString() } : {}),
-            ...(idempotencyKey === undefined ? {} : { 'Idempotency-Key': idempotencyKey }),
-        },
+        headers: { ...(isWalked() ? { 'X-BB-Now': now().toISOString() } : {}), ...headers },
     });
     const body: unknown = await response.json().catch(() => null);
 

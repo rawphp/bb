@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue';
-import { CapabilityError, write, type CapabilityInput } from './call';
+import { CapabilityError, writeNow, type CapabilityInput } from './call';
 import { isTimeout, writeFailureMessage } from './errors';
 import { unanswered, useRetryKey, type RetryKey } from './retryKey';
 
@@ -44,7 +44,7 @@ export function useWrite(load: (options?: { fresh?: boolean }) => Promise<void>)
         error.value = null;
         const retry = keyFor(name, input);
         try {
-            await write(name, input, { idempotencyKey: retry.key.value });
+            await writeNow(name, input, { idempotencyKey: retry.key.value });
             retry.settle();
             await load();
             return 'done';

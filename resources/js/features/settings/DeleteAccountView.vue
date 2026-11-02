@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { clearReads } from '@/app/cache';
-import { CapabilityError, SESSION_GONE, write } from '@/app/call';
+import { CapabilityError, SESSION_GONE, writeNow } from '@/app/call';
 import { failureMessage } from '@/app/errors';
 import { useRetryKey } from '@/app/retryKey';
 import type { AccountDeleteInput } from '@/contracts/account_delete';
@@ -23,7 +23,7 @@ async function remove(): Promise<void> {
     busy.value = true;
     error.value = null;
     try {
-        await write('account_delete', { confirmation: confirmation.value } satisfies AccountDeleteInput, { idempotencyKey: retry.key.value });
+        await writeNow('account_delete', { confirmation: confirmation.value } satisfies AccountDeleteInput, { idempotencyKey: retry.key.value });
         retry.settle();
         await leave();
     } catch (failed) {
