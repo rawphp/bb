@@ -29,7 +29,7 @@ final class ShoppingShowCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::read('shopping_show')
-            ->description('Show the shopping list for a date range: the foods planned in those days\' meals, recipes broken into ingredients, summed and rounded up to the raw weight to buy, grouped by store category, with the items the user added, which lines are ticked off, and the list as text to share. With no dates it shows the latest-starting range the user has ticked in while that range has not ended, otherwise the next 7 days; pass from and to for a particular week. It changes nothing.')
+            ->description('Show the shopping list for a date range: the foods planned in those days\' meals, recipes broken into ingredients, summed and rounded up to the raw weight to buy, grouped by store category, with the items the user added, which lines are ticked off, and the list as text to share. With no dates it shows the latest-starting range with ticks that runs through today, otherwise the next 7 days; pass from and to for a particular week. It changes nothing.')
             ->cli('shopping', 'show')
             ->input(ShoppingShowInput::class)
             ->output(ShoppingShowOutput::class)
