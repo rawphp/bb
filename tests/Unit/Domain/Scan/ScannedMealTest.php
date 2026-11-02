@@ -137,6 +137,19 @@ it('FOOD-045 the base grams stay unrounded, so the rows follow the portion witho
         ->and($back->grams($back->items[0]))->toBe(33.0);
 });
 
+it('FOOD-006 FOOD-043 grams are as served, so a food that changes weight when cooked counts as cooked, and is added and saved by its raw weight', function () {
+    // Rice is per 100 g raw and triples when cooked; chicken loses a quarter.
+    $rice = new Food('rice', 'White rice', kcal: 365, proteinG: 7.1, fatG: 0.7, carbsG: 80, cookedRatio: 3.0);
+    $chicken = new Food('chicken', 'Chicken breast', kcal: 120, proteinG: 22.5, fatG: 2.6, carbsG: 0, cookedRatio: 0.75);
+    $meal = ScannedMeal::scanned([new ScanItem('Cooked rice', 200, $rice), new ScanItem('Grilled chicken', 150, $chicken)], null);
+
+    expect($meal->grams($meal->items[0]))->toBe(200.0)
+        ->and($meal->kcal($meal->items[0]))->toEqualWithDelta(365 * 2 / 3, 0.001)
+        ->and($meal->kcal($meal->items[1]))->toEqualWithDelta(240, 0.001)
+        ->and(scanHeld($meal->matched()))->toBe(['White rice' => 66.7, 'Chicken breast' => 200.0])
+        ->and($meal->totals()->kcal)->toEqualWithDelta(365 * 0.667 + 240, 0.001);
+});
+
 it('FOOD-080 a restaurant match shows like any other', function () {
     $burrito = scannedPlate()->items[2];
 

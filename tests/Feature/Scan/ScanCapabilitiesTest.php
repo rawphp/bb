@@ -105,6 +105,17 @@ it('FOOD-044 a typed description is trimmed and sent for the same kind of list, 
         ->and($data['saved_meal_name'])->toBe('chicken burrito bowl with rice');
 });
 
+it('FOOD-006 FOOD-043 rice on the plate is cooked weight: its calories count cooked, and it is added by its raw weight', function () {
+    $this->rice->update(['kcal' => 365, 'protein' => 7.1, 'fat' => 0.7, 'carbs' => 80, 'cooked_ratio' => 3.0]);
+    RecordingLlmClient::answering(['items' => [['name' => 'Cooked rice', 'search' => 'white rice', 'grams' => 200]]])->install();
+
+    $data = scan('scan_photo', ['image' => SCAN_JPEG]);
+
+    expect($data['rows'][0]['grams_text'])->toBe('200 g')
+        ->and($data['rows'][0]['kcal_text'])->toBe('243 kcal')
+        ->and($data['matched'])->toEqual([['food_id' => $this->rice->id, 'grams' => 66.7]]);
+});
+
 it('FOOD-044 a blank description is refused without a call', function () {
     $llm = aiPlate();
 
