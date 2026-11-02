@@ -221,10 +221,11 @@ final class ProgressWorld
         ];
     }
 
-    public static function set(string $id, string $session, ?int $exercise, bool $logged = true): WorkoutSet
+    public static function set(string $id, string $session, ?int $exercise, bool $logged = true, bool $skipped = false): WorkoutSet
     {
         return (new WorkoutSet)->forceFill([
-            'id' => $id, 'user_id' => 1, 'workout_session_id' => $session, 'exercise_id' => $exercise, 'position' => 1, 'is_logged' => $logged,
+            'id' => $id, 'user_id' => 1, 'workout_session_id' => $session, 'exercise_id' => $exercise, 'position' => 1,
+            'is_logged' => $logged, 'is_skipped' => $skipped,
         ]);
     }
 

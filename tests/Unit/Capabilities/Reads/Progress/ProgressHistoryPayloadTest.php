@@ -110,6 +110,16 @@ it('ANA-007 a set without an exercise is ignored', function () {
         ->and($cutA['sets'])->toBe([['label' => 'Chest', 'value' => '1.0', 'tone' => 'neutral']]);
 });
 
+it('ANA-007 WO-025 a logged set that was skipped is not a working set, and a week of only skipped sets adds no week', function () {
+    // Week 1: one working set and one logged-and-skipped set. Week 3: only a skipped set.
+    $snapshot = W::snapshot(
+        sessions: [W::session('s-a', W::CUT_A, 1), W::session('s-c3', W::CUT_A, 3)],
+        sets: [W::set('1', 's-a', 12), W::set('2', 's-a', 12, skipped: true), W::set('3', 's-c3', 12, skipped: true)],
+    );
+
+    expect(W::payload($snapshot)['mesocycle_history'][0]['sets'])->toBe([['label' => 'Chest', 'value' => '1.0', 'tone' => 'neutral']]);
+});
+
 it('ANA-007 a set of an exercise the user cannot see, or of a session that is gone, is ignored', function () {
     $snapshot = W::snapshot(
         sessions: [W::session('s-a', W::CUT_A, 1)],
