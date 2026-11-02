@@ -135,7 +135,7 @@ describe('PhaseDetailView', () => {
         expect(wrapper.find('[data-test="length-sheet"]').text()).toContain('That length is no longer allowed.');
     });
 
-    it('PH-007 asks before ending the phase, then ends it and goes to the plan for the transition', async () => {
+    it('PH-007 asks before ending the phase, then ends it and opens the phase transition', async () => {
         const wrapper = show();
         await wrapper.find('[data-test="end-phase"]').trigger('click');
         expect(wrapper.find('[data-test="end-sheet"]').text()).toContain('Fat loss ends this week. This cannot be undone.');
@@ -145,7 +145,7 @@ describe('PhaseDetailView', () => {
         await flushPromises();
 
         expect(sent()).toEqual([['phase_end', { phase_id: ID }]]);
-        expect(push).toHaveBeenCalledWith('/plan');
+        expect(push).toHaveBeenCalledWith('/train/plan/transition');
     });
 
     it('CAP-012 PH-007 stays on the phase with the server\'s refusal when it cannot end', async () => {

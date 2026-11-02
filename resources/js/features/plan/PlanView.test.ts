@@ -99,7 +99,7 @@ describe('PlanView', () => {
         expect(wrapper.findAll('[data-test="phase"]')[2]!.attributes('aria-label')).toBe('Maintenance, 4 weeks, Hold weight, outline');
         expect(wrapper.find('[data-test="add-phase"]').text()).toBe('Add a phase');
         expect(wrapper.find('[data-test="prebuilt"]').text()).toBe("RP's 24-week plans");
-        expect(links(wrapper)).toEqual(expect.arrayContaining(['/plan/add', '/plan/prebuilt']));
+        expect(links(wrapper)).toEqual(expect.arrayContaining(['/train/plan/add-phase', '/train/plan/prebuilt']));
     });
 
     it('PH-043 counts down to the event (plan_show.warning)', () => {
@@ -112,7 +112,7 @@ describe('PlanView', () => {
         const wrapper = show({ ...plan, maintenance_suggestion: { text: 'No Maintenance in 5 months. Add 4 weeks?', weeks: 4 } });
 
         expect(wrapper.find('[data-test="suggestion"]').text()).toBe('No Maintenance in 5 months. Add 4 weeks?');
-        expect(links(wrapper)).toContainEqual({ path: '/plan/add', query: { type: 'maintenance', weeks: '4' } });
+        expect(wrapper.findComponent<typeof RouterLinkStub>('[data-test="suggestion"]').props('to')).toBe('/train/plan/add-phase');
     });
 
     it('PLAN-022 opens a deload week with its calories and no switch when it cannot change', async () => {
