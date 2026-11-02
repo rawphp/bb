@@ -41,7 +41,7 @@ final class BillingRule
 
     public static function allows(Access $access, string $capability, bool $readOnly): bool
     {
-        if (($readOnly && ! self::isAiRead($capability)) || str_starts_with($capability, self::BILLING_PREFIX)) {
+        if (self::isFree($capability, $readOnly)) {
             return true;
         }
 
@@ -52,9 +52,10 @@ final class BillingRule
         };
     }
 
-    public static function isAiRead(string $capability): bool
+    /** Needs no plan, whatever the subscription: a read other than an AI scan (SUB-010), or billing itself (SUB-022). */
+    public static function isFree(string $capability, bool $readOnly): bool
     {
-        return in_array($capability, self::AI_READS, true);
+        return ($readOnly && ! in_array($capability, self::AI_READS, true)) || str_starts_with($capability, self::BILLING_PREFIX);
     }
 
     /**
