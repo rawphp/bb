@@ -307,17 +307,28 @@ it('SCH-011 the step row shows the actual steps when there are any', function ()
         ->and(todayPayload(W::snapshot(steps: 1))['steps']['actual_text'])->toBe('1 step');
 });
 
-it('SCH-030 NUT-024 a past day offers neither Add meal nor Optimize', function () {
+it('SCH-030 NUT-024 a past day offers neither Add meal, Add workout nor Optimize', function () {
     $future = todayPayload(W::snapshot());
     $past = todayPayload(W::snapshot(date: '2026-09-21'));
 
     expect(array_column($future['schedule_menu'], 'action'))->toBe([
         'add_meal', 'add_workout', 'add_busy_period', 'copy_day', 'copy_week', 'optimize_schedule', 'edit_schedule',
     ])
-        ->and(array_column($past['schedule_menu'], 'action'))->toBe(['add_workout', 'add_busy_period', 'copy_day', 'copy_week', 'edit_schedule'])
+        ->and(array_column($past['schedule_menu'], 'action'))->toBe(['add_busy_period', 'copy_day', 'copy_week', 'edit_schedule'])
         ->and($future['add_meal_time'])->toBe('14:30')
         ->and($past['add_meal_time'])->toBeNull()
         ->and($past['add_workout'])->toBeNull();
+});
+
+it('SCH-030 SCH-031 SCH-032 the menu offers Add meal and Add workout only when their sheets have what they open with', function () {
+    $before = todayPayload(W::snapshot(today: '2026-09-10'));
+    $noTarget = todayPayload(W::snapshot(today: '2026-10-12'));
+
+    expect($before['add_meal_time'])->toBeNull()
+        ->and($before['add_workout'])->toBeNull()
+        ->and(array_column($before['schedule_menu'], 'action'))->not->toContain('add_meal')->not->toContain('add_workout')
+        ->and($noTarget['add_meal_time'])->toBeNull()
+        ->and(array_column($noTarget['schedule_menu'], 'action'))->not->toContain('add_meal')->toContain('add_workout');
 });
 
 it('SCH-032 Add workout offers the next session of the week to move here, or says why not', function () {
@@ -403,4 +414,57 @@ it('MESO-060 MESO-064 flat training offers an active rest a plan week later, unt
     ])
         ->and($taken['start_text'])->toBe('Starts Saturday, Oct 17')
         ->and($taken['active_rest'])->toBeNull();
+});
+
+it('SCH-002 RCP-002 FOOD-006 planned recipe servings and cooked foods count at their macros, in their planned order', function () {
+    $dinner = W::mealId('2026-09-23', 3);
+    $lunch = W::mealId('2026-09-23', 2);
+    $payload = todayPayload(W::snapshot(
+        foods: [W::mealId('2026-09-23', 1) => [['oats', 80], ['whey', 30]], $dinner => [['rice', 250, true, 1]]],
+        recipes: [$dinner => [[2, 0]], $lunch => [[1, 0]]],
+    ));
+    $meal = $payload['meals'][2];
+
+    // 2 servings of chili are 700 kcal and 66 g protein; 250 g of cooked rice is 100 g raw, 360 kcal.
+    expect($meal['planned_text'])->toBe('Chili 2 servings · Rice 250 g')
+        ->and($payload['meals'][1]['planned_text'])->toBe('Chili 1 serving')
+        ->and($meal['check_in']['manual'])->toBe(['time' => '19:30', 'kcal' => 1060.0, 'protein_g' => 73.0, 'fat_g' => 32.0, 'carbs_g' => 114.0])
+        ->and($meal['plan_banner'])->toBeNull()
+        ->and($payload['totals']['calories']['value_text'])->toBe('2274/2600');
+});
+
+it('SCH-040 SCH-060 an away week that pauses training plans no sessions, and the mesocycle resumes after it', function () {
+    $planWeeks = [W::planWeek('2026-09-26', away: true, awayTraining: 'pause')];
+    $sessions = array_slice(W::sessions(), 0, 2);
+    $paused = weekPayload(W::snapshot(date: '2026-09-28', planWeeks: $planWeeks, sessions: $sessions));
+    $after = todayPayload(W::snapshot(today: '2026-10-05', planWeeks: $planWeeks, sessions: $sessions));
+
+    expect(array_filter(array_column($paused['days'], 'has_training')))->toBe([])
+        ->and($paused['pills'])->toBe([['text' => 'Away', 'tone' => 'info']])
+        ->and($after['workouts'][0]['title'])->toBe('Week 3 · Day 1 · Upper A');
+});
+
+it('SCH-060 PLAN-022 an away week taken as the deload halves the sets and shows Deload', function () {
+    $planWeeks = [W::planWeek('2026-09-26', away: true, awayTraining: 'deload')];
+    $sessions = array_slice(W::sessions(), 0, 2);
+
+    expect(weekPayload(W::snapshot(date: '2026-09-28', planWeeks: $planWeeks, sessions: $sessions))['pills'])
+        ->toBe([['text' => 'Deload', 'tone' => 'neutral'], ['text' => 'Away', 'tone' => 'info']])
+        ->and(todayPayload(W::snapshot(today: '2026-09-28', planWeeks: $planWeeks, sessions: $sessions))['workouts'][0]['summary_text'])
+        ->toBe('20 min · 3 exercises · 4 sets');
+});
+
+it('SCH-022 MESO-043 a mesocycle ended early plans no sessions after its last day; logged ones stay', function () {
+    $ended = [W::mesocycle(['ended_on' => '2026-09-22'])];
+    $training = array_column(array_filter(weekPayload(W::snapshot(mesocycles: $ended))['days'], fn ($day) => $day['has_training']), 'number');
+
+    expect(array_values($training))->toBe(['21'])
+        ->and(todayPayload(W::snapshot(mesocycles: $ended))['workouts'])->toBe([]);
+});
+
+it('SCH-040 a mesocycle that starts mid-week plans nothing before its first day', function () {
+    $later = [W::mesocycle(['start_date' => '2026-09-16'])];
+
+    expect(todayPayload(W::snapshot(date: '2026-09-14', mesocycles: $later, sessions: []))['workouts'])->toBe([])
+        ->and(todayPayload(W::snapshot(date: '2026-09-16', mesocycles: $later, sessions: []))['workouts'])->not->toBe([]);
 });

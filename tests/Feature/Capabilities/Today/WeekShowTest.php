@@ -63,12 +63,31 @@ it('SCH-021 shows an empty week to a user without a plan', function () {
         ->and($data['calendar'])->toBeNull();
 });
 
+it('SCH-023 keeps a date outside the plan inside it', function () {
+    Carbon::setTestNow('2026-09-23 10:00:00');
+    $user = TodaySeed::user();
+    TodaySeed::targets($user);
+
+    $data = $this->actingAs($user)->postJson('/capabilities/week_show', ['date' => '2027-06-01'])->assertOk()->json('data');
+
+    expect($data['week_start'])->toBe('2026-10-03')
+        ->and(array_column(array_filter($data['days'], fn ($day) => $day['is_selected']), 'date'))->toBe(['2026-10-09']);
+});
+
 it('CAP-020 shows only the signed-in user\'s rows', function () {
     Carbon::setTestNow('2026-09-23 10:00:00');
     $other = TodaySeed::user();
-    TodaySeed::targets($other);
+    TodaySeed::targets($other, last: '2026-11-30', kcal: 3000);
+    $otherMeso = TodaySeed::mesocycle($other);
+    TodaySeed::wednesday($other, $otherMeso);
+    $user = TodaySeed::user();
+    TodaySeed::targets($user);
 
-    $data = $this->actingAs(User::factory()->create())->postJson('/capabilities/week_show')->assertOk()->json('data');
+    $data = $this->actingAs($user)->postJson('/capabilities/week_show')->assertOk()->json('data');
 
-    expect(array_unique(array_column($data['days'], 'calories_text')))->toBe(['–']);
+    assertMatchesScreenFixture('week_show', $data);
+    expect(array_unique(array_column($data['days'], 'calories_text')))->toBe(['2600'])
+        ->and(array_filter(array_column($data['days'], 'has_training')))->toBe([])
+        ->and(array_filter(array_column($data['days'], 'is_complete')))->toBe([])
+        ->and($data['calendar']['last'])->toBe('2026-10-09');
 });

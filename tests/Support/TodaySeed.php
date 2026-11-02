@@ -11,8 +11,11 @@ use App\Models\OffPlanEntry;
 use App\Models\OtherActivity;
 use App\Models\Plan;
 use App\Models\PlannedFood;
+use App\Models\PlannedRecipe;
 use App\Models\PlanWeek;
 use App\Models\Profile;
+use App\Models\Recipe;
+use App\Models\RecipeIngredient;
 use App\Models\Step;
 use App\Models\User;
 use App\Models\WeighIn;
@@ -75,12 +78,12 @@ final class TodaySeed
         ]);
     }
 
-    /** Targets with 3 meals on every day from the plan start to 2026-10-09. */
-    public static function targets(User $user): void
+    /** Targets with 3 meals on every day from the plan start to `$last`, of `$kcal` each. */
+    public static function targets(User $user, string $last = '2026-10-09', float $kcal = 2600): void
     {
-        for ($day = new \DateTimeImmutable('2026-09-12'); $day <= new \DateTimeImmutable('2026-10-09'); $day = $day->modify('+1 day')) {
+        for ($day = new \DateTimeImmutable('2026-09-12'); $day <= new \DateTimeImmutable($last); $day = $day->modify('+1 day')) {
             DayTarget::factory()->for($user)->create([
-                'date' => $day->format('Y-m-d'), 'day_type' => 'hard', 'kcal' => 2600, 'protein_g' => 170, 'fat_g' => 70, 'carbs_g' => 320,
+                'date' => $day->format('Y-m-d'), 'day_type' => 'hard', 'kcal' => $kcal, 'protein_g' => 170, 'fat_g' => 70, 'carbs_g' => 320,
                 'meals' => [
                     ['name' => 'Breakfast', 'time' => '08:00', 'kcal' => 780, 'protein_g' => 51, 'fat_g' => 21, 'carbs_g' => 96],
                     ['name' => 'Lunch', 'time' => '12:30', 'kcal' => 780, 'protein_g' => 51, 'fat_g' => 21, 'carbs_g' => 96],
@@ -94,15 +97,23 @@ final class TodaySeed
     public static function wednesday(User $user, Mesocycle $mesocycle): void
     {
         $day = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-23')->firstOrFail();
-        [$breakfast, $lunch] = array_column($day->meals, 'id');
-        $oats = Food::factory()->create(['name' => 'Oats', 'kcal' => 380, 'protein' => 13, 'fat' => 7, 'carbs' => 66]);
+        [$breakfast, $lunch, $dinner] = array_column($day->meals, 'id');
+        $oats = Food::factory()->createOne(['name' => 'Oats', 'kcal' => 380, 'protein' => 13, 'fat' => 7, 'carbs' => 66]);
         PlannedFood::factory()->create(['meal_id' => $breakfast, 'food_id' => $oats->id, 'grams' => 80]);
         MealCheckIn::factory()->create(['meal_id' => $lunch, 'time' => '12:40', 'kcal' => 790, 'protein_g' => 55, 'fat_g' => 20, 'carbs_g' => 100, 'is_manual' => false]);
         WeighIn::factory()->for($user)->create(['weight_kg' => 82.4, 'weighed_at' => '2026-09-23 07:05:00']);
+        // Weights and steps on the days either side are not this day's.
+        WeighIn::factory()->for($user)->create(['weight_kg' => 85.0, 'weighed_at' => '2026-09-22 23:59:00']);
+        WeighIn::factory()->for($user)->create(['weight_kg' => 80.0, 'weighed_at' => '2026-09-24 00:00:00']);
+        Step::factory()->for($user)->create(['date' => '2026-09-22', 'count' => 12000]);
         OffPlanEntry::factory()->for($user)->create(['date' => '2026-09-23', 'name' => 'Office cake', 'time' => '15:00', 'kcal' => 320, 'protein_g' => 4, 'fat_g' => 16, 'carbs_g' => 40]);
         OtherActivity::factory()->for($user)->create(['date' => '2026-09-23', 'start_time' => '18:45', 'minutes' => 45, 'name' => 'Tennis', 'intensity' => 'moderate']);
         Step::factory()->for($user)->create(['date' => '2026-09-23', 'count' => 5432]);
-        $monday = WorkoutSession::factory()->for($user)->create([
+        $chili = Recipe::factory()->createOne(['name' => 'Chili', 'servings' => 4]);
+        $beef = Food::factory()->createOne(['name' => 'Beef mince', 'kcal' => 250, 'protein' => 26, 'fat' => 15, 'carbs' => 0]);
+        RecipeIngredient::factory()->create(['recipe_id' => $chili->id, 'food_id' => $beef->id, 'grams' => 400]);
+        PlannedRecipe::factory()->create(['meal_id' => $dinner, 'recipe_id' => $chili->id, 'servings' => 2]);
+        $monday = WorkoutSession::factory()->for($user)->createOne([
             'mesocycle_id' => $mesocycle->id, 'week' => 2, 'day' => 1,
             'actual_start_at' => '2026-09-21 17:30:00', 'actual_end_at' => '2026-09-21 18:20:00', 'is_skipped' => false,
         ]);

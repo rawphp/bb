@@ -35,11 +35,12 @@ it('SCH-001 SCH-002 SCH-003 SCH-004 SCH-005 SCH-006 SCH-011 shows a seeded day w
         ->and($data['title'])->toBe('Wednesday, Sep 23')
         ->and(array_column($data['timeline'], 'kind'))->toBe(['weigh_in', 'meal', 'busy', 'meal', 'workout', 'other_activity', 'meal'])
         ->and($data['meals'][0]['planned_text'])->toBe('Oats 80 g')
+        ->and($data['meals'][2]['planned_text'])->toBe('Chili 2 servings')
         ->and($data['meals'][1]['check_in']['state'])->toBe('on_track')
         ->and($data['workouts'][0]['title'])->toBe('Week 2 · Day 2 · Lower A')
         ->and($data['weigh_ins'][0]['weight_text'])->toBe('82.4 kg')
         ->and($data['steps'])->toBe(['target_text' => 'Step count target 6-8k', 'actual_text' => '5,432 steps'])
-        ->and($data['totals']['calories']['value_text'])->toBe('2454/2600')
+        ->and($data['totals']['calories']['value_text'])->toBe('1914/2600')
         ->and($data['off_plan'][0]['name'])->toBe('Office cake');
 });
 
@@ -89,15 +90,39 @@ it('ONB-031 shows an empty day to a user without a plan, and a banner before the
         ->and($before['timeline'])->toBe([]);
 });
 
+it('SCH-023 keeps a date outside the plan inside it', function () {
+    Carbon::setTestNow('2026-09-23 10:00:00');
+    $user = TodaySeed::user();
+    TodaySeed::targets($user);
+
+    $late = $this->actingAs($user)->postJson('/capabilities/today_show', ['date' => '2026-12-25'])->assertOk()->json('data');
+    $early = $this->actingAs($user)->postJson('/capabilities/today_show', ['date' => '2026-01-01'])->assertOk()->json('data');
+
+    expect($late['date'])->toBe('2026-10-09')
+        ->and($early['date'])->toBe('2026-09-12');
+});
+
 it('CAP-020 shows only the signed-in user\'s rows', function () {
     Carbon::setTestNow('2026-09-23 10:00:00');
     $other = TodaySeed::user();
-    TodaySeed::targets($other);
-    $user = User::factory()->create();
+    TodaySeed::targets($other, last: '2026-11-30', kcal: 3000);
+    TodaySeed::wednesday($other, TodaySeed::mesocycle($other));
+    $user = TodaySeed::user();
+    $mine = TodaySeed::mesocycle($user);
+    TodaySeed::targets($user);
 
     $data = $this->actingAs($user)->postJson('/capabilities/today_show')->assertOk()->json('data');
 
-    expect($data['totals'])->toBeNull()
-        ->and($data['meals'])->toBe([])
-        ->and(DayTarget::query()->where('user_id', $other->id)->count())->toBe(28);
+    assertMatchesScreenFixture('today_show', $data);
+    // With nothing planned or eaten, the totals count every meal at its target.
+    expect($data['totals']['calories']['value_text'])->toBe('2600/2600')
+        ->and(array_column($data['meals'], 'planned_text'))->toBe([null, null, null])
+        ->and(array_column(array_column($data['meals'], 'check_in'), 'state'))->toBe(['not_checked_in', 'not_checked_in', 'not_checked_in'])
+        ->and($data['off_plan'])->toBe([])
+        ->and($data['other_activities'])->toBe([])
+        ->and($data['weigh_ins'][0]['weight_text'])->toBeNull()
+        ->and($data['steps']['actual_text'])->toBeNull()
+        ->and($data['workouts'][0]['mesocycle_id'])->toBe($mine->id)
+        ->and($data['workouts'][0]['state'])->toBe('planned')
+        ->and(DayTarget::query()->where('user_id', $other->id)->count())->toBe(80);
 });

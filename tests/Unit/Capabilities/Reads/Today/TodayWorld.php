@@ -14,8 +14,11 @@ use App\Models\OffPlanEntry;
 use App\Models\OtherActivity;
 use App\Models\Plan;
 use App\Models\PlannedFood;
+use App\Models\PlannedRecipe;
 use App\Models\PlanWeek;
 use App\Models\Profile;
+use App\Models\Recipe;
+use App\Models\RecipeIngredient;
 use App\Models\Step;
 use App\Models\WeighIn;
 use App\Models\WeighInScheduleEntry;
@@ -51,7 +54,8 @@ final class TodayWorld
      * @param  list<PlanWeek>|null  $planWeeks
      * @param  list<WorkoutSession>|null  $sessions
      * @param  list<MuscleFeedback>  $feedback
-     * @param  array<string, list<array{0: string, 1: float}>>  $foods  planned foods by meal id: [name-key, grams]
+     * @param  array<string, list<array{0: string, 1: float, 2?: bool, 3?: int}>>  $foods  planned foods by meal id: [name-key, grams, cooked, position]
+     * @param  array<string, list<array{0: float, 1: int}>>  $recipes  planned chili by meal id: [servings, position]
      * @param  array<string, string>  $states  planning states by meal id
      * @param  list<OffPlanEntry>  $offPlan
      * @param  list<OtherActivity>  $activities
@@ -65,6 +69,7 @@ final class TodayWorld
         ?array $sessions = null,
         array $feedback = [],
         ?array $foods = null,
+        array $recipes = [],
         array $states = [],
         array $offPlan = [],
         array $activities = [],
@@ -103,7 +108,7 @@ final class TodayWorld
         $meals = [];
         foreach ($targets as $target) {
             foreach ($target->meals as $index => $meal) {
-                $meals[] = self::meal($target, $meal['id'], $index + 1, $foods ?? [self::mealId('2026-09-23', 1) => [['oats', 80], ['whey', 30]]], $states);
+                $meals[] = self::meal($target, $meal['id'], $index + 1, $foods ?? [self::mealId('2026-09-23', 1) => [['oats', 80], ['whey', 30]]], $recipes, $states);
             }
         }
         $day = TrainSnapshot::day($date ?? $today);
@@ -179,24 +184,29 @@ final class TodayWorld
     }
 
     /**
-     * @param  array<string, list<array{0: string, 1: float}>>  $foods
+     * @param  array<string, list<array{0: string, 1: float, 2?: bool, 3?: int}>>  $foods
+     * @param  array<string, list<array{0: float, 1: int}>>  $recipes
      * @param  array<string, string>  $states
      */
-    private static function meal(DayTarget $target, string $id, int $index, array $foods, array $states): DayTargetMeal
+    private static function meal(DayTarget $target, string $id, int $index, array $foods, array $recipes, array $states): DayTargetMeal
     {
         $meal = (new DayTargetMeal)->forceFill(['id' => $id, 'user_id' => 1, 'day_target_id' => $target->id, 'position' => $index - 1]);
         $planned = [];
-        foreach ($foods[$id] ?? [] as $position => [$key, $grams]) {
+        foreach ($foods[$id] ?? [] as $position => $entry) {
             $planned[] = (new PlannedFood)->forceFill([
-                'id' => count($planned) + 1, 'user_id' => 1, 'meal_id' => $id, 'food_id' => $key, 'position' => $position,
-                'grams' => $grams, 'is_cooked' => false, 'is_locked' => false, 'unit' => 'g',
-            ])->setRelation('food', self::food($key));
+                'id' => count($planned) + 1, 'user_id' => 1, 'meal_id' => $id, 'food_id' => $entry[0], 'position' => $entry[3] ?? $position,
+                'grams' => $entry[1], 'is_cooked' => $entry[2] ?? false, 'is_locked' => false, 'unit' => 'g',
+            ])->setRelation('food', self::food($entry[0]));
         }
+        $chili = array_map(fn (array $entry) => (new PlannedRecipe)->forceFill([
+            'id' => "pr-{$id}-{$entry[1]}", 'user_id' => 1, 'meal_id' => $id, 'recipe_id' => 'chili', 'position' => $entry[1],
+            'servings' => $entry[0], 'is_locked' => false, 'recipe' => ['id' => 'chili', 'name' => 'Chili', 'servings' => 4],
+        ])->setRelation('sourceRecipe', self::chili()), $recipes[$id] ?? []);
         $checkIn = self::checkIn(substr((string) $target->date, 0, 10), $index, $target->meals[$index - 1]);
         $state = $states[$id] ?? null;
 
         return $meal->setRelation('plannedFoods', new Collection($planned))
-            ->setRelation('plannedRecipes', new Collection)
+            ->setRelation('plannedRecipes', new Collection($chili))
             ->setRelation('checkIn', $checkIn)
             ->setRelation('planningState', $state === null ? null : (new MealPlanningState)->forceFill(['meal_id' => $id, 'user_id' => 1, 'state' => $state]));
     }
@@ -208,9 +218,27 @@ final class TodayWorld
             'whey' => ['Whey', 400, 80, 6, 8],
             // 100 g come to exactly Wednesday breakfast's targets.
             'fit' => ['Perfect mix', 780, 51, 21, 96],
+            // Weighed cooked, 2.5 g of cooked rice is 1 g raw.
+            'rice' => ['Rice', 360, 7, 1, 80],
+            'beef' => ['Beef mince', 250, 26, 15, 0],
+            'beans' => ['Kidney beans', 100, 7, 0.5, 17],
         };
 
-        return (new Food)->forceFill(['id' => $key, 'name' => $name, 'kcal' => $kcal, 'protein' => $protein, 'fat' => $fat, 'carbs' => $carbs]);
+        return (new Food)->forceFill([
+            'id' => $key, 'name' => $name, 'kcal' => $kcal, 'protein' => $protein, 'fat' => $fat, 'carbs' => $carbs,
+            'cooked_ratio' => $key === 'rice' ? 2.5 : null,
+        ]);
+    }
+
+    /** RCP-001: 4 servings of chili from 400 g of beef and 400 g of beans: 350 kcal, 33 g protein, 15.5 g fat, 17 g carbs each. */
+    public static function chili(): Recipe
+    {
+        $ingredients = array_map(fn (array $row) => (new RecipeIngredient)->forceFill([
+            'id' => $row[1], 'recipe_id' => 'chili', 'food_id' => $row[0], 'position' => $row[1], 'grams' => 400, 'is_cooked' => false,
+        ])->setRelation('food', self::food($row[0])), [['beef', 0], ['beans', 1]]);
+
+        return (new Recipe)->forceFill(['id' => 'chili', 'name' => 'Chili', 'servings' => 4])
+            ->setRelation('ingredients', new Collection($ingredients));
     }
 
     /** @param  array<string, mixed>  $meal */

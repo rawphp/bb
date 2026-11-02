@@ -30,15 +30,16 @@ it('SCH-020 marks today and the selected day', function () {
         ->and($marked($monday, 'is_today'))->toBe(['23']);
 });
 
-it('SCH-020 swiping changes the week and stops at the ends of the plan', function () {
+it('SCH-020 swiping keeps the weekday and stops at the ends of the plan', function () {
     $middle = weekPayload(W::snapshot());
     $first = weekPayload(W::snapshot(date: '2026-09-14'));
     $last = weekPayload(W::snapshot(date: '2026-10-06'));
 
-    expect([$middle['previous_week'], $middle['next_week']])->toBe(['2026-09-12', '2026-09-26'])
-        ->and(weekPayload(W::snapshot(date: '2026-09-26'))['heading'])->toBe('WEEK 3')
+    expect([$middle['previous_week'], $middle['next_week']])->toBe(['2026-09-16', '2026-09-30'])
+        ->and(weekPayload(W::snapshot(date: '2026-09-30'))['heading'])->toBe('WEEK 3')
         ->and($first['previous_week'])->toBeNull()
         ->and($first['days'][0]['number'])->toBe('12')
+        ->and(weekPayload(W::snapshot(date: '2026-09-19'))['previous_week'])->toBe('2026-09-12')
         ->and($last['next_week'])->toBeNull()
         ->and($last['days'][0]['number'])->toBe('3');
 });
@@ -47,7 +48,8 @@ it('SCH-020 ONB-031 before the plan, the weeks from today up to the start can be
     $payload = weekPayload(W::snapshot(today: '2026-09-10'));
 
     expect($payload['previous_week'])->toBeNull()
-        ->and($payload['next_week'])->toBe('2026-09-12');
+        ->and($payload['next_week'])->toBe('2026-09-17')
+        ->and(weekPayload(W::snapshot(today: '2026-09-10', date: '2026-09-15'))['previous_week'])->toBe('2026-09-10');
 });
 
 it('SCH-021 a finished day eaten on target shows the green dot', function () {
