@@ -10,7 +10,22 @@ use RawPHP\Warp\ResetManifest;
 
 abstract class TestCase extends BaseTestCase
 {
-    use InteractsWithWarmApplication;
+    use InteractsWithWarmApplication {
+        createApplication as warpCreateApplication;
+    }
+
+    public function createApplication(): Application
+    {
+        $app = $this->warpCreateApplication();
+
+        // An isolated app boots before Warp points it at the snapshot database, so a
+        // connection resolved during boot still has the old settings. Drop it.
+        if ($this->warpShouldIsolate()) {
+            $app['db']->purge();
+        }
+
+        return $app;
+    }
 
     protected function createClassicApplication(): Application
     {

@@ -4,11 +4,13 @@ namespace App\Providers;
 
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\HostCapability;
+use App\Capabilities\Support\AuditRecordWriter;
 use App\Capabilities\Support\HostBus;
 use App\Capabilities\Support\PrefetchesKeys;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
 use LogicException;
+use Rawphp\Capabilities\Contracts\AuditWriter;
 use Rawphp\Capabilities\Contracts\Authorizer;
 use Rawphp\Capabilities\Contracts\CapabilityBus;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
@@ -25,6 +27,9 @@ final class CapabilitiesHostProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(Authorizer::class, HostAuthorizer::class);
+
+        // Replaces the package's outbox writer: Activity reads these rows (CAP-022).
+        $this->app->singleton(AuditWriter::class, AuditRecordWriter::class);
 
         // Replaces the package's alias of CapabilityBus to the registry (CAP-012, CAP-014).
         $this->app->singleton(CapabilityBus::class, fn (Container $app): HostBus => new HostBus($app->make(CapabilityRegistry::class)));
