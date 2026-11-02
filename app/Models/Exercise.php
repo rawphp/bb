@@ -15,7 +15,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/** A library exercise, or a user's custom one when it has a user. */
+/**
+ * A library exercise, or a user's custom one when it has a user.
+ *
+ * @property MuscleGroup $muscle_group
+ */
 #[Fillable([
     'name', 'muscle_group', 'equipment', 'load_type', 'sfr_rating',
     'rep_range_min', 'rep_range_max', 'is_compound', 'video_url',
