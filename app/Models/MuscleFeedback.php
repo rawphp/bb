@@ -12,7 +12,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-/** What the user said of a muscle after a session: soreness, pump and volume (FB-003 to FB-005). */
+/**
+ * What the user said of a muscle after a session: soreness, pump and volume (FB-003 to FB-005).
+ *
+ * @property MuscleGroup $muscle_group
+ */
 #[Fillable(['workout_session_id', 'muscle_group', 'soreness', 'pump', 'volume'])]
 class MuscleFeedback extends Model
 {

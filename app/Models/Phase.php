@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * A phase on the plan timeline (PLAN-001). A soft-deleted phase keeps its mesocycles' phase_id, so a restore
  * re-links them; `Mesocycle::phase` hides a trashed phase meanwhile. A force delete nulls phase_id
  * through the foreign key.
+ *
+ * @property PhaseType $type
  */
 #[Fillable(['type', 'start_date', 'end_date', 'target_rate_percent_per_week', 'event_date'])]
 class Phase extends Model
