@@ -1,0 +1,21 @@
+{
+    "status": {
+        "text": "Not set up",
+        "tone": "neutral"
+    },
+    "scope_text": "The token can log weigh-ins and steps. It cannot read anything or change anything else.",
+    "token": null,
+    "last_post": null,
+    "shortcut_url": "https://www.icloud.com/shortcuts/example",
+    "steps": [
+        {
+            "text": "In the Shortcuts app, make a personal automation that runs every morning."
+        },
+        {
+            "text": "Add \"Find Health Samples\" for yesterday's steps and the latest body weight."
+        },
+        {
+            "text": "Add \"Get Contents of URL\" to post them to this server with your token."
+        }
+    ]
+}

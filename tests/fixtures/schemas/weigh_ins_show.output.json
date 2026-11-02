@@ -1,0 +1,319 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "title": {
+            "type": "string"
+        },
+        "trend": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "description": "The value's colour; neutral for plain text.",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "label",
+                "value",
+                "tone"
+            ],
+            "description": "\"Trend weight\" and its value, or \"No weigh-ins yet\" (WT-010)."
+        },
+        "help": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "title",
+                "message"
+            ]
+        },
+        "units": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "weight": {
+                    "type": "string",
+                    "enum": [
+                        "kg",
+                        "lb"
+                    ]
+                },
+                "waist": {
+                    "type": "string",
+                    "enum": [
+                        "cm",
+                        "in"
+                    ]
+                }
+            },
+            "required": [
+                "weight",
+                "waist"
+            ]
+        },
+        "schedule": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "summary": {
+                    "type": "string",
+                    "description": "\"Schedule: 4 days a week\"."
+                },
+                "note": {
+                    "type": "string",
+                    "description": "The time only sets the reminder (WT-001)."
+                },
+                "entries": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "weekdays": {
+                                "type": "array",
+                                "description": "ISO weekdays, 1 is Monday.",
+                                "minItems": 1,
+                                "maxItems": 7,
+                                "items": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 7
+                                }
+                            },
+                            "days_label": {
+                                "type": "string",
+                                "description": "\"Mon, Wed, Fri\" or \"Every day\"."
+                            },
+                            "time": {
+                                "type": "string",
+                                "description": "\"07:00\", as weigh_in_schedule_set takes it."
+                            },
+                            "time_label": {
+                                "type": "string"
+                            },
+                            "can_delete": {
+                                "type": "boolean",
+                                "description": "False when deleting it leaves fewer than 2 weigh-in days a week (WT-007)."
+                            }
+                        },
+                        "required": [
+                            "weekdays",
+                            "days_label",
+                            "time",
+                            "time_label",
+                            "can_delete"
+                        ]
+                    }
+                },
+                "weekdays": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "number": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                            },
+                            "short": {
+                                "type": "string"
+                            },
+                            "full": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "number",
+                            "short",
+                            "full"
+                        ]
+                    }
+                },
+                "delete_blocked_message": {
+                    "type": "string",
+                    "description": "Shown on an entry whose can_delete is false."
+                }
+            },
+            "required": [
+                "summary",
+                "note",
+                "entries",
+                "weekdays",
+                "delete_blocked_message"
+            ]
+        },
+        "rows": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The weigh-in's ULID, or \"missed-<date>\" for a missed day."
+                    },
+                    "is_missed": {
+                        "type": "boolean"
+                    },
+                    "date_label": {
+                        "type": "string"
+                    },
+                    "time_label": {
+                        "type": "string"
+                    },
+                    "weight_label": {
+                        "type": "string",
+                        "description": "\"82.5 kg\"."
+                    },
+                    "waist_label": {
+                        "type": "string",
+                        "description": "\"86.0 cm\"; empty without a waist reading (WT-021)."
+                    },
+                    "weighed_at": {
+                        "type": "string",
+                        "description": "When the reading was taken; for a missed day, when a late one starts.",
+                        "format": "date-time"
+                    },
+                    "weight_field": {
+                        "type": "string",
+                        "description": "The weight as the edit field starts, in the user's unit: \"82.5\"."
+                    },
+                    "waist_field": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "is_missed",
+                    "date_label",
+                    "time_label",
+                    "weight_label",
+                    "waist_label",
+                    "weighed_at",
+                    "weight_field",
+                    "waist_field"
+                ]
+            },
+            "description": "Newest first, missed scheduled days among them."
+        },
+        "missed": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ],
+            "description": "The pill on each row marked is_missed."
+        },
+        "empty_message": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Shown when there are no weigh-ins; null otherwise."
+        },
+        "steps": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "default_date": {
+                    "type": "string",
+                    "description": "The day a new entry starts on: yesterday, since today's count is not final.",
+                    "format": "date"
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "date": {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            "date_label": {
+                                "type": "string"
+                            },
+                            "value_label": {
+                                "type": "string",
+                                "description": "\"8,412 steps\"."
+                            },
+                            "source_label": {
+                                "type": "string",
+                                "description": "\"Typed\" or \"Shortcut\"."
+                            },
+                            "steps": {
+                                "type": "integer",
+                                "description": "The count as the edit field starts.",
+                                "minimum": 0
+                            }
+                        },
+                        "required": [
+                            "date",
+                            "date_label",
+                            "value_label",
+                            "source_label",
+                            "steps"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "title",
+                "default_date",
+                "rows"
+            ]
+        }
+    },
+    "required": [
+        "title",
+        "trend",
+        "help",
+        "units",
+        "schedule",
+        "rows",
+        "missed",
+        "steps"
+    ]
+}

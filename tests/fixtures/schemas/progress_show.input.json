@@ -1,0 +1,15 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "scope": {
+            "type": "string",
+            "description": "The chart range: the current phase or the whole plan (ANA-001).",
+            "enum": [
+                "phase",
+                "plan"
+            ]
+        }
+    }
+}

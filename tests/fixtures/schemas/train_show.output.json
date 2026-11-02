@@ -1,0 +1,253 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "todays_session": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "mesocycle_id": {
+                    "type": "string"
+                },
+                "week": {
+                    "type": "integer"
+                },
+                "day": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "title",
+                "mesocycle_id",
+                "week",
+                "day"
+            ]
+        },
+        "current": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "week_text": {
+                    "type": "string"
+                },
+                "phase_title": {
+                    "type": "string"
+                },
+                "dates_text": {
+                    "type": "string"
+                },
+                "next_mesocycle": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "starts_text": {
+                            "type": "string"
+                        },
+                        "start_date": {
+                            "type": "string"
+                        },
+                        "copy_source_id": {
+                            "type": "string"
+                        },
+                        "template_phase": {
+                            "type": "string",
+                            "enum": [
+                                "cut",
+                                "gain",
+                                "maintain",
+                                "all"
+                            ]
+                        },
+                        "priority_notice": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "active_rest": {
+                            "type": [
+                                "object",
+                                "null"
+                            ],
+                            "additionalProperties": false,
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                },
+                                "tone": {
+                                    "type": "string",
+                                    "enum": [
+                                        "good",
+                                        "neutral",
+                                        "warning",
+                                        "info"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "text",
+                                "tone"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "starts_text",
+                        "start_date",
+                        "copy_source_id",
+                        "template_phase"
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "week_text",
+                "phase_title",
+                "dates_text"
+            ]
+        },
+        "draft": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "text": {
+                    "type": "string"
+                },
+                "replace_warning": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "text",
+                "replace_warning"
+            ]
+        },
+        "sections": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "current",
+                            "planned",
+                            "past"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "rows": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "dates_text": {
+                                    "type": "string"
+                                },
+                                "summary_text": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "name",
+                                "dates_text",
+                                "summary_text"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "status",
+                    "title",
+                    "rows"
+                ]
+            }
+        },
+        "create_routes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "route": {
+                        "type": "string",
+                        "enum": [
+                            "template",
+                            "copy_previous",
+                            "builder",
+                            "scratch"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "available": {
+                        "type": "boolean"
+                    },
+                    "copy_source_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "priority_notice": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "route",
+                    "title",
+                    "available"
+                ]
+            }
+        }
+    },
+    "required": [
+        "sections",
+        "create_routes"
+    ]
+}

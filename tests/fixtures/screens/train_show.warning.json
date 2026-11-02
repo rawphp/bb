@@ -1,0 +1,68 @@
+{
+    "todays_session": {
+        "title": "Week 4 · Day 2 · Lower A",
+        "mesocycle_id": "01JB6Q3V8T2K9WZ4M5N7P1R3S5",
+        "week": 4,
+        "day": 2
+    },
+    "current": {
+        "id": "01JB6Q3V8T2K9WZ4M5N7P1R3S5",
+        "name": "Meso 2",
+        "week_text": "Week 6 of 6 · Deload",
+        "phase_title": "Muscle gain",
+        "dates_text": "31 Aug – 11 Oct 2026",
+        "next_mesocycle": {
+            "starts_text": "Starts Monday 12 Oct",
+            "start_date": "2026-10-12",
+            "copy_source_id": "01JB6Q3V8T2K9WZ4M5N7P1R3S5",
+            "template_phase": "cut",
+            "priority_notice": "Priorities reset for Fat loss. Your old priorities can be kept.",
+            "active_rest": null
+        }
+    },
+    "draft": null,
+    "sections": [
+        {
+            "status": "current",
+            "title": "Current",
+            "rows": [
+                {
+                    "id": "01JB6Q3V8T2K9WZ4M5N7P1R3S5",
+                    "name": "Meso 2",
+                    "dates_text": "31 Aug – 11 Oct 2026",
+                    "summary_text": "6 weeks · Muscle gain"
+                }
+            ]
+        }
+    ],
+    "create_routes": [
+        {
+            "route": "template",
+            "title": "Template",
+            "available": true,
+            "copy_source_id": null,
+            "priority_notice": null
+        },
+        {
+            "route": "copy_previous",
+            "title": "Copy previous mesocycle",
+            "available": true,
+            "copy_source_id": "01JB6Q3V8T2K9WZ4M5N7P1R3S5",
+            "priority_notice": "Priorities reset for Fat loss. Your old priorities can be kept."
+        },
+        {
+            "route": "builder",
+            "title": "Meso Builder",
+            "available": true,
+            "copy_source_id": null,
+            "priority_notice": null
+        },
+        {
+            "route": "scratch",
+            "title": "Build from scratch",
+            "available": true,
+            "copy_source_id": null,
+            "priority_notice": null
+        }
+    ]
+}

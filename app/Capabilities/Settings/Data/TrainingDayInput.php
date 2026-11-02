@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Capabilities\Settings\Data;
+
+use Rawphp\Capabilities\Attributes\Field;
+use Rawphp\Capabilities\Support\CapabilityData;
+
+/** A training day and its session. */
+final class TrainingDayInput extends CapabilityData
+{
+    public function __construct(
+        #[Field(description: 'ISO weekday: 1 is Monday, 7 is Sunday', minimum: 1, maximum: 7)]
+        public readonly int $weekday,
+        #[Field(description: '24-hour time, HH:mm')]
+        public readonly string $start,
+        #[Field(minimum: 15, maximum: 240)]
+        public readonly int $minutes,
+    ) {}
+}
