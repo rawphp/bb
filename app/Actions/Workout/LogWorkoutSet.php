@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * WO-003, WO-005, OFF-021: saves a set's weight and reps as the user typed them, and ticks or unticks Log. A logged
  * set counts as a working set (WO-025). The weight is stored in kg (CAP-015); one dumbbell's weight for dumbbells
- * (WO-023) and none for pure bodyweight.
+ * (WO-023), the added weight for bodyweight, and 0 for a logged set with none.
  */
 final class LogWorkoutSet
 {
@@ -28,7 +28,7 @@ final class LogWorkoutSet
                 throw new DomainException($refusal);
             }
             $set->update([
-                'actual_weight_kg' => SetLog::kg($weight, $unit, $loadType),
+                'actual_weight_kg' => SetLog::kg($weight, $unit, $isLogged),
                 'actual_reps' => $reps,
                 'is_logged' => $isLogged,
             ]);

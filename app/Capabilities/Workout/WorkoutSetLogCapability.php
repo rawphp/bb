@@ -21,7 +21,7 @@ final class WorkoutSetLogCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('workout_set_log', affects: ['workout_show', 'today_show', 'train_show', 'mesocycle_show'])
-            ->description('Save a set\'s weight and reps in a session under way, and tick or untick Log; a logged set counts as a working set. Use it after the user lifts, with the weight in the unit they typed (one dumbbell\'s weight for dumbbells, none for bodyweight). Logging needs the reps, and the weight unless the exercise is bodyweight.')
+            ->description('Save a set\'s weight and reps in a session under way, and tick or untick Log; a logged set counts as a working set. Use it after the user lifts, with the weight in the unit they typed (one dumbbell\'s weight for dumbbells; for bodyweight, the added weight or none). Logging needs the reps, and the weight unless the exercise is bodyweight.')
             ->cli('workout', 'set-log')
             ->input(WorkoutSetLogInput::class)
             ->run(function (WorkoutSetLogInput $input, CapabilityContext $context): WriteResult {

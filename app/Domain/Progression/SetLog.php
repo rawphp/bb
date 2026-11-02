@@ -29,11 +29,15 @@ final class SetLog
         return null;
     }
 
-    /** CAP-015: the weight in kg from the unit it was typed in. WO-023: pure bodyweight has no load to store. */
-    public static function kg(?float $weight, ?WeightUnit $unit, ExerciseLoadType $loadType): ?float
+    /**
+     * CAP-015: the weight in kg from the unit it was typed in, for every load type (rp-clone setWeight); only the
+     * load maths leaves pure bodyweight out. WO-003: a logged set with no weight lifted no added load, stored as 0 so
+     * it never reads back as its target (rp-clone draft(of:)).
+     */
+    public static function kg(?float $weight, ?WeightUnit $unit, bool $isLogged): ?float
     {
-        if ($weight === null || $loadType === ExerciseLoadType::Bodyweight) {
-            return null;
+        if ($weight === null) {
+            return $isLogged ? 0.0 : null;
         }
 
         return $unit === WeightUnit::Lb ? UnitConversion::lbToKg($weight) : $weight;
