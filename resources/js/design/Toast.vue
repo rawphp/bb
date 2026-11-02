@@ -32,12 +32,13 @@ const props = withDefaults(
 const emit = defineEmits<{ undone: [result: unknown] }>();
 
 const uid = useId();
-const undoing = ref(false);
+// The token whose undo_apply is running. Only the toast it belongs to is busy.
+const undoing = ref<string | null>(null);
 const failure = ref<string | null>(null);
 
 const message = computed(() => props.result.toast ?? '');
 const token = computed(() => props.result.undo ?? null);
-const busy = computed(() => props.loading || undoing.value);
+const busy = computed(() => props.loading || (undoing.value !== null && undoing.value === token.value));
 const shownError = computed(() => failure.value ?? props.error);
 
 // A refusal belongs to the change it was about, not to the next toast.
@@ -56,16 +57,16 @@ async function undo(): Promise<void> {
     if (sent === null || busy.value || props.disabled) {
         return;
     }
-    undoing.value = true;
+    undoing.value = sent;
     failure.value = null;
     try {
         const answer = await write('undo_apply', { token: sent });
-        emit('undone', answer);
+        // The host may have shown another toast meanwhile; this answer is not about it.
+        if (token.value === sent) emit('undone', answer);
     } catch (error) {
-        // The host may have shown another toast meanwhile; this refusal is not about it.
         if (token.value === sent) failure.value = messageOf(error);
     } finally {
-        undoing.value = false;
+        if (undoing.value === sent) undoing.value = null;
     }
 }
 </script>
@@ -74,7 +75,7 @@ async function undo(): Promise<void> {
     <!-- The status region stays in the page so a toast that appears in it is announced. -->
     <div role="status" :aria-busy="message && busy ? 'true' : undefined">
         <template v-if="message">
-            <div class="flex items-center gap-3 rounded-[14px] border border-secondary-text/25 bg-surface pr-2 pl-4">
+            <div class="flex items-center gap-3 rounded-xl border border-secondary-text/25 bg-surface pr-2 pl-4">
                 <span class="flex min-w-0 grow flex-col gap-0.5 py-2">
                     <span class="text-sm text-primary-text">{{ message }}</span>
                     <span v-if="pending" :id="`${uid}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
@@ -84,8 +85,7 @@ async function undo(): Promise<void> {
                     type="button"
                     :aria-describedby="pending ? `${uid}-hint ${uid}-pending` : `${uid}-hint`"
                     :disabled="busy || disabled"
-                    class="min-h-tap min-w-tap shrink-0 text-sm font-semibold text-accent"
-                    :class="busy || disabled ? 'opacity-60' : ''"
+                    class="min-h-tap min-w-tap shrink-0 text-sm font-semibold text-accent disabled:opacity-50"
                     @click="undo"
                 >
                     Undo

@@ -110,14 +110,31 @@ describe('Toast', () => {
         expect(wrapper.emitted('undone')).toHaveLength(1);
     });
 
-    it('VIEW-004 error: an undo that gets no answer says so in plain words', async () => {
-        writeMock.mockRejectedValueOnce(new CapabilityError('undo_apply', 0, { reason: 'network' }));
+    it.each([
+        ['no answer', new CapabilityError('undo_apply', 0, { reason: 'network' })],
+        ['an answer with an empty message', new CapabilityError('undo_apply', 409, { ok: false, error: { code: 'conflict', message: '' } })],
+        // Only the server's answer is shown as given, even when another error carries a body.
+        ['an error that is not a capability answer', Object.assign(new TypeError('Failed to fetch'), { body: { error: { message: 'Not the server' } } })],
+    ])('VIEW-004 error: an undo that gets %s says so in plain words', async (_, error) => {
+        writeMock.mockRejectedValueOnce(error);
         const wrapper = toast();
 
         await undoButton(wrapper).trigger('click');
         await flushPromises();
 
         expect(wrapper.get('[role="alert"]').text()).toBe("Couldn't undo. Try again.");
+    });
+
+    it('CAP-012 a refused undo shows the server message in place of the error prop', async () => {
+        writeMock.mockRejectedValueOnce(
+            new CapabilityError('undo_apply', 409, { ok: false, error: { code: 'conflict', message: 'A later change depends on this.' } }),
+        );
+        const wrapper = toast({ error: 'Earlier problem' });
+
+        await undoButton(wrapper).trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[role="alert"]').text()).toBe('A later change depends on this.');
     });
 
     it('VIEW-004 error: the error prop is announced', () => {
@@ -187,5 +204,38 @@ describe('Toast', () => {
             .map((h) => h.text());
 
         expect(titles).toContain('Toast');
+    });
+
+    it('UI-010 an undo that finishes after the next toast is shown neither blocks nor dismisses it', async () => {
+        let resolve: (value: unknown) => void = () => {};
+        writeMock.mockReturnValueOnce(new Promise((done) => (resolve = done)));
+        const wrapper = toast();
+        await undoButton(wrapper).trigger('click');
+
+        await wrapper.setProps({ result: { toast: 'Set added', undo: 'tok-2' } });
+
+        expect(wrapper.get('[role="status"]').attributes('aria-busy')).toBeUndefined();
+        expect(undoButton(wrapper).attributes('disabled')).toBeUndefined();
+
+        resolve({});
+        await flushPromises();
+        expect(wrapper.emitted('undone')).toBeUndefined();
+    });
+
+    it('UI-010 the old undo finishing does not end the busy state of the next one', async () => {
+        let first: (value: unknown) => void = () => {};
+        writeMock.mockReturnValueOnce(new Promise((done) => (first = done)));
+        writeMock.mockReturnValueOnce(new Promise(() => {}));
+        const wrapper = toast();
+        await undoButton(wrapper).trigger('click');
+        await wrapper.setProps({ result: { toast: 'Set added', undo: 'tok-2' } });
+        await undoButton(wrapper).trigger('click');
+
+        first({});
+        await flushPromises();
+
+        expect(writeMock).toHaveBeenLastCalledWith('undo_apply', { token: 'tok-2' });
+        expect(wrapper.get('[role="status"]').attributes('aria-busy')).toBe('true');
+        expect(undoButton(wrapper).attributes('disabled')).toBeDefined();
     });
 });
