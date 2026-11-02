@@ -602,6 +602,7 @@
         "options": [
             {
                 "choice": "maintenance",
+                "gain_first": false,
                 "title": "Maintenance",
                 "detail": "Hold the new lower weight and let calories and training recover.",
                 "is_recommended": true,
@@ -784,7 +785,8 @@
                 "refusal": null
             },
             {
-                "choice": "gain_first",
+                "choice": "muscleGain",
+                "gain_first": true,
                 "title": "Gain first",
                 "detail": "One Muscle gain mesocycle straight after the cut, then a Maintenance mesocycle with resensitization training, then Muscle gain again.",
                 "is_recommended": true,
@@ -849,6 +851,7 @@
             },
             {
                 "choice": "fatLoss",
+                "gain_first": false,
                 "title": "Fat loss",
                 "detail": "",
                 "is_recommended": false,

@@ -638,9 +638,11 @@
                                     "fatLoss",
                                     "muscleGain",
                                     "maintenance",
-                                    "miniCut",
-                                    "gain_first"
+                                    "miniCut"
                                 ]
+                            },
+                            "gain_first": {
+                                "type": "boolean"
                             },
                             "title": {
                                 "type": "string"
@@ -951,6 +953,7 @@
                         },
                         "required": [
                             "choice",
+                            "gain_first",
                             "title",
                             "detail",
                             "is_recommended",

@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Mesocycles\Data;
 
-use App\Capabilities\Support\AcceptsNullEnums;
+use App\Capabilities\Support\ExplicitNulls;
 use App\Domain\Model\Sex;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
@@ -15,7 +15,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
  */
 final class TemplatesShowInput extends CapabilityData
 {
-    use AcceptsNullEnums;
+    use ExplicitNulls;
 
     public function __construct(
         public readonly ?string $template_id = null,

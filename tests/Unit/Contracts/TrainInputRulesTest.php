@@ -121,7 +121,7 @@ it('CAP-019 refuses an id that is not a ULID in every train ULID rule, nested on
     )->and(count($checked))->toBeGreaterThanOrEqual(30);
 });
 
-it('CAP-012 lets a train input send null for a nullable enum, and leave out an optional one', function () {
+it('CAP-012 lets a train input send null for a nullable enum, and leave it out only when it has a default', function () {
     $checked = 0;
 
     foreach (trainInputs() as $name => $input) {
@@ -133,10 +133,10 @@ it('CAP-012 lets a train input send null for a nullable enum, and leave out an o
             $data = trainExample($input::jsonSchema());
 
             expect(trainInputViolations($input, [...$data, $field => null]))->toBe([], "{$name} refuses {$field}: null");
-            if (! in_array($field, $input::jsonSchema()['required'] ?? [], true)) {
-                unset($data[$field]);
-                expect(trainInputViolations($input, $data))->toBe([], "{$name} refuses {$field} left out");
-            }
+
+            $required = ! (new ReflectionParameter([$input, '__construct'], $field))->isDefaultValueAvailable();
+            unset($data[$field]);
+            expect(trainInputViolations($input, $data))->toBe($required ? [$field] : [], "{$name} {$field} left out");
             $checked++;
         }
     }
@@ -181,7 +181,7 @@ it('CAP-002 uses the domain enums\' values in every train contract', function ()
         'priority' => [Priority::class, []],
         'type' => [PhaseType::class, []],
         'default_type' => [PhaseType::class, []],
-        'choice' => [PhaseType::class, ['gain_first']],
+        'choice' => [PhaseType::class, []],
         'tone' => [Tone::class, []],
     ];
     $checked = 0;

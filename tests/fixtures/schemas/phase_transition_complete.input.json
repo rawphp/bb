@@ -15,9 +15,11 @@
                 "fatLoss",
                 "muscleGain",
                 "maintenance",
-                "miniCut",
-                "gain_first"
+                "miniCut"
             ]
+        },
+        "gain_first": {
+            "type": "boolean"
         },
         "weeks": {
             "type": [
@@ -56,6 +58,8 @@
         "phase_id",
         "next_phase_id",
         "choice",
-        "template"
+        "gain_first",
+        "template",
+        "weeks"
     ]
 }

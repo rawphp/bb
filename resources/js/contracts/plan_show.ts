@@ -125,7 +125,8 @@ export interface PlanShowOutput {
     mesocycles_text: string;
     next_from_text: string;
     options: {
-      choice: "fatLoss" | "muscleGain" | "maintenance" | "miniCut" | "gain_first";
+      choice: "fatLoss" | "muscleGain" | "maintenance" | "miniCut";
+      gain_first: boolean;
       title: string;
       detail: string;
       is_recommended: boolean;
@@ -189,4 +190,4 @@ export interface PlanShowOutput {
   } | null;
 }
 
-export const outputVersion = '1339d4921a97';
+export const outputVersion = '909635da4cd3';

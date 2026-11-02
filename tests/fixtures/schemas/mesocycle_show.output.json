@@ -35,7 +35,8 @@
                     }
                 },
                 "required": [
-                    "title"
+                    "title",
+                    "priority"
                 ]
             }
         },
@@ -295,7 +296,8 @@
                             "muscle",
                             "muscle_title",
                             "priority_title",
-                            "bars"
+                            "bars",
+                            "priority"
                         ]
                     }
                 }
@@ -484,7 +486,8 @@
                             "muscle",
                             "muscle_title",
                             "priority_title",
-                            "bars"
+                            "bars",
+                            "priority"
                         ]
                     }
                 },

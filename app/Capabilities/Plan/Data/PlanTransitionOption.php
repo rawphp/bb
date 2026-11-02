@@ -9,7 +9,9 @@ use Rawphp\Capabilities\Support\CapabilityData;
 
 /**
  * One next step on the transition screen: a phase type, or Gain first after
- * Fat loss (PH-032). The recommendation comes first (PH-031, PH-033, PH-034).
+ * Fat loss (PH-032), which is `choice` muscleGain with `gain_first` true: its
+ * first phase is Muscle gain. The recommendation comes first (PH-031, PH-033,
+ * PH-034).
  *
  * `lengths` are the lengths allowed (PH-031 for Maintenance after Fat loss),
  * empty for Gain first, whose phases are fixed and described in `note`.
@@ -30,8 +32,9 @@ final class PlanTransitionOption extends CapabilityData
      * @param  list<PlanReadinessQuestion>  $readiness
      */
     public function __construct(
-        #[Field(enum: [PhaseType::FatLoss->value, PhaseType::MuscleGain->value, PhaseType::Maintenance->value, PhaseType::MiniCut->value, 'gain_first'])]
+        #[Field(enum: [PhaseType::FatLoss->value, PhaseType::MuscleGain->value, PhaseType::Maintenance->value, PhaseType::MiniCut->value])]
         public readonly string $choice,
+        public readonly bool $gain_first,
         public readonly string $title,
         public readonly string $detail,
         public readonly bool $is_recommended,

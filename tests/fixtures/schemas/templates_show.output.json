@@ -196,7 +196,8 @@
                             "muscle",
                             "muscle_title",
                             "priority_title",
-                            "bars"
+                            "bars",
+                            "priority"
                         ]
                     }
                 },

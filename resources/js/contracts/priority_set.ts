@@ -17,5 +17,5 @@ export interface PrioritySetInput {
     | "abs"
     | "traps"
     | "forearms";
-  priority?: "emphasize" | "grow" | "maintain" | null;
+  priority: "emphasize" | "grow" | "maintain" | null;
 }

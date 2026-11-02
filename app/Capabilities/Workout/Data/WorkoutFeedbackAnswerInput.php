@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Workout\Data;
 
-use App\Capabilities\Support\AcceptsNullEnums;
+use App\Capabilities\Support\ExplicitNulls;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\Pump;
 use App\Domain\Model\Soreness;
@@ -17,7 +17,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
  */
 final class WorkoutFeedbackAnswerInput extends CapabilityData
 {
-    use AcceptsNullEnums;
+    use ExplicitNulls;
 
     /**
      * @param  list<WorkoutJointPainAnswer>  $joint_pain

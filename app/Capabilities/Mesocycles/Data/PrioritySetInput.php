@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Mesocycles\Data;
 
-use App\Capabilities\Support\AcceptsNullEnums;
+use App\Capabilities\Support\ExplicitNulls;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\Priority;
 use Rawphp\Capabilities\Attributes\Field;
@@ -15,7 +15,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
  */
 final class PrioritySetInput extends CapabilityData
 {
-    use AcceptsNullEnums;
+    use ExplicitNulls;
 
     public function __construct(
         public readonly string $mesocycle_id,
