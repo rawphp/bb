@@ -8,6 +8,7 @@ use Illuminate\Contracts\Auth\Factory as Auth;
 use Laravel\Sanctum\Contracts\HasApiTokens;
 use LogicException;
 use Rawphp\Capabilities\Contracts\AuditWriter;
+use UnexpectedValueException;
 
 /**
  * The package's audit sink (D-010), bound by the host: one audit_records row
@@ -34,7 +35,7 @@ final class AuditRecordWriter implements AuditWriter
             'user_id' => $this->userId($entry),
             'event' => (string) ($entry['event'] ?? 'capability.unknown'),
             'capability' => $entry['capability_name'] ?? null,
-            'channel' => $caller === null ? null : Channel::derive($caller, $caller === 'http' ? $this->currentToken() : null)->value,
+            'channel' => $this->channel($caller),
             'input' => $entry['redacted_input'] ?? null,
             'result' => $entry['result'] ?? null,
             'created_at' => $this->recordedAt($entry),
@@ -59,6 +60,25 @@ final class AuditRecordWriter implements AuditWriter
         $id = $entry['actor_id'] ?? null;
 
         return ($entry['actor_type'] ?? null) === 'user' && is_string($id) && ctype_digit($id) ? (int) $id : null;
+    }
+
+    /**
+     * Null for an event with no caller. A caller with no channel yet keeps its row with
+     * a null channel, so the write is still audited, and the missing mapping is reported.
+     */
+    private function channel(?string $caller): ?string
+    {
+        if ($caller === null) {
+            return null;
+        }
+
+        try {
+            return Channel::derive($caller, $caller === 'http' ? $this->currentToken() : null)->value;
+        } catch (UnexpectedValueException $e) {
+            report($e);
+
+            return null;
+        }
     }
 
     /** @param  array<string, mixed>  $entry */

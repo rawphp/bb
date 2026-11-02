@@ -255,6 +255,19 @@ it('CAP-023 mints no token through the package\'s CLI login or MCP until a token
         ->and(DB::table('personal_access_tokens')->count())->toBe(0);
 });
 
+it('CAP-022 keeps the audit row of a caller it has no channel for, with no channel, and reports the missing mapping', function () {
+    Exceptions::fake();
+    $user = User::factory()->create();
+
+    app(AuditWriter::class)->write([
+        'event' => 'capability.invoked', 'capability_name' => 'tally_add', 'caller' => 'webhook',
+        'actor_type' => 'user', 'actor_id' => (string) $user->id, 'redacted_input' => ['amount' => 3], 'result' => ['ok' => true],
+    ]);
+
+    expect(AuditRecord::sole())->user_id->toBe($user->id)->channel->toBeNull()->input->toBe(['amount' => 3]);
+    Exceptions::assertReported(fn (UnexpectedValueException $e): bool => str_contains($e->getMessage(), 'webhook'));
+});
+
 it('CAP-022 dates an entry by the time it carries, not the time it is stored', function () {
     $user = User::factory()->create();
     $this->travelTo(CarbonImmutable::parse('2026-11-02T09:00:00Z'));
