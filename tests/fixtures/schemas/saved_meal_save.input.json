@@ -1,0 +1,48 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "string",
+            "description": "The saved meal's ULID (CAP-019)"
+        },
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+        },
+        "meal_id": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Save this meal's foods"
+        },
+        "foods": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "food_id": {
+                        "type": "string"
+                    },
+                    "grams": {
+                        "type": "number",
+                        "minimum": 0.1
+                    }
+                },
+                "required": [
+                    "food_id",
+                    "grams"
+                ]
+            },
+            "description": "Or save these foods, locked"
+        }
+    },
+    "required": [
+        "id",
+        "name"
+    ]
+}

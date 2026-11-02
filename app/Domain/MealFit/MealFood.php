@@ -22,9 +22,7 @@ final readonly class MealFood
     /** FOOD-006: the raw weight behind `grams`. Cooked weight only differs when the food has a ratio. */
     public function rawGrams(): float
     {
-        $ratio = self::cookedRatio($this->food, $this->weighing);
-
-        return $ratio === null ? $this->grams : $this->grams / $ratio;
+        return $this->weighing->rawGrams($this->grams, $this->food->cookedRatio);
     }
 
     /** FOOD-006: raw and cooked give the same macros, because both go through rawGrams(). */
@@ -76,16 +74,6 @@ final readonly class MealFood
     /** The grams to show for `raw` grams of the food in the `weighing` mode. */
     public static function gramsForRaw(float $raw, Food $food, Weighing $weighing): float
     {
-        $ratio = self::cookedRatio($food, $weighing);
-
-        return $ratio === null ? $raw : $raw * $ratio;
-    }
-
-    /** FOOD-006: the ratio to apply, or null when the grams are raw grams. A ratio of 0 or less counts as none. */
-    private static function cookedRatio(Food $food, Weighing $weighing): ?float
-    {
-        $ratio = $food->cookedRatio;
-
-        return $weighing === Weighing::Cooked && $ratio !== null && $ratio > 0 ? $ratio : null;
+        return $weighing->gramsForRaw($raw, $food->cookedRatio);
     }
 }

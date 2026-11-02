@@ -1,0 +1,15 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "endpoint": {
+            "type": "string",
+            "description": "The push service URL of the browser to stop sending to.",
+            "maxLength": 1024
+        }
+    },
+    "required": [
+        "endpoint"
+    ]
+}

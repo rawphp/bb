@@ -1,0 +1,26 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "weekdays": {
+            "type": "array",
+            "description": "ISO weekdays; 1 is Monday."
+        },
+        "fewer_days": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Null until the server asks for it with a validation error, when there are fewer days.",
+            "enum": [
+                "restructure",
+                "extend",
+                null
+            ]
+        }
+    },
+    "required": [
+        "weekdays"
+    ]
+}

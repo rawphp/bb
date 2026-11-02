@@ -1,0 +1,38 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "phase_id": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string",
+            "enum": [
+                "fatLoss",
+                "muscleGain",
+                "maintenance",
+                "miniCut"
+            ]
+        },
+        "weeks": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 1
+        },
+        "rate_percent_per_week": {
+            "type": [
+                "number",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "phase_id",
+        "type",
+        "weeks",
+        "rate_percent_per_week"
+    ]
+}

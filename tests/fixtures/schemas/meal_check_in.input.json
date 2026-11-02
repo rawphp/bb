@@ -1,0 +1,44 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "meal_id": {
+            "type": "string"
+        },
+        "time": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "24-hour \"HH:MM\"; defaults to now."
+        },
+        "kcal": {
+            "type": [
+                "number",
+                "null"
+            ]
+        },
+        "protein_g": {
+            "type": [
+                "number",
+                "null"
+            ]
+        },
+        "fat_g": {
+            "type": [
+                "number",
+                "null"
+            ]
+        },
+        "carbs_g": {
+            "type": [
+                "number",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "meal_id"
+    ]
+}

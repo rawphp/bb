@@ -1,0 +1,96 @@
+{
+    "title": "Progress",
+    "scopes": [
+        {
+            "value": "phase",
+            "title": "Phase",
+            "selected": true
+        },
+        {
+            "value": "plan",
+            "title": "Whole plan",
+            "selected": false
+        }
+    ],
+    "empty": {
+        "message": "Log 4 weigh-ins to see your trend",
+        "action_title": "Log a weigh-in"
+    },
+    "scope_message": null,
+    "chart": null,
+    "summary": [],
+    "share": null,
+    "this_week": {
+        "title": "This week",
+        "calories": {
+            "title": "Calories this week",
+            "short_label": "Cal",
+            "value_label": "0/18550",
+            "fraction": 0.0
+        },
+        "days": [
+            {
+                "date": "2026-10-10",
+                "letter": "S",
+                "day_label": "10",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": true
+            },
+            {
+                "date": "2026-10-11",
+                "letter": "S",
+                "day_label": "11",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-12",
+                "letter": "M",
+                "day_label": "12",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-13",
+                "letter": "T",
+                "day_label": "13",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-14",
+                "letter": "W",
+                "day_label": "14",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-15",
+                "letter": "T",
+                "day_label": "15",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-16",
+                "letter": "F",
+                "day_label": "16",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            }
+        ],
+        "edit_schedule_title": "Edit schedule"
+    },
+    "review_card": null,
+    "steps": null,
+    "phase_history": [],
+    "mesocycle_history": [],
+    "exercises": []
+}
