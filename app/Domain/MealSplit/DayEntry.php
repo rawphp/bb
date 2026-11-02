@@ -4,7 +4,11 @@ namespace App\Domain\MealSplit;
 
 use App\Domain\Model\MealTarget;
 
-/** One item in the day's ordered list. Workouts only give the split a position to work from. */
+/**
+ * One item in the day's ordered list. Workouts only give the split a position to work from.
+ *
+ * The constructor is private: a meal or shake is built with its id, and only a workout has a null $id.
+ */
 final readonly class DayEntry
 {
     private function __construct(

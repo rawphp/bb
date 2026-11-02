@@ -5,6 +5,7 @@ namespace App\Domain\MealSplit;
 use App\Domain\Defaults\TBL033CarbsPerMeal;
 use App\Domain\Macros\MacroRules;
 use App\Domain\Model\MealTarget;
+use LogicException;
 
 /**
  * NUT-030 to NUT-037: splits a day's targets into per-meal targets around the workouts.
@@ -77,14 +78,12 @@ final class MealSplit
         $protein = self::distribute($day->proteinG, $slots, $proteinWeights, fn (MealTarget $t) => $t->proteinG, hasFloor: false);
         $fat = self::distribute($day->fatG, $slots, $fatWeights, fn (MealTarget $t) => $t->fatG, hasFloor: true);
         $carbs = self::distribute($day->carbsG, $slots, $carbWeights, fn (MealTarget $t) => $t->carbsG, hasFloor: true);
-        $floorsWin = self::floorsWin($day->fatG, $slots, fn (MealTarget $t) => $t->fatG)
-            || self::floorsWin($day->carbsG, $slots, fn (MealTarget $t) => $t->carbsG);
-        $kcal = self::distributeEnergy($day, $slots, $protein, $fat, $carbs, $floorsWin);
+        $kcal = self::distributeEnergy($day, $slots, $protein, $fat, $carbs);
 
         $items = [];
         foreach ($slots as $i => $slot) {
             $items[] = new MealSplitItem(
-                (string) $slot->id,
+                $slot->id ?? throw new LogicException('Meals and shakes always have an id.'),
                 $slot->fixed ?? new MealTarget(kcal: $kcal[$i], proteinG: $protein[$i], fatG: $fat[$i], carbsG: $carbs[$i]),
             );
         }
@@ -370,13 +369,15 @@ final class MealSplit
     }
 
     /**
-     * kcal follows the rounded grams (MacroRules::kcal) and is scaled to what the day has left, so the meals add up
-     * to the day (NUT-030).
+     * kcal follows the rounded grams (MacroRules::kcal), scaled so the meals add up to the day (NUT-030).
      *
-     * It is not scaled when the day has no kcal left, or when the SAFE-010 floors already put more fat or carbs in
-     * the free meals than the day holds ($floorsWin). The day is overspent either way, and scaling would squeeze the
-     * free meals' food into the few kcal left: 205 kcal of food would read 0 kcal. Their kcal follows their grams
-     * instead, as the grams do. rp-clone scales whenever any kcal is left; this departs from it on purpose.
+     * The day's own kcal can differ from the kcal of its grams, so the scale is usually near the day's ratio
+     * (day kcal / kcal of the day's grams). It never goes below that ratio. When the fixed meals took more kcal than
+     * their food carries, or the SAFE-010 floors put more food in the free meals than the day holds (NUT-036), the
+     * kcal left cannot cover the free meals' food; scaling to it would show, say, 205 kcal of food as 1 kcal. The
+     * free meals then take their food's kcal at the day's ratio, rounded to 5, and the day is overspent, as its grams
+     * already are. rp-clone scales to whatever kcal is left; this departs from it on purpose and leaves every
+     * rp-clone test value unchanged.
      *
      * @param  list<DayEntry>  $slots
      * @param  list<float>  $protein
@@ -384,7 +385,7 @@ final class MealSplit
      * @param  list<float>  $carbs
      * @return list<float>
      */
-    private static function distributeEnergy(MealTarget $day, array $slots, array $protein, array $fat, array $carbs, bool $floorsWin): array
+    private static function distributeEnergy(MealTarget $day, array $slots, array $protein, array $fat, array $carbs): array
     {
         $result = array_fill(0, count($slots), 0.0);
         $free = array_keys(array_filter($slots, fn (DayEntry $slot) => $slot->fixed === null));
@@ -399,13 +400,15 @@ final class MealSplit
             $fixedKcal += $slot->fixed !== null ? $slot->fixed->kcal : 0.0;
         }
         $remainingKcal = $day->kcal - $fixedKcal;
+        $dayFoodKcal = MacroRules::kcal(proteinG: $day->proteinG, carbsG: $day->carbsG, fatG: $day->fatG);
+        $dayRatio = $dayFoodKcal > 0 ? $day->kcal / $dayFoodKcal : 1.0;
 
-        if (! $floorsWin && $remainingKcal > 0 && $energySum > 0) {
+        if ($energySum > 0 && $remainingKcal + 1e-6 >= $dayRatio * $energySum) {
             $values = array_map(fn (float $e) => $remainingKcal * $e / $energySum, $energy);
             $total = $remainingKcal;
         } else {
-            $values = $energy;
-            $total = $energySum;
+            $values = array_map(fn (float $e) => $dayRatio * $e, $energy);
+            $total = round(array_sum($values) / self::ROUNDING_STEP) * self::ROUNDING_STEP;
         }
         $rounded = self::roundHamilton($values, $total);
         foreach ($free as $k => $i) {
