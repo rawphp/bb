@@ -2,6 +2,8 @@
 
 use App\Domain\Plan\DatedMesocycle;
 use App\Domain\Plan\MissedWeeks;
+use App\Domain\Plan\MissedWeeks\FlagMove;
+use App\Domain\Plan\MissedWeeks\Flags;
 use App\Domain\Plan\MissedWeeks\Week;
 use App\Domain\Plan\MovedDeload;
 use App\Domain\Plan\PlanRules;
@@ -123,4 +125,51 @@ it('SCH-058 a paused week keeps the deload on its mesocycle week', function () {
 it('SCH-058 a flag outside the mesocycle stays', function () {
     expect(MissedWeeks::movedDeloads([4, 9], 0, [F::span(0, 4)], restartedOn: F::grid()->start(2), grid: F::grid()))
         ->toBe([]);
+});
+
+// Restart: where the deload flags of the weeks a restart touches end up (PLAN-022, PLAN-023).
+
+it('SCH-058 PLAN-022 a deload with its diet break moves to the week it arrives at and leaves the old one bare', function () {
+    $after = MissedWeeks::flagsAfterMoves(
+        ['2026-09-21' => new Flags(true, true, false)],
+        [new FlagMove('2026-09-21', '2026-10-12')],
+    );
+
+    expect($after)->toEqual(['2026-09-21' => new Flags(false, false, false), '2026-10-12' => new Flags(true, true, false)]);
+});
+
+it('SCH-058 PLAN-022 a week that a flag both leaves and arrives at ends with the arriving flag', function () {
+    // A moves to B and B moves to C, all read before any write: B loses its own and gains A's.
+    $after = MissedWeeks::flagsAfterMoves(
+        ['2026-09-21' => new Flags(true, false, false), '2026-09-28' => new Flags(false, false, true)],
+        [new FlagMove('2026-09-21', '2026-09-28'), new FlagMove('2026-09-28', '2026-10-05')],
+    );
+
+    expect($after)->toEqual([
+        '2026-09-21' => new Flags(false, false, false),
+        '2026-09-28' => new Flags(true, false, false),
+        '2026-10-05' => new Flags(false, false, true),
+    ]);
+});
+
+it('SCH-058 PLAN-022 a deload moving onto a week that already is one leaves one deload there', function () {
+    $after = MissedWeeks::flagsAfterMoves(
+        ['2026-09-21' => new Flags(true, false, false), '2026-10-12' => new Flags(true, false, false)],
+        [new FlagMove('2026-09-21', '2026-10-12')],
+    );
+
+    expect($after)->toEqual(['2026-09-21' => new Flags(false, false, false)]);
+});
+
+it('SCH-058 PLAN-023 a diet break turned off keeps that when it moves, and a diet break without a deload does not travel', function () {
+    $off = MissedWeeks::flagsAfterMoves(['2026-09-21' => new Flags(false, false, true)], [new FlagMove('2026-09-21', '2026-10-12')]);
+    $bare = MissedWeeks::flagsAfterMoves(['2026-09-21' => new Flags(false, true, false)], [new FlagMove('2026-09-21', '2026-10-12')]);
+
+    expect($off)->toEqual(['2026-09-21' => new Flags(false, false, false), '2026-10-12' => new Flags(false, false, true)])
+        // The diet break of a week that is no deload is not carried, and the week keeps it.
+        ->and($bare)->toEqual([]);
+});
+
+it('SCH-058 PLAN-022 no moves change nothing', function () {
+    expect(MissedWeeks::flagsAfterMoves(['2026-09-21' => new Flags(true, false, false)], []))->toBe([]);
 });
