@@ -126,7 +126,7 @@ final class WorkoutSnapshot
     public static function forWorkout(User $user, string $workoutId): self
     {
         $wanted = strtolower($workoutId);
-        foreach (Mesocycle::query()->where('user_id', $user->id)->get()->filter(fn (Mesocycle $m) => $m->isSaved()) as $mesocycle) {
+        foreach (Mesocycle::savedBy($user)->get() as $mesocycle) {
             for ($week = 1; $week <= (int) $mesocycle->weeks; $week++) {
                 $days = count($mesocycle->earlierWeekRows()[$week - 1] ?? $mesocycle->dayRows());
                 for ($day = 1; $day <= $days; $day++) {
