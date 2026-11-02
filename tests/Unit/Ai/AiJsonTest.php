@@ -4,7 +4,9 @@ use App\Ai\AiFailed;
 use App\Ai\AiJson;
 use App\Ai\AiUnavailable;
 use Illuminate\Support\Facades\Http;
+use Rawphp\CapabilitiesAi\Contracts\DeadlineAwareLlmClient;
 use Rawphp\CapabilitiesAi\Contracts\LlmClient;
+use Rawphp\CapabilitiesAi\Support\LlmClientDefaults;
 use Rawphp\CapabilitiesAi\Support\RetryableLlmException;
 use Tests\Support\RecordingLlmClient;
 
@@ -83,3 +85,40 @@ it('fails when the answer does not match the schema', function (mixed $arguments
     'an extra field' => [['ok' => true, 'note' => 'x']],
     'not an object' => ['ok'],
 ]);
+
+it('FOOD-043 gives a call that holds the user\'s request open a deadline of 60 seconds', function () {
+    RecordingLlmClient::answering([])->install();
+    $client = new class implements DeadlineAwareLlmClient
+    {
+        use LlmClientDefaults;
+
+        public ?int $deadline = null;
+
+        public function withDeadline(int $deadlineNs): static
+        {
+            $copy = clone $this;
+            $copy->deadline = $deadlineNs;
+            $this->deadline = $deadlineNs;
+
+            return $copy;
+        }
+
+        public function complete(array $messages, array $tools = []): array
+        {
+            if ($this->deadline === null) {
+                throw new RuntimeException('Called without a deadline.');
+            }
+
+            return ['tool_calls' => [['id' => 't', 'name' => 'answer', 'arguments' => ['ok' => true]]]];
+        }
+    };
+    app()->instance(LlmClient::class, $client);
+
+    $before = hrtime(true);
+    expect(app(AiJson::class)->ask('describe', [], AI_JSON_SCHEMA))->toBe(['ok' => true]);
+    $after = hrtime(true);
+
+    expect($client->deadline)->toBeGreaterThanOrEqual($before + AiJson::DEADLINE_SECONDS * 1_000_000_000)
+        ->and($client->deadline)->toBeLessThanOrEqual($after + AiJson::DEADLINE_SECONDS * 1_000_000_000)
+        ->and(AiJson::DEADLINE_SECONDS)->toBe(60);
+});

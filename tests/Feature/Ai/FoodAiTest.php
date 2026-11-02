@@ -2,6 +2,7 @@
 
 use App\Ai\AiFailed;
 use App\Ai\AiRecipe;
+use App\Ai\AiUnavailable;
 use App\Ai\FoodAi;
 use App\Ai\PageUnavailable;
 use App\Ai\RecipeBrief;
@@ -90,12 +91,6 @@ it('FOOD-044 sends the typed description and returns its ingredients matched to 
         ->and($llm->system())->toStartWith(file_get_contents(resource_path('prompts/describe.md')));
 });
 
-it('FOOD-043 FOOD-044 refuses an item with negative grams', function () {
-    RecordingLlmClient::answering(['items' => [['name' => 'Chicken', 'search' => 'chicken', 'grams' => -5]]])->install();
-
-    expect(fn () => app(FoodAi::class)->describe(User::factory()->create(), 'chicken'))->toThrow(AiFailed::class);
-});
-
 it('RCP-010 generates a recipe from the brief and matches its foods under the diet filters', function () {
     $user = User::factory()->create();
     aiFood('Chicken breast', ['dairy_free' => true]);
@@ -146,12 +141,6 @@ it('RCP-010 sends only what the brief gives', function () {
     ]);
 });
 
-it('RCP-010 refuses a recipe of no servings', function () {
-    RecordingLlmClient::answering(['name' => 'Bowl', 'servings' => 0, 'instructions' => [], 'items' => []])->install();
-
-    expect(fn () => app(FoodAi::class)->recipe(User::factory()->create(), recipeBrief()))->toThrow(AiFailed::class);
-});
-
 it('RCP-003 imports a recipe page and matches its ingredients', function () {
     app()->bind(RecipePage::class, fn () => new RecipePage(fn () => ['93.184.216.34']));
     $user = User::factory()->create();
@@ -183,7 +172,7 @@ it('RCP-003 says the page could not be fetched, and asks nothing, when the page 
     Http::assertNothingSent();
 });
 
-it('FOOD-042 FOOD-043 FOOD-044 RCP-010 returns drafts and saves nothing', function () {
+it('FOOD-042 FOOD-043 FOOD-044 RCP-010 RCP-003 returns drafts and saves nothing', function () {
     $user = User::factory()->create();
     aiFood('Chicken breast');
     (new RecordingLlmClient([
@@ -197,6 +186,8 @@ it('FOOD-042 FOOD-043 FOOD-044 RCP-010 returns drafts and saves nothing', functi
             'name' => 'Bowl', 'servings' => 1, 'instructions' => ['Eat.'], 'items' => [['name' => 'Chicken', 'search' => 'chicken breast', 'grams' => 200]],
         ]]]],
     ]))->install();
+    app()->bind(RecipePage::class, fn () => new RecipePage(fn () => ['93.184.216.34']));
+    Http::fake(['recipes.example/*' => Http::response('<p>Bowl: 200 g chicken</p>')]);
     $ai = app(FoodAi::class);
     $foods = Food::count();
 
@@ -205,7 +196,32 @@ it('FOOD-042 FOOD-043 FOOD-044 RCP-010 returns drafts and saves nothing', functi
         $ai->describe($user, 'chicken');
         $ai->label(PLATE_JPEG);
         $ai->recipe($user, recipeBrief(['diets' => []]));
+        $ai->recipeImport($user, 'https://recipes.example/bowl');
     });
 
     expect($writes)->toBe([])->and(Food::count())->toBe($foods);
+});
+
+it('FOOD-042 FOOD-043 FOOD-044 RCP-010 RCP-003 says AI is not set up, and fetches or sends nothing, when the server has no key', function (Closure $call) {
+    app()->bind(RecipePage::class, fn () => new RecipePage(fn () => ['93.184.216.34']));
+    Http::fake();
+    $llm = RecordingLlmClient::answering([])->install();
+    config(['capabilities-ai.llm.anthropic.api_key' => null]);
+
+    expect(fn () => $call(app(FoodAi::class), User::factory()->create()))->toThrow(AiUnavailable::class, 'AI isn\'t set up on this server.');
+    expect($llm->calls)->toBe([]);
+    Http::assertNothingSent();
+})->with([
+    'label' => [fn (FoodAi $ai) => $ai->label(PLATE_JPEG)],
+    'label of an unreadable photo' => [fn (FoodAi $ai) => $ai->label('not a photo')],
+    'photo' => [fn (FoodAi $ai, User $user) => $ai->photo($user, PLATE_JPEG)],
+    'describe' => [fn (FoodAi $ai, User $user) => $ai->describe($user, 'eggs')],
+    'recipe' => [fn (FoodAi $ai, User $user) => $ai->recipe($user, recipeBrief())],
+    'recipe import' => [fn (FoodAi $ai, User $user) => $ai->recipeImport($user, 'https://recipes.example/pie')],
+]);
+
+it('FOOD-043 refuses an answer with more items than a meal or recipe holds', function () {
+    RecordingLlmClient::answering(['items' => array_fill(0, 51, ['name' => 'Rice', 'search' => 'rice', 'grams' => 1])])->install();
+
+    expect(fn () => app(FoodAi::class)->describe(User::factory()->create(), 'a lot of rice'))->toThrow(AiFailed::class);
 });

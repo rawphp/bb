@@ -2,8 +2,6 @@
 
 use App\Ai\PageUnavailable;
 use App\Ai\RecipePage;
-use GuzzleHttp\Psr7\PumpStream;
-use GuzzleHttp\Psr7\Response as PsrResponse;
 use Illuminate\Support\Facades\Http;
 
 function recipePage(array $ips = ['93.184.216.34']): RecipePage
@@ -18,7 +16,7 @@ it('RCP-003 rejects hosts that resolve to private or reserved addresses', functi
 
     expect(fn () => recipePage([$ip])->text('http://recipes.example/pie'))->toThrow(PageUnavailable::class);
     Http::assertNothingSent();
-})->with(['127.0.0.1', '10.1.2.3', '169.254.169.254', '192.168.0.9', '::1']);
+})->with(['127.0.0.1', '10.1.2.3', '169.254.169.254', '192.168.0.9', '::1', '100.64.0.1', '198.18.0.1', '64:ff9b::7f00:1', '2002:7f00:1::', 'fc00::1']);
 
 it('RCP-003 rejects a host when any resolved address is private', function () {
     Http::fake();
@@ -56,15 +54,23 @@ it('RCP-003 rejects a redirect to a private host', function () {
     Http::assertSentCount(1);
 });
 
-it('RCP-003 follows relative redirects and gives up after 3', function () {
+it('RCP-003 follows relative redirects', function () {
     Http::fake([
         'recipes.example/a' => Http::response('', 301, ['Location' => '/b']),
         'recipes.example/b' => Http::response('<p>Final</p>'),
-        'recipes.example/loop' => Http::response('', 302, ['Location' => '/loop']),
+        'recipes.example/dir/' => Http::response('', 302, ['Location' => 'page']),
+        'recipes.example/dir/page' => Http::response('<p>In dir</p>'),
     ]);
 
     expect(recipePage()->text('http://recipes.example/a'))->toBe('Final')
-        ->and(fn () => recipePage()->text('http://recipes.example/loop'))->toThrow(PageUnavailable::class);
+        ->and(recipePage()->text('http://recipes.example/dir/'))->toBe('In dir');
+});
+
+it('RCP-003 gives up after 3 redirects', function () {
+    Http::fake(['recipes.example/loop' => Http::response('', 302, ['Location' => '/loop'])]);
+
+    expect(fn () => recipePage()->text('http://recipes.example/loop'))->toThrow(PageUnavailable::class);
+    Http::assertSentCount(4);
 });
 
 it('RCP-003 rejects non-2xx responses and oversized bodies', function () {
@@ -77,26 +83,37 @@ it('RCP-003 rejects non-2xx responses and oversized bodies', function () {
         ->and(fn () => recipePage()->text('http://recipes.example/huge'))->toThrow(PageUnavailable::class);
 });
 
-it('RCP-003 enforces the size cap while streaming, not after buffering the body', function () {
-    $read = 0;
+it('RCP-003 pins the connection to the checked address and caps the download while it runs', function () {
     $options = null;
-    $body = new PumpStream(function (int $length) use (&$read) {
-        if ($read >= 50 * 1024 * 1024) {
-            return false;
-        }
-        $read += $length;
-
-        return str_repeat('a', $length);
-    });
-    Http::fake(function ($request, $opts) use ($body, &$options) {
+    Http::fake(function ($request, $opts) use (&$options) {
         $options = $opts;
 
-        return new PsrResponse(200, [], $body);
+        return Http::response('<p>ok</p>');
     });
 
-    expect(fn () => recipePage()->text('http://recipes.example/bomb'))->toThrow(PageUnavailable::class)
-        ->and($options['stream'])->toBeTrue()
-        ->and($read)->toBeLessThan(2 * 1024 * 1024 + 64 * 1024);
+    expect(recipePage()->text('http://recipes.example/pie'))->toBe('ok')
+        ->and($options['curl'][CURLOPT_RESOLVE])->toBe(['recipes.example:80:93.184.216.34'])
+        // The stream handler refuses curl options, so the pin needs the curl handler: no streaming.
+        ->and($options['stream'] ?? false)->toBeFalse()
+        // Raw bytes are counted, so a compressed page cannot grow past the cap once decoded.
+        ->and($options['decode_content'])->toBeFalse()
+        ->and($options['progress'](0, 1000, 0, 0))->toBeFalse()
+        ->and($options['progress'](0, 2 * 1024 * 1024 + 1, 0, 0))->toBeTrue()
+        ->and($options['progress'](3 * 1024 * 1024, 0, 0, 0))->toBeTrue();
+});
+
+it('RCP-003 pins a named host on its own port and leaves an IP literal unpinned', function () {
+    $sent = [];
+    Http::fake(function ($request, $opts) use (&$sent) {
+        $sent[] = $opts['curl'] ?? null;
+
+        return Http::response('<p>ok</p>');
+    });
+
+    recipePage()->text('https://recipes.example:8443/pie');
+    recipePage()->text('https://93.184.216.34/pie');
+
+    expect($sent)->toBe([[CURLOPT_RESOLVE => ['recipes.example:8443:93.184.216.34']], null]);
 });
 
 it('RCP-003 accepts a body just under the size cap', function () {

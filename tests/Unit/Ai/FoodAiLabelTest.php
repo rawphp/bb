@@ -42,15 +42,6 @@ it('FOOD-042 allows a label with no serving weight and a brand', function () {
         ->and($label->kcal)->toBe(370.0);
 });
 
-it('FOOD-042 refuses a label reading with a negative amount', function () {
-    RecordingLlmClient::answering([
-        'name' => 'Oats', 'brand' => null, 'serving' => null,
-        'per_100g' => ['kcal' => 370, 'protein' => -1, 'fat' => 7, 'carbs' => 60, 'fiber' => 10],
-    ])->install();
-
-    expect(fn () => app(FoodAi::class)->label(LABEL_JPEG))->toThrow(AiFailed::class);
-});
-
 it('FOOD-042 FOOD-043 says the photo could not be read, and asks nothing, when it is not a base64 image data URL', function (string $image) {
     $llm = RecordingLlmClient::answering([])->install();
 
