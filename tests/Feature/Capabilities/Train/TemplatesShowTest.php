@@ -9,6 +9,7 @@ use App\Models\TemplateSlot;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
+use Tests\Support\ScreenFixture;
 use Tests\Support\TrainSeed;
 
 // The HTTP seam of templates_show and its screen fixtures. The rules are unit tests (TemplatesPayloadTest).
@@ -69,7 +70,8 @@ it('MESO-010 MESO-011 MESO-012 MESO-015 shows the library on the phase in force,
 it('MESO-011 says so when no template matches', function () {
     $data = $this->actingAs(libraryWorld())->postJson('/capabilities/templates_show', ['days' => '6', 'phase' => 'cut'])->assertOk()->json('data');
 
-    assertMatchesScreenFixture('templates_show.empty', $data);
+    assertMatchesScreenFixture('templates_show', $data);
+    expect(ScreenFixture::differences(ScreenFixture::load('templates_show.empty'), $data))->toBe([]);
     expect($data['rows'])->toBe([])
         ->and($data['empty_text'])->toBe('No templates match these filters.')
         ->and($data['detail'])->toBeNull();

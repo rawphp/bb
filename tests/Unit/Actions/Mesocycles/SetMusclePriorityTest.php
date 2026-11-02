@@ -80,6 +80,46 @@ it('MESO-034 from then on an Off muscle\'s slots are left out of the sessions; a
 it('MESO-032 choosing the priority a muscle already has changes nothing', function () {
     $mesocycle = priorityMeso();
     $before = $mesocycle->fresh()->updated_at;
+    $this->travel(5)->minutes();
 
-    expect(prioritySet($mesocycle, MuscleGroup::Chest, Priority::Emphasize)->updated_at)->toEqual($before);
+    $after = prioritySet($mesocycle, MuscleGroup::Chest, Priority::Emphasize);
+
+    expect($after->updated_at)->toEqual($before)
+        ->and($after->muscle_priorities)->toBe(['chest' => 'emphasize', 'quads' => 'grow', 'forearms' => null]);
+});
+
+it('MESO-034 setting a muscle Off keeps the weeks that ran and this week\'s done sessions as they were', function () {
+    $mesocycle = priorityMeso();
+    // Week 3 (from Monday 21 September): Upper A is done, Lower A is still to come.
+    TrainSeed::trained($mesocycle, 3, 1, '2026-09-21');
+
+    $mesocycle = prioritySet($mesocycle, MuscleGroup::Chest, null);
+    $mesocycle = prioritySet($mesocycle, MuscleGroup::Quads, null);
+    $domain = TrainSnapshot::load($mesocycle->user, $mesocycle->id)->domain($mesocycle);
+    $muscles = fn (int $week) => array_map(
+        fn (Session $s) => array_map(fn ($slot) => $slot->muscle->value, $s->slots),
+        $domain->sessionsInWeek($week),
+    );
+
+    expect($muscles(0))->toBe([['chest'], ['quads', 'calves']])
+        ->and($muscles(1))->toBe([['chest'], ['quads', 'calves']])
+        ->and($muscles(2))->toBe([['chest'], ['calves']])
+        ->and($muscles(3))->toBe([[], ['calves']])
+        ->and($muscles(4))->toBe([[], ['calves']]);
+});
+
+it('MESO-032 MESO-034 a mesocycle that has ended takes no priority change', function (?Priority $priority) {
+    $mesocycle = priorityMeso();
+    Carbon::setTestNow('2026-11-02 10:00:00');
+
+    expect(fn () => prioritySet($mesocycle, MuscleGroup::Quads, $priority))->toThrow(DomainException::class, 'This mesocycle has ended.');
+})->with([Priority::Maintain, null]);
+
+it('MESO-034 Off on a mesocycle not started yet applies to all of it', function () {
+    $mesocycle = priorityMeso(['start_date' => '2026-10-05']);
+
+    $mesocycle = prioritySet($mesocycle, MuscleGroup::Chest, null);
+
+    expect($mesocycle->earlier_weeks ?? [])->toBe([])
+        ->and(TrainSnapshot::load($mesocycle->user, $mesocycle->id)->domain($mesocycle)->sessionsInWeek(0)[0]->slots)->toBe([]);
 });

@@ -75,6 +75,7 @@ it('MESO-007 a new id starts a draft on its route and deletes the other unfinish
     $user = buildWorld();
     $old = TrainSeed::mesocycle($user, ['is_draft' => true]);
     $saved = TrainSeed::mesocycle($user);
+    $theirs = TrainSeed::mesocycle(User::factory()->create(), ['is_draft' => true]);
 
     $replaced = app(BuildMesocycle::class)($user, null, MesocycleBuildInput::from(['mesocycle_id' => BUILD, 'route' => 'builder']));
     $draft = Mesocycle::query()->findOrFail(BUILD);
@@ -82,6 +83,8 @@ it('MESO-007 a new id starts a draft on its route and deletes the other unfinish
     expect($replaced)->toBe([$old->id])
         ->and($old->fresh()->trashed())->toBeTrue()
         ->and($saved->fresh()->trashed())->toBeFalse()
+        // Only the user's own builds go.
+        ->and($theirs->fresh()->trashed())->toBeFalse()
         ->and($draft->is_draft)->toBeTrue()
         ->and($draft->route)->toBe(MesocycleRoute::Builder)
         ->and($draft->user_id)->toBe($user->id)
@@ -236,4 +239,33 @@ it('MESO-007 a saved mesocycle is not built over', function () {
 it('MESO-014 a slot\'s sets stay between 1 and 20', function () {
     expect(MesocycleBuildSlot::jsonSchema()['properties']['sets'])->toMatchArray(['minimum' => 1, 'maximum' => 20])
         ->and(MesocycleBuildDay::jsonSchema()['required'])->toContain('slots');
+});
+
+it('MESO-005 the style alone relabels the days, and a floating split stays floating when its days change', function () {
+    $user = buildWorld();
+    build($user, ['template_id' => (string) buildTemplate()->id]);
+
+    $floating = build($user, ['label_style' => 'floating'])->dayRows();
+    $edited = build($user, ['days' => buildDays()])->dayRows();
+
+    expect(array_column($floating, 'weekday'))->toBe([null, null])
+        ->and(array_column($floating, 'label'))->toBe(['Day 1', 'Day 2'])
+        ->and(array_column($edited, 'weekday'))->toBe([null, null]);
+});
+
+it('MESO-003 MESO-020 finishing keeps the priorities the build was given', function () {
+    $user = buildWorld();
+    build($user, ['template_id' => (string) buildTemplate()->id]);
+
+    expect(build($user, ['finish' => true])->muscle_priorities)->toBe(['chest' => 'emphasize', 'quads' => 'grow']);
+});
+
+it('MESO-007 MESO-012 a build can start and finish in one call', function () {
+    $user = buildWorld();
+
+    $saved = build($user, ['template_id' => (string) buildTemplate()->id, 'name' => 'Block', 'finish' => true]);
+
+    expect($saved->isSaved())->toBeTrue()
+        ->and($saved->name)->toBe('Block')
+        ->and($saved->is_resensitization)->toBeFalse();
 });

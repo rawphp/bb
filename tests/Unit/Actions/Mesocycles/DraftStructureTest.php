@@ -115,12 +115,14 @@ it('MESO-002 build from scratch lays out empty days', function () {
         ->and(array_merge(...array_column($days, 'slots')))->toBe([]);
 });
 
-it('MESO-022 a template or a copy already has its days, so there is nothing to generate', function () {
-    $draft = structureDraft(attributes: ['route' => 'template']);
+it('MESO-022 a template or a copy already has its days, so there is nothing to generate', function (string $route) {
+    $draft = structureDraft(attributes: ['route' => $route, 'days' => [['id' => 'd1', 'label' => null, 'weekday' => 1, 'slots' => []]]]);
 
     expect(fn () => app(GenerateMesocycleStructure::class)($draft->user, $draft->id))
-        ->toThrow(DomainException::class, 'This build already has its days.');
-});
+        ->toThrow(DomainException::class, 'This build already has its days.')
+        // MySQL keeps JSON keys in its own order, so the days are compared as values.
+        ->and($draft->fresh()->days)->toEqual([['id' => 'd1', 'label' => null, 'weekday' => 1, 'slots' => []]]);
+})->with(['template', 'copy_previous']);
 
 function fillDraft(): Mesocycle
 {
@@ -160,11 +162,24 @@ it('MESO-013 MESO-016 pick for me fills every empty slot with the best-rated exe
 
 it('MESO-013 pick for me with every slot picked changes nothing', function () {
     $draft = fillDraft();
-    $draft->update(['days' => [['id' => 'd1', 'label' => null, 'weekday' => 1, 'slots' => []]]]);
+    $bench = TrainSeed::exercise('Bench Press', MuscleGroup::Chest);
+    $picked = [['id' => 'd1', 'label' => null, 'weekday' => 1, 'slots' => [['id' => 's1', 'exercise_id' => $bench->id, 'muscle_group' => 'chest', 'sets' => 3]]]];
+    $draft->update(['days' => $picked]);
     $before = $draft->fresh()->updated_at;
+    $this->travel(5)->minutes();
 
     expect(app(FillMesocycleSlots::class)($draft->user, $draft->id))->toBe(0)
+        ->and($draft->fresh()->days)->toEqual($picked)
         ->and($draft->fresh()->updated_at)->toEqual($before);
+});
+
+it('MESO-005 pick for me changes only the exercises; the days keep the labels they had', function () {
+    $draft = fillDraft();
+
+    app(FillMesocycleSlots::class)($draft->user, $draft->id);
+
+    expect($draft->fresh()->days[0]['label'])->toBeNull()
+        ->and($draft->fresh()->days[0]['weekday'])->toBe(1);
 });
 
 it('MESO-013 pick for me is for a build, not a saved mesocycle', function () {
