@@ -143,3 +143,27 @@ it('EX-002 shows each user only their own sets of a shared exercise', function (
         ->and($theirs)->toHaveCount(1)
         ->and($theirs[0]['sets'][0]['label'])->toBe('220.5 lb × 10');
 });
+
+it('EX-002 leaves out a set that names the viewer but sits in another user\'s session', function () {
+    ['user' => $user, 'bench' => $bench] = ProgressSeed::world();
+    $before = historyOf($this, $user, $bench)->assertOk()->json('data.sessions');
+    $theirs = WorkoutSession::factory()->for(User::factory()->create())->create(['actual_start_at' => '2026-10-09 18:00:00']);
+    WorkoutSet::factory()->create(['workout_session_id' => $theirs->id, 'user_id' => $user->id, 'exercise_id' => $bench->id, 'is_logged' => true, 'actual_weight_kg' => 100, 'actual_reps' => 10]);
+
+    $after = historyOf($this, $user, $bench)->assertOk()->json('data.sessions');
+
+    expect($after)->toBe($before)
+        ->and(array_column($after, 'id'))->not->toContain($theirs->id);
+});
+
+it('EX-002 leaves out a set in the viewer\'s session that names another user', function () {
+    ['user' => $user, 'bench' => $bench] = ProgressSeed::world();
+    $before = historyOf($this, $user, $bench)->assertOk()->json('data.sessions');
+    $session = WorkoutSession::factory()->for($user)->create(['actual_start_at' => '2026-10-09 18:00:00']);
+    WorkoutSet::factory()->create(['workout_session_id' => $session->id, 'user_id' => User::factory()->create()->id, 'exercise_id' => $bench->id, 'is_logged' => true, 'actual_weight_kg' => 100, 'actual_reps' => 10]);
+
+    $after = historyOf($this, $user, $bench)->assertOk()->json('data.sessions');
+
+    expect($after)->toBe($before)
+        ->and(array_column($after, 'id'))->not->toContain($session->id);
+});
