@@ -69,8 +69,14 @@ it('ACC-005 SET-009 deleting the account ends the session that deleted it', func
     $this->postJson('/sign-in', ['email' => 'sam@example.com', 'password' => 'correct-horse-battery'])->assertNoContent();
     $this->startSession();
     $token = session()->token();
+    $id = session()->getId();
+    session()->put('account_delete_marker', 'kept?');
 
     accountDelete(null, ['confirmation' => 'DELETE'])->assertOk();
+
+    // The session is invalidated, not only its CSRF token: a new id and none of the old data.
+    expect(session()->getId())->not->toBe($id)
+        ->and(session()->has('account_delete_marker'))->toBeFalse();
 
     $this->assertGuest('web');
     expect(session()->token())->not->toBe($token)

@@ -196,6 +196,17 @@ it('SAFE-017 PLAN-002 training only in a gap between phases ends where the next 
     expect(array_map(fn (array $row) => [$row['start'], $row['end']], switchRows($writes)))->toBe([['2026-10-12', '2026-10-26']]);
 });
 
+it('SAFE-017 PLAN-002 an empty phase on the switch day is not the next phase, so it does not cut training only to nothing', function () {
+    $phases = [
+        switchPhase(SWITCH_CURRENT, PhaseType::FatLoss, '2026-09-07', '2026-10-05', -0.5),
+        switchPhase('44444444-4444-4444-8444-444444444444', PhaseType::Maintenance, '2026-10-12', '2026-10-12', 0.0),
+    ];
+
+    $writes = PhaseSwitch::toTrainingOnly($phases, switchGrid(), switchDay('2026-10-14'), ExperienceLevel::Intermediate, SWITCH_NEW);
+
+    expect(array_map(fn (array $row) => [$row['start'], $row['end']], switchRows($writes)))->toBe([['2026-10-12', '2026-11-16']]);
+});
+
 it('SAFE-017 PLAN-007 before the plan starts, the first phase turns training only in place, to its own end', function () {
     $phases = [switchPhase(SWITCH_CURRENT, PhaseType::MuscleGain, '2026-10-19', '2027-01-11', 0.25)];
 
