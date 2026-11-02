@@ -142,7 +142,9 @@ it('SAFE-003 a training-only review leaves out the nutrition sections, the phase
 
     expect(array_keys($blocks))->toBe(['Goal', 'Phase', 'About you', 'Training days', 'First mesocycle', 'Weigh-ins'])
         ->and(onboardingRows($blocks['Goal']))->toBe(['Goal' => 'Muscle gain', 'Mode' => 'Training only'])
-        ->and($blocks['Phase']->editStep)->toBeNull()
+        ->and($blocks['Phase']->canEdit)->toBeFalse()
+        ->and($blocks['Phase']->editStep)->toBe(6)
+        ->and($blocks['Goal']->canEdit)->toBeTrue()
         ->and(array_keys(onboardingRows($blocks['Phase'])))->toBe(['Length', 'Dates'])
         ->and(array_keys(onboardingRows($blocks['About you'])))->not->toContain('Body fat')
         ->and($blocks['First mesocycle']->rows[0]->value)->toBe('Built later')

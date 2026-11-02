@@ -82,16 +82,15 @@ final class OnboardingReview
             $rows[] = new ReviewRow('Mode', 'Training only');
         }
 
-        return new ReviewBlock('Goal', 1, $rows);
+        return new ReviewBlock('Goal', 1, true, $rows);
     }
 
     private function phase(OnboardingPlanInputs $inputs): ReviewBlock
     {
         $nutrition = ! $this->health->isTrainingOnly();
-        $editStep = $nutrition ? 6 : null;
         $phase = $inputs->phase();
         if ($phase->end === null) {
-            return new ReviewBlock('Phase', $editStep, []);
+            return new ReviewBlock('Phase', 6, $nutrition, []);
         }
         $weeks = PlanRules::weeks($phase, PlanWeekGrid::forPlan($inputs->plan))?->count() ?? $this->draft->weeks ?? 0;
         $last = OnboardingDates::addingDays($phase->end, -1);
@@ -113,7 +112,7 @@ final class OnboardingReview
             }
         }
 
-        return new ReviewBlock('Phase', $editStep, $rows);
+        return new ReviewBlock('Phase', 6, $nutrition, $rows);
     }
 
     private function aboutYou(bool $nutrition): ReviewBlock
@@ -140,7 +139,7 @@ final class OnboardingReview
             }
         }
 
-        return new ReviewBlock('About you', 2, $rows);
+        return new ReviewBlock('About you', 2, true, $rows);
     }
 
     /** Runs of neighbouring days with the same range share a row. */
@@ -156,7 +155,7 @@ final class OnboardingReview
             }
         }
 
-        return new ReviewBlock('Steps', 10, array_map(fn (array $run) => new ReviewRow(
+        return new ReviewBlock('Steps', 10, true, array_map(fn (array $run) => new ReviewRow(
             OnboardingText::weekdaysText($run['weekdays']),
             OnboardingText::numberText($run['min']).' to '.OnboardingText::numberText($run['max']),
         ), $runs));
@@ -164,7 +163,7 @@ final class OnboardingReview
 
     private function trainingDays(): ReviewBlock
     {
-        return new ReviewBlock('Training days', 8, array_map(fn (TrainingDayChoice $day) => new ReviewRow(
+        return new ReviewBlock('Training days', 8, true, array_map(fn (TrainingDayChoice $day) => new ReviewRow(
             OnboardingText::weekdayName($day->weekday),
             OnboardingText::timeText($day->startMinutes)." for {$day->lengthMinutes} min",
         ), $this->draft->trainingDays));
@@ -182,14 +181,14 @@ final class OnboardingReview
                 .OnboardingText::timeText($period->endMinutes).', '.OnboardingText::weekdaysText($period->weekdays));
         }
 
-        return new ReviewBlock('Meals', 11, $rows);
+        return new ReviewBlock('Meals', 11, true, $rows);
     }
 
     private function mesocycle(): ReviewBlock
     {
         $weeks = $this->training->mesocycleWeeks() ?? 0;
 
-        return new ReviewBlock('First mesocycle', 9, [
+        return new ReviewBlock('First mesocycle', 9, true, [
             new ReviewRow('Name', $this->training->selectedTemplate()?->name ?? self::BUILT_LATER),
             new ReviewRow('Length', "{$weeks} weeks"),
             new ReviewRow('Days', OnboardingText::weekdaysText(array_map(fn (TrainingDayChoice $day) => $day->weekday, $this->draft->trainingDays))),
@@ -204,7 +203,7 @@ final class OnboardingReview
         ), $this->draft->weighIns);
         $rows[] = new ReviewRow('Review day', OnboardingText::weekdayFullName($this->lifestyle->reviewWeekday()));
 
-        return new ReviewBlock('Weigh-ins', 12, $rows);
+        return new ReviewBlock('Weigh-ins', 12, true, $rows);
     }
 
     /** "Selected" next to "Recommended" (ONB-018): one row marked both when the recommendation is the choice. */
@@ -222,6 +221,6 @@ final class OnboardingReview
             }
         }
 
-        return new ReviewBlock('Calories', 13, $rows);
+        return new ReviewBlock('Calories', 13, true, $rows);
     }
 }
