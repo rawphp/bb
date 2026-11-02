@@ -1,10 +1,13 @@
-import { flushPromises } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { enableAutoUnmount, flushPromises } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { DayAdjustShowOutput } from '@/contracts/day_adjust_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import AdjustSheet from './AdjustSheet.vue';
 import { mountSheet } from './sheetTesting';
+
+// A sheet left mounted would still hear the next test's online event.
+enableAutoUnmount(afterEach);
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
 
@@ -219,7 +222,6 @@ describe('AdjustSheet', () => {
         expect(freshMock).toHaveBeenCalledTimes(2);
         expect(lastAsked()).toMatchObject({ kcal: 200 });
         expect(wrapper.find('[role="alert"]').exists()).toBe(false);
-        wrapper.unmount();
     });
 
     it('CAP-014 a retry after no answer sends the same move with the same key, and the move cannot change meanwhile', async () => {
@@ -230,8 +232,8 @@ describe('AdjustSheet', () => {
 
         await wrapper.get('[data-save]').trigger('click');
         await flushPromises();
-        expect((wrapper.get('input[name="kcal"]').element as HTMLInputElement).disabled).toBe(true);
-        expect((wrapper.get('[data-test="mode-meals"]').element as HTMLButtonElement).disabled).toBe(true);
+        expect(wrapper.get('input[name="kcal"]').element.matches(':disabled')).toBe(true);
+        expect(wrapper.get('[data-test="mode-meals"]').element.matches(':disabled')).toBe(true);
         await wrapper.get('[data-save]').trigger('click');
         await flushPromises();
 

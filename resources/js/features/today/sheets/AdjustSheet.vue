@@ -45,8 +45,15 @@ const kcal = computed(() => {
     return /^\d+$/.test(text) ? Number(text) : null;
 });
 
-const { data, failure, load } = useSheetRead<DayAdjustShowOutput>('day_adjust_show', () => ({ ...choice() }), 'The Adjust sheet could not be loaded.', props.payload);
-const { busy, error, close, save } = useSheet(props);
+const { data, failure, reading, notice, load } = useSheetRead<DayAdjustShowOutput>(
+    'day_adjust_show',
+    () => ({ ...choice() }),
+    'The Adjust sheet could not be loaded.',
+    props.payload,
+);
+const { busy, error, locked, close, save } = useSheet(props);
+// Save follows the server's answer for the move as it is now, never an older one.
+const canSave = computed(() => data.value?.can_save === true && kcal.value !== null && !reading.value && failure.value === null && !busy.value);
 const mode = computed<Mode>(() => picked.value ?? data.value?.mode ?? 'meals');
 // The day's totals, then the other day's when the move is between days.
 const days = computed(() => (data.value ? [data.value.day, ...(data.value.other_day ? [data.value.other_day] : [])] : []));
@@ -61,11 +68,11 @@ function choice(): DayAdjustShowInput {
 
 watch([picked, direction, fromMealId, toMealId, otherDate, kcalText], () => {
     edited.value = true;
-    void load();
+    void load({ fresh: true });
 });
 
 function submit(): void {
-    if (kcal.value === null) return;
+    if (!canSave.value || kcal.value === null) return;
     const input: DayAdjustInput = { ...choice(), mode: mode.value, kcal: kcal.value };
     void save('day_adjust', { ...input }, 'The calories could not be moved. Try again.');
 }
@@ -89,14 +96,15 @@ const picker = 'max-w-[60%] truncate rounded-lg bg-transparent py-2 pl-2 text-ri
     <BottomSheet
         :open="open"
         title="Adjust day"
-        :save-disabled="!data?.can_save || kcal === null || busy"
+        :save-disabled="!canSave"
         :cancel-disabled="busy"
         :dismissible="!busy"
-        :error="error"
+        :error="error ?? notice"
         @cancel="close"
         @save="submit"
     >
-        <div v-if="data" class="flex flex-col gap-4.5 p-4">
+        <!-- Locked while a save that got no answer may have worked (CAP-014): the retry sends the same move. -->
+        <fieldset v-if="data" :disabled="locked" class="flex min-w-0 flex-col gap-4.5 p-4">
             <div role="radiogroup" aria-label="Move calories" class="grid grid-cols-2 gap-0.5 rounded-lg bg-background p-0.5">
                 <button
                     v-for="option in modes"
@@ -182,14 +190,10 @@ const picker = 'max-w-[60%] truncate rounded-lg bg-transparent py-2 pl-2 text-ri
                     data-test="projected"
                 >
                     <span class="flex-1">{{ day.label }}</span>
-                    <PendingMark v-if="pending" derived>
+                    <component :is="pending ? PendingMark : 'span'" :derived="pending || undefined">
                         <span class="text-macro-calories">{{ day.kcal_text }}</span>
                         <span class="ml-2 text-macro-protein">{{ day.protein_text }}</span>
-                    </PendingMark>
-                    <template v-else>
-                        <span class="text-macro-calories">{{ day.kcal_text }}</span>
-                        <span class="text-macro-protein">{{ day.protein_text }}</span>
-                    </template>
+                    </component>
                 </p>
                 <template v-if="mode === 'meals'">
                     <p
@@ -199,14 +203,10 @@ const picker = 'max-w-[60%] truncate rounded-lg bg-transparent py-2 pl-2 text-ri
                         data-test="projected-meal"
                     >
                         <span class="flex-1">{{ meal.name }}</span>
-                        <PendingMark v-if="pending" derived>
+                        <component :is="pending ? PendingMark : 'span'" :derived="pending || undefined">
                             <span class="text-macro-calories">{{ meal.kcal_text }}</span>
                             <span class="ml-2 text-macro-protein">{{ meal.protein_text }}</span>
-                        </PendingMark>
-                        <template v-else>
-                            <span class="text-macro-calories">{{ meal.kcal_text }}</span>
-                            <span class="text-macro-protein">{{ meal.protein_text }}</span>
-                        </template>
+                        </component>
                     </p>
                 </template>
             </section>
@@ -214,7 +214,7 @@ const picker = 'max-w-[60%] truncate rounded-lg bg-transparent py-2 pl-2 text-ri
             <WarningLine v-if="data.refusal" :text="data.refusal" />
             <WarningLine v-for="warning in data.warnings" :key="warning.text" :text="warning.text" />
             <p class="text-xs text-secondary-text">{{ data.note }}</p>
-        </div>
+        </fieldset>
         <div v-else class="p-4">
             <ReadState :failure="failure" what="The Adjust sheet" @retry="load" />
         </div>

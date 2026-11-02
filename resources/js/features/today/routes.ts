@@ -1,8 +1,9 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 // Today's sheets at their own routes, so /dev/screens/<capability> finds each one with its
-// fixture (meta.screen) and a link can open one for a day. The Today screen may also draw
-// them over itself and listen to @close and @saved.
+// fixture (meta.screen) and a link can open one for a day. Opened at its route, a sheet goes
+// back to Today when it closes or saves, without the server's toast: the Today screen draws
+// the sheets over itself and listens to @close and @saved, and shows the toast (UI-010).
 const DATE = '(\\d{4}-\\d{2}-\\d{2})';
 
 export default [

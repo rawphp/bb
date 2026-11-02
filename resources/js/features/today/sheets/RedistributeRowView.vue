@@ -4,7 +4,7 @@ import PendingMark from '@/design/PendingMark.vue';
 
 // One later meal on the Redistribute sheet (DAY-002): tap to take it in or leave it out.
 // What it would hold is the server's (OFF-008 dims it while a change waits to sync).
-defineProps<{ row: DayRedistributeShowOutput['rows'][number]; pending?: boolean }>();
+defineProps<{ row: DayRedistributeShowOutput['rows'][number]; pending?: boolean; disabled?: boolean }>();
 defineEmits<{ toggle: [] }>();
 </script>
 
@@ -13,6 +13,7 @@ defineEmits<{ toggle: [] }>();
         type="button"
         class="flex min-h-tap w-full items-center gap-3 rounded-xl bg-background p-3 text-left active:opacity-70"
         :aria-pressed="row.selected"
+        :disabled="disabled"
         data-test="redistribute-row"
         @click="$emit('toggle')"
     >
@@ -27,16 +28,12 @@ defineEmits<{ toggle: [] }>();
             <span v-if="row.time_text" class="text-sm text-secondary-text">{{ row.time_text }}</span>
         </span>
         <span class="flex flex-col items-end gap-0.5 text-sm font-medium tabular-nums">
-            <PendingMark v-if="pending" derived>
+            <component :is="pending ? PendingMark : 'span'" :derived="pending || undefined">
                 <span class="flex flex-col items-end gap-0.5">
                     <span class="text-macro-calories">{{ row.kcal_text }}</span>
                     <span class="text-macro-protein">{{ row.protein_text }}</span>
                 </span>
-            </PendingMark>
-            <template v-else>
-                <span class="text-macro-calories">{{ row.kcal_text }}</span>
-                <span class="text-macro-protein">{{ row.protein_text }}</span>
-            </template>
+            </component>
         </span>
     </button>
 </template>

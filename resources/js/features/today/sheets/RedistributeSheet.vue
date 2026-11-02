@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import ReadState from '@/app/ReadState.vue';
 import type { DayRedistributeShowInput, DayRedistributeShowOutput } from '@/contracts/day_redistribute_show';
 import type { MealRedistributeInput } from '@/contracts/meal_redistribute';
@@ -28,7 +28,7 @@ const props = withDefaults(
 const date = props.date ?? props.payload?.date ?? '';
 // The meals the user has left out; null until the first tap, so the first read is the server's own pick.
 const excluded = ref<string[] | null>(null);
-const { data, failure, load } = useSheetRead<DayRedistributeShowOutput>(
+const { data, failure, reading, notice, load } = useSheetRead<DayRedistributeShowOutput>(
     'day_redistribute_show',
     () => {
         const input: DayRedistributeShowInput = excluded.value === null ? { date } : { date, excluded_meal_ids: excluded.value };
@@ -37,16 +37,20 @@ const { data, failure, load } = useSheetRead<DayRedistributeShowOutput>(
     'The meals to redistribute over could not be loaded.',
     props.payload,
 );
-const { busy, error, close, save } = useSheet(props);
+const { busy, error, locked, close, save } = useSheet(props);
+// Confirm sends the meals of the server's answer for the last tap, never an older one.
+const canConfirm = computed(() => data.value?.can_confirm === true && !reading.value && failure.value === null && !busy.value);
 
 function toggle(row: DayRedistributeShowOutput['rows'][number]): void {
+    // A tap before the last one's answer would toggle from rows that are about to change.
+    if (reading.value) return;
     const ids = excluded.value ?? [];
     excluded.value = row.selected ? [...ids, row.id] : ids.filter((id) => id !== row.id);
-    void load();
+    void load({ fresh: true });
 }
 
 function confirm(): void {
-    if (!data.value) return;
+    if (!canConfirm.value || !data.value) return;
     const input: MealRedistributeInput = { date: data.value.date, meal_ids: data.value.rows.filter((row) => row.selected).map((row) => row.id) };
     void save('meal_redistribute', { ...input }, 'The meals could not be redistributed. Try again.');
 }
@@ -58,17 +62,17 @@ function confirm(): void {
         title="Redistribute"
         save-title="Confirm"
         :heights="['half', 'full']"
-        :save-disabled="!data?.can_confirm || busy"
+        :save-disabled="!canConfirm"
         :cancel-disabled="busy"
         :dismissible="!busy"
-        :error="error"
+        :error="error ?? notice"
         @cancel="close"
         @save="confirm"
     >
         <div class="flex flex-col gap-3.5 p-4">
             <p class="text-sm text-secondary-text">Choose the meals that take the rest of the day's calories and macros.</p>
             <template v-if="data">
-                <RedistributeRowView v-for="row in data.rows" :key="row.id" :row="row" :pending="pending" @toggle="toggle(row)" />
+                <RedistributeRowView v-for="row in data.rows" :key="row.id" :row="row" :pending="pending" :disabled="locked" @toggle="toggle(row)" />
                 <WarningLine v-for="warning in data.warnings" :key="warning.text" :text="warning.text" />
                 <p class="text-xs text-secondary-text">{{ data.note }}</p>
             </template>

@@ -1,16 +1,22 @@
-import { onMounted, ref, type Ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { write, type CapabilityInput } from '@/app/call';
 import { writeFailureMessage } from '@/app/errors';
 import { findNavigation } from '@/app/navigation';
 import { useRetryKey, type RetryKey } from '@/app/retryKey';
-import { screenRead, type ReadFailure } from '@/app/screenRead';
+import { readFailure, screenRead, SupersededRead, type ReadFailure } from '@/app/screenRead';
 import type { ToastResult } from '@/design/Toast.vue';
+
+// The Today sheets' read and write. They stand in for app/useRead and app/useWrite, which
+// a sheet cannot use as they are: its read's input follows what the user picks, and its
+// save hands the write's answer (the toast) to the screen. Both files change with the
+// outbox (#195); fold these into them once it lands.
 
 /**
  * What the screen that opens a Today sheet listens to: `@close` and `@saved`. Listener
  * props, not emits, so the sheet knows when nobody listens: opened at its own route
- * (/today/<date>/adjust, /dev/screens) it goes back down the Today stack instead.
+ * (/today/<date>/adjust, /dev/screens) it goes back down the Today stack instead, and the
+ * toast goes with it.
  */
 export interface SheetListeners {
     onClose?: () => void;
@@ -20,13 +26,16 @@ export interface SheetListeners {
 
 /**
  * A Today sheet's one write: one at a time, the server's words when it refuses (CAP-012),
- * and the same idempotency key for a retry of the same input after no final answer (CAP-014).
+ * and the same idempotency key for a retry after no final answer (CAP-014). `locked` is on
+ * while a save runs and while one that got no answer may have worked, so the sheet keeps
+ * its inputs as sent and the retry is the same write.
  */
 export function useSheet(listeners: SheetListeners) {
     const router = useRouter();
     const nav = findNavigation(router);
     const busy = ref(false);
     const error = ref<string | null>(null);
+    const unsure = ref(false);
     let last: { name: string; body: string; retry: RetryKey } | null = null;
 
     function leave(): void {
@@ -55,26 +64,39 @@ export function useSheet(listeners: SheetListeners) {
             retry.settle(failure);
             error.value = writeFailureMessage(failure, fallback);
         } finally {
+            unsure.value = retry.unsure.value;
             busy.value = false;
         }
     }
 
-    return { busy, error, close, save };
+    /** A new entry: forget the last save, its key and its message. */
+    function reset(): void {
+        last = null;
+        unsure.value = false;
+        error.value = null;
+    }
+
+    return { busy, error, locked: computed(() => busy.value || unsure.value), close, save, reset };
 }
 
 /**
  * A sheet's read whose input follows what the user has picked: each load() sends input()
  * as it is then, and an answer to an older pick never replaces a newer one (screenRead).
- * Given a payload (a /dev/screens fixture) it shows that and reads only when asked.
+ * A changed pick loads with `fresh`, from the server: a cached copy of the same pick may
+ * predate a move saved since. A failed load keeps what the sheet shows, and `notice` says
+ * why beside it, so the user keeps what they typed; only a sheet with nothing to show, or
+ * whose copy is gone (signed out), shows the failure in its place. Offline, it loads again
+ * when the device reconnects (OFF-004). Given a payload (a /dev/screens fixture) it shows
+ * that and reads only when asked.
  */
-export function useSheetRead<T>(
-    name: string,
-    input: () => CapabilityInput,
-    message: string,
-    payload?: T,
-): { data: Ref<T | undefined>; failure: Ref<ReadFailure | null>; load: () => Promise<void> } {
+export function useSheetRead<T>(name: string, input: () => CapabilityInput, message: string, payload?: T) {
     const data = ref(payload) as Ref<T | undefined>;
     const failure = ref<ReadFailure | null>(null);
+    // The latest load has not answered yet, so what is on screen may be for an older pick.
+    const reading = ref(false);
+    let latest = 0;
+    let lastFresh = false;
+
     const read = screenRead<T>(
         name,
         message,
@@ -82,16 +104,40 @@ export function useSheetRead<T>(
             failure.value = null;
             data.value = fresh;
         },
-        (why) => {
-            data.value = undefined;
+        (why, hadData) => {
+            if (hadData || why.signedOut) data.value = undefined;
             failure.value = why;
         },
     );
-    const load = () => read(input());
 
-    onMounted(() => {
-        if (data.value === undefined) void load();
+    async function load(options: { fresh?: boolean } = {}): Promise<void> {
+        const ticket = ++latest;
+        lastFresh = options.fresh === true;
+        reading.value = true;
+        try {
+            await read(input(), options);
+        } catch (error) {
+            if (ticket === latest && !(error instanceof SupersededRead)) failure.value = readFailure(error, message);
+        } finally {
+            if (ticket === latest) reading.value = false;
+        }
+    }
+
+    // Shown beside the sheet's content when a load failed but the content stays.
+    const notice = computed(() => {
+        if (data.value === undefined || failure.value === null) return null;
+        return failure.value.offline ? 'No connection. Try again when you are online.' : failure.value.error;
     });
 
-    return { data, failure, load };
+    const reconnected = () => {
+        if (failure.value?.offline) void load({ fresh: lastFresh });
+    };
+
+    onMounted(() => {
+        window.addEventListener('online', reconnected);
+        if (data.value === undefined) void load();
+    });
+    onUnmounted(() => window.removeEventListener('online', reconnected));
+
+    return { data, failure, reading, notice, load };
 }
