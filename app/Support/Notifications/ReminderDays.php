@@ -3,12 +3,14 @@
 namespace App\Support\Notifications;
 
 use App\Domain\Notifications\ReminderDay;
+use App\Domain\Notifications\ReminderKind;
 use App\Domain\Notifications\ReminderMeal;
 use App\Domain\Notifications\ReminderPlanner;
 use App\Domain\Notifications\ReminderWeighIn;
 use App\Domain\Notifications\ReminderWorkout;
 use App\Domain\Placement\ClockTime;
 use App\Models\DayTarget;
+use App\Models\NotificationPref;
 use App\Models\Plan;
 use App\Models\Profile;
 use App\Models\SentReminder;
@@ -27,6 +29,9 @@ use DateTimeImmutable;
  */
 final class ReminderDays
 {
+    /** The sent_reminders id that records a pass judged a user's 09:00 reminders that day, sent or not. */
+    public const MORNING_JUDGED = 'morning-judged-';
+
     /**
      * The days from `$first` to `$last`, both whole days, as Today shows them: a day before the plan or before the
      * profile exists is left out, and so is a day Today would show as another (outside the plan's weeks and not in
@@ -52,7 +57,7 @@ final class ReminderDays
      * fall at in ($after, $now]. It reads every source of a due time, so it may name a user with nothing due but
      * never leaves out one with something due: the 09:00 review and deload reminders on a plan-week start, the weigh-in schedule, the meal
      * times of the days' targets, and an hour before each session start, from the profile's training days and from
-     * the session rows a move or re-time wrote. Four queries, however many users, and two more in the minutes after
+     * the session rows a move or re-time wrote. Four queries, however many users, and three more in the minutes after
      * 09:00.
      *
      * @param  list<int>  $userIds
@@ -76,20 +81,20 @@ final class ReminderDays
         $due = [];
 
         // NOTIF-004, NOTIF-005: both morning reminders fall on the first day of a plan week, which is the plan start
-        // or the review weekday (PLAN-008), and are sent together. A user already sent that day's is not due again.
-        $morning = ReminderPlanner::morningTime();
-        foreach (array_unique([$first->format('Y-m-d'), TrainSnapshot::day($now)->format('Y-m-d')]) as $date) {
-            $at = TrainSnapshot::day($date)->setTime($morning->hour(), $morning->minute());
-            if ($at <= $after || $at > $now) {
-                continue;
-            }
-            $sent = SentReminder::query()->whereIn('user_id', $userIds)
-                ->whereIn('reminder_id', ["weekly-review-{$date}", "next-mesocycle-{$date}"])->pluck('user_id')->all();
+        // or the review weekday (PLAN-008), and are judged together. A user is not due again once a pass judged that
+        // morning (a marker, or a morning reminder sent), nor with both morning switches off (NOTIF-007).
+        foreach (self::mornings($after, $now) as $date => $at) {
+            $done = SentReminder::query()->whereIn('user_id', $userIds)
+                ->whereIn('reminder_id', ["weekly-review-{$date}", "next-mesocycle-{$date}", self::MORNING_JUDGED.$date])
+                ->pluck('user_id')->all();
+            $off = NotificationPref::query()->whereIn('user_id', $userIds)
+                ->whereIn('kind', [ReminderKind::WeeklyReview->value, ReminderKind::NextMesocycle->value])->where('on', false)
+                ->groupBy('user_id')->havingRaw('count(*) = 2')->pluck('user_id')->all();
             $starting = Plan::query()->whereIn('user_id', $userIds)
                 ->where(fn ($query) => $query->where('review_weekday', (int) $at->format('N'))->orWhereDate('start_date', $date))
                 ->pluck('user_id');
             foreach ($starting as $id) {
-                if (! in_array($id, $sent, true)) {
+                if (! in_array($id, $done, true) && ! in_array($id, $off, true)) {
                     $due[$id] = true;
                 }
             }
@@ -128,6 +133,25 @@ final class ReminderDays
         }
 
         return array_values(array_filter($userIds, fn (int $id) => isset($due[$id])));
+    }
+
+    /**
+     * The 09:00 morning instants in ($after, $now], keyed by their Y-m-d.
+     *
+     * @return array<string, DateTimeImmutable>
+     */
+    public static function mornings(DateTimeImmutable $after, DateTimeImmutable $now): array
+    {
+        $morning = ReminderPlanner::morningTime();
+        $found = [];
+        foreach ([TrainSnapshot::day($after), TrainSnapshot::day($now)] as $day) {
+            $at = $day->setTime($morning->hour(), $morning->minute());
+            if ($at > $after && $at <= $now) {
+                $found[$day->format('Y-m-d')] = $at;
+            }
+        }
+
+        return $found;
     }
 
     private static function on(User $user, DateTimeImmutable $day): ?ReminderDay

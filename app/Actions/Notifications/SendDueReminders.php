@@ -53,6 +53,13 @@ final class SendDueReminders
             });
         }
 
+        // This pass judged the user's 09:00 reminders, sent or not: the minutes after need not queue the user again.
+        foreach (ReminderDays::mornings($after->toDateTimeImmutable(), $now->toDateTimeImmutable()) as $date => $at) {
+            SentReminder::query()->insertOrIgnore([
+                'user_id' => $user->id, 'reminder_id' => ReminderDays::MORNING_JUDGED.$date, 'due_at' => $at, 'sent_at' => $now,
+            ]);
+        }
+
         return $sent;
     }
 }
