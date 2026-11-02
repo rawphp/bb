@@ -83,7 +83,7 @@ final class CapabilitiesHostProvider extends ServiceProvider
         // The agent's seams in capabilities-ai (AGT-003, AGT-011).
         $this->app->singleton(ToolCatalog::class, RegistryToolCatalog::class);
         $this->app->singleton(ConversationContextProvider::class, CoachContext::class);
-        // The package's store, plus each turn's link to its user message (the package skips its own binding when this one exists).
+        // Replaces the package's store: the same store, plus each turn's link to its user message (AGT-010, AGT-011).
         $this->app->singleton(ConversationStore::class, fn (): TurnLinkingStore => new TurnLinkingStore(new EloquentConversationStore));
         // Replaces the package's claim: the same transitions, plus each turn's token total (AGT-005).
         $this->app->singleton(TurnClaim::class, fn (): MeteredTurnClaim => new MeteredTurnClaim(new EloquentTurnClaim));

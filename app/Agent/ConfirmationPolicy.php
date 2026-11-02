@@ -22,7 +22,7 @@ use Throwable;
  */
 final class ConfirmationPolicy implements AgentPolicy
 {
-    private const LINE = '/^confirm:[ \t]*([a-z][a-z0-9_]{0,63})(\{.*\})$/';
+    private const LINE = '/^confirm:[ \t]*([a-z][a-z0-9_]{0,63})(\{[^\r\n]*\})$/';
 
     public function __construct(private readonly TurnMessages $messages) {}
 
