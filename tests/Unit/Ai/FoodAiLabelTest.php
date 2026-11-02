@@ -42,6 +42,17 @@ it('FOOD-042 allows a label with no serving weight and a brand', function () {
         ->and($label->kcal)->toBe(370.0);
 });
 
+it('FOOD-042 reads a label that lists no fat, fibre or protein', function () {
+    RecordingLlmClient::answering([
+        'name' => 'Cola', 'brand' => null, 'serving' => ['label' => '1 can', 'grams' => 0.5],
+        'per_100g' => ['kcal' => 42, 'protein' => 0, 'fat' => 0, 'carbs' => 10.6, 'fiber' => 0.4],
+    ])->install();
+
+    $label = app(FoodAi::class)->label(LABEL_JPEG);
+
+    expect([$label->protein, $label->fat, $label->fiber, $label->servingGrams])->toBe([0.0, 0.0, 0.4, 0.5]);
+});
+
 it('FOOD-042 refuses a label reading with a negative amount', function (array $reading) {
     RecordingLlmClient::answering($reading + [
         'name' => 'Oats', 'brand' => null, 'serving' => null,

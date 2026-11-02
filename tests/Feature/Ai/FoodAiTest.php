@@ -238,3 +238,14 @@ it('RCP-010 RCP-003 refuses a recipe of no servings', function () {
 
     expect(fn () => app(FoodAi::class)->recipe(User::factory()->create(), recipeBrief()))->toThrow(AiFailed::class);
 });
+
+it('FOOD-043 FOOD-044 keeps an item of no grams or a fraction of a gram', function () {
+    RecordingLlmClient::answering(['items' => [
+        ['name' => 'Salt', 'search' => 'salt', 'grams' => 0],
+        ['name' => 'Parsley', 'search' => 'parsley', 'grams' => 0.5],
+    ]])->install();
+
+    $items = app(FoodAi::class)->describe(User::factory()->create(), 'eggs with salt and parsley');
+
+    expect(array_map(fn ($item) => $item->grams, $items))->toBe([0.0, 0.5]);
+});
