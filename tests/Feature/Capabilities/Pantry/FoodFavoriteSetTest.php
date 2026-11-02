@@ -1,11 +1,13 @@
 <?php
 
+use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\ReadKey;
 use App\Domain\Pantry\PantryTab;
 use App\Models\Food;
 use App\Models\FoodFavorite;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Rawphp\Capabilities\Registry\CapabilityRegistry;
 
 // The HTTP seam of food_favorite_set. The write itself is SetFoodFavoriteTest.
 
@@ -15,6 +17,10 @@ function favoriteOver(?User $user, array $input): mixed
 
     return $request->postJson('/capabilities/food_favorite_set', $input, ['Idempotency-Key' => (string) Str::ulid()]);
 }
+
+it('FOOD-022 CAP-011 food_favorite_set affects every read that shows a star', function () {
+    expect(HostDefinition::affects(app(CapabilityRegistry::class)->get('food_favorite_set')))->toBe(['food_search', 'food_barcode_lookup']);
+});
 
 it('FOOD-022 refuses food_favorite_set when signed out', function () {
     favoriteOver(null, ['food_id' => (string) Str::ulid(), 'favorite' => true])->assertUnauthorized();
