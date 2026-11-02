@@ -3,8 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { CustomFoodsShowOutput } from '@/contracts/custom_foods_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
+import { useRouter } from 'vue-router';
 import CustomFoodsView from './CustomFoodsView.vue';
 
+const back = vi.fn();
+vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: vi.fn(() => ({ back })) }));
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
 
 const readMock = vi.mocked(read);
@@ -15,7 +18,7 @@ const empty = screenFixture<CustomFoodsShowOutput>('custom_foods_show.empty');
 
 let wrapper: VueWrapper | undefined;
 
-function show(props: { payload?: CustomFoodsShowOutput; pending?: boolean } = {}): VueWrapper {
+function show(props: { payload?: CustomFoodsShowOutput; pending?: boolean; create?: string } = {}): VueWrapper {
     wrapper = mount(CustomFoodsView, { props, attachTo: document.body });
     return wrapper;
 }
@@ -36,6 +39,8 @@ describe('CustomFoodsView', () => {
         readMock.mockReset().mockResolvedValue(content);
         readFreshMock.mockReset().mockResolvedValue(content);
         writeMock.mockReset().mockResolvedValue({});
+        back.mockReset();
+        vi.mocked(useRouter).mockClear();
     });
     afterEach(() => {
         wrapper?.unmount();
@@ -156,6 +161,49 @@ describe('CustomFoodsView', () => {
 
         expect(readFreshMock).toHaveBeenCalledWith('custom_foods_show', {});
         expect(document.body.querySelector('[role="dialog"] [role="alert"]')!.textContent).toContain('may have worked');
+    });
+
+    it('FOOD-062 opened to create a food, it starts the sheet with that name and goes back once it is saved', async () => {
+        show({ payload: content, create: 'chicken' });
+        await flushPromises();
+
+        expect(dialogTitle()).toBe('New custom food');
+        const name = document.body.querySelector<HTMLInputElement>('[name="name"]')!;
+        expect(name.value).toBe('chicken');
+        for (const [field, value] of [['serving_size', '100'], ['serving_grams', '100'], ['protein', '31'], ['fat', '3.6'], ['carbs', '0'], ['fiber', '0']]) {
+            const input = document.body.querySelector<HTMLInputElement>(`[name="${field}"]`)!;
+            input.value = value;
+            input.dispatchEvent(new Event('input'));
+        }
+        await flushPromises();
+        document.body.querySelector<HTMLButtonElement>('[data-save]')!.click();
+        await flushPromises();
+
+        expect(writeMock).toHaveBeenCalledWith('custom_food_save', expect.objectContaining({ name: 'chicken' }), expect.anything());
+        expect(inputViolations('custom_food_save', writeMock.mock.calls[0]![1])).toEqual([]);
+        expect(back).toHaveBeenCalledTimes(1);
+    });
+
+    it('FOOD-062 opened to create a food, Cancel goes back to where it came from', async () => {
+        show({ payload: content, create: 'chicken' });
+        await flushPromises();
+
+        document.body.querySelector<HTMLButtonElement>('[data-cancel]')!.click();
+        await flushPromises();
+
+        expect(back).toHaveBeenCalledTimes(1);
+        expect(writeMock).not.toHaveBeenCalled();
+    });
+
+    it('FOOD-061 opened from More, closing the sheet stays on the list', async () => {
+        const view = show({ payload: content });
+
+        await view.get('button[aria-label="New custom food"]').trigger('click');
+        document.body.querySelector<HTMLButtonElement>('[data-cancel]')!.click();
+        await flushPromises();
+
+        expect(back).not.toHaveBeenCalled();
+        expect(dialogTitle()).toBeNull();
     });
 
     it('CAP-012 says why a delete was refused', async () => {
