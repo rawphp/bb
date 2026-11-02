@@ -9,6 +9,13 @@ use App\Domain\Model\DietFilter;
  * Conservative: a flag is true only when no keyword rules it out, and a packaged
  * product with no ingredient data and no tags gets every flag false.
  *
+ * Best effort, by design: the word lists below are known to be incomplete, and a food whose
+ * telling word is missing keeps that flag true. Known gaps, left for follow-up word lists so
+ * this class keeps one rule model rather than growing a word per review: more high-FODMAP
+ * produce (cherries, apricots, plums, peaches, blackberries, dates, figs, leeks, shallots,
+ * artichokes, applesauce), barley-based ferments (miso, koji), processed meats (franks,
+ * hot dogs, bologna) and lard-based dishes (traditional refried beans).
+ *
  * Flags come from lowercased name + category + ingredients:
  *  - vegetarian (ovo-lacto): false on meat, fish, poultry, seafood, cured meats, gelatin,
  *    rennet, carmine and collagen words.
