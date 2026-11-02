@@ -205,16 +205,19 @@ it('NOTIF-001 reminders:send queues a job only for users who may have something 
     Queue::assertPushed(SendUserReminders::class, fn (SendUserReminders $job) => $job->user->is($weighsNow));
 });
 
-it('NOTIF-004 NOTIF-005 NOTIF-007 at 09:00 a user with both morning switches off is not queued', function () {
+it('NOTIF-004 NOTIF-005 NOTIF-007 at 09:00 a user with both morning switches off is not queued, and one with either on is', function () {
     $user = remindedUser();
+    $reviewOff = remindedUser();
     NotificationPref::query()->create(['user_id' => $user->id, 'kind' => 'weekly_review', 'on' => false]);
     NotificationPref::query()->create(['user_id' => $user->id, 'kind' => 'next_mesocycle', 'on' => false]);
+    NotificationPref::query()->create(['user_id' => $reviewOff->id, 'kind' => 'weekly_review', 'on' => false]);
     Queue::fake();
 
     Carbon::setTestNow('2026-09-26 09:00:00');
     $this->artisan('reminders:send')->assertSuccessful();
 
-    Queue::assertNothingPushed();
+    Queue::assertPushed(SendUserReminders::class, 1);
+    Queue::assertPushed(SendUserReminders::class, fn (SendUserReminders $job) => $job->user->is($reviewOff));
 });
 
 it('NOTIF-004 NOTIF-005 a user is queued once for the morning, even when the pass sent nothing', function () {
