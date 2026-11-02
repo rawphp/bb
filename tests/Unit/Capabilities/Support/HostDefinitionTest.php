@@ -115,3 +115,18 @@ it('CAP-011 names a write other than undo_apply that claims to affect any read',
 
     expect(HostDefinition::unknownAffects($registry))->toBe(['weigh_in_log affects *']);
 });
+
+it('AGT-010 marks a destructive write in its catalog entry', function () {
+    $definition = HostDefinition::write('mesocycle_end', affects: ['train_show'], destructive: true)->input(TallyInput::class)->toDefinition();
+
+    expect(HostDefinition::isDestructive($definition))->toBeTrue()
+        ->and(HostDefinition::isReversible($definition))->toBeFalse()
+        ->and($definition->tags)->toBe(['affects:train_show', 'destructive']);
+});
+
+it('AGT-010 leaves a write non-destructive unless it says otherwise', function () {
+    $definition = HostDefinition::write('weigh_in_log', affects: ['weigh_ins_show'])->input(TallyInput::class)->toDefinition();
+
+    expect(HostDefinition::isDestructive($definition))->toBeFalse()
+        ->and(HostDefinition::isDestructive(HostDefinition::read('weigh_ins_show')->toDefinition()))->toBeFalse();
+});
