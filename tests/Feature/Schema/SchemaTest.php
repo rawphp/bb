@@ -17,6 +17,7 @@ use App\Models\Mesocycle;
 use App\Models\MuscleFeedback;
 use App\Models\OffPlanEntry;
 use App\Models\OtherActivity;
+use App\Models\PendingSignInCode;
 use App\Models\Phase;
 use App\Models\Plan;
 use App\Models\PlannedFood;
@@ -89,6 +90,8 @@ function fillAccount(User $user): void
     WeighIn::factory()->for($user)->create();
     WeighInScheduleEntry::factory()->for($user)->create();
     Step::factory()->for($user)->create();
+
+    PendingSignInCode::factory()->for($user)->create();
 }
 
 it('has a factory for every model that saves a row', function () {

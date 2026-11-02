@@ -120,4 +120,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(Recipe::class);
     }
+
+    /** @return HasOne<PendingSignInCode, $this> */
+    public function pendingSignInCode(): HasOne
+    {
+        return $this->hasOne(PendingSignInCode::class);
+    }
 }
