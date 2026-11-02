@@ -46,14 +46,12 @@ final class ImportFoods extends Command
 
     private int $merged = 0;
 
-    private int $unmatched = 0;
-
     private bool $readFailed = false;
 
     public function handle(SaveImportedFoods $save, DumpRow $rows): int
     {
         // The container keeps one command instance, so a second run in the same process starts from zero here.
-        $this->imported = $this->skipped = $this->malformed = $this->merged = $this->unmatched = 0;
+        $this->imported = $this->skipped = $this->malformed = $this->merged = 0;
         $this->readFailed = false;
         $source = FoodSource::importable((string) $this->argument('source'));
         $path = (string) $this->argument('path');
@@ -118,8 +116,8 @@ final class ImportFoods extends Command
 
         $this->info("Imported {$this->imported} foods, skipped {$this->skipped}.");
         // Reported, not failed: these come from the data, so a fresh download would give the same result.
-        if ($this->merged > 0 || $this->unmatched > 0) {
-            $this->warn("Dropped {$this->unmatched}: rows the database merged into another food, so their servings were not saved (see the log). Merged {$this->merged}: rows that repeated another row's source id.");
+        if ($this->merged > 0) {
+            $this->warn("Merged {$this->merged} rows that repeated another row's source id: each source id keeps its last row.");
         }
         if ($source === FoodSource::OpenFoodFacts) {
             // ODbL needs the credit in the app, and no screen shows it yet (docs/self-hosting.md, "Food data").
@@ -139,7 +137,6 @@ final class ImportFoods extends Command
         $result = $save($batch);
         $this->imported += $result['saved'];
         $this->merged += $result['merged'];
-        $this->unmatched += $result['unmatched'];
     }
 
     /** @return Generator<int, Row>|null */

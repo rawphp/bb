@@ -6,7 +6,6 @@ use App\Models\Food;
 use App\Models\FoodServing;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 function foodsFixture(string $name): string
 {
@@ -346,115 +345,36 @@ it('FOOD-001 fails a cut-off USDA download after the batches it read, so the ins
     }
 });
 
-it('FOOD-001 saves source ids that differ only by case or accent as one food, as the unique index sees them', function () {
-    $row = fn (string $id, string $label) => [
+it('FOOD-001 keeps source ids that differ only by case or accent as separate foods, in one batch and across imports', function () {
+    $row = fn (string $id, float $kcal) => [
         'food' => ['name' => "Thing {$id}", 'source' => 'off', 'source_id' => $id, 'kind' => 'packaged',
-            'kcal' => 10.0, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
-        'servings' => [['label' => $label, 'grams' => 10.0]],
-    ];
-    $save = new SaveImportedFoods;
-
-    expect($save([$row('ÉCO1', 'accented'), $row('eco1', 'plain'), $row('XYZ9', 'other')]))->toBe(['saved' => 2, 'merged' => 1, 'unmatched' => 0])
-        ->and(Food::query()->where('source', 'off')->count())->toBe(2)
-        ->and(foodsServingsOf(Food::query()->where('source_id', 'XYZ9')->sole()))->toBe([['other', 10.0]]);
-    FoodServing::query()->delete();
-    Food::query()->forceDelete();
-
-    expect($save([$row('ABC1', 'first'), $row('abc1', 'second')]))->toBe(['saved' => 1, 'merged' => 1, 'unmatched' => 0])
-        ->and($save([$row('Abc1', 'third')]))->toBe(['saved' => 1, 'merged' => 0, 'unmatched' => 0])
-        ->and($save([$row('ÀBC1', 'fourth')]))->toBe(['saved' => 1, 'merged' => 0, 'unmatched' => 0]);
-
-    $food = Food::query()->where('source', 'off')->sole();
-    expect(foodsServingsOf($food))->toBe([['fourth', 10.0]])
-        ->and(FoodServing::count())->toBe(1);
-});
-
-it('FOOD-001 keeps source ids with characters that have no ASCII form apart, as the unique index does', function () {
-    $row = fn (string $id) => [
-        'food' => ['name' => "Thing {$id}", 'source' => 'off', 'source_id' => $id, 'kind' => 'packaged',
-            'kcal' => 10.0, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
+            'kcal' => $kcal, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
         'servings' => [['label' => "serving {$id}", 'grams' => 10.0]],
     ];
+    $ids = ['ABC1', 'abc1', 'ÀBC1', 'STRASSE1', 'STRAßE1', '食1', '1'];
+    $save = new SaveImportedFoods;
 
-    expect((new SaveImportedFoods)([$row('食1'), $row('1')]))->toBe(['saved' => 2, 'merged' => 0, 'unmatched' => 0])
-        ->and(Food::query()->where('source', 'off')->count())->toBe(2)
-        ->and(FoodServing::count())->toBe(2);
+    expect($save(array_map(fn (string $id) => $row($id, 10.0), $ids)))->toBe(['saved' => 7, 'merged' => 0])
+        ->and($save([$row('abc1', 99.0)]))->toBe(['saved' => 1, 'merged' => 0]);
+
+    foreach ($ids as $id) {
+        $food = Food::query()->where('source', 'off')->whereRaw('source_id = ?', [$id])->sole();
+        expect($food->source_id)->toBe($id)
+            ->and($food->kcal)->toBe($id === 'abc1' ? 99.0 : 10.0, $id)
+            ->and(foodsServingsOf($food))->toBe([["serving {$id}", 10.0]]);
+    }
+    expect(Food::query()->where('source', 'off')->count())->toBe(7);
 });
 
-it('FOOD-001 reports rows merged into another row\'s source id after the import', function () {
+it('FOOD-001 reports rows that repeated another row\'s source id', function () {
     $line = json_encode(['code' => 'ABC1', 'product_name' => 'Twice', 'nutriments' => ['energy-kcal_100g' => 100]])."\n";
     $path = tempnam(sys_get_temp_dir(), 'off');
-    file_put_contents($path, $line.str_replace('ABC1', 'abc1', $line));
-
-    try {
-        $this->artisan('foods:import', ['source' => 'off', 'path' => $path])
-            ->expectsOutput('Imported 1 foods, skipped 0.')
-            ->expectsOutputToContain('Dropped 0: rows the database merged into another food')
-            ->assertSuccessful();
-    } finally {
-        unlink($path);
-    }
-});
-
-it('FOOD-001 reports and logs a row the database merged into another food, and does not count it as a food', function () {
-    // The collation folds ß into ss; key() does not, so the second row finds no food of its own.
-    $row = fn (string $id, string $label) => [
-        'food' => ['name' => "Street {$id}", 'source' => 'off', 'source_id' => $id, 'kind' => 'packaged',
-            'kcal' => 10.0, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
-        'servings' => [['label' => $label, 'grams' => 10.0]],
-    ];
-    Log::spy();
-
-    $result = (new SaveImportedFoods)([$row('STRASSE1', 'first'), $row('STRAßE1', 'second')]);
-
-    expect($result)->toBe(['saved' => 1, 'merged' => 0, 'unmatched' => 1])
-        ->and(Food::query()->where('source', 'off')->count())->toBe(1)
-        ->and(FoodServing::count())->toBe(1);
-    Log::shouldHaveReceived('warning')->once()->withArgs(fn (string $message, array $context) => $context['source_id'] === 'STRAßE1');
-});
-
-it('FOOD-001 leaves an earlier food as it was when a later row folds onto it in the database only', function () {
-    $row = fn (string $id, string $name, float $kcal, string $label) => [
-        'food' => ['name' => $name, 'source' => 'off', 'source_id' => $id, 'kind' => 'packaged', 'barcode' => '111',
-            'kcal' => $kcal, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
-        'servings' => [['label' => $label, 'grams' => 10.0]],
-    ];
-    $save = new SaveImportedFoods;
-    $save([$row('STRASSE1', 'Street bar', 10.0, '30 g')]);
-
-    expect($save([$row('STRAßE1', 'Other bar', 99.0, 'other')]))->toBe(['saved' => 0, 'merged' => 0, 'unmatched' => 1]);
-
-    $food = Food::query()->where('source', 'off')->sole();
-    expect($food->only(['source_id', 'name', 'kcal']))->toBe(['source_id' => 'STRASSE1', 'name' => 'Street bar', 'kcal' => 10.0])
-        ->and(foodsServingsOf($food))->toBe([['30 g', 10.0]]);
-});
-
-it('FOOD-001 keeps the first of two rows in one batch that fold together in the database only', function () {
-    $row = fn (string $id, string $name, string $label) => [
-        'food' => ['name' => $name, 'source' => 'off', 'source_id' => $id, 'kind' => 'packaged',
-            'kcal' => 10.0, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
-        'servings' => [['label' => $label, 'grams' => 10.0]],
-    ];
-
-    expect((new SaveImportedFoods)([$row('STRASSE1', 'Street bar', 'first'), $row('STRAßE1', 'Other bar', 'second'), $row('PLAIN1', 'Plain', 'plain')]))
-        ->toBe(['saved' => 2, 'merged' => 0, 'unmatched' => 1]);
-
-    $street = Food::query()->where('source_id', 'STRASSE1')->sole();
-    expect($street->name)->toBe('Street bar')
-        ->and(foodsServingsOf($street))->toBe([['first', 10.0]])
-        ->and(Food::query()->where('source', 'off')->count())->toBe(2);
-});
-
-it('FOOD-001 prints a dropped line when the database merged a row into another food', function () {
-    $line = fn (string $code) => json_encode(['code' => $code, 'product_name' => 'Street', 'nutriments' => ['energy-kcal_100g' => 100],
-        'serving_quantity' => 30, 'serving_size' => '30 g'])."\n";
-    $path = tempnam(sys_get_temp_dir(), 'off');
-    file_put_contents($path, $line('STRASSE1').$line('STRAßE1').$line('OTHER1'));
+    file_put_contents($path, $line.$line.str_replace('ABC1', 'abc1', $line));
 
     try {
         $this->artisan('foods:import', ['source' => 'off', 'path' => $path])
             ->expectsOutput('Imported 2 foods, skipped 0.')
-            ->expectsOutputToContain('Dropped 1: rows the database merged into another food')
+            ->expectsOutputToContain('Merged 1 rows that repeated another row\'s source id')
             ->assertSuccessful();
     } finally {
         unlink($path);

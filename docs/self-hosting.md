@@ -185,6 +185,8 @@ php artisan foods:import off openfoodfacts-products.jsonl.gz
 
 Imports stream the file and upsert in batches, so re-running one leaves the same rows. An import that finds the file cut off or corrupt exits with an error, keeping the foods it saved before the bad part (a cut-off USDA file loses the batch it was reading): download the file again and re-run it. Import the Open Food Facts `.jsonl.gz` as downloaded rather than unpacking it, since a plain `.jsonl` cut exactly at a line break looks complete. Re-run them to refresh the data.
 
+An import writes `foods` and `food_servings` and, on a re-run, replaces imported foods' values and servings; removing the command does not undo that. On an instance with users, back up both tables before an import. To take an import back out, delete the imported rows by source (`source` is `usda` or `off`, `user_id` is null) and restore the backup.
+
 ## Updating
 
 ```bash

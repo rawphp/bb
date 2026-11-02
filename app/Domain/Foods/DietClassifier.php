@@ -14,7 +14,8 @@ use App\Domain\Model\DietFilter;
  * this class keeps one rule model rather than growing a word per review: more high-FODMAP
  * produce (cherries, apricots, plums, peaches, blackberries, dates, figs, leeks, shallots,
  * artichokes, applesauce), barley-based ferments (miso, koji), processed meats (franks,
- * hot dogs, bologna) and lard-based dishes (traditional refried beans).
+ * hot dogs, bologna), lard-based dishes (traditional refried beans) and breaded generic foods
+ * whose names omit the breading (fish sticks, fish portions).
  *
  * Flags come from lowercased name + category + ingredients:
  *  - vegetarian (ovo-lacto): false on meat, fish, poultry, seafood, cured meats, gelatin,
