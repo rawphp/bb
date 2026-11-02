@@ -99,7 +99,7 @@ const readMoreClass = 'inline-flex min-h-tap items-center text-accent';
             @keydown.esc="hide"
             @keydown.tab="keepFocus"
         >
-            <div data-scrim aria-hidden="true" class="absolute inset-0 bg-background/80" @click="hide" />
+            <div data-scrim aria-hidden="true" class="absolute inset-0 bg-scrim" @click="hide" />
             <div
                 ref="sheet"
                 role="dialog"

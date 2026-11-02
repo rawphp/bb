@@ -1,6 +1,9 @@
 <script lang="ts">
 /** A resting height: half the screen, or the whole screen under the status bar. */
 export type SheetHeight = 'half' | 'full';
+
+// Open sheets, oldest first. Only the top one answers Escape and Tab, so a sheet opened over another closes first.
+const openSheets: symbol[] = [];
 </script>
 
 <script setup lang="ts">
@@ -47,11 +50,14 @@ const adjustable = computed(() => props.heights.length > 1);
 
 // How far a drag must travel to change height or close.
 const THRESHOLD = 80;
+// How far a finger may drift before a tap becomes a drag, so a tap still clicks Cancel, Save or the grabber.
+const SLOP = 8;
 let startY: number | null = null;
 const offset = ref(0);
 const dragging = ref(false);
 
 let opener: HTMLElement | null = null;
+const token = Symbol('sheet');
 
 watch(
     () => props.open,
@@ -59,20 +65,68 @@ watch(
         if (open) {
             level.value = 0;
             opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+            openSheets.push(token);
+            document.addEventListener('keydown', onKeydown);
             await nextTick();
             panel.value?.focus();
         } else {
-            restoreFocus();
+            close();
         }
     },
     { immediate: true },
 );
 
-onBeforeUnmount(restoreFocus);
+onBeforeUnmount(close);
 
-function restoreFocus(): void {
+function close(): void {
+    const index = openSheets.indexOf(token);
+    if (index !== -1) {
+        openSheets.splice(index, 1);
+    }
+    document.removeEventListener('keydown', onKeydown);
     opener?.focus();
     opener = null;
+}
+
+// Listened for on the document, so Escape and Tab still work after focus falls to <body>
+// (a tap on the dim, or a focused control that the parent disables or removes).
+function onKeydown(event: KeyboardEvent): void {
+    if (openSheets[openSheets.length - 1] !== token || event.defaultPrevented) {
+        return;
+    }
+    if (event.key === 'Escape') {
+        dismiss();
+    } else if (event.key === 'Tab') {
+        keepFocus(event);
+    }
+}
+
+const FOCUSABLE =
+    'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+// The sheet is modal: Tab and Shift+Tab cycle through its own controls and never reach the page behind it.
+function keepFocus(event: KeyboardEvent): void {
+    const sheet = panel.value;
+    if (!sheet) {
+        return;
+    }
+    const controls = Array.from(sheet.querySelectorAll<HTMLElement>(FOCUSABLE));
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    const active = document.activeElement;
+    if (!first || !last) {
+        event.preventDefault();
+        sheet.focus();
+    } else if (!(active instanceof Node) || !sheet.contains(active) || active === sheet) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+    }
 }
 
 function dismiss(): void {
@@ -90,15 +144,18 @@ function onPointerMove(event: PointerEvent): void {
         return;
     }
     const dy = event.clientY - startY;
-    // Capture only once the finger moves, so a tap still clicks Cancel, Save or the grabber.
-    if (!dragging.value && dy !== 0) {
+    // Capture only once the finger has moved past the slop: capturing earlier sends a tap's click to the handle.
+    if (!dragging.value) {
+        if (Math.abs(dy) < SLOP) {
+            return;
+        }
         (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+        dragging.value = true;
     }
     const canGoDown = level.value > 0 || props.dismissible;
     const canGoUp = level.value < props.heights.length - 1;
     // Past the last stop the sheet resists, as on iPhone.
     offset.value = (dy > 0 && !canGoDown) || (dy < 0 && !canGoUp) ? dy / 4 : dy;
-    dragging.value = offset.value !== 0;
 }
 
 function onPointerUp(event: PointerEvent): void {
@@ -106,9 +163,7 @@ function onPointerUp(event: PointerEvent): void {
         return;
     }
     const dy = event.clientY - startY;
-    startY = null;
-    offset.value = 0;
-    dragging.value = false;
+    resetDrag();
 
     if (dy > THRESHOLD) {
         if (level.value > 0) {
@@ -121,103 +176,112 @@ function onPointerUp(event: PointerEvent): void {
     }
 }
 
+// Ends a drag. A pointercancel (the browser took the gesture) runs only this: the sheet springs back and nothing changes.
+function resetDrag(): void {
+    startY = null;
+    offset.value = 0;
+    dragging.value = false;
+}
+
 function toggleHeight(): void {
     level.value = level.value === 0 ? props.heights.length - 1 : 0;
 }
 </script>
 
 <template>
-    <Transition
-        enter-active-class="transition-opacity duration-300 motion-reduce:transition-none"
-        leave-active-class="transition-opacity duration-200 motion-reduce:transition-none"
-        enter-from-class="opacity-0"
-        leave-to-class="opacity-0"
-    >
-        <div v-if="open" data-scrim aria-hidden="true" class="fixed inset-0 z-40 bg-scrim" @click="dismiss" />
-    </Transition>
-    <!-- The wrapper springs in and out; the panel inside follows the finger and changes height. -->
-    <Transition
-        enter-active-class="transition-transform duration-500 ease-[cubic-bezier(0.2,1.15,0.4,1)] motion-reduce:transition-none"
-        leave-active-class="transition-transform duration-200 ease-in motion-reduce:transition-none"
-        enter-from-class="translate-y-full"
-        leave-to-class="translate-y-full"
-    >
-        <div v-if="open" class="fixed inset-x-0 bottom-0 z-50">
-            <div
-                ref="panel"
-                role="dialog"
-                aria-modal="true"
-                :aria-labelledby="titleId"
-                :data-height="height"
-                tabindex="-1"
-                class="flex flex-col rounded-t-2xl bg-surface pb-[env(safe-area-inset-bottom)] text-primary-text shadow-2xl outline-none"
-                :class="[
-                    height === 'half' ? 'h-[50dvh]' : 'h-[calc(100dvh_-_env(safe-area-inset-top)_-_0.75rem)]',
-                    dragging ? '' : 'transition-[height,transform] duration-300 motion-reduce:transition-none',
-                ]"
-                :style="dragging ? { transform: `translateY(${offset}px)` } : undefined"
-                @keydown.esc="dismiss"
-            >
+    <!-- On <body>, so a parent's overflow, transform or z-index cannot clip or bury the sheet. -->
+    <Teleport to="body">
+        <Transition
+            enter-active-class="transition-opacity duration-300 motion-reduce:transition-none"
+            leave-active-class="transition-opacity duration-200 motion-reduce:transition-none"
+            enter-from-class="opacity-0"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="open" data-scrim aria-hidden="true" class="fixed inset-0 z-40 bg-scrim" @click="dismiss" />
+        </Transition>
+        <!-- The wrapper springs in and out; the panel inside follows the finger and changes height. -->
+        <Transition
+            enter-active-class="transition-transform duration-500 ease-[cubic-bezier(0.2,1.15,0.4,1)] motion-reduce:transition-none"
+            leave-active-class="transition-transform duration-200 ease-in motion-reduce:transition-none"
+            enter-from-class="translate-y-full"
+            leave-to-class="translate-y-full"
+        >
+            <div v-if="open" class="fixed inset-x-0 bottom-0 z-50">
                 <div
-                    data-drag-handle
-                    class="touch-none select-none"
-                    @pointerdown="onPointerDown"
-                    @pointermove="onPointerMove"
-                    @pointerup="onPointerUp"
-                    @pointercancel="onPointerUp"
+                    ref="panel"
+                    role="dialog"
+                    aria-modal="true"
+                    :aria-labelledby="titleId"
+                    :data-height="height"
+                    tabindex="-1"
+                    class="flex flex-col rounded-t-2xl bg-surface pb-[env(safe-area-inset-bottom)] text-primary-text shadow-2xl outline-none"
+                    :class="[
+                        height === 'half' ? 'h-[50dvh]' : 'h-[calc(100dvh_-_env(safe-area-inset-top)_-_0.75rem)]',
+                        dragging ? '' : 'transition-[height,transform] duration-300 motion-reduce:transition-none',
+                    ]"
+                    :style="dragging ? { transform: `translateY(${offset}px)` } : undefined"
                 >
-                    <button
-                        v-if="adjustable"
-                        data-grabber
-                        type="button"
-                        :aria-label="level === 0 ? 'Expand sheet' : 'Shrink sheet'"
-                        class="flex h-5 w-full items-center justify-center"
-                        @click="toggleHeight"
+                    <div
+                        data-drag-handle
+                        class="touch-none select-none"
+                        @pointerdown="onPointerDown"
+                        @pointermove="onPointerMove"
+                        @pointerup="onPointerUp"
+                        @pointercancel="resetDrag"
                     >
-                        <span class="h-1.5 w-10 rounded-full bg-secondary-text/40" />
-                    </button>
-                    <div v-else data-grabber aria-hidden="true" class="flex h-5 items-center justify-center">
-                        <span class="h-1.5 w-10 rounded-full bg-secondary-text/40" />
-                    </div>
-                    <header class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 text-accent">
                         <button
-                            data-cancel
+                            v-if="adjustable"
+                            data-grabber
                             type="button"
-                            :disabled="cancelDisabled"
-                            class="min-h-tap min-w-tap justify-self-start text-left disabled:opacity-40"
-                            @click="emit('cancel')"
+                            :aria-label="level === 0 ? 'Expand sheet' : 'Shrink sheet'"
+                            class="flex h-5 w-full items-center justify-center"
+                            @click="toggleHeight"
                         >
-                            Cancel
+                            <span class="h-1.5 w-10 rounded-full bg-secondary-text/40" />
                         </button>
-                        <div class="text-center">
-                            <h2 :id="titleId" class="font-semibold text-primary-text">{{ title }}</h2>
-                            <p v-if="pending" class="text-xs text-secondary-text">Waiting to sync</p>
+                        <div v-else data-grabber aria-hidden="true" class="flex h-5 items-center justify-center">
+                            <span class="h-1.5 w-10 rounded-full bg-secondary-text/40" />
                         </div>
-                        <button
-                            v-if="saveTitle !== null"
-                            data-save
-                            type="button"
-                            :disabled="saveDisabled || loading"
-                            class="min-h-tap min-w-tap justify-self-end text-right font-semibold disabled:opacity-40"
-                            @click="emit('save')"
-                        >
-                            {{ saveTitle }}
-                        </button>
-                        <span v-else aria-hidden="true" class="min-w-tap" />
-                    </header>
-                </div>
-                <p v-if="error" role="alert" class="bg-tone-warning-bg px-4 py-2 text-sm text-tone-warning">{{ error }}</p>
-                <div
-                    data-content
-                    :aria-busy="loading ? 'true' : undefined"
-                    class="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-secondary-text/25"
-                >
-                    <div v-if="loading" aria-hidden="true" class="flex flex-col gap-3 p-4">
-                        <div v-for="n in 3" :key="n" class="h-tap animate-pulse rounded-xl bg-secondary-text/15" />
+                        <header class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-4 text-accent">
+                            <button
+                                data-cancel
+                                type="button"
+                                :disabled="cancelDisabled"
+                                class="min-h-tap min-w-tap justify-self-start text-left disabled:opacity-40"
+                                @click="emit('cancel')"
+                            >
+                                Cancel
+                            </button>
+                            <div class="text-center">
+                                <h2 :id="titleId" class="font-semibold text-primary-text">{{ title }}</h2>
+                                <p v-if="pending" class="text-xs text-secondary-text">Waiting to sync</p>
+                            </div>
+                            <button
+                                v-if="saveTitle !== null"
+                                data-save
+                                type="button"
+                                :disabled="saveDisabled || loading"
+                                class="min-h-tap min-w-tap justify-self-end text-right font-semibold disabled:opacity-40"
+                                @click="emit('save')"
+                            >
+                                {{ saveTitle }}
+                            </button>
+                            <span v-else aria-hidden="true" class="min-w-tap" />
+                        </header>
                     </div>
-                    <slot v-else />
+                    <p v-if="error" role="alert" class="bg-tone-warning-bg px-4 py-2 text-sm text-tone-warning">{{ error }}</p>
+                    <div
+                        data-content
+                        :aria-busy="loading ? 'true' : undefined"
+                        class="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-secondary-text/25"
+                    >
+                        <div v-if="loading" aria-hidden="true" class="flex flex-col gap-3 p-4">
+                            <div v-for="n in 3" :key="n" class="h-tap animate-pulse rounded-xl bg-secondary-text/15" />
+                        </div>
+                        <slot v-else />
+                    </div>
                 </div>
             </div>
-        </div>
-    </Transition>
+        </Transition>
+    </Teleport>
 </template>
