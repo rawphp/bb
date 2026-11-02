@@ -607,3 +607,45 @@ it('FB-009 a sheet can no longer be changed once a later session has trained the
 
     expect(array_column(woShow(...$world)['feedback'], 'can_edit', 'muscle_group'))->toBe(['chest' => false, 'back' => true, 'biceps' => true]);
 });
+
+/** The logged history with week 2's bench at 100, 100 and 80 kg (a drop on the last set). */
+function woDroppedBench(): array
+{
+    $sets = array_values(array_filter(W::sets(), fn (WorkoutSet $set) => ! str_starts_with($set->id, 'w2-bench-')));
+    foreach ([[100, 10], [100, 9], [80, 8]] as $index => [$kg, $reps]) {
+        $sets[] = W::logged("w2-bench-{$index}", 'm2w2d1', W::BENCH, $index + 1, $kg, $reps);
+    }
+
+    return $sets;
+}
+
+/** @return list<float> */
+function woTableWeights(array $set): array
+{
+    return array_column(array_column($set['rep_table'], 'weight'), 'value');
+}
+
+it('PROG-025 each set\'s rep table is bound by its own set last week', function () {
+    $bench = woExercise(woShow(sets: woDroppedBench()), 'Bench Press');
+
+    // Every set targets 102.5 kg, so the tables span 87.5 to 117.5 kg. 95 kg is 5% under set 1's 100 kg last week;
+    // set 3 did 80 kg, so its table stops at 90 (92.5 kg is 15.6% above 80) and keeps its own planned weight.
+    expect(array_column(array_column($bench['sets'], 'target_weight'), 'value'))->toBe([102.5, 102.5, 102.5])
+        ->and(woTableWeights($bench['sets'][0]))->toContain(95.0)
+        ->and(woTableWeights($bench['sets'][2]))->toBe([87.5, 90.0, 102.5]);
+});
+
+it('PROG-025 PROG-026 a rebuilt set off its own last-week bound keeps only the RIR, and an added set takes last week\'s last', function () {
+    $rows = [];
+    foreach ([10, 9, 8, 7] as $index => $reps) {
+        $rows[] = woRow('slot-12', $index, W::BENCH, ['target_weight_kg' => 102.5, 'target_reps' => $reps, 'actual_weight_kg' => $index === 2 ? 95 : null]);
+    }
+    $sets = woExercise(woShow(...woStarted([], ['sets' => [...woDroppedBench(), ...$rows]])), 'Bench Press')['sets'];
+
+    // Set 3 holds 95 kg, 18.75% above its 80 kg last week. The fourth set, added after a three-set week, is bound
+    // by last week's last set as set 3 is.
+    expect($sets[2]['weight']['value'])->toBe(95.0)
+        ->and($sets[2]['reps'])->toBeNull()
+        ->and($sets[2]['off_table_text'])->toBe('1 RIR, just log reps')
+        ->and(woTableWeights($sets[3]))->toBe([87.5, 90.0, 102.5]);
+});
