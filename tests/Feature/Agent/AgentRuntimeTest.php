@@ -36,14 +36,22 @@ it('AGT-002 passes capabilities:integration-health with the production drivers',
 it('AGT-024 gives the model the conversation so far, oldest first', function () {
     $store = app(ConversationStore::class);
     $conversation = $store->createConversation('01JC0NVERSAT10N00000000000', null, (string) User::factory()->create()->id);
+    // As the package creates them: a user message, then its turn; the reply comes when the first turn ends.
     $store->createMessage($conversation, '01JMESSAGE0000000000000001', 'user', 'Swap bench for dumbbell press.');
+    $store->createQueuedTurn($conversation, '01JTURN0000000000000000001');
     $store->createMessage($conversation, '01JMESSAGE0000000000000002', 'assistant', 'Swapped, from this week on.');
     $store->createMessage($conversation, '01JMESSAGE0000000000000003', 'user', 'Thanks.');
-    $turn = $store->createQueuedTurn($conversation, '01JTURN0000000000000000001');
+    $turn = $store->createQueuedTurn($conversation, '01JTURN0000000000000000002');
 
-    expect(app(ConversationContextProvider::class)->messagesForTurn($conversation->ulid, $turn->ulid))->toBe([
-        ['role' => 'user', 'content' => 'Swap bench for dumbbell press.'],
-        ['role' => 'assistant', 'content' => 'Swapped, from this week on.'],
-        ['role' => 'user', 'content' => 'Thanks.'],
-    ]);
+    $messages = app(ConversationContextProvider::class)->messagesForTurn($conversation->ulid, $turn->ulid);
+
+    // The instructions, the conversation so far, the turn's context, then the message the turn answers.
+    expect($messages)->toHaveCount(5)
+        ->and($messages[0]['role'])->toBe('system')
+        ->and(array_slice($messages, 1, 2))->toBe([
+            ['role' => 'user', 'content' => 'Swap bench for dumbbell press.'],
+            ['role' => 'assistant', 'content' => 'Swapped, from this week on.'],
+        ])
+        ->and($messages[3]['content'])->toStartWith('Context for this turn')
+        ->and($messages[4])->toBe(['role' => 'user', 'content' => 'Thanks.']);
 });
