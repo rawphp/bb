@@ -4,12 +4,13 @@ import { featureRoutes } from '@/app/router';
 import { findScreen } from './screens';
 
 // Renders a capability screen from tests/fixtures/screens/<name>.json, or
-// one of its other states from <name>.<state>.json.
-const props = defineProps<{ name: string }>();
+// one of its other states from <name>.<state>.json. ?view=<route name> picks
+// the screen when several read the same capability.
+const props = defineProps<{ name: string; view?: string }>();
 
 const fixtures = import.meta.glob<unknown>('/tests/fixtures/screens/*.json', { import: 'default' });
 
-const screen = computed(() => findScreen(props.name.replace(/\..*$/, ''), featureRoutes));
+const screen = computed(() => findScreen(props.name.replace(/\..*$/, ''), featureRoutes, props.view));
 const payload = ref<unknown>();
 const missing = ref(false);
 
