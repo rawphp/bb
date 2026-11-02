@@ -21,15 +21,15 @@ export interface EligibilityRecheckInput {
 }
 
 export interface EligibilityRecheckOutput {
+  invalidates: unknown[];
+  toast?: string | null;
+  undo?: string | null;
   outcome: "keep" | "switchToTrainingOnly" | "runNutritionSetup" | "leaveFatLoss";
   message: string;
   /**
    * onboarding: onboarding_show holds the steps this outcome needs
    */
   next: "done" | "onboarding";
-  invalidates: unknown[];
-  toast?: string | null;
-  undo?: string | null;
 }
 
-export const outputVersion = '9891be1e0f51';
+export const outputVersion = '6b240d2df7cd';

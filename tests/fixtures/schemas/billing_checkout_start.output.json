@@ -3,10 +3,6 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-        "url": {
-            "type": "string",
-            "format": "uri"
-        },
         "invalidates": {
             "type": "array"
         },
@@ -21,10 +17,14 @@
                 "string",
                 "null"
             ]
+        },
+        "url": {
+            "type": "string",
+            "format": "uri"
         }
     },
     "required": [
-        "url",
-        "invalidates"
+        "invalidates",
+        "url"
     ]
 }

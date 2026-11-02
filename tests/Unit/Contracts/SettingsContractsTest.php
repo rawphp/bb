@@ -1,6 +1,7 @@
 <?php
 
 use App\Capabilities\Support\Tone;
+use App\Capabilities\Support\WriteOutput;
 use App\Capabilities\Support\WriteResult;
 use Illuminate\Support\Str;
 use Rawphp\Capabilities\Support\CapabilityData;
@@ -89,8 +90,8 @@ it('CAP-018 gives every Settings-area status its text and a server-picked tone',
     expect($found)->toBeGreaterThan(0);
 });
 
-it('CAP-010 gives every Settings-area write output WriteResult\'s fields, as WriteResult declares them', function () {
-    $result = WriteResult::jsonSchema();
+it('CAP-010 builds every Settings-area write output on WriteOutput, so it declares no CAP-010 field of its own', function () {
+    $fields = array_keys(WriteResult::jsonSchema()['properties']);
     $checked = 0;
 
     foreach (array_keys(settingsOwners()) as $name) {
@@ -99,12 +100,9 @@ it('CAP-010 gives every Settings-area write output WriteResult\'s fields, as Wri
             continue;
         }
 
-        $schema = $dto::jsonSchema();
-        foreach ($result['properties'] as $field => $fieldSchema) {
-            expect($schema['properties'][$field] ?? null)->toBe($fieldSchema, "{$name}.{$field}");
-        }
-        expect(array_values(array_intersect($schema['required'], array_keys($result['properties']))))
-            ->toBe($result['required'], "{$name}: the CAP-010 fields WriteResult requires");
+        $own = array_map(fn (ReflectionParameter $p): string => $p->getName(), (new ReflectionMethod($dto, '__construct'))->getParameters());
+        expect(is_subclass_of($dto, WriteOutput::class))->toBeTrue("{$dto} extends WriteOutput")
+            ->and(array_intersect($own, $fields))->toBe([], "{$dto} re-declares a CAP-010 field");
         $checked++;
     }
 

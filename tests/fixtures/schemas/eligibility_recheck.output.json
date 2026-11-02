@@ -3,6 +3,21 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
+        "invalidates": {
+            "type": "array"
+        },
+        "toast": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "undo": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
         "outcome": {
             "type": "string",
             "enum": [
@@ -22,27 +37,12 @@
                 "done",
                 "onboarding"
             ]
-        },
-        "invalidates": {
-            "type": "array"
-        },
-        "toast": {
-            "type": [
-                "string",
-                "null"
-            ]
-        },
-        "undo": {
-            "type": [
-                "string",
-                "null"
-            ]
         }
     },
     "required": [
+        "invalidates",
         "outcome",
         "message",
-        "next",
-        "invalidates"
+        "next"
     ]
 }

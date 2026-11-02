@@ -17,6 +17,9 @@ export interface TokenCreateInput {
 }
 
 export interface TokenCreateOutput {
+  invalidates: unknown[];
+  toast?: string | null;
+  undo?: string | null;
   token: {
     id: string;
     name: string;
@@ -24,9 +27,6 @@ export interface TokenCreateOutput {
     scope_text: string;
     expires_text: string;
   };
-  invalidates: unknown[];
-  toast?: string | null;
-  undo?: string | null;
 }
 
-export const outputVersion = 'c6a1d7ba6329';
+export const outputVersion = '2f53148c5578';

@@ -3,10 +3,10 @@
 export interface BillingPortalOpenInput {}
 
 export interface BillingPortalOpenOutput {
-  url: string;
   invalidates: unknown[];
   toast?: string | null;
   undo?: string | null;
+  url: string;
 }
 
-export const outputVersion = 'be50aa6e17a6';
+export const outputVersion = '62bb78c84152';

@@ -3,6 +3,21 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
+        "invalidates": {
+            "type": "array"
+        },
+        "toast": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "undo": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
         "token": {
             "type": "object",
             "additionalProperties": false,
@@ -30,25 +45,10 @@
                 "scope_text",
                 "expires_text"
             ]
-        },
-        "invalidates": {
-            "type": "array"
-        },
-        "toast": {
-            "type": [
-                "string",
-                "null"
-            ]
-        },
-        "undo": {
-            "type": [
-                "string",
-                "null"
-            ]
         }
     },
     "required": [
-        "token",
-        "invalidates"
+        "invalidates",
+        "token"
     ]
 }

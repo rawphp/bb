@@ -2,18 +2,14 @@
 
 namespace App\Capabilities\Tokens\Data;
 
-use Rawphp\Capabilities\Support\CapabilityData;
+use App\Capabilities\Support\WriteOutput;
+use App\Capabilities\Support\WriteResult;
 
 /** token_create's result: the write result (CAP-010) and the token, shown once. */
-final class TokenCreateOutput extends CapabilityData
+final class TokenCreateOutput extends WriteOutput
 {
-    /**
-     * @param  list<string>  $invalidates  read keys whose data changed, as WriteResult (CAP-010)
-     */
     public function __construct(
         public readonly CreatedToken $token,
-        public readonly array $invalidates,
-        public readonly ?string $toast = null,
-        public readonly ?string $undo = null,
+        public readonly WriteResult $result,
     ) {}
 }
