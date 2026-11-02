@@ -7,12 +7,14 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 
 /**
  * One user's reminders for one pass of reminders:send (NOTIF-001 to NOTIF-005). A job per user, so one user's data
- * cannot stop or slow the others' reminders. A job run more than the catch-up window after its pass sends nothing:
- * after a queue backlog the newest pass covers the last few minutes, and older reminders are dropped, not sent in a
- * burst. A retry sends nothing twice, as each reminder is claimed when it is sent.
+ * cannot stop or slow the others' reminders. The job judges what is due when it runs, so a job held up in the queue
+ * never sends a reminder more than the catch-up window late; one run more than that window after its pass is dropped
+ * without reading the plan, and logged, so a queue that stays behind can be seen. A retry sends nothing twice, as
+ * each reminder is claimed when it is sent.
  */
 final class SendUserReminders implements ShouldQueue
 {
@@ -28,10 +30,15 @@ final class SendUserReminders implements ShouldQueue
 
     public function handle(SendDueReminders $send): void
     {
-        if ($this->now->addMinutes(SendDueReminders::WINDOW_MINUTES)->isBefore(CarbonImmutable::now())) {
+        $now = CarbonImmutable::now();
+        if ($this->now->addMinutes(SendDueReminders::WINDOW_MINUTES)->isBefore($now)) {
+            Log::warning('Reminder pass dropped: the queue ran it too late.', [
+                'user_id' => $this->user->id, 'queued_at' => $this->now->toIso8601String(), 'ran_at' => $now->toIso8601String(),
+            ]);
+
             return;
         }
 
-        $send($this->user, $this->now);
+        $send($this->user, $now);
     }
 }
