@@ -211,9 +211,10 @@ return [
 
     'clients' => [
         'oauth' => [],
-        'token_abilities' => [
-            'capabilities:cli' => 'cli',
-        ],
+        // No ability names a caller. A token's abilities are capability names (CAP-023), or `*`,
+        // and HostAuthorizer limits it to them, so a `capabilities:cli` ability would allow
+        // nothing. A token's audit channel is derived from its abilities (Channel, CAP-022).
+        'token_abilities' => [],
         'privilege_order' => ['http', 'cli', 'mcp', 'agent', 'job'],
         'reject_upgrade_attempts' => false,
     ],

@@ -8,6 +8,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Laravel\Sanctum\PersonalAccessToken;
 use Rawphp\Capabilities\Support\CapabilityResult;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -16,6 +17,11 @@ use Symfony\Component\HttpFoundation\Response;
  * refused while the agent is off (AGT-002), the user is at a cap (AGT-005), or,
  * under a token cap, one of the user's turns is still queued or running.
  * Under a cap, the checks and the store run under one lock per user. Nothing is stored or queued then. Every other chat route and every screen keep working.
+ *
+ * On every chat route, a personal access token limited to some capabilities is
+ * refused (CAP-023): the Coach's tool calls run as the user with no token, so
+ * through it a Health bridge token would reach every write. A token that may
+ * call every capability (`*`) is let through.
  */
 final class AgentGate
 {
@@ -32,6 +38,11 @@ final class AgentGate
 
     public function handle(Request $request, Closure $next): Response
     {
+        $token = $request->user()?->currentAccessToken();
+        if ($token instanceof PersonalAccessToken && ! $token->can('*')) {
+            return self::refuse(CapabilityResult::failure('forbidden', 'This token can\'t use the Coach.'));
+        }
+
         if (! $request->routeIs('capabilities-ai.messages.store') || $request->user() === null) {
             return $next($request);
         }

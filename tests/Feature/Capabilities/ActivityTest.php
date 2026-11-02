@@ -15,6 +15,7 @@ use Rawphp\Capabilities\Contracts\AuditWriter;
 use Rawphp\Capabilities\Contracts\CapabilityBus;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\Capabilities\Support\CapabilityFailure;
+use Tests\Support\Fixtures\Rail\SecretTallyInput;
 use Tests\Support\Fixtures\Rail\TallyAddCapability;
 use Tests\Support\Fixtures\Rail\TallyInput;
 
@@ -182,6 +183,31 @@ it('CAP-022 reports a failed audit insert to the exception handler, as main\'s p
 
     Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'Lock wait timeout exceeded.');
     expect(TallyAddCapability::$total)->toBe(3);
+});
+
+it('CAP-022 stores a write\'s input with its secrets redacted', function () {
+    HostDefinition::write('tally_secret', affects: ['tally_show'])
+        ->description('A write with a secret in its input. Used by Activity tests only.')
+        ->input(SecretTallyInput::class)
+        ->run(fn (SecretTallyInput $input): WriteResult => new WriteResult(invalidates: [ReadKey::for('tally_show')], toast: 'Saved'))
+        ->register(app(CapabilityRegistry::class));
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->postJson('/capabilities/tally_secret', ['amount' => 3, 'password' => 'hunter2'])->assertOk();
+
+    $input = AuditRecord::sole()->input;
+    expect($input['amount'])->toBe(3)
+        ->and($input)->toHaveKey('password')
+        ->and(json_encode($input))->not->toContain('hunter2');
+});
+
+it('CAP-023 refuses a token whose only ability is not a capability name, such as the package\'s capabilities:cli', function () {
+    $user = User::factory()->create();
+
+    $this->withToken($user->createToken('cli', ['capabilities:cli'])->plainTextToken)
+        ->postJson('/capabilities/tally_add', ['amount' => 3])->assertForbidden();
+
+    expect(TallyAddCapability::$runs)->toBe(0);
 });
 
 it('CAP-022 dates an entry by the time it carries, not the time it is stored', function () {
