@@ -75,11 +75,11 @@ function expectRecipeSchema(string $name, array $data): void
     expect((new JsonSchemaValidator)->validate($schema, $data))->toBe([], "{$name} breaks its output schema");
 }
 
-it('CAP-011 AGT-010 RCP-021 each recipe write names the reads it changes, and only deleting is destructive', function () {
+it('CAP-011 AGT-010 RCP-021 FOOD-020 each recipe write names the reads it changes, the Pantry\'s recipes too, and only deleting is destructive', function () {
     $registry = app(CapabilityRegistry::class);
 
-    expect(HostDefinition::affects($registry->get('recipe_save')))->toBe(['recipes_show', 'recipe_show', 'today_show'])
-        ->and(HostDefinition::affects($registry->get('recipe_delete')))->toBe(['recipes_show', 'recipe_show'])
+    expect(HostDefinition::affects($registry->get('recipe_save')))->toBe(['recipes_show', 'recipe_show', 'food_search', 'today_show'])
+        ->and(HostDefinition::affects($registry->get('recipe_delete')))->toBe(['recipes_show', 'recipe_show', 'food_search'])
         ->and(HostDefinition::isDestructive($registry->get('recipe_delete')))->toBeTrue()
         ->and(HostDefinition::isDestructive($registry->get('recipe_save')))->toBeFalse()
         ->and(HostDefinition::isReversible($registry->get('recipe_save')))->toBeFalse()
@@ -254,6 +254,7 @@ it('RCP-001 creates a recipe under the client\'s id and says which reads changed
             'recipes_show{}',
             'recipes_show{"segment":"mine"}',
             'recipe_show{"recipe_id":"'.$input['id'].'"}',
+            'food_search{"collection":"recipes"}',
             'today_show{}',
         ]);
 
@@ -340,6 +341,7 @@ it('RCP-021 deletes the user\'s recipe and says the lists changed', function () 
             'recipes_show{}',
             'recipes_show{"segment":"mine"}',
             'recipe_show{"recipe_id":"'.$recipe->id.'"}',
+            'food_search{"collection":"recipes"}',
         ]);
 
     expect($recipe->fresh()->trashed())->toBeTrue()
