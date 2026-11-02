@@ -1,0 +1,35 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "week_starts": {
+            "type": "array",
+            "description": "Plan week starts, \"YYYY-MM-DD\"."
+        },
+        "away": {
+            "type": "boolean"
+        },
+        "training": {
+            "type": "string",
+            "enum": [
+                "pause",
+                "deload"
+            ]
+        },
+        "calories": {
+            "type": "string",
+            "enum": [
+                "rest",
+                "maintenance"
+            ]
+        },
+        "keep_phase_end": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "week_starts",
+        "away"
+    ]
+}
