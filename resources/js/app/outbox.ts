@@ -112,8 +112,33 @@ interface Schema extends DBSchema {
 let db: Promise<IDBPDatabase<Schema>> | undefined;
 // The last seq handed out, so two writes in one millisecond, or in flight together, never share one.
 let lastSeq = 0;
-// Removed this page load, so a stored copy whose delete hasn't landed yet never comes back.
-const removed = new Set<number>();
+
+// Entries removed (sent, discarded, or another user's deleted on confirm) whose stored
+// copy may still be on the device because its delete has not landed. Kept in local
+// storage, which writes at once, so a removed entry never comes back after a reload
+// and is never sent again; each load tries the delete again until it lands (OFF-011, OFF-012).
+const REMOVED_KEY = 'bb.outbox.removed';
+
+function removedSeqs(): Set<number> {
+    try {
+        const seqs = JSON.parse(localStorage.getItem(REMOVED_KEY) ?? '[]') as unknown;
+
+        return new Set(Array.isArray(seqs) ? seqs.filter((seq): seq is number => typeof seq === 'number') : []);
+    } catch {
+        return new Set();
+    }
+}
+
+function rememberRemoved(seqs: Set<number>): void {
+    try {
+        if (seqs.size === 0) localStorage.removeItem(REMOVED_KEY);
+        else localStorage.setItem(REMOVED_KEY, JSON.stringify([...seqs]));
+    } catch {
+        // Storage full: memory still hides them for this page load.
+    }
+}
+
+const removed = removedSeqs();
 
 function open(): Promise<IDBPDatabase<Schema>> {
     db ??= openDB<Schema>('bodybuilder-outbox', 1, {
@@ -145,8 +170,10 @@ async function onDisk<T>(step: (database: IDBPDatabase<Schema>) => Promise<T>): 
 /** Read the device's entries, and whose they are now (OFF-012). */
 export async function loadOutbox(): Promise<void> {
     followSignedInUser();
-    const stored = await onDisk((database) => database.getAll('entries')).catch(() => []);
-    const bySeq = new Map(stored.filter((entry) => !removed.has(entry.seq)).map((entry) => [entry.seq, entry]));
+    for (const seq of removedSeqs()) removed.add(seq);
+    const stored = await onDisk((database) => database.getAll('entries')).catch(() => undefined);
+    if (stored !== undefined) await forget(stored);
+    const bySeq = new Map((stored ?? []).filter((entry) => !removed.has(entry.seq)).map((entry) => [entry.seq, entry]));
     for (const entry of all.value) bySeq.set(entry.seq, entry);
     all.value = [...bySeq.values()].sort((a, b) => a.seq - b.seq);
     lastSeq = Math.max(lastSeq, all.value.at(-1)?.seq ?? 0);
@@ -167,20 +194,49 @@ export async function addEntry(fields: Omit<OutboxEntry, 'seq'>): Promise<Outbox
     return entry;
 }
 
-// A failed update or delete is not reported: the entry is sent again and the server
-// answers it from its idempotency store (CAP-014), or refuses it again.
+// A failed update is not reported: after a reload the entry is sent again, and the server
+// answers it from its idempotency store (CAP-014) or refuses it again.
 export async function updateEntry(entry: OutboxEntry): Promise<void> {
     all.value = all.value.map((each) => (each.seq === entry.seq ? entry : each));
     await onDisk((database) => database.put('entries', entry)).catch(() => undefined);
 }
 
+/**
+ * Takes entries out of the outbox. They are remembered as removed before the delete, so
+ * one the device fails to delete stays out, and the next load deletes it again.
+ */
 export async function removeEntries(seqs: readonly number[]): Promise<void> {
     for (const seq of seqs) removed.add(seq);
+    rememberRemoved(removed);
     all.value = all.value.filter((entry) => !seqs.includes(entry.seq));
-    await onDisk(async (database) => {
+    if (await deleteStored(seqs)) settleRemoved(seqs);
+}
+
+/** Deletes stored copies; resolves whether every delete landed. */
+async function deleteStored(seqs: readonly number[]): Promise<boolean> {
+    if (seqs.length === 0) return true;
+
+    return onDisk(async (database) => {
         const tx = database.transaction('entries', 'readwrite');
         await Promise.all([...seqs.map((seq) => tx.store.delete(seq)), tx.done]);
-    }).catch(() => undefined);
+    }).then(
+        () => true,
+        () => false,
+    );
+}
+
+/** The stored copies are gone, so these need no remembering. */
+function settleRemoved(seqs: readonly number[]): void {
+    for (const seq of seqs) removed.delete(seq);
+    rememberRemoved(removed);
+}
+
+/** On load: delete what is still stored of removed entries, and forget the rest. */
+async function forget(stored: readonly OutboxEntry[]): Promise<void> {
+    const still = stored.filter((entry) => removed.has(entry.seq)).map((entry) => entry.seq);
+    const gone = [...removed].filter((seq) => !still.includes(seq));
+    settleRemoved(gone);
+    if (await deleteStored(still)) settleRemoved(still);
 }
 
 /** OFF-012: delete what another user left unsynced, once the signed-in user has confirmed. */
