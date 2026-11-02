@@ -566,7 +566,7 @@ it('NUT-036 when the floors win, a shake gets no fat or carbs and every meal get
 
 // Meal kcal (NUT-030, NUT-035): rp-clone's rule as is. The free meals share what the day has left, in proportion to
 // their food, and take their food's kcal when nothing is left. docs/architecture.md, "Open questions", "Meal kcal
-// after a hand edit", asks whether the squeeze in the last two tests should stay.
+// after a hand edit", asks whether the squeeze in the two "fixed meal takes most of the day" tests should stay.
 
 /**
  * @param  list<MealSplitItem>  $items
@@ -607,17 +607,23 @@ it('NUT-030 NUT-036 when the carb floors win with no fixed meal, the meals still
 
 it('NUT-030 NUT-035 a fixed meal that takes most of the day leaves the others what is left', function () {
     $m = mealSplitIds(3);
-    $fixed = new MealTarget(kcal: 1400, proteinG: 60, fatG: 40, carbsG: 100);
-    $entries = [DayEntry::meal($m[0], fixed: $fixed), DayEntry::meal($m[1]), DayEntry::meal($m[2])];
-    $items = MealSplit::split(mealSplitDay(kcal: 1500, protein: 120, fat: 60, carbs: 120), $entries);
+    $entries = fn (float $kcal) => [
+        DayEntry::meal($m[0], fixed: new MealTarget(kcal: $kcal, proteinG: 60, fatG: 40, carbsG: 100)),
+        DayEntry::meal($m[1]), DayEntry::meal($m[2]),
+    ];
+    $day = mealSplitDay(kcal: 1500, protein: 120, fat: 60, carbs: 120);
 
-    // Each free meal holds 250 kcal of food, and the two share the 100 kcal left.
-    expect(mealSplitFoodKcal($items))->toEqual([1000, 250, 250])
-        ->and(mealSplitValues($items, 'kcal'))->toEqual([1400, 50, 50])
-        ->and(mealSplitSum($items, 'kcal'))->toEqualWithDelta(1500, 1e-9);
+    // The docs/architecture.md example. Each free meal holds 250 kcal of food. At 1400 they share the 100 kcal
+    // left; at 1499 they share 1 (the remainder goes to the first meal on a tie); at 1500 nothing is left, so they
+    // read their food's 250.
+    expect(mealSplitFoodKcal(MealSplit::split($day, $entries(1400))))->toEqual([1000, 250, 250])
+        ->and(mealSplitValues(MealSplit::split($day, $entries(1400)), 'kcal'))->toEqual([1400, 50, 50])
+        ->and(mealSplitSum(MealSplit::split($day, $entries(1400)), 'kcal'))->toEqualWithDelta(1500, 1e-9)
+        ->and(mealSplitValues(MealSplit::split($day, $entries(1499)), 'kcal'))->toEqual([1499, 1, 0])
+        ->and(mealSplitValues(MealSplit::split($day, $entries(1500)), 'kcal'))->toEqual([1500, 250, 250]);
 });
 
-it('NUT-035 with a few kcal left the free meals share them, and with none left they take their food\'s kcal', function () {
+it('NUT-035 a fixed meal that takes most of a fat-floored day: a few kcal left are shared, none left gives the food\'s kcal', function () {
     $m = mealSplitIds(3);
     $entries = fn (float $kcal) => [
         DayEntry::meal($m[0], fixed: new MealTarget(kcal: $kcal, proteinG: 60, fatG: 40, carbsG: 100)),
@@ -665,4 +671,13 @@ it('NUT-035 a fixed meal with more protein than the day leaves the others none',
     expect(mealSplitValues($items, 'proteinG'))->toEqual([120, 0, 0])
         ->and(mealSplitValues($items, 'fatG'))->toEqual([20, 20, 20])
         ->and(mealSplitValues($items, 'carbsG'))->toEqual([50, 75, 75]);
+});
+
+it('NUT-032 when every meal is pre- or post-workout, fat is even', function () {
+    $m = mealSplitIds(2);
+    $entries = [DayEntry::meal($m[0]), DayEntry::workout(), DayEntry::meal($m[1])];
+    $items = MealSplit::split(mealSplitDay(protein: 160, fat: 80, carbs: 500), $entries);
+
+    // No meal is far from training, so nothing can take the fat the peri-workout meals give up.
+    expect(mealSplitValues($items, 'fatG'))->toEqual([40, 40]);
 });
