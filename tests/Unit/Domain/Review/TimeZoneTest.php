@@ -62,6 +62,24 @@ it('REV-001 MESO-044 a stored week row dated at UTC midnight matches its Brisban
         ->and(ReviewTiming::status(reviewTzBrisbane(12, 9), $grid, $reviewed, $weighIns)->isDone())->toBeTrue();
 });
 
+it('REV-001 MESO-044 a stored week row dated at UTC midnight matches its New York week', function () {
+    // West of UTC, midnight UTC is the evening before in New York: the row's date, not its instant, names the week.
+    $newYork = fn (int $day, int $hour = 0) => PlanFixtures::date(2026, 1, $day, $hour, 0, 'America/New_York');
+    $grid = new PlanWeekGrid($newYork(5), PlanFixtures::MONDAY);
+    $weighIns = [$newYork(6, 7), $newYork(9, 7)];
+    $flagged = [
+        new StoredPlanWeek(start: reviewTzUtc('2026-01-05 00:00'), isDeload: true),
+        new StoredPlanWeek(start: reviewTzUtc('2026-01-12 00:00'), isDietBreak: true),
+    ];
+    $reviewed = [new StoredPlanWeek(start: reviewTzUtc('2026-01-05 00:00'), reviewedAt: reviewTzUtc('2026-01-12 03:00'))];
+
+    $period = ReviewTiming::status($newYork(12, 9), $grid, $flagged, $weighIns)->period();
+
+    expect($period->reviewed->isDeload)->toBeTrue()
+        ->and($period->next->isDietBreak)->toBeTrue()
+        ->and(ReviewTiming::status($newYork(12, 9), $grid, $reviewed, $weighIns)->isDone())->toBeTrue();
+});
+
 it('REV-003 a UTC weigh-in is filed under its Brisbane day', function () {
     $week = new PlanWeek(reviewTzBrisbane(5));
     // 20:00 UTC on 5 January is 06:00 on Tuesday 6 January in Brisbane.
