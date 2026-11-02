@@ -65,7 +65,9 @@ describe('router', () => {
     it('NAV-001 links a tab\'s screens from its placeholder root until the tab has its own', () => {
         const more = routesFor(false).find((route) => route.path === '/more');
 
-        expect(more?.props).toMatchObject({ label: 'More', links: ['/account'] });
+        // Other features add More screens too, so this checks the rule rather than the full list.
+        expect(more?.props).toMatchObject({ label: 'More', links: expect.arrayContaining(['/account', '/learn']) });
+        expect((more?.props as { links: string[] }).links).not.toContain('/learn/:slug');
     });
 
     it('PWA-025 gives each router its navigation', () => {
