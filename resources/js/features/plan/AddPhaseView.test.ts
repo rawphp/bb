@@ -40,6 +40,23 @@ describe('AddPhaseView', () => {
         expect(read).not.toHaveBeenCalled();
     });
 
+    it('PH-045 opens on the type and length a suggestion links to', () => {
+        const wrapper = show({ payload: current, type: 'maintenance', weeks: '4' });
+
+        expect(radios(wrapper, 'types').find((t) => t.attributes('aria-checked') === 'true')!.attributes('aria-label')).toBe('Maintenance');
+        expect(radios(wrapper, 'lengths').find((l) => l.attributes('aria-checked') === 'true')!.text()).toContain('4 weeks');
+
+        const longer = show({ payload: current, type: 'fatLoss', weeks: '15' });
+        expect(radios(longer, 'lengths').find((l) => l.attributes('aria-checked') === 'true')!.text()).toContain('15 weeks');
+    });
+
+    it('PLAN-006 ignores a linked type or length the server does not offer', () => {
+        const wrapper = show({ payload: current, type: 'bulk', weeks: '99' });
+
+        expect(radios(wrapper, 'types')[0]!.attributes('aria-checked')).toBe('true');
+        expect(radios(wrapper, 'lengths').find((l) => l.attributes('aria-checked') === 'true')!.text()).toContain('10 weeks');
+    });
+
     it('PLAN-006 starts from the type the server picks (plan_show.warning)', () => {
         const wrapper = show({ payload: plan('warning') });
 
