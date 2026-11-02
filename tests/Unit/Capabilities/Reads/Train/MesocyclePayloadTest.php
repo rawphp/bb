@@ -137,6 +137,14 @@ it('MESO-042 shortening stops at the current week plus one, lengthening at eight
         ->and(saved(meso: ['weeks' => 8])['can_shorten'])->toBeTrue();
 });
 
+it('MESO-042 it cannot lengthen into the next saved mesocycle', function () {
+    $next = W::mesocycle(['id' => 'next', 'name' => 'Meso 3', 'start_date' => '2026-10-19']);
+    $payload = shown(W::snapshot(today: '2026-09-23', mesocycles: [W::mesocycle(), $next]), W::mesocycle());
+
+    expect($payload['saved']['can_lengthen'])->toBeFalse()
+        ->and($payload['saved']['can_shorten'])->toBeTrue();
+});
+
 it('MESO-042 both are off during the deload week and once it is over', function () {
     $deload = saved('2026-10-13');
     $over = saved('2026-11-30');

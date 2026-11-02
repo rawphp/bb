@@ -56,3 +56,15 @@ it('MESO-042 refuses during the deload week, once over, and while later weeks ar
     'over' => ['2026-10-20', [], 'This mesocycle is over, so its weeks can\'t change.'],
     'later weeks' => ['2026-09-22', ['later_weeks' => [['01JB6Q400A2B3C4D5E6F7G8H9J']]], 'The weeks were rearranged when your training days changed, so their number can\'t change.'],
 ]);
+
+it('MESO-042 refuses to run into the next saved mesocycle, saying when it starts', function () {
+    // Meso 2 ends on Sunday 11 October; Meso 3 starts the next day.
+    Carbon::setTestNow('2026-09-22 10:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+    TrainSeed::mesocycle($user, ['name' => 'Meso 3', 'start_date' => '2026-10-12']);
+
+    expect(fn () => app(SetMesocycleLength::class)($user, $mesocycle->id, 6))
+        ->toThrow(DomainException::class, 'The next mesocycle starts on 12 Oct, so this one can run at most 5 weeks.')
+        ->and($mesocycle->fresh()->weeks)->toBe(5);
+});

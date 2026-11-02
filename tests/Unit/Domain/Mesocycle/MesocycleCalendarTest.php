@@ -179,3 +179,15 @@ it('MESO-043 MESO-060 a mesocycle starting in a short first plan week runs to th
         ->and($on('2026-10-19')->canAddDay())->toBeFalse()
         ->and($on('2026-10-07', endedOn: '2026-10-07')->lastDay())->toEqual(calDay('2026-10-06'));
 });
+
+it('MESO-042 a mesocycle cannot be lengthened into the next saved one', function () {
+    // Meso 2 runs 14 September to 18 October; the next mesocycle starts on 26 October, the plan week after next.
+    $week2 = new MesocycleCalendar(calDay('2026-09-14'), 5, null, calGrid(), calDay('2026-09-23'), nextStart: calDay('2026-10-26'));
+    $nextAfterDeload = new MesocycleCalendar(calDay('2026-09-14'), 5, null, calGrid(), calDay('2026-09-23'), nextStart: calDay('2026-10-19'));
+
+    expect([$week2->lengthRange()->lower, $week2->lengthRange()->upper])->toBe([3, 6])
+        ->and($week2->canSetWeeks(6, laterWeeksStored: false))->toBeTrue()
+        ->and($week2->canSetWeeks(7, laterWeeksStored: false))->toBeFalse()
+        ->and($nextAfterDeload->canLengthen(laterWeeksStored: false))->toBeFalse()
+        ->and($nextAfterDeload->canShorten(laterWeeksStored: false))->toBeTrue();
+});
