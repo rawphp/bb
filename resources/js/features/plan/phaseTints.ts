@@ -1,5 +1,7 @@
 import type { PlanShowOutput } from '@/contracts/plan_show';
 
+// How the plan screens draw a phase: its tint, and the glyphs they share.
+
 type PhaseType = PlanShowOutput['phases'][number]['type'];
 
 // The colour each phase type wears on the plan, as rp-clone's PhaseType.tint: Fat loss
