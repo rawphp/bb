@@ -4,7 +4,7 @@ use App\Agent\Exclusions;
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\Support\HostBus;
 use App\Capabilities\Support\HostDefinition;
-use App\Capabilities\Support\NoAgentPolicy;
+use App\Capabilities\Support\AgentPolicy;
 use App\Capabilities\Support\NoBilling;
 use App\Capabilities\Support\Ownership;
 use App\Capabilities\Support\WriteResult;
@@ -411,7 +411,7 @@ it('INT-001 lets a Health bridge token post a weigh-in and steps, and nothing el
             ->run(fn (): WriteResult => new WriteResult(invalidates: []))
             ->register($registry);
     }
-    $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, new Ownership, new NoBilling, new NoAgentPolicy));
+    $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, new Ownership, new NoBilling, app(AgentPolicy::class)));
     $bus = new HostBus($registry, new Ownership);
     $invoke = fn (string $name) => $bus->invoke($name, ['amount' => 1], ['actor' => $bearer, 'caller' => 'http']);
 

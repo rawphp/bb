@@ -41,9 +41,15 @@ it('AGT-024 gives the model the conversation so far, oldest first', function () 
     $store->createMessage($conversation, '01JMESSAGE0000000000000003', 'user', 'Thanks.');
     $turn = $store->createQueuedTurn($conversation, '01JTURN0000000000000000001');
 
-    expect(app(ConversationContextProvider::class)->messagesForTurn($conversation->ulid, $turn->ulid))->toBe([
-        ['role' => 'user', 'content' => 'Swap bench for dumbbell press.'],
-        ['role' => 'assistant', 'content' => 'Swapped, from this week on.'],
-        ['role' => 'user', 'content' => 'Thanks.'],
-    ]);
+    $messages = app(ConversationContextProvider::class)->messagesForTurn($conversation->ulid, $turn->ulid);
+
+    // The instructions, the conversation so far, the turn's context, then the message the turn answers.
+    expect($messages)->toHaveCount(5)
+        ->and($messages[0]['role'])->toBe('system')
+        ->and(array_slice($messages, 1, 2))->toBe([
+            ['role' => 'user', 'content' => 'Swap bench for dumbbell press.'],
+            ['role' => 'assistant', 'content' => 'Swapped, from this week on.'],
+        ])
+        ->and($messages[3]['content'])->toStartWith('Context for this turn')
+        ->and($messages[4])->toBe(['role' => 'user', 'content' => 'Thanks.']);
 });

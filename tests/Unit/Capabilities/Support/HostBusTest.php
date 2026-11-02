@@ -2,7 +2,7 @@
 
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\Support\HostBus;
-use App\Capabilities\Support\NoAgentPolicy;
+use App\Capabilities\Support\AgentPolicy;
 use App\Capabilities\Support\NoBilling;
 use App\Capabilities\Support\Ownership;
 use App\Capabilities\Support\OwnsInput;
@@ -58,7 +58,7 @@ it('CAP-020 answers another user\'s row ID with 404, not 403', function () {
     });
     $registry = new CapabilityRegistry;
     app(TokenRevokeCapability::class)->definition()->register($registry);
-    $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, $ownership, new NoBilling, new NoAgentPolicy));
+    $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, $ownership, new NoBilling, app(AgentPolicy::class)));
     $user = tap(new User, fn (User $u) => $u->id = 1);
 
     $foreign = (new HostBus($registry, $ownership))->invoke('token_revoke', ['id' => 'theirs'], ['actor' => $user]);
@@ -71,7 +71,7 @@ it('CAP-020 keeps a refusal outside the bus from turning a later invoke\'s 403 i
     $ownership = foreignRows();
     $registry = new CapabilityRegistry;
     app(TokenRevokeCapability::class)->definition()->register($registry);
-    $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, $ownership, new NoBilling, new NoAgentPolicy));
+    $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, $ownership, new NoBilling, app(AgentPolicy::class)));
     $user = tap(new User, fn (User $u) => $u->id = 1);
 
     // The job and MCP surfaces call the registry, not the bus.
