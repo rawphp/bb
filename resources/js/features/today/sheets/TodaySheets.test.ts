@@ -13,6 +13,9 @@ const readMock = vi.mocked(read);
 const writeMock = vi.mocked(write);
 const day = today();
 const workout = day.workouts[0]!;
+// A day with a second session, for the sheets that pick one by workoutId.
+const second = { ...workout, id: 'workout-2', mesocycle_id: '01JBY0000000000000000000ZZ', week: 3, day: 4, time: '06:15', move_days: [{ date: '2026-09-26', label: 'Sat, Sep 26', enabled: true, note: null }] };
+const twoWorkouts = { ...day, workouts: [workout, second] };
 
 beforeEach(() => {
     readMock.mockReset().mockResolvedValue(day);
@@ -136,6 +139,24 @@ describe('TodayWorkoutTimeSheet', () => {
         await flushPromises();
 
         expect(wrapper.text()).toContain('This day could not be loaded.');
+    });
+
+    it('SCH-050 changes the workout it was opened for', async () => {
+        const wrapper = sheet(TodayWorkoutTimeSheet, { payload: twoWorkouts, workoutId: 'workout-2' });
+        expect(wrapper.find<HTMLInputElement>('input[type="time"]').element.value).toBe('06:15');
+
+        await wrapper.find('input[type="time"]').setValue('07:00');
+        await wrapper.find('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([['workout_time_set', { mesocycle_id: second.mesocycle_id, week: 3, day: 4, time: '07:00' }]]);
+    });
+
+    it('SCH-050 has nothing to change when the workout it was opened for is gone', () => {
+        const wrapper = sheet(TodayWorkoutTimeSheet, { payload: twoWorkouts, workoutId: 'workout-gone' });
+
+        expect(wrapper.text()).toContain('This day has no workout.');
+        expect(wrapper.find('[data-save]').attributes('disabled')).toBeDefined();
     });
 });
 
@@ -269,5 +290,22 @@ describe('TodayMoveDaySheet', () => {
         await flushPromises();
 
         expect(wrapper.text()).toContain('This day could not be loaded.');
+    });
+
+    it('SCH-051 moves the workout it was opened for, to its own free days', async () => {
+        const wrapper = sheet(TodayMoveDaySheet, { payload: twoWorkouts, workoutId: 'workout-2' });
+        expect(wrapper.findAll('[role="radio"]').map((row) => row.attributes('aria-label'))).toEqual(['Sat, Sep 26']);
+
+        await wrapper.findAll('[role="radio"]')[0]!.trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([['workout_move', { mesocycle_id: second.mesocycle_id, week: 3, day: 4, date: '2026-09-26' }]]);
+    });
+
+    it('SCH-051 has nothing to move when the workout it was opened for is gone', () => {
+        const wrapper = sheet(TodayMoveDaySheet, { payload: twoWorkouts, workoutId: 'workout-gone' });
+
+        expect(wrapper.text()).toContain('This day has no workout.');
+        expect(wrapper.find('[role="radio"]').exists()).toBe(false);
     });
 });
