@@ -49,7 +49,11 @@ final class WorkoutSeed
         return (int) $mesocycle->dayRows()[$day - 1]['slots'][0]['exercise_id'];
     }
 
-    /** A full answer for the session's muscle, as stored rows. */
+    /**
+     * A full answer for the session's muscle, as stored rows.
+     *
+     * @param  array<string, ?string>  $answers  soreness, pump and volume
+     */
     public static function answered(WorkoutSession $session, string $muscle, int $exerciseId, array $answers = []): void
     {
         MuscleFeedback::factory()->create(['workout_session_id' => $session->id, 'muscle_group' => $muscle] + $answers + [

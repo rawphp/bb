@@ -61,8 +61,9 @@ final class FinishWorkout
 
         return DB::transaction(function () use ($user, $snapshot, $start, $end): array {
             $snapshot->session->forceFill(['actual_end_at' => $end])->save();
-            $sets = NextWeekSets::save($snapshot);
+            // Today's session is sized by the sets it ran, so the day is re-targeted before next week's counts change.
             $meals = $this->retarget($user, $snapshot, $start, $end);
+            $sets = NextWeekSets::save($snapshot);
             $lines = array_values(array_filter([$sets, $meals['message']]));
 
             return [

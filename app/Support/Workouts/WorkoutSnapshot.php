@@ -168,13 +168,17 @@ final class WorkoutSnapshot
 
     /**
      * PROG-010 to PROG-019, PROG-050, PROG-051: next week's counts for the session's day from the session as it ran
-     * and its stored answers. Null in a deload week, outside a mesocycle, or for a day the rotation does not hold.
+     * and its stored answers. Null in a deload week, outside a mesocycle, for a day the rotation does not hold, or
+     * once a later week's session of the same day has started: only the latest occurrence sets next week.
      */
     public function progression(): ?ProgressionResult
     {
         $mesocycle = $this->mesocycle;
         $dayIndex = $this->session->day - 1;
-        if ($mesocycle === null || $this->train === null || $this->isDeload() || ! isset($mesocycle->dayRows()[$dayIndex])) {
+        if ($mesocycle === null || $this->train === null || $this->isDeload() || ! isset($mesocycle->dayRows()[$dayIndex])
+            || $this->others->contains(fn (WorkoutSession $other) => $other->mesocycle_id === $mesocycle->id
+                && $other->day === $this->session->day && $other->week > $this->session->week
+                && $other->actual_start_at !== null && ! $other->is_skipped)) {
             return null;
         }
 
