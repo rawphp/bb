@@ -2,9 +2,9 @@
 
 use App\Agent\Exclusions;
 use App\Capabilities\HostAuthorizer;
+use App\Capabilities\Support\AgentPolicy;
 use App\Capabilities\Support\HostBus;
 use App\Capabilities\Support\HostDefinition;
-use App\Capabilities\Support\NoAgentPolicy;
 use App\Capabilities\Support\NoBilling;
 use App\Capabilities\Support\Ownership;
 use App\Capabilities\Support\WriteResult;
@@ -344,9 +344,10 @@ it('CAP-020 makes every capability that takes an existing row\'s ID check its ow
     // Fields that name no row the user owns, each with why. A create takes a new row's
     // client-made ULID (CAP-019) and checks its owner itself.
     // mesocycle_copy's new draft is such a create (ownedOrNew); a day_id names a new day inside a mesocycle
-    // whose own ID is checked. custom_food_save and off_plan_log create or edit under the client's ULID (ownedOrNew).
+    // whose own ID is checked. custom_food_save, off_plan_log and recipe_save create or edit under the client's ULID (ownedOrNew);
+    // saved_meal_save creates under it and returns the user's existing one unchanged.
     // mesocycle_build starts or edits a draft under the client's ULID (ownedOrNew), and names its new days and slots.
-    $exempt = ['token_create' => ['id'], 'mesocycle_copy' => ['mesocycle_id'], 'mesocycle_build' => ['mesocycle_id', 'days.*.day_id', 'days.*.slots.*.slot_id'], 'mesocycle_day_add' => ['day_id'], 'custom_food_save' => ['id'], 'off_plan_log' => ['id']];
+    $exempt = ['token_create' => ['id'], 'mesocycle_copy' => ['mesocycle_id'], 'mesocycle_build' => ['mesocycle_id', 'days.*.day_id', 'days.*.slots.*.slot_id'], 'mesocycle_day_add' => ['day_id'], 'custom_food_save' => ['id'], 'off_plan_log' => ['id'], 'saved_meal_save' => ['id'], 'recipe_save' => ['id']];
     $declared = (fn (): array => $this->capabilities)->call(app(Ownership::class));
 
     foreach (app(CapabilityRegistry::class)->all() as $name => $definition) {
@@ -412,7 +413,7 @@ it('INT-001 lets a Health bridge token post a weigh-in and steps, and nothing el
             ->run(fn (): WriteResult => new WriteResult(invalidates: []))
             ->register($registry);
     }
-    $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, new Ownership, new NoBilling, new NoAgentPolicy));
+    $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, new Ownership, new NoBilling, app(AgentPolicy::class)));
     $bus = new HostBus($registry, new Ownership);
     $invoke = fn (string $name) => $bus->invoke($name, ['amount' => 1], ['actor' => $bearer, 'caller' => 'http']);
 
