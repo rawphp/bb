@@ -129,20 +129,19 @@ final class PantryReader
      */
     private static function listed(?User $user, PantryTab $tab): Builder
     {
-        $userId = $user?->id;
+        if ($tab === PantryTab::Curated || $user === null) {
+            return Food::query()->whereNull('user_id')->where('curated', true)->orderBy('name')->orderBy('id');
+        }
+        $recent = fn (string $column) => FoodRecent::query()->select($column)->where('user_id', $user->id)->whereColumn('food_id', 'foods.id');
 
         return match ($tab) {
-            PantryTab::Curated => Food::query()->whereNull('user_id')->where('curated', true)->orderBy('name')->orderBy('id'),
-            PantryTab::Recents => Food::query()->select('foods.*')
-                ->join('food_recents', 'food_recents.food_id', '=', 'foods.id')
-                ->where('food_recents.user_id', $userId)
-                ->where(fn (Builder $food) => $food->whereNull('foods.user_id')->orWhere('foods.user_id', $userId))
-                ->orderByDesc('food_recents.used_at')->orderByDesc('food_recents.id'),
-            PantryTab::Favorites => Food::query()
-                ->where(fn (Builder $food) => $food->whereNull('user_id')->orWhere('user_id', $userId))
-                ->whereIn('id', FoodFavorite::query()->where('user_id', $userId)->select('food_id'))
+            PantryTab::Recents => Food::query()->visibleTo($user)
+                ->whereIn('id', FoodRecent::query()->where('user_id', $user->id)->select('food_id'))
+                ->orderByDesc($recent('used_at'))->orderByDesc($recent('id')),
+            PantryTab::Favorites => Food::query()->visibleTo($user)
+                ->whereIn('id', FoodFavorite::query()->where('user_id', $user->id)->select('food_id'))
                 ->orderBy('name')->orderBy('id'),
-            PantryTab::Custom => Food::query()->where('user_id', $userId)->orderBy('name')->orderBy('id'),
+            PantryTab::Custom => Food::query()->where('user_id', $user->id)->orderBy('name')->orderBy('id'),
         };
     }
 
