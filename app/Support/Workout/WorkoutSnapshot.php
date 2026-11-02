@@ -166,13 +166,7 @@ final class WorkoutSnapshot
 
     public function status(): WorkoutStatus
     {
-        $session = $this->session();
-
-        return WorkoutStatus::of(
-            isSkipped: (bool) $session?->is_skipped,
-            hasStarted: $session?->actual_start_at !== null,
-            hasFinished: $session?->actual_end_at !== null,
-        );
+        return $this->session()?->status() ?? WorkoutStatus::NotStarted;
     }
 
     /** When the session began, or now when it has not. */
@@ -501,7 +495,7 @@ final class WorkoutSnapshot
         $rows = $train->sessions->filter(fn (WorkoutSession $s) => $s->mesocycle_id === $mesocycle->id
             && (int) $s->user_id === (int) $mesocycle->user_id && $s->week === $week && $s->day === $day);
 
-        return $rows->first(fn (WorkoutSession $s) => $s->actual_start_at !== null || $s->is_skipped) ?? $rows->first();
+        return $rows->first(fn (WorkoutSession $s) => $s->status() !== WorkoutStatus::NotStarted) ?? $rows->first();
     }
 
     /** The day the plan puts session `$week` / `$day` of a saved mesocycle on; null when it puts it on none. */

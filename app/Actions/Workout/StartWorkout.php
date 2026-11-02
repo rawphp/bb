@@ -32,8 +32,7 @@ final class StartWorkout
                 ->where('week', $snapshot->week)->where('day', $snapshot->day)
                 ->where(fn ($query) => $query->whereNotNull('actual_start_at')->orWhere('is_skipped', true))
                 ->first();
-            $status = $started === null ? WorkoutStatus::NotStarted
-                : WorkoutStatus::of($started->is_skipped, $started->actual_start_at !== null, $started->actual_end_at !== null);
+            $status = $started?->status() ?? WorkoutStatus::NotStarted;
             if ($status === WorkoutStatus::InProgress) {
                 return $started;
             }

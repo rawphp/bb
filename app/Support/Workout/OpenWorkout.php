@@ -2,7 +2,6 @@
 
 namespace App\Support\Workout;
 
-use App\Domain\Progression\WorkoutStatus;
 use App\Models\User;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
@@ -49,7 +48,7 @@ final class OpenWorkout
         if ($session === null) {
             throw (new ModelNotFoundException)->setModel(WorkoutSession::class);
         }
-        $refusal = WorkoutStatus::of($session->is_skipped, $session->actual_start_at !== null, $session->actual_end_at !== null)->refusal();
+        $refusal = $session->status()->refusal();
         if ($refusal !== null) {
             throw new DomainException($refusal);
         }

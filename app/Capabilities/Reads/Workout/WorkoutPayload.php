@@ -275,10 +275,7 @@ final class WorkoutPayload
         if ($next === null) {
             return null;
         }
-        $time = $next['time'];
-        $clock = sprintf('%d:%02d %s', $time->hour() % 12 === 0 ? 12 : $time->hour() % 12, $time->minute(), $time->hour() < 12 ? 'AM' : 'PM');
-
-        return "Next: {$next['name']} at {$clock} · ".(int) round($next['carbs']).' g carbs';
+        return "Next: {$next['name']} at {$next['time']->shortText()} · ".(int) round($next['carbs']).' g carbs';
     }
 
     /**
@@ -291,7 +288,7 @@ final class WorkoutPayload
         $domain = $s->train->domain($s->mesocycle);
 
         return $s->mine()
-            ->filter(fn (WorkoutSession $row) => ($row->actual_start_at !== null || $row->is_skipped) && [$row->week, $row->day] < [$s->week, $s->day])
+            ->filter(fn (WorkoutSession $row) => $row->status() !== WorkoutStatus::NotStarted && [$row->week, $row->day] < [$s->week, $s->day])
             ->map(function (WorkoutSession $row) use ($domain) {
                 $plan = $domain->sessionsInWeek($row->week - 1)[$row->day - 1] ?? null;
 
@@ -308,9 +305,9 @@ final class WorkoutPayload
                     week: $row->week,
                     day: $row->day,
                     title: "Week {$row->week} · Day {$row->day} · {$plan->name}",
-                    status: match (true) {
-                        $row->is_skipped => new Pill('Skipped', Tone::Neutral->value),
-                        $row->actual_end_at !== null => new Pill('Done', Tone::Good->value),
+                    status: match ($row->status()) {
+                        WorkoutStatus::Skipped => new Pill('Skipped', Tone::Neutral->value),
+                        WorkoutStatus::Finished => new Pill('Done', Tone::Good->value),
                         default => new Pill('Started', Tone::Info->value),
                     },
                 );
