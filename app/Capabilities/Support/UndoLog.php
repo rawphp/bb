@@ -10,6 +10,7 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 use Rawphp\Capabilities\Support\CapabilityFailure;
@@ -43,12 +44,6 @@ final class UndoLog
     private int $statements = 0;
 
     private int $modelStatements = 0;
-
-    /** @var array<string, list<string>> each connection's tables' columns, by "connection:table" */
-    private array $columns = [];
-
-    /** @var array<string, list<array{table: string, columns: list<string>, parent_columns: list<string>}>> the foreign keys that point at each table, by "connection:table" */
-    private array $references = [];
 
     public function __construct(Dispatcher $events)
     {
@@ -144,17 +139,19 @@ final class UndoLog
             $updated = array_filter($reversed, fn (array $row) => $row['before'] !== null && $row['after'] !== null);
             $removed = array_filter($reversed, fn (array $row) => $row['before'] === null);
 
+            // A row the write created goes only if nothing outside the write now points at it.
+            if ($this->referenced($removed, besides: $changes)) {
+                throw CapabilityFailure::conflict('This can\'t be undone because something added since depends on it.');
+            }
+
             try {
                 foreach ($putBack as $row) {
                     DB::connection($row['connection'])->table($row['table'])->insert($row['before']);
                 }
                 foreach ($updated as $row) {
-                    DB::connection($row['connection'])->table($row['table'])->where($row['key'], $row['id'])->update($row['before']);
+                    DB::connection($row['connection'])->table($row['table'])->where($row['key'], $row['id'])->update($this->changedColumns($row));
                 }
                 foreach ($removed as $row) {
-                    if ($this->referenced($row)) {
-                        throw CapabilityFailure::conflict('This can\'t be undone because something added since depends on it.');
-                    }
                     DB::connection($row['connection'])->table($row['table'])->where($row['key'], $row['id'])->delete();
                 }
             } catch (QueryException $failed) {
@@ -186,27 +183,9 @@ final class UndoLog
         ];
         $ref = $row['table'].':'.$row['id'];
 
-        // The first sighting holds the state before the write.
-        $this->seen[$ref] ??= [...$row, 'before' => $created ? null : $this->original($model, $row)];
-    }
-
-    /**
-     * The row as it was read, without a query when the model holds every column.
-     *
-     * @param  array{connection: ?string, table: string, key: string, id: int|string}  $row
-     * @return array<string, mixed>|null
-     */
-    private function original(Model $model, array $row): ?array
-    {
-        $columns = $this->columns[$row['connection'].':'.$row['table']]
-            ??= DB::connection($row['connection'])->getSchemaBuilder()->getColumnListing($row['table']);
-        $original = $model->getRawOriginal();
-
-        if (array_diff($columns, array_keys($original)) === []) {
-            return array_intersect_key($original, array_flip($columns));
-        }
-
-        return $this->load([$row], lock: false)[0];
+        // The first sighting holds the state before the write, read from the database with a
+        // lock: the model may have been loaded before the write and be out of date.
+        $this->seen[$ref] ??= [...$row, 'before' => $created ? null : $this->load([$row], lock: true)[0]];
     }
 
     /**
@@ -219,50 +198,80 @@ final class UndoLog
             return;
         }
 
-        $row = ['connection' => $model->getConnectionName(), 'table' => $model->getTable(), 'after' => $model->getRawOriginal()];
-        if ($this->referenced($row)) {
+        $row = ['connection' => $model->getConnectionName(), 'table' => $model->getTable(), 'key' => $model->getKeyName(), 'id' => $model->getKey(), 'after' => $model->getRawOriginal()];
+        if ($this->referenced([$row])) {
             throw new LogicException("A reversible write deleted a {$row['table']} row that other rows still point at. Delete those through their models first, or undo could not put them back.");
         }
     }
 
     /**
-     * Whether any row points at this one through a foreign key, read with a lock so none is added meanwhile.
+     * Whether any row, besides the given ones, points at one of these rows through a foreign key.
+     * One query per table and foreign key, read with a lock so none is added meanwhile.
      *
-     * @param  array{connection: ?string, table: string, after: ?array<string, mixed>}  $row
+     * @param  array<array-key, array{connection: ?string, table: string, key: string, id: int|string, after: ?array<string, mixed>}>  $rows
+     * @param  array<array-key, array{connection: ?string, table: string, key: string, id: int|string}>  $besides
      */
-    private function referenced(array $row): bool
+    private function referenced(array $rows, array $besides = []): bool
     {
-        foreach ($this->referencesTo($row['connection'], $row['table']) as $foreign) {
-            $query = DB::connection($row['connection'])->table($foreign['table'])->sharedLock();
-            foreach ($foreign['columns'] as $index => $column) {
-                $query->where($column, $row['after'][$foreign['parent_columns'][$index]] ?? null);
-            }
-            if ($query->exists()) {
-                return true;
+        $groups = [];
+        foreach ($rows as $row) {
+            $groups[$row['connection'].':'.$row['table']][] = $row;
+        }
+
+        foreach ($groups as $group) {
+            $connection = $group[0]['connection'];
+            foreach ($this->referencesTo($connection, $group[0]['table']) as $foreign) {
+                $query = DB::connection($connection)->table($foreign['table'])->sharedLock()
+                    ->where(function ($query) use ($group, $foreign): void {
+                        foreach ($group as $row) {
+                            $query->orWhere(function ($query) use ($row, $foreign): void {
+                                foreach ($foreign['columns'] as $index => $column) {
+                                    $query->where($column, $row['after'][$foreign['parent_columns'][$index]] ?? null);
+                                }
+                            });
+                        }
+                    });
+                $others = array_filter($besides, fn (array $other) => $other['connection'] === $connection && $other['table'] === $foreign['table']);
+                if ($others !== []) {
+                    $query->whereNotIn(reset($others)['key'], array_column($others, 'id'));
+                }
+                if ($query->exists()) {
+                    return true;
+                }
             }
         }
 
         return false;
     }
 
-    /** @return list<array{table: string, columns: list<string>, parent_columns: list<string>}> */
+    /**
+     * The foreign keys that point at a table. They are read from the schema once per migration
+     * and cached under the latest one, so a migration that adds a foreign key is seen at once.
+     *
+     * @return list<array{table: string, columns: list<string>, parent_columns: list<string>}>
+     */
     private function referencesTo(?string $connection, string $table): array
     {
-        if (! array_key_exists($connection.':', $this->references)) {
-            $schema = DB::connection($connection)->getSchemaBuilder();
-            $this->references[$connection.':'] = [];
+        $database = DB::connection($connection);
+        $version = $database->getName().':'.$database->table(config('database.migrations.table'))->max('id');
+
+        $references = Cache::rememberForever('undo-log:foreign-keys:'.$version, function () use ($database): array {
+            $schema = $database->getSchemaBuilder();
+            $references = [];
             foreach ($schema->getTableListing(schemaQualified: false) as $child) {
                 foreach ($schema->getForeignKeys($child) as $foreign) {
-                    $this->references[$connection.':'.$foreign['foreign_table']][] = [
+                    $references[$foreign['foreign_table']][] = [
                         'table' => $child,
                         'columns' => $foreign['columns'],
                         'parent_columns' => $foreign['foreign_columns'],
                     ];
                 }
             }
-        }
 
-        return $this->references[$connection.':'.$table] ?? [];
+            return $references;
+        });
+
+        return $references[$table] ?? [];
     }
 
     /**
@@ -291,6 +300,21 @@ final class UndoLog
         }
 
         return $loaded;
+    }
+
+    /**
+     * The columns of an updated row that the write changed, as they were before it.
+     * Only those are put back, so a column the write did not touch keeps its value.
+     *
+     * @param  array{before: array<string, mixed>, after: array<string, mixed>}  $row
+     * @return array<string, mixed>
+     */
+    private function changedColumns(array $row): array
+    {
+        $before = $this->text($row['before']);
+        $after = $this->text($row['after']);
+
+        return array_filter($row['before'], fn (string $column) => ! array_key_exists($column, $after) || $after[$column] !== $before[$column], ARRAY_FILTER_USE_KEY);
     }
 
     /**

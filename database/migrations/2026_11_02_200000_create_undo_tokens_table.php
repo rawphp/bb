@@ -19,7 +19,8 @@ return new class extends Migration
             $table->timestamp('expires_at');
             $table->timestamps();
 
-            $table->index(['user_id', 'expires_at']);
+            // The scheduled prune finds expired tokens by this alone; user_id has the foreign key's index.
+            $table->index('expires_at');
         });
     }
 

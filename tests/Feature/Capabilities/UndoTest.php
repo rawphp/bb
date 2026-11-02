@@ -12,6 +12,7 @@ use App\Capabilities\Support\UndoLog;
 use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Undo\Data\UndoApplyInput;
 use App\Capabilities\Undo\UndoApplyCapability;
+use App\Enums\MeasurementSource;
 use App\Models\DayTarget;
 use App\Models\Step;
 use App\Models\UndoToken;
@@ -23,6 +24,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Rawphp\Capabilities\Support\CapabilityContext;
 use Rawphp\Capabilities\Support\CapabilityFailure;
 use Tests\Support\Fixtures\Undo\StepCountSetCapability;
@@ -255,19 +257,116 @@ it('CAP-013 reads the rows it checks with a lock, so no other write lands betwee
     expect($reads)->not->toBeEmpty()->each->toContain('for update');
 });
 
-it('CAP-013 reads the rows a write changed once per table, not once per row', function () {
+it('CAP-013 reads each row with a lock before the write changes it, and all of them once after', function () {
     Step::factory()->for($this->user)->count(5)->sequence(fn ($sequence) => ['date' => '2026-10-0'.($sequence->index + 1)])->create();
 
-    $reads = 0;
+    $reads = [];
     DB::listen(function ($query) use (&$reads) {
         if (str_starts_with($query->sql, 'select') && str_contains($query->sql, '`steps`')) {
-            $reads++;
+            $reads[] = $query->sql;
         }
     });
     $token = recordAs($this->user, fn () => Step::query()->whereBelongsTo($this->user)->get()->each->update(['count' => 1]))->undo;
 
-    // One to load the steps for the write, one to read them back after it.
-    expect($token)->toBeString()->and($reads)->toBe(2);
+    // The write's own load, a locking read of each of the 6 rows as it is first changed, and one read back after.
+    expect($token)->toBeString()
+        ->and($reads)->toHaveCount(8)
+        ->and(array_slice($reads, 1, 6))->each->toContain('for update');
+});
+
+it('CAP-013 puts back only the columns the write changed, from the row as stored, not a stale model', function () {
+    $stale = Step::query()->findOrFail($this->step->id);
+    Step::query()->findOrFail($this->step->id)->update(['source' => MeasurementSource::Shortcut]);
+
+    $token = recordAs($this->user, fn () => $stale->update(['count' => 9000]))->undo;
+    undoAs($this->user, $token);
+
+    $step = Step::query()->findOrFail($this->step->id);
+    expect($step->count)->toBe(4000)
+        ->and($step->source)->toBe(MeasurementSource::Shortcut);
+});
+
+it('CAP-013 undoes a soft delete, which keeps the rows that point at it', function () {
+    $session = WorkoutSession::factory()->for($this->user)->create();
+    WorkoutSet::factory()->create(['workout_session_id' => $session->id]);
+    $rows = fn () => [DB::table('workout_sessions')->get()->all(), DB::table('workout_sets')->get()->all()];
+    $before = $rows();
+
+    $this->travel(1)->minutes();
+    $token = recordAs($this->user, fn () => $session->delete())->undo;
+    expect($token)->toBeString()
+        ->and(WorkoutSession::query()->count())->toBe(0);
+
+    undoAs($this->user, $token);
+
+    expect($rows())->toEqual($before)
+        ->and(WorkoutSession::query()->findOrFail($session->id)->deleted_at)->toBeNull();
+});
+
+it('CAP-013 refuses undo before restoring anything when a row added since points at a row the write created', function () {
+    $session = null;
+    $token = recordAs($this->user, function () use (&$session) {
+        $this->step->update(['count' => 9000]);
+        $session = WorkoutSession::factory()->for($this->user)->create();
+    })->undo;
+    WorkoutSet::factory()->create(['workout_session_id' => $session->id]);
+
+    expect(fn () => undoAs($this->user, $token))
+        ->toThrow(CapabilityFailure::class, 'This can\'t be undone because something added since depends on it.');
+
+    expect(Step::query()->findOrFail($this->step->id)->count)->toBe(9000)
+        ->and(WorkoutSet::query()->count())->toBe(1);
+});
+
+it('CAP-013 rolls back the rows it already put back when undo is refused partway through', function () {
+    $other = Step::factory()->for($this->user)->create(['date' => '2026-11-05', 'count' => 700]);
+    $token = recordAs($this->user, function () use ($other) {
+        $this->step->delete();
+        $other->delete();
+    })->undo;
+    // Undo puts the 2026-11-05 row back first, then clashes on 2026-11-02.
+    $later = Step::factory()->for($this->user)->create(['date' => '2026-11-02', 'count' => 6000]);
+
+    expect(fn () => undoAs($this->user, $token))
+        ->toThrow(CapabilityFailure::class, 'This can\'t be undone because it has changed since.');
+
+    expect(Step::query()->pluck('id')->all())->toBe([$later->id]);
+});
+
+it('CAP-013 checks what points at the rows it removes once per foreign key, not once per row', function () {
+    $token = recordAs($this->user, fn () => WorkoutSession::factory()->for($this->user)->count(5)->create())->undo;
+    $foreignKeys = collect(Schema::getTables())->sum(fn (array $table) => collect(Schema::getForeignKeys($table['name']))
+        ->where('foreign_table', 'workout_sessions')->count());
+
+    $checks = 0;
+    DB::listen(function ($query) use (&$checks) {
+        if (str_starts_with($query->sql, 'select exists')) {
+            $checks++;
+        }
+    });
+    undoAs($this->user, $token);
+
+    expect($foreignKeys)->toBeGreaterThan(1)
+        ->and($checks)->toBe($foreignKeys)
+        ->and(WorkoutSession::query()->count())->toBe(0);
+});
+
+it('CAP-013 reads the foreign keys from the schema once per migration, not once per process', function () {
+    $token = recordAs($this->user, fn () => WorkoutSession::factory()->for($this->user)->create())->undo;
+    undoAs($this->user, $token);
+    app()->forgetInstance(UndoLog::class);
+
+    $schemaReads = 0;
+    DB::listen(function ($query) use (&$schemaReads) {
+        if (str_contains(strtolower($query->sql), 'information_schema')) {
+            $schemaReads++;
+        }
+    });
+    $token = recordAs($this->user, fn () => WorkoutSession::factory()->for($this->user)->create())->undo;
+    undoAs($this->user, $token);
+
+    expect($schemaReads)->toBe(0)
+        ->and(WorkoutSession::query()->count())->toBe(0);
 });
 
 it('CAP-013 prunes expired undo tokens, every user\'s, and keeps the live ones', function () {
