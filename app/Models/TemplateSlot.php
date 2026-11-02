@@ -9,7 +9,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** One exercise slot on a template day. */
+/**
+ * One exercise slot on a template day.
+ *
+ * @property int $day from 1
+ * @property int $position
+ * @property MuscleGroup $muscle_group
+ * @property int $exercise_id
+ * @property int $sets
+ */
 #[Fillable(['template_id', 'day', 'position', 'muscle_group', 'exercise_id', 'sets'])]
 class TemplateSlot extends Model
 {

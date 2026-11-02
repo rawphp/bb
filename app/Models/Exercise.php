@@ -21,6 +21,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property MuscleGroup $muscle_group
  * @property Equipment $equipment
  * @property ExerciseLoadType $load_type
+ * @property SfrRating $sfr_rating
+ * @property bool $is_compound
  */
 #[Fillable([
     'name', 'muscle_group', 'equipment', 'load_type', 'sfr_rating',

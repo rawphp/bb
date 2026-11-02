@@ -158,3 +158,35 @@ it('CAP-019 CAP-020 a new_phase_id that is another user\'s phase is not found, a
     expect($theirs->fresh()->only(['user_id', 'type', 'start_date', 'end_date']))->toEqual($theirs->only(['user_id', 'type', 'start_date', 'end_date']))
         ->and(Phase::query()->findOrFail(W::CUT)->end_date->format('Y-m-d'))->toBe('2026-11-23');
 });
+
+/** @return list<array<string, mixed>> every phase as stored */
+function goalPhases(): array
+{
+    return Phase::query()->orderBy('start_date')->get()
+        ->map(fn (Phase $p) => [$p->id, $p->type->value, $p->start_date?->format('Y-m-d'), $p->end_date?->format('Y-m-d')])->all();
+}
+
+it('PH-009 a phase cannot change to the type it already is, and nothing is written', function () {
+    [$user] = PlanSeed::world();
+    $before = goalPhases();
+
+    phaseGoalChange($user, ['phase_id' => W::CUT, 'type' => 'fatLoss', 'new_phase_id' => NEW_PHASE])
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'This phase is already Fat loss.');
+
+    expect(goalPhases())->toBe($before)
+        ->and(Phase::query()->find(NEW_PHASE))->toBeNull();
+});
+
+it('PH-009 a phase that is over cannot change its goal, and nothing is written', function () {
+    [$user] = PlanSeed::world();
+    Carbon::setTestNow('2026-11-30 10:00:00');
+    $before = goalPhases();
+
+    phaseGoalChange($user, ['phase_id' => W::CUT, 'type' => 'maintenance', 'new_phase_id' => NEW_PHASE])
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'This phase is over, so its goal can no longer change.');
+
+    expect(goalPhases())->toBe($before)
+        ->and(Phase::query()->find(NEW_PHASE))->toBeNull();
+});
