@@ -32,7 +32,7 @@ final class LoadSavedMeal
     /** @return array{date: string, name: string, added: int} the meal's day, the saved meal's name and how many foods joined */
     public function __invoke(User $user, string $mealId, string $savedMealId): array
     {
-        $meal = DayTargetMeal::query()->where('user_id', $user->id)->whereHas('dayTarget')
+        $meal = DayTargetMeal::query()->liveOf($user)
             ->with(['dayTarget', 'plannedFoods.food', 'plannedRecipes.sourceRecipe.ingredients.food'])
             ->findOrFail($mealId);
         $saved = SavedMeal::query()->where('user_id', $user->id)->with('foods.food')->findOrFail($savedMealId);

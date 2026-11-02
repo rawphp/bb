@@ -27,7 +27,7 @@ final class SavedMealSaveCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('saved_meal_save', affects: ['saved_meals_show'])
-            ->description('Save a meal\'s foods under a name as a saved meal, with their amounts, cooked state and locks, so they can be loaded into any meal later. Give meal_id to save a planned meal\'s foods (recipe servings are left out), or foods to save a list of foods and grams, such as a scanned meal, locked. A new saved meal takes a new id; sending an existing one\'s id replaces its name and foods.')
+            ->description('Save a meal\'s foods under a name as a saved meal, with their amounts, cooked state and locks, so they can be loaded into any meal later. Give meal_id to save a planned meal\'s foods (recipe servings are left out), or foods to save a list of foods and grams, such as a scanned meal, locked. A new saved meal takes a new id; sending the id of one the user already has changes nothing (use saved_meal_rename to rename it).')
             ->cli('saved-meal', 'save')
             ->input(SavedMealSaveInput::class)
             ->run(function (SavedMealSaveInput $input, CapabilityContext $context): WriteResult {
@@ -51,7 +51,7 @@ final class SavedMealSaveCapability implements HostCapability, OwnsInput
     public function owned(User $user): array
     {
         return [
-            'meal_id' => DayTargetMeal::query()->where('user_id', $user->id)->whereHas('dayTarget'),
+            'meal_id' => DayTargetMeal::query()->liveOf($user),
             'foods.*.food_id' => Food::query()->visibleTo($user),
         ];
     }

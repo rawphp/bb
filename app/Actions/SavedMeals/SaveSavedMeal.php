@@ -13,26 +13,30 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 /**
- * MEAL-070: save a meal's foods under a name, with their amounts, cooked state, locks and unit. Recipe servings are
- * not saved: a saved meal holds foods. FOOD-046: or save the foods given, such as a scanned meal's, locked, raw and
- * in grams. A saved meal created under an id it already has is replaced, so a retry never makes a second (CAP-019).
+ * MEAL-070: save a meal's foods under a name, with their exact amounts, cooked state, locks and unit (MEAL-005).
+ * Recipe servings are not saved: a saved meal holds foods. FOOD-046: or save the foods given, such as a scanned
+ * meal's, locked, raw and in grams. A save under the id of a saved meal the user already has returns it unchanged,
+ * so a retry never makes a second one and never replaces its foods (CAP-019).
  */
 final class SaveSavedMeal
 {
     /**
-     * @param  SavedMeal|null  $existing  the user's saved meal with `$id`; null creates one under it
+     * @param  SavedMeal|null  $existing  the user's saved meal with `$id`, returned as it is; null creates one under it
      * @param  list<array{food_id: string, grams: float|int}>  $foods
      */
     public function __invoke(User $user, ?SavedMeal $existing, string $id, string $name, ?string $mealId, array $foods): SavedMeal
     {
+        if ($existing !== null) {
+            return $existing;
+        }
+
         $name = SavedMeals::name($name) ?? throw new DomainException('Give the saved meal a name.');
         $rows = $mealId === null ? $this->givenFoods($user, $foods) : $this->mealFoods($user, $mealId);
 
-        return DB::transaction(function () use ($user, $existing, $id, $name, $rows): SavedMeal {
-            $meal = $existing ?? (new SavedMeal)->forceFill(['id' => $id, 'user_id' => $user->id]);
-            $meal->fill(['name' => $name])->save();
+        return DB::transaction(function () use ($user, $id, $name, $rows): SavedMeal {
+            $meal = (new SavedMeal)->forceFill(['id' => $id, 'user_id' => $user->id, 'name' => $name]);
+            $meal->save();
 
-            $meal->foods()->delete();
             foreach ($rows as $position => $row) {
                 $meal->foods()->create($row + ['position' => $position]);
             }
@@ -44,7 +48,7 @@ final class SaveSavedMeal
     /** @return list<array{food_id: string, grams: float, is_cooked: bool, is_locked: bool, unit: string}> */
     private function mealFoods(User $user, string $mealId): array
     {
-        $meal = DayTargetMeal::query()->where('user_id', $user->id)->whereHas('dayTarget')->findOrFail($mealId);
+        $meal = DayTargetMeal::query()->liveOf($user)->findOrFail($mealId);
         $planned = $meal->plannedFoods()->limit(SavedMeals::MAX_FOODS)->get();
         if ($planned->isEmpty()) {
             throw new DomainException('That meal has no foods to save.');
@@ -52,8 +56,7 @@ final class SaveSavedMeal
 
         return $planned->map(fn (PlannedFood $f) => [
             'food_id' => (string) $f->food_id,
-            // A food fitted to nothing is kept at 1 g, so loading it plans an amount.
-            'grams' => max(1.0, $f->grams),
+            'grams' => $f->grams,
             'is_cooked' => $f->is_cooked,
             'is_locked' => $f->is_locked,
             'unit' => $f->unit,
