@@ -216,6 +216,8 @@ final class MesocyclePayload
     {
         $route = $mesocycle->route ?? MesocycleRoute::Scratch;
         $days = $mesocycle->dayRows();
+        // The options list the whole library, so read it once, before the slots look up their names in it.
+        $library = $snapshot->exercises();
         $experience = ExperienceLevel::tryFrom((string) $snapshot->profile?->experience) ?? ExperienceLevel::Intermediate;
         $lengths = TBL020MesocycleLength::row($experience);
         $weeksRange = new ClosedRange($lengths->allowedWeeks->lower, min($lengths->allowedWeeks->upper, MesocycleCalendar::MAX_WEEKS));
@@ -269,7 +271,7 @@ final class MesocyclePayload
             exercise_options: array_map(fn (MuscleGroup $muscle) => new MesocycleMuscleExercises(
                 muscle: $muscle->value,
                 muscle_title: $muscle->title(),
-                exercises: $snapshot->exercises()
+                exercises: $library
                     ->filter(fn (Exercise $exercise) => $exercise->muscle_group === $muscle)
                     ->sortBy('name')
                     ->map(fn (Exercise $exercise) => new MesocycleExerciseOption((string) $exercise->id, $exercise->name))

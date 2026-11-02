@@ -2,6 +2,8 @@
 
 namespace App\Support\Mesocycles;
 
+use App\Domain\Defaults\TBL012TrainingDefaults\Column;
+use App\Domain\Mesocycle\MesoBuilder;
 use App\Domain\Mesocycle\MesocycleCalendar;
 use App\Domain\Mesocycle\MesocycleRules;
 use App\Domain\Model\ExerciseSlot;
@@ -238,6 +240,21 @@ final class TrainSnapshot
         $new = $this->phaseCovering($start);
 
         return MesocycleRules::priorityReset($this->phaseType($source), $new?->type) === null ? null : $new;
+    }
+
+    /**
+     * MESO-065: the priorities a copy of `$source` starting on `$start` takes: the preset of the phase covering the
+     * start when it has a different type from the source's phase, unless `$keep`; else the source's.
+     *
+     * @return ?array<string, ?string>
+     */
+    public function copyPriorities(Mesocycle $source, DateTimeImmutable $start, bool $keep = false): ?array
+    {
+        $reset = $keep ? null : $this->priorityReset($source, $start);
+
+        return $reset === null
+            ? $source->muscle_priorities
+            : array_map(fn (Priority $p) => $p->value, MesoBuilder::defaultPriorities(Column::for($reset->type, false)));
     }
 
     /** MESO-064, PROG-054: the mesocycle so far had two flat weeks running. */

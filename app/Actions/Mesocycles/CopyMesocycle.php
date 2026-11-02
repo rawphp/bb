@@ -2,9 +2,6 @@
 
 namespace App\Actions\Mesocycles;
 
-use App\Domain\Defaults\TBL012TrainingDefaults\Column;
-use App\Domain\Mesocycle\MesoBuilder;
-use App\Domain\Model\Priority;
 use App\Enums\MesocycleRoute;
 use App\Models\Mesocycle;
 use App\Models\User;
@@ -40,7 +37,7 @@ final class CopyMesocycle
         $snapshot = TrainSnapshot::load($user, $sourceId);
         $source = $snapshot->mesocycle($sourceId);
         $start = $snapshot->snapped($startDate === null ? $snapshot->copyStart($source) : TrainSnapshot::day($startDate));
-        $reset = $keepPriorities ? null : $snapshot->priorityReset($source, $start);
+        $priorities = $snapshot->copyPriorities($source, $start, $keepPriorities);
 
         $days = array_map(fn (array $day) => [
             'id' => self::newId(),
@@ -55,7 +52,7 @@ final class CopyMesocycle
             ], $day['slots']),
         ], $source->dayRows());
 
-        return DB::transaction(function () use ($user, $existing, $id, $snapshot, $source, $start, $reset, $days) {
+        return DB::transaction(function () use ($user, $existing, $id, $snapshot, $source, $start, $priorities, $days) {
             $replaced = $snapshot->mesocycles
                 ->filter(fn (Mesocycle $m) => ! $m->isSaved() && strcasecmp((string) $m->id, $id) !== 0)->values();
             $replaced->each->delete();
@@ -72,9 +69,7 @@ final class CopyMesocycle
                 'route' => MesocycleRoute::CopyPrevious,
                 'active_rest' => false,
                 'days' => $days,
-                'muscle_priorities' => $reset === null
-                    ? $source->muscle_priorities
-                    : array_map(fn (Priority $p) => $p->value, MesoBuilder::defaultPriorities(Column::for($reset->type, false))),
+                'muscle_priorities' => $priorities,
                 'earlier_weeks' => [],
                 'later_weeks' => [],
             ])->save();

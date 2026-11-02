@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * MESO-064: takes the active rest train_show recommends: the deload week plus a week off, so the next mesocycle
  * starts one plan week later. A copy already made to start with the next mesocycle (MESO-060) moves with it, into the
- * phase covering its new start (MESO-003).
+ * phase covering its new start (MESO-003). When that phase has a different type from the copy's old one, the copy
+ * takes its priorities again from the mesocycle taking the rest, as a copy made now would (MESO-065).
  */
 final class TakeActiveRest
 {
@@ -32,12 +33,17 @@ final class TakeActiveRest
             && $m->route === MesocycleRoute::CopyPrevious
             && $m->start_date !== null && TrainSnapshot::day($m->start_date) == $next->start)->values();
 
-        DB::transaction(function () use ($snapshot, $mesocycle, $start, $waiting) {
+        $phase = $snapshot->phaseCovering($start);
+
+        DB::transaction(function () use ($snapshot, $mesocycle, $start, $waiting, $phase) {
             $mesocycle->update(['active_rest' => true]);
-            $waiting->each->update([
-                'start_date' => $start->format('Y-m-d'),
-                'phase_id' => $snapshot->phaseCovering($start)?->id,
-            ]);
+            foreach ($waiting as $draft) {
+                $draft->update([
+                    'start_date' => $start->format('Y-m-d'),
+                    'phase_id' => $phase?->id,
+                    ...($phase?->type === $snapshot->phaseType($draft) ? [] : ['muscle_priorities' => $snapshot->copyPriorities($mesocycle, $start)]),
+                ]);
+            }
         });
 
         return $waiting->map(fn (Mesocycle $m) => (string) $m->id)->all();
