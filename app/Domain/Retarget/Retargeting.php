@@ -14,13 +14,12 @@ use App\Domain\Model\MealTarget;
 use App\Domain\Model\PlanWeek;
 use App\Domain\Placement\ClockRange;
 use App\Domain\Placement\ClockTime;
-use App\Domain\Placement\DayPlacement;
 use App\Domain\Placement\MealPlacement;
-use App\Domain\Placement\MealRole;
 use App\Domain\Placement\MealSlot;
 use App\Domain\Placement\PlacedMeal;
 use App\Domain\Placement\WorkoutTime;
 use App\Domain\WeekBuilder\MealNames;
+use App\Domain\WeekBuilder\WeekBuilder;
 use App\Domain\WeekBuilder\WeekMealKind;
 use App\Domain\WeekBuilder\WeekWorkout;
 use Closure;
@@ -294,11 +293,11 @@ final class Retargeting
         $placedMeals = array_map(function (PlacedMeal $placed) use ($byId) {
             $meal = $byId[$placed->id];
 
-            return $meal->isFixed() ? $meal : $meal->atTime($placed->time)->ofKind(self::kindOf($placed->role));
+            return $meal->isFixed() ? $meal : $meal->atTime($placed->time)->ofKind(WeekMealKind::of($placed->role));
         }, $placement->meals);
 
         // SCH-043: the shake keeps its time relative to the workout, and goes when the session no longer earns one.
-        $position = $session === null ? null : self::workoutPositionIn($placement, $session->time, $context->eatingWindow);
+        $position = $session === null ? null : WeekBuilder::workoutPosition($placement, $session->time, $context->eatingWindow);
         $newShake = null;
         if ($shake !== null && $shake->keepsTime()) {
             $newShake = $shake;
@@ -434,27 +433,8 @@ final class Retargeting
     }
 
     /**
-     * Where the workout sits among the placed meals: between the pre- and post-workout meals; with neither, by the
-     * clock, on whichever day puts it nearer the window (as `WeekBuilder` lays a day out).
-     */
-    private static function workoutPositionIn(DayPlacement $placement, WorkoutTime $workout, ClockRange $window): int
-    {
-        $placed = $placement->meals;
-        $post = array_find_key($placed, fn (PlacedMeal $meal) => $meal->role === MealRole::PostWorkout);
-        if ($post !== null) {
-            return $post;
-        }
-        $pre = array_find_key($placed, fn (PlacedMeal $meal) => $meal->role === MealRole::PreWorkout);
-        if ($pre !== null) {
-            return $pre + 1;
-        }
-
-        return self::positionByClock(array_map(fn (PlacedMeal $meal) => $meal->time, $placed), $workout, $window);
-    }
-
-    /**
-     * The same for meals already on the day: the workout comes before an intra-workout shake, which is kept at its
-     * start.
+     * Where the workout sits among meals already on the day, as WeekBuilder::workoutPosition() places it among new
+     * ones; the workout comes before an intra-workout shake, which is kept at its start.
      *
      * @param  list<RetargetMeal>  $meals
      */
@@ -480,15 +460,6 @@ final class Retargeting
     private static function positionByClock(array $times, WorkoutTime $workout, ClockRange $window): int
     {
         return array_find_key($times, fn (ClockTime $time) => $window->offset($time) > $window->offset($workout->start)) ?? count($times);
-    }
-
-    private static function kindOf(MealRole $role): WeekMealKind
-    {
-        return match ($role) {
-            MealRole::Regular => WeekMealKind::Regular,
-            MealRole::PreWorkout => WeekMealKind::PreWorkout,
-            MealRole::PostWorkout => WeekMealKind::PostWorkout,
-        };
     }
 
     /** SCH-056: "Meals updated for your 5:30 PM workout". */

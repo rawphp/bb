@@ -297,8 +297,9 @@ it('CAP-023 mints no token through the package\'s CLI login or MCP until a token
     $this->postJson('/capabilities/auth/token', ['grant_type' => 'device_code'])->assertJsonPath('error.code', 'not_configured');
     $this->postJson('/capabilities/auth/device', ['client_id' => 'capabilities-cli'])->assertJsonPath('error.code', 'not_configured');
 
-    $mcp = collect(Route::getRoutes()->getRoutes())->filter(fn ($route): bool => str_starts_with($route->uri(), 'mcp'));
-    expect($mcp)->toBeEmpty()
+    // The product MCP server (AGT-040) is the only MCP route: no OAuth or token route beside it.
+    $mcp = collect(Route::getRoutes()->getRoutes())->filter(fn ($route): bool => str_starts_with($route->uri(), 'mcp') || str_contains($route->uri(), 'oauth'));
+    expect($mcp->map(fn ($route): string => $route->uri())->unique()->values()->all())->toBe(['mcp/bodybuilder'])
         ->and(DB::table('personal_access_tokens')->count())->toBe(0);
 });
 

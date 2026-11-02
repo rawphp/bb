@@ -50,3 +50,10 @@ it('AGT-003 binds the registry catalog as the package\'s tool catalog, and every
     expect($catalog)->toBeInstanceOf(RegistryToolCatalog::class)
         ->and(array_column($catalog->toolsForTurn('CONV', 'TURN'), 'name'))->toContain('account_show');
 });
+
+it('AGT-040 names the agent\'s tool profile whether or not the agent surface is on, so MCP can serve it', function () {
+    $off = catalogRegistry(['http' => true, 'job' => true, 'mcp' => true, 'cli' => true, 'agent' => false]);
+
+    expect((new RegistryToolCatalog(catalogRegistry()))->names())->toBe(['account_show', 'weigh_ins_show'])
+        ->and((new RegistryToolCatalog($off))->names())->toBe(['account_show', 'weigh_ins_show']);
+});
