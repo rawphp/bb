@@ -117,10 +117,10 @@ final class TodayPayload
 
     private const WEEKDAYS = [1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun'];
 
-    /** SCH-058: the question after a plan week or more without training; null when none is due. */
+    /** SCH-058: the question after a plan week or more without training, on today only; null on any other date and when none is due. */
     private static function missedWeeks(TodaySnapshot $snapshot): ?MissedWeeks
     {
-        $prompt = MissedWeeksPrompt::from($snapshot);
+        $prompt = $snapshot->date->format('Y-m-d') === $snapshot->today()->format('Y-m-d') ? MissedWeeksPrompt::from($snapshot) : null;
 
         return $prompt === null ? null : new MissedWeeks(
             mesocycle_id: (string) $prompt->mesocycle->id,

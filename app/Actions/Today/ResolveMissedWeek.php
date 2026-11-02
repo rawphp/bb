@@ -8,9 +8,11 @@ use App\Domain\Plan\MissedWeeks;
 use App\Domain\Plan\MissedWeeks\FlagMove;
 use App\Domain\Plan\MissedWeeks\Flags;
 use App\Models\Mesocycle;
+use App\Models\Plan;
 use App\Models\PlanWeek;
 use App\Models\User;
 use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\Today\ChangedDays;
 use App\Support\Today\MissedWeeksPrompt;
 use App\Support\Today\TodaySnapshot;
 use DomainException;
@@ -20,7 +22,9 @@ use Illuminate\Support\Facades\DB;
  * SCH-058: the answer to the missed-weeks prompt. Restart moves the mesocycle's start forward by whole plan weeks so
  * the week the user stopped in is this one, and moves the deload flags stored on its plan weeks as far (PLAN-022,
  * PLAN-023). It saves that resolution only: the day targets are left as they are. End is MESO-043 and MESO-044, which
- * {@see EndMesocycle} owns.
+ * {@see EndMesocycle} owns. Either answer is accepted only for the mesocycle the prompt is due for. Both change the
+ * sessions, deload and menu of every later week, so the days returned run from this plan week through the last day
+ * the client can show (SCH-023).
  */
 final class ResolveMissedWeek
 {
@@ -33,20 +37,23 @@ final class ResolveMissedWeek
     /** @return array{toast: string, dates: list<string>} the toast and the days (Y-m-d) whose Today and week strip change */
     public function __invoke(User $user, MissedWeekResolveInput $input): array
     {
-        if ($input->choice === 'end') {
-            ($this->end)($user, $input->mesocycle_id, $input->diet_break);
-
-            return [
-                'toast' => $input->diet_break ? 'Mesocycle ended. Next week is a diet break.' : 'Mesocycle ended',
-                'dates' => $this->currentWeek(TodaySnapshot::load($user)),
-            ];
-        }
-
         return DB::transaction(function () use ($user, $input) {
+            // The plan row is locked first, as the other writes to the plan's weeks do, so two answers (or an answer and
+            // an away save) run one after the other and each reads what the other wrote.
+            Plan::query()->where('user_id', $user->id)->lockForUpdate()->first();
             $snapshot = TodaySnapshot::load($user);
             $prompt = MissedWeeksPrompt::from($snapshot);
             if ($prompt === null || strcasecmp((string) $prompt->mesocycle->id, $input->mesocycle_id) !== 0) {
                 throw new DomainException(self::NOT_DUE);
+            }
+
+            if ($input->choice === 'end') {
+                ($this->end)($user, $input->mesocycle_id, $input->diet_break);
+
+                return [
+                    'toast' => $input->diet_break ? 'Mesocycle ended. Next week is a diet break.' : 'Mesocycle ended',
+                    'dates' => ChangedDays::fromCurrentWeek(TodaySnapshot::loadWeek($user)),
+                ];
             }
             if (! $prompt->canRestart()) {
                 throw new DomainException(self::NO_RESTART);
@@ -55,7 +62,11 @@ final class ResolveMissedWeek
             $prompt->mesocycle->update(['start_date' => $prompt->restartStart->format('Y-m-d')]);
             $moved = $this->moveDeloads($user, $snapshot, $prompt);
 
-            return ['toast' => 'Week restarted', 'dates' => [...$this->currentWeek($snapshot), ...$moved]];
+            // Every later week's sessions and deload move with the start, so every day from this week on changes.
+            return [
+                'toast' => 'Week restarted',
+                'dates' => array_values(array_unique([...ChangedDays::fromCurrentWeek(TodaySnapshot::loadWeek($user)), ...$moved])),
+            ];
         });
     }
 
@@ -116,11 +127,5 @@ final class ResolveMissedWeek
         }
 
         return $days;
-    }
-
-    /** @return list<string> the days (Y-m-d) of the plan week containing today */
-    private function currentWeek(TodaySnapshot $snapshot): array
-    {
-        return $this->weekDays([$snapshot->today()->format('Y-m-d')], $snapshot);
     }
 }

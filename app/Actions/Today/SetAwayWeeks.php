@@ -8,17 +8,21 @@ use App\Models\PlanWeek;
 use App\Models\User;
 use App\Support\Plan\PlanSnapshot;
 use App\Support\Today\AwayOffer;
+use App\Support\Today\ChangedDays;
+use App\Support\Today\TodaySnapshot;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
 /**
  * SCH-060, PLAN-025: mark plan weeks away, change them, or mark them not away (rp-clone AwayWeekModel.save). A week
  * that gains or loses a diet break moves the phase's end date, and the phases after it, by a week, unless that week
- * keeps the end date. The weeks are checked against what the Away sheet offers before anything is saved.
+ * keeps the end date. The weeks are checked against what the Away sheet offers before anything is saved. The days
+ * returned run from the earliest week saved through the last day the client can show (SCH-023): a paused or
+ * un-paused week changes every later week's sessions, deload and menu.
  */
 final class SetAwayWeeks
 {
-    /** @return array{dates: list<string>, offered: list<string>, toast: string} the days saved, the weeks the sheet offers now or offered before, and what to say */
+    /** @return array{dates: list<string>, offered: list<string>, toast: string} the days changed, the weeks the sheet offers now or offered before, and what to say */
     public function __invoke(User $user, AwayWeekSetInput $input): array
     {
         // The plan is read and checked under its row lock, so two saves to one plan run one after the other.
@@ -90,6 +94,9 @@ final class SetAwayWeeks
         $after = AwayOffer::fromSnapshot(PlanSnapshot::load($user) ?? $plan);
         $offered = array_values(array_unique([...$away->offered(), ...$after->offered()]));
         sort($offered);
+
+        // A paused or un-paused week moves the sessions, deload and menu of every later week.
+        $dates = array_values(array_unique([...ChangedDays::from(TodaySnapshot::loadWeek($user), $away->start($weeks[0])), ...$dates]));
 
         return [
             'dates' => $dates,

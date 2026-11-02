@@ -15,8 +15,8 @@ use DateTimeImmutable;
 
 /**
  * SCH-058: the question Today asks after a plan week or more without training: restart the week the user stopped in,
- * or end the mesocycle and build a new one. Always about today, whatever date Today shows. While it is due, SCH-057's
- * missed-day prompt waits.
+ * or end the mesocycle and build a new one. Always about today; today_show carries it only when the date shown is
+ * today. While it is due, SCH-057's missed-day prompt waits.
  *
  * The weeks are read from what Today places, so a paused away week, which places no sessions, never counts.
  */
