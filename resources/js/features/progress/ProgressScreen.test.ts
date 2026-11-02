@@ -177,7 +177,7 @@ describe('ProgressScreen', () => {
 
         expect(wrapper.get('[data-summary]').classes()).toContain('opacity-50');
         expect(wrapper.get('[data-chart-card]').text()).toContain('Waiting to sync');
-        expect(wrapper.get('[data-this-week]').text()).toContain('waiting to sync');
+        expect(wrapper.get('[data-this-week]').text()).toContain('Waiting to sync');
         expect(wrapper.get('[data-steps]').text()).toContain('Waiting to sync');
         expect(wrapper.get('[data-phase-history]').text()).toContain('Waiting to sync');
     });
@@ -193,7 +193,9 @@ describe('ProgressScreen', () => {
 
         const card = vi.mocked(toPng).mock.calls[0]![0];
         expect(card.textContent).toContain('My progress');
-        expect(card.textContent).toContain('Muscle gain: 83.2 kg to 84.3 kg (+1.1 kg) over 5 weeks');
+        const lines = [...card.querySelectorAll('text')].map((t) => t.textContent);
+        expect(lines.join(' ')).toContain('Muscle gain: 83.2 kg to 84.3 kg (+1.1 kg) over 5 weeks');
+        expect(card.querySelector('svg[role="img"]')).not.toBeNull();
         expect(sharePng).toHaveBeenCalledWith(png, full.share);
         expect(wrapper.find('[data-share-card]').exists()).toBe(false);
     });

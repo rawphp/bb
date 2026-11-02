@@ -1,9 +1,10 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityError, read } from '@/app/call';
+import type { ExerciseHistoryShowOutput } from '@/contracts/exercise_history_show';
 import schema from '../../../../tests/fixtures/schemas/exercise_history_show.input.json';
-import empty from '../../../../tests/fixtures/screens/exercise_history_show.empty.json';
-import content from '../../../../tests/fixtures/screens/exercise_history_show.json';
+import emptyFixture from '../../../../tests/fixtures/screens/exercise_history_show.empty.json';
+import contentFixture from '../../../../tests/fixtures/screens/exercise_history_show.json';
 import progress from '../../../../tests/fixtures/screens/progress_show.json';
 import progressEmpty from '../../../../tests/fixtures/screens/progress_show.empty.json';
 import ExerciseHistoryContent from './ExerciseHistoryContent.vue';
@@ -14,6 +15,8 @@ import { expectMatchesInputSchema } from './inputSchema.testing';
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn() }));
 
 const readMock = vi.mocked(read);
+const content = contentFixture as ExerciseHistoryShowOutput;
+const empty = emptyFixture as ExerciseHistoryShowOutput;
 const stubs = { global: { stubs: { RouterLink: RouterLinkStub } } };
 
 describe('ExerciseHistoryContent', () => {
@@ -25,7 +28,8 @@ describe('ExerciseHistoryContent', () => {
         expect(sessions[0]!.text()).toContain('Thu, 8 Oct 2026');
         expect(sessions[0]!.text()).toContain('Best e1RM 81.3 kg');
         const sets = sessions[0]!.findAll('[data-set]');
-        expect(sets.map((s) => s.text())).toEqual(['65.0 kg × 8 Best e1RM', '65.0 kg × 7', '62.5 kg × 8']);
+        expect(sets.map((s) => s.get('span').text())).toEqual(['65.0 kg × 8', '65.0 kg × 7', '62.5 kg × 8']);
+        expect(sets.map((s) => s.text().includes('Best e1RM'))).toEqual([true, false, false]);
         expect(sets[0]!.attributes('aria-description')).toBe('Best estimated one rep max');
     });
 
