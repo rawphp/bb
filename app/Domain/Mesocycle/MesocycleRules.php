@@ -124,6 +124,10 @@ final class MesocycleRules
     public static function addingDay(array $days, array $earlierWeeks, array $laterWeeks, int $fromWeek, array $day): array
     {
         $frozen = self::freezingWeeks($days, $earlierWeeks, $laterWeeks, $fromWeek);
+        // A week from `$fromWeek` on already stored (this week, by a change to the Off set) runs the new day too.
+        for ($week = $fromWeek; $week < count($frozen['earlier_weeks']); $week++) {
+            $frozen['earlier_weeks'][$week][] = $day;
+        }
 
         return [
             'days' => [...$days, $day],
@@ -190,6 +194,34 @@ final class MesocycleRules
             $days,
             array_keys($days),
         );
+    }
+
+    /**
+     * MESO-032, MESO-034 "from the next session": a change to the Off set stores the weeks up to this one (`$week`, 0
+     * is the first). The weeks before it keep the rotation as it ran (`$ran`); in this week a session done or started
+     * (its day number in `$loggedDays`) keeps what it ran with, and every other session takes the rotation as it runs
+     * from now on (`$next`). This week stored by an earlier change keeps its done sessions the same way.
+     *
+     * @template TDay of array{id: string}
+     *
+     * @param  list<TDay>  $ran
+     * @param  list<TDay>  $next
+     * @param  list<list<TDay>>  $earlierWeeks
+     * @param  list<list<string>>  $laterWeeks
+     * @param  list<int>  $loggedDays  from 1
+     * @return array{earlier_weeks: list<list<TDay>>, later_weeks: list<list<string>>}
+     */
+    public static function changingOff(array $ran, array $next, array $earlierWeeks, array $laterWeeks, int $week, array $loggedDays): array
+    {
+        $frozen = self::freezingWeeks($ran, $earlierWeeks, $laterWeeks, $week + 1);
+        $nextById = array_column($next, null, 'id');
+        foreach ($frozen['earlier_weeks'][$week] ?? [] as $index => $day) {
+            if (! in_array($index + 1, $loggedDays, true) && isset($nextById[$day['id']])) {
+                $frozen['earlier_weeks'][$week][$index] = $nextById[$day['id']];
+            }
+        }
+
+        return $frozen;
     }
 
     /**
