@@ -124,7 +124,7 @@ final class ImportFoods extends Command
             return;
         }
 
-        $this->imported += $save->handle($batch);
+        $this->imported += $save($batch);
     }
 
     /** @return Generator<int, Row>|null */

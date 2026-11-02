@@ -64,7 +64,7 @@ final class DietClassifier
         'yoghurt', 'lactose', 'kefir', 'ghee', 'custard', 'ricotta', 'mascarpone', 'mozzarella', 'parmesan', 'cheddar',
         'paneer', 'curd', 'milkfat', 'milk solids', 'quark', 'skyr'];
 
-    private const EGG_HONEY = ['egg', 'honey'];
+    private const EGG_HONEY = ['egg', 'honey', 'mayonnaise', 'mayo', 'albumen', 'albumin', 'meringue'];
 
     private const SUBSTITUTE_CATEGORY = '/\b(?:substitutes?|alternatives?|analogues?|analogs?|imitation|meatless|plant\s+based|non\s+dairy|dairy\s+free|vegan|vegetarian)\b/';
 
@@ -72,7 +72,10 @@ final class DietClassifier
         'flour', 'bulgur', 'farro', 'kamut', 'beer', 'lager', 'ale', 'breaded', 'breading', 'batter', 'battered', 'crumb',
         'crumbs', 'oat', 'gluten', 'triticale', 'durum', 'graham',
         // Words match whole, so the compounds are listed: "oatmeal" is not "oat", "breadcrumbs" is not "bread".
-        'oatmeal', 'breadcrumb', 'flatbread', 'shortbread', 'cornbread', 'gingerbread', 'malted'];
+        'oatmeal', 'breadcrumb', 'flatbread', 'shortbread', 'cornbread', 'gingerbread', 'malted',
+        // Foods and sauces made from wheat whose names do not say so.
+        'soy sauce', 'shoyu', 'teriyaki', 'orzo', 'farina', 'panko', 'udon', 'ramen', 'matzo', 'matzah', 'einkorn', 'emmer',
+        'freekeh', 'bran', 'cracker', 'pretzel', 'crouton', "brewer's yeast", 'brewers yeast'];
 
     private const OTHER_GRAINS = ['rice', 'corn', 'cornstarch', 'popcorn', 'maize', 'oat', 'quinoa', 'millet', 'sorghum',
         'buckwheat', 'cereal', 'noodle', 'granola', 'tortilla', 'cornmeal', 'cornflour', 'polenta', 'grits', 'amaranth',

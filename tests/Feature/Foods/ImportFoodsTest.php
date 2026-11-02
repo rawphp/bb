@@ -132,8 +132,8 @@ it('FOOD-001 upserts foods and replaces their servings, keeping the last of a re
     ];
     $save = new SaveImportedFoods;
 
-    $save->handle([$row('007', [['label' => 'a', 'grams' => 1.0]]), $row('7', [['label' => 'b', 'grams' => 2.0]])]);
-    $save->handle([$row('007', [['label' => 'x', 'grams' => 9.0]]), $row('007', [['label' => 'c', 'grams' => 3.0]], 'Last'), $row('7', [['label' => 'b', 'grams' => 2.0]])]);
+    $save([$row('007', [['label' => 'a', 'grams' => 1.0]]), $row('7', [['label' => 'b', 'grams' => 2.0]])]);
+    $save([$row('007', [['label' => 'x', 'grams' => 9.0]]), $row('007', [['label' => 'c', 'grams' => 3.0]], 'Last'), $row('7', [['label' => 'b', 'grams' => 2.0]])]);
 
     $zeros = Food::query()->where('source_id', '007')->firstOrFail();
     expect(Food::count())->toBe(2)
@@ -264,10 +264,10 @@ it('FOOD-001 re-imports one source without touching another source\'s food that 
         'servings' => [['label' => $label, 'grams' => 10.0]],
     ];
     $save = new SaveImportedFoods;
-    $save->handle([$row('off', 'Off seven', 'off serving')]);
+    $save([$row('off', 'Off seven', 'off serving')]);
 
-    $save->handle([$row('usda', 'Usda seven', 'usda serving')]);
-    $save->handle([$row('usda', 'Usda seven', 'usda serving')]);
+    $save([$row('usda', 'Usda seven', 'usda serving')]);
+    $save([$row('usda', 'Usda seven', 'usda serving')]);
 
     $off = Food::query()->where('source', 'off')->where('source_id', '7')->firstOrFail();
     $usda = Food::query()->where('source', 'usda')->where('source_id', '7')->firstOrFail();
@@ -318,7 +318,7 @@ it('FOOD-001 rolls the foods back when their servings cannot be written', functi
         'servings' => [['label' => null, 'grams' => 1.0]],
     ]];
 
-    expect(fn () => (new SaveImportedFoods)->handle($rows))->toThrow(QueryException::class)
+    expect(fn () => (new SaveImportedFoods)($rows))->toThrow(QueryException::class)
         ->and(Food::count())->toBe(0);
 });
 

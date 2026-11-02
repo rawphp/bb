@@ -201,6 +201,22 @@ it('FOOD-027 keeps animal fats in USDA Fats and Oils out of vegan and vegetarian
     'olive oil' => ['Oil, olive, extra virgin', true],
 ]);
 
+it('FOOD-027 rules out gluten free for wheat foods and sauces whose names do not say wheat', function (string $ingredients) {
+    $flags = (new DietClassifier)->classify('Product', null, $ingredients, []);
+
+    expect($flags['gluten_free'])->toBeFalse($ingredients)->and($flags['grain_free'])->toBeFalse($ingredients);
+})->with([
+    'RICE, CHICKEN, SOY SAUCE, SESAME OIL', 'shoyu, water', 'teriyaki sauce, chicken', 'ORZO, TOMATO, BASIL', 'FARINA, SUGAR',
+    'PANKO, SHRIMP', 'udon noodles, broth', 'ramen, salt', 'matzo meal, egg', 'matzah, water', 'einkorn, water', 'emmer, water',
+    'freekeh, water', 'wheat bran, raisins', 'crackers, cheese', 'pretzels, salt', 'croutons, lettuce', "brewer's yeast, salt",
+]);
+
+it('FOOD-027 rules out vegan for egg carriers in ingredients', function (string $ingredients) {
+    $flags = (new DietClassifier)->classify('Product', null, $ingredients, []);
+
+    expect($flags['vegan'])->toBeFalse($ingredients)->and($flags['vegetarian'])->toBeTrue($ingredients);
+})->with(['mayonnaise, potato, celery', 'mayo, potato', 'egg albumen, sugar', 'albumin, water', 'meringue, sugar']);
+
 it('FOOD-027 treats soybeans as a high-FODMAP legume, not paleo', function (string $name, string $category, ?string $ingredients) {
     $flags = (new DietClassifier)->classify($name, $category, $ingredients, [], generic: $ingredients === null);
 

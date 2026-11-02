@@ -26,7 +26,7 @@ final class SaveImportedFoods
      * @param  list<string>  $updateColumns  food columns refreshed when the row already exists
      * @return int the foods saved, each repeated source_id once
      */
-    public function handle(array $rows, array $updateColumns = self::UPDATABLE): int
+    public function __invoke(array $rows, array $updateColumns = self::UPDATABLE): int
     {
         $bySource = [];
         foreach ($rows as $row) {

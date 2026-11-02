@@ -3,11 +3,9 @@
 namespace App\Actions\Foods;
 
 use App\Domain\Foods\Barcode;
-use App\Domain\Foods\FoodSource;
+use App\Domain\Foods\FoodSearchFilters;
 use App\Domain\Foods\SearchTerms;
 use App\Domain\Foods\Speller;
-use App\Domain\MealFit\CuratedGroup;
-use App\Domain\Model\DietFilter;
 use App\Models\Food;
 use App\Models\FoodFavorite;
 use App\Models\FoodRecent;
@@ -16,9 +14,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * The food database query behind the Pantry and the scanner: search (FOOD-002, FOOD-023 to FOOD-027,
- * FOOD-029), "Did you mean" (FOOD-024) and barcode lookup (FOOD-041). The Action the food_search and
- * food_barcode_lookup capabilities (A_PANTRY, A_SCAN) call from run(); they shape the rows.
+ * The food database search behind the Pantry: search (FOOD-002, FOOD-023 to FOOD-027,
+ * FOOD-029) and "Did you mean" (FOOD-024). The Action the food_search capability (A_PANTRY) calls from
+ * run(); the capability shapes the rows. Barcode lookup is LookUpFoodBarcode.
  *
  * Search lists the user's own foods (recents, favorites, custom) first, then curated matches, then the
  * rest of the database. Curated foods are a few hundred rows, so they match with LIKE; the rest uses the
@@ -26,20 +24,8 @@ use Illuminate\Database\Eloquent\Collection;
  */
 final class SearchFoods
 {
-    /**
-     * @param  'curated'|'generic'|'packaged'|'restaurant'|null  $kind  curated, or one food kind
-     * @param  list<DietFilter>  $diets  every one must be true
-     */
-    public function __construct(
-        private readonly User $user,
-        private readonly ?string $kind = null,
-        private readonly ?CuratedGroup $group = null,
-        private readonly array $diets = [],
-        private readonly int $limit = 25,
-    ) {}
-
     /** @return Collection<int, Food> */
-    public function search(string $query): Collection
+    public function __invoke(User $user, string $query, FoodSearchFilters $filters = new FoodSearchFilters): Collection
     {
         $terms = SearchTerms::of($query);
         if ($terms === []) {
@@ -48,26 +34,26 @@ final class SearchFoods
         $phrase = implode(' ', $terms);
 
         $found = new Collection;
-        if ($this->kind !== 'curated' && $this->group === null) {
-            $found = $this->mine($terms, $query)?->limit($this->limit)->get() ?? new Collection;
+        if (! $filters->curatedOnly()) {
+            $found = $this->mine($user, $filters, $terms, $query)?->limit($filters->limit)->get() ?? new Collection;
         }
 
-        $found = $found->concat($this->curated($terms, $phrase)->whereNotIn('id', $found->modelKeys())->limit($this->limit - $found->count())->get());
-        $remaining = $this->limit - $found->count();
-        if ($this->kind === 'curated' || $this->group !== null || $remaining <= 0) {
+        $found = $found->concat($this->curated($filters, $terms, $phrase)->whereNotIn('id', $found->modelKeys())->limit($filters->limit - $found->count())->get());
+        $remaining = $filters->limit - $found->count();
+        if ($filters->curatedOnly() || $remaining <= 0) {
             return $found->values();
         }
 
-        return $found->concat($this->others($terms, $phrase)->whereNotIn('id', $found->modelKeys())->limit($remaining)->get())->values();
+        return $found->concat($this->others($filters, $terms, $phrase)->whereNotIn('id', $found->modelKeys())->limit($remaining)->get())->values();
     }
 
     /**
      * FOOD-024: the corrected query, only when the query found nothing and the correction finds something,
-     * under the same filters. Takes the caller's search() result, so the query is not run twice.
+     * under the same filters. Takes the caller's result, so the query is not run twice.
      *
-     * @param  Collection<int, Food>  $found  what search($query) returned
+     * @param  Collection<int, Food>  $found  what this Action returned for $query
      */
-    public function didYouMean(string $query, Collection $found): ?string
+    public function didYouMean(User $user, string $query, Collection $found, FoodSearchFilters $filters = new FoodSearchFilters): ?string
     {
         if ($found->isNotEmpty()) {
             return null;
@@ -78,22 +64,7 @@ final class SearchFoods
             return null;
         }
 
-        return $this->search($corrected)->isNotEmpty() ? $corrected : null;
-    }
-
-    /** FOOD-041: the food with this barcode: the user's own first, then curated, then Open Food Facts, then USDA. */
-    public static function byBarcode(User $user, string $code): ?Food
-    {
-        $barcode = Barcode::normalize($code);
-        if ($barcode === null) {
-            return null;
-        }
-
-        return Food::query()->visibleTo($user)->where('barcode', $barcode)
-            ->orderByRaw('case when user_id is not null then 0 when curated then 1 when source = ? then 2 else 3 end', [FoodSource::OpenFoodFacts->value])
-            ->orderBy('id')
-            ->with('servings')
-            ->first();
+        return $this($user, $corrected, $filters)->isNotEmpty() ? $corrected : null;
     }
 
     /**
@@ -103,9 +74,9 @@ final class SearchFoods
      * @param  list<string>  $terms
      * @return Builder<Food>|null
      */
-    private function mine(array $terms, string $query): ?Builder
+    private function mine(User $user, FoodSearchFilters $filters, array $terms, string $query): ?Builder
     {
-        $userId = $this->user->id;
+        $userId = $user->id;
         // Pluck the user's small, user_id-indexed id sets first, so the LIKE scan is bounded by them, not the whole table.
         $ids = Food::query()->where('user_id', $userId)->pluck('id')
             ->merge(FoodRecent::query()->where('user_id', $userId)->pluck('food_id'))
@@ -116,7 +87,7 @@ final class SearchFoods
         }
 
         // visibleTo: a recent or favorite never reveals another user's custom food (FOOD-060).
-        $builder = $this->filtered()->visibleTo($this->user)->whereIn('foods.id', $ids->all());
+        $builder = $this->filtered($filters)->visibleTo($user)->whereIn('foods.id', $ids->all());
 
         $matchTerms = function (Builder $q) use ($terms) {
             foreach (SearchTerms::meaningful($terms) as $term) {
@@ -136,14 +107,14 @@ final class SearchFoods
     }
 
     /** @return Builder<Food> */
-    private function filtered(): Builder
+    private function filtered(FoodSearchFilters $filters): Builder
     {
         $query = Food::query()->with('servings');
 
-        if (in_array($this->kind, ['generic', 'packaged', 'restaurant'], true)) {
-            $query->where('kind', $this->kind);
+        if (in_array($filters->kind, ['generic', 'packaged', 'restaurant'], true)) {
+            $query->where('kind', $filters->kind);
         }
-        foreach ($this->diets as $diet) {
+        foreach ($filters->diets as $diet) {
             $query->where($diet->value, true);
         }
 
@@ -154,11 +125,11 @@ final class SearchFoods
      * @param  list<string>  $terms
      * @return Builder<Food>
      */
-    private function curated(array $terms, string $phrase): Builder
+    private function curated(FoodSearchFilters $filters, array $terms, string $phrase): Builder
     {
-        $query = $this->filtered()->whereNull('user_id')->where('curated', true);
-        if ($this->group !== null) {
-            $query->where('curated_group', $this->group->value);
+        $query = $this->filtered($filters)->whereNull('user_id')->where('curated', true);
+        if ($filters->group !== null) {
+            $query->where('curated_group', $filters->group->value);
         }
         foreach (SearchTerms::meaningful($terms) as $term) {
             $query->where('name', 'like', "%{$term}%");
@@ -171,9 +142,9 @@ final class SearchFoods
      * @param  list<string>  $terms
      * @return Builder<Food>
      */
-    private function others(array $terms, string $phrase): Builder
+    private function others(FoodSearchFilters $filters, array $terms, string $phrase): Builder
     {
-        $query = $this->filtered()->whereNull('user_id')->where('curated', false);
+        $query = $this->filtered($filters)->whereNull('user_id')->where('curated', false);
 
         if ($query->getModel()->getConnection()->getDriverName() === 'mysql') {
             return $this->fullText($query, $terms);
