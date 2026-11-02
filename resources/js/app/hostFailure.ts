@@ -1,4 +1,5 @@
 import { CapabilityError } from './call';
+import { failureMessage, isTimeout } from './errors';
 
 // A refused postHost() call, as a form shows it. Host routes answer in Laravel's shape,
 // not the capability envelope that errors.ts reads: a 422 holds each field's errors
@@ -18,12 +19,13 @@ export function hostFailure<F extends string>(error: unknown, shown: readonly F[
     const whole = (message: string, signedIn = false): HostFailure<F> => ({ fields: {}, message, signedIn });
     if (!(error instanceof CapabilityError)) return whole(FALLBACK);
 
-    const body = error.body as { message?: unknown; errors?: Record<string, unknown>; reason?: unknown } | null;
-    if (error.status === 0) return whole(body?.reason === 'timeout' ? 'The server did not answer in time. Try again.' : 'No connection. Try again when you are online.');
+    if (isTimeout(error)) return whole('The server did not answer in time. Try again.');
+    if (error.status === 0) return whole(failureMessage(error, FALLBACK));
     if (error.status === 302) return whole('You are already signed in on this device.', true);
     if (error.status === 429) return whole('Too many tries. Wait a few minutes, then try again.');
     if (error.status !== 422) return whole(FALLBACK);
 
+    const body = error.body as { message?: unknown; errors?: Record<string, unknown> } | null;
     const fields: Partial<Record<F, string>> = {};
     for (const field of shown) {
         const first = (body?.errors?.[field] as unknown[] | undefined)?.[0];
