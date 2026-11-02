@@ -461,14 +461,21 @@ describe('ScanView', () => {
 
     it('FOOD-043 puts the list\'s grams back in the field when the server refuses a typed amount', async () => {
         readMock.mockRejectedValue(new CapabilityError('scan_adjust', 422, { error: { code: 'validation_failed', message: 'An amount is at least 0.1 g.' } }));
-        const wrapper = scan({ payload: draft() });
-        const grams = wrapper.findAll('[data-test="grams"]')[1]!;
+        // A real Teleport: the stub re-creates the sheet's content on every render, which would hide a field that keeps its text.
+        const wrapper = mount(ScanView, { props: { mealId: MEAL, payload: draft() }, attachTo: document.body });
+        // This sheet teleported last into the body that earlier tests left their sheets in.
+        const sheet = () => [...document.querySelectorAll('[aria-modal="true"]')].at(-1)!;
+        const field = () => sheet().querySelectorAll<HTMLInputElement>('[data-test="grams"]')[1]!;
+        const typed = field();
 
-        await grams.setValue('0.05');
+        typed.value = '0.05';
+        typed.dispatchEvent(new Event('input'));
+        typed.dispatchEvent(new Event('change'));
         await flushPromises();
 
-        expect(wrapper.find('[data-test="error"]').text()).toBe('An amount is at least 0.1 g.');
-        expect(wrapper.findAll<HTMLInputElement>('[data-test="grams"]')[1]!.element.value).toBe('37.5');
+        expect(sheet().querySelector('[data-test="error"]')?.textContent).toContain('An amount is at least 0.1 g.');
+        expect(field().value).toBe('37.5');
+        wrapper.unmount();
     });
 
     it('FOOD-045 steps the portion down too', async () => {
@@ -564,6 +571,32 @@ describe('ScanView', () => {
         expect(sentNames[0]![1]).toBe('Burrito night');
         expect(sentNames[2]![1]).toBe('Taco night');
         expect(sentNames[2]![0]).not.toBe(sentNames[0]![0]);
+    });
+
+    it('FOOD-041 closes with nothing added after an add the server refused', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('meal_food_add', 422, { error: { code: 'validation_failed', message: 'This meal is checked in.' } }));
+        const wrapper = scan({ payload: found() });
+
+        await wrapper.find('[data-test="add-found"]').trigger('click');
+        await flushPromises();
+        await wrapper.find('[data-cancel]').trigger('click');
+
+        expect(wrapper.emitted('close')).toEqual([[false]]);
+    });
+
+    it('FOOD-046 starts the name from the new list\'s suggestion after a save', async () => {
+        readMock.mockResolvedValue({ ...draft(), saved_meal_name: 'Chicken burrito bowl' });
+        const wrapper = scan({ payload: draft() });
+
+        await wrapper.find('[data-test="save-meal"]').trigger('click');
+        await wrapper.find('[data-test="saved-meal-name"]').setValue('Taco');
+        await wrapper.findAll('[data-save]').at(-1)!.trigger('click');
+        await flushPromises();
+        await wrapper.find('[data-test="portion-up"]').trigger('click');
+        await flushPromises();
+        await wrapper.find('[data-test="save-meal"]').trigger('click');
+
+        expect(wrapper.find<HTMLInputElement>('[data-test="saved-meal-name"]').element.value).toBe('Chicken burrito bowl');
     });
 
     it('FOOD-041 shows one message at a time: a new scan clears a refused add', async () => {

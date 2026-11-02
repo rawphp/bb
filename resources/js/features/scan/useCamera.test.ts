@@ -146,6 +146,24 @@ describe('useCamera', () => {
         expect(onCode).not.toHaveBeenCalled();
     });
 
+    it('PWA-031 opens no camera when it is stopped while the reader loads', async () => {
+        let formats!: (value: string[]) => void;
+        vi.stubGlobal('BarcodeDetector', class extends FakeDetector {
+            static override getSupportedFormats = vi.fn(() => new Promise<string[]>((resolve) => (formats = resolve)));
+        });
+        const getUserMedia = devices(['videoinput']);
+        const camera = inScope(() => useCamera());
+        await flushPromises();
+
+        const starting = camera.start(document.createElement('video'), vi.fn());
+        camera.stop();
+        formats(['ean_13']);
+        await starting;
+
+        expect(getUserMedia).not.toHaveBeenCalled();
+        expect(camera.live.value).toBe(false);
+    });
+
     it('PWA-031 keeps a newer camera on when an older start fails late', async () => {
         vi.stubGlobal('BarcodeDetector', FakeDetector);
         let refuseLate!: (error: unknown) => void;
@@ -290,6 +308,9 @@ describe('readBarcode', () => {
     it('PWA-031 answers null for a photo with no product code in it', async () => {
         await expect(readBarcode(new Blob(['jpeg']))).resolves.toBeNull();
         zxing.readBarcodes.mockResolvedValue([{ text: 'https://id.gs1.org/01/09506000134352' }]);
+        await expect(readBarcode(new Blob(['jpeg']))).resolves.toBeNull();
+        // Longer than the 14 digits food_barcode_lookup takes.
+        zxing.readBarcodes.mockResolvedValue([{ text: '123456789012345' }]);
         await expect(readBarcode(new Blob(['jpeg']))).resolves.toBeNull();
     });
 
