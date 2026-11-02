@@ -111,6 +111,9 @@ it('SCH-020 SCH-021 the week strip reads only what it shows, and still finds the
     DB::enableQueryLog();
     $data = $this->actingAs($user)->postJson('/capabilities/week_show')->assertOk()->json('data');
     $sql = implode("\n", array_column(DB::getQueryLog(), 'query'));
+    // The warm app keeps the connection between tests, so the log is turned off again.
+    DB::disableQueryLog();
+    DB::flushQueryLog();
 
     expect(array_column($data['days'], 'is_complete', 'date')['2026-09-22'])->toBeTrue()
         ->and($sql)->toContain('meal_check_ins')
