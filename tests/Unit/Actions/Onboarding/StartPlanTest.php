@@ -92,16 +92,25 @@ it('ONB-020 ONB-031 the screens read the new plan back: Plan, Train, Today and t
     $monday = TodayPayload::build(TodaySnapshot::load($user, '2026-10-12'));
     $week = WeekPayload::build(TodaySnapshot::loadWeek($user, '2026-10-12'));
 
+    $planShown = PlanPayload::build($plan);
+    $strip = $week->days;
+
     expect($plan)->not->toBeNull()
         ->and($plan->placed)->toHaveCount(1)
-        ->and(PlanPayload::build($plan)->toArray())->toBeArray()
-        ->and($train->toArray())->toBeArray()
+        ->and(array_map(fn ($phase) => [$phase->type, $phase->weeks], $planShown->phases))->toBe([['fatLoss', 12]])
+        ->and(array_column($planShown->mesocycles, 'name'))->toBe(['Full body three'])
+        // Before Sunday's start the mesocycle is planned, not current.
+        ->and(array_map(fn ($section) => [$section->status, array_column($section->rows, 'name')], $train->sections))
+        ->toBe([['planned', ['Full body three']]])
         ->and(array_column($before->toArray()['banners'], 'text'))->toBe(['Your plan starts Sun, Oct 11'])
         ->and($monday->totals)->not->toBeNull()
         ->and($monday->meals)->toHaveCount(5)
         ->and($monday->workouts)->toHaveCount(1)
         ->and($monday->weigh_ins)->toHaveCount(1)
-        ->and($week->toArray())->toBeArray();
+        // The strip runs Saturday to Friday, Saturday 10 October before the plan; Monday, Wednesday and Friday train.
+        ->and(array_column($strip, 'date'))->toBe(['2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16'])
+        ->and(array_column($strip, 'is_before_plan'))->toBe([true, false, false, false, false, false, false])
+        ->and(array_column($strip, 'has_training'))->toBe([false, false, true, false, true, false, true]);
 });
 
 it('ONB-005 a training-only setup saves no day targets, and Today and Train still read it', function () {
@@ -126,6 +135,16 @@ it('ONB-020 refuses a draft that cannot continue, and writes nothing', function 
         ->and(OnboardingDraft::query()->where('user_id', $user->id)->exists())->toBeTrue()
         ->and(Profile::query()->where('user_id', $user->id)->exists())->toBeFalse()
         ->and(Plan::query()->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+it('ONB-020 refuses to start for a user who has a profile but no plan', function () {
+    $user = User::factory()->create();
+    W::draft($user);
+    Profile::factory()->create(['user_id' => $user->id]);
+
+    expect(fn () => app(StartPlan::class)($user))->toThrow(CapabilityFailure::class, StartPlan::ALREADY_STARTED)
+        ->and(Plan::query()->where('user_id', $user->id)->exists())->toBeFalse()
+        ->and(OnboardingDraft::query()->where('user_id', $user->id)->exists())->toBeTrue();
 });
 
 it('ONB-020 refuses to start a second plan for a user who has one', function () {
