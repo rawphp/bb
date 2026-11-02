@@ -16,6 +16,20 @@ describe('findScreen', () => {
         expect(findScreen('c_show', routes)).toBeNull();
     });
 
+    it('CAP-001 picks one of several screens that read the same capability by route name', () => {
+        const List = defineComponent({ name: 'List', template: '<ul />' });
+        const shared = [
+            { path: '/tab', name: 'tab', component: Eager, meta: { screen: 'a_show' } },
+            { path: '/tab/list', name: 'list', component: List, meta: { screen: 'a_show', fixture: false } },
+        ];
+
+        expect(findScreen('a_show', shared)).toBe(Eager);
+        expect(findScreen('a_show', shared, 'list')).toBe(List);
+        expect(findScreen('a_show', shared, 'nope')).toBeNull();
+        expect(takesFixture('a_show', shared, 'tab')).toBe(true);
+        expect(takesFixture('a_show', shared, 'list')).toBe(false);
+    });
+
     it('CAP-001 knows a screen that reads nothing takes no fixture', () => {
         expect(takesFixture('a_show', routes)).toBe(true);
         expect(takesFixture('c_delete', routes)).toBe(false);

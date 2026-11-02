@@ -5,14 +5,15 @@ import { findScreen, takesFixture } from './screens';
 
 // Renders a capability screen from tests/fixtures/screens/<name>.json, or
 // one of its other states from <name>.<state>.json. A screen that reads nothing
-// (meta.fixture false) renders with no payload.
-const props = defineProps<{ name: string }>();
+// (meta.fixture false) renders with no payload. ?view=<route name> picks the
+// screen when several read the same capability.
+const props = defineProps<{ name: string; view?: string }>();
 
 const fixtures = import.meta.glob<unknown>('/tests/fixtures/screens/*.json', { import: 'default' });
 
 const screenName = computed(() => props.name.replace(/\..*$/, ''));
-const screen = computed(() => findScreen(screenName.value, featureRoutes));
-const fixtureless = computed(() => !takesFixture(screenName.value, featureRoutes));
+const screen = computed(() => findScreen(screenName.value, featureRoutes, props.view));
+const fixtureless = computed(() => !takesFixture(screenName.value, featureRoutes, props.view));
 const payload = ref<unknown>();
 const missing = ref(false);
 
