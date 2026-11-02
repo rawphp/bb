@@ -55,7 +55,7 @@ it('WO-010 OFF-021 starts the session at the instant the user acted, not the clo
 
     expect(startIt($user, strtoupper($shown['workout_id'])))->toBeNull();
 
-    $session = WorkoutSession::query()->sole();
+    $session = WorkoutSession::query()->where('week', 3)->sole();
     $block = WorkoutExercise::query()->sole();
     $sets = WorkoutSet::query()->where('workout_session_id', $session->id)->orderBy('position')->get();
     expect([$session->user_id, $session->mesocycle_id, $session->week, $session->day])->toBe([$user->id, $mesocycle->id, 3, 1])
@@ -87,7 +87,7 @@ it('SCH-051 starts a session that was only moved in place, keeping its planned t
     ]);
 
     expect(startIt($user, WorkoutIds::workout($mesocycle->id, 3, 1)))->toBeNull()
-        ->and(WorkoutSession::query()->count())->toBe(1)
+        ->and(WorkoutSession::query()->where('week', 3)->count())->toBe(1)
         ->and($moved->fresh()->actual_start_at->format('Y-m-d H:i'))->toBe('2026-09-21 17:40')
         ->and($moved->fresh()->planned_start_at->format('Y-m-d H:i'))->toBe('2026-09-22 07:00')
         ->and(WorkoutSet::query()->where('workout_session_id', $moved->id)->count())->toBe(3);
@@ -97,10 +97,10 @@ it('WO-010 OFF-021 starting a session already under way changes nothing, so a re
     [$user, $mesocycle] = startSeed();
     $id = WorkoutIds::workout($mesocycle->id, 3, 1);
     startIt($user, $id);
-    $before = [WorkoutSession::query()->sole()->getAttributes(), WorkoutSet::query()->count(), WorkoutExercise::query()->count()];
+    $before = [WorkoutSession::query()->where('week', 3)->sole()->getAttributes(), WorkoutSet::query()->count(), WorkoutExercise::query()->count()];
 
     expect(startIt($user, $id, '2026-09-21 17:55:00'))->toBeNull()
-        ->and([WorkoutSession::query()->sole()->getAttributes(), WorkoutSet::query()->count(), WorkoutExercise::query()->count()])->toBe($before);
+        ->and([WorkoutSession::query()->where('week', 3)->sole()->getAttributes(), WorkoutSet::query()->count(), WorkoutExercise::query()->count()])->toBe($before);
 });
 
 it('WO-010 refuses to start a finished or skipped session, and changes nothing', function (array $row, string $message) {

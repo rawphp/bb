@@ -120,6 +120,30 @@ final class WorkoutSnapshot
         );
     }
 
+    /**
+     * The session a workout id names (OFF-021): one of the user's saved mesocycles, a week and a day, matched
+     * against the ids {@see WorkoutIds} gives them. There are only a few to try.
+     *
+     * @throws ModelNotFoundException<WorkoutSession> when it names none of the user's sessions
+     */
+    public static function forWorkout(User $user, string $workoutId): self
+    {
+        $train = TrainSnapshot::load($user);
+        $wanted = strtolower($workoutId);
+        foreach ($train->saved() as $mesocycle) {
+            $domain = $train->domain($mesocycle);
+            for ($week = 1; $week <= (int) $mesocycle->weeks; $week++) {
+                foreach (array_keys($domain->sessionsInWeek($week - 1)) as $index) {
+                    if (WorkoutIds::workout((string) $mesocycle->id, $week, $index + 1) === $wanted) {
+                        return self::load($user, (string) $mesocycle->id, $week, $index + 1);
+                    }
+                }
+            }
+        }
+
+        throw (new ModelNotFoundException)->setModel(WorkoutSession::class, [$workoutId]);
+    }
+
     // MARK: the session
 
     public function workoutId(): string
