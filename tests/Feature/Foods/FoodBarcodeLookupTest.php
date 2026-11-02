@@ -1,6 +1,6 @@
 <?php
 
-use App\Capabilities\Reads\FoodSearch;
+use App\Capabilities\Nutrition\FoodSearch;
 use App\Models\Food;
 use App\Models\User;
 

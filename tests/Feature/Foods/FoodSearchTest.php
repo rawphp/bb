@@ -1,6 +1,6 @@
 <?php
 
-use App\Capabilities\Reads\FoodSearch;
+use App\Capabilities\Nutrition\FoodSearch;
 use App\Domain\MealFit\CuratedGroup;
 use App\Domain\Model\DietFilter;
 use App\Models\Food;
@@ -116,6 +116,15 @@ it('FOOD-026 filters by curated group', function () {
     foodsCurated('Cream veg', 'veggies');
     foodsCurated('Cream fat', 'fat_sparingly');
     foodsMake('Cream other');
+
+    expect(foodsSearch($this->user, 'cream', group: CuratedGroup::FatSparingly))->toBe(['Cream fat']);
+});
+
+it('FOOD-026 leaves the user\'s own non-curated foods out of a curated-group search', function () {
+    foodsCurated('Cream fat', 'fat_sparingly');
+    Food::factory()->custom($this->user)->create(['name' => 'Cream custom']);
+    FoodFavorite::factory()->create(['user_id' => $this->user->id, 'food_id' => foodsMake('Cream favorite')->id]);
+    FoodRecent::factory()->create(['user_id' => $this->user->id, 'food_id' => foodsMake('Cream recent')->id]);
 
     expect(foodsSearch($this->user, 'cream', group: CuratedGroup::FatSparingly))->toBe(['Cream fat']);
 });

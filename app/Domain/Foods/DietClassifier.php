@@ -15,8 +15,10 @@ use App\Domain\Model\DietFilter;
  *  - dairy_free: false on milk, cheese, butter, cream, whey, casein, yogurt,
  *    lactose and similar (not on nut/plant milks and butters, cream of tartar).
  *  - gluten_free: false on wheat, barley, rye, spelt, malt, semolina, couscous,
- *    seitan, bread, pasta, flour, breaded, batter, crumbs, and oats, which are usually
- *    cross-contaminated (not rice, almond, coconut, corn... flour).
+ *    seitan, bread, pasta, flour, breaded, batter, crumbs, gluten, triticale, durum, graham,
+ *    compounds such as oatmeal, breadcrumb, flatbread and malted, and oats, which are usually
+ *    cross-contaminated (not rice, almond, coconut, corn... flour). Keywords match whole words
+ *    with an -s or -es plural, so other plurals and compounds are listed.
  *  - grain_free: false on the gluten words plus rice, corn, oat, quinoa, millet,
  *    sorghum, buckwheat, cereal, noodle, granola.
  *  - paleo: false on dairy, grains, legumes (bean, lentil, chickpea, pea, peanut,
@@ -60,19 +62,21 @@ final class DietClassifier
 
     private const GLUTEN = ['wheat', 'barley', 'rye', 'spelt', 'malt', 'semolina', 'couscous', 'seitan', 'bread', 'pasta',
         'flour', 'bulgur', 'farro', 'kamut', 'beer', 'lager', 'ale', 'breaded', 'breading', 'batter', 'battered', 'crumb',
-        'crumbs', 'oat'];
+        'crumbs', 'oat', 'gluten', 'triticale', 'durum', 'graham',
+        // Words match whole, so the compounds are listed: "oatmeal" is not "oat", "breadcrumbs" is not "bread".
+        'oatmeal', 'breadcrumb', 'flatbread', 'shortbread', 'cornbread', 'gingerbread', 'malted'];
 
     private const OTHER_GRAINS = ['rice', 'corn', 'cornstarch', 'popcorn', 'maize', 'oat', 'quinoa', 'millet', 'sorghum',
         'buckwheat', 'cereal', 'noodle', 'granola', 'tortilla'];
 
     private const LEGUMES = ['bean', 'lentil', 'chickpea', 'garbanzo', 'pea', 'peanut', 'soy', 'soya', 'tofu', 'tempeh',
-        'edamame', 'hummus', 'lupin', 'legume'];
+        'edamame', 'hummus', 'lupin', 'legume', 'soybean'];
 
     private const SUGAR = ['sugar', 'syrup', 'sweetener', 'dextrose', 'sucrose', 'fructose', 'glucose', 'sorbitol',
         'mannitol', 'xylitol', 'maltitol', 'sweetened', 'cola', 'soda', 'juice cocktail'];
 
     private const HIGH_FODMAP = ['garlic', 'onion', 'wheat', 'rye', 'barley', 'apple', 'pear', 'mango', 'watermelon',
-        'honey', 'high fructose', 'inulin', 'chicory', 'bean', 'lentil', 'chickpea', 'cashew', 'pistachio', 'milk',
+        'honey', 'high fructose', 'inulin', 'chicory', 'bean', 'soybean', 'lentil', 'chickpea', 'cashew', 'pistachio', 'milk',
         'yogurt', 'yoghurt', 'whey', 'ice cream', 'soft cheese', 'ricotta', 'cream cheese', 'cottage cheese', 'mascarpone',
         'mushroom', 'cauliflower', 'asparagus', 'sorbitol', 'mannitol', 'xylitol', 'maltitol', 'hummus', 'agave', 'beer'];
 
@@ -120,7 +124,9 @@ final class DietClassifier
     private const PREPARED = ['dressing', 'mayonnaise', 'sauce', 'spread', 'margarine', 'dip', 'gravy', 'souffle',
         'pancake', 'fritter', 'salad', 'coleslaw', 'soup', 'stew', 'chowder', 'casserole', 'pie', 'pudding', 'dessert',
         'gratin', 'scalloped', 'recipe', 'mix', 'supplement', 'formula', 'shake', 'smoothie', 'drink', 'puff', 'patty',
-        'nugget', 'babyfood', 'entree'];
+        'nugget', 'babyfood', 'entree',
+        // Plurals other than -s and -es, and compounds, are listed: has() matches whole words.
+        'patties', 'meatloaf', 'meatball'];
 
     /** Pasta that is probably made with egg. */
     private const EGG_PASTA = ['fresh', 'egg', 'noodle'];

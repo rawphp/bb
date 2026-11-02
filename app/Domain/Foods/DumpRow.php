@@ -39,11 +39,12 @@ final class DumpRow
         foreach ($this->list($item['foodNutrients'] ?? null) as $n) {
             $number = $n['nutrient']['number'] ?? null;
             $amount = $n['amount'] ?? null;
-            if (is_numeric($number) && is_numeric($amount)) {
-                $nutrients[(int) $number] = (float) $amount;
+            // Keyed by the exact number: 205.2 (carbs by summation) must not overwrite 205 (by difference).
+            if (is_string($number) && ctype_digit($number) && is_numeric($amount)) {
+                $nutrients[$number] = (float) $amount;
             }
         }
-        $kcal = $nutrients[208] ?? $nutrients[957] ?? $nutrients[958] ?? null;
+        $kcal = $nutrients['208'] ?? $nutrients['957'] ?? $nutrients['958'] ?? null;
         $sourceId = $this->text($item['fdcId'] ?? null);
 
         if ($name === null || $kcal === null || $sourceId === '') {
@@ -71,7 +72,7 @@ final class DumpRow
         }
 
         return $this->build(FoodSource::Usda, $sourceId, $name, $food, $kcal, [
-            $nutrients[203] ?? 0.0, $nutrients[204] ?? 0.0, $nutrients[205] ?? 0.0, $nutrients[291] ?? 0.0,
+            $nutrients['203'] ?? 0.0, $nutrients['204'] ?? 0.0, $nutrients['205'] ?? 0.0, $nutrients['291'] ?? 0.0,
         ]);
     }
 

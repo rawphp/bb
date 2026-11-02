@@ -78,14 +78,22 @@ it('FOOD-002 never touches the curation of an already imported row', function ()
         ->and($banana->cooked_ratio)->toBe(1.5);
 });
 
-it('FOOD-001 refreshes changed values and servings on re-import', function () {
+it('FOOD-001 refreshes every imported column and the servings on re-import', function () {
     $this->artisan('foods:import', ['source' => 'off', 'path' => foodsFixture('off.jsonl')])->assertSuccessful();
-    Food::query()->where('source_id', '3017620422003')->update(['kcal' => 1]);
+    $columns = array_values(array_diff(SaveImportedFoods::UPDATABLE, ['updated_at']));
+    $imported = Food::query()->where('source_id', '3017620422003')->firstOrFail()->only($columns);
+    $stale = ['name' => 'Old name', 'brand' => 'Old brand', 'barcode' => '999', 'kind' => 'restaurant',
+        'kcal' => 1, 'protein' => 0, 'fat' => 0, 'carbs' => 0, 'fiber' => 0];
+    foreach (Food::DIETS as $diet) {
+        $stale[$diet] = ! $imported[$diet];
+    }
+    expect(array_keys($stale))->toEqualCanonicalizing($columns);
+    Food::query()->where('source_id', '3017620422003')->update($stale);
     FoodServing::query()->delete();
 
     $this->artisan('foods:import', ['source' => 'off', 'path' => foodsFixture('off.jsonl')])->assertSuccessful();
 
-    expect(Food::query()->where('source_id', '3017620422003')->value('kcal'))->toBe(539.0)
+    expect(Food::query()->where('source_id', '3017620422003')->firstOrFail()->only($columns))->toBe($imported)
         ->and(FoodServing::count())->toBe(2);
 });
 

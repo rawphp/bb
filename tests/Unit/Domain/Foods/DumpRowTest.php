@@ -51,6 +51,14 @@ it('FOOD-004 maps USDA Foundation foods to nutrients per 100 g, portions and die
         ->and($banana['servings'])->toBe([['label' => 'medium', 'grams' => 118.0], ['label' => '1 cup, sliced', 'grams' => 150.0]]);
 });
 
+it('FOOD-004 keys USDA nutrients by their exact number, so carbs by summation (205.2) never replace carbs by difference (205)', function () {
+    $nutrient = fn (string $number, float $amount) => ['nutrient' => ['number' => $number], 'amount' => $amount];
+    $record = ['fdcId' => 1, 'description' => 'Bananas, raw', 'foodCategory' => ['description' => 'Fruits and Fruit Juices'],
+        'foodNutrients' => [$nutrient('208', 97.0), $nutrient('205', 23.0), $nutrient('205.2', 15.0), $nutrient('291', 2.6), $nutrient('291.1', 9.0)]];
+
+    expect((new DumpRow)->fromUsda($record, false)['food'])->toMatchArray(['kcal' => 97.0, 'carbs' => 23.0, 'fiber' => 2.6]);
+});
+
 it('FOOD-004 falls back to Atwater energy when nutrient 208 is missing', function () {
     $hummus = foodsMapped('usda_foundation.json')['2262075'];
 

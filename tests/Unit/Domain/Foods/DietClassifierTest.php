@@ -95,6 +95,8 @@ it('FOOD-027 keeps USDA prepared dishes and branded products out of every diet, 
     'bean soup' => ['Soup, bean with pork, canned, condensed', 'Legumes and Legume Products'],
     'branded supplement drink' => ['Beverages, ABBOTT, ENSURE PLUS, ready-to-drink', 'Beverages'],
     'drink mix' => ['Beverages, Orange-flavor drink, breakfast type, powder', 'Beverages'],
+    'vegetarian patties' => ['Vegetarian meatloaf or patties', 'Legumes and Legume Products'],
+    'meatballs' => ['Meatballs, frozen, Italian style', 'Beef Products'],
 ]);
 
 it('FOOD-027 still flags single-ingredient plant foods whose names are close to a prepared marker', function (string $name, string $category) {
@@ -103,6 +105,31 @@ it('FOOD-027 still flags single-ingredient plant foods whose names are close to 
     'mixed vegetables' => ['Vegetables, mixed, frozen, unprepared', 'Vegetables and Vegetable Products'],
     'applesauce' => ['Applesauce, canned, unsweetened, without added ascorbic acid', 'Fruits and Fruit Juices'],
     'coffee prepared with water' => ['Beverages, coffee, brewed, prepared with tap water', 'Beverages'],
+]);
+
+it('FOOD-027 rules out gluten free and grain free for gluten words and compounds in ingredients', function (string $ingredients) {
+    $flags = (new DietClassifier)->classify('Some product', null, $ingredients, []);
+
+    expect($flags['gluten_free'])->toBeFalse($ingredients)->and($flags['grain_free'])->toBeFalse($ingredients);
+})->with([
+    'gluten' => ['water, gluten, salt'],
+    'vital gluten' => ['WATER, VITAL GLUTEN, SALT'],
+    'triticale' => ['triticale, water'],
+    'oatmeal' => ['OATMEAL, RAISINS'],
+    'breadcrumbs' => ['chicken, breadcrumbs, salt'],
+    'flatbread' => ['flatbread, hummus'],
+    'shortbread' => ['shortbread pieces, sugar'],
+    'malted milk' => ['malted milk powder, sugar'],
+    'durum' => ['durum semolina'],
+]);
+
+it('FOOD-027 treats soybeans as a high-FODMAP legume, not paleo', function (string $name, string $category, ?string $ingredients) {
+    $flags = (new DietClassifier)->classify($name, $category, $ingredients, [], generic: $ingredients === null);
+
+    expect($flags['low_fodmap'])->toBeFalse()->and($flags['paleo'])->toBeFalse()->and($flags['vegan'])->toBeTrue();
+})->with([
+    'generic soybeans' => ['Soybeans, mature seeds, raw', 'Legumes and Legume Products', null],
+    'soybean ingredient' => ['Snack', '', 'roasted soybeans, salt'],
 ]);
 
 it('FOOD-027 treats oats as gluten in ingredients, as for generic foods, since they are usually cross-contaminated', function (string $ingredients) {
