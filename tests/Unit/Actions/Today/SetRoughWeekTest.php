@@ -2,6 +2,7 @@
 
 use App\Actions\Today\SetRoughWeek;
 use App\Capabilities\Today\Data\RoughWeekSetInput;
+use App\Models\Plan;
 use App\Models\PlanWeek;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -129,4 +130,36 @@ it('SCH-063 refuses before the plan starts', function () {
     $user = roughWorld();
 
     expect(fn () => setRough($user, true, '2026-09-12'))->toThrow(DomainException::class);
+});
+
+// A plan that starts on Wednesday 16 Sep with Monday reviews: its first plan week is 16 to 20 Sep, and the week strip
+// shows that week from Monday 14 Sep (SCH-020).
+
+function midWeekWorld(): User
+{
+    Carbon::setTestNow('2026-09-17 10:00:00');
+    $user = TodaySeed::user();
+    Plan::query()->where('user_id', $user->id)->update(['start_date' => '2026-09-16', 'review_weekday' => 1]);
+
+    return $user;
+}
+
+it('SCH-063 a plan starting mid-week accepts the week start the strip shows and stores the row at the plan week start', function () {
+    $user = midWeekWorld();
+
+    $result = setRough($user, true, '2026-09-14');
+
+    expect(roughRow($user, '2026-09-16')->is_rough)->toBeTrue()
+        ->and(roughRow($user, '2026-09-14'))->toBeNull()
+        ->and($result['dates'])->toBe(['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18', '2026-09-19', '2026-09-20']);
+});
+
+it('SCH-063 a plan starting mid-week still accepts the plan week start, and no other day', function () {
+    $user = midWeekWorld();
+
+    setRough($user, true, '2026-09-16');
+    expect(roughRow($user, '2026-09-16')->is_rough)->toBeTrue();
+
+    expect(fn () => setRough($user, true, '2026-09-15'))->toThrow(DomainException::class)
+        ->and(fn () => setRough($user, true, '2026-09-21'))->toThrow(DomainException::class);
 });
