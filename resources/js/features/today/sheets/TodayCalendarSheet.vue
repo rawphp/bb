@@ -43,7 +43,7 @@ watch(
                     type="date"
                     :min="data.calendar.first"
                     :max="data.calendar.last"
-                    class="rounded-lg bg-background px-3 py-1.5 tabular-nums text-primary-text accent-accent"
+                    class="min-w-36 rounded-lg bg-background px-3 py-1.5 tabular-nums text-primary-text accent-accent"
                 />
             </label>
             <p v-else class="px-4 text-secondary-text">Your plan has no dates yet.</p>

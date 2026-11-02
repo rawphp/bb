@@ -13,7 +13,7 @@ const time = defineModel<string>({ required: true });
             v-model="time"
             type="time"
             :disabled="disabled"
-            class="rounded-lg bg-background px-3 py-1.5 tabular-nums text-primary-text accent-accent disabled:opacity-50"
+            class="min-w-36 rounded-lg bg-background px-3 py-1.5 tabular-nums text-primary-text accent-accent disabled:opacity-50"
         />
     </label>
 </template>
