@@ -2,6 +2,7 @@
 
 namespace App\Domain\Onboarding;
 
+use App\Domain\Defaults\TBL020MesocycleLength;
 use App\Domain\Model\BodyFatBucket;
 use App\Domain\Model\ExerciseSlot;
 use App\Domain\Model\Mesocycle;
@@ -12,7 +13,6 @@ use App\Domain\Model\Priority;
 use App\Domain\Model\Profile;
 use App\Domain\Model\Session;
 use App\Domain\Model\StepPlanDay;
-use App\Domain\Defaults\TBL020MesocycleLength;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Placement\TrainingDay;
 use App\Domain\Placement\WorkoutTime;
@@ -20,8 +20,8 @@ use App\Domain\Plan\PlanRules;
 use App\Domain\Plan\PlanWeekGrid;
 use App\Domain\WeekBuilder\BuiltWeek;
 use App\Domain\WeekBuilder\NutritionSchedule;
-use App\Domain\WeekBuilder\WeekBuildRefusal;
 use App\Domain\WeekBuilder\WeekBuilder;
+use App\Domain\WeekBuilder\WeekBuildRefusal;
 use App\Domain\WeekBuilder\WeekSchedule;
 use Closure;
 use DateTimeImmutable;
