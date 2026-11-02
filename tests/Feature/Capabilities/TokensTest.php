@@ -96,19 +96,25 @@ it('CAP-023 stores each scope as capability names', function (string $scope, arr
     'custom' => ['custom', ['token_list'], ['token_list']],
 ]);
 
-it('CAP-021 refuses a custom token with a capability a token cannot call', function () {
+it('CAP-021 refuses token picks that do not fit the scope, naming the field, and makes no token', function (string $scope, array $picked, string $message) {
     $this->actingAs(User::factory()->create())->postJson('/capabilities/token_create', [
         'id' => TOKEN_ID,
         'name' => 'Sneaky',
         'expires_in_days' => 30,
-        'scope' => 'custom',
-        'capabilities' => [['name' => 'token_create']],
+        'scope' => $scope,
+        'capabilities' => array_map(fn (string $name) => ['name' => $name], $picked),
     ], ['Idempotency-Key' => (string) Str::ulid()])
         ->assertStatus(422)
-        ->assertJsonPath('error.message', 'A token can\'t use token_create.');
+        ->assertJsonPath('error.violations', [['field' => 'capabilities', 'message' => $message]])
+        ->assertJsonPath('meta.stages', fn (array $stages) => ! in_array('run', $stages, true));
 
     expect(PersonalAccessToken::query()->count())->toBe(0);
-});
+})->with([
+    'custom, a capability no token may call' => ['custom', ['token_list', 'token_create'], 'A token can\'t use token_create.'],
+    'custom, an unknown capability' => ['custom', ['no_such_thing'], 'A token can\'t use no_such_thing.'],
+    'custom, nothing picked' => ['custom', [], 'Pick at least one action for a custom token.'],
+    'not custom, picks sent' => ['read_only', ['token_list'], 'Only a custom token takes a list of actions.'],
+]);
 
 it('CAP-023 lets a token call the capabilities in its scope', function () {
     $secret = createToken(User::factory()->create(['name' => 'Sam Lifter']), 'read_only');
@@ -308,20 +314,59 @@ it('INT-001 names, for a Health bridge token, the two writes the weigh-in contra
     }
 });
 
-it('CAP-020 makes every capability that takes an existing row\'s ID check its owner', function () {
-    // A create takes a new row's client-made ULID (CAP-019) and checks its owner itself.
-    $creates = ['token_create' => ['id']];
+/**
+ * Every row-ID field in an input schema, as the dotted path Ownership reads: nested
+ * objects by name, each item of a list as `*` (`entries.*.recipe_id`).
+ *
+ * @param  array<string, mixed>  $schema
+ * @return list<string>
+ */
+function rowIdFields(array $schema, string $prefix = ''): array
+{
+    $fields = [];
+    foreach ($schema['properties'] ?? [] as $name => $property) {
+        $path = $prefix.$name;
+        if ($name === 'id' || str_ends_with($name, '_id') || str_ends_with($name, '_ids')) {
+            $fields[] = $path;
+        }
+        if (is_array($property['properties'] ?? null)) {
+            array_push($fields, ...rowIdFields($property, $path.'.'));
+        }
+        if (is_array($property['items']['properties'] ?? null)) {
+            array_push($fields, ...rowIdFields($property['items'], $path.'.*.'));
+        }
+    }
+
+    return $fields;
+}
+
+it('CAP-020 makes every capability that takes an existing row\'s ID check its owner, nested fields too', function () {
+    // Fields that name no row the user owns, each with why. A create takes a new row's
+    // client-made ULID (CAP-019) and checks its owner itself.
+    $exempt = ['token_create' => ['id']];
     $declared = (fn (): array => $this->capabilities)->call(app(Ownership::class));
 
     foreach (app(CapabilityRegistry::class)->all() as $name => $definition) {
-        $fields = array_values(array_filter(
-            array_keys($definition->inputSchema()['properties'] ?? []),
-            fn (string $field): bool => $field === 'id' || str_ends_with($field, '_id') || str_ends_with($field, '_ids'),
-        ));
+        $fields = rowIdFields($definition->inputSchema() ?? []);
         $owned = isset($declared[$name]) ? array_keys($declared[$name]->owned(new User)) : [];
 
-        expect(array_values(array_diff($fields, $owned, $creates[$name] ?? [])))->toBe([], "{$name} takes a row ID it does not declare in OwnsInput");
+        expect(array_values(array_diff($fields, $owned, $exempt[$name] ?? [])))->toBe([], "{$name} takes a row ID it neither declares in OwnsInput nor exempts here");
     }
+});
+
+it('CAP-020 finds a row ID nested in an object or in each item of a list', function () {
+    expect(rowIdFields([
+        'properties' => [
+            'id' => ['type' => 'string'],
+            'name' => ['type' => 'string'],
+            'meal_ids' => ['type' => 'array'],
+            'day' => ['type' => 'object', 'properties' => ['plan_id' => ['type' => 'string']]],
+            'entries' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => [
+                'recipe_id' => ['type' => 'string'],
+                'grams' => ['type' => 'number'],
+            ]]],
+        ],
+    ]))->toBe(['id', 'meal_ids', 'day.plan_id', 'entries.*.recipe_id']);
 });
 
 it('CAP-020 refuses another user\'s token ID in the authorizer, before revoke runs', function () {
@@ -373,4 +418,21 @@ it('INT-001 lets a Health bridge token post a weigh-in and steps, and nothing el
     }
     expect($invoke('account_show')->errorCode())->toBe('forbidden')
         ->and($invoke('token_list')->errorCode())->toBe('forbidden');
+});
+
+it('CAP-014 replays a token revoke retried under its key, though the token is gone', function () {
+    $user = User::factory()->create();
+    createToken($user, 'everything');
+    $key = ['Idempotency-Key' => (string) Str::ulid()];
+
+    $this->actingAs($user)->postJson('/capabilities/token_revoke', ['id' => TOKEN_ID], $key)->assertOk();
+
+    // The replay is looked up before the authorizer, so the ownership check never
+    // meets the deleted row.
+    $this->actingAs($user)->postJson('/capabilities/token_revoke', ['id' => TOKEN_ID], $key)
+        ->assertOk()
+        ->assertJsonPath('meta.idempotent_replay', true)
+        ->assertJsonPath('data.invalidates', ['token_list{}']);
+
+    expect(PersonalAccessToken::query()->count())->toBe(0);
 });

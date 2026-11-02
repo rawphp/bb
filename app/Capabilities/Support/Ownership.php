@@ -44,12 +44,12 @@ final class Ownership
         };
 
         foreach ($owner->owned($user) as $field => $query) {
-            $id = $values[$field] ?? null;
-            if ($id === null) {
+            $ids = self::idsAt($values, $field);
+            if ($ids === []) {
                 continue;
             }
 
-            if (! self::ownsAll($query, is_array($id) ? $id : [$id])) {
+            if (! self::ownsAll($query, $ids)) {
                 if ($this->denied !== null) {
                     $this->denied = true;
                 }
@@ -59,6 +59,36 @@ final class Ownership
         }
 
         return true;
+    }
+
+    /**
+     * The IDs at a field: `id`, a list (`meal_ids`), or a dotted path into nested input,
+     * with `*` for each item of a list (`entries.*.recipe_id`). Missing and null are no ID.
+     *
+     * @param  array<string, mixed>  $values
+     * @return array<mixed>
+     */
+    private static function idsAt(array $values, string $field): array
+    {
+        $found = data_get($values, $field);
+        if ($found === null) {
+            return [];
+        }
+
+        if (! str_contains($field, '*')) {
+            return is_array($found) ? $found : [$found];
+        }
+
+        // Each item holds one ID, or a list of them when the field names one (`*_ids`).
+        $lists = str_ends_with($field, '_ids');
+        $ids = [];
+        foreach ((array) $found as $item) {
+            if ($item !== null) {
+                array_push($ids, ...($lists && is_array($item) ? array_values($item) : [$item]));
+            }
+        }
+
+        return $ids;
     }
 
     /**

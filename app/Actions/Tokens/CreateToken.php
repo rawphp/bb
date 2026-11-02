@@ -16,7 +16,6 @@ final class CreateToken
     /**
      * @param  list<string>  $picked  the custom scope's capability names
      * @param  list<string>  $reads  every read capability's name
-     * @param  list<string>  $allowed  every capability a token may call
      * @return array{PersonalAccessToken, string} the token and its secret, shown once
      */
     public function __invoke(
@@ -27,7 +26,6 @@ final class CreateToken
         TokenScope $scope,
         array $picked,
         array $reads,
-        array $allowed,
     ): array {
         $this->refuseTaken($user, $id);
 
@@ -37,7 +35,7 @@ final class CreateToken
             'id' => $id,
             'name' => $name,
             'token' => hash('sha256', $secret),
-            'abilities' => $scope->abilities($reads, $picked, $allowed),
+            'abilities' => $scope->abilities($reads, $picked),
             'scope' => $scope,
             'expires_at' => CarbonImmutable::now()->addDays($expiresInDays),
         ]);
@@ -54,6 +52,9 @@ final class CreateToken
     }
 
     /**
+     * UsesClientUlid's rule, for a row whose owner is a morph (tokenable) rather than a
+     * `user_id` column, which that trait reads.
+     *
      * A ULID the user already has is a conflict; one another user has is not found (CAP-019).
      *
      * @throws ModelNotFoundException<PersonalAccessToken>

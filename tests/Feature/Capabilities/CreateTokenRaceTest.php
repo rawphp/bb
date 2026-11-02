@@ -27,7 +27,7 @@ afterEach(fn () => PersonalAccessToken::getEventDispatcher()?->forget('eloquent.
 
 function createRaced(User $user): mixed
 {
-    return (new CreateToken)($user, RACED_ID, 'Laptop', 30, TokenScope::Everything, [], [], []);
+    return (new CreateToken)($user, RACED_ID, 'Laptop', 30, TokenScope::Everything, [], []);
 }
 
 it('CAP-021 answers a create that loses a race for its own ULID with 409, not 500', function () {

@@ -47,7 +47,6 @@ final class TokenCreateCapability implements HostCapability
             TokenScope::from($input->scope),
             array_map(fn (TokenCapability $capability): string => $capability->name, $input->capabilities),
             $this->catalog->reads(),
-            $this->catalog->names(),
         );
 
         return new TokenCreateOutput(

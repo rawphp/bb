@@ -106,6 +106,24 @@ it('CAP-020 refuses a row ID the actor does not own, and reports it to the watch
         ->and($ownership->watch(fn () => authorizeAs('account_show', authorizerUser(), [], $authorizer)))->toBe([true, false]);
 });
 
+it('CAP-020 checks an ID inside each item of a list of objects', function (array $entries, bool $allowed) {
+    $ownership = new Ownership;
+    $ownership->declare('account_show', new class implements OwnsInput
+    {
+        public function owned(User $user): array
+        {
+            return ['entries.*.recipe_id' => ownedIds(['a', 'b'])];
+        }
+    });
+
+    expect(authorizeAs('account_show', authorizerUser(), ['entries' => $entries], hostAuthorizer($ownership)))->toBe($allowed);
+})->with([
+    'all mine' => [[['recipe_id' => 'a'], ['recipe_id' => 'b']], true],
+    'one without a recipe' => [[['recipe_id' => 'a'], ['food_id' => 'f']], true],
+    'one not mine' => [[['recipe_id' => 'a'], ['recipe_id' => 'theirs']], false],
+    'not an ID' => [[['recipe_id' => ['a']]], false],
+]);
+
 it('CAP-020 checks every ID in a list, and lets an empty list through', function (mixed $ids, bool $allowed) {
     $ownership = new Ownership;
     $ownership->declare('account_show', new class implements OwnsInput

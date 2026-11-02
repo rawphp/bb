@@ -27,6 +27,6 @@ final class TokenCreateInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['id' => ['ulid']];
+        return ['id' => ['ulid'], 'capabilities' => [new TokenPicks]];
     }
 }
