@@ -29,7 +29,11 @@
                     "type": "string"
                 },
                 "plain_text": {
-                    "type": "string"
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "the secret, shown once; null when the create is replayed"
                 },
                 "scope_text": {
                     "type": "string"
@@ -41,7 +45,6 @@
             "required": [
                 "id",
                 "name",
-                "plain_text",
                 "scope_text",
                 "expires_text"
             ]

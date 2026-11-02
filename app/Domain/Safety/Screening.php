@@ -2,6 +2,7 @@
 
 namespace App\Domain\Safety;
 
+use App\Domain\Model\Age;
 use App\Domain\Model\PhaseType;
 use App\Domain\Model\Profile;
 use App\Domain\Model\UnitConversion;
@@ -54,10 +55,7 @@ final class Screening
     public static function measuredItemsFrom(
         DateTimeImmutable $birthDate, float $heightCm, float $weightKg, DateTimeImmutable $today,
     ): array {
-        $age = (int) $today->format('Y') - (int) $birthDate->format('Y');
-        if ($today->format('md') < $birthDate->format('md')) {
-            $age--;
-        }
+        $age = Age::years($birthDate, $today);
         $heightM = $heightCm / 100;
 
         $items = [];

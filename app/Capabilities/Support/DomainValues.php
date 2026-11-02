@@ -20,6 +20,8 @@ use App\Domain\Model\VolumeFeedback;
 use App\Domain\Model\WeightUnit;
 use App\Domain\Safety\RecheckOutcomeKind;
 use App\Domain\Safety\ScreeningItem;
+use App\Domain\Tokens\TokenLifetime;
+use App\Domain\Tokens\TokenScope;
 
 /**
  * Every value of a domain enum, for a contract's `#[Field(enum: ...)]`. An
@@ -66,4 +68,8 @@ final class DomainValues
     public const SCREENING_ITEMS = [ScreeningItem::AgeOutOfRange->value, ScreeningItem::HeightOutOfRange->value, ScreeningItem::WeightOverLimit->value, ScreeningItem::BmiUnderLimit->value, ScreeningItem::PregnantOrBreastfeeding->value, ScreeningItem::TryingToConceive->value, ScreeningItem::TransgenderOnHormoneTherapy->value, ScreeningItem::HeartThyroidOrPCOS->value, ScreeningItem::WeightLossSurgery->value, ScreeningItem::GallbladderDisease->value, ScreeningItem::AutoimmuneDisease->value, ScreeningItem::Diabetes->value, ScreeningItem::EatingDisorderHistory->value];
 
     public const RECHECK_OUTCOME_KINDS = [RecheckOutcomeKind::RunNutritionSetup->value, RecheckOutcomeKind::SwitchToTrainingOnly->value, RecheckOutcomeKind::LeaveFatLoss->value, RecheckOutcomeKind::Keep->value];
+
+    public const TOKEN_SCOPES = [TokenScope::Everything->value, TokenScope::ReadOnly->value, TokenScope::HealthBridge->value, TokenScope::Custom->value];
+
+    public const TOKEN_LIFETIMES = [TokenLifetime::Month->value, TokenLifetime::Quarter->value, TokenLifetime::Year->value];
 }
