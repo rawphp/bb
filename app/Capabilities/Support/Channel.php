@@ -15,19 +15,22 @@ enum Channel: string
     case Mcp = 'mcp';
     case Cli = 'cli';
     case Bridge = 'bridge';
+    // A queued job or the scheduler acting for a user: the server itself, not the Coach.
+    case System = 'system';
 
     /** The abilities a Health bridge token is limited to (INT-001). */
     public const BRIDGE_ABILITIES = ['weigh_in_log', 'steps_log'];
 
     /**
-     * @param  string  $caller  the invoke's caller: http, job, agent, mcp, cli or artisan
+     * @param  string  $caller  the invoke's caller: http, agent, mcp, cli, artisan or job
      * @param  object|null  $token  over http, the signed-in user's current access token
      */
     public static function derive(string $caller, ?object $token): self
     {
         return match ($caller) {
-            // The in-app agent's tools run as jobs (AGT-004).
-            'job', 'agent' => self::Agent,
+            // The in-app agent's tool calls invoke as caller=agent (AGT-004).
+            'agent' => self::Agent,
+            'job' => self::System,
             'mcp' => self::Mcp,
             'cli', 'artisan' => self::Cli,
             default => self::overHttp($token),
@@ -42,6 +45,7 @@ enum Channel: string
             self::Mcp => 'MCP',
             self::Cli => 'CLI',
             self::Bridge => 'Health bridge',
+            self::System => 'Server',
         };
     }
 

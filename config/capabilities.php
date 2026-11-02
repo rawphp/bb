@@ -104,8 +104,9 @@ return [
     'audit' => [
         'enabled' => true,
         'mode' => $env('CAPABILITIES_AUDIT_MODE', 'best_effort'),
+        // The host binds AuditRecordWriter (CAP-022), which wins over this driver;
+        // the package has no driver name for a host-bound writer.
         'driver' => 'database',
-        'queue' => 'capabilities-audit',
         'required' => false,
     ],
 

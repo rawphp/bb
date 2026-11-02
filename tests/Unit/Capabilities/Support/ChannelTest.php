@@ -13,8 +13,8 @@ it('CAP-022 names the channel from the server-set caller', function (string $cal
     expect(Channel::derive($caller, null))->toBe($channel);
 })->with([
     'the PWA' => ['http', Channel::Ui],
-    'the in-app agent as a job' => ['job', Channel::Agent],
-    'the agent adapter' => ['agent', Channel::Agent],
+    'the in-app agent (AGT-004)' => ['agent', Channel::Agent],
+    'a queued job or the scheduler, which is not the Coach' => ['job', Channel::System],
     'product MCP' => ['mcp', Channel::Mcp],
     'the product CLI' => ['cli', Channel::Cli],
     'an artisan command' => ['artisan', Channel::Cli],
@@ -37,5 +37,5 @@ it('CAP-022 counts an http call with any other personal access token as the CLI'
 
 it('CAP-022 labels each channel in plain words', function () {
     expect(array_map(fn (Channel $c): string => $c->label(), Channel::cases()))
-        ->toBe(['App', 'Coach', 'MCP', 'CLI', 'Health bridge']);
+        ->toBe(['App', 'Coach', 'MCP', 'CLI', 'Health bridge', 'Server']);
 });

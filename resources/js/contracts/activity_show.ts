@@ -9,7 +9,7 @@ export interface ActivityShowOutput {
      * for example "Logged set 3 of Bench Press, 100 kg x 8"
      */
     title: string;
-    channel: "ui" | "agent" | "mcp" | "cli" | "bridge";
+    channel: "ui" | "agent" | "mcp" | "cli" | "bridge" | "system";
     channel_label: string;
     occurred_at: string;
     when_text: string;
@@ -20,4 +20,4 @@ export interface ActivityShowOutput {
   }[];
 }
 
-export const outputVersion = '1aa63b131e05';
+export const outputVersion = 'e5a770e26c6f';

@@ -20,7 +20,7 @@ return new class extends Migration
             // capability.invoked | capability.failed | capability.output_invalid, or an approval event
             $table->string('event', 64);
             $table->string('capability', 64)->nullable();
-            // ui | agent | mcp | cli | bridge
+            // ui | agent | mcp | cli | bridge | system
             $table->string('channel', 16);
             // Redacted by the package before it reaches the writer.
             $table->json('input')->nullable();

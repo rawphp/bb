@@ -13,7 +13,7 @@ final class ActivityEntry extends CapabilityData
         public readonly string $id,
         #[Field(description: 'for example "Logged set 3 of Bench Press, 100 kg x 8"')]
         public readonly string $title,
-        #[Field(enum: ['ui', 'agent', 'mcp', 'cli', 'bridge'])]
+        #[Field(enum: ['ui', 'agent', 'mcp', 'cli', 'bridge', 'system'])]
         public readonly string $channel,
         public readonly string $channel_label,
         #[Field(format: 'date-time')]

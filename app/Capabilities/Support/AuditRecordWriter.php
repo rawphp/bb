@@ -3,6 +3,7 @@
 namespace App\Capabilities\Support;
 
 use App\Models\AuditRecord;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Factory as Auth;
 use Laravel\Sanctum\Contracts\HasApiTokens;
 use Rawphp\Capabilities\Contracts\AuditWriter;
@@ -11,6 +12,10 @@ use Rawphp\Capabilities\Contracts\AuditWriter;
  * The package's audit sink (D-010), bound by the host: one audit_records row
  * per entry, with the user and the channel (CAP-022). The package redacts the
  * input before the entry reaches here. Reads are not audited.
+ *
+ * The pipeline calls write() inside the invoke, so over http the request's
+ * credential is the invoke's. An entry stored later (an outbox replay or the
+ * outbox move) carries its own time, and has no credential, so http is the app.
  */
 final class AuditRecordWriter implements AuditWriter
 {
@@ -27,7 +32,7 @@ final class AuditRecordWriter implements AuditWriter
             'channel' => Channel::derive($caller, $caller === 'http' ? $this->currentToken() : null)->value,
             'input' => $entry['redacted_input'] ?? null,
             'result' => $entry['result'] ?? null,
-            'created_at' => now(),
+            'created_at' => $this->recordedAt($entry),
         ]);
     }
 
@@ -55,6 +60,14 @@ final class AuditRecordWriter implements AuditWriter
         $id = $entry['actor_id'] ?? null;
 
         return ($entry['actor_type'] ?? null) === 'user' && is_string($id) && ctype_digit($id) ? (int) $id : null;
+    }
+
+    /** @param  array<string, mixed>  $entry */
+    private function recordedAt(array $entry): CarbonImmutable
+    {
+        $at = $entry['recorded_at'] ?? null;
+
+        return is_string($at) && $at !== '' ? CarbonImmutable::parse($at) : CarbonImmutable::now();
     }
 
     /** Over http the actor is the signed-in user; their token tells a script from the app. */
