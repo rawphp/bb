@@ -150,6 +150,21 @@ it('MEAL-070 load adds to the meal, skips a food already in it and refits what i
         ->and(PlannedRecipe::query()->where('meal_id', $meal)->sole()->servings)->toBe(1.5);
 });
 
+it('MEAL-070 load plans the joined foods after a recipe serving that ends the meal', function () {
+    $user = User::factory()->create();
+    [$chicken, $rice, $oil] = loadSavedMealFoods();
+    $meal = loadSavedMealDinner($user);
+    PlannedFood::factory()->create(['meal_id' => $meal, 'food_id' => $rice->id, 'position' => 0, 'grams' => 80]);
+    PlannedRecipe::factory()->create(['meal_id' => $meal, 'position' => 1, 'servings' => 1, 'is_locked' => true]);
+    $saved = SavedMeal::factory()->for($user)->create();
+    SavedMealFood::factory()->create(['saved_meal_id' => $saved->id, 'food_id' => $chicken->id, 'position' => 0, 'grams' => 200, 'is_locked' => true]);
+    SavedMealFood::factory()->create(['saved_meal_id' => $saved->id, 'food_id' => $oil->id, 'position' => 1, 'grams' => 5]);
+
+    (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $meal, $saved->id);
+
+    expect(array_column(loadSavedMealPlanned($meal), 'position'))->toBe([0, 2, 3]);
+});
+
 it('MEAL-070 load refits an unlocked recipe serving with the foods', function () {
     $user = User::factory()->create();
     [$chicken, $rice, $oil] = loadSavedMealFoods();
