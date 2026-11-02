@@ -65,14 +65,15 @@ function weighInScenario(): User
     return $user;
 }
 
-it('CAP-011 CAP-013 AGT-010 registers the weigh-in capabilities on every surface, weigh_in_delete destructive and none reversible', function () {
+it('CAP-011 CAP-013 AGT-010 registers the weigh-in capabilities on every surface, the two that delete destructive and none reversible', function () {
     $registry = app(CapabilityRegistry::class);
 
     foreach (WEIGH_IN_NAMES as $name) {
         $definition = $registry->get($name);
         expect($definition->surfaces)->toBe(HostDefinition::SURFACES)
             ->and(HostDefinition::isReversible($definition))->toBeFalse($name)
-            ->and(HostDefinition::isDestructive($definition))->toBe($name === 'weigh_in_delete', $name);
+                        // weigh_in_schedule_set deletes every entry it is not sent (WT-007's Delete schedule).
+            ->and(HostDefinition::isDestructive($definition))->toBe(in_array($name, ['weigh_in_delete', 'weigh_in_schedule_set'], true), $name);
         if ($name !== 'weigh_ins_show') {
             expect(HostDefinition::affects($definition))->toBe(['weigh_ins_show', 'today_show'], $name);
         }
@@ -102,17 +103,19 @@ it('WT-001 WT-004 WT-005 WT-010 WT-020 WT-021 shows the weigh-ins, missed days, 
     ];
     Step::factory()->for($user)->create(['date' => '2026-10-09', 'count' => 8412]);
     Step::factory()->for($user)->shortcut()->create(['date' => '2026-10-08', 'count' => 10230]);
-    WeighIn::factory()->create(['weighed_at' => '2026-10-09 07:00:00']);
+    // Another user's rows, none of which may show.
+    $other = User::factory()->create();
+    Profile::factory()->for($other)->create(['weight_unit' => 'lb', 'height_unit' => 'feetInches']);
+    WeighIn::factory()->for($other)->create(['weighed_at' => '2026-10-09 07:00:00']);
+    Step::factory()->for($other)->create(['date' => '2026-10-07', 'count' => 500]);
+    WeighInScheduleEntry::factory()->for($other)->create(['weekdays' => [2, 4], 'time' => '06:00']);
 
     $payload = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data');
 
     $expected = ScreenFixture::load('weigh_ins_show');
-    // The fixture was drawn at +01:00; the app keeps wall-clock times in UTC.
     foreach ($expected['rows'] as $index => $row) {
-        $expected['rows'][$index]['weighed_at'] = str_replace('+01:00', '+00:00', $row['weighed_at']);
         $expected['rows'][$index]['id'] = $ids[$row['id']] ?? $row['id'];
     }
-    $expected['trend']['value'] = '83.0 kg';
     expect($payload)->toBe($expected);
     assertMatchesScreenFixture('weigh_ins_show', $payload);
 });
@@ -176,6 +179,33 @@ it('WT-003 WT-020 marks what the Health bridge token posts as the bridge\'s, and
         ->toBe([[10230, MeasurementSource::Shortcut], [8412, MeasurementSource::Manual]]);
 });
 
+it('WT-003 WT-020 marks what any other token posts as typed, which the bridge then cannot overwrite', function () {
+    $user = User::factory()->create();
+    $cli = test()->actingAs($user)->postJson('/capabilities/token_create', [
+        'id' => (string) Str::ulid(),
+        'name' => 'Laptop CLI',
+        'expires_in_days' => 90,
+        'scope' => 'everything',
+        'capabilities' => [],
+    ], ['Idempotency-Key' => (string) Str::ulid()])->assertOk()->json('data.token.plain_text');
+    Auth::forgetGuards();
+    $input = weighInInput();
+
+    test()->withHeader('Authorization', "Bearer {$cli}")
+        ->postJson('/capabilities/weigh_in_log', $input, ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+    test()->withHeader('Authorization', "Bearer {$cli}")
+        ->postJson('/capabilities/steps_log', ['date' => '2026-10-09', 'steps' => 8412], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+    Auth::forgetGuards();
+    $bridge = healthBridgeToken($user);
+    test()->withHeader('Authorization', "Bearer {$bridge}")
+        ->postJson('/capabilities/steps_log', ['date' => '2026-10-09', 'steps' => 3000], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertOk()
+        ->assertJsonPath('data.invalidates', []);
+
+    expect(WeighIn::query()->findOrFail($input['id'])->source)->toBe(MeasurementSource::Manual)
+        ->and(Step::query()->where('user_id', $user->id)->sole())->count->toBe(8412)->source->toBe(MeasurementSource::Manual);
+});
+
 it('WT-020 logs a typed step count and names the day it changed', function () {
     Carbon::setTestNow('2026-10-10 12:00:00');
     $user = User::factory()->create();
@@ -207,9 +237,20 @@ it('WT-001 WT-007 replaces the schedule and shows it', function () {
     Carbon::setTestNow('2026-10-10 12:00:00');
     $user = weighInScenario();
 
+    // Today shows the weigh-in on each scheduled day: every day of the week ahead can change (OFF-004 keeps them warm).
     weighInCall($user, 'weigh_in_schedule_set', ['entries' => [['weekdays' => [7, 2], 'time' => '06:45']]])
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['weigh_ins_show{}', 'today_show{"date":"2026-10-10"}', 'today_show{}']);
+        ->assertJsonPath('data.invalidates', [
+            'weigh_ins_show{}',
+            'today_show{"date":"2026-10-10"}',
+            'today_show{}',
+            'today_show{"date":"2026-10-11"}',
+            'today_show{"date":"2026-10-12"}',
+            'today_show{"date":"2026-10-13"}',
+            'today_show{"date":"2026-10-14"}',
+            'today_show{"date":"2026-10-15"}',
+            'today_show{"date":"2026-10-16"}',
+        ]);
 
     expect(weighInCall($user, 'weigh_ins_show')->json('data.schedule.entries'))->toBe([
         ['weekdays' => [2, 7], 'days_label' => 'Tue, Sun', 'time' => '06:45', 'time_label' => '6:45 AM', 'can_delete' => false],
@@ -228,8 +269,9 @@ it('CAP-019 WT-004 answers 404 for another user\'s weigh-in, or a new one under 
         ->and(WeighIn::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 
-it('WT-002 WT-007 WT-020 answers 422 saying why', function () {
+it('WT-002 WT-004 WT-007 WT-020 answers 422 saying why', function () {
     $user = User::factory()->create();
+    $mine = WeighIn::factory()->for($user)->create(['weight_kg' => 81.4]);
 
     weighInCall($user, 'weigh_in_log', weighInInput(['weight' => ['value' => 1000, 'unit' => 'kg']]))
         ->assertStatus(422)
@@ -240,8 +282,18 @@ it('WT-002 WT-007 WT-020 answers 422 saying why', function () {
     weighInCall($user, 'steps_log', ['steps' => 8412])
         ->assertStatus(422)
         ->assertJsonPath('error.violations.0.field', 'date');
+    weighInCall($user, 'weigh_in_update', weighInInput(['id' => $mine->id, 'weight' => ['value' => 1000, 'unit' => 'kg']]))
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'Enter a weight above 0 and up to 999.99 kg.');
+    weighInCall($user, 'weigh_in_delete', ['id' => 'not-a-ulid'])
+        ->assertStatus(422)
+        ->assertJsonPath('error.violations.0.field', 'id');
+    weighInCall($user, 'weigh_in_log', weighInInput(['weighed_at' => '2062-10-10T07:00:00+00:00']))
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'Enter a real date and time.');
 
-    expect(WeighIn::query()->count())->toBe(0)
+    expect($mine->fresh()->weight_kg)->toBe(81.4)
+        ->and(WeighIn::query()->count())->toBe(1)
         ->and(WeighInScheduleEntry::query()->count())->toBe(0)
         ->and(Step::query()->count())->toBe(0);
 });

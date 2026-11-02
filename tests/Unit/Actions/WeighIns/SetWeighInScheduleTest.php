@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\WeighIns\SetWeighInSchedule;
+use App\Domain\WeighIns\WeighInSchedule;
 use App\Models\User;
 use App\Models\WeighInScheduleEntry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -43,6 +44,6 @@ it('WT-007 refuses a schedule of fewer than 2 weigh-in days and keeps the old on
     WeighInScheduleEntry::factory()->for($user)->create(['weekdays' => [1, 2], 'time' => '07:00']);
 
     expect(fn () => (new SetWeighInSchedule)($user, [['weekdays' => [3], 'time' => '07:00'], ['weekdays' => [3], 'time' => '19:00']]))
-        ->toThrow(DomainException::class, 'Weigh in on at least 2 days a week.')
+        ->toThrow(DomainException::class, WeighInSchedule::TOO_FEW_DAYS)
         ->and(savedSchedule($user))->toBe([['weekdays' => [1, 2], 'time' => '07:00']]);
 });

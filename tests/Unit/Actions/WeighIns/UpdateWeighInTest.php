@@ -36,6 +36,18 @@ it('WT-021 an edit without a waist clears it', function () {
         ->and($weighIn->fresh()->waist_cm)->toBeNull();
 });
 
+it('WT-002 refuses an edit above 999.99 kg, or to a time the calendar does not have, and keeps the reading', function () {
+    $user = User::factory()->create();
+    $weighIn = WeighIn::factory()->for($user)->create(['weight_kg' => 81.4, 'weighed_at' => '2026-10-08 06:00:00']);
+
+    expect(fn () => (new UpdateWeighIn)($user, $weighIn->id, '2026-10-08T06:00:00+00:00', new WeightInput(1000, 'kg'), null))
+        ->toThrow(DomainException::class, 'Enter a weight above 0 and up to 999.99 kg.')
+        ->and(fn () => (new UpdateWeighIn)($user, $weighIn->id, '2026-02-30T06:00:00+00:00', new WeightInput(81, 'kg'), null))
+        ->toThrow(DomainException::class, 'Enter a real date and time.')
+        ->and($weighIn->fresh())->weight_kg->toBe(81.4)
+        ->and($weighIn->fresh()->weighed_at->format('Y-m-d H:i'))->toBe('2026-10-08 06:00');
+});
+
 it('WT-004 never edits another user\'s weigh-in', function () {
     $weighIn = WeighIn::factory()->create(['weight_kg' => 81.4]);
 

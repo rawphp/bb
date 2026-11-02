@@ -20,7 +20,7 @@ function logWeighIn(User $user, string $weighedAt, WeightInput $weight, ?WaistIn
     return (new LogWeighIn)($user, WeighIn::query()->find($id), $id, $weighedAt, $weight, $waist, $source);
 }
 
-it('WT-002 logs a typed weigh-in in kg at the time the user weighed in, converting pounds', function () {
+it('WT-002 logs a typed weigh-in in kg at the moment the user weighed in, converting pounds', function () {
     $user = User::factory()->create();
 
     $weighIn = logWeighIn($user, '2026-10-10T08:35:00+01:00', new WeightInput(180, 'lb'));
@@ -30,9 +30,22 @@ it('WT-002 logs a typed weigh-in in kg at the time the user weighed in, converti
         ->weight_kg->toBe(81.65)
         ->waist_cm->toBeNull()
         ->source->toBe(MeasurementSource::Manual)
-        // The wall-clock time the user gave, so the reading lands on the day they weighed in.
-        ->and($weighIn->fresh()->weighed_at->format('Y-m-d H:i'))->toBe('2026-10-10 08:35');
+        // The instant the user gave, kept in the app's time zone (UTC), never the server's clock.
+        ->and($weighIn->fresh()->weighed_at->format('Y-m-d H:i'))->toBe('2026-10-10 07:35');
 });
+
+it('WT-002 refuses a time the calendar does not have, or one the weigh-ins table cannot hold, and stores nothing', function (string $time) {
+    $user = User::factory()->create();
+
+    expect(fn () => logWeighIn($user, $time, new WeightInput(82, 'kg')))
+        ->toThrow(DomainException::class, 'Enter a real date and time.')
+        ->and(WeighIn::query()->count())->toBe(0);
+})->with([
+    '30 February' => '2026-02-30T07:00:00+00:00',
+    '25 o\'clock' => '2026-10-10T25:00:00+00:00',
+    'a mistyped year far ahead' => '2062-10-10T07:00:00+00:00',
+    'a mistyped year far back' => '0202-10-10T07:00:00+10:00',
+]);
 
 it('WT-006 logs a weigh-in on a day the schedule does not hold', function () {
     $user = User::factory()->create();
@@ -71,16 +84,29 @@ it('WT-003 imports a bridge weigh-in with its time and the source shortcut, once
         ->and(WeighIn::query()->where('user_id', $user->id)->sole())
         ->source->toBe(MeasurementSource::Shortcut)
         ->weight_kg->toBe(81.6)
-        ->and($first->fresh()->weighed_at->format('Y-m-d H:i'))->toBe('2026-10-10 06:58');
+        ->and($first->fresh()->weighed_at->format('Y-m-d H:i'))->toBe('2026-10-09 20:58');
 });
 
-it('WT-003 still logs a typed weigh-in at the same time as a bridge one', function () {
+it('WT-003 still logs a typed weigh-in at the same time as a bridge one, in either order', function () {
     $user = User::factory()->create();
 
     logWeighIn($user, '2026-10-10T07:00:00+00:00', new WeightInput(81.6, 'kg'), source: MeasurementSource::Shortcut);
     logWeighIn($user, '2026-10-10T07:00:00+00:00', new WeightInput(81.9, 'kg'));
+    logWeighIn($user, '2026-10-11T07:00:00+00:00', new WeightInput(81.9, 'kg'));
+    logWeighIn($user, '2026-10-11T07:00:00+00:00', new WeightInput(81.6, 'kg'), source: MeasurementSource::Shortcut);
 
-    expect(WeighIn::query()->where('user_id', $user->id)->count())->toBe(2);
+    expect(WeighIn::query()->where('user_id', $user->id)->count())->toBe(4);
+});
+
+it('WT-003 imports each user\'s bridge reading, even at the same moment as another user\'s', function () {
+    [$user, $other] = User::factory()->count(2)->create();
+
+    logWeighIn($other, '2026-10-10T06:58:00+00:00', new WeightInput(74, 'kg'), source: MeasurementSource::Shortcut);
+    $mine = logWeighIn($user, '2026-10-10T06:58:00+00:00', new WeightInput(81.6, 'kg'), source: MeasurementSource::Shortcut);
+
+    expect($mine->user_id)->toBe($user->id)
+        ->and($mine->weight_kg)->toBe(81.6)
+        ->and(WeighIn::query()->count())->toBe(2);
 });
 
 it('OFF-030 replaying a queued weigh-in under its ID returns it unchanged and adds no second one', function () {

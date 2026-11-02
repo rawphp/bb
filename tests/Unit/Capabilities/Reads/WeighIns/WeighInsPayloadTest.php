@@ -1,6 +1,6 @@
 <?php
 
-use App\Capabilities\WeighIns\WeighInsPayload;
+use App\Capabilities\Reads\WeighIns\WeighInsPayload;
 
 // Ported from rp-clone ios/Tests/RPCoreTests/Features/WeighIns/WeighInsModelTests.swift (help).
 
