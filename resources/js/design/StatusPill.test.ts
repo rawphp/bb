@@ -59,6 +59,9 @@ describe('StatusPill', () => {
         const wrapper = pill({ loading: true });
 
         expect(wrapper.classes()).toEqual(expect.arrayContaining(['animate-pulse', 'bg-tone-neutral-bg']));
+        expect(wrapper.attributes('aria-busy')).toBe('true');
+        expect(pill().attributes('aria-busy')).toBeUndefined();
+        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
         expect(wrapper.find('svg').exists()).toBe(false);
         expect(spoken(wrapper)).toBe('Loading');
     });
@@ -67,12 +70,20 @@ describe('StatusPill', () => {
         expect(spoken(pill({ text: '', loading: true }))).toBe('Loading');
     });
 
-    it('VIEW-004 error: a neutral pill with a warning icon and the error in words', () => {
+    it('VIEW-004 error: a warning pill with a warning icon and the error in words', () => {
         const wrapper = pill({ error: "Couldn't load" });
 
-        expect(wrapper.classes()).toContain('bg-tone-neutral-bg');
+        expect(wrapper.classes()).toEqual(expect.arrayContaining(['text-tone-warning', 'bg-tone-warning-bg']));
         expect(wrapper.get('svg path').attributes('d')).toBe(pill({ tone: 'warning' }).get('svg path').attributes('d'));
         expect(spoken(wrapper)).toBe("Couldn't load");
+    });
+
+    it('UI-030 an error that replaces loading is announced through an alert', async () => {
+        const wrapper = pill({ loading: true });
+        await wrapper.setProps({ loading: false, error: "Couldn't load" });
+
+        expect(wrapper.get('[role="alert"]').text()).toBe("Couldn't load");
+        expect(pill().find('[role="alert"]').exists()).toBe(false);
     });
 
     it('VIEW-004 error: shows the server error text, even with no status text', () => {
@@ -104,7 +115,24 @@ describe('StatusPill', () => {
 
         expect(wrapper.classes()).toEqual(expect.arrayContaining(['opacity-50', 'bg-tone-neutral-bg']));
         expect(wrapper.get('svg path').attributes('d')).toBe(pill({ tone: 'neutral' }).get('svg path').attributes('d'));
+        expect(wrapper.attributes('aria-disabled')).toBe('true');
+        expect(pill().attributes('aria-disabled')).toBeUndefined();
         expect(spoken(wrapper)).toBe('on track, unavailable');
+    });
+
+    it('VIEW-004 disabled with pending still says Waiting to sync', () => {
+        const wrapper = pill({ disabled: true, pending: true });
+
+        expect(wrapper.classes()).toEqual(expect.arrayContaining(['opacity-50', 'bg-tone-neutral-bg']));
+        expect(spoken(wrapper)).toBe('on track · Waiting to sync, unavailable');
+    });
+
+    it('VIEW-004 disabled with an error still shows and announces the error', () => {
+        const wrapper = pill({ disabled: true, error: 'Offline' });
+
+        expect(wrapper.classes()).toEqual(expect.arrayContaining(['opacity-50', 'bg-tone-warning-bg']));
+        expect(wrapper.get('[role="alert"]').text()).toBe('Offline');
+        expect(spoken(wrapper)).toBe('Offline, unavailable');
     });
 
     it('VIEW-004 the gallery lists StatusPill with each tone and state', () => {
