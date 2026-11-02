@@ -1,0 +1,136 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "mesocycle_id": {
+            "type": "string"
+        },
+        "route": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "enum": [
+                "template",
+                "builder",
+                "scratch",
+                null
+            ]
+        },
+        "template_id": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "name": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "weeks": {
+            "type": [
+                "integer",
+                "null"
+            ]
+        },
+        "start_date": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "date"
+        },
+        "label_style": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "enum": [
+                "weekdays",
+                "floating",
+                null
+            ]
+        },
+        "days_per_week": {
+            "type": [
+                "integer",
+                "null"
+            ]
+        },
+        "days": {
+            "type": [
+                "array",
+                "null"
+            ],
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "day_id": {
+                        "type": "string"
+                    },
+                    "slots": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "slot_id": {
+                                    "type": "string"
+                                },
+                                "muscle": {
+                                    "type": "string",
+                                    "enum": [
+                                        "chest",
+                                        "back",
+                                        "quads",
+                                        "hamstrings",
+                                        "glutes",
+                                        "sideDelts",
+                                        "rearDelts",
+                                        "frontDelts",
+                                        "biceps",
+                                        "triceps",
+                                        "calves",
+                                        "abs",
+                                        "traps",
+                                        "forearms"
+                                    ]
+                                },
+                                "exercise_id": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "sets": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 20
+                                }
+                            },
+                            "required": [
+                                "slot_id",
+                                "muscle",
+                                "sets"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "day_id",
+                    "slots"
+                ]
+            }
+        },
+        "finish": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "mesocycle_id"
+    ]
+}

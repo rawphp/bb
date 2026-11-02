@@ -1,0 +1,62 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "template_id": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "days": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "enum": [
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                null
+            ]
+        },
+        "sex": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "enum": [
+                "female",
+                "male",
+                null
+            ]
+        },
+        "focus": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "enum": [
+                "whole_body",
+                "emphasis",
+                null
+            ]
+        },
+        "phase": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "enum": [
+                "cut",
+                "gain",
+                "maintain",
+                "all",
+                null
+            ]
+        }
+    }
+}

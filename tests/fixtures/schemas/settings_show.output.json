@@ -1,0 +1,853 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "notice": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ],
+            "description": "what the last save did to the targets (SET-004)"
+        },
+        "profile": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "sex": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "choices": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "label": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "label"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "choices"
+                    ]
+                },
+                "birth_date": {
+                    "type": "string",
+                    "format": "date"
+                },
+                "birth_date_text": {
+                    "type": "string"
+                },
+                "height": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "unit": {
+                            "type": "string",
+                            "enum": [
+                                "cm",
+                                "feetInches"
+                            ]
+                        },
+                        "text": {
+                            "type": "string",
+                            "description": "for example \"178 cm\" or \"5 ft 10 in\""
+                        },
+                        "cm": {
+                            "type": [
+                                "number",
+                                "null"
+                            ]
+                        },
+                        "feet": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "inches": {
+                            "type": [
+                                "number",
+                                "null"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "unit",
+                        "text"
+                    ]
+                },
+                "body_fat": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "value": {
+                            "type": "string",
+                            "enum": [
+                                "lowest",
+                                "low",
+                                "high",
+                                "highest"
+                            ]
+                        },
+                        "text": {
+                            "type": "string"
+                        },
+                        "choices": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "male": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "value": {
+                                                "type": "string"
+                                            },
+                                            "label": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "value",
+                                            "label"
+                                        ]
+                                    }
+                                },
+                                "female": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "value": {
+                                                "type": "string"
+                                            },
+                                            "label": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "value",
+                                            "label"
+                                        ]
+                                    }
+                                }
+                            },
+                            "required": [
+                                "male",
+                                "female"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "text",
+                        "choices"
+                    ]
+                },
+                "uses_glp1": {
+                    "type": "boolean"
+                },
+                "experience": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "choices": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "label": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "label"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "choices"
+                    ]
+                }
+            },
+            "required": [
+                "name",
+                "sex",
+                "birth_date",
+                "birth_date_text",
+                "height",
+                "body_fat",
+                "uses_glp1",
+                "experience"
+            ]
+        },
+        "eligibility": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ],
+            "description": "the Re-check eligibility row (SAFE-017)"
+        },
+        "units": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "weight": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "choices": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "label": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "label"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "choices"
+                    ]
+                },
+                "height": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        },
+                        "choices": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    },
+                                    "label": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "value",
+                                    "label"
+                                ]
+                            }
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "choices"
+                    ]
+                }
+            },
+            "required": [
+                "weight",
+                "height"
+            ]
+        },
+        "appearance": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "choices": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "label": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "label"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "value",
+                "choices"
+            ]
+        },
+        "consumed_totals": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "value": {
+                    "type": "string"
+                },
+                "choices": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "label": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "label"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "value",
+                "choices"
+            ]
+        },
+        "diet_filters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "summary": {
+                    "type": "string",
+                    "description": "\"None\", one filter's name, or \"3 on\""
+                },
+                "choices": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "selected": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "label",
+                            "selected"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "summary",
+                "choices"
+            ]
+        },
+        "micro_plates": {
+            "type": "boolean"
+        },
+        "schedule": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "eating_window_start": {
+                    "type": "string",
+                    "description": "24-hour time, HH:mm"
+                },
+                "eating_window_end": {
+                    "type": "string",
+                    "description": "24-hour time, HH:mm"
+                },
+                "meal_count": {
+                    "type": "integer"
+                },
+                "meal_count_min": {
+                    "type": "integer"
+                },
+                "meal_count_max": {
+                    "type": "integer"
+                },
+                "weekdays": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "weekday": {
+                                "type": "integer",
+                                "description": "ISO weekday: 1 is Monday, 7 is Sunday",
+                                "minimum": 1,
+                                "maximum": 7
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "short_label": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "weekday",
+                            "label",
+                            "short_label"
+                        ]
+                    },
+                    "description": "all seven weekdays, Monday first"
+                },
+                "training_days": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "weekday": {
+                                "type": "integer",
+                                "description": "ISO weekday: 1 is Monday, 7 is Sunday",
+                                "minimum": 1,
+                                "maximum": 7
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "start": {
+                                "type": "string",
+                                "description": "24-hour time, HH:mm"
+                            },
+                            "minutes": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "weekday",
+                            "label",
+                            "start",
+                            "minutes"
+                        ]
+                    }
+                },
+                "new_training_day_start": {
+                    "type": "string",
+                    "description": "24-hour time, HH:mm"
+                },
+                "new_training_day_minutes": {
+                    "type": "integer"
+                },
+                "session_minutes_min": {
+                    "type": "integer"
+                },
+                "session_minutes_max": {
+                    "type": "integer"
+                },
+                "session_minutes_step": {
+                    "type": "integer"
+                },
+                "busy_periods": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "label": {
+                                "type": "string"
+                            },
+                            "start": {
+                                "type": "string",
+                                "description": "24-hour time, HH:mm"
+                            },
+                            "end": {
+                                "type": "string",
+                                "description": "24-hour time, HH:mm"
+                            },
+                            "days": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "weekday": {
+                                            "type": "integer",
+                                            "description": "ISO weekday: 1 is Monday, 7 is Sunday",
+                                            "minimum": 1,
+                                            "maximum": 7
+                                        },
+                                        "label": {
+                                            "type": "string"
+                                        },
+                                        "on": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "weekday",
+                                        "label",
+                                        "on"
+                                    ]
+                                },
+                                "description": "all seven weekdays, Monday first"
+                            }
+                        },
+                        "required": [
+                            "label",
+                            "start",
+                            "end",
+                            "days"
+                        ]
+                    }
+                },
+                "new_busy_period": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "label": {
+                            "type": "string"
+                        },
+                        "start": {
+                            "type": "string",
+                            "description": "24-hour time, HH:mm"
+                        },
+                        "end": {
+                            "type": "string",
+                            "description": "24-hour time, HH:mm"
+                        },
+                        "days": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "weekday": {
+                                        "type": "integer",
+                                        "description": "ISO weekday: 1 is Monday, 7 is Sunday",
+                                        "minimum": 1,
+                                        "maximum": 7
+                                    },
+                                    "label": {
+                                        "type": "string"
+                                    },
+                                    "on": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": [
+                                    "weekday",
+                                    "label",
+                                    "on"
+                                ]
+                            },
+                            "description": "all seven weekdays, Monday first"
+                        }
+                    },
+                    "required": [
+                        "label",
+                        "start",
+                        "end",
+                        "days"
+                    ]
+                },
+                "step_plan": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "weekday": {
+                                "type": "integer",
+                                "description": "ISO weekday: 1 is Monday, 7 is Sunday",
+                                "minimum": 1,
+                                "maximum": 7
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "min": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ]
+                            },
+                            "max": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "weekday",
+                            "label"
+                        ]
+                    },
+                    "description": "all seven weekdays, Monday first"
+                },
+                "review_weekday": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "description": "null until there is a plan",
+                    "minimum": 1,
+                    "maximum": 7
+                }
+            },
+            "required": [
+                "eating_window_start",
+                "eating_window_end",
+                "meal_count",
+                "meal_count_min",
+                "meal_count_max",
+                "weekdays",
+                "training_days",
+                "new_training_day_start",
+                "new_training_day_minutes",
+                "session_minutes_min",
+                "session_minutes_max",
+                "session_minutes_step",
+                "busy_periods",
+                "new_busy_period",
+                "step_plan"
+            ]
+        },
+        "notifications": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "weigh_in",
+                            "meal",
+                            "workout",
+                            "weekly_review",
+                            "next_mesocycle",
+                            "retarget"
+                        ]
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "on": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "kind",
+                    "label",
+                    "on"
+                ]
+            }
+        },
+        "health_bridge": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ],
+            "description": "the Health bridge row (INT-001)"
+        },
+        "tokens": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ],
+            "description": "the Personal access tokens row (CAP-021)"
+        },
+        "coach": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ],
+            "description": "the Coach row; null when the agent is off (AGT-002)"
+        },
+        "subscription": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ],
+            "description": "the Subscription row; null when billing is off (SUB-020)"
+        },
+        "support_email": {
+            "type": "string"
+        },
+        "account_email": {
+            "type": "string"
+        },
+        "developer": {
+            "type": "boolean",
+            "description": "true in local and testing only (SET-011)"
+        }
+    },
+    "required": [
+        "profile",
+        "eligibility",
+        "units",
+        "appearance",
+        "consumed_totals",
+        "diet_filters",
+        "micro_plates",
+        "schedule",
+        "notifications",
+        "health_bridge",
+        "tokens",
+        "support_email",
+        "account_email",
+        "developer"
+    ]
+}

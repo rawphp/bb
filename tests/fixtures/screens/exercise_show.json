@@ -1,0 +1,70 @@
+{
+    "id": "01JA8Q0V3K2M4N6P8R0T2W4Y6H",
+    "name": "Barbell Bench Press",
+    "is_custom": false,
+    "video_url": "https://www.youtube.com/watch?v=example-bench",
+    "muscle_group": "chest",
+    "muscle_group_text": "Chest",
+    "equipment": "barbell",
+    "equipment_text": "Barbell",
+    "load_type": "barbell",
+    "load_type_text": "Barbell",
+    "rep_range_text": "5–10 reps",
+    "pinned_note": "Shoulder blades back and down, feet planted.",
+    "load_step": {
+        "step": {
+            "value": 1.25,
+            "unit": "kg",
+            "text": "1.25 kg"
+        },
+        "default_text": "2.5 kg",
+        "unit": "kg"
+    },
+    "history": [
+        {
+            "workout_id": "01JA9C4D6F8H0J2K4M6N8P0R2S",
+            "date_text": "Thu, 8 Oct 2026",
+            "sets": [
+                {
+                    "id": "01JA9C4D6F8H0J2K4M6N8P0R3A",
+                    "text": "82.5 kg × 9",
+                    "badge": {
+                        "text": "Best e1RM",
+                        "tone": "good"
+                    }
+                },
+                {
+                    "id": "01JA9C4D6F8H0J2K4M6N8P0R3B",
+                    "text": "82.5 kg × 8",
+                    "badge": null
+                },
+                {
+                    "id": "01JA9C4D6F8H0J2K4M6N8P0R3C",
+                    "text": "80.0 kg × 10",
+                    "badge": null
+                }
+            ],
+            "best_text": "Best e1RM 107.2 kg"
+        },
+        {
+            "workout_id": "01JA7X2B4D6F8H0J2K4M6N8P0R",
+            "date_text": "Mon, 28 Sep 2026",
+            "sets": [
+                {
+                    "id": "01JA7X2B4D6F8H0J2K4M6N8P1A",
+                    "text": "80.0 kg × 10",
+                    "badge": {
+                        "text": "Best e1RM",
+                        "tone": "good"
+                    }
+                },
+                {
+                    "id": "01JA7X2B4D6F8H0J2K4M6N8P1B",
+                    "text": "80.0 kg × 9",
+                    "badge": null
+                }
+            ],
+            "best_text": "Best e1RM 106.7 kg"
+        }
+    ]
+}
