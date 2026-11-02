@@ -4,7 +4,6 @@ namespace App\Domain\Mesocycle;
 
 use App\Domain\Model\ClosedRange;
 use App\Domain\Model\PlanWeek;
-use App\Domain\Plan\MesocycleSpan;
 use App\Domain\Plan\PlanWeekGrid;
 use App\Domain\Progress\PlanWeekDays;
 use DateTimeImmutable;
@@ -43,10 +42,16 @@ final readonly class MesocycleCalendar
         return max(1, min($week, $this->weeks));
     }
 
-    /** MESO-043: the end of its weeks, or the day before it was ended. */
+    /**
+     * MESO-043: the last day of its last plan week, or the day before it was ended if that is sooner. It is before the
+     * start when it was ended on its first day.
+     */
     public function lastDay(): DateTimeImmutable
     {
-        return MesocycleSpan::lastDay($this->start, $this->weeks, $this->endedOn);
+        $lastWeek = $this->planWeek($this->weeks - 1);
+        $last = $lastWeek->end() ?? $lastWeek->start;
+
+        return $this->endedOn === null ? $last : min($last, $this->endedOn->modify('-1 day'));
     }
 
     public function hasStarted(): bool

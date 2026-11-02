@@ -107,12 +107,11 @@ final class TrainPayload
             return null;
         }
         $calendar = $snapshot->calendar($mesocycle);
-        $week = $calendar->currentWeek();
 
         return new TrainCurrentMesocycle(
             id: (string) $mesocycle->id,
             name: $mesocycle->name ?? 'Mesocycle',
-            week_text: "Week {$week} of {$mesocycle->weeks}".($week === $mesocycle->weeks ? ' · Deload' : ''),
+            week_text: self::weekText($calendar),
             phase_title: TrainWords::phase($snapshot->phaseType($mesocycle)),
             dates_text: self::dates($calendar),
             next_mesocycle: $next === null ? null : new TrainNextMesocycle(
@@ -187,6 +186,19 @@ final class TrainPayload
         }
 
         return $routes;
+    }
+
+    /** "Week 3 of 5", "Week 5 of 5 · Deload"; once over, "Ended 6 Oct" or "Finished 18 Oct" (MESO-043). */
+    private static function weekText(MesocycleCalendar $calendar): string
+    {
+        if (! $calendar->isRunning()) {
+            return $calendar->endedOn !== null
+                ? 'Ended '.TrainWords::day($calendar->endedOn)
+                : 'Finished '.TrainWords::day($calendar->lastDay());
+        }
+        $week = $calendar->currentWeek();
+
+        return "Week {$week} of {$calendar->weeks}".($week === $calendar->weeks ? ' · Deload' : '');
     }
 
     /** MESO-043: from the start to the last day, which is never before the start. */

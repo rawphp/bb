@@ -22,6 +22,12 @@ final class TrainWords
         return $day->format('j M Y');
     }
 
+    /** "6 Oct". */
+    public static function day(DateTimeImmutable $day): string
+    {
+        return $day->format('j M');
+    }
+
     /** "Starts Monday 12 Oct". */
     public static function starts(DateTimeImmutable $day): string
     {
