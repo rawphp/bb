@@ -204,6 +204,27 @@ it('NOTIF-001 reminders:send queues a job only for users who may have something 
     Queue::assertPushed(SendUserReminders::class, fn (SendUserReminders $job) => $job->user->is($weighsNow));
 });
 
+it('NOTIF-004 NOTIF-005 at 09:00 only a user on a plan-week start may be due, and only until the morning reminder went out', function () {
+    $user = remindedUser();
+    Queue::fake();
+
+    // Sunday: the plan's weeks start on Saturday, so neither morning reminder can fall today.
+    Carbon::setTestNow('2026-09-27 09:00:00');
+    $this->artisan('reminders:send')->assertSuccessful();
+    Queue::assertNothingPushed();
+
+    // Saturday, the review day: queued at 09:00.
+    Carbon::setTestNow('2026-09-26 09:00:00');
+    $this->artisan('reminders:send')->assertSuccessful();
+    Queue::assertPushed(SendUserReminders::class, 1);
+
+    // Once the morning reminder is sent, the next minutes of the window queue nothing more.
+    SentReminder::query()->create(['user_id' => $user->id, 'reminder_id' => 'weekly-review-2026-09-26', 'due_at' => '2026-09-26 09:00:00', 'sent_at' => '2026-09-26 09:00:00']);
+    Carbon::setTestNow('2026-09-26 09:01:00');
+    $this->artisan('reminders:send')->assertSuccessful();
+    Queue::assertPushed(SendUserReminders::class, 1);
+});
+
 it('NOTIF-001 reminders:send queues one job per subscribed user, so one user\'s failure cannot hold up the rest', function () {
     $first = remindedUser();
     $second = remindedUser();
