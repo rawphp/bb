@@ -30,20 +30,17 @@ class DayTarget extends Model
     use BelongsToUser, HasFactory, HasUuids, SoftDeletes;
 
     /**
-     * A meal keeps the id it has, gets one if it has none, and the index follows. Meals sent with
-     * no ids at all rewrite the day's meals in place: meal N keeps the id of the day's meal N, so a
-     * save that doesn't echo ids keeps the foods and check-ins on the meals it keeps.
+     * A meal keeps the id it has, and the index follows. A new day's meals get ids if they have
+     * none. Updating a day needs every meal's id (a new meal brings its own), because a meal left
+     * out is removed with its foods and check-in.
      */
     protected static function booted(): void
     {
         static::saving(function (self $target) {
-            $current = $target->exists && array_filter(array_column($target->meals, 'id')) === []
-                ? $target->mealIndex()->orderBy('position')->pluck('id')->all()
-                : [];
+            $target->refuseMealsWithoutIds();
             $target->meals = array_map(
-                fn (array $meal, int $position) => ['id' => strtolower($meal['id'] ?? $current[$position] ?? (string) Str::uuid7())] + $meal,
+                fn (array $meal) => ['id' => strtolower($meal['id'] ?? (string) Str::uuid7())] + $meal,
                 $target->meals,
-                array_keys($target->meals),
             );
             $target->refuseTakenMealIds();
         });
@@ -64,6 +61,18 @@ class DayTarget extends Model
                 }
             }
         });
+    }
+
+    private function refuseMealsWithoutIds(): void
+    {
+        if (! $this->exists) {
+            return;
+        }
+        foreach ($this->meals as $index => $meal) {
+            if (($meal['id'] ?? null) === null) {
+                throw ValidationException::withMessages(["meals.{$index}.id" => 'Send the id of every meal the day keeps; a new meal needs a new id.']);
+            }
+        }
     }
 
     /**

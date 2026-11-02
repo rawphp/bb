@@ -23,6 +23,7 @@ use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /** Puts a check-in, a planned food, a planned recipe and a planning state on the meal. */
@@ -86,38 +87,36 @@ it('removing a meal drops only that meal\'s foods, check-in and planning state',
         ->and(mealChildren($lunch))->toBe(MEAL_HAS_ONE_OF_EACH);
 });
 
-it('meals sent with no ids keep the day\'s meal ids by position, so their foods and check-ins stay', function () {
-    $day = DayTarget::factory()->create(['meals' => [['name' => 'Breakfast'], ['name' => 'Lunch'], ['name' => 'Dinner']]]);
-    [$breakfast, $lunch, $dinner] = array_column($day->meals, 'id');
+it('refuses a meal with no id when a day is updated, and changes nothing', function (array $meals) {
+    $day = DayTarget::factory()->create(['meals' => [['name' => 'Breakfast'], ['name' => 'Lunch']]]);
+    $before = $day->meals;
+    [$breakfast, $lunch] = array_column($before, 'id');
     fillMeal($breakfast, $day->user_id);
-    fillMeal($dinner, $day->user_id);
 
-    $day->update(['meals' => [['name' => 'Breakfast', 'kcal' => 600], ['name' => 'Lunch', 'kcal' => 700]]]);
+    $sent = array_map(fn ($meal) => is_int($meal) ? $before[$meal] : $meal, $meals);
+    $index = array_search(true, array_map(fn ($meal) => ! isset($meal['id']), $sent), true);
+
+    expect(fn () => $day->update(['meals' => $sent]))
+        ->toThrow(fn (ValidationException $e) => expect($e->errors())->toHaveKey("meals.{$index}.id"));
 
     expect(array_column($day->fresh()->meals, 'id'))->toBe([$breakfast, $lunch])
-        ->and(mealChildren($breakfast))->toBe(MEAL_HAS_ONE_OF_EACH)
-        ->and(mealChildren($dinner))->toBe(MEAL_HAS_NONE);
-
-    $day->update(['meals' => [['name' => 'Breakfast'], ['name' => 'Lunch'], ['name' => 'Snack']]]);
-    $ids = array_column($day->fresh()->meals, 'id');
-
-    expect(array_slice($ids, 0, 2))->toBe([$breakfast, $lunch])
-        ->and($ids[2])->not->toBe($dinner)
-        ->and($day->mealIndex()->orderBy('position')->pluck('id')->all())->toBe($ids)
+        ->and($day->mealIndex()->orderBy('position')->pluck('id')->all())->toBe([$breakfast, $lunch])
         ->and(mealChildren($breakfast))->toBe(MEAL_HAS_ONE_OF_EACH);
-});
+})->with([
+    'no meal has an id' => [[['name' => 'Breakfast', 'kcal' => 600], ['name' => 'Lunch']]],
+    'a meal with no id beside meals with ids' => [[1, ['name' => 'Snack']]],
+]);
 
-it('a meal with no id beside meals with ids is a new meal', function () {
-    $day = DayTarget::factory()->create(['meals' => [['name' => 'Breakfast'], ['name' => 'Lunch']]]);
-    [$breakfast, $lunch] = array_column($day->meals, 'id');
+it('adds a meal to a day when it brings its own id', function () {
+    $day = DayTarget::factory()->create(['meals' => [['name' => 'Breakfast']]]);
+    $breakfast = $day->meals[0]['id'];
     fillMeal($breakfast, $day->user_id);
+    $snack = (string) Str::uuid7();
 
-    $day->update(['meals' => [['name' => 'Snack'], $day->meals[1]]]);
-    $ids = array_column($day->fresh()->meals, 'id');
+    $day->update(['meals' => [...$day->meals, ['id' => $snack, 'name' => 'Snack']]]);
 
-    expect($ids[1])->toBe($lunch)
-        ->and($ids[0])->not->toBeIn([$breakfast, $lunch])
-        ->and(mealChildren($breakfast))->toBe(MEAL_HAS_NONE);
+    expect($day->mealIndex()->orderBy('position')->pluck('id')->all())->toBe([$breakfast, $snack])
+        ->and(mealChildren($breakfast))->toBe(MEAL_HAS_ONE_OF_EACH);
 });
 
 it('a meal holds one check-in: a second one for the same meal is refused', function () {
