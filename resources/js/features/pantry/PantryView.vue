@@ -127,8 +127,8 @@ function toggleDiet(key: Diet['key']): void {
 }
 
 // FOOD-006: a food weighed cooked shows, and is added, by its cooked value.
-function weighingOf(food: Food): Weighing {
-    return food.cooked ? (weighings.value[food.food_id] ?? 'raw') : 'raw';
+function weighingOf(foodId: string, hasCooked: boolean): Weighing {
+    return hasCooked ? (weighings.value[foodId] ?? 'raw') : 'raw';
 }
 
 function isPicked(key: string): boolean {
@@ -161,7 +161,7 @@ function pickDetail(pick: Pick): string | null {
     if (pick.kind === 'recipe') return 'Recipe';
     if (pick.kind === 'saved_meal') return 'Saved meal';
     if (!pick.hasCooked) return pick.brand;
-    return weighings.value[pick.id] === 'cooked' ? 'Cooked' : 'Raw';
+    return weighingOf(pick.id, true) === 'cooked' ? 'Cooked' : 'Raw';
 }
 
 function pickSuggestion(suggestion: NonNullable<FoodSearchOutput['suggestion']>): void {
@@ -172,26 +172,30 @@ function showMore(group: PantryGroup): void {
     if (!expandedGroups.value.includes(group)) expandedGroups.value = [...expandedGroups.value, group];
 }
 
+// The Pantry left the screen (Cancel or a swipe back) while Add ran; it must not go back again.
+let gone = false;
+onUnmounted(() => (gone = true));
+
 // FOOD-028: the foods and recipes go in one write; each saved meal loads on its own.
 // Each pick leaves the basket once its write is done, so a retry sends only the rest.
+// The basket cannot change meanwhile: its controls wait for Add.
 async function confirm(): Promise<void> {
     if (!props.mealId || basket.value.length === 0) return;
-    const entries = basket.value.flatMap((pick): MealFoodAddInput['entries'][number][] => {
-        if (pick.kind === 'food') return [{ id: pick.entryId, food_id: pick.id, weighing: weighings.value[pick.id] === 'cooked' && pick.hasCooked ? 'cooked' : 'raw' }];
-        if (pick.kind === 'recipe') return [{ id: pick.entryId, recipe_id: pick.id }];
-        return [];
-    });
+    const sent = basket.value.filter((pick) => pick.kind !== 'saved_meal');
+    const entries = sent.map((pick): MealFoodAddInput['entries'][number] =>
+        pick.kind === 'food' ? { id: pick.entryId, food_id: pick.id, weighing: weighingOf(pick.id, pick.hasCooked) } : { id: pick.entryId, recipe_id: pick.id },
+    );
     if (entries.length > 0) {
         const input = { meal_id: props.mealId, entries: entries as MealFoodAddInput['entries'] } satisfies MealFoodAddInput;
         if ((await adding.send('meal_food_add', input, "Couldn't add the foods. Try again.")) !== 'done') return;
-        basket.value = basket.value.filter((pick) => pick.kind === 'saved_meal');
+        basket.value = basket.value.filter((pick) => !sent.some((done) => done.key === pick.key));
     }
-    for (const pick of basket.value.slice()) {
+    for (const pick of basket.value.filter((pick) => pick.kind === 'saved_meal')) {
         const input = { meal_id: props.mealId, saved_meal_id: pick.id } satisfies MealSavedMealLoadInput;
         if ((await adding.send('meal_saved_meal_load', input, "Couldn't add the saved meal. Try again.")) !== 'done') return;
         remove(pick.key);
     }
-    router.back();
+    if (!gone) router.back();
 }
 
 const confirmTitle = computed(() => (basket.value.length === 0 ? 'Add to meal' : `Add ${basket.value.length} to meal`));
@@ -251,7 +255,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
         />
 
         <p v-if="error" role="alert" data-test="search-error" class="text-sm text-tone-warning">{{ error }}</p>
-        <p v-if="source !== null && query.trim() === ''" class="text-sm text-secondary-text">The source filter narrows search results. Type to search.</p>
+        <p v-if="collection === null && source !== null && query.trim() === ''" class="text-sm text-secondary-text">The source filter narrows search results. Type to search.</p>
 
         <template v-if="data">
             <section v-if="basket.length > 0" data-test="basket" aria-labelledby="pantry-basket">
@@ -262,7 +266,13 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                             <span class="block text-primary-text">{{ pick.name }}</span>
                             <span v-if="pickDetail(pick)" class="block text-sm text-secondary-text">{{ pickDetail(pick) }}</span>
                         </span>
-                        <button type="button" class="flex min-h-tap min-w-tap items-center justify-center text-secondary-text" :aria-label="`Remove ${pick.name}`" @click="remove(pick.key)">
+                        <button
+                            type="button"
+                            class="flex min-h-tap min-w-tap items-center justify-center text-secondary-text disabled:opacity-40"
+                            :aria-label="`Remove ${pick.name}`"
+                            :disabled="adding.busy.value"
+                            @click="remove(pick.key)"
+                        >
                             <svg aria-hidden="true" viewBox="0 0 24 24" class="size-6">
                                 <circle cx="12" cy="12" r="10" fill="currentColor" />
                                 <path d="M7.5 12h9" stroke="var(--color-background)" stroke-width="2.2" stroke-linecap="round" />
@@ -304,6 +314,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                             :type="forMeal ? 'button' : undefined"
                             data-test="collection-row"
                             :aria-pressed="forMeal ? isPicked(`recipe-${recipe.recipe_id}`) : undefined"
+                            :disabled="forMeal && adding.busy.value ? true : undefined"
                             class="flex min-h-tap w-full items-center gap-3 py-2 text-left"
                             @click="forMeal && toggleRecipe(recipe)"
                         >
@@ -324,6 +335,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                         :type="forMeal ? 'button' : undefined"
                         data-test="collection-row"
                         :aria-pressed="forMeal ? isPicked(`saved-meal-${meal.saved_meal_id}`) : undefined"
+                        :disabled="forMeal && adding.busy.value ? true : undefined"
                         class="flex min-h-tap w-full items-center gap-3 py-2 text-left"
                         @click="forMeal && toggleSavedMeal(meal)"
                     >
@@ -347,11 +359,12 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                             v-for="food in section.rows"
                             :key="food.food_id"
                             :row="food"
-                            :weighing="weighingOf(food)"
+                            :weighing="weighingOf(food.food_id, food.cooked != null)"
                             :picked="isPicked(`food-${food.food_id}`)"
                             :pickable="forMeal"
                             :pending="pending"
                             :favorite-disabled="favorites.busy.value"
+                            :pick-disabled="adding.busy.value"
                             @pick="toggleFood(food)"
                             @favorite="toggleFavorite(food)"
                             @weighing="(weighing) => (weighings[food.food_id] = weighing)"

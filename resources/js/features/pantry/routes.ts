@@ -15,7 +15,8 @@ export default [
         component: () => import('./PantryView.vue'),
         props: (route: RouteLocationNormalized) => ({
             mealId: text(route.query.meal),
-            search: text(route.query.search) ?? '',
+            // food_search takes at most 100 characters.
+            search: (text(route.query.search) ?? '').slice(0, 100),
             group: isGroup(route.query.group) ? route.query.group : null,
         }),
         meta: { screen: 'food_search', tab: 'nutrition' },

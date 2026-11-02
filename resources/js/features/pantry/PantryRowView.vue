@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import type { FoodSearchOutput } from '@/contracts/food_search';
 import PendingMark from '@/design/PendingMark.vue';
 import StatusPill from '@/design/StatusPill.vue';
+import { useSwipeReveal } from '@/design/useSwipeReveal';
 
 type Row = FoodSearchOutput['sections'][number]['rows'][number];
 export type Weighing = 'raw' | 'cooked';
@@ -10,7 +11,7 @@ export type Weighing = 'raw' | 'cooked';
 // One food: the picture that favorites it, the name and nutrition, a Raw/Cooked toggle
 // when the food has a cooked value, and a check for the basket (FOOD-006, FOOD-022,
 // FOOD-028). Ported from rp-clone's PantryRowView. A swipe to the left shows Favorite,
-// as the SwiftUI swipe action does.
+// as the SwiftUI swipe action does (useSwipeReveal).
 const props = withDefaults(
     defineProps<{
         row: Row;
@@ -18,13 +19,13 @@ const props = withDefaults(
         picked: boolean;
         /** Off when browsing: there is nothing to add the food to. */
         pickable?: boolean;
-        /** What the picks go into, for the labels. */
-        destination?: string;
         /** The nutrition is the server's and waits on the outbox (OFF-008). */
         pending?: boolean;
         favoriteDisabled?: boolean;
+        /** Add is running: the basket waits for it. */
+        pickDisabled?: boolean;
     }>(),
-    { pickable: true, destination: 'meal', pending: false, favoriteDisabled: false },
+    { pickable: true, pending: false, favoriteDisabled: false, pickDisabled: false },
 );
 
 const emit = defineEmits<{ pick: []; favorite: []; weighing: [weighing: Weighing] }>();
@@ -36,59 +37,19 @@ const nutritionText = computed(() => {
     return `${n.kcal} · ${n.protein} · ${n.fat} · ${n.carbs} ·`;
 });
 
-// The swipe action's width; a drag past half of it opens the action.
+// The swipe action's width.
 const ACTION = 96;
-const open = ref(false);
-// While a finger drags the row across: how far it has moved it.
-const drag = ref<number | null>(null);
-let start: { x: number; y: number; id: number } | null = null;
-// A drag across ends in a click on whatever it started on; that click is not a tap.
-let swallowClick = false;
-
-function onDown(event: PointerEvent): void {
-    start = { x: event.clientX, y: event.clientY, id: event.pointerId };
-    swallowClick = false;
-}
-
-function onMove(event: PointerEvent): void {
-    if (!start || event.pointerId !== start.id) return;
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    // A drag that is more down than across is the list scrolling.
-    if (drag.value === null && Math.abs(dy) >= Math.abs(dx)) {
-        if (Math.abs(dy) > 8) start = null;
-        return;
-    }
-    const from = open.value ? -ACTION : 0;
-    drag.value = Math.min(0, Math.max(-ACTION, from + dx));
-}
-
-function onUp(): void {
-    if (drag.value !== null) {
-        open.value = drag.value < -ACTION / 2;
-        swallowClick = true;
-    }
-    drag.value = null;
-    start = null;
-}
-
-function onClickCapture(event: MouseEvent): void {
-    if (!swallowClick) return;
-    swallowClick = false;
-    event.stopPropagation();
-    event.preventDefault();
-}
+const root = ref<HTMLElement | null>(null);
+const { open, drag, shift, pointerDown, pointerMove, pointerUp, pointerCancel } = useSwipeReveal(root, () => ACTION);
 
 function favoriteFromSwipe(): void {
     open.value = false;
     emit('favorite');
 }
-
-const shift = computed(() => drag.value ?? (open.value ? -ACTION : 0));
 </script>
 
 <template>
-    <li data-test="food-row" class="relative overflow-hidden">
+    <li ref="root" data-test="food-row" class="relative overflow-hidden">
         <button
             type="button"
             data-test="swipe-favorite"
@@ -107,11 +68,10 @@ const shift = computed(() => drag.value ?? (open.value ? -ACTION : 0));
             class="relative flex touch-pan-y items-start gap-3 bg-background py-2"
             :class="drag === null ? 'transition-transform duration-200 motion-reduce:transition-none' : ''"
             :style="{ transform: `translateX(${shift}px)` }"
-            @pointerdown="onDown"
-            @pointermove="onMove"
-            @pointerup="onUp"
-            @pointercancel="onUp"
-            @click.capture="onClickCapture"
+            @pointerdown="pointerDown"
+            @pointermove="pointerMove"
+            @pointerup="pointerUp"
+            @pointercancel="pointerCancel"
         >
             <button
                 type="button"
@@ -136,6 +96,7 @@ const shift = computed(() => drag.value ?? (open.value ? -ACTION : 0));
                 <component
                     :is="pickable ? 'button' : 'div'"
                     :type="pickable ? 'button' : undefined"
+                    :disabled="pickable && pickDisabled ? true : undefined"
                     class="block w-full text-left"
                     @click="pickable && emit('pick')"
                 >
@@ -170,8 +131,9 @@ const shift = computed(() => drag.value ?? (open.value ? -ACTION : 0));
                 type="button"
                 data-test="pick"
                 class="flex min-h-tap min-w-tap shrink-0 items-center justify-center"
-                :aria-label="picked ? `Remove ${row.name} from ${destination}` : `Add ${row.name} to ${destination}`"
+                :aria-label="picked ? `Remove ${row.name} from meal` : `Add ${row.name} to meal`"
                 :aria-pressed="picked"
+                :disabled="pickDisabled"
                 @click="emit('pick')"
             >
                 <svg v-if="picked" aria-hidden="true" viewBox="0 0 24 24" class="size-7 text-accent">
