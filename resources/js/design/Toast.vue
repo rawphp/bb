@@ -2,6 +2,7 @@
 /**
  * The two fields of a write's answer the toast shows, as the server sends them
  * (CAP-010), so a host passes any write's output straight in: `<Toast :result="output">`.
+ * The toast places itself in the shell's TOAST_HOST, the live region that announces it.
  */
 export interface ToastResult {
     /** The toast the server wrote. Null or empty draws nothing. */
@@ -12,7 +13,8 @@ export interface ToastResult {
 </script>
 
 <script setup lang="ts">
-import { computed, ref, useId, watch } from 'vue';
+import { computed, onMounted, ref, useId, watch } from 'vue';
+import { TOAST_HOST } from '@/app/hosts';
 import { CapabilityError, write } from '@/app/call';
 import type { UndoApplyInput } from '@/contracts/undo_apply';
 
@@ -26,8 +28,10 @@ const props = withDefaults(
         /** The change is waiting in the outbox (OFF-008). */
         pending?: boolean;
         disabled?: boolean;
+        /** Draw in place, in its own live region, instead of in TOAST_HOST (the gallery). */
+        inline?: boolean;
     }>(),
-    { loading: false, error: null, pending: false, disabled: false },
+    { loading: false, error: null, pending: false, disabled: false, inline: false },
 );
 
 // Each answer names the token it was for, so the host still hears an undo that lands
@@ -38,6 +42,15 @@ const uid = useId();
 // The token whose undo_apply is running. Only the toast it belongs to is busy.
 const undoing = ref<string | null>(null);
 const failure = ref<string | null>(null);
+
+// The toast goes to TOAST_HOST, which announces it (AppShell.vue). The host is checked once the
+// tree is mounted, since a screen sets up before the shell has drawn it. Without a host, or
+// inline, the toast stays in place and carries its own live region, so it is always announced.
+const hostFound = ref(false);
+onMounted(() => (hostFound.value = document.querySelector(TOAST_HOST) !== null));
+const inPlace = computed(() => props.inline || !hostFound.value);
+// Teleport resolves its target when `to` changes, not when `disabled` does, so `to` changes with
+// inPlace; while in place the target ('body') is never used.
 
 const message = computed(() => props.result.toast ?? '');
 const token = computed(() => props.result.undo ?? null);
@@ -76,25 +89,30 @@ async function undo(): Promise<void> {
 </script>
 
 <template>
-    <!-- TOAST_HOST is the live region (AppShell.vue), so the toast adds none of its own. -->
-    <div v-if="message" :aria-busy="busy ? 'true' : undefined">
-        <div class="flex items-center gap-3 rounded-xl border border-secondary-text/25 bg-surface pr-2 pl-4">
-            <span class="flex min-w-0 grow flex-col gap-0.5 py-2">
-                <span class="text-sm text-primary-text">{{ message }}</span>
-                <span v-if="pending" :id="`${uid}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
-            </span>
-            <button
-                v-if="token !== null"
-                type="button"
-                :aria-describedby="pending ? `${uid}-hint ${uid}-pending` : `${uid}-hint`"
-                :disabled="busy || disabled"
-                class="min-h-tap min-w-tap shrink-0 text-sm font-semibold text-accent disabled:opacity-50"
-                @click="undo"
-            >
-                Undo
-            </button>
-            <span v-if="token !== null" :id="`${uid}-hint`" class="sr-only">Reverts this change</span>
+    <Teleport v-if="message || inPlace" :to="inPlace ? 'body' : TOAST_HOST" :disabled="inPlace">
+        <!-- In place, this region stays in the page so a toast that appears in it is announced. -->
+        <div :role="inPlace ? 'status' : undefined" :aria-busy="message && busy ? 'true' : undefined">
+            <template v-if="message">
+                <div class="flex items-center gap-3 rounded-xl border border-secondary-text/25 bg-surface pr-2 pl-4">
+                    <span class="flex min-w-0 grow flex-col gap-0.5 py-2">
+                        <span class="text-sm text-primary-text">{{ message }}</span>
+                        <span v-if="pending" :id="`${uid}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
+                    </span>
+                    <button
+                        v-if="token !== null"
+                        type="button"
+                        :aria-describedby="pending ? `${uid}-hint ${uid}-pending` : `${uid}-hint`"
+                        :disabled="busy || disabled"
+                        class="min-h-tap min-w-tap shrink-0 text-sm font-semibold text-accent disabled:opacity-50"
+                        @click="undo"
+                    >
+                        Undo
+                    </button>
+                    <span v-if="token !== null" :id="`${uid}-hint`" class="sr-only">Reverts this change</span>
+                </div>
+                <!-- Always inside a live region (TOAST_HOST or the one above), so no role="alert" of its own. -->
+                <p v-if="shownError" data-toast-error class="mt-2 text-sm text-tone-warning">{{ shownError }}</p>
+            </template>
         </div>
-        <p v-if="shownError" role="alert" class="mt-2 text-sm text-tone-warning">{{ shownError }}</p>
-    </div>
+    </Teleport>
 </template>

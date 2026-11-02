@@ -6,6 +6,8 @@ import type { EligibilityRecheckOutput } from '@/contracts/eligibility_recheck';
 import type { TokenCreateOutput } from '@/contracts/token_create';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import Toast, { type ToastResult } from './Toast.vue';
+import { TOAST_HOST_ID } from '@/app/hosts';
+import { defineComponent, nextTick } from 'vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), write: vi.fn() }));
 
@@ -21,9 +23,19 @@ function undoButton(wrapper: ReturnType<typeof toast>) {
     return wrapper.get('button');
 }
 
-// The toast's own root element; TOAST_HOST around it is the live region.
+// With no TOAST_HOST in the page (as here), the toast stays in place in its own live region.
 function root(wrapper: ReturnType<typeof toast>) {
-    return wrapper.get('div');
+    return wrapper.get('[role="status"]');
+}
+
+function withHost(): HTMLElement {
+    const host = document.createElement('div');
+    host.id = TOAST_HOST_ID;
+    host.setAttribute('role', 'status');
+    host.setAttribute('aria-live', 'polite');
+    document.body.append(host);
+
+    return host;
 }
 
 const refusal = () =>
@@ -43,13 +55,55 @@ describe('Toast', () => {
         expect(undoButton(wrapper).text()).toBe('Undo');
     });
 
-    it('UI-010 shows the message and an Undo button, leaving the live region to TOAST_HOST', () => {
+    it('UI-010 shows the message and an Undo button inside a status region', () => {
         const wrapper = toast();
 
         expect(root(wrapper).text()).toContain(message);
         expect(undoButton(wrapper).text()).toBe('Undo');
-        expect(wrapper.find('[role="status"]').exists()).toBe(false);
-        expect(wrapper.find('[aria-live]').exists()).toBe(false);
+    });
+
+    it('UI-010 in the shell the toast goes into TOAST_HOST, which announces it, and adds no live region of its own', async () => {
+        const host = withHost();
+        const wrapper = mount(Toast, { props: { result: { toast: message, undo: 'tok-1' } }, attachTo: document.body });
+        await nextTick();
+
+        expect(host.textContent).toContain(message);
+        expect(host.querySelector('button')?.textContent?.trim()).toBe('Undo');
+        expect(host.querySelectorAll('[role], [aria-live]')).toHaveLength(0);
+
+        await wrapper.setProps({ result: { toast: '', undo: null } });
+        expect(host.textContent).toBe('');
+
+        wrapper.unmount();
+        host.remove();
+    });
+
+    it('UI-010 finds TOAST_HOST when the shell draws it after the screen, as AppShell does', async () => {
+        const Shell = defineComponent({
+            components: { Toast },
+            setup: () => ({ result: { toast: message, undo: 'tok-1' }, id: TOAST_HOST_ID }),
+            template: '<div><Toast :result="result" /><div :id="id" role="status" aria-live="polite" /></div>',
+        });
+        const wrapper = mount(Shell, { attachTo: document.body });
+        await nextTick();
+
+        const host = document.getElementById(TOAST_HOST_ID)!;
+        expect(host.textContent).toContain(message);
+        expect(host.querySelectorAll('[role], [aria-live]')).toHaveLength(0);
+
+        wrapper.unmount();
+    });
+
+    it('VIEW-004 inline stays in place in its own status region, even in the shell', async () => {
+        const host = withHost();
+        const wrapper = mount(Toast, { props: { result: { toast: message, undo: 'tok-1' }, inline: true }, attachTo: document.body });
+        await nextTick();
+
+        expect(host.textContent).toBe('');
+        expect(root(wrapper).text()).toContain(message);
+
+        wrapper.unmount();
+        host.remove();
     });
 
     it('UI-010 Undo calls undo_apply with the token and emits undone with the result', async () => {
@@ -109,14 +163,14 @@ describe('Toast', () => {
         await undoButton(wrapper).trigger('click');
         await flushPromises();
 
-        expect(wrapper.get('[role="alert"]').text()).toBe('A later change depends on this.');
+        expect(wrapper.get('[data-toast-error]').text()).toBe('A later change depends on this.');
         expect(wrapper.emitted('undone')).toBeUndefined();
         expect(undoButton(wrapper).attributes('disabled')).toBeUndefined();
 
         writeMock.mockResolvedValueOnce({});
         await undoButton(wrapper).trigger('click');
         await flushPromises();
-        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+        expect(wrapper.find('[data-toast-error]').exists()).toBe(false);
         expect(wrapper.emitted('undone')).toHaveLength(1);
     });
 
@@ -132,7 +186,7 @@ describe('Toast', () => {
         await undoButton(wrapper).trigger('click');
         await flushPromises();
 
-        expect(wrapper.get('[role="alert"]').text()).toBe("Couldn't undo. Try again.");
+        expect(wrapper.get('[data-toast-error]').text()).toBe("Couldn't undo. Try again.");
     });
 
     it('CAP-012 a refused undo shows the server message in place of the error prop', async () => {
@@ -144,20 +198,20 @@ describe('Toast', () => {
         await undoButton(wrapper).trigger('click');
         await flushPromises();
 
-        expect(wrapper.get('[role="alert"]').text()).toBe('A later change depends on this.');
+        expect(wrapper.get('[data-toast-error]').text()).toBe('A later change depends on this.');
     });
 
     it('VIEW-004 error: the error prop is announced', () => {
-        expect(toast({ error: "Couldn't undo. Try again." }).get('[role="alert"]').text()).toBe("Couldn't undo. Try again.");
-        expect(toast().find('[role="alert"]').exists()).toBe(false);
+        expect(toast({ error: "Couldn't undo. Try again." }).get('[data-toast-error]').text()).toBe("Couldn't undo. Try again.");
+        expect(toast().find('[data-toast-error]').exists()).toBe(false);
     });
 
-    it('VIEW-004 empty: with no toast nothing is drawn', async () => {
+    it('VIEW-004 empty: with no toast nothing is drawn, and the status region stays for the next one', async () => {
         for (const empty of [{ toast: '', undo: 'tok-1' }, { toast: null, undo: 'tok-1' }, { undo: 'tok-1' }]) {
             const wrapper = toast({ error: 'Nope' }, empty);
 
-            expect(wrapper.find('div').exists()).toBe(false);
-            expect(wrapper.text()).toBe('');
+            expect(root(wrapper).text()).toBe('');
+            expect(wrapper.find('button').exists()).toBe(false);
         }
 
         const wrapper = toast({}, { toast: '', undo: null });
@@ -172,11 +226,11 @@ describe('Toast', () => {
         const wrapper = toast();
         await undoButton(wrapper).trigger('click');
         await flushPromises();
-        expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+        expect(wrapper.find('[data-toast-error]').exists()).toBe(true);
 
         await wrapper.setProps({ result: { toast: 'Set added', undo: 'tok-2' } });
 
-        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+        expect(wrapper.find('[data-toast-error]').exists()).toBe(false);
     });
 
     it('CAP-012 a refusal that lands after the next toast is shown is not shown on it', async () => {
@@ -189,7 +243,7 @@ describe('Toast', () => {
         reject(new CapabilityError('undo_apply', 409, { ok: false, error: { code: 'conflict', message: 'A later change depends on this.' } }));
         await flushPromises();
 
-        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+        expect(wrapper.find('[data-toast-error]').exists()).toBe(false);
         expect(wrapper.emitted('undo-failed')).toEqual([['A later change depends on this.', 'tok-1']]);
     });
 
