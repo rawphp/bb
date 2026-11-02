@@ -20,11 +20,14 @@ const px = (weeks: number, less = 0): string => `${weeks * WEEK - less}px`;
 
 const scroller = ref<HTMLElement>();
 
-// Today comes into view, two weeks in from the leading edge, as the Swift timeline scrolls.
+// The timeline starts at week 1, so the running phase's title shows. When today is past
+// the visible weeks, it scrolls today in, two weeks from the leading edge, as the Swift
+// timeline does.
 onMounted(() => {
     const position = props.plan.today_position;
-    if (position == null || !scroller.value) return;
-    scroller.value.scrollLeft = Math.max(0, Math.floor(position) - 2) * WEEK;
+    const view = scroller.value;
+    if (position == null || !view || position * WEEK < view.clientWidth - WEEK) return;
+    view.scrollLeft = Math.max(0, Math.floor(position) - 2) * WEEK;
 });
 </script>
 
