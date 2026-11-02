@@ -230,6 +230,24 @@ it('WT-003 WT-020 marks what a Health bridge token posts as the bridge\'s over M
         ->and(WeighIn::query()->findOrFail($id)->source)->toBe(MeasurementSource::Shortcut);
 });
 
+it('WT-002 WT-004 counts a weigh-in on the app\'s day, UTC, as Today does: the one it refreshes and the one it fills', function () {
+    // The app has no per-user time zone: today_show's "today" is the UTC date, so a reading belongs to its UTC day.
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    $user = User::factory()->create();
+    WeighInScheduleEntry::factory()->for($user)->create(['weekdays' => [4, 5], 'time' => '07:00']);
+    WeighIn::factory()->for($user)->create(['weighed_at' => '2026-10-08 07:00:00']);
+
+    // 06:58 on Saturday at +10:00 is 20:58 on Friday in UTC.
+    weighInCall($user, 'weigh_in_log', weighInInput(['weighed_at' => '2026-10-10T06:58:00+10:00']))
+        ->assertOk()
+        ->assertJsonPath('data.invalidates', ['weigh_ins_show{}', 'today_show{"date":"2026-10-09"}']);
+
+    $rows = weighInCall($user, 'weigh_ins_show')->json('data.rows');
+    expect(array_column($rows, 'date_label'))->toBe(['Fri, 9 Oct', 'Thu, 8 Oct'])
+        ->and(array_column($rows, 'is_missed'))->toBe([false, false])
+        ->and($rows[0]['weighed_at'])->toBe('2026-10-09T20:58:00+00:00');
+});
+
 it('WT-020 logs a typed step count and names the day it changed', function () {
     Carbon::setTestNow('2026-10-10 12:00:00');
     $user = User::factory()->create();
