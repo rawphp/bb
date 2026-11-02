@@ -4,8 +4,8 @@ namespace App\Domain\Review;
 
 use App\Domain\Model\PlanWeek;
 use App\Domain\Plan\PlanWeekGrid;
+use App\Domain\Progress\Days;
 use DateTimeImmutable;
-use DateTimeZone;
 
 /** REV-001, REV-002, SCH-061: when the weekly review can be done. */
 final class ReviewTiming
@@ -56,7 +56,7 @@ final class ReviewTiming
     {
         $zone = $week->start->getTimezone();
         foreach ($storedWeeks as $row) {
-            if (self::dayOf($row->start, $zone) === self::dayOf($week->start, $zone)) {
+            if (Days::startOf($row->start, $zone) == Days::startOf($week->start, $zone)) {
                 return $row;
             }
         }
@@ -74,10 +74,5 @@ final class ReviewTiming
         $row = self::stored($week, $storedWeeks);
 
         return $row === null ? $week : new PlanWeek($week->start, $week->dayCount, $row->isDeload, $row->isDietBreak, $row->isAway);
-    }
-
-    private static function dayOf(DateTimeImmutable $time, DateTimeZone $zone): string
-    {
-        return $time->setTimezone($zone)->format('Y-m-d');
     }
 }

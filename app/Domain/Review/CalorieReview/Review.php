@@ -13,6 +13,7 @@ use App\Domain\Model\PhaseType;
 use App\Domain\Model\PlanWeek;
 use App\Domain\Model\Profile;
 use App\Domain\Phases\MaintenanceHold;
+use App\Domain\Progress\Days;
 use App\Domain\Review\CalorieOptions;
 use App\Domain\Review\CalorieReview;
 use App\Domain\Review\MeasuredExpenditure;
@@ -380,10 +381,8 @@ final class Review
         }
         $start = $this->phaseStartDay();
         $after = $end->modify('+1 day');
-        $days = (int) $start->diff($after)->days;
-        $days = $after < $start ? -$days : $days;
 
-        return intdiv($days, PlanWeek::LENGTH_IN_DAYS);
+        return intdiv(Days::whole($start, $after, $start->getTimezone()), PlanWeek::LENGTH_IN_DAYS);
     }
 
     // Water (REV-026)
