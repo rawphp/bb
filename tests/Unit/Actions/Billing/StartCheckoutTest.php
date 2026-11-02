@@ -4,6 +4,7 @@ use App\Actions\Billing\StartCheckout;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Rawphp\Capabilities\Support\CapabilityFailure;
 use Tests\Support\FakeStripe;
 
@@ -88,4 +89,32 @@ it('SUB-007 refuses a new Checkout when the page opened before was paid and Stri
     expect(fn () => (new StartCheckout($this->stripe))($user, 'yearly'))
         ->toThrow(CapabilityFailure::class, 'You already have a subscription. Switch plans in Manage subscription.');
     expect($this->stripe->checkouts)->toHaveCount(1);
+});
+
+it('SUB-010 a user whose paid Checkout has since ended can resubscribe', function () {
+    $user = User::factory()->create();
+    (new StartCheckout($this->stripe))($user, 'monthly');
+    $this->stripe->paid = ['cs_test_1'];
+    $customer = (string) Subscription::of($user)?->stripe_customer_id;
+    $this->stripe->subscriptions[$customer] = [['id' => 'sub_1', 'customer' => $customer, 'status' => 'canceled', 'created' => 1_793_000_000]];
+
+    $url = (new StartCheckout($this->stripe))($user, 'yearly');
+
+    expect($url)->toBe('https://checkout.stripe.com/c/pay/cs_test_2')
+        ->and($this->stripe->checkouts[1])->toMatchArray(['price' => 'price_yearly', 'trial_days' => null])
+        ->and(Subscription::of($user)?->checkout_session_id)->toBe('cs_test_2');
+});
+
+it('SUB-007 a second tap while a Checkout is still opening is told to wait, and opens nothing', function () {
+    $user = User::factory()->create();
+    $opening = Cache::lock(StartCheckout::LOCK.$user->getKey(), 10);
+    $opening->get();
+
+    try {
+        expect(fn () => (new StartCheckout($this->stripe))($user, 'monthly'))
+            ->toThrow(CapabilityFailure::class, 'Your Checkout is still opening. Try again in a moment.');
+    } finally {
+        $opening->release();
+    }
+    expect($this->stripe->checkouts)->toBe([]);
 });
