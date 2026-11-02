@@ -89,6 +89,7 @@ const items: HTMLButtonElement[] = [];
 async function toggleMenu(): Promise<void> {
     menuOpen.value = !menuOpen.value;
     if (menuOpen.value) {
+        swipeOpen.value = false;
         await nextTick();
         items[0]?.focus();
     }
@@ -114,6 +115,10 @@ function menuKey(event: KeyboardEvent, index: number): void {
 }
 
 // Swipe left reveals the swipe actions; it never runs one by itself (no full swipe).
+// How far a finger may drift before a touch becomes a swipe, so a tap still focuses a field.
+const SLOP = 10;
+// How far a swipe must travel to reveal or hide the swipe actions.
+const THRESHOLD = 40;
 const swipeOpen = ref(false);
 const drag = ref<number | null>(null);
 const tray = ref<HTMLElement | null>(null);
@@ -143,7 +148,7 @@ function pointerMove(event: PointerEvent): void {
     }
     const dx = event.clientX - start.x;
     if (!start.swiping) {
-        if (Math.abs(dx) < 10 || Math.abs(dx) <= Math.abs(event.clientY - start.y)) {
+        if (Math.abs(dx) < SLOP || Math.abs(dx) <= Math.abs(event.clientY - start.y)) {
             return;
         }
         start.swiping = true;
@@ -159,7 +164,7 @@ function pointerUp(event: PointerEvent): void {
     }
     if (start.swiping) {
         const dx = event.clientX - start.x;
-        swipeOpen.value = swipeOpen.value ? dx < 40 : dx < -40;
+        swipeOpen.value = swipeOpen.value ? dx < THRESHOLD : dx < -THRESHOLD;
     } else if (swipeOpen.value) {
         swipeOpen.value = false;
     }
@@ -210,110 +215,113 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside));
 
 <template>
     <div ref="root">
-        <div class="relative overflow-hidden rounded-xl bg-surface">
+        <div class="relative">
+            <!-- Clips the sliding row and its tray; the menu sits outside it so it is not clipped. -->
+            <div class="relative overflow-hidden rounded-xl bg-surface">
+                <div
+                    v-if="swipeActions.length > 0 && !gym"
+                    ref="tray"
+                    data-swipe-actions
+                    :inert="swipeOpen ? undefined : true"
+                    :aria-hidden="swipeOpen ? undefined : 'true'"
+                    class="absolute inset-y-0 right-0 flex"
+                >
+                    <button
+                        v-for="item in swipeActions"
+                        :key="item.id"
+                        type="button"
+                        class="min-h-tap min-w-20 px-3 text-sm font-semibold select-none"
+                        :class="item.isDestructive ? 'bg-tone-warning-bg text-tone-warning' : 'bg-accent text-on-accent'"
+                        @click="run(item.id)"
+                    >
+                        {{ item.title }}
+                    </button>
+                </div>
+                <div
+                    data-row
+                    :data-open="swipeOpen ? 'true' : undefined"
+                    :aria-busy="loading ? 'true' : undefined"
+                    class="relative flex min-h-tap items-center gap-2 bg-surface px-2"
+                    :class="[canSwipe ? 'touch-pan-y' : '', drag === null ? 'transition-transform duration-300 motion-reduce:transition-none' : '']"
+                    :style="shift ? { transform: `translateX(${shift}px)` } : undefined"
+                    @pointerdown="pointerDown"
+                    @pointermove="pointerMove"
+                    @pointerup="pointerUp"
+                    @pointercancel="pointerCancel"
+                >
+                    <div v-if="menuItems.length > 0" class="shrink-0">
+                        <button
+                            ref="menuButton"
+                            type="button"
+                            :aria-label="`${label} menu`"
+                            aria-haspopup="menu"
+                            :aria-expanded="menuOpen ? 'true' : 'false'"
+                            :aria-controls="menuOpen ? `${uid}-menu` : undefined"
+                            :disabled="inactive"
+                            class="flex min-h-tap min-w-tap items-center justify-center text-accent select-none"
+                            :class="inactive ? 'opacity-60' : ''"
+                            @click="toggleMenu"
+                        >
+                            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75">
+                                <circle cx="12" cy="12" r="9" />
+                                <circle cx="8" cy="12" r="1" fill="currentColor" stroke="none" />
+                                <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+                                <circle cx="16" cy="12" r="1" fill="currentColor" stroke="none" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="flex min-w-0 grow flex-col gap-0.5 py-1.5">
+                        <span class="text-base text-primary-text">{{ label }}</span>
+                        <span v-if="detail" class="text-sm text-secondary-text">{{ detail }}</span>
+                        <span v-if="pending" :id="`${uid}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
+                    </div>
+                    <label
+                        v-for="field in fields"
+                        :key="field.id"
+                        class="flex min-h-tap shrink-0 items-center gap-0.5"
+                        :class="[inactive ? 'opacity-60' : '', loading ? 'animate-pulse' : '']"
+                    >
+                        <input
+                            type="text"
+                            :inputmode="field.kind === 'whole' ? 'numeric' : 'decimal'"
+                            autocomplete="off"
+                            :value="field.value"
+                            :placeholder="field.title"
+                            :aria-label="fieldLabel(field)"
+                            :aria-describedby="describedBy"
+                            :aria-invalid="error ? 'true' : undefined"
+                            :disabled="inactive"
+                            :size="Math.max(field.value.length, field.title.length, 3)"
+                            class="min-h-tap min-w-14 bg-transparent text-right text-base text-primary-text tabular-nums placeholder:text-secondary-text"
+                            @input="emit('update:field', field.id, ($event.target as HTMLInputElement).value)"
+                            @change="emit('commit', field.id, ($event.target as HTMLInputElement).value)"
+                        />
+                        <span v-if="field.unit" aria-hidden="true" class="text-sm text-secondary-text">{{ field.unit }}</span>
+                    </label>
+                    <slot name="trailing" />
+                </div>
+            </div>
             <div
-                v-if="swipeActions.length > 0 && !gym"
-                ref="tray"
-                data-swipe-actions
-                :inert="swipeOpen ? undefined : true"
-                :aria-hidden="swipeOpen ? undefined : 'true'"
-                class="absolute inset-y-0 right-0 flex"
+                v-if="menuOpen"
+                :id="`${uid}-menu`"
+                role="menu"
+                :aria-label="`${label} menu`"
+                class="absolute top-full left-2 z-10 flex min-w-48 flex-col rounded-xl border border-secondary-text/25 bg-surface py-1 shadow-lg"
             >
                 <button
-                    v-for="item in swipeActions"
+                    v-for="(item, index) in menuItems"
                     :key="item.id"
+                    :ref="(el) => (items[index] = el as HTMLButtonElement)"
                     type="button"
-                    class="min-h-tap min-w-20 px-3 text-sm font-semibold select-none"
-                    :class="item.isDestructive ? 'bg-tone-warning-bg text-tone-warning' : 'bg-accent text-on-accent'"
+                    role="menuitem"
+                    tabindex="-1"
+                    class="min-h-tap px-4 text-left text-base select-none"
+                    :class="item.isDestructive ? 'text-tone-warning' : 'text-primary-text'"
                     @click="run(item.id)"
+                    @keydown="menuKey($event, index)"
                 >
                     {{ item.title }}
                 </button>
-            </div>
-            <div
-                data-row
-                :data-open="swipeOpen ? 'true' : undefined"
-                :aria-busy="loading ? 'true' : undefined"
-                class="relative flex min-h-tap items-center gap-2 bg-surface px-2"
-                :class="[canSwipe ? 'touch-pan-y' : '', drag === null ? 'transition-transform' : '']"
-                :style="shift ? { transform: `translateX(${shift}px)` } : undefined"
-                @pointerdown="pointerDown"
-                @pointermove="pointerMove"
-                @pointerup="pointerUp"
-                @pointercancel="pointerCancel"
-            >
-                <div v-if="menuItems.length > 0" class="relative shrink-0">
-                    <button
-                        ref="menuButton"
-                        type="button"
-                        :aria-label="`${label} menu`"
-                        aria-haspopup="menu"
-                        :aria-expanded="menuOpen ? 'true' : 'false'"
-                        :aria-controls="menuOpen ? `${uid}-menu` : undefined"
-                        :disabled="inactive"
-                        class="flex min-h-tap min-w-tap items-center justify-center text-accent select-none"
-                        :class="inactive ? 'opacity-60' : ''"
-                        @click="toggleMenu"
-                    >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75">
-                            <circle cx="12" cy="12" r="9" />
-                            <circle cx="8" cy="12" r="1" fill="currentColor" stroke="none" />
-                            <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
-                            <circle cx="16" cy="12" r="1" fill="currentColor" stroke="none" />
-                        </svg>
-                    </button>
-                    <div
-                        v-if="menuOpen"
-                        :id="`${uid}-menu`"
-                        role="menu"
-                        :aria-label="`${label} menu`"
-                        class="absolute top-full left-0 z-10 flex min-w-48 flex-col rounded-xl border border-secondary-text/25 bg-surface py-1 shadow-lg"
-                    >
-                        <button
-                            v-for="(item, index) in menuItems"
-                            :key="item.id"
-                            :ref="(el) => (items[index] = el as HTMLButtonElement)"
-                            type="button"
-                            role="menuitem"
-                            tabindex="-1"
-                            class="min-h-tap px-4 text-left text-base select-none"
-                            :class="item.isDestructive ? 'text-tone-warning' : 'text-primary-text'"
-                            @click="run(item.id)"
-                            @keydown="menuKey($event, index)"
-                        >
-                            {{ item.title }}
-                        </button>
-                    </div>
-                </div>
-                <div class="flex min-w-0 grow flex-col gap-0.5 py-1.5">
-                    <span class="text-base text-primary-text">{{ label }}</span>
-                    <span v-if="detail" class="text-sm text-secondary-text">{{ detail }}</span>
-                    <span v-if="pending" :id="`${uid}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
-                </div>
-                <label
-                    v-for="field in fields"
-                    :key="field.id"
-                    class="flex min-h-tap shrink-0 items-center gap-0.5"
-                    :class="[inactive ? 'opacity-60' : '', loading ? 'animate-pulse' : '']"
-                >
-                    <input
-                        type="text"
-                        :inputmode="field.kind === 'whole' ? 'numeric' : 'decimal'"
-                        autocomplete="off"
-                        :value="field.value"
-                        :placeholder="field.title"
-                        :aria-label="fieldLabel(field)"
-                        :aria-describedby="describedBy"
-                        :aria-invalid="error ? 'true' : undefined"
-                        :disabled="inactive"
-                        :size="Math.max(field.value.length, field.title.length, 3)"
-                        class="min-h-tap min-w-14 bg-transparent text-right text-base text-primary-text tabular-nums placeholder:text-secondary-text"
-                        @input="emit('update:field', field.id, ($event.target as HTMLInputElement).value)"
-                        @change="emit('commit', field.id, ($event.target as HTMLInputElement).value)"
-                    />
-                    <span v-if="field.unit" aria-hidden="true" class="text-sm text-secondary-text">{{ field.unit }}</span>
-                </label>
-                <slot name="trailing" />
             </div>
         </div>
         <p v-if="error" :id="`${uid}-error`" role="alert" class="mt-2 text-sm text-tone-warning">{{ error }}</p>

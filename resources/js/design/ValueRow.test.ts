@@ -153,6 +153,65 @@ describe('ValueRow', () => {
         wrapper.unmount();
     });
 
+    it('UI-008 the menu opens outside the box that clips the sliding row, so it is not cut off', async () => {
+        const wrapper = row({ swipeActions }, { attachTo: document.body });
+        await wrapper.get('[aria-haspopup="menu"]').trigger('click');
+
+        const menu = wrapper.get('[role="menu"]').element;
+        for (let el = menu.parentElement; el && el !== document.body; el = el.parentElement) {
+            expect(el.classList.contains('overflow-hidden')).toBe(false);
+        }
+        expect(wrapper.get('[data-row]').element.closest('.overflow-hidden')).not.toBeNull();
+        wrapper.unmount();
+    });
+
+    it('UI-008 an open menu or revealed swipe actions close when the row turns loading, disabled or gym', async () => {
+        const wrapper = row({ swipeActions }, { attachTo: document.body });
+        const menuButton = () => wrapper.get('[aria-haspopup="menu"]');
+
+        for (const busy of [{ loading: true }, { disabled: true }]) {
+            await menuButton().trigger('click');
+            expect(wrapper.find('[role="menu"]').exists()).toBe(true);
+            await wrapper.setProps(busy);
+            expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+            await wrapper.setProps({ loading: false, disabled: false });
+        }
+
+        for (const stop of [{ loading: true }, { disabled: true }, { gym: true }]) {
+            await swipe(wrapper, -120);
+            expect(wrapper.get('[data-row]').attributes('data-open')).toBe('true');
+            await wrapper.setProps(stop);
+            expect(wrapper.get('[data-row]').attributes('data-open')).toBeUndefined();
+            await wrapper.setProps({ loading: false, disabled: false, gym: false });
+            expect(wrapper.get('[data-row]').attributes('data-open')).toBeUndefined();
+            expect(wrapper.get('[data-swipe-actions]').attributes('inert')).toBeDefined();
+        }
+        wrapper.unmount();
+    });
+
+    it('UI-008 a tap outside the row, on the row, or on the menu button closes the revealed swipe actions', async () => {
+        const wrapper = row({ swipeActions }, { attachTo: document.body });
+        const open = () => wrapper.get('[data-row]').attributes('data-open');
+
+        await swipe(wrapper, -120);
+        expect(open()).toBe('true');
+        document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+        await wrapper.vm.$nextTick();
+        expect(open()).toBeUndefined();
+
+        await swipe(wrapper, -120);
+        expect(open()).toBe('true');
+        await swipe(wrapper, 0);
+        expect(open()).toBeUndefined();
+
+        await swipe(wrapper, -120);
+        expect(open()).toBe('true');
+        await wrapper.get('[aria-haspopup="menu"]').trigger('click');
+        expect(open()).toBeUndefined();
+        expect(wrapper.find('[role="menu"]').exists()).toBe(true);
+        wrapper.unmount();
+    });
+
     it('UI-008 with no actions there is no menu button', () => {
         expect(row({ menuActions: [] }).find('[aria-haspopup="menu"]').exists()).toBe(false);
     });
@@ -168,6 +227,8 @@ describe('ValueRow', () => {
         expect(wrapper.get('[data-row]').attributes('data-open')).toBe('true');
         expect(tray.attributes('inert')).toBeUndefined();
         expect(wrapper.emitted('action')).toBeUndefined();
+
+        expect(wrapper.get('[data-row]').classes()).toContain('motion-reduce:transition-none');
 
         await tray.findAll('button')[1]!.trigger('click');
         expect(wrapper.emitted('action')).toEqual([['delete']]);
