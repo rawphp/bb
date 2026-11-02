@@ -4,16 +4,16 @@ import WeekStrip, { type WeekStripDay } from '../WeekStrip.vue';
 
 // WeekStrip (UI-001) in each VIEW-004 state.
 const week: WeekStripDay[] = [
-    { id: '2026-10-26', letter: 'M', date: '26', calories: null, isBeforePlan: true },
-    { id: '2026-10-27', letter: 'T', date: '27', calories: '2600', isComplete: true, hasTraining: true },
-    { id: '2026-10-28', letter: 'W', date: '28', calories: '2100', isComplete: true },
-    { id: '2026-10-29', letter: 'T', date: '29', calories: '2600', hasTraining: true, isToday: true },
-    { id: '2026-10-30', letter: 'F', date: '30', calories: '2100' },
-    { id: '2026-10-31', letter: 'S', date: '31', calories: '2600', hasTraining: true },
-    { id: '2026-11-01', letter: 'S', date: '1', calories: '2100' },
+    { date: '2026-10-26', letter: 'M', number: '26', calories_text: '–', is_today: false, is_selected: false, is_complete: false, has_training: false, is_before_plan: true },
+    { date: '2026-10-27', letter: 'T', number: '27', calories_text: '2600', is_today: false, is_selected: false, is_complete: true, has_training: true, is_before_plan: false },
+    { date: '2026-10-28', letter: 'W', number: '28', calories_text: '2100', is_today: false, is_selected: false, is_complete: true, has_training: false, is_before_plan: false },
+    { date: '2026-10-29', letter: 'T', number: '29', calories_text: '2600', is_today: true, is_selected: false, is_complete: false, has_training: true, is_before_plan: false },
+    { date: '2026-10-30', letter: 'F', number: '30', calories_text: '2100', is_today: false, is_selected: false, is_complete: false, has_training: false, is_before_plan: false },
+    { date: '2026-10-31', letter: 'S', number: '31', calories_text: '2600', is_today: false, is_selected: false, is_complete: false, has_training: true, is_before_plan: false },
+    { date: '2026-11-01', letter: 'S', number: '1', calories_text: '2100', is_today: false, is_selected: false, is_complete: false, has_training: false, is_before_plan: false },
 ];
 const selected = ref('2026-10-30');
-const days = computed(() => week.map((day) => ({ ...day, isSelected: day.id === selected.value })));
+const days = computed(() => week.map((day) => ({ ...day, is_selected: day.date === selected.value })));
 const swipes = ref(0);
 </script>
 

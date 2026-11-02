@@ -1,21 +1,26 @@
 <script lang="ts">
-/** One day in a WeekStrip. */
+/**
+ * One day as the server sends it, field for field (`week_show`'s `days`),
+ * so a screen passes the payload straight in: `<WeekStrip :days="data.days">`.
+ */
 export interface WeekStripDay {
-    /** The day's date, "2026-10-27". */
-    id: string;
+    /** The day's date, "2026-10-27". `select` emits it. */
+    date: string;
     /** "M", "T"... */
     letter: string;
     /** "27" */
-    date: string;
-    /** "2100"; null when nothing is planned. */
-    calories: string | null;
-    isComplete?: boolean;
-    hasTraining?: boolean;
-    isSelected?: boolean;
+    number: string;
+    /** "2600", or "–" before the plan (SCH-021). */
+    calories_text: string;
     /** SCH-020: today carries a ring when it is not the selected day. */
-    isToday?: boolean;
+    is_today: boolean;
+    is_selected: boolean;
+    /** SCH-021: the green dot. */
+    is_complete: boolean;
+    /** SCH-022: the dumbbell. */
+    has_training: boolean;
     /** SCH-021: before the plan starts, only the dash shows. */
-    isBeforePlan?: boolean;
+    is_before_plan: boolean;
 }
 </script>
 
@@ -43,11 +48,11 @@ const emit = defineEmits<{
 }>();
 
 function spokenLabel(day: WeekStripDay): string {
-    const parts = [`${day.letter} ${day.date}`];
-    if (day.calories !== null) parts.push(`${day.calories} calories`);
-    if (day.isToday) parts.push('today');
-    if (!day.isBeforePlan) parts.push(day.isComplete ? 'completed' : 'not completed');
-    if (day.hasTraining && !day.isBeforePlan) parts.push('training day');
+    const parts = [`${day.letter} ${day.number}`];
+    if (!day.is_before_plan) parts.push(`${day.calories_text} calories`);
+    if (day.is_today) parts.push('today');
+    if (!day.is_before_plan) parts.push(day.is_complete ? 'completed' : 'not completed');
+    if (day.has_training && !day.is_before_plan) parts.push('training day');
     if (props.pending) parts.push('waiting to sync');
     return parts.join(', ');
 }
@@ -77,7 +82,7 @@ function pick(day: WeekStripDay): void {
         swiped = false;
         return;
     }
-    emit('select', day.id);
+    emit('select', day.date);
 }
 </script>
 
@@ -103,11 +108,11 @@ function pick(day: WeekStripDay): void {
             </template>
             <button
                 v-for="day in days"
-                :key="day.id"
+                :key="day.date"
                 type="button"
                 :aria-label="spokenLabel(day)"
-                :aria-pressed="day.isSelected === true"
-                :aria-current="day.isToday ? 'date' : undefined"
+                :aria-pressed="day.is_selected"
+                :aria-current="day.is_today ? 'date' : undefined"
                 :disabled="loading || disabled"
                 class="flex min-h-tap min-w-0 flex-1 flex-col items-center gap-1 disabled:opacity-60"
                 @click="pick(day)"
@@ -117,26 +122,26 @@ function pick(day: WeekStripDay): void {
                     data-date
                     class="flex size-8 items-center justify-center rounded-full text-base font-semibold"
                     :class="
-                        day.isSelected
+                        day.is_selected
                             ? 'bg-accent text-on-accent'
-                            : day.isToday
+                            : day.is_today
                               ? 'text-primary-text ring-2 ring-inset ring-accent'
                               : 'text-primary-text'
                     "
                 >
-                    {{ day.date }}
+                    {{ day.number }}
                 </span>
                 <span data-calories class="text-xs tabular-nums text-secondary-text" :class="{ 'opacity-50': pending }">
-                    {{ day.calories ?? '–' }}
+                    {{ day.calories_text }}
                 </span>
                 <svg
                     aria-hidden="true"
                     viewBox="0 0 24 24"
                     class="size-3.5"
-                    :data-completion="day.isComplete ? 'complete' : 'open'"
-                    :class="[day.isComplete ? 'text-tone-good' : 'text-secondary-text', { invisible: day.isBeforePlan }]"
+                    :data-completion="day.is_complete ? 'complete' : 'open'"
+                    :class="[day.is_complete ? 'text-tone-good' : 'text-secondary-text', { invisible: day.is_before_plan }]"
                 >
-                    <template v-if="day.isComplete">
+                    <template v-if="day.is_complete">
                         <circle cx="12" cy="12" r="10" fill="currentColor" />
                         <path d="M7.5 12.5l3 3 6-6.5" fill="none" class="stroke-surface" stroke-width="2.5" />
                     </template>
@@ -147,7 +152,7 @@ function pick(day: WeekStripDay): void {
                     data-training
                     viewBox="0 0 24 24"
                     class="size-3 text-accent"
-                    :class="{ invisible: !day.hasTraining || day.isBeforePlan }"
+                    :class="{ invisible: !day.has_training || day.is_before_plan }"
                     fill="currentColor"
                 >
                     <path d="M1 10h2V7h3v10H3v-3H1zm22 0h-2V7h-3v10h3v-3h2zM7 5h3v14H7zm7 0h3v14h-3zm-4 6h4v2h-4z" />

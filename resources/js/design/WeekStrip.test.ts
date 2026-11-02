@@ -1,13 +1,16 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
+import type { WeekShowOutput } from '@/contracts/week_show';
 import GalleryView from '@/features/dev/GalleryView.vue';
+import weekShow from '../../../tests/fixtures/screens/week_show.json';
+import weekShowEmpty from '../../../tests/fixtures/screens/week_show.empty.json';
 import WeekStrip, { type WeekStripDay } from './WeekStrip.vue';
 
 const days: WeekStripDay[] = [
-    { id: '2026-10-26', letter: 'M', date: '26', calories: null, isBeforePlan: true },
-    { id: '2026-10-27', letter: 'T', date: '27', calories: '2600', isComplete: true, hasTraining: true },
-    { id: '2026-10-28', letter: 'W', date: '28', calories: '2100', isToday: true },
-    { id: '2026-10-29', letter: 'T', date: '29', calories: '2600', hasTraining: true, isSelected: true },
+    { date: '2026-10-26', letter: 'M', number: '26', calories_text: '–', is_today: false, is_selected: false, is_complete: false, has_training: false, is_before_plan: true },
+    { date: '2026-10-27', letter: 'T', number: '27', calories_text: '2600', is_today: false, is_selected: false, is_complete: true, has_training: true, is_before_plan: false },
+    { date: '2026-10-28', letter: 'W', number: '28', calories_text: '2100', is_today: true, is_selected: false, is_complete: false, has_training: false, is_before_plan: false },
+    { date: '2026-10-29', letter: 'T', number: '29', calories_text: '2600', is_today: false, is_selected: true, is_complete: false, has_training: true, is_before_plan: false },
 ];
 
 function strip(props: Record<string, unknown> = {}) {
@@ -53,7 +56,7 @@ describe('WeekStrip', () => {
 
         expect(visible(days[1]!)).toBe(true);
         expect(visible(days[2]!)).toBe(false);
-        expect(visible({ ...days[0]!, hasTraining: true })).toBe(false);
+        expect(visible({ ...days[0]!, has_training: true })).toBe(false);
     });
 
     it('SCH-020 fills the selected date with the accent, and rings today only when it is not selected', () => {
@@ -62,12 +65,12 @@ describe('WeekStrip', () => {
         expect(dates[3]).toContain('bg-accent');
         expect(dates[2]).toContain('ring-accent');
         expect(dates[2]).not.toContain('bg-accent');
-        const selectedToday = strip({ days: [{ ...days[2]!, isSelected: true }] }).get('[data-date]').classes();
+        const selectedToday = strip({ days: [{ ...days[2]!, is_selected: true }] }).get('[data-date]').classes();
         expect(selectedToday).toContain('bg-accent');
         expect(selectedToday).not.toContain('ring-accent');
     });
 
-    it('SCH-020 tapping a day emits its id', async () => {
+    it('SCH-020 tapping a day emits its date', async () => {
         const wrapper = strip();
 
         await buttons(wrapper)[2]!.trigger('click');
@@ -119,6 +122,17 @@ describe('WeekStrip', () => {
         expect(buttons(strip()).map((day) => day.attributes('aria-pressed'))).toEqual(['false', 'false', 'false', 'true']);
         expect(buttons(strip()).map((day) => day.attributes('aria-current'))).toEqual([undefined, undefined, 'date', undefined]);
         expect(strip().get('[role="group"]').attributes('aria-label')).toBe('Week');
+    });
+
+    it("UI-001 takes week_show's days as the server sends them", () => {
+        expectTypeOf<WeekShowOutput['days']>().toExtend<WeekStripDay[]>();
+
+        const week = mount(WeekStrip, { props: { days: weekShow.days } });
+        expect(buttons(week).map((day) => day.attributes('aria-label'))[4]).toBe(
+            'W 23, 2600 calories, today, not completed, training day',
+        );
+        const before = mount(WeekStrip, { props: { days: weekShowEmpty.days } });
+        expect(buttons(before).map((day) => day.attributes('aria-label'))[0]).toBe('S 19');
     });
 
     it('VIEW-004 empty: no days draws no buttons', () => {
