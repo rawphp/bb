@@ -1,0 +1,75 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "week_start": {
+            "type": "string",
+            "format": "date"
+        },
+        "option": {
+            "type": "string",
+            "enum": [
+                "recommendation",
+                "repeat_this_week",
+                "choose_own",
+                "drop_fatigue",
+                "cut_calories",
+                "add_steps"
+            ]
+        },
+        "own_kcal": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "description": "Average kcal a day for choose_own.",
+            "minimum": 0
+        },
+        "deload_too": {
+            "type": [
+                "boolean",
+                "null"
+            ],
+            "description": "REV-011: \"Make this your deload week too?\"; null for the default."
+        },
+        "update_step_plan": {
+            "type": "boolean",
+            "description": "REV-050: update the step plan to the walked average."
+        },
+        "moves": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "from_index": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 6
+                    },
+                    "to_index": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 6
+                    },
+                    "kcal": {
+                        "type": "integer",
+                        "minimum": 25,
+                        "maximum": 500
+                    }
+                },
+                "required": [
+                    "from_index",
+                    "to_index",
+                    "kcal"
+                ]
+            },
+            "description": "REV-004: calorie moves, applied in order."
+        }
+    },
+    "required": [
+        "week_start",
+        "option"
+    ]
+}

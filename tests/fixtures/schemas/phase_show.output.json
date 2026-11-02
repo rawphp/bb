@@ -1,0 +1,335 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string",
+            "enum": [
+                "fatLoss",
+                "muscleGain",
+                "maintenance",
+                "miniCut"
+            ]
+        },
+        "title": {
+            "type": "string"
+        },
+        "dates_text": {
+            "type": "string"
+        },
+        "progress": {
+            "type": [
+                "number",
+                "null"
+            ]
+        },
+        "progress_text": {
+            "type": "string"
+        },
+        "length_text": {
+            "type": "string"
+        },
+        "rate_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "start_weight_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "target_weight_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "current_weight_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "change_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "event_date": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "event_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "warnings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "tone": {
+                        "type": "string",
+                        "enum": [
+                            "good",
+                            "neutral",
+                            "warning",
+                            "info"
+                        ]
+                    }
+                },
+                "required": [
+                    "text",
+                    "tone"
+                ]
+            }
+        },
+        "event_offer": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "weeks": {
+                    "type": "integer"
+                }
+            },
+            "required": [
+                "text",
+                "weeks"
+            ]
+        },
+        "can_end": {
+            "type": "boolean"
+        },
+        "lengths": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "weeks": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "ends_text": {
+                        "type": "string"
+                    },
+                    "is_selected": {
+                        "type": "boolean"
+                    },
+                    "warnings": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                },
+                                "tone": {
+                                    "type": "string",
+                                    "enum": [
+                                        "good",
+                                        "neutral",
+                                        "warning",
+                                        "info"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "text",
+                                "tone"
+                            ]
+                        }
+                    },
+                    "mesocycles": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "label": {
+                                    "type": "string"
+                                },
+                                "weeks_text": {
+                                    "type": "string"
+                                },
+                                "dates_text": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "label",
+                                "weeks_text",
+                                "dates_text"
+                            ]
+                        }
+                    },
+                    "fixes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "fix": {
+                                    "type": "string",
+                                    "enum": [
+                                        "move_end_to_deload",
+                                        "change_mesocycle_length",
+                                        "keep_end"
+                                    ]
+                                },
+                                "text": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "fix",
+                                "text"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "label",
+                    "ends_text",
+                    "is_selected",
+                    "warnings",
+                    "mesocycles",
+                    "fixes"
+                ]
+            }
+        },
+        "goals": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "fatLoss",
+                            "muscleGain",
+                            "maintenance",
+                            "miniCut"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "from_text": {
+                        "type": "string"
+                    },
+                    "length_text": {
+                        "type": "string"
+                    },
+                    "rate_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "refusal": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "warnings": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                },
+                                "tone": {
+                                    "type": "string",
+                                    "enum": [
+                                        "good",
+                                        "neutral",
+                                        "warning",
+                                        "info"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "text",
+                                "tone"
+                            ]
+                        }
+                    },
+                    "training_lines": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "text"
+                            ]
+                        }
+                    },
+                    "progression_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "title",
+                    "from_text",
+                    "length_text",
+                    "warnings",
+                    "training_lines"
+                ]
+            }
+        }
+    },
+    "required": [
+        "id",
+        "type",
+        "title",
+        "dates_text",
+        "progress_text",
+        "length_text",
+        "warnings",
+        "can_end",
+        "lengths",
+        "goals"
+    ]
+}

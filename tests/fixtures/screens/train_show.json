@@ -1,0 +1,95 @@
+{
+    "todays_session": null,
+    "current": {
+        "id": "01JB6Q3V8T2K9WZ4M5N7P1R3S5",
+        "name": "Hypertrophy Block",
+        "week_text": "Week 5 of 5 · Deload",
+        "phase_title": "Muscle gain",
+        "dates_text": "7 Sep – 11 Oct 2026",
+        "next_mesocycle": {
+            "starts_text": "Starts Monday 12 Oct",
+            "start_date": "2026-10-12",
+            "copy_source_id": "01JB6Q3V8T2K9WZ4M5N7P1R3S5",
+            "template_phase": "gain",
+            "priority_notice": null,
+            "active_rest": {
+                "text": "Training has gone flat. An active rest, the deload week plus a week off, is recommended.",
+                "tone": "info"
+            }
+        }
+    },
+    "draft": {
+        "id": "01JBA7X1Y3Z5A7B9C1D3E5F7G9",
+        "name": "Hypertrophy Block 3",
+        "text": "Saved as a draft. Tap to continue building.",
+        "replace_warning": "You have an unfinished mesocycle. Starting a new one replaces it."
+    },
+    "sections": [
+        {
+            "status": "current",
+            "title": "Current",
+            "rows": [
+                {
+                    "id": "01JB6Q3V8T2K9WZ4M5N7P1R3S5",
+                    "name": "Hypertrophy Block",
+                    "dates_text": "7 Sep – 11 Oct 2026",
+                    "summary_text": "5 weeks · Muscle gain"
+                }
+            ]
+        },
+        {
+            "status": "planned",
+            "title": "Planned",
+            "rows": [
+                {
+                    "id": "01JBC2H4J6K8M0N2P4Q6R8S0T2",
+                    "name": "Mini-cut",
+                    "dates_text": "19 Oct – 15 Nov 2026",
+                    "summary_text": "4 weeks · Mini-cut"
+                }
+            ]
+        },
+        {
+            "status": "past",
+            "title": "Past",
+            "rows": [
+                {
+                    "id": "01J7ZK2C4D6E8F0G1H3J5K7M9N",
+                    "name": "Foundation Block",
+                    "dates_text": "27 Jul – 30 Aug 2026",
+                    "summary_text": "5 weeks · Muscle gain"
+                }
+            ]
+        }
+    ],
+    "create_routes": [
+        {
+            "route": "template",
+            "title": "Template",
+            "available": true,
+            "copy_source_id": null,
+            "priority_notice": null
+        },
+        {
+            "route": "copy_previous",
+            "title": "Copy previous mesocycle",
+            "available": true,
+            "copy_source_id": "01JB6Q3V8T2K9WZ4M5N7P1R3S5",
+            "priority_notice": null
+        },
+        {
+            "route": "builder",
+            "title": "Meso Builder",
+            "available": true,
+            "copy_source_id": null,
+            "priority_notice": null
+        },
+        {
+            "route": "scratch",
+            "title": "Build from scratch",
+            "available": true,
+            "copy_source_id": null,
+            "priority_notice": null
+        }
+    ]
+}

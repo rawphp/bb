@@ -1,0 +1,107 @@
+{
+    "state": "ready",
+    "message": null,
+    "week_start": "2026-10-05",
+    "week_label": "5 Oct to 11 Oct",
+    "steps": [
+        {
+            "key": "weigh_ins",
+            "title": "Weigh-ins"
+        },
+        {
+            "key": "preview",
+            "title": "Preview"
+        }
+    ],
+    "weigh_ins": {
+        "rows": [],
+        "empty_message": "No weigh-ins were scheduled or logged this week.",
+        "missing": {
+            "text": "Missing · Add",
+            "tone": "warning"
+        },
+        "add_title": "Add a weigh-in"
+    },
+    "meals": null,
+    "training": null,
+    "progress": null,
+    "goal": null,
+    "calories": null,
+    "preview": {
+        "days": [
+            {
+                "index": 0,
+                "date": "2026-10-12",
+                "date_label": "Mon, 12 Oct",
+                "detail": "Training · Push A",
+                "kcal_label": "2500 kcal",
+                "can_move": true,
+                "is_locked": false
+            },
+            {
+                "index": 1,
+                "date": "2026-10-13",
+                "date_label": "Tue, 13 Oct",
+                "detail": "Training · Pull A",
+                "kcal_label": "2500 kcal",
+                "can_move": true,
+                "is_locked": false
+            },
+            {
+                "index": 2,
+                "date": "2026-10-14",
+                "date_label": "Wed, 14 Oct",
+                "detail": "Rest",
+                "kcal_label": "2250 kcal",
+                "can_move": true,
+                "is_locked": false
+            },
+            {
+                "index": 3,
+                "date": "2026-10-15",
+                "date_label": "Thu, 15 Oct",
+                "detail": "Training · Legs A",
+                "kcal_label": "2500 kcal",
+                "can_move": true,
+                "is_locked": false
+            },
+            {
+                "index": 4,
+                "date": "2026-10-16",
+                "date_label": "Fri, 16 Oct",
+                "detail": "Training · Push B",
+                "kcal_label": "2500 kcal",
+                "can_move": true,
+                "is_locked": false
+            },
+            {
+                "index": 5,
+                "date": "2026-10-17",
+                "date_label": "Sat, 17 Oct",
+                "detail": "Rest",
+                "kcal_label": "2250 kcal",
+                "can_move": true,
+                "is_locked": false
+            },
+            {
+                "index": 6,
+                "date": "2026-10-18",
+                "date_label": "Sun, 18 Oct",
+                "detail": "Training · Pull B",
+                "kcal_label": "2500 kcal",
+                "can_move": true,
+                "is_locked": false
+            }
+        ],
+        "hint": "Tap a day to move calories between days. The week's total stays the same.",
+        "error": null,
+        "move": {
+            "title": "Move calories",
+            "min_kcal": 25,
+            "max_kcal": 500,
+            "step_kcal": 25
+        }
+    },
+    "can_save": true,
+    "save_title": "Save"
+}
