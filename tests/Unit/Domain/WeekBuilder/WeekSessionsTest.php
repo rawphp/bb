@@ -302,17 +302,26 @@ it('SCH-051 a row\'s start is read in the time zone of the plan', function () {
         ->and($plan(15)?->session?->time->start)->toEqual(ClockTime::at(7))
         ->and($plan(14)?->session?->session->name)->toBe('A')
         ->and($plan(16)?->session)->toBeNull();
+});
 
-    // The date asked about is read in the plan's zone too: 21:00 UTC on Monday 14 is Brisbane's Tuesday 15.
-    $atUtc = WeekSessions::plan(
+it('SCH-051 the date asked about is read in the time zone of the plan', function () {
+    // A Brisbane plan (UTC+10) with B moved to 07:00 on Tuesday 15 local; 21:00 UTC on Monday 14 is that Tuesday.
+    $grid = new PlanWeekGrid(PlanFixtures::date(2026, 9, 10, zone: 'Australia/Brisbane'), 2);
+    $rows = [new SessionRow(week: 2, day: 2, start: PlanFixtures::date(2026, 9, 15, 7, zone: 'Australia/Brisbane'), isSkipped: false)];
+    $plan = WeekSessions::plan(
         on: PlanFixtures::date(2026, 9, 14, 21), grid: $grid, mesocycle: weekSessionsMesocycle(), mesocycleStartWeek: 0,
         trainingDays: weekSessionsTrainingDays(), rows: $rows,
     );
-    expect(weekSessionsName($atUtc))->toBe('B');
+
+    expect(weekSessionsName($plan))->toBe('B');
 });
 
 it('SCH-039 a session placed by its row alone takes the first training day\'s length', function () {
-    $days = array_map(fn (int $weekday) => new TrainingDay($weekday, new WorkoutTime(ClockTime::at(17, 30), 45)), [2, 4, 6]);
+    $days = array_map(
+        fn (int $weekday, int $minutes) => new TrainingDay($weekday, new WorkoutTime(ClockTime::at(17, 30), $minutes)),
+        [2, 4, 6],
+        [45, 50, 55],
+    );
     $result = WeekSessions::build(
         planWeek: weekSessionsGrid()->planWeek(1), week: 1, mesocycle: weekSessionsMesocycle(['A', 'B', 'C', 'D']),
         mesocycleStartWeek: 0, trainingDays: $days,

@@ -639,8 +639,9 @@ it('NUT-021 a calorie move shifts one day to another and the meals follow', func
         ->and($moved->days[2]->target->kcal)->toEqualWithDelta($plain->days[2]->target->kcal - 50, F::ACC)
         ->and($moved->days[6]->target->kcal)->toEqualWithDelta($plain->days[6]->target->kcal + 50, F::ACC)
         ->and(array_sum(F::kcal($moved)))->toEqualWithDelta(array_sum(F::kcal($plain)), F::ACC);
-    F::assertMealsSumToDay($moved->days[1]);
-    F::assertMealsSumToDay($moved->days[5]);
+    foreach ([1, 5, 2, 6] as $index) {
+        F::assertMealsSumToDay($moved->days[$index]);
+    }
 });
 
 it('NUT-022 a move past the band is refused as a move', function () {
@@ -685,18 +686,21 @@ it('SCH-041 the busy list applies to every day unless busy periods are set by we
     );
     $plain = $times(F::nutrition());
     $everyDay = $times(new NutritionSchedule(steps: F::steps(), eatingWindow: F::window(), mealsPerDay: 6, busy: [$lunch]));
-    // Friday only (ISO 5): the other weekdays have no entry, so no busy periods, whatever the busy list says.
-    $fridayOnly = $times(new NutritionSchedule(
-        steps: F::steps(), eatingWindow: F::window(), mealsPerDay: 6, busy: [$lunch], busyByWeekday: [5 => [$lunch]],
+    // Friday and Sunday only, as ISO weekdays (5, 7; Sunday is 0 in PHP's 'w'): the other weekdays have no entry, so
+    // no busy periods, whatever the busy list says.
+    $fridayAndSunday = $times(new NutritionSchedule(
+        steps: F::steps(), eatingWindow: F::window(), mealsPerDay: 6, busy: [$lunch],
+        busyByWeekday: [5 => [$lunch], 7 => [$lunch]],
     ));
 
     expect($everyDay[0])->not->toEqual($plain[0])
         ->and($everyDay[4])->not->toEqual($plain[4])
-        ->and($fridayOnly[0])->toEqual($plain[0])
-        ->and($fridayOnly[4])->not->toEqual($plain[4]);
+        ->and($fridayAndSunday[0])->toEqual($plain[0])
+        ->and($fridayAndSunday[4])->not->toEqual($plain[4])
+        ->and($fridayAndSunday[6])->not->toEqual($plain[6]);
 });
 
-it('NUT-003 a plan outside UTC reads each day\'s age in its own time zone', function () {
+it('NUT-001 a plan outside UTC reads each day\'s age in its own time zone', function () {
     // Born on 6 January: in Brisbane the plan's Tuesday 6 January is the birthday, though it starts on Monday 5 in UTC.
     $grid = new PlanWeekGrid(PlanFixtures::date(2026, 1, 5, zone: 'Australia/Brisbane'), PlanFixtures::MONDAY);
     $plan = PlanFixtures::plan([PlanFixtures::phase(PhaseType::FatLoss, 0, 8, -0.75, $grid)], $grid);
@@ -708,6 +712,6 @@ it('NUT-003 a plan outside UTC reads each day\'s age in its own time zone', func
     );
     $built = F::build(plan: $plan, profile: $profile);
 
-    // Tuesday and Thursday are rest days on the same steps, both after the birthday.
+    // Tuesday and Thursday are rest days on the same steps, both on or after the birthday.
     expect($built->days[1]->target->kcal)->toEqualWithDelta($built->days[3]->target->kcal, F::ACC);
 });
