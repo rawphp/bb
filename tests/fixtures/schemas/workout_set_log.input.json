@@ -14,7 +14,8 @@
             "additionalProperties": false,
             "properties": {
                 "value": {
-                    "type": "number"
+                    "type": "number",
+                    "minimum": 0
                 },
                 "unit": {
                     "type": "string",

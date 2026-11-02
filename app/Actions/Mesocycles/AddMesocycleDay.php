@@ -32,11 +32,14 @@ final class AddMesocycleDay
         }
 
         $weekday = $snapshot->newDayWeekday($mesocycle);
+        $fromWeek = $calendar->hasStarted() ? $calendar->currentWeek() - 1 : 0;
+        // MESO-034: the weeks it stores keep the Off muscles out, as they ran.
+        $ran = MesocycleRules::freezingWeeks($snapshot->rotationAsRun($mesocycle), $mesocycle->earlierWeekRows(), $mesocycle->laterWeekIds(), $fromWeek);
         $added = MesocycleRules::addingDay(
             $days,
-            $mesocycle->earlierWeekRows(),
-            $mesocycle->laterWeekIds(),
-            fromWeek: $calendar->hasStarted() ? $calendar->currentWeek() - 1 : 0,
+            $ran['earlier_weeks'],
+            $ran['later_weeks'],
+            fromWeek: $fromWeek,
             day: [
                 'id' => $dayId,
                 'label' => $weekday === null ? 'Day '.(count($days) + 1) : MesocycleRules::weekdayName($weekday),

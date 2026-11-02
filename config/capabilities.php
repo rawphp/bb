@@ -55,11 +55,11 @@ return [
             'profiles' => [],
             'require_profile' => true,
             // Product MCP (app/Mcp) serves the in-app agent's whole tool profile (AGT-040),
-            // about 85 capabilities in the spec. Below that, the package would audit every
-            // request past warn and refuse every request past hard. A freeze test fails the
-            // gate before the profile outgrows them.
-            'max_tools_warn' => 128,
-            'max_tools_hard' => 128,
+            // which grows toward the 150 capabilities of the contract (tests/fixtures/schemas).
+            // Below that, the package would audit every request past warn and refuse every
+            // request past hard. A freeze test fails the gate before the profile outgrows them.
+            'max_tools_warn' => 160,
+            'max_tools_hard' => 160,
             // Config-driven server auto-registration via McpToolAdapter (ORI-790).
             // Host enables surface + installs laravel/mcp; package registers servers
             // from profiles (or explicit servers map) — no hand-wiring every tool.

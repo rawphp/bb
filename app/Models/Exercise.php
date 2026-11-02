@@ -19,6 +19,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * A library exercise, or a user's custom one when it has a user.
  *
  * @property MuscleGroup $muscle_group
+ * @property Equipment $equipment
+ * @property ExerciseLoadType $load_type
+ * @property SfrRating $sfr_rating
+ * @property bool $is_compound
  */
 #[Fillable([
     'name', 'muscle_group', 'equipment', 'load_type', 'sfr_rating',

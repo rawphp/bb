@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Progression\WorkoutStatus;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\WorkoutSessionFactory;
 use DateTimeInterface;
@@ -35,6 +36,12 @@ class WorkoutSession extends Model
         return $this->hasMany(WorkoutSet::class);
     }
 
+    /** @return HasMany<WorkoutExercise, $this> the session's exercises in order (WO-002) */
+    public function exercises(): HasMany
+    {
+        return $this->hasMany(WorkoutExercise::class)->orderBy('position');
+    }
+
     /** @return HasMany<MuscleFeedback, $this> */
     public function muscleFeedback(): HasMany
     {
@@ -45,6 +52,12 @@ class WorkoutSession extends Model
     public function exerciseFeedback(): HasMany
     {
         return $this->hasMany(ExerciseFeedback::class);
+    }
+
+    /** Where the session stands: skipped, finished, under way, or not started (SCH-051: a row that only moved it). */
+    public function status(): WorkoutStatus
+    {
+        return WorkoutStatus::of((bool) $this->is_skipped, $this->actual_start_at !== null, $this->actual_end_at !== null);
     }
 
     /**

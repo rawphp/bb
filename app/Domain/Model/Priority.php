@@ -18,4 +18,14 @@ enum Priority: string
             self::Maintain => 1,
         };
     }
+
+    /** MESO-030: "Emphasize", "Grow", "Maintain". */
+    public function title(): string
+    {
+        return match ($this) {
+            self::Emphasize => 'Emphasize',
+            self::Grow => 'Grow',
+            self::Maintain => 'Maintain',
+        };
+    }
 }

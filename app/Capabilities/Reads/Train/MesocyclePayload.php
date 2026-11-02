@@ -22,12 +22,11 @@ use App\Capabilities\Train\Data\Pill;
 use App\Domain\Defaults\TBL012TrainingDefaults;
 use App\Domain\Defaults\TBL012TrainingDefaults\Column;
 use App\Domain\Defaults\TBL012TrainingDefaults\RepRangeBias;
-use App\Domain\Defaults\TBL020MesocycleLength;
 use App\Domain\Mesocycle\MesoBuilder;
 use App\Domain\Mesocycle\MesoBuilder\Warning;
 use App\Domain\Mesocycle\MesocycleCalendar;
+use App\Domain\Mesocycle\MesocycleRules;
 use App\Domain\Model\ClosedRange;
-use App\Domain\Model\ExperienceLevel;
 use App\Domain\Model\Mesocycle as DomainMesocycle;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\PhaseType;
@@ -53,10 +52,10 @@ final class MesocyclePayload
     public const DIET_BREAK_OFFER = 'You are in fat loss. Start a diet break next week?';
 
     /** MESO-003: no phase covers the start of the draft. */
-    public const NO_PHASE = 'No phase covers this date. Pick a start inside your plan.';
+    public const NO_PHASE = MesocycleRules::NO_PHASE;
 
     /** MESO-020: days per week in the Meso Builder. */
-    public const DAYS_PER_WEEK = [2, 6];
+    public const DAYS_PER_WEEK = MesoBuilder::DAYS_PER_WEEK;
 
     /** MESO-014: sets of a slot. */
     public const SETS = [1, 20];
@@ -217,16 +216,13 @@ final class MesocyclePayload
         $days = $mesocycle->dayRows();
         // The options list the whole library, so read it once, before the slots look up their names in it.
         $library = $snapshot->exercises();
-        $experience = ExperienceLevel::tryFrom((string) $snapshot->profile?->experience) ?? ExperienceLevel::Intermediate;
-        $lengths = TBL020MesocycleLength::row($experience);
-        $weeksRange = new ClosedRange($lengths->allowedWeeks->lower, min($lengths->allowedWeeks->upper, MesocycleCalendar::MAX_WEEKS));
-        $weeks = (int) max($weeksRange->lower, min($weeksRange->upper, $mesocycle->weeks ?? $lengths->defaultWeeks));
+        $weeksRange = MesocycleRules::lengthRange($snapshot->experience());
+        $weeks = (int) max($weeksRange->lower, min($weeksRange->upper, $mesocycle->weeks ?? MesocycleRules::defaultLength($snapshot->experience())));
 
-        $start = $mesocycle->start_date === null ? $snapshot->defaultStart() : $snapshot->snapped(TrainSnapshot::day($mesocycle->start_date));
+        $start = $snapshot->buildStart($mesocycle);
         $phase = $snapshot->phaseCovering($start);
-        $column = Column::for($phase->type ?? PhaseType::Maintenance, $mesocycle->is_resensitization);
-        $stored = $mesocycle->muscle_priorities ?? [];
-        $priorities = $stored !== [] ? $stored : array_map(fn (Priority $p) => $p->value, MesoBuilder::defaultPriorities($column));
+        $column = $snapshot->buildColumn($mesocycle);
+        $priorities = $snapshot->buildPriorities($mesocycle);
         $training = $snapshot->trainingWeekdays();
         // MESO-005: days are labelled as the saved view labels them ({@see Mesocycle::dayRows()}); a split with any day
         // on a weekday is a weekday split.
@@ -244,7 +240,7 @@ final class MesocyclePayload
             phase_title: $phase?->type->title(),
             rep_range_text: $phase === null ? null : self::repRanges(TBL012TrainingDefaults::row($column)->repRangeBias),
             phase_warning: $phase === null ? new Pill(self::NO_PHASE, Tone::Warning->value) : null,
-            days_per_week: max(self::DAYS_PER_WEEK[0], min(self::DAYS_PER_WEEK[1], count($days) ?: (count($training) ?: 3))),
+            days_per_week: $mesocycle->days_per_week ?? MesoBuilder::daysPerWeek($days, $training),
             days_per_week_options: self::options(new ClosedRange(...self::DAYS_PER_WEEK), 'day'),
             priorities: self::priorityRows($priorities),
             warnings: array_map(
@@ -330,7 +326,7 @@ final class MesocyclePayload
      */
     private static function priorityOptions(bool $withOff): array
     {
-        $options = array_map(fn (Priority $p) => new MesocyclePriorityOption($p->value, self::priorityTitle($p)), Priority::cases());
+        $options = array_map(fn (Priority $p) => new MesocyclePriorityOption($p->value, $p->title()), Priority::cases());
 
         return $withOff ? [...$options, new MesocyclePriorityOption(null, 'Off')] : $options;
     }
@@ -353,18 +349,9 @@ final class MesocyclePayload
                 muscle: $muscle->value,
                 muscle_title: $muscle->title(),
                 priority: $priority?->value,
-                priority_title: $priority === null ? 'Off' : self::priorityTitle($priority),
+                priority_title: $priority === null ? 'Off' : $priority->title(),
                 bars: $priority?->bars() ?? 0,
             );
         }, MuscleGroup::cases());
-    }
-
-    private static function priorityTitle(Priority $priority): string
-    {
-        return match ($priority) {
-            Priority::Emphasize => 'Emphasize',
-            Priority::Grow => 'Grow',
-            Priority::Maintain => 'Maintain',
-        };
     }
 }

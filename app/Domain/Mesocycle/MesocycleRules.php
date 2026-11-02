@@ -2,7 +2,13 @@
 
 namespace App\Domain\Mesocycle;
 
+use App\Domain\Defaults\TBL020MesocycleLength;
+use App\Domain\Model\ClosedRange;
+use App\Domain\Model\ExerciseSlot;
+use App\Domain\Model\ExperienceLevel;
+use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\PhaseType;
+use App\Domain\Model\Session;
 use App\Domain\Plan\DeloadCalories;
 use App\Domain\Plan\PlanWeekGrid;
 use DateTimeImmutable;
@@ -14,6 +20,9 @@ use DateTimeImmutable;
  */
 final class MesocycleRules
 {
+    /** MESO-003: no phase covers a build's start, so it cannot be saved. */
+    public const NO_PHASE = 'No phase covers this date. Pick a start inside your plan.';
+
     private const WEEKDAYS = [1 => 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     /** MESO-004: today when it begins a plan week, otherwise the next plan week's first day. */
@@ -114,22 +123,157 @@ final class MesocycleRules
      */
     public static function addingDay(array $days, array $earlierWeeks, array $laterWeeks, int $fromWeek, array $day): array
     {
-        $byId = array_column($days, null, 'id');
-        for ($week = count($earlierWeeks); $week < $fromWeek; $week++) {
-            $ids = $laterWeeks === [] ? array_keys($byId) : array_shift($laterWeeks);
-            $earlierWeeks[] = array_values(array_filter(array_map(fn (string $id) => $byId[$id] ?? null, $ids)));
+        $frozen = self::freezingWeeks($days, $earlierWeeks, $laterWeeks, $fromWeek);
+        // A week from `$fromWeek` on already stored (this week, by a change to the Off set) runs the new day too.
+        for ($week = $fromWeek; $week < count($frozen['earlier_weeks']); $week++) {
+            $frozen['earlier_weeks'][$week][] = $day;
         }
 
         return [
             'days' => [...$days, $day],
-            'earlier_weeks' => $earlierWeeks,
-            'later_weeks' => array_map(fn (array $ids) => [...$ids, $day['id']], $laterWeeks),
+            'earlier_weeks' => $frozen['earlier_weeks'],
+            'later_weeks' => array_map(fn (array $ids) => [...$ids, $day['id']], $frozen['later_weeks']),
         ];
+    }
+
+    /**
+     * SCH-039, MESO-034, MESO-045: the weeks before `$toWeek` (0 is the first) stored as they ran, so a change to the
+     * rotation from then on leaves them alone. A week already stored keeps its days; a later week stored as day ids
+     * is stored as those days, and the later weeks after it stay ids.
+     *
+     * @template TDay of array{id: string}
+     *
+     * @param  list<TDay>  $days  the rotation
+     * @param  list<list<TDay>>  $earlierWeeks
+     * @param  list<list<string>>  $laterWeeks  each later week's day ids
+     * @return array{earlier_weeks: list<list<TDay>>, later_weeks: list<list<string>>}
+     */
+    public static function freezingWeeks(array $days, array $earlierWeeks, array $laterWeeks, int $toWeek): array
+    {
+        $byId = array_column($days, null, 'id');
+        for ($week = count($earlierWeeks); $week < $toWeek; $week++) {
+            $ids = $laterWeeks === [] ? array_keys($byId) : array_shift($laterWeeks);
+            $earlierWeeks[] = array_values(array_filter(array_map(fn (string $id) => $byId[$id] ?? null, $ids)));
+        }
+
+        return ['earlier_weeks' => $earlierWeeks, 'later_weeks' => $laterWeeks];
     }
 
     /** MESO-005: an ISO weekday's name, which labels a day of a weekday split. */
     public static function weekdayName(int $weekday): string
     {
         return self::WEEKDAYS[$weekday] ?? 'Day';
+    }
+
+    /**
+     * MESO-005: weekday names need one training day per session.
+     *
+     * @param  list<int>  $trainingWeekdays
+     */
+    public static function canUseWeekdays(int $sessionCount, array $trainingWeekdays): bool
+    {
+        return $sessionCount > 0 && count($trainingWeekdays) === $sessionCount;
+    }
+
+    /**
+     * MESO-005: a build's days as the style labels them. A weekday split maps the days to the training weekdays in
+     * order, and each reads as its weekday's name; when the counts differ, or the split floats, the days are "Day 1,
+     * Day 2" with no weekday. Either way no label is stored: a day reads as its weekday's name or its number.
+     *
+     * @param  list<array<string, mixed>>  $days
+     * @param  'weekdays'|'floating'  $style
+     * @param  list<int>  $trainingWeekdays  ISO, in plan-week order
+     * @return list<array<string, mixed>>
+     */
+    public static function labelDays(array $days, string $style, array $trainingWeekdays): array
+    {
+        $weekdays = $style === 'weekdays' && self::canUseWeekdays(count($days), $trainingWeekdays);
+
+        return array_map(
+            fn (array $day, int $index) => array_replace($day, ['label' => null, 'weekday' => $weekdays ? $trainingWeekdays[$index] : null]),
+            $days,
+            array_keys($days),
+        );
+    }
+
+    /**
+     * MESO-032, MESO-034 "from the next session": a change to the Off set stores the weeks up to this one (`$week`, 0
+     * is the first). The weeks before it keep the rotation as it ran (`$ran`); in this week a session done or started
+     * (its day number in `$loggedDays`) keeps what it ran with, and every other session takes the rotation as it runs
+     * from now on (`$next`). This week stored by an earlier change keeps its done sessions the same way.
+     *
+     * @template TDay of array{id: string}
+     *
+     * @param  list<TDay>  $ran
+     * @param  list<TDay>  $next
+     * @param  list<list<TDay>>  $earlierWeeks
+     * @param  list<list<string>>  $laterWeeks
+     * @param  list<int>  $loggedDays  from 1
+     * @return array{earlier_weeks: list<list<TDay>>, later_weeks: list<list<string>>}
+     */
+    public static function changingOff(array $ran, array $next, array $earlierWeeks, array $laterWeeks, int $week, array $loggedDays): array
+    {
+        $frozen = self::freezingWeeks($ran, $earlierWeeks, $laterWeeks, $week + 1);
+        $nextById = array_column($next, null, 'id');
+        foreach ($frozen['earlier_weeks'][$week] ?? [] as $index => $day) {
+            if (! in_array($index + 1, $loggedDays, true) && isset($nextById[$day['id']])) {
+                $frozen['earlier_weeks'][$week][$index] = $nextById[$day['id']];
+            }
+        }
+
+        return $frozen;
+    }
+
+    /**
+     * MESO-034: stored days without these muscles' slots: the rotation as it runs while they are Off.
+     *
+     * @param  list<array<string, mixed>>  $days  each with `slots`, each slot with `muscle_group`
+     * @param  list<MuscleGroup>  $muscles
+     * @return list<array<string, mixed>>
+     */
+    public static function withoutMuscles(array $days, array $muscles): array
+    {
+        $values = array_map(fn (MuscleGroup $m) => $m->value, $muscles);
+
+        return $values === [] ? $days : array_map(fn (array $day) => array_replace($day, ['slots' => array_values(array_filter(
+            $day['slots'],
+            fn (array $slot) => ! in_array($slot['muscle_group'], $values, true),
+        ))]), $days);
+    }
+
+    /**
+     * MESO-034: an Off muscle's slots are left out of every session. A session left with none plans no sets; it keeps
+     * its place, so the days keep their numbers.
+     *
+     * @param  list<Session>  $sessions
+     * @param  list<MuscleGroup>  $off
+     * @return list<Session>
+     */
+    public static function withoutOff(array $sessions, array $off): array
+    {
+        if ($off === []) {
+            return $sessions;
+        }
+
+        return array_map(fn (Session $session) => new Session($session->id, $session->name, array_values(array_filter(
+            $session->slots,
+            fn (ExerciseSlot $slot) => ! in_array($slot->muscle, $off, true),
+        ))), $sessions);
+    }
+
+    /** MESO-004, TBL-020: the lengths an experience level allows, the deload included, never past 8 weeks. */
+    public static function lengthRange(ExperienceLevel $experience): ClosedRange
+    {
+        $allowed = TBL020MesocycleLength::row($experience)->allowedWeeks;
+
+        return new ClosedRange($allowed->lower, min($allowed->upper, MesocycleCalendar::MAX_WEEKS));
+    }
+
+    /** MESO-004, TBL-020: a new mesocycle's length, inside {@see lengthRange()}. */
+    public static function defaultLength(ExperienceLevel $experience): int
+    {
+        $range = self::lengthRange($experience);
+
+        return (int) max($range->lower, min($range->upper, TBL020MesocycleLength::row($experience)->defaultWeeks));
     }
 }
