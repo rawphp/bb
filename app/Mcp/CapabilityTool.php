@@ -47,9 +47,25 @@ final class CapabilityTool extends Tool
             ['profile' => $this->profile],
         ));
 
-        return $result->isOk()
-            ? Response::json($result->data)
-            : Response::error((string) ($result->error['message'] ?? 'Something went wrong. Try again later.'));
+        return $result->isOk() ? Response::json($result->data) : Response::error(self::errorText($result->error ?? []));
+    }
+
+    /**
+     * The worded message, then one `field: message` line for each field that needs
+     * fixing, so a client can correct its call as the agent can.
+     *
+     * @param  array<string, mixed>  $error
+     */
+    private static function errorText(array $error): string
+    {
+        $lines = [(string) ($error['message'] ?? 'Something went wrong. Try again later.')];
+        foreach ((array) ($error['violations'] ?? []) as $violation) {
+            if (is_array($violation) && isset($violation['field'], $violation['message'])) {
+                $lines[] = $violation['field'].': '.$violation['message'];
+            }
+        }
+
+        return implode("\n", $lines);
     }
 
     /**
