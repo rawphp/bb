@@ -202,6 +202,16 @@ it('WT-020 keeps one step count per user per day, typed or from the bridge', fun
         ->toThrow(QueryException::class);
 });
 
+it('WO-002 every set belongs to an exercise of its session', function () {
+    $set = WorkoutSet::factory()->create();
+
+    expect($set->workoutExercise?->only(['workout_session_id', 'exercise_id', 'user_id']))
+        ->toBe($set->only(['workout_session_id', 'exercise_id', 'user_id']));
+
+    expect(fn () => WorkoutSet::factory()->create(['workout_exercise_id' => null]))
+        ->toThrow(QueryException::class);
+});
+
 it('WT-021 a weigh-in may carry a waist measurement in cm', function () {
     $plain = WeighIn::factory()->create();
     $waist = WeighIn::factory()->create(['waist_cm' => 81.5, 'source' => MeasurementSource::Shortcut]);
