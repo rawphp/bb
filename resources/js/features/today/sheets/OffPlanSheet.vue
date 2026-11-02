@@ -9,17 +9,14 @@ import { useSheet, type SheetListeners } from './useSheet';
 
 // DAY-001: "Save food macros", food eaten off-plan: an optional name, when it was eaten,
 // and its calories and macros. It reads nothing; off_plan_log adds the entry to the day.
-const props = withDefaults(
-    defineProps<
-        {
-            /** The day the entry goes on. Opened on its own, the clock's today. */
-            date?: string;
-            /** 24-hour "HH:MM" the time starts at. Opened on its own, the clock's time. */
-            time?: string;
-        } & SheetListeners
-    >(),
-    {},
-);
+const props = defineProps<
+    {
+        /** The day the entry goes on. Opened on its own, the clock's today. */
+        date?: string;
+        /** 24-hour "HH:MM" the time starts at. Opened on its own, the clock's time. */
+        time?: string;
+    } & SheetListeners
+>();
 
 const two = (n: number) => String(n).padStart(2, '0');
 const clock = now();
@@ -39,10 +36,11 @@ const { busy, error, locked, close, save } = useSheet(props);
 /**
  * A typed amount as a number of zero or more; an empty field is 0, and anything else is none.
  * A comma is the decimal point too: it is the only one on a comma-decimal region's keypad.
- * Followed by three digits it could be a thousands separator ("1,200"), so that is none.
+ * Either mark followed by three digits could be a thousands separator ("1,200", "1.200"),
+ * so that is none.
  */
 function amount(text: string): number | null {
-    if (/,\d{3}$/.test(text.trim())) return null;
+    if (/[.,]\d{3}$/.test(text.trim())) return null;
     const trimmed = text.trim().replace(',', '.');
     if (trimmed === '') return 0;
     return /^(\d+\.?\d*|\.\d+)$/.test(trimmed) ? Number(trimmed) : null;
