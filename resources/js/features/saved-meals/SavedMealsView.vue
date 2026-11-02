@@ -21,9 +21,10 @@ const { send, busy, error } = useWrite(load);
 // The rename sheet's own write, so its refusal shows in the sheet and not above the list.
 const renameWrite = useWrite(load);
 
+// Left to right in the swipe tray, so Delete sits at the edge as in rp-clone.
 const ACTIONS: RowAction[] = [
-    { id: 'delete', title: 'Delete', isDestructive: true },
     { id: 'rename', title: 'Rename' },
+    { id: 'delete', title: 'Delete', isDestructive: true },
 ];
 
 const renaming = ref<Meal | null>(null);

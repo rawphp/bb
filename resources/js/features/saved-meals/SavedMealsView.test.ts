@@ -102,6 +102,14 @@ describe('SavedMealsView', () => {
         expect(show({ payload: content }).text()).not.toContain('Waiting to sync');
     });
 
+    it('MEAL-071 each meal offers Rename, then Delete at the edge', async () => {
+        const view = show({ payload: content });
+
+        await view.get('button[aria-label="Bulk dinner menu"]').trigger('click');
+
+        expect(view.findAll('[role="menuitem"]').map((item) => item.text())).toEqual(['Rename', 'Delete']);
+    });
+
     it('MEAL-071 Rename opens with the meal\'s name and sends the trimmed new one', async () => {
         const view = show({ payload: content });
 
