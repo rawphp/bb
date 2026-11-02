@@ -38,6 +38,15 @@ final readonly class TodayMealItem
         return $this->foods !== [] || $this->recipes !== [];
     }
 
+    /** @return list<TodayPlannedEntry> the planned foods and recipe servings in their planned order */
+    public function entries(): array
+    {
+        $entries = [...$this->foods, ...$this->recipes];
+        usort($entries, fn (TodayPlannedEntry $a, TodayPlannedEntry $b) => $a->position <=> $b->position);
+
+        return $entries;
+    }
+
     /** What the planned foods and recipe servings add up to. */
     public function planned(): MealTarget
     {

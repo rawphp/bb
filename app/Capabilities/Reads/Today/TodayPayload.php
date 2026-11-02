@@ -125,6 +125,8 @@ final class TodayPayload
         $activity = $inPlan ? $snapshot->otherActivity($day) : null;
         $busy = $inPlan ? self::busy($snapshot, $day) : [];
         $isPast = $day < $snapshot->today();
+        $addMealTime = $isPast ? null : self::addMealTime($snapshot);
+        $addWorkout = $isPast || ! $inPlan ? null : self::addWorkout($snapshot, $workout, $activity);
 
         return new TodayShowOutput(
             date: $day->format('Y-m-d'),
@@ -152,9 +154,9 @@ final class TodayPayload
                 time_text: $entry->time === null ? null : ClockTime::fromHhmm($entry->time)?->shortText(),
                 macros: TodayWords::macros(new MealTarget($entry->kcal, $entry->protein_g, $entry->fat_g, $entry->carbs_g)),
             ), $inPlan ? $snapshot->offPlan($day) : []),
-            schedule_menu: self::scheduleMenu($isPast),
-            add_meal_time: $isPast ? null : self::addMealTime($snapshot),
-            add_workout: $isPast || ! $inPlan ? null : self::addWorkout($snapshot, $workout, $activity),
+            schedule_menu: self::scheduleMenu($isPast, $addMealTime !== null, $addWorkout !== null),
+            add_meal_time: $addMealTime,
+            add_workout: $addWorkout,
             schedule: self::schedule($snapshot, $workout),
             missed_session: null,
             missed_weeks: null,
@@ -297,7 +299,7 @@ final class TodayPayload
             condensed_time_text: $meal->time === null ? $kcal : $meal->time->shortText().' · '.$kcal,
             macros: TodayWords::macros($meal->target),
             planned_text: $meal->hasEntries()
-                ? implode(' · ', array_map(fn ($entry) => "{$entry->name} {$entry->amount}", [...$meal->foods, ...$meal->recipes]))
+                ? implode(' · ', array_map(fn ($entry) => "{$entry->name} {$entry->amount}", $meal->entries()))
                 : null,
             eaten_text: $meal->eaten === null ? null
                 : 'Eaten: '.(int) round($meal->eaten->kcal).' kcal, '.(int) round($meal->eaten->proteinG).' g protein',
@@ -349,7 +351,7 @@ final class TodayPayload
     private static function workout(TodayWorkoutItem $workout, TodaySnapshot $snapshot): TodayWorkout
     {
         $sets = $workout->workingSets();
-        $movable = ! $workout->isLogged() && $workout->date >= $snapshot->today();
+        $movable = $snapshot->isMovable($workout);
         $slots = $workout->session->slots;
 
         return new TodayWorkout(
@@ -357,7 +359,7 @@ final class TodayPayload
             mesocycle_id: (string) $workout->mesocycle->id,
             week: $workout->week,
             day: $workout->day,
-            title: "Week {$workout->week} · Day {$workout->day} · {$workout->session->name}",
+            title: self::workoutTitle($workout),
             name: $workout->session->name,
             time: (string) $workout->time,
             time_text: $workout->time->shortText(),
@@ -379,34 +381,15 @@ final class TodayPayload
         );
     }
 
-    /**
-     * SCH-038, SCH-051, SCH-057: the other days of the plan week from today on; a day that holds a session is shown
-     * but not offered. A session never moves into another plan week.
-     *
-     * @return list<MoveDayOption>
-     */
+    /** @return list<MoveDayOption> SCH-038, SCH-051: a day that holds a session is shown but not offered. */
     private static function moveDays(TodaySnapshot $snapshot, DateTimeImmutable $from): array
     {
-        $grid = $snapshot->train->grid();
-        $week = $grid?->weekIndexContaining($from);
-        if ($week === null) {
-            return [];
-        }
-        $options = [];
-        foreach ($grid->planWeek($week)->days() as $day) {
-            if ($day == $from || $day < $snapshot->today()) {
-                continue;
-            }
-            $taken = $snapshot->workout($day) !== null;
-            $options[] = new MoveDayOption(
-                date: $day->format('Y-m-d'),
-                label: TodayWords::shortDate($day),
-                enabled: ! $taken,
-                note: $taken ? self::DAY_HAS_WORKOUT : null,
-            );
-        }
-
-        return $options;
+        return array_map(fn (array $day) => new MoveDayOption(
+            date: $day['date']->format('Y-m-d'),
+            label: TodayWords::shortDate($day['date']),
+            enabled: ! $day['taken'],
+            note: $day['taken'] ? self::DAY_HAS_WORKOUT : null,
+        ), $snapshot->moveDays($from));
     }
 
     /** @return ?array{row: TodayWeighIn, time: ClockTime} SCH-004: on a scheduled weekday, its time and the day's first weight. */
@@ -459,12 +442,18 @@ final class TodayPayload
         ));
     }
 
-    /** @return list<ScheduleMenuItem> SCH-030, NUT-024: a past day offers neither Add meal nor Optimize. */
-    private static function scheduleMenu(bool $isPast): array
+    /**
+     * SCH-030, NUT-024: a past day offers neither Add meal nor Optimize; Add meal and Add workout show only when
+     * their sheets have what they open with.
+     *
+     * @return list<ScheduleMenuItem>
+     */
+    private static function scheduleMenu(bool $isPast, bool $canAddMeal, bool $canAddWorkout): array
     {
+        $offered = ['add_meal' => $canAddMeal, 'add_workout' => $canAddWorkout, 'optimize_schedule' => ! $isPast];
         $items = [];
         foreach (self::SCHEDULE_MENU as $action => $label) {
-            if (! $isPast || ($action !== 'add_meal' && $action !== 'optimize_schedule')) {
+            if ($offered[$action] ?? true) {
                 $items[] = new ScheduleMenuItem($action, $label);
             }
         }
@@ -486,30 +475,19 @@ final class TodayPayload
     }
 
     /**
-     * SCH-032, SCH-038: the Add workout sheet: the next session of this plan week still to do, which would move here,
-     * unless the day holds one; and the day's stored Other activity.
+     * SCH-032, SCH-038: the Add workout sheet: the session that would move here, or why none would; and the day's
+     * stored Other activity.
      */
     private static function addWorkout(TodaySnapshot $snapshot, ?TodayWorkoutItem $workout, ?OtherActivity $activity): AddWorkout
     {
-        $next = null;
-        $grid = $snapshot->train->grid();
-        $week = $grid?->weekIndexContaining($snapshot->date);
-        if ($workout === null && $week !== null) {
-            foreach ($grid->planWeek($week)->days() as $day) {
-                $candidate = $day > $snapshot->date && $day >= $snapshot->today() ? $snapshot->workout($day) : null;
-                if ($candidate !== null && ! $candidate->isLogged()) {
-                    $next = $candidate;
-                    break;
-                }
-            }
-        }
+        $next = $snapshot->nextMovableSession($snapshot->date);
 
         return new AddWorkout(
             session: $next === null ? null : new AddWorkoutSession(
                 mesocycle_id: (string) $next->mesocycle->id,
                 week: $next->week,
                 day: $next->day,
-                title: "Week {$next->week} · Day {$next->day} · {$next->session->name}",
+                title: self::workoutTitle($next),
                 time_text: $next->time->shortText(),
             ),
             session_message: $next !== null ? null : ($workout !== null ? self::DAY_HAS_WORKOUT : self::NO_SESSION_LEFT),
@@ -521,6 +499,12 @@ final class TodayPayload
                 intensity: $activity->intensity,
             ),
         );
+    }
+
+    /** "Week 3 · Day 2 · Upper A". */
+    private static function workoutTitle(TodayWorkoutItem $workout): string
+    {
+        return "Week {$workout->week} · Day {$workout->day} · {$workout->session->name}";
     }
 
     /** SCH-033, SCH-037, SCH-039: what Edit schedule opens with, from the profile's schedule. */

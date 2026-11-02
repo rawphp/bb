@@ -34,7 +34,7 @@ it('SCH-020 SCH-021 SCH-022 SCH-023 shows a seeded week with the clock fixed', f
         ->and($data['heading'])->toBe('WEEK 2')
         ->and(array_column($data['days'], 'has_training'))->toBe([false, false, true, false, true, false, true])
         ->and($data['calendar'])->toBe(['first' => '2026-09-12', 'last' => '2026-10-09'])
-        ->and([$data['previous_week'], $data['next_week']])->toBe(['2026-09-12', '2026-09-26']);
+        ->and([$data['previous_week'], $data['next_week']])->toBe(['2026-09-16', '2026-09-30']);
 });
 
 it('SCH-022 shows the deload week\'s pill', function () {

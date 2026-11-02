@@ -11,6 +11,7 @@ use App\Domain\Model\Mesocycle as DomainMesocycle;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Placement\TrainingDay;
 use App\Domain\Placement\WorkoutTime;
+use App\Domain\Plan\CoveringMesocycle;
 use App\Domain\Plan\DatedMesocycle;
 use App\Domain\Plan\PlanRules;
 use App\Domain\Progress\Adherence;
@@ -88,41 +89,62 @@ final class TodaySnapshot
         public readonly string $nowTime = '12:00',
     ) {}
 
-    /** Everything Today and the week strip show for `$date` (today when null). */
+    /**
+     * Everything Today and the week strip show for `$date` (today when null). A date outside the plan is shown at its
+     * nearest edge (SCH-023). The sessions read are those of the mesocycles covering the 7 days shown, and of the
+     * current one, whose feedback the next-mesocycle prompt reads (MESO-064).
+     */
     public static function load(User $user, ?string $date = null): self
     {
         $today = TrainSnapshot::day(CarbonImmutable::now());
-        $day = $date === null ? $today : TrainSnapshot::day($date);
         $plan = Plan::query()->where('user_id', $user->id)->first();
-        $mesocycles = Mesocycle::query()->where('user_id', $user->id)->get();
-        $saved = $mesocycles->filter(fn (Mesocycle $m) => $m->isSaved())->modelKeys();
-        $sessions = WorkoutSession::query()->where('user_id', $user->id)->whereIn('mesocycle_id', $saved)->get();
-
-        $train = new TrainSnapshot(
+        $last = DayTarget::query()->where('user_id', $user->id)->max('date');
+        $lastTarget = $last === null ? null : TrainSnapshot::day((string) $last);
+        $base = new TrainSnapshot(
             today: $today,
             plan: $plan,
             profile: Profile::query()->where('user_id', $user->id)->first(),
-            mesocycles: $mesocycles,
+            mesocycles: Mesocycle::query()->where('user_id', $user->id)->get(),
             phases: Phase::query()->where('user_id', $user->id)->orderBy('start_date')->get(),
-            sessions: $sessions,
-            sets: WorkoutSet::query()->whereIn('workout_session_id', $sessions->modelKeys())->orderBy('position')->get(),
-            feedback: MuscleFeedback::query()->whereIn('workout_session_id', $sessions->modelKeys())->get(),
+            sessions: new Collection,
+            sets: new Collection,
+            feedback: new Collection,
             planWeeks: PlanWeek::query()->where('user_id', $user->id)->get(),
             dayTargets: new Collection,
             exercises: fn (?array $ids): Collection => Exercise::query()->visibleTo($user)
                 ->when($ids !== null, fn ($query) => $query->whereIn('id', $ids))
                 ->orderBy('name')->get(),
         );
-
-        $first = self::weekStartFor($plan, $day);
+        $probe = new self($base, $today, $lastTarget, new Collection, new Collection, new Collection, new Collection, new Collection, new Collection, null);
+        $day = $date === null ? $today : $probe->insidePlan(TrainSnapshot::day($date));
+        $first = $probe->weekStart($day);
+        $ids = [$base->current()?->id];
+        for ($offset = 0; $offset < 7; $offset++) {
+            $ids[] = $probe->covering($first->modify("+{$offset} days"))?->id;
+        }
+        $sessions = WorkoutSession::query()->where('user_id', $user->id)->whereIn('mesocycle_id', array_values(array_unique(array_filter($ids))))->get();
+        $train = new TrainSnapshot(
+            today: $today,
+            plan: $plan,
+            profile: $base->profile,
+            mesocycles: $base->mesocycles,
+            phases: $base->phases,
+            sessions: $sessions,
+            sets: WorkoutSet::query()->whereIn('workout_session_id', $sessions->modelKeys())->orderBy('position')->get(),
+            feedback: MuscleFeedback::query()->whereIn('workout_session_id', $sessions->modelKeys())->get(),
+            planWeeks: $base->planWeeks,
+            dayTargets: new Collection,
+            exercises: fn (?array $ids): Collection => Exercise::query()->visibleTo($user)
+                ->when($ids !== null, fn ($query) => $query->whereIn('id', $ids))
+                ->orderBy('name')->get(),
+        );
         $range = [$first->format('Y-m-d'), $first->modify('+6 days')->format('Y-m-d')];
         $targets = DayTarget::query()->where('user_id', $user->id)->whereBetween('date', $range)->get();
-        $last = DayTarget::query()->where('user_id', $user->id)->max('date');
 
         return new self(
             train: $train,
             date: $day,
-            lastTarget: $last === null ? null : TrainSnapshot::day((string) $last),
+            lastTarget: $lastTarget,
             dayTargets: $targets,
             meals: DayTargetMeal::query()->whereIn('day_target_id', $targets->modelKeys())
                 ->with(['plannedFoods.food', 'plannedRecipes.sourceRecipe.ingredients.food', 'checkIn', 'planningState'])
@@ -189,6 +211,34 @@ final class TodaySnapshot
         return $start === null || $day < $start;
     }
 
+    /** SCH-023: a day outside the days the plan can show goes to its nearest edge. Without a plan, any day. */
+    public function insidePlan(DateTimeImmutable $day): DateTimeImmutable
+    {
+        $lower = $this->firstDay();
+        $upper = $this->lastDay();
+        if ($lower !== null && $day < $lower) {
+            return $lower;
+        }
+
+        return $upper !== null && $day > $upper ? $upper : $day;
+    }
+
+    /**
+     * SCH-020: the same weekday `$days` later or earlier, kept inside the plan; null when that week is outside it.
+     */
+    public function weekShifted(DateTimeImmutable $day, int $days): ?DateTimeImmutable
+    {
+        $target = $day->modify(sprintf('%+d days', $days));
+        $start = $this->weekStart($target);
+        $lower = $this->firstDay();
+        $upper = $this->lastDay();
+        if (($lower !== null && $start < $this->weekStart($lower)) || ($upper !== null && $start > $upper)) {
+            return null;
+        }
+
+        return $this->insidePlan($target);
+    }
+
     // MARK: sessions (SCH-040)
 
     /**
@@ -222,12 +272,7 @@ final class TodaySnapshot
         $flagged = $this->train->planWeekRow($grid->start($week));
         $paused = $this->pausedWeeks();
         $saved = $this->train->saved()->values();
-        $covering = PlanRules::coveringMesocycle(
-            $week,
-            $saved->map(fn (Mesocycle $m) => new DatedMesocycle(TrainSnapshot::day($m->start_date), (int) $m->weeks))->all(),
-            $grid,
-            $paused,
-        );
+        $covering = $this->coveringIn($week);
         $mesocycle = $covering === null ? null : $saved[$covering->index];
 
         $records = $this->train->sessions
@@ -262,6 +307,27 @@ final class TodaySnapshot
         return $plan === null ? null : ['plan' => $plan, 'mesocycle' => $mesocycle];
     }
 
+    /** PLAN-002, SCH-060: the saved mesocycle the plan week of a day belongs to. */
+    public function covering(DateTimeImmutable $day): ?Mesocycle
+    {
+        $week = $this->train->grid()?->weekIndexContaining($day);
+        $covering = $week === null ? null : $this->coveringIn($week);
+
+        return $covering === null ? null : $this->train->saved()->values()[$covering->index];
+    }
+
+    private function coveringIn(int $week): ?CoveringMesocycle
+    {
+        $grid = $this->train->grid();
+
+        return $grid === null ? null : PlanRules::coveringMesocycle(
+            $week,
+            $this->train->saved()->values()->map(fn (Mesocycle $m) => new DatedMesocycle(TrainSnapshot::day($m->start_date), (int) $m->weeks))->all(),
+            $grid,
+            $this->pausedWeeks(),
+        );
+    }
+
     /** The mesocycle as the Domain reads it, with the last day MESO-043 cuts its sessions at. */
     private function domain(Mesocycle $mesocycle): DomainMesocycle
     {
@@ -280,8 +346,11 @@ final class TodaySnapshot
         );
     }
 
-    /** SCH-060: the plan weeks an away week pauses. */
-    /** @return list<int> */
+    /**
+     * SCH-060: the plan weeks an away week pauses.
+     *
+     * @return list<int>
+     */
     private function pausedWeeks(): array
     {
         $grid = $this->train->grid();
@@ -351,6 +420,58 @@ final class TodaySnapshot
             },
             setsCompleted: $done ? $this->train->loggedSets($row)->count() : null,
         );
+    }
+
+    /** SCH-050, SCH-051: a session not yet started or skipped can be re-timed or moved, from today on. */
+    public function isMovable(TodayWorkoutItem $workout): bool
+    {
+        return ! $workout->isLogged() && $workout->date >= $this->today();
+    }
+
+    /**
+     * SCH-038, SCH-051, SCH-057: the days a session on `$from` could move to: the other days of its plan week from
+     * today on, each with whether it already holds a session (and so is refused). Never another plan week.
+     *
+     * @return list<array{date: DateTimeImmutable, taken: bool}>
+     */
+    public function moveDays(DateTimeImmutable $from): array
+    {
+        $days = [];
+        foreach ($this->planWeekDays($from) as $day) {
+            if ($day != $from && $day >= $this->today()) {
+                $days[] = ['date' => $day, 'taken' => $this->workout($day) !== null];
+            }
+        }
+
+        return $days;
+    }
+
+    /**
+     * SCH-032, SCH-038: the session Add workout moves onto `$onto`: the next one of its plan week, from today on, not
+     * yet started or skipped. None when `$onto` already holds one.
+     */
+    public function nextMovableSession(DateTimeImmutable $onto): ?TodayWorkoutItem
+    {
+        if ($this->workout($onto) !== null) {
+            return null;
+        }
+        foreach ($this->planWeekDays($onto) as $day) {
+            $candidate = $day > $onto ? $this->workout($day) : null;
+            if ($candidate !== null && $this->isMovable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return list<DateTimeImmutable> the days of the plan week a day falls in; none before the plan */
+    private function planWeekDays(DateTimeImmutable $day): array
+    {
+        $grid = $this->train->grid();
+        $week = $grid?->weekIndexContaining($day);
+
+        return $week === null ? [] : $grid->planWeek($week)->days();
     }
 
     /** PLAN-022, SCH-060: the day's plan week is a deload. */
@@ -424,7 +545,7 @@ final class TodaySnapshot
             weighing: $planned->is_cooked ? Weighing::Cooked : Weighing::Raw,
         ))->macros();
 
-        return new TodayPlannedEntry($food->name ?? 'Food', self::number($planned->grams).' g', $macros);
+        return new TodayPlannedEntry($food->name ?? 'Food', self::number($planned->grams).' g', $macros, $planned->position);
     }
 
     /** RCP-002: servings of a recipe, at its ingredients' macros per serving. */
@@ -451,6 +572,7 @@ final class TodaySnapshot
                 fatG: $perServing->fatG * $servings,
                 carbsG: $perServing->carbsG * $servings,
             ),
+            $planned->position,
         );
     }
 

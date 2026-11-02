@@ -99,7 +99,7 @@ final class TodaySeed
         $day = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-23')->firstOrFail();
         [$breakfast, $lunch, $dinner] = array_column($day->meals, 'id');
         $oats = Food::factory()->createOne(['name' => 'Oats', 'kcal' => 380, 'protein' => 13, 'fat' => 7, 'carbs' => 66]);
-        PlannedFood::factory()->create(['meal_id' => $breakfast, 'food_id' => $oats->id, 'grams' => 80]);
+        PlannedFood::factory()->create(['meal_id' => $breakfast, 'food_id' => $oats->getKey(), 'grams' => 80]);
         MealCheckIn::factory()->create(['meal_id' => $lunch, 'time' => '12:40', 'kcal' => 790, 'protein_g' => 55, 'fat_g' => 20, 'carbs_g' => 100, 'is_manual' => false]);
         WeighIn::factory()->for($user)->create(['weight_kg' => 82.4, 'weighed_at' => '2026-09-23 07:05:00']);
         // Weights and steps on the days either side are not this day's.
@@ -111,8 +111,8 @@ final class TodaySeed
         Step::factory()->for($user)->create(['date' => '2026-09-23', 'count' => 5432]);
         $chili = Recipe::factory()->createOne(['name' => 'Chili', 'servings' => 4]);
         $beef = Food::factory()->createOne(['name' => 'Beef mince', 'kcal' => 250, 'protein' => 26, 'fat' => 15, 'carbs' => 0]);
-        RecipeIngredient::factory()->create(['recipe_id' => $chili->id, 'food_id' => $beef->id, 'grams' => 400]);
-        PlannedRecipe::factory()->create(['meal_id' => $dinner, 'recipe_id' => $chili->id, 'servings' => 2]);
+        RecipeIngredient::factory()->create(['recipe_id' => $chili->getKey(), 'food_id' => $beef->getKey(), 'grams' => 400]);
+        PlannedRecipe::factory()->create(['meal_id' => $dinner, 'recipe_id' => $chili->getKey(), 'servings' => 2]);
         $monday = WorkoutSession::factory()->for($user)->createOne([
             'mesocycle_id' => $mesocycle->id, 'week' => 2, 'day' => 1,
             'actual_start_at' => '2026-09-21 17:30:00', 'actual_end_at' => '2026-09-21 18:20:00', 'is_skipped' => false,

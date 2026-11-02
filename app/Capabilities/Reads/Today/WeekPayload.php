@@ -32,18 +32,17 @@ final class WeekPayload
         if ($snapshot->isAway($last)) {
             $pills[] = new Status('Away', Tone::Info->value);
         }
-        $lower = $snapshot->firstDay();
         $upper = $snapshot->lastDay();
-        $previous = $first->modify('-7 days');
-        $next = $first->modify('+7 days');
+        $previous = $snapshot->weekShifted($snapshot->date, -7);
+        $next = $snapshot->weekShifted($snapshot->date, 7);
 
         return new WeekShowOutput(
             week_start: $first->format('Y-m-d'),
             heading: $week === null ? null : 'WEEK '.($week + 1),
             pills: $pills,
             days: $days,
-            previous_week: $lower === null || $snapshot->weekStart($lower) > $previous ? null : max($previous, $lower)->format('Y-m-d'),
-            next_week: $upper === null || $next > $upper ? null : $next->format('Y-m-d'),
+            previous_week: $previous?->format('Y-m-d'),
+            next_week: $next?->format('Y-m-d'),
             calendar: $snapshot->planStart() === null || $upper === null ? null
                 : new CalendarRange($snapshot->planStart()->format('Y-m-d'), $upper->format('Y-m-d')),
             actions: [],
