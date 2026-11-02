@@ -73,26 +73,12 @@ it('CAP-030 fails a UI name with a schema snapshot but no issue that will regist
         ->toBe(['a.vue calls meal_add, which is not registered and no owners file names the issue that registers it']);
 });
 
-it('CAP-030 reads snapshot names and owner issues from the schema fixtures', function () {
+it('CAP-030 reads each snapshot name once from the schema fixtures', function () {
     $dir = base_path('tests/fixtures/schemas');
 
     expect(CapabilityParity::snapshotNames($dir))->toContain('account_show', 'meal_add')
         ->and(CapabilityParity::snapshotNames($dir))->not->toContain('today.owners')
-        ->and(CapabilityParity::owners($dir))->toHaveKey('today_show')
-        ->and(CapabilityParity::owners($dir)['today_show'])->toBeInt();
-});
-
-it('CAP-030 fails on a name two owners files both claim', function () {
-    $dir = sys_get_temp_dir().'/owners-'.bin2hex(random_bytes(6));
-    mkdir($dir);
-    file_put_contents("{$dir}/a.owners.json", '{"meal_add": 68}');
-    file_put_contents("{$dir}/b.owners.json", '{"meal_add": 71}');
-
-    try {
-        expect(fn () => CapabilityParity::owners($dir))->toThrow(InvalidArgumentException::class, 'meal_add is owned in a.owners.json and b.owners.json');
-    } finally {
-        (new Filesystem)->deleteDirectory($dir);
-    }
+        ->and(CapabilityParity::snapshotNames($dir))->toBe(array_values(array_unique(CapabilityParity::snapshotNames($dir))));
 });
 
 it('AGT-001 fails a registered capability the agent cannot call', function () use ($excluded) {

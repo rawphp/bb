@@ -2,7 +2,6 @@
 
 namespace Tests\Support;
 
-use InvalidArgumentException;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
@@ -73,30 +72,6 @@ final class CapabilityParity
     }
 
     /**
-     * The API issue that will register each capability, from the <area>.owners.json files in $dir.
-     *
-     * @return array<string, int> name => issue number
-     */
-    public static function owners(string $dir): array
-    {
-        $owners = [];
-        $files = [];
-        foreach (glob($dir.'/*.owners.json') ?: [] as $path) {
-            /** @var array<string, int> $area */
-            $area = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
-            foreach ($area as $name => $issue) {
-                if (isset($files[$name])) {
-                    throw new InvalidArgumentException("{$name} is owned in {$files[$name]} and ".basename($path));
-                }
-                $files[$name] = basename($path);
-                $owners[$name] = $issue;
-            }
-        }
-
-        return $owners;
-    }
-
-    /**
      * A name the app calls passes when it is registered, or when it is a contract
      * waiting for its API issue: a schema snapshot, and an owners entry naming
      * the issue that registers it. That issue's own gate then checks the name
@@ -108,7 +83,7 @@ final class CapabilityParity
      * @param  list<string>  $registered  every registered capability
      * @param  list<string>  $tools  the agent's tool names
      * @param  list<string>  $snapshots  names with a schema snapshot in tests/fixtures/schemas/
-     * @param  array<string, int>  $owners  names => the API issue that registers them
+     * @param  array<string, int>  $owners  names => the API issue that registers them, from {@see ContractDtos::owners()}
      * @param  callable(string): ?string  $excluded  the CAP-031 reason for a name, or null
      * @return list<string> one line per problem, empty when the app and the agent agree
      */
