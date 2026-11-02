@@ -46,8 +46,12 @@ use App\Domain\Model\DietFilter;
  *    plus gluten_free and low_fodmap when the name is rice, corn, quinoa, millet, sorghum,
  *    buckwheat, amaranth or teff (never oats). Any other or missing category (Baked Products,
  *    Sweets, Snacks, Sausages and Luncheon Meats...) gets every flag false.
- *  - Open Food Facts tags win: en:vegan, en:vegetarian, en:non-vegan,
- *    en:non-vegetarian, allergen or trace en:gluten (gluten_free false), en:milk (dairy_free false).
+ *  - Open Food Facts tags: en:vegan and en:vegetarian set those flags only when there is no
+ *    ingredient text, so they never undo a "no" from the ingredients. The "no" signals always
+ *    win, over keywords and positive tags alike: en:non-vegan, en:non-vegetarian, allergen
+ *    en:gluten (gluten_free false), en:milk (dairy_free and vegan false), en:eggs (vegan false),
+ *    en:fish, en:crustaceans and en:molluscs (vegetarian and vegan false). A trace (DumpRow
+ *    passes trace:en:...) of gluten or milk rules out gluten_free or dairy_free only.
  *
  * @phpstan-type DietFlags array{dairy_free: bool, gluten_free: bool, grain_free: bool, low_fodmap: bool, vegetarian: bool, paleo: bool, vegan: bool}
  */
@@ -149,7 +153,7 @@ final class DietClassifier
         'amaranth', 'teff'];
 
     /**
-     * @param  list<string>  $tags  Open Food Facts ingredients_analysis_tags, allergens_tags and traces_tags
+     * @param  list<string>  $tags  Open Food Facts ingredients_analysis_tags and allergens_tags, and traces_tags as trace:en:...
      * @param  bool  $generic  true for USDA Foundation/SR foods, which have no ingredient list
      * @return DietFlags
      */
@@ -164,7 +168,7 @@ final class DietClassifier
             $flags = $this->fromKeywords($name, $category, $ingredients);
         }
 
-        return $this->applyTags($flags, $tags);
+        return $this->applyTags($flags, $tags, fromIngredients: $generic || $ingredients !== '');
     }
 
     /** @return DietFlags */
@@ -249,26 +253,33 @@ final class DietClassifier
      * @param  list<string>  $tags
      * @return DietFlags
      */
-    private function applyTags(array $flags, array $tags): array
+    private function applyTags(array $flags, array $tags, bool $fromIngredients): array
     {
         $tags = array_map('strtolower', $tags);
+        $has = fn (string ...$any) => array_intersect($any, $tags) !== [];
 
-        if (in_array('en:vegan', $tags, true)) {
-            $flags['vegan'] = $flags['vegetarian'] = true;
+        // A positive tag only stands in for missing ingredients: it never undoes a "no" the ingredients gave.
+        if (! $fromIngredients) {
+            if ($has('en:vegan')) {
+                $flags['vegan'] = $flags['vegetarian'] = true;
+            }
+            if ($has('en:vegetarian')) {
+                $flags['vegetarian'] = true;
+            }
         }
-        if (in_array('en:vegetarian', $tags, true)) {
-            $flags['vegetarian'] = true;
-        }
-        if (in_array('en:non-vegan', $tags, true)) {
+
+        // Negative tags and allergens always win, also over a positive tag on the same product.
+        if ($has('en:non-vegan', 'en:milk', 'en:eggs')) {
             $flags['vegan'] = false;
         }
-        if (in_array('en:non-vegetarian', $tags, true)) {
+        if ($has('en:non-vegetarian', 'en:fish', 'en:crustaceans', 'en:molluscs')) {
             $flags['vegetarian'] = $flags['vegan'] = false;
         }
-        if (in_array('en:gluten', $tags, true)) {
+        // A trace ("may contain") is a cross-contact risk: it matters for gluten and milk, not for vegan.
+        if ($has('en:gluten', 'trace:en:gluten')) {
             $flags['gluten_free'] = false;
         }
-        if (in_array('en:milk', $tags, true)) {
+        if ($has('en:milk', 'trace:en:milk')) {
             $flags['dairy_free'] = false;
         }
 

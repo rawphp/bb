@@ -63,17 +63,32 @@ it('FOOD-027 sets every flag false for a packaged product with no ingredients an
         ->and((new DietClassifier)->classify('Granola bar', 'Snacks', '  ', []))->toBe(FOODS_ALL_DIETS_FALSE);
 });
 
-it('FOOD-027 lets Open Food Facts tags override the keyword rules', function (array $tags, array $expected) {
-    $flags = (new DietClassifier)->classify('Spread', null, 'sugar, milk, hazelnuts', $tags);
+it('FOOD-027 lets Open Food Facts "no" tags override the keyword rules, and never a "yes" tag', function (string $ingredients, array $tags, array $expected) {
+    $flags = (new DietClassifier)->classify('Spread', null, $ingredients, $tags);
 
     expect($flags)->toMatchArray($expected);
 })->with([
-    'vegan tag' => [['en:vegan'], ['vegan' => true, 'vegetarian' => true]],
-    'non-vegan tag' => [['en:non-vegan'], ['vegan' => false]],
-    'vegetarian tag' => [['en:vegetarian'], ['vegetarian' => true]],
-    'non-vegetarian tag' => [['en:non-vegetarian'], ['vegetarian' => false, 'vegan' => false]],
-    'gluten allergen' => [['en:gluten'], ['gluten_free' => false]],
-    'milk allergen' => [['en:milk'], ['dairy_free' => false]],
+    'vegan tag does not undo milk' => ['sugar, milk, hazelnuts', ['en:vegan'], ['vegan' => false, 'vegetarian' => true]],
+    'vegetarian tag does not undo gelatin' => ['sugar, gelatin', ['en:vegetarian'], ['vegetarian' => false]],
+    'non-vegan tag' => ['sugar, cocoa, hazelnuts', ['en:non-vegan'], ['vegan' => false, 'vegetarian' => true]],
+    'non-vegetarian tag' => ['sugar, cocoa, hazelnuts', ['en:non-vegetarian'], ['vegetarian' => false, 'vegan' => false]],
+    'gluten allergen' => ['sugar, cocoa, hazelnuts', ['en:gluten'], ['gluten_free' => false]],
+    'milk allergen' => ['sugar, cocoa, hazelnuts', ['en:milk'], ['dairy_free' => false, 'vegan' => false]],
+    'egg allergen' => ['sugar, cocoa, hazelnuts', ['en:eggs'], ['vegan' => false, 'vegetarian' => true]],
+    'fish allergen' => ['sugar, cocoa, hazelnuts', ['en:fish'], ['vegetarian' => false, 'vegan' => false]],
+]);
+
+it('FOOD-027 lets a trace of gluten or milk rule out gluten free or dairy free, but not vegan', function () {
+    expect((new DietClassifier)->classify('Rice cakes', null, 'rice, salt', ['trace:en:gluten', 'trace:en:milk']))
+        ->toMatchArray(['gluten_free' => false, 'dairy_free' => false, 'vegan' => true]);
+});
+
+it('FOOD-027 lets an allergen beat a vegan tag on a product with no ingredients', function (array $tags, array $expected) {
+    expect((new DietClassifier)->classify('Mystery', null, null, $tags))->toMatchArray($expected);
+})->with([
+    'vegan and milk' => [['en:vegan', 'en:milk'], ['vegan' => false, 'vegetarian' => true, 'dairy_free' => false]],
+    'vegan and eggs' => [['en:vegan', 'en:eggs'], ['vegan' => false, 'vegetarian' => true]],
+    'vegan and crustaceans' => [['en:vegan', 'en:crustaceans'], ['vegan' => false, 'vegetarian' => false]],
 ]);
 
 it('FOOD-027 uses tags alone when a packaged product has no ingredients text', function () {

@@ -224,6 +224,14 @@ it('FOOD-060 never shows another user\'s custom foods in search', function () {
         ->and(foodsSearch($this->user, 'secret', 'curated'))->toBe([]);
 });
 
+it('FOOD-060 never shows another user\'s custom food marked curated, in any tier', function () {
+    Food::factory()->custom(User::factory()->create())->create(['name' => 'Secret bar', 'curated' => true, 'curated_group' => 'fat_sparingly']);
+
+    expect(foodsSearch($this->user, 'secret'))->toBe([])
+        ->and(foodsSearch($this->user, 'secret', 'curated'))->toBe([])
+        ->and(foodsSearch($this->user, 'secret', group: CuratedGroup::FatSparingly))->toBe([]);
+});
+
 it('FOOD-060 never shows another user\'s custom food through a recent or favorite that points at it', function () {
     $other = Food::factory()->custom(User::factory()->create())->create(['name' => 'Secret bar', 'barcode' => '12345678905']);
     FoodFavorite::factory()->create(['user_id' => $this->user->id, 'food_id' => $other->id]);
