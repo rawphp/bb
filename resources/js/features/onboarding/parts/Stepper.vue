@@ -4,7 +4,8 @@ import { ref } from 'vue';
 // A − and + pair for a whole number, as SwiftUI's Stepper. The server sends the value, its
 // bounds and its increment; the browser's number input does the stepping (stepUp and
 // stepDown clamp to the bounds), so the view does no maths. Emits the new value once per
-// tap. Used by the training-day, daily-steps and meals steps.
+// tap; a side at its bound is off, so a tap always moves the value. Used by the
+// training-day, daily-steps and meals steps.
 const props = withDefaults(defineProps<{ label: string; text: string; modelValue: number; min: number; max: number; step: number; disabled?: boolean }>(), {
     disabled: false,
 });
@@ -20,7 +21,7 @@ function nudge(up: boolean): void {
     if (up) field.stepUp();
     else field.stepDown();
     const value = field.valueAsNumber;
-    if (Number.isFinite(value) && value !== props.modelValue) emit('update:modelValue', value);
+    if (Number.isFinite(value)) emit('update:modelValue', value);
 }
 
 const button = 'flex size-tap items-center justify-center text-xl font-semibold text-accent active:opacity-70 disabled:opacity-40';
