@@ -3,9 +3,9 @@
 namespace App\Capabilities\Support;
 
 use App\Models\AuditRecord;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Auth\Factory as Auth;
-use Laravel\Sanctum\Contracts\HasApiTokens;
 use LogicException;
 use Rawphp\Capabilities\Contracts\AuditWriter;
 use UnexpectedValueException;
@@ -95,6 +95,6 @@ final class AuditRecordWriter implements AuditWriter
     {
         $user = $this->auth->guard()->user();
 
-        return $user instanceof HasApiTokens ? $user->currentAccessToken() : null;
+        return $user instanceof User ? $user->currentAccessToken() : null;
     }
 }

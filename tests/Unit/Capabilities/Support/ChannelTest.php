@@ -1,12 +1,13 @@
 <?php
 
 use App\Capabilities\Support\Channel;
-use Laravel\Sanctum\PersonalAccessToken;
+use App\Domain\Tokens\TokenScope;
+use App\Models\PersonalAccessToken;
 use Laravel\Sanctum\TransientToken;
 
-function tokenWith(array $abilities): PersonalAccessToken
+function tokenWith(TokenScope $scope, array $abilities): PersonalAccessToken
 {
-    return new PersonalAccessToken(['abilities' => $abilities]);
+    return new PersonalAccessToken(['scope' => $scope, 'abilities' => $abilities]);
 }
 
 it('CAP-022 names the channel from the server-set caller', function (string $caller, Channel $channel) {
@@ -30,16 +31,17 @@ it('CAP-022 counts an http call with the session as the app', function () {
     expect(Channel::derive('http', new TransientToken))->toBe(Channel::Ui);
 });
 
-it('CAP-022 counts an http call with a Health bridge token as the bridge', function () {
-    expect(Channel::derive('http', tokenWith(['weigh_in_log', 'steps_log'])))->toBe(Channel::Bridge)
-        ->and(Channel::derive('http', tokenWith(['steps_log'])))->toBe(Channel::Bridge);
+it('CAP-022 counts an http call with a token made with the Health bridge scope as the bridge', function () {
+    expect(Channel::derive('http', tokenWith(TokenScope::HealthBridge, TokenScope::HEALTH_BRIDGE)))->toBe(Channel::Bridge);
 });
 
-it('CAP-022 counts an http call with any other personal access token as the CLI', function () {
-    expect(Channel::derive('http', tokenWith(['*'])))->toBe(Channel::Cli)
-        ->and(Channel::derive('http', tokenWith(['weigh_in_log', 'meal_check_in'])))->toBe(Channel::Cli)
-        ->and(Channel::derive('http', tokenWith([])))->toBe(Channel::Cli);
-});
+it('CAP-022 counts an http call with any other personal access token as the CLI, even one picked down to the bridge\'s abilities', function (TokenScope $scope, array $abilities) {
+    expect(Channel::derive('http', tokenWith($scope, $abilities)))->toBe(Channel::Cli);
+})->with([
+    'everything' => [TokenScope::Everything, ['*']],
+    'read only' => [TokenScope::ReadOnly, ['activity_show']],
+    'custom, the bridge\'s two writes' => [TokenScope::Custom, TokenScope::HEALTH_BRIDGE],
+]);
 
 it('CAP-022 labels each channel in plain words', function () {
     expect(array_map(fn (Channel $c): string => $c->label(), Channel::cases()))

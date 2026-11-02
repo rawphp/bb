@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Collection;
@@ -13,15 +14,23 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
-use Laravel\Sanctum\Contracts\HasApiTokens as HasApiTokensContract;
+use Laravel\Sanctum\Contracts\HasAbilities;
 use Laravel\Sanctum\HasApiTokens;
+use LogicException;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable implements HasApiTokensContract
+class User extends Authenticatable
 {
+    /**
+     * A session's token is transient, so not every current token is a PersonalAccessToken.
+     *
+     * @use HasApiTokens<HasAbilities>
+     */
+    use HasApiTokens;
+
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
 
     /**
      * Deleting a user cascades through every user_id (ACC-005). MySQL refuses a cascade that also
@@ -36,6 +45,9 @@ class User extends Authenticatable implements HasApiTokensContract
             foreach (['workout_sessions', 'off_plan_entries', 'planned_foods', 'recipes', 'mesocycles'] as $table) {
                 DB::table($table)->where('user_id', $user->id)->delete();
             }
+
+            // Tokens belong to the user through a morph, which no foreign key cascades.
+            PersonalAccessToken::ownedBy($user)->delete();
         });
     }
 
@@ -43,6 +55,18 @@ class User extends Authenticatable implements HasApiTokensContract
     public function delete(): ?bool
     {
         return DB::transaction(fn () => parent::delete());
+    }
+
+    /**
+     * Not Sanctum's way: a token made here would have no scope and no client-made ULID.
+     * Every token comes from CreateToken, through token_create (CAP-021). The host binds
+     * no AuthTokenIssuer, so the package's auth/token and auth/device routes mint none.
+     *
+     * @param  array<int, string>  $abilities
+     */
+    public function createToken(string $name, array $abilities = ['*'], ?DateTimeInterface $expiresAt = null): never
+    {
+        throw new LogicException('Tokens are made by App\Actions\Tokens\CreateToken, with a scope (CAP-021).');
     }
 
     /**

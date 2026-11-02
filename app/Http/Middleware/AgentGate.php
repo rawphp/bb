@@ -3,25 +3,22 @@
 namespace App\Http\Middleware;
 
 use App\Agent\AgentStatus;
+use App\Models\PersonalAccessToken;
+use App\Models\User;
 use Closure;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Laravel\Sanctum\PersonalAccessToken;
 use Rawphp\Capabilities\Support\CapabilityResult;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * In front of the package's chat routes: a new message, which starts a turn, is
+ * In front of the package's chat routes. No route takes a personal access token.
+ * A new message, which starts a turn, is
  * refused while the agent is off (AGT-002), the user is at a cap (AGT-005), or,
  * under a token cap, one of the user's turns is still queued or running.
  * Under a cap, the checks and the store run under one lock per user. Nothing is stored or queued then. Every other chat route and every screen keep working.
- *
- * On every chat route, a personal access token limited to some capabilities is
- * refused (CAP-023): the Coach's tool calls run as the user with no token, so
- * through it a Health bridge token would reach every write. A token that may
- * call every capability (`*`) is let through.
  */
 final class AgentGate
 {
@@ -38,9 +35,11 @@ final class AgentGate
 
     public function handle(Request $request, Closure $next): Response
     {
-        $token = $request->user()?->currentAccessToken();
-        if ($token instanceof PersonalAccessToken && ! $token->can('*')) {
-            return self::refuse(CapabilityResult::failure('forbidden', 'This token can\'t use the Coach.'));
+        // The Coach runs as the signed-in user with the app's powers (CAP-023, AGT-004), and its
+        // turns carry no token to scope. So no route of it takes a personal access token.
+        $user = $request->user();
+        if ($user instanceof User && $user->currentAccessToken() instanceof PersonalAccessToken) {
+            return self::refuse(CapabilityResult::failure('forbidden', 'An access token cannot use the Coach. Sign in to the app to talk to it.'));
         }
 
         if (! $request->routeIs('capabilities-ai.messages.store') || $request->user() === null) {

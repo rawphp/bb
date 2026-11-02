@@ -2,7 +2,8 @@
 
 namespace App\Capabilities\Support;
 
-use Laravel\Sanctum\PersonalAccessToken;
+use App\Domain\Tokens\TokenScope;
+use App\Models\PersonalAccessToken;
 use UnexpectedValueException;
 
 /**
@@ -16,9 +17,6 @@ enum Channel: string
     case Mcp = 'mcp';
     case Cli = 'cli';
     case Bridge = 'bridge';
-
-    /** The abilities a Health bridge token is limited to (INT-001). */
-    public const BRIDGE_ABILITIES = ['weigh_in_log', 'steps_log'];
 
     /**
      * Null for the server itself: CAP-022's five channels are ways a person reaches the
@@ -54,17 +52,13 @@ enum Channel: string
         };
     }
 
-    /** The session is the app; a personal access token is the bridge when limited to its abilities, else the CLI. */
+    /** The session is the app; a token made with the Health bridge scope is the bridge (INT-001), any other the CLI. */
     private static function overHttp(?object $token): self
     {
         if (! $token instanceof PersonalAccessToken) {
             return self::Ui;
         }
 
-        $abilities = (array) $token->abilities;
-
-        return $abilities !== [] && array_diff($abilities, self::BRIDGE_ABILITIES) === []
-            ? self::Bridge
-            : self::Cli;
+        return $token->scope === TokenScope::HealthBridge ? self::Bridge : self::Cli;
     }
 }

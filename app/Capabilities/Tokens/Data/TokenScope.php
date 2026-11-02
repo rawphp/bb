@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Tokens\Data;
 
-use App\Capabilities\Support\SettingsValues;
+use App\Capabilities\Support\DomainValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -10,7 +10,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class TokenScope extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: SettingsValues::TOKEN_SCOPES)]
+        #[Field(enum: DomainValues::TOKEN_SCOPES)]
         public readonly string $value,
         public readonly string $label,
         public readonly string $description,

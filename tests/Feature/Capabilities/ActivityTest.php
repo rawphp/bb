@@ -4,7 +4,9 @@ use App\Capabilities\Support\Channel;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Support\WriteResult;
+use App\Domain\Tokens\TokenScope;
 use App\Models\AuditRecord;
+use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
@@ -13,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Rawphp\Capabilities\Contracts\AuditWriter;
 use Rawphp\Capabilities\Contracts\CapabilityBus;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
@@ -23,6 +26,16 @@ use Tests\Support\Fixtures\Rail\TallyInput;
 
 // Registers a test-only capability, so each test gets its own application.
 uses()->group('warp-isolated');
+
+/** A personal access token for the user, as token_create makes it, and its bearer secret. */
+function bearerToken(User $user, TokenScope $scope, array $abilities): string
+{
+    $secret = Str::random(40);
+    $token = PersonalAccessToken::factory()->for($user, 'tokenable')
+        ->create(['scope' => $scope, 'abilities' => $abilities, 'token' => hash('sha256', $secret)]);
+
+    return $token->id.'|'.$secret;
+}
 
 /** A stand-in for the Health bridge's steps_log write (INT-001), which is not built yet. */
 function registerStepsLog(): void
@@ -115,23 +128,23 @@ it('CAP-022 records the agent, MCP and CLI channels from the caller their adapte
     Exceptions::assertNothingReported();
 });
 
-it('CAP-022 records a Health bridge token\'s write as the bridge and a full token\'s as the CLI', function (array $abilities, string $capability, string $channel) {
+it('CAP-022 records a Health bridge token\'s write as the bridge and a full token\'s as the CLI', function (TokenScope $scope, array $abilities, string $capability, string $channel) {
     registerStepsLog();
     $user = User::factory()->create();
-    $token = $user->createToken('script', $abilities)->plainTextToken;
+    $token = bearerToken($user, $scope, $abilities);
 
     $this->withToken($token)->postJson("/capabilities/{$capability}", ['amount' => 3])->assertOk();
 
     expect(AuditRecord::sole())->user_id->toBe($user->id)->channel->toBe($channel);
 })->with([
-    'a Health bridge token' => [Channel::BRIDGE_ABILITIES, 'steps_log', 'bridge'],
-    'a full CLI token' => [['*'], 'tally_add', 'cli'],
+    'a Health bridge token' => [TokenScope::HealthBridge, TokenScope::HEALTH_BRIDGE, 'steps_log', 'bridge'],
+    'a full CLI token' => [TokenScope::Everything, ['*'], 'tally_add', 'cli'],
 ]);
 
 it('CAP-023 refuses a Health bridge token any capability outside its abilities, and audits the refusal', function () {
     $user = User::factory()->create();
 
-    $this->withToken($user->createToken('bridge', Channel::BRIDGE_ABILITIES)->plainTextToken)
+    $this->withToken(bearerToken($user, TokenScope::HealthBridge, TokenScope::HEALTH_BRIDGE))
         ->postJson('/capabilities/tally_add', ['amount' => 3])->assertForbidden();
 
     expect(TallyAddCapability::$runs)->toBe(0);
@@ -172,7 +185,7 @@ it('CAP-022 writes the audit row inside the invoke, so a token write keeps its c
     registerStepsLog();
     $user = User::factory()->create();
 
-    $this->withToken($user->createToken('bridge', Channel::BRIDGE_ABILITIES)->plainTextToken)
+    $this->withToken(bearerToken($user, TokenScope::HealthBridge, TokenScope::HEALTH_BRIDGE))
         ->postJson('/capabilities/steps_log', ['amount' => 3])->assertOk();
 
     expect(AuditRecord::sole()->channel)->toBe('bridge');
@@ -230,7 +243,7 @@ it('CAP-022 stores a write\'s input with its secrets redacted', function () {
 it('CAP-023 refuses a token whose only ability is not a capability name, such as the package\'s capabilities:cli', function () {
     $user = User::factory()->create();
 
-    $this->withToken($user->createToken('cli', ['capabilities:cli'])->plainTextToken)
+    $this->withToken(bearerToken($user, TokenScope::Custom, ['capabilities:cli']))
         ->postJson('/capabilities/tally_add', ['amount' => 3])->assertForbidden();
 
     expect(TallyAddCapability::$runs)->toBe(0);
@@ -243,7 +256,7 @@ it('CAP-022 never loads every user\'s audit rows through the writer', function (
 it('CAP-023 runs a CLI token whose abilities are capability names, and records it as the CLI', function () {
     $user = User::factory()->create();
 
-    $this->withToken($user->createToken('cli', ['tally_add', 'activity_show'])->plainTextToken)
+    $this->withToken(bearerToken($user, TokenScope::Custom, ['tally_add', 'activity_show']))
         ->postJson('/capabilities/tally_add', ['amount' => 3])->assertOk();
 
     expect(AuditRecord::sole())->user_id->toBe($user->id)->channel->toBe('cli');

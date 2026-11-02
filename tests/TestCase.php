@@ -24,9 +24,11 @@ abstract class TestCase extends BaseTestCase
         $boots = WarmApplicationFactory::bootCount();
         $app = $this->createWarmApplication();
 
-        // Warp restores Eloquent's event dispatcher on each sandbox but not its connection
-        // resolver, so after an isolated test Model::$resolver is that app's flushed DB
-        // manager and the next query fails with "Target class [config] does not exist".
+        // A warp-isolated test boots its own application, and its DatabaseServiceProvider
+        // points Eloquent's static connection resolver at that application's `db`. That
+        // application is flushed when the test ends, but the static outlives it, so the next
+        // warm test in the same worker would reach a dead container ("Target class [config]
+        // does not exist"). Point it at this sandbox's `db`, which Warp re-points per test.
         Model::setConnectionResolver($app->make('db'));
 
         // migrate:fresh can purge the default connection. The capability
