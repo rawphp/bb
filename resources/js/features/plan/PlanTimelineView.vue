@@ -137,7 +137,7 @@ onMounted(() => {
 
         <RouterLink
             v-if="plan.maintenance_suggestion"
-            :to="{ path: '/plan/add', query: { type: 'maintenance', weeks: String(plan.maintenance_suggestion.weeks) } }"
+            to="/train/plan/add-phase"
             class="mx-4 flex min-h-tap items-center gap-2 rounded-[10px] p-2.5 text-[13px] font-semibold"
             :class="toneClasses.info"
             data-test="suggestion"

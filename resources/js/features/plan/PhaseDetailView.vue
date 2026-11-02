@@ -86,9 +86,9 @@ function setEvent(date: string | null): void {
     void write('phase_event_date_set', { phase_id: data.value!.id, event_date: date } satisfies PhaseEventDateSetInput, 'The event date could not be saved.');
 }
 
-// PH-007: the phase ends this week, and the plan is where the phase transition (#107) opens.
+// PH-007: the phase ends this week, and the phase transition (PH-030) takes over.
 async function endPhase(): Promise<void> {
-    if (await write('phase_end', { phase_id: data.value!.id } satisfies PhaseEndInput, 'The phase could not be ended.')) void router.push('/plan');
+    if (await write('phase_end', { phase_id: data.value!.id } satisfies PhaseEndInput, 'The phase could not be ended.')) void router.push('/train/plan/transition');
 }
 
 // The action the screen was opened for, once, when the phase first shows.

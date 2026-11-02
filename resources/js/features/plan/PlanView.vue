@@ -9,7 +9,7 @@ import DeloadWeekSheet from './DeloadWeekSheet.vue';
 import PlanTimelineView from './PlanTimelineView.vue';
 
 // Train → Plan and phases: the timeline, then the plan's actions, add a phase and RP's
-// 24-week plans (PLAN-006, PLAN-030; their screens are #107's). A deload week opens its
+// 24-week plans (PLAN-006, PLAN-030; AddPhaseView and PrebuiltPlansView). A deload week opens its
 // calories here (PLAN-022, PLAN-023). Ported from rp-clone's PlanView, with PlanActions
 // and PlanDestinations inline: the routes are the destinations.
 const props = withDefaults(defineProps<{ payload?: PlanShowOutput; pending?: boolean }>(), { pending: false });
@@ -33,8 +33,8 @@ function setDietBreak(dietBreak: boolean): void {
 }
 
 const ACTIONS = [
-    { to: '/plan/add', title: 'Add a phase', test: 'add-phase', icon: 'M12 7.5v9M7.5 12h9M21.5 12a9.5 9.5 0 1 1-19 0 9.5 9.5 0 0 1 19 0Z' },
-    { to: '/plan/prebuilt', title: "RP's 24-week plans", test: 'prebuilt', icon: 'M3.5 6.5h15v12h-15zM3.5 10.5h15M7.5 4v4M14.5 4v4M18 15v6M15 18h6' },
+    { to: '/train/plan/add-phase', title: 'Add a phase', test: 'add-phase', icon: 'M12 7.5v9M7.5 12h9M21.5 12a9.5 9.5 0 1 1-19 0 9.5 9.5 0 0 1 19 0Z' },
+    { to: '/train/plan/prebuilt', title: "RP's 24-week plans", test: 'prebuilt', icon: 'M3.5 6.5h15v12h-15zM3.5 10.5h15M7.5 4v4M14.5 4v4M18 15v6M15 18h6' },
 ] as const;
 </script>
 
