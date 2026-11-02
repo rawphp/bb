@@ -8,6 +8,7 @@ use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\OwnsInput;
 use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Workout\Data\WorkoutFeedbackAnswerInput;
+use App\Models\Exercise;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
@@ -35,6 +36,10 @@ final class WorkoutFeedbackAnswerCapability implements HostCapability, OwnsInput
 
     public function owned(User $user): array
     {
-        return ['workout_id' => WorkoutSession::query()->where('user_id', $user->id)];
+        return [
+            'workout_id' => WorkoutSession::query()->where('user_id', $user->id),
+            // FB-002: a library exercise, or one of the user's own.
+            'joint_pain.*.exercise_id' => Exercise::query()->visibleTo($user),
+        ];
     }
 }
