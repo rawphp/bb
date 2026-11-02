@@ -1,5 +1,22 @@
 import { createRouter, createWebHistory, type RouteRecordRaw, type RouterHistory } from 'vue-router';
+import { trackHistory } from './history';
+import { attachNavigation } from './navigation';
 import NotFound from './NotFound.vue';
+import TabRoot from './TabRoot.vue';
+import { TABS, tabPath, HOME_TAB, type TabId } from './tabs';
+
+declare module 'vue-router' {
+    interface RouteMeta {
+        /** The tab a link straight to this screen opens in. A push joins the active tab. */
+        tab?: TabId;
+        /** false: rendered on its own, outside the tab bar and stacks (dev screens, sign-in). */
+        shell?: boolean;
+        /** Width of the edge-swipe-back zone in CSS px (PWA-022). The workout screen uses 16. */
+        edgeZone?: number;
+        dev?: boolean;
+        screen?: string;
+    }
+}
 
 type RoutesModule = { default: RouteRecordRaw[] };
 
@@ -19,9 +36,14 @@ export const featureRoutes: RouteRecordRaw[] = Object.keys(modules)
 
 export function routesFor(devRoutes: boolean): RouteRecordRaw[] {
     return [
-        // SHELL_NAV replaces this with the tab bar's home.
-        { path: '/', redirect: '/account' },
+        { path: '/', redirect: tabPath(HOME_TAB) },
         ...featureRoutes.filter((route) => devRoutes || route.meta?.dev !== true),
+        // A placeholder root for each tab whose feature has not declared one yet.
+        ...TABS.filter((tab) => !featureRoutes.some((route) => route.path === tab.path)).map((tab) => ({
+            path: tab.path,
+            component: TabRoot,
+            props: { label: tab.label },
+        })),
         { path: '/:pathMatch(.*)*', component: NotFound },
     ];
 }
@@ -31,5 +53,8 @@ export function devRoutesEnabled(): boolean {
 }
 
 export function makeRouter(devRoutes = devRoutesEnabled(), history: RouterHistory = createWebHistory()) {
-    return createRouter({ history, routes: routesFor(devRoutes) });
+    const tracked = trackHistory(history);
+    const router = createRouter({ history: tracked, routes: routesFor(devRoutes) });
+    attachNavigation(router, tracked);
+    return router;
 }

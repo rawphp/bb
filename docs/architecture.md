@@ -58,6 +58,8 @@ Parallel issues rely on these names.
 | TS types | generated into `resources/js/contracts/` from the schema snapshots by `npm run contracts` |
 | Fixture check | Pest helper `assertMatchesScreenFixture($name, $payload)`: same keys and types at every depth, values free |
 | Feature routes | `resources/js/features/<feature>/routes.ts`, loaded by glob |
+| Tab roots | a route at `/today`, `/train`, `/nutrition`, `/progress` or `/more` takes over that tab's placeholder (`app/tabs.ts`). Route `meta.tab` picks the tab a link straight to a screen opens in; a push joins the active tab (NAV-002). `meta.shell: false` renders outside the tabs. `meta.edgeZone` narrows the swipe-back zone (16 on the workout screen) |
+| Shell slots | `app/ActiveWorkoutBar.vue` and `app/CoachButton.vue` appear in the shell by existing. Sheets and toasts teleport to `SHEET_HOST` and `TOAST_HOST` (`app/hosts.ts`). Screens take route params as props, and go back with `router.back()` |
 | Dev screens | `/dev/screens/<capability_name>` renders the screen from its fixture (local and testing only) |
 | Gallery entries | `resources/js/design/gallery/<Component>.gallery.vue`, loaded by glob at `/dev/gallery` |
 | Seeds | `database/seeders/<Area>Seeder.php`, all called from `DatabaseSeeder` by glob |

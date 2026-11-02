@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createApp } from 'vue';
 import { createMemoryHistory } from 'vue-router';
+import { useNavigation } from './navigation';
 import { devRoutesEnabled, featureRoutes, makeRouter, routesFor } from './router';
 
 describe('router', () => {
@@ -48,5 +50,25 @@ describe('router', () => {
 
         meta.content = '0';
         expect(devRoutesEnabled()).toBe(false);
+    });
+
+    it('NAV-001 opens on Today and has a root for each of the five tabs', async () => {
+        const router = makeRouter(false, createMemoryHistory());
+        await router.push('/');
+
+        expect(router.currentRoute.value.fullPath).toBe('/today');
+        for (const path of ['/today', '/train', '/nutrition', '/progress', '/more']) {
+            expect(router.resolve(path).matched[0]?.path).toBe(path);
+        }
+    });
+
+    it('PWA-025 gives each router its navigation', () => {
+        const router = makeRouter(false, createMemoryHistory());
+        let navigation: unknown;
+        const app = createApp({ setup: () => { navigation = useNavigation(); return () => null; } });
+        app.use(router).mount(document.createElement('div'));
+
+        expect(navigation).toMatchObject({ state: { active: 'today' } });
+        app.unmount();
     });
 });
