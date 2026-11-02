@@ -1,7 +1,6 @@
 <?php
 
 use App\Billing\StripeClientGateway;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Exceptions;
 use Stripe\ApiRequestor;
 use Stripe\Exception\AuthenticationException;
@@ -33,13 +32,6 @@ function stripeApi(array $bodies): object
 
     return $api;
 }
-
-beforeEach(function () {
-    Cache::forget('billing:price:price_monthly:last');
-    Cache::forget('billing:price:price_yearly');
-    Cache::forget('billing:price:price_yearly:last');
-    Cache::forget(StripeClientGateway::DOWN);
-});
 
 afterEach(fn () => ApiRequestor::setHttpClient(null));
 
@@ -138,27 +130,3 @@ it('SUB-007 closes an open Checkout page, and names the subscription an earlier 
     'paid' => [['status' => 'complete', 'subscription' => 'sub_9'], 'sub_9', 1],
     'expired' => [['status' => 'expired', 'subscription' => null], null, 1],
 ]);
-
-it('SUB-002 after Stripe fails, shows the last prices for a minute without asking Stripe again', function () {
-    Exceptions::fake();
-    Cache::forever('billing:price:price_monthly:last', ['amount' => 3499, 'currency' => 'usd', 'interval' => 'month', 'interval_count' => 1]);
-    Cache::forget('billing:price:price_monthly');
-    $api = stripeApi([['_status' => 500, 'error' => ['message' => 'Stripe is down', 'type' => 'api_error']]]);
-
-    expect(fn () => stripeClientGateway()->price('price_yearly'))->toThrow(RuntimeException::class);
-    expect(stripeClientGateway()->price('price_monthly'))->toBe(['amount' => 3499, 'currency' => 'usd', 'interval' => 'month', 'interval_count' => 1])
-        ->and($api->requests)->toHaveCount(1)
-        ->and(Cache::has(StripeClientGateway::DOWN))->toBeTrue();
-});
-
-it('SUB-002 shows the last price Stripe gave while Stripe cannot be reached', function () {
-    Exceptions::fake();
-    stripeApi([
-        ['id' => 'price_yearly', 'object' => 'price', 'unit_amount' => 29999, 'currency' => 'usd', 'recurring' => ['interval' => 'year', 'interval_count' => 1]],
-        ['_status' => 500, 'error' => ['message' => 'Stripe is down', 'type' => 'api_error']],
-    ]);
-    stripeClientGateway()->price('price_yearly');
-    Cache::forget('billing:price:price_yearly');
-
-    expect(stripeClientGateway()->price('price_yearly'))->toBe(['amount' => 29999, 'currency' => 'usd', 'interval' => 'year', 'interval_count' => 1]);
-});

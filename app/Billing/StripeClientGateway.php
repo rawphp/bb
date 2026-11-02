@@ -3,7 +3,6 @@
 namespace App\Billing;
 
 use Closure;
-use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 use Stripe\Exception\ApiErrorException;
 use Stripe\StripeClient;
@@ -13,12 +12,6 @@ use Stripe\Subscription;
 final class StripeClientGateway implements StripeGateway
 {
     public const UNAVAILABLE = 'Payments are unavailable right now. Try again shortly.';
-
-    /** Set for a minute after Stripe fails, so prices come from the last copy without waiting on Stripe again. */
-    public const DOWN = 'billing:stripe-down';
-
-    /** How long a plan's price is kept before it is read from Stripe again. */
-    private const PRICE_SECONDS = 3600;
 
     /** How long a Checkout page stays payable. */
     private const CHECKOUT_SECONDS = 3600;
@@ -88,41 +81,16 @@ final class StripeClientGateway implements StripeGateway
         ));
     }
 
-    /**
-     * Kept an hour. While Stripe cannot be reached, the last price it gave is
-     * shown, so the paywall and the subscription status still open, and for a
-     * minute after a failure Stripe is not asked again.
-     */
     public function price(string $price): array
     {
-        $key = "billing:price:{$price}";
+        $found = self::call(fn () => $this->stripe->prices->retrieve($price));
 
-        try {
-            if (Cache::has(self::DOWN) && ! Cache::has($key)) {
-                throw new RuntimeException(self::UNAVAILABLE);
-            }
-
-            /** @var array{amount: int, currency: string, interval: string, interval_count: int} */
-            return Cache::remember($key, self::PRICE_SECONDS, function () use ($price, $key): array {
-                $found = self::call(fn () => $this->stripe->prices->retrieve($price));
-                $read = [
-                    'amount' => (int) $found->unit_amount,
-                    'currency' => $found->currency,
-                    'interval' => (string) $found->recurring?->interval,
-                    'interval_count' => (int) $found->recurring?->interval_count,
-                ];
-                Cache::forever("{$key}:last", $read);
-
-                return $read;
-            });
-        } catch (RuntimeException $unavailable) {
-            Cache::add(self::DOWN, true, 60);
-
-            /** @var array{amount: int, currency: string, interval: string, interval_count: int}|null $last */
-            $last = Cache::get("{$key}:last");
-
-            return $last ?? throw $unavailable;
-        }
+        return [
+            'amount' => (int) $found->unit_amount,
+            'currency' => $found->currency,
+            'interval' => (string) $found->recurring?->interval,
+            'interval_count' => (int) $found->recurring?->interval_count,
+        ];
     }
 
     /**

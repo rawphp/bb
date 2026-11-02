@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Reads;
 
-use App\Billing\StripeGateway;
+use App\Billing\PlanPrices;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Reads\Data\BillingShowInput;
 use App\Capabilities\Reads\Data\BillingShowOutput;
@@ -44,6 +44,7 @@ final class BillingShowCapability implements BillingOnly, HostCapability
         $access = Access::fromStripeStatus($subscription?->status);
         $trial = ! ($subscription?->hasSubscribed() ?? false);
         $plans = self::plans();
+        $sold = array_keys(array_filter((array) config('billing.prices')));
 
         return new BillingShowOutput(
             status: self::status($access, $subscription),
@@ -51,7 +52,7 @@ final class BillingShowCapability implements BillingOnly, HostCapability
                 ? new LapsedBanner('Your subscription has ended. Your data is read-only.', 'Resubscribe')
                 : null,
             plans: $plans,
-            default_plan: in_array(self::DEFAULT_PLAN, array_column($plans, 'plan'), true) ? self::DEFAULT_PLAN : $plans[0]->plan,
+            default_plan: in_array(self::DEFAULT_PLAN, $sold, true) ? self::DEFAULT_PLAN : (string) $sold[0],
             primary_label: $trial ? 'Start '.BillingRule::TRIAL_DAYS.'-day free trial' : 'Subscribe',
             terms_text: $trial
                 ? 'Free for '.BillingRule::TRIAL_DAYS.' days, then the price above. Renews automatically unless you cancel before the trial ends. Manage or cancel in Settings.'
@@ -60,13 +61,22 @@ final class BillingShowCapability implements BillingOnly, HostCapability
         );
     }
 
-    /** @return list<BillingPlan> the plans the instance sells, at Stripe's prices (SUB-002) */
+    /**
+     * The plans the instance sells, at Stripe's prices (SUB-002). A plan whose
+     * price Stripe cannot give right now is left out, so the status, the banner
+     * and the portal still show while Stripe is down.
+     *
+     * @return list<BillingPlan>
+     */
     private static function plans(): array
     {
-        $stripe = app(StripeGateway::class);
+        $prices = app(PlanPrices::class);
         $plans = [];
         foreach (array_filter((array) config('billing.prices')) as $plan => $price) {
-            $found = $stripe->price((string) $price);
+            $found = $prices->get((string) $price);
+            if ($found === null) {
+                continue;
+            }
             $worded = new PlanPrice((string) $plan, $found['amount'], $found['currency'], $found['interval'], $found['interval_count']);
             $plans[] = new BillingPlan(plan: $worded->plan, title: $worded->title(), price_text: $worded->priceText(), detail: $worded->detail());
         }

@@ -126,7 +126,7 @@ Billing is off unless `BILLING_ENABLED=true` (SUB-020). A self-hosted instance l
 | `STRIPE_KEY` | Stripe publishable key. Not used yet: payments open on Stripe's own Checkout page. |
 | `STRIPE_SECRET` | Stripe secret key. |
 | `STRIPE_WEBHOOK_SECRET` | The signing secret of the Stripe webhook endpoint. The server reads an event only when it can verify the signature, and takes subscription state from Stripe, never from the browser (SUB-021). |
-| `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_SIX_MONTHS`, `STRIPE_PRICE_YEARLY` | The Stripe price ID of each plan (SUB-002): a recurring price of 1 month, 6 months and 1 year. The paywall shows Stripe's amount and currency. Leave one empty to not sell that plan. |
+| `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_SIX_MONTHS`, `STRIPE_PRICE_YEARLY` | The Stripe price ID of each plan (SUB-002): a recurring price of 1 month, 6 months and 1 year. The paywall shows Stripe's amount and currency, read every 15 minutes by the scheduler (`php artisan billing:refresh-prices` reads them at once). Leave one empty to not sell that plan. |
 
 With billing on:
 
@@ -134,7 +134,7 @@ With billing on:
 - In Stripe's Checkout settings, turn on "Limit customers to one subscription" as a second guard. The app already refuses Checkout to a user with a live subscription, and closes the last Checkout page it opened before it opens another, so only one can be paid.
 - Turn on the customer portal in Stripe's settings, with plan switching between the prices above and cancelling (SUB-007).
 - Sale, referral and gym prices are Stripe coupons with promotion codes; users type the code in Checkout (SUB-009).
-- A user who has never subscribed gets a 7-day free trial in Checkout (SUB-003). Until it starts, they can answer onboarding but not generate their plan. A user whose subscription has ended keeps every screen read-only (SUB-010) and cannot talk to the Coach until they resubscribe (SUB-024). They can still delete the account, revoke an access token and turn off push (SUB-022).
+- A user who has never subscribed gets a 7-day free trial in Checkout (SUB-003). There is no free tier: until the trial starts, they can answer onboarding and see the paywall, but make no other change and get no plan. Turning billing on for an instance that already has users puts each of them there too: their data is kept and read-only until they start their trial. A user whose subscription has ended keeps every screen read-only (SUB-010) and cannot talk to the Coach until they resubscribe (SUB-024). They can still delete the account, revoke an access token and turn off push (SUB-022).
 
 ## Queue workers
 

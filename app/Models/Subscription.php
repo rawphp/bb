@@ -54,7 +54,7 @@ class Subscription extends Model
 
     public static function of(User $user): ?self
     {
-        return self::query()->where('user_id', $user->getKey())->first();
+        return $user->subscription()->first();
     }
 
     public static function accessOf(User $user): Access

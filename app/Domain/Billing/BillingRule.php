@@ -9,8 +9,10 @@ namespace App\Domain\Billing;
  * user's writes are refused except deleting the account and the billing
  * capabilities (SUB-022), and revoking a token or stopping push; signing in
  * and out are host routes, not capabilities.
- * A user who never subscribed can onboard and reach the paywall, but the first
- * plan waits for the trial (SUB-003, SUB-004).
+ * There is no free tier (SUB-003): a user who has never subscribed may answer
+ * onboarding and reach the paywall (SUB-004), and otherwise only what a lapsed
+ * user may; the first plan waits for the trial. Existing users of an instance
+ * that turns billing on are in that state until they start their trial.
  */
 final class BillingRule
 {
@@ -26,8 +28,8 @@ final class BillingRule
     /** Every capability under this prefix is billing, which always stays allowed (SUB-022). */
     public const BILLING_PREFIX = 'billing_';
 
-    /** The write that generates the first plan; it needs a trial or a subscription (SUB-003). */
-    public const FIRST_PLAN = 'onboarding_complete';
+    /** The write a user who has never subscribed may make besides those, to reach the paywall (SUB-004). */
+    public const ONBOARDING = 'onboarding_answer';
 
     public static function allows(Access $access, string $capability, bool $readOnly): bool
     {
@@ -37,7 +39,7 @@ final class BillingRule
 
         return match ($access) {
             Access::Trial, Access::Active => true,
-            Access::None => $capability !== self::FIRST_PLAN,
+            Access::None => $capability === self::ONBOARDING || in_array($capability, self::LAPSED_EXEMPT, true),
             Access::Lapsed => in_array($capability, self::LAPSED_EXEMPT, true),
         };
     }
@@ -45,7 +47,8 @@ final class BillingRule
     /**
      * Whether the user may start a Coach turn (SUB-024). The Coach is part of the
      * plan, so a lapsed user loses it. A new user keeps it to onboard by chat
-     * before the paywall (AGT-030); the AGT-005 caps bound every user's use.
+     * before the paywall (AGT-030); its writes are held to onboarding answers by
+     * {@see allows()}, and the AGT-005 caps bound every user's use.
      */
     public static function allowsCoach(Access $access): bool
     {
