@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Settings\Recheck;
 use App\Actions\Settings\RecheckEligibility;
 use App\Domain\Model\PhaseType;
 use App\Domain\Safety\RecheckOutcomeKind;
@@ -41,7 +42,7 @@ function recheckUser(array $profile = [], PhaseType $type = PhaseType::FatLoss, 
 }
 
 /** @param  list<ScreeningItem>  $ticked */
-function recheck(User $user, array $ticked = []): App\Actions\Settings\Recheck
+function recheck(User $user, array $ticked = []): Recheck
 {
     return app(RecheckEligibility::class)($user, $ticked);
 }
