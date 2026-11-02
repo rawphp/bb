@@ -1,0 +1,163 @@
+{
+    "date": "2026-09-19",
+    "title": "Saturday, Sep 19",
+    "banners": [
+        {
+            "text": "Your plan starts Sat, Sep 19",
+            "tone": "info"
+        }
+    ],
+    "review_available": false,
+    "next_mesocycle": null,
+    "totals": {
+        "day_type": {
+            "text": "Rest",
+            "tone": "neutral"
+        },
+        "status": {
+            "text": "2200 under",
+            "tone": "warning"
+        },
+        "calories": {
+            "label": "Cal",
+            "value_text": "0/2200",
+            "fraction": 0.0,
+            "tone": "neutral"
+        },
+        "protein": {
+            "label": "P",
+            "value_text": "0/170",
+            "fraction": 0.0,
+            "tone": "neutral"
+        },
+        "warnings": [],
+        "can_redistribute": false
+    },
+    "steps": null,
+    "timeline": [],
+    "meals": [],
+    "workouts": [],
+    "weigh_ins": [],
+    "other_activities": [],
+    "busy_periods": [],
+    "off_plan": [],
+    "schedule_menu": [
+        {
+            "action": "add_meal",
+            "label": "Add meal"
+        },
+        {
+            "action": "add_workout",
+            "label": "Add workout"
+        },
+        {
+            "action": "add_busy_period",
+            "label": "Add busy period"
+        },
+        {
+            "action": "copy_day",
+            "label": "Copy day"
+        },
+        {
+            "action": "copy_week",
+            "label": "Copy week"
+        },
+        {
+            "action": "optimize_schedule",
+            "label": "Optimize schedule"
+        },
+        {
+            "action": "edit_schedule",
+            "label": "Edit schedule"
+        }
+    ],
+    "add_meal_time": "14:00",
+    "add_workout": {
+        "session": {
+            "mesocycle_id": "01JBWZK7Q8R9S0T1V2W3X4Y5Z6",
+            "week": 1,
+            "day": 1,
+            "title": "Week 1 · Day 1 · Upper A",
+            "time_text": "5:30 PM"
+        },
+        "session_message": null,
+        "activity": null
+    },
+    "schedule": {
+        "apply_to": [
+            {
+                "value": "this_day",
+                "label": "This day"
+            },
+            {
+                "value": "all_future_days",
+                "label": "All future days"
+            }
+        ],
+        "this_day": {
+            "window_start": "08:00",
+            "window_end": "20:00",
+            "meal_count": 4,
+            "busy_periods": [
+                {
+                    "label": "Team meeting",
+                    "start": "09:00",
+                    "end": "10:30"
+                }
+            ],
+            "training_start": "17:30"
+        },
+        "all_future_days": {
+            "window_start": "08:00",
+            "window_end": "20:00",
+            "meal_count": 4,
+            "busy_periods": [
+                {
+                    "label": "Team meeting",
+                    "start": "09:00",
+                    "end": "10:30"
+                }
+            ],
+            "training_start": "17:30"
+        },
+        "training_weekdays": [
+            {
+                "iso": 1,
+                "label": "Mon",
+                "selected": true
+            },
+            {
+                "iso": 2,
+                "label": "Tue",
+                "selected": false
+            },
+            {
+                "iso": 3,
+                "label": "Wed",
+                "selected": true
+            },
+            {
+                "iso": 4,
+                "label": "Thu",
+                "selected": false
+            },
+            {
+                "iso": 5,
+                "label": "Fri",
+                "selected": true
+            },
+            {
+                "iso": 6,
+                "label": "Sat",
+                "selected": false
+            },
+            {
+                "iso": 7,
+                "label": "Sun",
+                "selected": false
+            }
+        ]
+    },
+    "missed_session": null,
+    "missed_weeks": null
+}

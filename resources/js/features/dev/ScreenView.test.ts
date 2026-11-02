@@ -22,4 +22,11 @@ describe('ScreenView', () => {
 
         expect(wrapper.text()).toBe('No fixture at tests/fixtures/screens/probe_show.json.');
     });
+
+    it('CAP-001 renders a <name>.<state> fixture with the screen for <name>', async () => {
+        const wrapper = mount(ScreenView, { props: { name: 'probe_show.empty' } });
+        await flushPromises();
+
+        expect(wrapper.text()).toBe('No fixture at tests/fixtures/screens/probe_show.empty.json.');
+    });
 });

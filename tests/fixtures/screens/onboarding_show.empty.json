@@ -1,0 +1,766 @@
+{
+    "step": {
+        "number": 1,
+        "key": "goal",
+        "title": "What's your goal?",
+        "counter": "Step 1 of 13",
+        "position": 1,
+        "total": 13,
+        "next_title": "Next",
+        "can_continue": false,
+        "continue_hint": "Pick a goal and answer the question to continue.",
+        "can_go_back": false
+    },
+    "training_only": false,
+    "notices": [],
+    "goal": {
+        "help": "Want to lose fat and build muscle at the same time? Pick Fat loss. There is no separate recomp goal.",
+        "options": [
+            {
+                "value": "fatLoss",
+                "title": "Fat loss",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "muscleGain",
+                "title": "Muscle gain",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "maintenance",
+                "title": "Maintenance",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            }
+        ],
+        "recent_diet": {
+            "question": "Have you finished a fat-loss diet recently?",
+            "detail": "In the past 8 weeks",
+            "answer": null
+        },
+        "advice": null
+    },
+    "about_you": {
+        "name": "",
+        "sex_options": [
+            {
+                "value": "male",
+                "title": "Male",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "female",
+                "title": "Female",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            }
+        ],
+        "birth_date": {
+            "date": null,
+            "text": "",
+            "initial": "1996-10-10",
+            "min": null,
+            "max": "2026-10-09",
+            "is_locked": false
+        },
+        "height": {
+            "unit": "cm",
+            "unit_options": [
+                {
+                    "value": "cm",
+                    "title": "cm",
+                    "detail": "",
+                    "is_selected": true,
+                    "is_enabled": true,
+                    "badges": []
+                },
+                {
+                    "value": "feetInches",
+                    "title": "ft and in",
+                    "detail": "",
+                    "is_selected": false,
+                    "is_enabled": true,
+                    "badges": []
+                }
+            ],
+            "cm": null,
+            "feet": null,
+            "inches": null,
+            "text": ""
+        },
+        "weight": {
+            "unit": "kg",
+            "unit_options": [
+                {
+                    "value": "kg",
+                    "title": "kg",
+                    "detail": "",
+                    "is_selected": true,
+                    "is_enabled": true,
+                    "badges": []
+                },
+                {
+                    "value": "lb",
+                    "title": "lb",
+                    "detail": "",
+                    "is_selected": false,
+                    "is_enabled": true,
+                    "badges": []
+                }
+            ],
+            "value": null,
+            "text": ""
+        }
+    },
+    "screening": {
+        "prompt": "Tick anything that applies to you.",
+        "clearance_note": {
+            "text": "Get medical clearance from your doctor before starting any diet.",
+            "tone": "warning"
+        },
+        "medical_diets_note": {
+            "text": "This app does not support medical diets. If you have a metabolic condition, consult a physician first.",
+            "tone": "info"
+        },
+        "rows": [
+            {
+                "item": "ageOutOfRange",
+                "label": "Under 18 or over 65",
+                "detail": "",
+                "is_on": false,
+                "is_locked": true
+            },
+            {
+                "item": "heightOutOfRange",
+                "label": "Height under 54 in (137 cm) or over 84 in (213 cm)",
+                "detail": "",
+                "is_on": false,
+                "is_locked": true
+            },
+            {
+                "item": "weightOverLimit",
+                "label": "Weight over 350 lb (159 kg)",
+                "detail": "",
+                "is_on": false,
+                "is_locked": true
+            },
+            {
+                "item": "bmiUnderLimit",
+                "label": "BMI under 17",
+                "detail": "",
+                "is_on": false,
+                "is_locked": true
+            },
+            {
+                "item": "pregnantOrBreastfeeding",
+                "label": "Pregnant or breastfeeding",
+                "detail": "",
+                "is_on": false,
+                "is_locked": false
+            },
+            {
+                "item": "tryingToConceive",
+                "label": "Trying to conceive or in fertility treatment",
+                "detail": "Only Fat loss is unavailable.",
+                "is_on": false,
+                "is_locked": false
+            },
+            {
+                "item": "transgenderOnHormoneTherapy",
+                "label": "Transgender and on hormone therapy",
+                "detail": "",
+                "is_on": false,
+                "is_locked": false
+            },
+            {
+                "item": "heartThyroidOrPCOS",
+                "label": "Heart disease, thyroid cancer, PCOS, or hyper- or hypothyroidism",
+                "detail": "",
+                "is_on": false,
+                "is_locked": false
+            },
+            {
+                "item": "weightLossSurgery",
+                "label": "Weight-loss surgery in the past 5 years",
+                "detail": "",
+                "is_on": false,
+                "is_locked": false
+            },
+            {
+                "item": "gallbladderDisease",
+                "label": "Gallbladder disease",
+                "detail": "",
+                "is_on": false,
+                "is_locked": false
+            },
+            {
+                "item": "autoimmuneDisease",
+                "label": "Autoimmune disease",
+                "detail": "",
+                "is_on": false,
+                "is_locked": false
+            },
+            {
+                "item": "diabetes",
+                "label": "Type 1 or type 2 diabetes",
+                "detail": "",
+                "is_on": false,
+                "is_locked": false
+            },
+            {
+                "item": "eatingDisorderHistory",
+                "label": "A history of eating disorders",
+                "detail": "",
+                "is_on": false,
+                "is_locked": false
+            }
+        ]
+    },
+    "glp1": {
+        "question": "Do you take a GLP-1 or similar weight-loss drug?",
+        "detail": "For example semaglutide, tirzepatide or retatrutide.",
+        "answer": null
+    },
+    "body_fat": {
+        "help": "Pick the photo that looks most like you. Accuracy isn't critical. Don't use body-fat readings from a smart scale.",
+        "sex": null,
+        "options": [
+            {
+                "value": "lowest",
+                "title": "under 20%",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "low",
+                "title": "20-27%",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "high",
+                "title": "27-35%",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "highest",
+                "title": "over 35%",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            }
+        ]
+    },
+    "rate_length": {
+        "options": [],
+        "is_custom": false,
+        "custom_rate": {
+            "value": 0.0,
+            "min": 0.25,
+            "max": 1.0,
+            "step": 0.025,
+            "text": ""
+        },
+        "weeks": {
+            "value": 2.0,
+            "min": 2.0,
+            "max": 16.0,
+            "step": 1.0,
+            "text": ""
+        },
+        "recommended_text": "",
+        "start_date": {
+            "date": null,
+            "text": "",
+            "initial": "2026-10-11",
+            "min": "2026-10-11",
+            "max": null,
+            "is_locked": false
+        },
+        "last_day": {
+            "date": null,
+            "text": "",
+            "initial": "2026-10-11",
+            "min": "2026-10-11",
+            "max": null,
+            "is_locked": false
+        },
+        "target_weight": {
+            "value": null,
+            "unit": "kg",
+            "text": "",
+            "can_edit": false,
+            "note": "A steady weight has no target to change."
+        }
+    },
+    "experience": {
+        "options": [
+            {
+                "value": "beginner",
+                "title": "Beginner",
+                "detail": "Under 1 year of consistent lifting. Mesocycles start at 6 weeks.",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "intermediate",
+                "title": "Intermediate",
+                "detail": "1 to 4 years. Mesocycles start at 5 weeks.",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "advanced",
+                "title": "Advanced",
+                "detail": "Over 4 years. Mesocycles start at 5 weeks.",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            }
+        ]
+    },
+    "training_days": {
+        "help": "2 to 4 days you can repeat every week beat 5 or 6 you will miss.",
+        "days": [
+            {
+                "weekday": 1,
+                "name": "Mon",
+                "full_name": "Monday",
+                "is_on": false,
+                "start": {
+                    "minutes": 1080,
+                    "text": "6:00 PM"
+                },
+                "length_minutes": 60,
+                "length_text": "Length: 60 min"
+            },
+            {
+                "weekday": 2,
+                "name": "Tue",
+                "full_name": "Tuesday",
+                "is_on": false,
+                "start": {
+                    "minutes": 1080,
+                    "text": "6:00 PM"
+                },
+                "length_minutes": 60,
+                "length_text": "Length: 60 min"
+            },
+            {
+                "weekday": 3,
+                "name": "Wed",
+                "full_name": "Wednesday",
+                "is_on": false,
+                "start": {
+                    "minutes": 1080,
+                    "text": "6:00 PM"
+                },
+                "length_minutes": 60,
+                "length_text": "Length: 60 min"
+            },
+            {
+                "weekday": 4,
+                "name": "Thu",
+                "full_name": "Thursday",
+                "is_on": false,
+                "start": {
+                    "minutes": 1080,
+                    "text": "6:00 PM"
+                },
+                "length_minutes": 60,
+                "length_text": "Length: 60 min"
+            },
+            {
+                "weekday": 5,
+                "name": "Fri",
+                "full_name": "Friday",
+                "is_on": false,
+                "start": {
+                    "minutes": 1080,
+                    "text": "6:00 PM"
+                },
+                "length_minutes": 60,
+                "length_text": "Length: 60 min"
+            },
+            {
+                "weekday": 6,
+                "name": "Sat",
+                "full_name": "Saturday",
+                "is_on": false,
+                "start": {
+                    "minutes": 1080,
+                    "text": "6:00 PM"
+                },
+                "length_minutes": 60,
+                "length_text": "Length: 60 min"
+            },
+            {
+                "weekday": 7,
+                "name": "Sun",
+                "full_name": "Sunday",
+                "is_on": false,
+                "start": {
+                    "minutes": 1080,
+                    "text": "6:00 PM"
+                },
+                "length_minutes": 60,
+                "length_text": "Length: 60 min"
+            }
+        ],
+        "length_min": 15,
+        "length_max": 300,
+        "length_step": 15
+    },
+    "training_plan": {
+        "note": "",
+        "options": [
+            {
+                "value": "meso_builder",
+                "title": "Meso Builder",
+                "detail": "Set a priority for each muscle. Its screen comes later, so your plan is built later for now.",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "later",
+                "title": "I'll build it later",
+                "detail": "The schedule shows workout blocks with no exercises until you do.",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            }
+        ]
+    },
+    "steps": {
+        "note": "Your typical daily step count. A range for each day is fine.",
+        "presets": [
+            {
+                "min": 0,
+                "max": 5000,
+                "title": "0 to 5k"
+            },
+            {
+                "min": 0,
+                "max": 8000,
+                "title": "0 to 8k"
+            },
+            {
+                "min": 5000,
+                "max": 8000,
+                "title": "5k to 8k"
+            },
+            {
+                "min": 8000,
+                "max": 10000,
+                "title": "8k to 10k"
+            },
+            {
+                "min": 10000,
+                "max": 12000,
+                "title": "10k to 12k"
+            },
+            {
+                "min": 8000,
+                "max": 13000,
+                "title": "8k to 13k"
+            }
+        ],
+        "groups": [
+            {
+                "key": "weekdays",
+                "title": "Weekdays",
+                "weekdays": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                ],
+                "is_mixed": false,
+                "min": 5000,
+                "max": 8000,
+                "text": "5,000 to 8,000 steps"
+            },
+            {
+                "key": "weekends",
+                "title": "Weekends",
+                "weekdays": [
+                    6,
+                    7
+                ],
+                "is_mixed": false,
+                "min": 8000,
+                "max": 10000,
+                "text": "8,000 to 10,000 steps"
+            }
+        ],
+        "days": [
+            {
+                "weekday": 1,
+                "full_name": "Monday",
+                "min": 5000,
+                "max": 8000,
+                "text": "5,000 to 8,000 steps"
+            },
+            {
+                "weekday": 2,
+                "full_name": "Tuesday",
+                "min": 5000,
+                "max": 8000,
+                "text": "5,000 to 8,000 steps"
+            },
+            {
+                "weekday": 3,
+                "full_name": "Wednesday",
+                "min": 5000,
+                "max": 8000,
+                "text": "5,000 to 8,000 steps"
+            },
+            {
+                "weekday": 4,
+                "full_name": "Thursday",
+                "min": 5000,
+                "max": 8000,
+                "text": "5,000 to 8,000 steps"
+            },
+            {
+                "weekday": 5,
+                "full_name": "Friday",
+                "min": 5000,
+                "max": 8000,
+                "text": "5,000 to 8,000 steps"
+            },
+            {
+                "weekday": 6,
+                "full_name": "Saturday",
+                "min": 8000,
+                "max": 10000,
+                "text": "8,000 to 10,000 steps"
+            },
+            {
+                "weekday": 7,
+                "full_name": "Sunday",
+                "min": 8000,
+                "max": 10000,
+                "text": "8,000 to 10,000 steps"
+            }
+        ],
+        "increment": 500,
+        "max_steps": 40000
+    },
+    "meals": {
+        "first_meal": {
+            "minutes": 420,
+            "text": "7:00 AM"
+        },
+        "last_meal": {
+            "minutes": 1200,
+            "text": "8:00 PM"
+        },
+        "window_note": "This window applies to every day.",
+        "meal_count": {
+            "value": 5.0,
+            "min": 2.0,
+            "max": 6.0,
+            "step": 1.0,
+            "text": "Meals a day: 5"
+        },
+        "busy_note": "Times you can't eat, such as a commute or a meeting. Meals are placed around them.",
+        "busy_periods": []
+    },
+    "weigh_ins": {
+        "days": [
+            {
+                "weekday": 1,
+                "name": "Mon",
+                "full_name": "Monday",
+                "is_on": false,
+                "time": {
+                    "minutes": 420,
+                    "text": "7:00 AM"
+                }
+            },
+            {
+                "weekday": 2,
+                "name": "Tue",
+                "full_name": "Tuesday",
+                "is_on": false,
+                "time": {
+                    "minutes": 420,
+                    "text": "7:00 AM"
+                }
+            },
+            {
+                "weekday": 3,
+                "name": "Wed",
+                "full_name": "Wednesday",
+                "is_on": false,
+                "time": {
+                    "minutes": 420,
+                    "text": "7:00 AM"
+                }
+            },
+            {
+                "weekday": 4,
+                "name": "Thu",
+                "full_name": "Thursday",
+                "is_on": false,
+                "time": {
+                    "minutes": 420,
+                    "text": "7:00 AM"
+                }
+            },
+            {
+                "weekday": 5,
+                "name": "Fri",
+                "full_name": "Friday",
+                "is_on": false,
+                "time": {
+                    "minutes": 420,
+                    "text": "7:00 AM"
+                }
+            },
+            {
+                "weekday": 6,
+                "name": "Sat",
+                "full_name": "Saturday",
+                "is_on": false,
+                "time": {
+                    "minutes": 420,
+                    "text": "7:00 AM"
+                }
+            },
+            {
+                "weekday": 7,
+                "name": "Sun",
+                "full_name": "Sunday",
+                "is_on": false,
+                "time": {
+                    "minutes": 420,
+                    "text": "7:00 AM"
+                }
+            }
+        ],
+        "time_note": "The time only sets your reminder. Weigh in first thing in the morning.",
+        "hint": "We recommend weighing in on 4 or more days a week for a clearer trend.",
+        "review_note": "The day you look back on the week and set the next one. It is also the first day of every plan week. It starts as the day after your last weigh-in day.",
+        "review_days": [
+            {
+                "value": "1",
+                "title": "Mon",
+                "detail": "",
+                "is_selected": true,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "2",
+                "title": "Tue",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "3",
+                "title": "Wed",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "4",
+                "title": "Thu",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "5",
+                "title": "Fri",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "6",
+                "title": "Sat",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            },
+            {
+                "value": "7",
+                "title": "Sun",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            }
+        ]
+    },
+    "calories": {
+        "options": [
+            {
+                "value": "recommendation",
+                "title": "RP recommendation",
+                "detail": "",
+                "is_selected": true,
+                "is_enabled": true,
+                "badges": [
+                    {
+                        "text": "Recommended",
+                        "tone": "good"
+                    }
+                ]
+            },
+            {
+                "value": "own",
+                "title": "Choose my own average daily calories",
+                "detail": "",
+                "is_selected": false,
+                "is_enabled": true,
+                "badges": []
+            }
+        ],
+        "own_kcal": null,
+        "own_kcal_max": 10000,
+        "own_unit": "kcal a day",
+        "week_note": "A typical plan week. Training days get more than rest days.",
+        "week": []
+    },
+    "review": {
+        "sections": [],
+        "note": "Exact meal times and amounts can be fine-tuned after you start.",
+        "starting_title": "Building your plan",
+        "starting_text": "Working out your targets and saving your plan."
+    }
+}

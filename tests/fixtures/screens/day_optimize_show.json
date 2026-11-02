@@ -1,0 +1,42 @@
+{
+    "date": "2026-09-23",
+    "rows": [
+        {
+            "meal_id": "01JBX0M1N2P3Q4R5S6T7V8W9X0",
+            "name": "Breakfast",
+            "before_text": "8:00 AM",
+            "after_text": "8:00 AM",
+            "changed": false
+        },
+        {
+            "meal_id": "01JBX0M1N2P3Q4R5S6T7V8W9X1",
+            "name": "Lunch",
+            "before_text": "12:30 PM",
+            "after_text": "12:00 PM",
+            "changed": true
+        },
+        {
+            "meal_id": "01JBX0M1N2P3Q4R5S6T7V8W9X2",
+            "name": "Pre-workout",
+            "before_text": "4:00 PM",
+            "after_text": "4:00 PM",
+            "changed": false
+        },
+        {
+            "meal_id": "shake",
+            "name": "Intra-workout shake",
+            "before_text": null,
+            "after_text": "6:00 PM",
+            "changed": true
+        },
+        {
+            "meal_id": "01JBX0M1N2P3Q4R5S6T7V8W9X3",
+            "name": "Post-workout",
+            "before_text": "7:30 PM",
+            "after_text": "7:00 PM",
+            "changed": true
+        }
+    ],
+    "message": null,
+    "can_save": true
+}

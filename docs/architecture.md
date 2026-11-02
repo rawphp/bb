@@ -56,7 +56,7 @@ Parallel issues rely on these names.
 | Screen payload fixture | `tests/fixtures/screens/<capability_name>.json` |
 | Schema snapshot | `tests/fixtures/schemas/<capability_name>.input.json` and `.output.json` |
 | TS types | generated into `resources/js/contracts/` from the schema snapshots by `npm run contracts` |
-| Fixture check | Pest helper `assertMatchesScreenFixture($name, $payload)`: same keys and types at every depth, values free |
+| Fixture check | Pest helper `assertMatchesScreenFixture($name, $payload)`: same keys and types at every depth, values free, and valid against the output schema snapshot |
 | Feature routes | `resources/js/features/<feature>/routes.ts`, loaded by glob |
 | Dev screens | `/dev/screens/<capability_name>` renders the screen from its fixture (local and testing only) |
 | Gallery entries | `resources/js/design/gallery/<Component>.gallery.vue`, loaded by glob at `/dev/gallery` |
@@ -91,6 +91,7 @@ Parallel issues rely on these names.
 
 - Vue 3, TypeScript, Vue Router, Tailwind CSS 4, Vite, `vite-plugin-pwa` (Workbox, `injectManifest`), `idb` for IndexedDB. No Pinia. App state is the read cache plus the outbox, both behind one module.
 - `app/call.ts` is the only way the app talks to the server. `read(name, input)` is stale-while-revalidate through the cache (OFF-003). `write(name, input)` adds to the outbox and returns once the entry is stored (OFF-006). Components never call `fetch`.
+- The read cache is per user. `NameCacheOwner` (web and api groups) names the signed-in user in a readable, opaque `bb_cache_owner` cookie and removes it when no one is signed in. `app/cache.ts` opens one IndexedDB database per owner, none without one, and deletes the others where the browser can list them.
 - The CAP-001 boundary: `resources/js` may not import date math beyond formatting, and no component may compute a value from two server numbers. The lint rule `no-business-rules` (`eslint/no-business-rules/README.md`) checks part of it: `fetch` outside `app/call.ts`, and arithmetic between two capability payload values inside `features/`. Review checks the rest, including date-math imports and arithmetic outside `features/`.
 - Vite dev server port **5283**, recorded in `~/EA/projects/AGENTS.md`. Local site `bodybuilder.test` through Herd.
 
@@ -101,7 +102,9 @@ Carried over from rp-clone so a tester can live through weeks in minutes. Local 
 - The client has one clock: the device clock plus an offset kept in local storage, set from Settings → Developer (SET-011): a date picker, "+1 day", "+7 days", "Clear".
 - With an offset set, every request sends `X-BB-Now: <ISO 8601>`, and outbox entries use the shifted time for `occurred_at` (OFF-007).
 - `App\Http\Middleware\UseRequestClock`, first in the `api` and capability route groups, calls `Carbon::setTestNow` for that request when `APP_ENV` is `local` or `testing`. Every other environment ignores the header.
+- The clock walks forward only. The server ignores an `X-BB-Now` earlier than its own clock, and the picker starts at today: a past instant would date the session and XSRF cookies in the past and sign the user out.
 - The in-app agent's turns run on the queue, so the turn records the request's clock and the job sets it before running tools.
+- The queue keeps real time. The `database` and `redis` queues (`App\Queue`) take every time they stamp from the clock before the walk: a push, a delay, a bulk push and a walked job's own `release()`. A normal worker therefore finds the job.
 
 ## Tests
 

@@ -1,0 +1,21 @@
+{
+    "barcode": "5000159484695",
+    "status": "found",
+    "food": {
+        "food_id": "01JBX5F0000000000000000009",
+        "name": "Protein bar, cookie dough",
+        "detail": "Grenade",
+        "raw": {
+            "kcal": "380 kcal",
+            "protein": "P 32",
+            "fat": "F 14",
+            "carbs": "C 30"
+        },
+        "cooked": null,
+        "basis_text": "per 100 g",
+        "is_curated": false,
+        "is_favorite": false,
+        "is_in_meal": false
+    },
+    "message": null
+}
