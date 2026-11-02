@@ -2,6 +2,7 @@
 
 use App\Domain\Model\HeightUnit;
 use App\Domain\Progress\ProgressScope;
+use App\Models\WeighIn;
 use Tests\Unit\Capabilities\Reads\Progress\ProgressWorld as W;
 
 // The chart, summary, share and empty states of the Progress tab (rp-clone ProgressModelTests), from in-memory rows.
@@ -40,8 +41,8 @@ it('ANA-001 draws each phase\'s range in the whole plan scope', function () {
 
     expect($phase['goal'][0]['date'])->toBe('2026-09-01')
         ->and($plan['goal'][0]['date'])->toBe('2026-08-20')
-        // Maintenance holds the line: low, goal and high are one weight.
-        ->and($plan['goal'][0])->toBe(['date' => '2026-08-20', 'low' => 80.0, 'goal' => 80.0, 'high' => 80.0]);
+        // Maintenance holds the line at 80 kg within 1% either side.
+        ->and($plan['goal'][0])->toBe(['date' => '2026-08-20', 'low' => 79.2, 'goal' => 80.0, 'high' => 80.8]);
 });
 
 it('ANA-001 rounds the weights to 1 decimal and the trend and goal to 2', function () {
@@ -225,7 +226,7 @@ it('WT-021 takes the earliest reading of a day that has a waist', function () {
  * 40 days of 80 kg from 1 September with a waist on some of them.
  *
  * @param  array<int, float>|list<int>  $waists  day offset => cm; a list of offsets reads 85 cm on each
- * @return list<App\Models\WeighIn>
+ * @return list<WeighIn>
  */
 function waistReadings(array $waists): array
 {
