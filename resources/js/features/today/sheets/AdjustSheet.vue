@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 import ReadState from '@/app/ReadState.vue';
 import type { DayAdjustInput } from '@/contracts/day_adjust';
 import type { DayAdjustShowInput, DayAdjustShowOutput } from '@/contracts/day_adjust_show';
@@ -52,7 +52,9 @@ const { data, failure, reading, notice, load } = useSheetRead<DayAdjustShowOutpu
 );
 const { busy, error, locked, close, save } = useSheet(props);
 // Save follows the server's answer for the move as it is now, never an older one.
-const canSave = computed(() => data.value?.can_save === true && kcal.value !== null && !reading.value && failure.value === null && !busy.value);
+const canSave = computed(
+    () => data.value?.can_save === true && kcal.value !== null && !typing.value && !reading.value && failure.value === null && !busy.value,
+);
 const mode = computed<Mode>(() => picked.value ?? data.value?.mode ?? 'meals');
 // The day's totals, then the other day's when the move is between days.
 const days = computed(() => (data.value ? [data.value.day, ...(data.value.other_day ? [data.value.other_day] : [])] : []));
@@ -65,10 +67,26 @@ function choice(): DayAdjustShowInput {
         : { date, mode: 'meals', from_meal_id: fromMealId.value, to_meal_id: toMealId.value, kcal: kcal.value };
 }
 
-watch([picked, direction, fromMealId, toMealId, otherDate, kcalText], () => {
+// A pick asks the server at once; the amount once typing stops, not on every key.
+const DEBOUNCE_MS = 300;
+// An amount has been typed that the server has not been asked about yet.
+const typing = ref(false);
+let timer: ReturnType<typeof setTimeout> | undefined;
+
+function ask(): void {
+    clearTimeout(timer);
+    typing.value = false;
     edited.value = true;
     void load({ fresh: true });
+}
+
+watch([picked, direction, fromMealId, toMealId, otherDate], ask);
+watch(kcalText, () => {
+    clearTimeout(timer);
+    typing.value = true;
+    timer = setTimeout(ask, DEBOUNCE_MS);
 });
+onUnmounted(() => clearTimeout(timer));
 
 function submit(): void {
     if (!canSave.value || kcal.value === null) return;
