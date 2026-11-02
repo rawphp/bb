@@ -6,8 +6,8 @@ import { ref, watch } from 'vue';
 // commitsWhileTyping off it emits when the field loses focus, for a value that moves
 // other fields (the step 6 target). Ported from rp-clone's OnboardingParts.
 const props = withDefaults(
-    defineProps<{ label: string; unit: string; modelValue?: number | null; commitsWhileTyping?: boolean; disabled?: boolean }>(),
-    { modelValue: null, commitsWhileTyping: true, disabled: false },
+    defineProps<{ label: string; unit: string; modelValue?: number | null; commitsWhileTyping?: boolean; disabled?: boolean; readonly?: boolean }>(),
+    { modelValue: null, commitsWhileTyping: true, disabled: false, readonly: false },
 );
 
 const emit = defineEmits<{ 'update:modelValue': [value: number | null] }>();
@@ -26,16 +26,10 @@ function parse(text: string): number | null {
 
 const text = ref(format(props.modelValue));
 const focused = ref(false);
-// The value last given to the parent, or the parent's own once it changes. A parent that
-// saves to a server holds the old value until the save lands, so a number put back to it
-// meanwhile is still a change.
-let sent = props.modelValue;
 
 function push(): void {
     const parsed = parse(text.value);
-    if (parsed === sent) return;
-    sent = parsed;
-    emit('update:modelValue', parsed);
+    if (parsed !== props.modelValue) emit('update:modelValue', parsed);
 }
 
 function typed(): void {
@@ -54,7 +48,6 @@ function left(): void {
 watch(
     () => props.modelValue,
     (value) => {
-        sent = value;
         if (!focused.value && parse(text.value) !== value) text.value = format(value);
     },
 );
@@ -70,6 +63,7 @@ watch(
             :placeholder="label"
             :aria-label="`${label} in ${unit}`"
             :disabled="disabled"
+            :readonly="readonly"
             class="min-w-0 flex-1 bg-transparent py-2 tabular-nums text-primary-text outline-none placeholder:text-secondary-text/60"
             @input="typed"
             @focus="focused = true"

@@ -18,23 +18,18 @@ const props = defineProps<{ about: AboutYou; locked?: boolean }>();
 const emit = defineEmits<{ answer: [answers: Answers] }>();
 
 // The name as the field shows it. A re-read replaces it only while nobody is typing, as
-// NumberField does, so a save landing mid-word does not wipe the word. A change is judged
-// against the name last sent, since the read lags a save still out.
+// NumberField does, so a background refresh landing mid-word does not wipe the word.
 const name = ref(props.about.name);
 const typingName = ref(false);
-let sentName = props.about.name;
 watch(
     () => props.about.name,
     (saved) => {
-        sentName = saved;
         if (!typingName.value) name.value = saved;
     },
 );
 
 function typedName(): void {
-    if (name.value === sentName) return;
-    sentName = name.value;
-    emit('answer', { name: name.value });
+    if (name.value !== props.about.name) emit('answer', { name: name.value });
 }
 
 function pickedBirthDate(event: Event): void {
@@ -47,31 +42,15 @@ function typedCm(cm: number | null): void {
     if (cm !== null) emit('answer', { height: { unit: 'cm', cm } });
 }
 
-// Feet and inches as their fields show them. A height saves both halves, and the save of
-// the first may still be out when the second is left, so the other half comes from its
-// field, not from the last read. Each follows the server when the server's value changes.
-const feet = ref(props.about.height.feet ?? null);
-const inches = ref(props.about.height.inches ?? null);
-watch(
-    () => props.about.height.feet,
-    (saved) => (feet.value = saved ?? null),
-);
-watch(
-    () => props.about.height.inches,
-    (saved) => (inches.value = saved ?? null),
-);
-
-// Whole feet, as rp-clone's field takes them; inches keep their decimals.
-function typedFeet(typed: number | null): void {
-    if (typed === null) return;
-    feet.value = Math.trunc(typed);
-    emit('answer', { height: { unit: 'feetInches', feet: feet.value, inches: inches.value } });
+// A height saves both halves; the other half is the saved one, which is what its field
+// shows, since nothing is typed while a save is out. Whole feet, as rp-clone's field
+// takes them; inches keep their decimals.
+function typedFeet(feet: number | null): void {
+    if (feet !== null) emit('answer', { height: { unit: 'feetInches', feet: Math.trunc(feet), inches: props.about.height.inches ?? null } });
 }
 
-function typedInches(typed: number | null): void {
-    if (typed === null) return;
-    inches.value = typed;
-    emit('answer', { height: { unit: 'feetInches', feet: feet.value, inches: inches.value } });
+function typedInches(inches: number | null): void {
+    if (inches !== null) emit('answer', { height: { unit: 'feetInches', feet: props.about.height.feet ?? null, inches } });
 }
 
 function typedWeight(value: number | null): void {
@@ -93,6 +72,7 @@ const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3
                 autocapitalize="words"
                 placeholder="Name"
                 class="min-h-tap rounded-xl bg-background px-3.5 text-primary-text outline-none placeholder:text-secondary-text/60"
+                :readonly="locked"
                 @focus="typingName = true"
                 @blur="typingName = false"
                 @change="typedName"
@@ -137,6 +117,7 @@ const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3
                 :min="about.birth_date.min ?? undefined"
                 :max="about.birth_date.max ?? undefined"
                 :disabled="about.birth_date.is_locked"
+                :readonly="locked"
                 class="min-h-tap self-start rounded-xl bg-background px-3.5 text-primary-text disabled:opacity-50"
                 @change="pickedBirthDate"
             />
@@ -158,10 +139,10 @@ const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3
                     {{ option.title }}
                 </button>
             </div>
-            <NumberField v-if="about.height.unit === 'cm'" label="Height" unit="cm" :model-value="about.height.cm" :commits-while-typing="false" @update:model-value="typedCm" />
+            <NumberField v-if="about.height.unit === 'cm'" label="Height" unit="cm" :model-value="about.height.cm" :commits-while-typing="false" :readonly="locked" @update:model-value="typedCm" />
             <div v-else class="flex gap-2">
-                <NumberField class="flex-1" label="Feet" unit="ft" :model-value="about.height.feet" :commits-while-typing="false" @update:model-value="typedFeet" />
-                <NumberField class="flex-1" label="Inches" unit="in" :model-value="about.height.inches" :commits-while-typing="false" @update:model-value="typedInches" />
+                <NumberField class="flex-1" label="Feet" unit="ft" :model-value="about.height.feet" :commits-while-typing="false" :readonly="locked" @update:model-value="typedFeet" />
+                <NumberField class="flex-1" label="Inches" unit="in" :model-value="about.height.inches" :commits-while-typing="false" :readonly="locked" @update:model-value="typedInches" />
             </div>
         </div>
 
@@ -186,6 +167,7 @@ const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3
                 :unit="about.weight.unit"
                 :model-value="about.weight.value"
                 :commits-while-typing="false"
+                :readonly="locked"
                 @update:model-value="typedWeight"
             />
         </div>

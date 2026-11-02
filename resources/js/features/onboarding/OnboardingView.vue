@@ -25,59 +25,25 @@ const props = defineProps<{ payload?: OnboardingShowOutput }>();
 const { data, failure, load } = useRead<OnboardingShowOutput>('onboarding_show', {}, 'Your setup could not be loaded.', props.payload);
 const { send, error } = useWrite(load);
 
-// One queue, in the order things were done. A pick reads what the screen shows, which is
-// out of date while a save is out, so the step's picks are locked until it lands (`locked`).
-// Typing is never locked: a typed answer made meanwhile waits its turn, and a Back or Next
-// pressed meanwhile goes after the answers, first press wins. One that is refused, or gets
-// no answer, drops what waits behind it: those were made on a screen now out of date.
-// While a move is out the whole step is locked (the fieldset), so nothing is made on a
-// screen that is going away.
-const waiting: Answers[] = [];
+// One save at a time. A save is built from what the screen shows, so while one is out the
+// step is read-only (`locked`): its picks are off and its typed fields take no typing. A
+// Back or Next pressed meanwhile goes after the save, first press wins, unless the save is
+// refused or gets no answer. A failed save remounts the step's fields, so they show what
+// is saved, not what was refused; nothing can have been typed while it was out. While a
+// move is out the whole step is off (the fieldset).
 let wantsMove: 'next' | 'back' | null = null;
 const saving = ref(false);
 const moving = ref(false);
 const locked = computed(() => saving.value || moving.value);
-
-// After a failed write the step's fields are remounted, so they show what is saved, not
-// what was refused. Not under someone's typing: then it waits until focus leaves the step.
 const fields = ref(0);
-const fieldset = ref<HTMLFieldSetElement>();
-let staleFields = false;
-
-function resetFields(): void {
-    staleFields = false;
-    fields.value += 1;
-}
-
-function leftField(event: FocusEvent): void {
-    if (staleFields && !fieldset.value?.contains(event.relatedTarget as Node | null)) resetFields();
-}
 
 async function post(input: OnboardingAnswerInput): Promise<boolean> {
     const done = (await send('onboarding_answer', { ...input }, 'Your answer could not be saved.')) === 'done';
-    if (!done) {
-        if (fieldset.value?.contains(document.activeElement)) staleFields = true;
-        else resetFields();
-    }
+    if (!done) fields.value += 1;
     return done;
 }
 
-async function drain(): Promise<void> {
-    if (saving.value || moving.value) return;
-    saving.value = true;
-    try {
-        for (let next = waiting.shift(); next; next = waiting.shift()) {
-            if (!(await post({ answers: next, move: 'stay' }))) {
-                waiting.length = 0;
-                wantsMove = null;
-            }
-        }
-    } finally {
-        saving.value = false;
-    }
-    const to = wantsMove;
-    wantsMove = null;
-    if (!to) return;
+async function go(to: 'next' | 'back'): Promise<void> {
     moving.value = true;
     try {
         await post({ answers: {}, move: to });
@@ -86,16 +52,24 @@ async function drain(): Promise<void> {
     }
 }
 
-function answer(answers: Answers): void {
-    if (moving.value) return;
-    waiting.push(answers);
-    void drain();
+async function answer(answers: Answers): Promise<void> {
+    if (locked.value) return;
+    saving.value = true;
+    let saved = false;
+    try {
+        saved = await post({ answers, move: 'stay' });
+    } finally {
+        saving.value = false;
+    }
+    const to = wantsMove;
+    wantsMove = null;
+    if (saved && to) await go(to);
 }
 
 function move(to: 'next' | 'back'): void {
     if (moving.value) return;
-    wantsMove ??= to;
-    void drain();
+    if (saving.value) wantsMove ??= to;
+    else void go(to);
 }
 
 const step = computed((): StepFlowStep | null => {
@@ -108,7 +82,7 @@ const step = computed((): StepFlowStep | null => {
 <template>
     <main class="mx-auto w-full max-w-[560px] px-4 pb-6 pt-[max(1rem,env(safe-area-inset-top))]">
         <StepFlow v-if="data && step" :key="data.step.number" :step="step" @back="move('back')" @next="move('next')">
-            <fieldset ref="fieldset" :key="fields" :disabled="moving" class="flex min-w-0 flex-col gap-4" @focusout="leftField">
+            <fieldset :key="fields" :disabled="moving" class="flex min-w-0 flex-col gap-4">
                 <OnboardingCallout v-for="notice in data.notices" :key="notice.text" :text="notice.text" :tone="notice.tone" />
                 <GoalStep v-if="data.step.key === 'goal'" :goal="data.goal" :locked="locked" @answer="answer" />
                 <AboutYouStep v-else-if="data.step.key === 'about_you'" :about="data.about_you" :locked="locked" @answer="answer" />
