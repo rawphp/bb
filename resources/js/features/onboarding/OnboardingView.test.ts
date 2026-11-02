@@ -127,14 +127,52 @@ describe('OnboardingView', () => {
             expect(wrapper.get('h2').text()).toBe('Weight-loss drugs');
         });
 
-        it('CAP-010 locks the step while an answer is being saved', async () => {
+        it('CAP-010 Back and Next wait while an answer is being saved', async () => {
             writeMock.mockReturnValueOnce(new Promise(() => {}));
             wrapper = view(glp1);
 
             await radio(wrapper, glp1.glp1.question, 'Yes').trigger('click');
 
             expect(next(wrapper).attributes('disabled')).toBeDefined();
-            expect(radio(wrapper, glp1.glp1.question, 'No').attributes('disabled')).toBeDefined();
+            expect(back(wrapper).attributes('disabled')).toBeDefined();
+        });
+
+        it('CAP-010 an answer made while another saves is sent after it, in order', async () => {
+            readMock.mockResolvedValue(screening);
+            let finish: (value: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+            wrapper = view(screening);
+            const rows = wrapper.findAllComponents(ScreeningRowView);
+            const at = (item: string) => screening.screening.rows.findIndex((r) => r.item === item);
+
+            await rows[at('diabetes')]!.get('[role="checkbox"]').trigger('click');
+            await rows[at('autoimmuneDisease')]!.get('[role="checkbox"]').trigger('click');
+            expect(writeMock).toHaveBeenCalledOnce();
+            finish({});
+            await flushPromises();
+
+            expect(sent().map((input) => input.answers)).toEqual([
+                { screening: [{ item: 'diabetes', is_on: true }] },
+                { screening: [{ item: 'autoimmuneDisease', is_on: true }] },
+            ]);
+            expect(next(wrapper).attributes('disabled')).toBeUndefined();
+        });
+
+        it('CAP-012 a refused answer drops the answers made behind it', async () => {
+            readMock.mockResolvedValue(screening);
+            let refuse: (error: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((_resolve, reject) => (refuse = reject)));
+            wrapper = view(screening);
+            const rows = wrapper.findAllComponents(ScreeningRowView);
+            const at = (item: string) => screening.screening.rows.findIndex((r) => r.item === item);
+
+            await rows[at('diabetes')]!.get('[role="checkbox"]').trigger('click');
+            await rows[at('autoimmuneDisease')]!.get('[role="checkbox"]').trigger('click');
+            refuse(new CapabilityError('onboarding_answer', 422, { ok: false, error: { message: 'Answer step 2 first.' } }));
+            await flushPromises();
+
+            expect(writeMock).toHaveBeenCalledOnce();
+            expect(wrapper.get('[role="alert"]').text()).toBe('Answer step 2 first.');
         });
 
         it('PWA-024 shows a skeleton while the step loads', () => {
@@ -211,10 +249,15 @@ describe('OnboardingView', () => {
     });
 
     describe('step 2, about you', () => {
+        beforeEach(() => {
+            readMock.mockResolvedValue(aboutYou);
+        });
+
         it('ONB-004 shows name, sex, date of birth, height and weight with their units', () => {
             wrapper = view(aboutYou);
 
             expect(wrapper.get<HTMLInputElement>('input[autocomplete="given-name"]').element.value).toBe('Sam');
+            expect(wrapper.get('input[autocomplete="given-name"]').attributes('maxlength')).toBe('100');
             expect(radio(wrapper, 'Sex', 'Female').attributes('aria-checked')).toBe('true');
             expect(wrapper.get('[data-test="set-birth-date"]').text()).toBe('Set date of birth');
             expect(radio(wrapper, 'Height unit', 'cm').attributes('aria-checked')).toBe('true');
@@ -231,36 +274,47 @@ describe('OnboardingView', () => {
             expect(wrapper.get<HTMLInputElement>('input[aria-label="Weight in lb"]').element.value).toBe('176.4');
         });
 
-        it('ONB-004 holds what is typed and sends it all with Next', async () => {
+        it('ONB-004 saves a typed field when it is left, not on each keystroke, and keeps the server\'s Next and hint', async () => {
             wrapper = view(aboutYou);
+            const weight = wrapper.get('input[aria-label="Weight in kg"]');
 
-            await wrapper.get('input[autocomplete="given-name"]').setValue('Sam Lee');
-            await wrapper.get('[data-test="set-birth-date"]').trigger('click');
-            await wrapper.get('input[aria-label="Height in cm"]').setValue('172');
-            await wrapper.get('input[aria-label="Weight in kg"]').setValue('80,5');
+            await weight.setValue('80,5');
             expect(writeMock).not.toHaveBeenCalled();
-            expect(wrapper.get<HTMLInputElement>('input[type="date"]').element.value).toBe(aboutYou.about_you.birth_date.initial);
-
-            // Unsent answers are for the server to judge, so Next is on and the hint is gone.
-            expect(next(wrapper).attributes('disabled')).toBeUndefined();
-            expect(wrapper.text()).not.toContain('Fill in every field to continue.');
-            await next(wrapper).trigger('click');
+            expect(next(wrapper).attributes('disabled')).toBeDefined();
+            expect(wrapper.text()).toContain('Fill in every field to continue.');
+            await weight.trigger('blur');
             await flushPromises();
 
-            expect(sent()).toEqual([
-                {
-                    answers: {
-                        name: 'Sam Lee',
-                        birth_date: aboutYou.about_you.birth_date.initial,
-                        height: { unit: 'cm', cm: 172 },
-                        weight: { unit: 'kg', value: 80.5 },
-                    },
-                    move: 'next',
-                },
-            ]);
+            expect(sent()).toEqual([{ answers: { weight: { unit: 'kg', value: 80.5 } }, move: 'stay' }]);
+            expect(readMock).toHaveBeenCalledOnce();
         });
 
-        it('ONB-004 sends a date of birth picked from the date field', async () => {
+        it('ONB-004 saves the name when it changes, and only then', async () => {
+            wrapper = view(aboutYou);
+            const name = wrapper.get('input[autocomplete="given-name"]');
+
+            // setValue fires change, as leaving the field does.
+            await name.trigger('change');
+            await name.setValue('Sam Lee');
+            await flushPromises();
+
+            expect(sent()).toEqual([{ answers: { name: 'Sam Lee' }, move: 'stay' }]);
+        });
+
+        it('ONB-004 Set date of birth saves the server\'s starting date, as rp-clone does, and shows the date field', async () => {
+            const dated = structuredClone(aboutYou);
+            dated.about_you.birth_date = { ...dated.about_you.birth_date, date: dated.about_you.birth_date.initial, text: 'Oct 10, 1996' };
+            readMock.mockResolvedValue(dated);
+            wrapper = view(aboutYou);
+
+            await wrapper.get('[data-test="set-birth-date"]').trigger('click');
+            await flushPromises();
+
+            expect(sent()).toEqual([{ answers: { birth_date: aboutYou.about_you.birth_date.initial }, move: 'stay' }]);
+            expect(wrapper.get<HTMLInputElement>('input[type="date"]').element.value).toBe(aboutYou.about_you.birth_date.initial);
+        });
+
+        it('ONB-004 saves a date of birth picked, and puts back the saved one when the field is cleared', async () => {
             const dated = structuredClone(aboutYou);
             dated.about_you.birth_date = review.about_you.birth_date;
             wrapper = view(dated);
@@ -268,38 +322,61 @@ describe('OnboardingView', () => {
 
             expect(date.element.value).toBe('1990-04-09');
             expect(date.attributes('max')).toBe('2026-10-09');
+            await date.setValue('');
+            expect(date.element.value).toBe('1990-04-09');
             await date.setValue('1991-05-01');
-            await back(wrapper).trigger('click');
             await flushPromises();
 
-            expect(sent()).toEqual([{ answers: { birth_date: '1991-05-01' }, move: 'back' }]);
+            expect(sent()).toEqual([{ answers: { birth_date: '1991-05-01' }, move: 'stay' }]);
         });
 
-        it('ONB-004 sends feet as whole feet, with the inches beside them', async () => {
-            wrapper = view({ ...aboutYou, about_you: review.about_you });
+        it('ONB-004 saves whole feet with the saved inches beside them, and inches with the saved feet', async () => {
+            const feetInches = { ...aboutYou, about_you: review.about_you };
+            readMock.mockResolvedValue(feetInches);
+            wrapper = view(feetInches);
 
-            await wrapper.get('input[aria-label="Feet in ft"]').setValue('6');
+            await wrapper.get('input[aria-label="Feet in ft"]').setValue('6.7');
+            await wrapper.get('input[aria-label="Feet in ft"]').trigger('blur');
+            await flushPromises();
             await wrapper.get('input[aria-label="Inches in in"]').setValue('1.5');
-            await next(wrapper).trigger('click');
+            await wrapper.get('input[aria-label="Inches in in"]').trigger('blur');
             await flushPromises();
 
-            expect(sent()[0]!.answers).toEqual({ height: { unit: 'feetInches', feet: 6, inches: 1.5 } });
+            expect(sent().map((input) => input.answers)).toEqual([
+                { height: { unit: 'feetInches', feet: 6, inches: 7 } },
+                { height: { unit: 'feetInches', feet: 5, inches: 1.5 } },
+            ]);
         });
 
-        it('ONB-004 sends the sex picked at once, with what is typed', async () => {
+        it('ONB-004 a number field cleared and left sends nothing and shows the saved number again', async () => {
+            wrapper = view({ ...aboutYou, about_you: review.about_you });
+            const weight = wrapper.get<HTMLInputElement>('input[aria-label="Weight in lb"]');
+
+            await weight.setValue('');
+            await weight.trigger('blur');
+            await flushPromises();
+
+            expect(writeMock).not.toHaveBeenCalled();
+            expect(weight.element.value).toBe('176.4');
+        });
+
+        it('ONB-004 saves the sex picked at once, and a tap on the one picked sends nothing', async () => {
             wrapper = view(aboutYou);
 
-            await wrapper.get('input[autocomplete="given-name"]').setValue('Alex');
+            await radio(wrapper, 'Sex', 'Female').trigger('click');
             await radio(wrapper, 'Sex', 'Male').trigger('click');
             await flushPromises();
 
-            expect(sent()).toEqual([{ answers: { name: 'Alex', sex: 'male' }, move: 'stay' }]);
+            expect(sent()).toEqual([{ answers: { sex: 'male' }, move: 'stay' }]);
         });
 
-        it('ONB-004 switches a unit after saving the number typed in the old one, so the server converts it', async () => {
+        it('ONB-004 a unit switched straight after typing saves the number first, in its own unit, so the server converts it', async () => {
             wrapper = view(aboutYou);
+            const weight = wrapper.get('input[aria-label="Weight in kg"]');
 
-            await wrapper.get('input[aria-label="Weight in kg"]').setValue('80');
+            // A tap on lb takes focus from the field first, so its save goes out first.
+            await weight.setValue('80');
+            await weight.trigger('blur');
             await radio(wrapper, 'Weight unit', 'lb').trigger('click');
             await flushPromises();
 
@@ -309,7 +386,7 @@ describe('OnboardingView', () => {
             ]);
         });
 
-        it('ONB-004 switches a unit with nothing typed in one answer', async () => {
+        it('ONB-004 switches the height unit with no number', async () => {
             wrapper = view(aboutYou);
 
             await radio(wrapper, 'Height unit', 'ft and in').trigger('click');
@@ -318,7 +395,7 @@ describe('OnboardingView', () => {
             expect(sent()).toEqual([{ answers: { height: { unit: 'feetInches' } }, move: 'stay' }]);
         });
 
-        it('ONB-004 a background refresh does not wipe what is being typed', async () => {
+        it('ONB-004 a background refresh does not wipe a number being typed', async () => {
             let refresh: (data: OnboardingShowOutput) => void = () => {};
             readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {
                 refresh = onUpdate as typeof refresh;
@@ -327,11 +404,13 @@ describe('OnboardingView', () => {
             wrapper = view();
             await flushPromises();
 
-            await wrapper.get('input[autocomplete="given-name"]').setValue('Jo');
+            const weight = wrapper.get<HTMLInputElement>('input[aria-label="Weight in kg"]');
+            weight.element.focus();
+            await weight.setValue('7');
             refresh(structuredClone(aboutYou));
             await flushPromises();
 
-            expect(wrapper.get<HTMLInputElement>('input[autocomplete="given-name"]').element.value).toBe('Jo');
+            expect(weight.element.value).toBe('7');
         });
     });
 

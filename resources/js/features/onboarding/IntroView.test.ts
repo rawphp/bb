@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
+import { nextTick } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { read, write } from '@/app/call';
 import IntroView from './IntroView.vue';
@@ -46,7 +47,7 @@ describe('IntroView', () => {
         wrapper.unmount();
     });
 
-    it('ONB-001 the last card leads to sign-up', async () => {
+    it('ONB-001 the last card opens sign-in, where a new user signs up', async () => {
         const { wrapper, router } = await intro();
 
         await wrapper.get('[data-test="intro-next"]').trigger('click');
@@ -55,6 +56,28 @@ describe('IntroView', () => {
         await flushPromises();
 
         expect(router.currentRoute.value.path).toBe('/sign-in');
+        wrapper.unmount();
+    });
+
+    it('ONB-001 a swipe of more than 50 px turns the card either way, and a short one does not', async () => {
+        const { wrapper } = await intro();
+        const pane = wrapper.get('.touch-pan-y');
+        const current = () => wrapper.findAll('[data-test="dot"]').findIndex((d) => d.attributes('aria-current') === 'true');
+        // jsdom has no PointerEvent, and Test Utils cannot set clientX on the MouseEvent it falls back to.
+        const swipe = async (from: number, to: number) => {
+            pane.element.dispatchEvent(new MouseEvent('pointerdown', { clientX: from, bubbles: true }));
+            pane.element.dispatchEvent(new MouseEvent('pointerup', { clientX: to, bubbles: true }));
+            await nextTick();
+        };
+
+        await swipe(300, 280);
+        expect(current()).toBe(0);
+        await swipe(300, 200);
+        expect(current()).toBe(1);
+        await swipe(100, 200);
+        expect(current()).toBe(0);
+        await swipe(100, 200);
+        expect(current()).toBe(0);
         wrapper.unmount();
     });
 });

@@ -7,6 +7,7 @@ import NumberField from './NumberField.vue';
 import OnboardingCallout from './OnboardingCallout.vue';
 import StepHeading from './StepHeading.vue';
 import StepNote from './StepNote.vue';
+import StepPanel from './StepPanel.vue';
 import TimeOfDayPicker from './TimeOfDayPicker.vue';
 import WeekdayPicker from './WeekdayPicker.vue';
 import YesNoQuestion from './YesNoQuestion.vue';
@@ -60,6 +61,15 @@ describe('ContinueHint', () => {
     it('UI-007 says why Next is off, and shows nothing without a reason', () => {
         expect(mount(ContinueHint, { props: { text: 'Fill in every field to continue.' } }).text()).toBe('Fill in every field to continue.');
         expect(mount(ContinueHint, { props: { text: null } }).find('p').exists()).toBe(false);
+    });
+});
+
+describe('StepPanel', () => {
+    it('UI-007 holds one repeated item of a step in a rounded panel', () => {
+        const wrapper = mount(StepPanel, { slots: { default: '<p>Monday</p>' } });
+
+        expect(wrapper.text()).toBe('Monday');
+        expect(wrapper.classes()).toEqual(expect.arrayContaining(['rounded-xl', 'bg-background']));
     });
 });
 
@@ -130,6 +140,21 @@ describe('NumberField', () => {
         await input.setValue('17');
         await wrapper.setProps({ modelValue: 99 });
         expect(input.element.value).toBe('17');
+        wrapper.unmount();
+    });
+
+    it('ONB-004 keeps the number typed when it is left, while the parent still holds the old one', async () => {
+        const wrapper = mount(NumberField, { props: { label: 'Weight', unit: 'kg', modelValue: 80, commitsWhileTyping: false }, attachTo: document.body });
+        const input = wrapper.get<HTMLInputElement>('input');
+
+        await input.setValue('81.50');
+        await input.trigger('blur');
+        expect(wrapper.emitted('update:modelValue')).toEqual([[81.5]]);
+        expect(input.element.value).toBe('81.5');
+
+        await input.setValue('');
+        await input.trigger('blur');
+        expect(input.element.value).toBe('80');
         wrapper.unmount();
     });
 
