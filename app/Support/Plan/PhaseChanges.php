@@ -3,6 +3,7 @@
 namespace App\Support\Plan;
 
 use App\Domain\Defaults\TBL010Phases;
+use App\Domain\Defaults\TBL020MesocycleLength;
 use App\Domain\Model\Mesocycle as DomainMesocycle;
 use App\Domain\Model\PhaseType;
 use App\Domain\Model\WeighIn as DomainWeighIn;
@@ -185,14 +186,24 @@ final class PhaseChanges
                 new WeekRange($range->lower, $range->lower + $weeks), $phase->type,
                 array_map(fn (PlacedMesocycle $p) => $p->placed, $eligible), $this->plan->experience(),
             );
-            // A running phase cannot move its end back before the week it is in.
-            $movedEnd = $fixes?->movedEndWeek === null || $fixes->movedEndWeek - $range->lower < $this->shortest($phase)
-                ? null : $this->plan->dayOfWeek($fixes->movedEndWeek);
-            // MESO-042, SCH-039: only a length the mesocycle could take on its own.
+            // A running phase cannot move its end back before the week it is in, nor to the end of this week: that is
+            // End phase (PH-007), which asks first.
+            $moved = $fixes?->movedEndWeek;
+            $endsNow = $this->detail($phase)->isCurrent && $moved !== null && $moved <= $this->plan->todayWeek + 1;
+            $movedEnd = $moved === null || $endsNow || $moved - $range->lower < $this->shortest($phase)
+                ? null : $this->plan->dayOfWeek($moved);
+            // SCH-060: the slot up to the phase's last week holds its paused weeks, which are not mesocycle weeks.
+            // MESO-042, SCH-039: and only a length the mesocycle could take on its own.
             $length = $fixes?->mesocycleLength;
             $placed = $length === null ? null : $eligible[$length->index];
-            if ($placed !== null && $this->plan->calendar($placed->mesocycle)->canSetWeeks($length->weeks, $placed->mesocycle->laterWeekIds() !== [])) {
-                $change = [$placed, $length->weeks];
+            if ($placed !== null) {
+                $start = $placed->placed->startWeek;
+                $paused = count(array_filter($this->plan->pausedWeeks, fn (int $week) => $week >= $start && $week < $start + $length->weeks));
+                $weeks = $length->weeks - $paused;
+                if (TBL020MesocycleLength::row($this->plan->experience())->allowedWeeks->contains($weeks)
+                    && $this->plan->calendar($placed->mesocycle)->canSetWeeks($weeks, $placed->mesocycle->laterWeekIds() !== [])) {
+                    $change = [$placed, $weeks];
+                }
             }
         }
         $adjusted = PlanSnapshot::domainPhase($phase)->withDates(PlanSnapshot::day($phase->start_date), $end);
