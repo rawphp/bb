@@ -465,6 +465,30 @@ describe('MesocycleBuildView', () => {
             expect(inputViolations(...lastWrite())).toEqual([]);
         });
 
+        it('MESO-004 sends the name typed along with a new start date', async () => {
+            const wrapper = details();
+            await type(wrapper.find('input[aria-label="Name"]'), 'Summer Cut');
+
+            const date = wrapper.find('input[aria-label="Start"]');
+            (date.element as HTMLInputElement).value = '2026-10-19';
+            await date.trigger('change');
+            await flushPromises();
+
+            expect(lastWrite()).toEqual(['mesocycle_build', { mesocycle_id: ID, start_date: '2026-10-19', name: 'Summer Cut' }]);
+            expect(inputViolations(...lastWrite())).toEqual([]);
+        });
+
+        it('MESO-005 sends the name typed along with new day labels', async () => {
+            const wrapper = details();
+            await type(wrapper.find('input[aria-label="Name"]'), 'Summer Cut');
+
+            await wrapper.find('[role="radio"][aria-label="Day 1, Day 2"]').trigger('click');
+            await flushPromises();
+
+            expect(lastWrite()).toEqual(['mesocycle_build', { mesocycle_id: ID, label_style: 'floating', name: 'Summer Cut' }]);
+            expect(inputViolations(...lastWrite())).toEqual([]);
+        });
+
         it('MESO-004 sends the length, the start date and the day labels as valid writes', async () => {
             const wrapper = details();
 
