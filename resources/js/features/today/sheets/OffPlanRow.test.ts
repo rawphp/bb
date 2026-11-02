@@ -20,7 +20,8 @@ describe('OffPlanRow', () => {
         const wrapper = mount(OffPlanRow, { props: { entry } });
 
         const line = wrapper.get('[data-test="macros"]');
-        expect(line.attributes('aria-label')).toBe(entry.macros.label);
+        expect(line.attributes('aria-hidden')).toBe('true');
+        expect(wrapper.get('.sr-only').text()).toBe(entry.macros.label);
         expect(line.findAll('span').map((span) => span.classes()[0])).toEqual(['text-macro-calories', 'text-macro-protein', 'text-macro-fat', 'text-macro-carbs']);
     });
 

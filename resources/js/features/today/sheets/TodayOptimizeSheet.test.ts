@@ -16,7 +16,14 @@ const empty = screenFixture<DayOptimizeShowOutput>('day_optimize_show.empty');
 function rowText(wrapper: Awaited<ReturnType<typeof mountSheet>>['wrapper'], name: string): string {
     const row = wrapper.findAll('[data-test="optimize-row"]').find((r) => r.text().startsWith(name));
     expect(row, name).toBeDefined();
-    return row!.text().replace(/\s+/g, ' ');
+    // Each piece of text in the row, in order, as a screen reader reads it.
+    const parts: string[] = [];
+    const walker = document.createTreeWalker(row!.element, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+        const text = walker.currentNode.textContent!.trim();
+        if (text) parts.push(text);
+    }
+    return parts.join(' ');
 }
 
 describe('TodayOptimizeSheet', () => {

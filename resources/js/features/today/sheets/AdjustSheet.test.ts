@@ -65,7 +65,7 @@ describe('AdjustSheet', () => {
         const { wrapper } = await mountSheet(AdjustSheet, { payload: meals });
 
         for (const select of ['from', 'to']) {
-            const names = wrapper.findAll(`select[name="${select}"] option:not([value=""])`).map((o) => o.text());
+            const names = wrapper.findAll(`select[name="${select}"] option[value]:not([value=""])`).map((o) => o.text());
             expect(names).toEqual(['Lunch', 'Pre-workout', 'Post-workout']);
         }
         expect(wrapper.find('select[name="day"]').exists()).toBe(false);

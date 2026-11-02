@@ -1,0 +1,222 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import ReadState from '@/app/ReadState.vue';
+import type { DayAdjustInput } from '@/contracts/day_adjust';
+import type { DayAdjustShowInput, DayAdjustShowOutput } from '@/contracts/day_adjust_show';
+import BottomSheet from '@/design/BottomSheet.vue';
+import PendingMark from '@/design/PendingMark.vue';
+import WarningLine from './WarningLine.vue';
+import { useSheet, useSheetRead, type SheetListeners } from './useSheet';
+
+// DAY-020: moves calories between the day's meals, or between the days of the plan week,
+// and shows the day's projected calories and protein before saving. The server works the
+// move out (day_adjust_show) each time the user changes it; the sheet keeps only what is
+// picked and typed.
+const props = withDefaults(
+    defineProps<
+        {
+            /** The day, from the screen or the route; a /dev/screens fixture carries its own. */
+            date?: string;
+            payload?: DayAdjustShowOutput;
+            open?: boolean;
+            /** A change is waiting to sync, so the projection is not final (OFF-008). */
+            pending?: boolean;
+        } & SheetListeners
+    >(),
+    { open: true, pending: false },
+);
+
+type Mode = DayAdjustShowOutput['mode'];
+type Direction = NonNullable<DayAdjustInput['direction']>;
+
+const date = props.date ?? props.payload?.date ?? '';
+// null until the user picks: the sheet opens in the mode the server shows.
+const picked = ref<Mode | null>(null);
+const direction = ref<Direction>('give');
+const fromMealId = ref<string | null>(null);
+const toMealId = ref<string | null>(null);
+const otherDate = ref<string | null>(null);
+const kcalText = ref('');
+const edited = ref(false);
+
+// The typed amount as the whole number the capabilities take; anything else is none, and the server asks for one.
+const kcal = computed(() => {
+    const text = kcalText.value.trim();
+    return /^\d+$/.test(text) ? Number(text) : null;
+});
+
+const { data, failure, load } = useSheetRead<DayAdjustShowOutput>('day_adjust_show', () => ({ ...choice() }), 'The Adjust sheet could not be loaded.', props.payload);
+const { busy, error, close, save } = useSheet(props);
+const mode = computed<Mode>(() => picked.value ?? data.value?.mode ?? 'meals');
+// The day's totals, then the other day's when the move is between days.
+const days = computed(() => (data.value ? [data.value.day, ...(data.value.other_day ? [data.value.other_day] : [])] : []));
+
+/** What the user has filled in, for the mode shown; just the day until they change something. */
+function choice(): DayAdjustShowInput {
+    if (!edited.value) return { date };
+    return mode.value === 'days'
+        ? { date, mode: 'days', direction: direction.value, other_date: otherDate.value, kcal: kcal.value }
+        : { date, mode: 'meals', from_meal_id: fromMealId.value, to_meal_id: toMealId.value, kcal: kcal.value };
+}
+
+watch([picked, direction, fromMealId, toMealId, otherDate, kcalText], () => {
+    edited.value = true;
+    void load();
+});
+
+function submit(): void {
+    if (kcal.value === null) return;
+    const input: DayAdjustInput = { ...choice(), mode: mode.value, kcal: kcal.value };
+    void save('day_adjust', { ...input }, 'The calories could not be moved. Try again.');
+}
+
+const modes: { value: Mode; label: string }[] = [
+    { value: 'meals', label: 'Between meals' },
+    { value: 'days', label: 'Between days' },
+];
+const directions: { value: Direction; label: string }[] = [
+    { value: 'give', label: 'Give to' },
+    { value: 'take', label: 'Take from' },
+];
+const segment = 'min-h-9 rounded-md text-sm font-medium active:opacity-70';
+const segmentOn = 'bg-surface text-primary-text shadow-sm';
+const segmentOff = 'text-secondary-text';
+const pickerRow = 'flex min-h-tap items-center justify-between gap-2';
+const picker = 'max-w-[60%] truncate rounded-lg bg-transparent py-2 pl-2 text-right text-accent';
+</script>
+
+<template>
+    <BottomSheet
+        :open="open"
+        title="Adjust day"
+        :save-disabled="!data?.can_save || kcal === null || busy"
+        :cancel-disabled="busy"
+        :dismissible="!busy"
+        :error="error"
+        @cancel="close"
+        @save="submit"
+    >
+        <div v-if="data" class="flex flex-col gap-4.5 p-4">
+            <div role="radiogroup" aria-label="Move calories" class="grid grid-cols-2 gap-0.5 rounded-lg bg-background p-0.5">
+                <button
+                    v-for="option in modes"
+                    :key="option.value"
+                    type="button"
+                    role="radio"
+                    :aria-checked="mode === option.value"
+                    :class="[segment, mode === option.value ? segmentOn : segmentOff]"
+                    :data-test="`mode-${option.value}`"
+                    @click="picked = option.value"
+                >
+                    {{ option.label }}
+                </button>
+            </div>
+
+            <div v-if="mode === 'meals'" class="flex flex-col gap-2">
+                <p v-if="data.meal_options.length < 2" class="text-sm text-secondary-text">
+                    Calories move between meals that are not checked in. This day has fewer than two.
+                </p>
+                <template v-else>
+                    <label :class="pickerRow">
+                        <span>From</span>
+                        <select v-model="fromMealId" name="from" :class="picker">
+                            <option :value="null" disabled>Choose</option>
+                            <option v-for="option in data.meal_options" :key="option.id" :value="option.id">{{ option.name }}</option>
+                        </select>
+                    </label>
+                    <label :class="pickerRow">
+                        <span>To</span>
+                        <select v-model="toMealId" name="to" :class="picker">
+                            <option :value="null" disabled>Choose</option>
+                            <option v-for="option in data.meal_options" :key="option.id" :value="option.id">{{ option.name }}</option>
+                        </select>
+                    </label>
+                </template>
+            </div>
+
+            <div v-else class="flex flex-col gap-2">
+                <div role="radiogroup" aria-label="Direction" class="grid grid-cols-2 gap-0.5 rounded-lg bg-background p-0.5">
+                    <button
+                        v-for="option in directions"
+                        :key="option.value"
+                        type="button"
+                        role="radio"
+                        :aria-checked="direction === option.value"
+                        :class="[segment, direction === option.value ? segmentOn : segmentOff]"
+                        :data-test="`direction-${option.value}`"
+                        @click="direction = option.value"
+                    >
+                        {{ option.label }}
+                    </button>
+                </div>
+                <label :class="pickerRow">
+                    <span>Day</span>
+                    <select v-model="otherDate" name="day" :class="picker">
+                        <option :value="null" disabled>Choose</option>
+                        <option v-for="option in data.day_options" :key="option.date" :value="option.date" :disabled="!option.enabled">
+                            {{ option.enabled ? option.label : `${option.label} (finished)` }}
+                        </option>
+                    </select>
+                </label>
+            </div>
+
+            <label class="flex min-h-tap items-center gap-2 rounded-xl bg-background px-3">
+                <span class="text-macro-calories">Calories</span>
+                <input
+                    v-model="kcalText"
+                    name="kcal"
+                    inputmode="numeric"
+                    placeholder="0"
+                    aria-label="Calories to move in kilocalories"
+                    class="min-w-0 flex-1 bg-transparent py-2 text-right tabular-nums outline-none"
+                />
+                <span class="text-secondary-text">kcal</span>
+            </label>
+
+            <section class="flex flex-col gap-2 rounded-xl bg-background p-3.5" aria-labelledby="adjust-projected">
+                <h3 id="adjust-projected" class="font-semibold">Projected</h3>
+                <p
+                    v-for="day in days"
+                    :key="day.label"
+                    class="flex items-baseline gap-2 text-sm font-medium tabular-nums"
+                    data-test="projected"
+                >
+                    <span class="flex-1">{{ day.label }}</span>
+                    <PendingMark v-if="pending" derived>
+                        <span class="text-macro-calories">{{ day.kcal_text }}</span>
+                        <span class="ml-2 text-macro-protein">{{ day.protein_text }}</span>
+                    </PendingMark>
+                    <template v-else>
+                        <span class="text-macro-calories">{{ day.kcal_text }}</span>
+                        <span class="text-macro-protein">{{ day.protein_text }}</span>
+                    </template>
+                </p>
+                <template v-if="mode === 'meals'">
+                    <p
+                        v-for="meal in data.projected_meals"
+                        :key="meal.id"
+                        class="flex items-baseline gap-2 text-xs font-medium tabular-nums"
+                        data-test="projected-meal"
+                    >
+                        <span class="flex-1">{{ meal.name }}</span>
+                        <PendingMark v-if="pending" derived>
+                            <span class="text-macro-calories">{{ meal.kcal_text }}</span>
+                            <span class="ml-2 text-macro-protein">{{ meal.protein_text }}</span>
+                        </PendingMark>
+                        <template v-else>
+                            <span class="text-macro-calories">{{ meal.kcal_text }}</span>
+                            <span class="text-macro-protein">{{ meal.protein_text }}</span>
+                        </template>
+                    </p>
+                </template>
+            </section>
+
+            <WarningLine v-if="data.refusal" :text="data.refusal" />
+            <WarningLine v-for="warning in data.warnings" :key="warning.text" :text="warning.text" />
+            <p class="text-xs text-secondary-text">{{ data.note }}</p>
+        </div>
+        <div v-else class="p-4">
+            <ReadState :failure="failure" what="The Adjust sheet" @retry="load" />
+        </div>
+    </BottomSheet>
+</template>
