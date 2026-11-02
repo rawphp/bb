@@ -336,6 +336,22 @@ describe('MesocycleBuildView', () => {
             expect(inputViolations(...lastWrite())).toEqual([]);
         });
 
+        it('MESO-014 deleting one exercise keeps the other exercise of the same muscle on that day', async () => {
+            const day = warning.build!.days[0]!;
+            const twin = { ...day.slots[1]!, id: 'twin-quads-slot' };
+            const payload = { ...warning, build: { ...warning.build!, days: warning.build!.days.map((d, i) => (i === 0 ? { ...d, slots: [day.slots[0]!, day.slots[1]!, twin, ...day.slots.slice(2)] } : d)) } };
+            const wrapper = show({ payload });
+            const row = wrapper.findAll('[data-test="day"]')[0]!.findAll('[data-test="slot"]')[1]!;
+
+            await row.find('button[aria-label="Delete Quads"]').trigger('click');
+            await flushPromises();
+
+            const expected = allDays();
+            expected[0]!.slots.splice(2, 0, { slot_id: 'twin-quads-slot', muscle: twin.muscle, exercise_id: twin.exercise_id ?? null, sets: twin.sets });
+            expected[0]!.slots.splice(1, 1);
+            expect(lastWrite()).toEqual(['mesocycle_build', { mesocycle_id: ID, days: expected }]);
+        });
+
         it('CAP-012 says the draft could not be saved, with the server\'s words', async () => {
             writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_build', 422, { error: { message: 'That exercise is not for this muscle.' } }));
             const wrapper = slots();
@@ -722,6 +738,20 @@ describe('MesocycleBuildView', () => {
             expect(readMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: ID }, expect.any(Function), expect.any(Function));
             expect(writeMock).not.toHaveBeenCalled();
             expect(wrapper.find('h2').text()).toBe('Exercises');
+        });
+
+        it('MESO-007 reopening a draft by its address never starts another, whatever the route', async () => {
+            for (const props of [{ draft: ID, route: 'builder' }, { draft: ID, route: 'scratch' }, { draft: ID, route: 'copy_previous', copy: 'source-id' }]) {
+                writeMock.mockClear();
+                router.replace.mockClear();
+                show(props);
+                await flushPromises();
+
+                expect(readMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: ID }, expect.any(Function), expect.any(Function));
+                expect(sent()).not.toContain('mesocycle_build');
+                expect(sent()).not.toContain('mesocycle_copy');
+                expect(router.replace).not.toHaveBeenCalled();
+            }
         });
 
         it('MESO-007 a step in the address wins over where the draft was left', async () => {
