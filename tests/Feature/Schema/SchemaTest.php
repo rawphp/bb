@@ -18,6 +18,7 @@ use App\Models\Mesocycle;
 use App\Models\MuscleFeedback;
 use App\Models\NotificationPref;
 use App\Models\OffPlanEntry;
+use App\Models\OnboardingDraft;
 use App\Models\OtherActivity;
 use App\Models\PendingSignInCode;
 use App\Models\Phase;
@@ -111,6 +112,7 @@ function fillAccount(User $user): void
     NotificationPref::factory()->for($user)->create();
     SentReminder::factory()->for($user)->create();
     ReminderMorning::factory()->for($user)->create();
+    OnboardingDraft::factory()->for($user)->create();
 
     // A Coach conversation with a message and a turn (the package's tables).
     $store = app(ConversationStore::class);
