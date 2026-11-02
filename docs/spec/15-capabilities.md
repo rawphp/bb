@@ -55,7 +55,7 @@ Every product operation is one capability in `rawphp/laravel-capabilities`, defi
 
 - **CAP-030** [B] A test must fail when the Vue app calls a capability the agent cannot call. It reads every capability name used in `resources/js` and checks each one is in the agent's tool profile or on the agent exclusion list.
 - **CAP-031** [B] The agent exclusion list must be short and say why for each entry. v1 entries: `account_delete` (a person must do it, ACC-005), `token_create` and `token_revoke` (an agent must not mint its own credentials), and the billing capabilities (money needs a person). Everything else is callable by the agent.
-- **CAP-032** [B] Every capability must have a schema snapshot test, and a test that it registers with the surfaces it declares (`http`, `job`, `mcp`, `cli`).
+- **CAP-032** [B] Every capability must have a schema snapshot test, and a test that it registers with the surfaces it declares (`http`, `job`, `mcp`, `cli`, `agent`).
 
 ## Capability inventory
 
