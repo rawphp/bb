@@ -20,10 +20,17 @@ final class EnergyRules
     /** SCH-062: more than this many hard Other activities in a plan week is too much cardio in Fat loss. */
     public const CARDIO_HARD_SESSIONS_PER_WEEK = 4;
 
-    /** NUT-001: age in whole years on $on, both read as calendar days in $timeZone. */
+    /**
+     * NUT-001: age in whole years on $on. The birth date is a calendar date, read in its own time zone, so
+     * no UTC offset moves the birthday; $on is read as the calendar day it is in $timeZone. Same counting as
+     * Screening's age (SAFE-013).
+     */
     public static function age(DateTimeImmutable $birthDate, DateTimeImmutable $on, DateTimeZone $timeZone): int
     {
-        return $birthDate->setTimezone($timeZone)->diff($on->setTimezone($timeZone))->y;
+        $today = $on->setTimezone($timeZone);
+        $age = (int) $today->format('Y') - (int) $birthDate->format('Y');
+
+        return $today->format('md') < $birthDate->format('md') ? $age - 1 : $age;
     }
 
     /** NUT-001: basal metabolic rate, Mifflin-St Jeor, in kcal. */

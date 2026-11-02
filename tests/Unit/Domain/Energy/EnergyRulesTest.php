@@ -30,6 +30,39 @@ it('NUT-001 age is whole years and rolls on the birthday', function () {
         ->and(EnergyRules::age($birth, on: F::date(2026, 10, 11), timeZone: F::utc()))->toBe(46);
 });
 
+it('NUT-001 age rolls on the user\'s local calendar day, not the UTC one', function () {
+    // A stored birth date is a calendar date at midnight UTC.
+    $birth = F::date(1980, 10, 11);
+    $newYork = new DateTimeZone('America/New_York');
+    $auckland = new DateTimeZone('Pacific/Auckland');
+
+    // 2026-10-11 02:00 UTC is still 10 October in New York; 04:00 UTC is 11 October.
+    expect(EnergyRules::age($birth, on: new DateTimeImmutable('2026-10-11 02:00 UTC'), timeZone: $newYork))->toBe(45)
+        ->and(EnergyRules::age($birth, on: new DateTimeImmutable('2026-10-11 04:00 UTC'), timeZone: $newYork))->toBe(46)
+        // 2026-10-10 10:00 UTC is 10 October in Auckland; 12:00 UTC is already 11 October.
+        ->and(EnergyRules::age($birth, on: new DateTimeImmutable('2026-10-10 10:00 UTC'), timeZone: $auckland))->toBe(45)
+        ->and(EnergyRules::age($birth, on: new DateTimeImmutable('2026-10-10 12:00 UTC'), timeZone: $auckland))->toBe(46);
+});
+
+it('NUT-001 a birth date keeps its own calendar day whatever its offset', function () {
+    // 11 October in Auckland is 10 October 11:00 UTC; the birthday is still 11 October.
+    $birth = new DateTimeImmutable('1980-10-11 00:00', new DateTimeZone('Pacific/Auckland'));
+
+    expect(EnergyRules::age($birth, on: F::date(2026, 10, 10), timeZone: F::utc()))->toBe(45)
+        ->and(EnergyRules::age($birth, on: F::date(2026, 10, 11), timeZone: F::utc()))->toBe(46);
+});
+
+it('NUT-001 BMR uses the local-day age', function () {
+    $newYork = new DateTimeZone('America/New_York');
+    $profile = F::profile(birthDate: F::date(1980, 10, 11));
+
+    // 1190 + 1156.25 - 5*45 + 5, then one year older on the local birthday
+    expect(EnergyRules::bmr($profile, weightKg: 119, on: new DateTimeImmutable('2026-10-11 02:00 UTC'), timeZone: $newYork))
+        ->toEqualWithDelta(2_126.25, F::ACC)
+        ->and(EnergyRules::bmr($profile, weightKg: 119, on: new DateTimeImmutable('2026-10-11 04:00 UTC'), timeZone: $newYork))
+        ->toEqualWithDelta(2_121.25, F::ACC);
+});
+
 it('NUT-001 with no trend BMR falls back to the profile weight', function () {
     $profile = F::profile(weightKg: 125);
     $weight = CurrentWeight::kg(trendKg: null, profileKg: $profile->weightKg);
@@ -78,6 +111,7 @@ it('NUT-003 workout energy is hours times kg times the intensity factor', functi
         ->and(EnergyRules::workoutFactor(DayType::Moderate))->toEqual(5)
         ->and(EnergyRules::workoutFactor(DayType::Hard))->toEqual(6)
         ->and(EnergyRules::workoutFactor(DayType::Rest))->toEqual(0)
+        ->and(EnergyRules::workoutFactor(DayType::Deload))->toEqual(0)
         ->and(EnergyRules::workoutEnergy(minutes: 30, weightKg: 119, intensity: DayType::Light))->toEqualWithDelta(178.5, F::ACC)
         ->and(EnergyRules::workoutEnergy(minutes: 60, weightKg: 80, intensity: DayType::Moderate))->toEqualWithDelta(400, F::ACC)
         ->and(EnergyRules::workoutEnergy(minutes: 90, weightKg: 80, intensity: DayType::Hard))->toEqualWithDelta(720, F::ACC);
@@ -225,6 +259,17 @@ it('SCH-038 a deload session alone is light', function () {
 
     expect($day->dayType)->toBe(DayType::Light)
         ->and($day->kcal)->toEqualWithDelta(0.75 * 80 * 3, F::ACC);
+});
+
+it('SCH-038 a rest or deload entry adds no energy and never outranks a workout', function () {
+    $rest = new EnergyWorkout(minutes: 60, intensity: DayType::Rest);
+    $deload = new EnergyWorkout(minutes: 60, intensity: DayType::Deload);
+    $light = new EnergyWorkout(minutes: 30, intensity: DayType::Light);
+
+    expect(EnergyRules::dayWorkout([$rest, $deload], weightKg: 80)->kcal)->toEqual(0)
+        ->and(EnergyRules::dayWorkout([$rest, $deload], weightKg: 80)->dayType)->toBe(DayType::Rest)
+        ->and(EnergyRules::dayWorkout([$deload, $light], weightKg: 80)->dayType)->toBe(DayType::Light)
+        ->and(EnergyRules::dayWorkout([$light, $deload], weightKg: 80)->dayType)->toBe(DayType::Light);
 });
 
 // Worked example
