@@ -48,13 +48,19 @@ final class OnboardingSteps
 
     private ?OnboardingCalories $calories = null;
 
-    /** @param  list<OnboardingTemplate>  $templates  the library, as step 9 reads it */
+    /**
+     * @param  list<OnboardingTemplate>  $templates  the library, as step 9 reads it
+     * @param  ?OnboardingCalories  $calories  step 13's state for the same answers, when the caller has built it already,
+     *                                         so the week is built once; it does not depend on the current step
+     */
     public function __construct(
         private readonly Draft $draft,
         private readonly DateTimeImmutable $today,
         private readonly array $templates,
+        ?OnboardingCalories $calories = null,
     ) {
         $this->health = new OnboardingHealth($draft, $today);
+        $this->calories = $calories;
     }
 
     public static function keyOf(int $step): string

@@ -29,17 +29,21 @@ final class OnboardingReview
 
     private readonly OnboardingCalories $calories;
 
-    /** @param  list<OnboardingTemplate>  $templates  the library, as step 9 reads it */
+    /**
+     * @param  list<OnboardingTemplate>  $templates  the library, as step 9 reads it
+     * @param  ?OnboardingCalories  $calories  step 13's state for the same answers, when the caller has built it already
+     */
     public function __construct(
         private readonly Draft $draft,
         private readonly DateTimeImmutable $today,
         private readonly array $templates,
+        ?OnboardingCalories $calories = null,
     ) {
         $this->health = new OnboardingHealth($draft, $today);
         $this->rateLength = new OnboardingRateLength($draft, $today);
         $this->training = new OnboardingTraining($draft, $templates);
         $this->lifestyle = new OnboardingLifestyle($draft);
-        $this->calories = new OnboardingCalories($draft, $today, $templates);
+        $this->calories = $calories ?? new OnboardingCalories($draft, $today, $templates);
     }
 
     /** ONB-019: "" in training-only mode. */

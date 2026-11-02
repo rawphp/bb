@@ -68,10 +68,11 @@ final readonly class OnboardingStart
     public static function from(Draft $draft, DateTimeImmutable $today, array $templates, Closure $newId): self
     {
         $draft = self::startingTomorrowAtTheEarliest($draft, $today);
-        self::refuseUnlessEveryStepCanContinue($draft, $today, $templates);
+        // One calorie state for the step check and the start: the week is built once (it does not depend on the step).
+        $calories = new OnboardingCalories($draft, $today, $templates);
+        self::refuseUnlessEveryStepCanContinue($draft, $today, $templates, $calories);
         $inputs = OnboardingPlanInputs::from($draft, $today, $templates, $newId) ?? throw new DomainException(self::INCOMPLETE_MESSAGE);
         $trainingOnly = $inputs->schedule->nutrition === null;
-        $calories = new OnboardingCalories($draft, $today, $templates);
 
         // ONB-017: a chosen average moves week one by its difference from the recommendation.
         $change = 0.0;
@@ -163,9 +164,9 @@ final readonly class OnboardingStart
     }
 
     /** @param  list<OnboardingTemplate>  $templates */
-    private static function refuseUnlessEveryStepCanContinue(Draft $draft, DateTimeImmutable $today, array $templates): void
+    private static function refuseUnlessEveryStepCanContinue(Draft $draft, DateTimeImmutable $today, array $templates, OnboardingCalories $calories): void
     {
-        $steps = new OnboardingSteps($draft->with(step: OnboardingSteps::REVIEW_STEP), $today, $templates);
+        $steps = new OnboardingSteps($draft->with(step: OnboardingSteps::REVIEW_STEP), $today, $templates, $calories);
         foreach ($steps->visibleSteps() as $step) {
             if (! $steps->canContinueOn($step)) {
                 throw new DomainException($steps->continueHintOn($step) ?? self::INCOMPLETE_MESSAGE);

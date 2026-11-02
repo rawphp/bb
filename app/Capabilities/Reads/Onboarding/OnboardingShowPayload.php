@@ -37,12 +37,13 @@ final class OnboardingShowPayload
     /** @param  list<OnboardingTemplate>  $templates  the library, as step 9 reads it */
     public static function build(Draft $draft, DateTimeImmutable $today, array $templates): OnboardingShowOutput
     {
-        $steps = new OnboardingSteps($draft, $today, $templates);
+        // One calorie state for the whole read: step 13, the step check and the review all show the same week.
+        $calories = new OnboardingCalories($draft, $today, $templates);
+        $steps = new OnboardingSteps($draft, $today, $templates, $calories);
         $health = new OnboardingHealth($draft, $today);
         $rateLength = new OnboardingRateLength($draft, $today);
         $training = new OnboardingTraining($draft, $templates);
         $lifestyle = new OnboardingLifestyle($draft);
-        $calories = new OnboardingCalories($draft, $today, $templates);
 
         return new OnboardingShowOutput(
             step: self::step($draft, $steps),
@@ -61,7 +62,7 @@ final class OnboardingShowPayload
             meals: OnboardingLifestylePayload::meals($draft),
             weigh_ins: OnboardingLifestylePayload::weighIns($draft, $lifestyle),
             calories: OnboardingLifestylePayload::calories($draft, $calories),
-            review: OnboardingReviewPayload::build(new OnboardingReview($draft, $today, $templates)),
+            review: OnboardingReviewPayload::build(new OnboardingReview($draft, $today, $templates, $calories)),
         );
     }
 
