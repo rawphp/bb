@@ -107,7 +107,7 @@ describe('DeleteAccountView', () => {
     });
 
     it('CAP-014 takes a new key after a refusal, since the server keeps the refusal under the old one', async () => {
-        writeMock.mockRejectedValueOnce(new CapabilityError('account_delete', 500, null)).mockResolvedValueOnce(undefined);
+        writeMock.mockRejectedValueOnce(new CapabilityError('account_delete', 500, { ok: false, error: { code: 'internal' } })).mockResolvedValueOnce(undefined);
         const { wrapper } = await view();
 
         await deleteTyped(wrapper);
@@ -126,6 +126,30 @@ describe('DeleteAccountView', () => {
 
         await deleteTyped(wrapper);
         expect(wrapper.get('[role="alert"]').text()).toContain("can't tell whether your account was deleted");
+        expect(clearReads).toHaveBeenCalledTimes(1);
+        expect(router.currentRoute.value.path).toBe('/settings/delete-account');
+
+        await wrapper.get('[data-test="delete"]').trigger('click');
+        await flushPromises();
+
+        const keys = writeMock.mock.calls.map(([, , options]) => options?.idempotencyKey);
+        expect(keys[1]).toBe(keys[0]);
+        expect(router.currentRoute.value.path).toBe('/');
+    });
+
+    it.each([
+        ['a gateway timeout', new CapabilityError('account_delete', 504, null), "can't tell whether your account was deleted"],
+        [
+            'the first try still running',
+            new CapabilityError('account_delete', 409, { ok: false, error: { code: 'conflict', retryable: true, message: 'This change is still being saved. Try again in a moment.' } }),
+            'This change is still being saved.',
+        ],
+    ])('CAP-014 after %s, a gone session on the retry means the delete ran', async (_label, first, said) => {
+        writeMock.mockRejectedValueOnce(first).mockRejectedValueOnce(new CapabilityError('account_delete', 401, { message: 'Unauthenticated.' }));
+        const { wrapper, router } = await view();
+
+        await deleteTyped(wrapper);
+        expect(wrapper.get('[role="alert"]').text()).toContain(said);
         expect(clearReads).toHaveBeenCalledTimes(1);
         expect(router.currentRoute.value.path).toBe('/settings/delete-account');
 

@@ -152,8 +152,11 @@ describe('EligibilityRecheckView', () => {
         expect((sent().answers as { item: string; applies: boolean }[]).find((a) => a.item === 'pregnantOrBreastfeeding')?.applies).toBe(true);
     });
 
-    it('CAP-014 retries a check that got no answer with the same key and the boxes locked', async () => {
-        writeMock.mockRejectedValueOnce(new CapabilityError('eligibility_recheck', 0, { reason: 'timeout' })).mockResolvedValueOnce(
+    it.each([
+        ['got no answer', new CapabilityError('eligibility_recheck', 0, { reason: 'timeout' })],
+        ['the server is still running', new CapabilityError('eligibility_recheck', 409, { ok: false, error: { code: 'conflict', retryable: true } })],
+    ])('CAP-014 retries a check that %s with the same key and the boxes locked', async (_label, first) => {
+        writeMock.mockRejectedValueOnce(first).mockResolvedValueOnce(
             result({ outcome: 'switchToTrainingOnly', message: 'You are now on training only.' }),
         );
         const { wrapper } = await view(content);
@@ -171,6 +174,35 @@ describe('EligibilityRecheckView', () => {
         expect(keys[1]).toBe(keys[0]);
         // The replayed first outcome, not "Nothing changed".
         expect(wrapper.text()).toContain('You are now on training only.');
+    });
+
+    it('CAP-014 a refresh that lands while a check is unanswered changes neither the boxes nor what the retry sends', async () => {
+        let refresh: (data: EligibilityRecheckShowOutput) => void = () => {};
+        readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {
+            refresh = onUpdate as typeof refresh;
+            return content;
+        });
+        writeMock.mockRejectedValueOnce(new CapabilityError('eligibility_recheck', 0, { reason: 'timeout' })).mockResolvedValueOnce(result({}));
+        const { wrapper } = await view();
+        await flushPromises();
+
+        await wrapper.get('[data-test="check"]').trigger('click');
+        await flushPromises();
+        const shown = () => wrapper.findAll<HTMLInputElement>('input[type="checkbox"]').map((box) => box.element.checked);
+        const before = shown();
+        // The first check may have saved these answers; the server now shows them back changed.
+        refresh({ ...content, questions: content.questions.map((q) => ({ ...q, applies: !q.applies })) });
+        await flushPromises();
+        expect(shown()).toEqual(before);
+        // A refresh can also change the questions themselves; the retry still sends the first check.
+        refresh({ ...content, questions: content.questions.slice(1) });
+        await flushPromises();
+
+        await wrapper.get('[data-test="check"]').trigger('click');
+        await flushPromises();
+
+        const [first, second] = writeMock.mock.calls.map(([, input]) => input);
+        expect(second).toEqual(first);
     });
 
     it('CAP-012 shows a refused check in the server\'s words and keeps the answers', async () => {

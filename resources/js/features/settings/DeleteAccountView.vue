@@ -45,10 +45,14 @@ async function failedDelete(failed: unknown, afterLostAnswer: boolean): Promise<
         error.value = 'You were signed out, so nothing was deleted. Sign in again, then delete your account.';
         return;
     }
-    // No answer: the delete may have run. The cached reads go either way; they come back if it didn't.
-    if (status === 0) {
+    // No final answer (offline, a gateway that gave up, or the first try still running): the
+    // delete may have run. The cached reads go either way; they come back if it didn't.
+    if (retry.unsure.value) {
         await clearReads().catch(() => undefined);
-        error.value = "No connection, so we can't tell whether your account was deleted. Try again when you are online.";
+        error.value =
+            status === 0
+                ? "No connection, so we can't tell whether your account was deleted. Try again when you are online."
+                : failureMessage(failed, "We can't tell whether your account was deleted. Try again in a moment.");
         return;
     }
     error.value = failureMessage(failed, 'Your account could not be deleted. Try again.');

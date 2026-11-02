@@ -186,6 +186,31 @@ describe('TokensView', () => {
         expect(wrapper.text()).toContain(content.tokens[0]!.name);
     });
 
+    it('CAP-014 a create the server is still running is not a lost secret: the form stays locked for the same retry', async () => {
+        writeMock
+            .mockRejectedValueOnce(
+                new CapabilityError('token_create', 409, { ok: false, error: { code: 'conflict', retryable: true, message: 'This change is still being saved. Try again in a moment.' } }),
+            )
+            .mockResolvedValueOnce(created);
+        const wrapper = mount(TokensView, { global, props: { payload: content } });
+        await wrapper.get('[data-test="new"]').trigger('click');
+        await fill(wrapper, 'A');
+
+        await wrapper.get('[data-test="create"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="notice"]').exists()).toBe(false);
+        expect(wrapper.get('[role="alert"]').text()).toContain('This change is still being saved.');
+        expect(wrapper.get<HTMLInputElement>('input[name="token-name"]').element.disabled).toBe(true);
+
+        await wrapper.get('[data-test="create"]').trigger('click');
+        await flushPromises();
+
+        const keys = writeMock.mock.calls.map(([, , options]) => options?.idempotencyKey);
+        expect(keys[1]).toBe(keys[0]);
+        expect(wrapper.text()).toContain(created.token.plain_text);
+    });
+
     it('CAP-019 reads the list again when the form closes after a create with no answer', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('token_create', 0, { reason: 'timeout' }));
         readMock.mockResolvedValueOnce(content);
@@ -341,5 +366,15 @@ describe('TokensView', () => {
         await flushPromises();
 
         expect(wrapper.text()).toContain('Your tokens could not be loaded.');
+    });
+
+    it('OFF-003 says the tokens need a connection when offline with nothing cached, with no retry that cannot work', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('token_list', 0, { reason: 'network' }));
+        const wrapper = mount(TokensView);
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('Not available offline');
+        expect(wrapper.text()).toContain("Your tokens will load when you're back online.");
+        expect(wrapper.find('[data-test="retry"]').exists()).toBe(false);
     });
 });

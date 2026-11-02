@@ -82,7 +82,8 @@ async function create(): Promise<void> {
         copied.value = false;
     } catch (failed) {
         createKey.settle(failed);
-        if (failed instanceof CapabilityError && failed.status === 409) {
+        // A 409 the key stays unsure after is the first create still running, not a duplicate.
+        if (failed instanceof CapabilityError && failed.status === 409 && !createKey.unsure.value) {
             // This form's id is already a token of this user's: an earlier try ran, and its
             // answer, with the secret, was lost. List it so it can be revoked.
             creating.value = false;

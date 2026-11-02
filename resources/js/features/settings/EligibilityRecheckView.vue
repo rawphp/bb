@@ -33,10 +33,15 @@ const saving = ref(false);
 const error = ref<string | null>(null);
 const outcome = ref<EligibilityRecheckOutput | null>(null);
 
+// What the last check sent. While its answer is unsure, the retry sends exactly this.
+let sent: EligibilityRecheckInput | null = null;
+
 // The boxes start as the server last saw them, and follow a refresh until the user ticks one.
+// While a check is unsure they stay as sent: that check may be what the refresh shows.
 watch(
     screening,
     (show) => {
+        if (retry.unsure.value) return;
         for (const q of show?.questions ?? []) if (q.measured || !touched.has(q.item)) ticked.value[q.item] = q.applies;
     },
     { immediate: true },
@@ -46,9 +51,11 @@ async function check(): Promise<void> {
     if (!screening.value || saving.value) return;
     saving.value = true;
     error.value = null;
-    const input: EligibilityRecheckInput = {
-        answers: screening.value.questions.map((q) => ({ item: q.item, applies: ticked.value[q.item] ?? q.applies })),
-    };
+    const input: EligibilityRecheckInput =
+        retry.unsure.value && sent !== null
+            ? sent
+            : { answers: screening.value.questions.map((q) => ({ item: q.item, applies: ticked.value[q.item] ?? q.applies })) };
+    sent = input;
     try {
         outcome.value = await write<EligibilityRecheckOutput>('eligibility_recheck', { ...input }, { idempotencyKey: retry.key.value });
         retry.settle();

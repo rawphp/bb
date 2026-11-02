@@ -1,5 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { CapabilityError, read } from './call';
 import { useRead } from './useRead';
@@ -7,6 +7,9 @@ import { useRead } from './useRead';
 vi.mock('./call', async (original) => ({ ...(await original<typeof import('./call')>()), read: vi.fn() }));
 
 const readMock = vi.mocked(read);
+
+// A mounted screen listens for reconnects; one left from an earlier test would read again.
+enableAutoUnmount(afterEach);
 
 function screen(payload?: { n: number }) {
     let api!: ReturnType<typeof useRead<{ n: number }>>;
@@ -42,6 +45,7 @@ describe('useRead', () => {
 
     it.each([
         [401, 'signed-out'],
+        [0, 'offline'],
         [500, 'error'],
     ])('CAP-004 names a failed read (%i)', async (status, failure) => {
         readMock.mockRejectedValueOnce(new CapabilityError('probe_show', status, null));
@@ -106,6 +110,47 @@ describe('useRead', () => {
         await flushPromises();
         staleRefresh({ n: 1 });
         staleFail(new CapabilityError('probe_show', 404, null));
+        await flushPromises();
+
+        expect(wrapper.text()).toBe('2');
+    });
+
+    it('OFF-004 reads again when the device reconnects after an offline failure', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('probe_show', 0, { reason: 'network' })).mockResolvedValueOnce({ n: 4 });
+        const { wrapper } = screen();
+        await flushPromises();
+        expect(wrapper.text()).toBe('offline');
+
+        window.dispatchEvent(new Event('online'));
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledTimes(2);
+        expect(wrapper.text()).toBe('4');
+    });
+
+    it('OFF-004 a reconnect reads nothing while the screen has data, or after it is gone', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('probe_show', 0, { reason: 'network' }));
+        const shown = screen({ n: 1 });
+        window.dispatchEvent(new Event('online'));
+        const failed = screen();
+        await flushPromises();
+        failed.wrapper.unmount();
+
+        window.dispatchEvent(new Event('online'));
+        await flushPromises();
+
+        expect(shown.wrapper.text()).toBe('1');
+        expect(readMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('OFF-003 drops the cached copy an older load() hands back after a newer load() answered', async () => {
+        let handBack: (data: { n: number }) => void = () => {};
+        readMock.mockImplementationOnce(() => new Promise((resolve) => (handBack = resolve as typeof handBack))).mockResolvedValueOnce({ n: 2 });
+        const { wrapper, api } = screen();
+
+        await api().load();
+        await flushPromises();
+        handBack({ n: 1 });
         await flushPromises();
 
         expect(wrapper.text()).toBe('2');
