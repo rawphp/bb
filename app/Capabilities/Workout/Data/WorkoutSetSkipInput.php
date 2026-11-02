@@ -17,6 +17,6 @@ final class WorkoutSetSkipInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['set_id' => ['required', 'ulid']];
+        return ['set_id' => ['ulid']];
     }
 }

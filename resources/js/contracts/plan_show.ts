@@ -188,3 +188,5 @@ export interface PlanShowOutput {
     }[];
   } | null;
 }
+
+export const outputVersion = 'c143197ae34a';

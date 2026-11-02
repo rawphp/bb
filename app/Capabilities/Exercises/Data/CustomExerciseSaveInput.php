@@ -25,6 +25,6 @@ final class CustomExerciseSaveInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['exercise_id' => ['required', 'ulid']];
+        return ['exercise_id' => ['ulid']];
     }
 }

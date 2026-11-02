@@ -18,6 +18,6 @@ final class MesocycleDayAddInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['day_id' => ['required', 'ulid']];
+        return ['day_id' => ['ulid']];
     }
 }

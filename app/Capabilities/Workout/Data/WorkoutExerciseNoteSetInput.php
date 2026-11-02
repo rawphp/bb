@@ -20,6 +20,6 @@ final class WorkoutExerciseNoteSetInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['workout_exercise_id' => ['required', 'ulid']];
+        return ['workout_exercise_id' => ['ulid']];
     }
 }

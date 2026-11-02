@@ -22,6 +22,6 @@ final class MesocycleCopyInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['mesocycle_id' => ['required', 'ulid']];
+        return ['mesocycle_id' => ['ulid']];
     }
 }

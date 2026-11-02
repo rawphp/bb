@@ -18,6 +18,6 @@ final class WorkoutDayRelabelInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['workout_id' => ['required', 'ulid']];
+        return ['workout_id' => ['ulid']];
     }
 }

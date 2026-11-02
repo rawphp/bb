@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Workout\Data;
 
+use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
 /**
@@ -12,12 +13,14 @@ final class WorkoutShowInput extends CapabilityData
 {
     public function __construct(
         public readonly string $mesocycle_id,
+        #[Field(minimum: 1)]
         public readonly int $week,
+        #[Field(minimum: 1)]
         public readonly int $day,
     ) {}
 
     public static function rules(): array
     {
-        return ['mesocycle_id' => ['required', 'ulid'], 'week' => ['required', 'integer', 'min:1'], 'day' => ['required', 'integer', 'min:1']];
+        return ['mesocycle_id' => ['ulid']];
     }
 }

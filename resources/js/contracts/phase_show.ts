@@ -64,3 +64,5 @@ export interface PhaseShowOutput {
     progression_text?: string | null;
   }[];
 }
+
+export const outputVersion = '7248c7649244';

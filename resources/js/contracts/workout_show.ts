@@ -167,3 +167,5 @@ export interface WorkoutShowOutput {
     };
   }[];
 }
+
+export const outputVersion = '9313c0411597';

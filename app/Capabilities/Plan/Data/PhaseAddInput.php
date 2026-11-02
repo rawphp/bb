@@ -24,6 +24,6 @@ final class PhaseAddInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['phase_id' => ['required', 'ulid']];
+        return ['phase_id' => ['ulid']];
     }
 }

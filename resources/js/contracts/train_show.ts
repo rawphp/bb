@@ -51,3 +51,5 @@ export interface TrainShowOutput {
     priority_notice?: string | null;
   }[];
 }
+
+export const outputVersion = '11d37888c50e';

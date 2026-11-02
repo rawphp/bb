@@ -17,9 +17,4 @@ final class PlanDietBreakSetInput extends CapabilityData
         public readonly string $week_start,
         public readonly bool $diet_break,
     ) {}
-
-    public static function rules(): array
-    {
-        return ['week_start' => ['required', 'date_format:Y-m-d']];
-    }
 }

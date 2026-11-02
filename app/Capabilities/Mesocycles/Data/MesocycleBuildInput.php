@@ -37,9 +37,9 @@ final class MesocycleBuildInput extends CapabilityData
     public static function rules(): array
     {
         return [
-            'mesocycle_id' => ['required', 'ulid'],
-            'days.*.day_id' => ['required', 'ulid'],
-            'days.*.slots.*.slot_id' => ['required', 'ulid'],
+            'mesocycle_id' => ['ulid'],
+            'days.*.day_id' => ['ulid'],
+            'days.*.slots.*.slot_id' => ['ulid'],
         ];
     }
 }

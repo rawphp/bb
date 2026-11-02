@@ -20,6 +20,6 @@ final class PrebuiltPlanApplyInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['first_phase_id' => ['required', 'ulid']];
+        return ['first_phase_id' => ['ulid']];
     }
 }

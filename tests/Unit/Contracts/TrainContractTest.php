@@ -1,8 +1,11 @@
 <?php
 
 use Tests\Support\ContractDtos;
+use Tests\Support\FixtureKeys;
 
 // C_TRAIN (#46): the train, plan, mesocycle, exercise and workout contracts.
+// ScreenContractTest holds every snapshot to its DTO and every fixture to its
+// schema; these tests add what only the train area promises.
 
 $root = dirname(__DIR__, 3);
 
@@ -47,5 +50,29 @@ it('commits a full and an empty screen fixture for every train read', function (
 
         expect("{$root}/tests/fixtures/screens/{$name}.json")->toBeFile()
             ->and("{$root}/tests/fixtures/screens/{$name}.empty.json")->toBeFile();
+    }
+});
+
+it('CAP-032 gives every train name an input DTO', function () use ($root) {
+    foreach (array_keys(trainOwners($root)) as $name) {
+        expect(ContractDtos::find($root, $name, 'input'))->not->toBeNull("{$name} has no input DTO");
+    }
+});
+
+// The package's DTO schemas mark nullable keys optional, so a fixture could drop
+// one and still fit; a train read always sends every key.
+it('CAP-002 sends every key in each train read\'s fixtures, in every state', function () use ($root) {
+    foreach (array_keys(trainOwners($root)) as $name) {
+        if (ContractDtos::find($root, $name, 'output') === null) {
+            continue;
+        }
+
+        $schema = json_decode((string) file_get_contents("{$root}/tests/fixtures/schemas/{$name}.output.json"), true, flags: JSON_THROW_ON_ERROR);
+
+        foreach (glob("{$root}/tests/fixtures/screens/{$name}{,.*}.json", GLOB_BRACE) ?: [] as $path) {
+            $fixture = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+
+            expect(FixtureKeys::missing($schema, $fixture))->toBe([], basename($path).' leaves out keys');
+        }
     }
 });

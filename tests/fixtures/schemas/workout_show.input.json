@@ -7,10 +7,12 @@
             "type": "string"
         },
         "week": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1
         },
         "day": {
-            "type": "integer"
+            "type": "integer",
+            "minimum": 1
         }
     },
     "required": [

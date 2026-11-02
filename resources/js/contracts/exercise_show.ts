@@ -55,3 +55,5 @@ export interface ExerciseShowOutput {
     best_text?: string | null;
   }[];
 }
+
+export const outputVersion = '4d8a5ffedb99';

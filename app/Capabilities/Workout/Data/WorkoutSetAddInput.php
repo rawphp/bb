@@ -23,6 +23,6 @@ final class WorkoutSetAddInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['set_id' => ['required', 'ulid'], 'workout_exercise_id' => ['required', 'ulid'], 'after_set_id' => ['nullable', 'ulid']];
+        return ['set_id' => ['ulid'], 'workout_exercise_id' => ['ulid'], 'after_set_id' => ['nullable', 'ulid']];
     }
 }

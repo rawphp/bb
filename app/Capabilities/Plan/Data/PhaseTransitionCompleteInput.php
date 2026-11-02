@@ -32,6 +32,6 @@ final class PhaseTransitionCompleteInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['next_phase_id' => ['required', 'ulid']];
+        return ['next_phase_id' => ['ulid']];
     }
 }

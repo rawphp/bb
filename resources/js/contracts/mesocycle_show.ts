@@ -182,3 +182,5 @@ export interface MesocycleShowOutput {
     can_finish: boolean;
   } | null;
 }
+
+export const outputVersion = '7a6a1af93a87';

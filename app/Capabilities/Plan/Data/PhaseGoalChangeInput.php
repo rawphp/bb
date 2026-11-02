@@ -22,6 +22,6 @@ final class PhaseGoalChangeInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['new_phase_id' => ['required', 'ulid']];
+        return ['new_phase_id' => ['ulid']];
     }
 }

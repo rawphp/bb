@@ -16,9 +16,4 @@ final class PhaseEventDateSetInput extends CapabilityData
         #[Field(format: 'date')]
         public readonly ?string $event_date,
     ) {}
-
-    public static function rules(): array
-    {
-        return ['event_date' => ['nullable', 'date_format:Y-m-d']];
-    }
 }

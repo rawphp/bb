@@ -40,3 +40,5 @@ export interface ExercisesShowOutput {
     label: string;
   }[];
 }
+
+export const outputVersion = 'f8e3ee4a0894';

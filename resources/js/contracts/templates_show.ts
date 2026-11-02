@@ -65,3 +65,5 @@ export interface TemplatesShowOutput {
     }[];
   } | null;
 }
+
+export const outputVersion = '77de567c3809';
