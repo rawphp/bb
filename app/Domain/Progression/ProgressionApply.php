@@ -37,14 +37,19 @@ final class ProgressionApply
         }
 
         // The domain tells slots apart by id; a slot's place makes it unique whatever its stored id looks like. The
-        // day's slots that did not run sit in a session of their own, so they still count toward the week (PROG-015).
+        // day's slots that did not run sit in a session of their own: VolumeProgression reads the other sessions only
+        // for the muscle's weekly total, so they still count toward the ceiling (PROG-015) and nothing moves them.
         $sessions = [];
         $unrun = [];
+        $positionOf = [];
         foreach ($input->days as $dayIndex => $storedDay) {
             $daySlots = [];
             foreach ($storedDay['slots'] as $position => $slot) {
                 $slotSets = $dayIndex === $input->dayIndex ? ($ran[$position] ?? null) : (int) $slot['sets'];
                 $exerciseSlot = new ExerciseSlot("{$dayIndex}-{$position}", '', MuscleGroup::from($slot['muscle_group']), $slotSets ?? (int) $slot['sets']);
+                if ($dayIndex === $input->dayIndex) {
+                    $positionOf[$exerciseSlot->id] = $position;
+                }
                 if ($slotSets === null) {
                     $unrun[] = $exerciseSlot;
                 } else {
@@ -73,7 +78,7 @@ final class ProgressionApply
 
         $counts = array_map(fn (array $slot) => (int) $slot['sets'], $slots);
         foreach ($next->session->slots as $slot) {
-            $counts[(int) substr($slot->id, strlen("{$input->dayIndex}-"))] = $slot->sets;
+            $counts[$positionOf[$slot->id]] = $slot->sets;
         }
         $outcomes = $next->outcomes;
         // PROG-050, PROG-051: a held muscle gains no sets. Its slots go back to the base, and the messages of the add

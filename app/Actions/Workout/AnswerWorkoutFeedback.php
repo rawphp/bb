@@ -31,15 +31,17 @@ final class AnswerWorkoutFeedback
     /** @return array{toast: ?string, session: WorkoutSession} the UI-010 lines when next week's sets changed, and the session */
     public function __invoke(User $user, WorkoutFeedbackAnswerInput $input): array
     {
-        $found = WorkoutSnapshot::forWorkout($user, $input->workout_id);
+        [$mesocycle, $week, $day] = WorkoutSnapshot::locate($user, $input->workout_id);
         $muscle = MuscleGroup::from($input->muscle_group);
 
-        return DB::transaction(function () use ($user, $input, $found, $muscle): array {
-            // One write at a time per mesocycle, as workout_start does: a second request reads what the first saved.
-            Mesocycle::query()->whereKey($found->mesocycle->id)->lockForUpdate()->first();
-            $snapshot = WorkoutSnapshot::load($user, (string) $found->mesocycle->id, $found->week, $found->day);
-            $session = $snapshot->session();
-            $status = $snapshot->status();
+        return DB::transaction(function () use ($user, $input, $mesocycle, $week, $day, $muscle): array {
+            // One write at a time per mesocycle. The rows that decide the outcome are read again with locks, which see
+            // the latest commit whatever the transaction read before, so a second request finds what the first saved.
+            $locked = Mesocycle::query()->whereKey($mesocycle->id)->lockForUpdate()->firstOrFail();
+            $snapshot = WorkoutSnapshot::load($user, (string) $mesocycle->id, $week, $day);
+            $row = $snapshot->session();
+            $session = $row === null ? null : WorkoutSession::query()->whereKey($row->id)->lockForUpdate()->first();
+            $status = $session?->status() ?? WorkoutStatus::NotStarted;
 
             if ($session === null || $status === WorkoutStatus::NotStarted || $status === WorkoutStatus::Skipped) {
                 throw new DomainException(self::NOT_STARTED);
@@ -61,15 +63,14 @@ final class AnswerWorkoutFeedback
             }
             $pain = $this->jointPain($input, $sheet);
 
-            $row = $snapshot->muscleAnswers($muscle) ?? (new MuscleFeedback([
-                'workout_session_id' => $session->id, 'muscle_group' => $muscle,
-            ]))->forceFill(['user_id' => $user->id]);
-            $row->fill(['soreness' => $asksSoreness ? $input->soreness : null, 'pump' => $input->pump, 'volume' => $input->volume]);
-            $wrote = $row->isDirty() || ! $row->exists;
-            $row->save();
+            $answers = MuscleFeedback::query()->where('workout_session_id', $session->id)->where('muscle_group', $muscle)->lockForUpdate()->first()
+                ?? (new MuscleFeedback(['workout_session_id' => $session->id, 'muscle_group' => $muscle]))->forceFill(['user_id' => $user->id]);
+            $answers->fill(['soreness' => $asksSoreness ? $input->soreness : null, 'pump' => $input->pump, 'volume' => $input->volume]);
+            $wrote = $answers->isDirty() || ! $answers->exists;
+            $answers->save();
 
             foreach ($pain as $exerciseId => $answer) {
-                $stored = $snapshot->exerciseFeedback->first(fn (ExerciseFeedback $f) => $f->workout_session_id === $session->id && (int) $f->exercise_id === $exerciseId)
+                $stored = ExerciseFeedback::query()->where('workout_session_id', $session->id)->where('exercise_id', $exerciseId)->lockForUpdate()->first()
                     ?? (new ExerciseFeedback(['workout_session_id' => $session->id, 'exercise_id' => $exerciseId]))->forceFill(['user_id' => $user->id]);
                 $stored->joint_pain = $answer;
                 $wrote = $wrote || $stored->isDirty() || ! $stored->exists;
@@ -78,7 +79,7 @@ final class AnswerWorkoutFeedback
 
             // FB-009: next week follows the new answers, read back from what was just saved.
             $toast = $wrote && $finished
-                ? NextWeekSets::save(WorkoutSnapshot::load($user, (string) $snapshot->mesocycle->id, $snapshot->week, $snapshot->day))
+                ? NextWeekSets::save(WorkoutSnapshot::load($user, (string) $mesocycle->id, $week, $day), $locked)
                 : null;
 
             return ['toast' => $toast, 'session' => $session];

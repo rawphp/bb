@@ -5,7 +5,6 @@ namespace App\Support\Workout;
 use App\Domain\Mesocycle\MesocycleCalendar;
 use App\Domain\Model\ClosedRange;
 use App\Domain\Model\ExerciseLoadType;
-use App\Domain\Model\ExperienceLevel;
 use App\Domain\Model\FeedbackAnswers;
 use App\Domain\Model\JointPain;
 use App\Domain\Model\MuscleGroup;
@@ -154,13 +153,28 @@ final class WorkoutSnapshot
      */
     public static function forWorkout(User $user, string $workoutId): self
     {
+        [$mesocycle, $week, $day] = self::locate($user, $workoutId);
+
+        return self::load($user, (string) $mesocycle->id, $week, $day);
+    }
+
+    /**
+     * The mesocycle, week and day a workout id names, without loading the session: what a write needs before it
+     * takes its lock.
+     *
+     * @return array{Mesocycle, int, int}
+     *
+     * @throws ModelNotFoundException<WorkoutSession> when it names none of the user's sessions
+     */
+    public static function locate(User $user, string $workoutId): array
+    {
         $wanted = strtolower($workoutId);
         foreach (Mesocycle::savedBy($user)->get() as $mesocycle) {
             for ($week = 1; $week <= (int) $mesocycle->weeks; $week++) {
                 $days = count($mesocycle->earlierWeekRows()[$week - 1] ?? $mesocycle->dayRows());
                 for ($day = 1; $day <= $days; $day++) {
                     if (WorkoutIds::workout((string) $mesocycle->id, $week, $day) === $wanted) {
-                        return self::load($user, (string) $mesocycle->id, $week, $day);
+                        return [$mesocycle, $week, $day];
                     }
                 }
             }
@@ -355,7 +369,7 @@ final class WorkoutSnapshot
             rir: $this->rir(),
             deloadHalf: $isDeload ? Deload::half($this->day - 1, count($this->train->domain($this->mesocycle)->sessionsInWeek($this->week - 1))) : null,
             isFatLoss: $this->isFatLoss(),
-            experience: ExperienceLevel::tryFrom((string) $this->train->profile?->experience) ?? ExperienceLevel::Intermediate,
+            experience: $this->train->experience(),
             rules: $this->rules($exercise),
         ));
     }
@@ -553,7 +567,7 @@ final class WorkoutSnapshot
             isResensitization: $this->mesocycle->is_resensitization,
             weeks: (int) $this->mesocycle->weeks,
             priorities: TrainSnapshot::priorities($this->mesocycle),
-            experience: ExperienceLevel::tryFrom((string) $this->train->profile?->experience) ?? ExperienceLevel::Intermediate,
+            experience: $this->train->experience(),
             ranSets: $ran,
             muscleAnswers: $answers,
             jointPain: $this->jointAnswers(),
@@ -568,7 +582,7 @@ final class WorkoutSnapshot
      *
      * @param  list<PlannedLoad>  $planned
      */
-    public function recovery(Exercise $exercise, array $planned): RecoveryLoadResult
+    private function recovery(Exercise $exercise, array $planned): RecoveryLoadResult
     {
         $lastWeek = $this->lastWeekLoads($exercise);
         if ($this->isDeload() || $lastWeek === []) {

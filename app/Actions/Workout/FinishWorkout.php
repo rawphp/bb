@@ -42,14 +42,16 @@ final class FinishWorkout
      */
     public function __invoke(User $user, string $workoutId, DateTimeInterface $at): array
     {
-        $found = WorkoutSnapshot::forWorkout($user, $workoutId);
+        [$mesocycle, $week, $day] = WorkoutSnapshot::locate($user, $workoutId);
 
-        return DB::transaction(function () use ($user, $found, $at): array {
-            // One write at a time per mesocycle, as workout_start does: a second Finish reads the first one's end.
-            Mesocycle::query()->whereKey($found->mesocycle->id)->lockForUpdate()->first();
-            $snapshot = WorkoutSnapshot::load($user, (string) $found->mesocycle->id, $found->week, $found->day);
-            $session = $snapshot->session();
-            $status = $snapshot->status();
+        return DB::transaction(function () use ($user, $mesocycle, $week, $day, $at): array {
+            // One write at a time per mesocycle. The session and the mesocycle are read again with locks, which see the
+            // latest commit whatever the transaction read before, so a second Finish finds the first one's end.
+            $locked = Mesocycle::query()->whereKey($mesocycle->id)->lockForUpdate()->firstOrFail();
+            $snapshot = WorkoutSnapshot::load($user, (string) $mesocycle->id, $week, $day);
+            $row = $snapshot->session();
+            $session = $row === null ? null : WorkoutSession::query()->whereKey($row->id)->lockForUpdate()->first();
+            $status = $session?->status() ?? WorkoutStatus::NotStarted;
             if ($session === null || $status === WorkoutStatus::NotStarted || $status === WorkoutStatus::Skipped) {
                 throw new DomainException(self::NOT_STARTED);
             }
@@ -70,7 +72,7 @@ final class FinishWorkout
             $session->forceFill(['actual_end_at' => $end])->save();
             // Today's session is sized by the sets it ran, so the day is re-targeted before next week's counts change.
             $meals = $this->retarget($user, $snapshot, $session, $start, $end);
-            $sets = NextWeekSets::save($snapshot);
+            $sets = NextWeekSets::save($snapshot, $locked);
             $lines = array_values(array_filter([$sets, $meals['message']]));
 
             return [

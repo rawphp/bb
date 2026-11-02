@@ -24,14 +24,11 @@ use App\Domain\Model\Soreness;
 use App\Domain\Model\VolumeFeedback;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Progression\FeedbackSheet;
-use App\Domain\Progression\FeedbackSheets;
 use App\Domain\Progression\RepTable;
 use App\Domain\Progression\RepTableRow;
 use App\Domain\Progression\SetPlan;
 use App\Domain\Progression\WorkoutStatus;
 use App\Models\DayTarget;
-use App\Models\ExerciseFeedback;
-use App\Models\MuscleFeedback;
 use App\Models\WorkoutSession;
 use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Workout\WorkoutBlock;
@@ -53,7 +50,7 @@ final class WorkoutPayload
         $plan = $s->plan();
         $rir = $s->rir();
         $isDeload = $s->isDeload();
-        $sheets = self::feedback($s, $blocks, $status);
+        $sheets = self::feedback($s);
         // WO-040: the same rules workout_finish refuses by.
         $pending = $editable && $s->pendingFeedback() !== [];
         $sets = array_merge(...array_map(fn (WorkoutBlock $block) => $block->sets, $blocks));
@@ -196,30 +193,26 @@ final class WorkoutPayload
     // MARK: feedback (FB-001 to FB-009, OFF-020)
 
     /**
-     * @param  list<WorkoutBlock>  $blocks
      * @return list<WorkoutFeedback>
      */
-    private static function feedback(WorkoutSnapshot $s, array $blocks, WorkoutStatus $status): array
+    private static function feedback(WorkoutSnapshot $s): array
     {
-        $session = $s->session();
-        $sheets = FeedbackSheets::sheets(array_map(fn (WorkoutBlock $block) => $block->feedback(), $blocks), $s->isDeload(), $status);
-        $joints = $session === null ? collect() : $s->exerciseFeedback
-            ->filter(fn (ExerciseFeedback $row) => $row->workout_session_id === $session->id)
-            ->mapWithKeys(fn (ExerciseFeedback $row) => [(int) $row->exercise_id => JointPain::tryFrom((string) $row->joint_pain)?->value]);
+        // FB-001 to FB-007: the same sheets, answers and soreness rule the feedback and finish writes check against.
+        $joints = array_map(fn (JointPain $pain) => $pain->value, $s->jointAnswers());
 
-        return array_map(function (FeedbackSheet $sheet) use ($s, $session, $joints) {
-            $row = $session === null ? null : $s->train->feedback->first(fn (MuscleFeedback $f) => $f->workout_session_id === $session->id && $f->muscle_group === $sheet->muscle);
+        return array_map(function (FeedbackSheet $sheet) use ($s, $joints) {
+            $row = $s->muscleAnswers($sheet->muscle);
             $soreness = Soreness::tryFrom((string) $row?->soreness)?->value;
             $pump = Pump::tryFrom((string) $row?->pump)?->value;
             $volume = VolumeFeedback::tryFrom((string) $row?->volume)?->value;
-            $asks = FeedbackSheets::asksSoreness($s->start(), $s->lastTrained($sheet->muscle));
+            $asks = $s->asksSoreness($sheet->muscle);
             $muscle = mb_strtolower($sheet->muscle->title());
 
             $questions = [];
             foreach ($sheet->exercises as $exerciseId => $name) {
                 $questions[] = new WorkoutFeedbackQuestion('joint', (string) $exerciseId, "How did your joints feel during {$name}?", WorkoutWords::feedbackHelp('joint'),
                     array_map(fn (JointPain $a) => new WorkoutChoice($a->value, $a->label(), $a === JointPain::ALot ? WorkoutWords::PAIN_NOTE : null), JointPain::cases()),
-                    $joints->get($exerciseId));
+                    $joints[$exerciseId] ?? null);
             }
             if ($asks) {
                 $questions[] = new WorkoutFeedbackQuestion('soreness', null, "How sore did you get in your {$muscle} AFTER training them LAST TIME?", WorkoutWords::feedbackHelp('soreness'),
@@ -239,7 +232,7 @@ final class WorkoutPayload
                 can_edit: ! $s->isLocked($sheet->muscle),
                 questions: $questions,
             );
-        }, $sheets);
+        }, $s->sheets());
     }
 
     // MARK: next meal (WO-009), look back (WO-008)
