@@ -9,7 +9,7 @@ A Laravel 13 app owns every rule and exposes every action as a capability. A Vue
 ```text
  Vue PWA ──► outbox / cache ──► POST /capabilities/{name} ─┐
  MCP client / CLI / Shortcut ─► POST /capabilities/{name} ─┤  (token)
- In-app agent (TurnRunner) ──► CapabilityBus::invoke ──────┤  (caller=job, actor=user)
+ In-app agent (TurnRunner) ──► CapabilityBus::invoke ──────┤  (caller=agent, actor=user)
                                                            ▼
                         CapabilityRegistry → authorize (CAP-020) → run() → audit
                                                            │
@@ -76,11 +76,11 @@ Parallel issues rely on these names.
 ## Capabilities
 
 - Packages: `rawphp/laravel-capabilities` and `rawphp/laravel-capabilities-ai`, the same version (lockstep), required from the package repos by VCS at a tag, with exact versions in `composer.lock`. Never a path repo or `dev-main` in the committed `composer.json`. Switch to Packagist once the packages are published.
-- `laravel/mcp` for product MCP (AGT-040). `laravel/ai` is not installed, and the package's `agent` surface stays off.
+- `laravel/mcp` for product MCP (AGT-040). `laravel/ai` is not installed. The core `agent` surface is still on, with `require_package` false, because capabilities-ai's turn tool calls invoke as `caller=agent` (AGT-004). `CAPABILITIES_SURFACE_AGENT=false` stops them.
 - Messaging (`rawphp/laravel-capabilities-messaging`) is not installed.
-- One host provider, registered last. It binds the authorizer (CAP-020) and loads every capability class (below); there are no module registrars. The tool catalog (AGT-003) and the conversation context provider (AGT-011) are bound here too once they exist: AI_SETUP (#13) and COACH_CTX (#61) add them.
+- One host provider, registered last. It binds the authorizer (CAP-020) and loads every capability class (below); there are no module registrars. It also binds the agent's seams in capabilities-ai: the tool catalog (`RegistryToolCatalog`, AGT-003), the conversation context provider (`ConversationHistoryContext`, AGT-011) and the turn claim (`MeteredTurnClaim`, which keeps each turn's token total for AGT-005). COACH_CTX (#61) adds the instructions and per-turn context to the context provider.
 - Registration has one path: one class per capability, `app/Capabilities/<Module>/<StudlyName>Capability.php`, which returns its fluent definition. The host provider loads every such file, sorted, and fails boot on a duplicate name. No attributes and no second discovery path. A new capability is a new file, so parallel work never edits a shared registrar. Each definition names its input DTO (the only schema source), its `run()` (which calls an Action), its surfaces, its CLI domain and verb, `affects` (CAP-011), and the flags `reversible` and `destructive`.
-- Enabled surfaces: `http`, `job`, `mcp`, `cli`. The Vue app uses `http`.
+- Enabled surfaces: `http`, `job`, `mcp`, `cli`, `agent`. The Vue app uses `http`; the in-app agent's tool calls use `agent`. Every capability declares `HostDefinition::SURFACES`.
 - Package defaults are overridden on day one, per `mesoprep/docs/capabilities-host-lessons-learned.md` section 3, item 14: see 17-agent.md, "Setup defaults". Published config files use no `env()` calls inside closures, so `config:cache` works (lessons item 15).
 - Freeze tests from day one: registration smoke (every capability registers on its declared surfaces), schema snapshots, the UI and agent parity test (CAP-030), CLI map completeness, and `php artisan capabilities:integration-health` passing in CI.
 - Adding a capability: the DTO, the Action with its unit tests, the capability class, a schema snapshot. Nothing else.

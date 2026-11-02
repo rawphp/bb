@@ -65,6 +65,13 @@ it('CAP-020 refuses an invoke with no signed-in user', function (mixed $context)
     'no context' => [null],
 ]);
 
+it('CAP-031 refuses an excluded capability to the agent, whatever reached the bus', function (string $capability) {
+    $authorizer = hostAuthorizer();
+
+    expect($authorizer->authorize($capability, [], new CapabilityContext(caller: 'agent', actor: authorizerUser())))->toBeFalse()
+        ->and($authorizer->authorize('account_show', [], new CapabilityContext(caller: 'agent', actor: authorizerUser())))->toBeTrue();
+})->with(['account_delete', 'token_create', 'token_revoke', 'billing_checkout']);
+
 it('CAP-020 the bus refuses account_show on every surface when the actor is not a signed-in user', function (string $caller) {
     $options = ['caller' => $caller, 'actor' => new class
     {

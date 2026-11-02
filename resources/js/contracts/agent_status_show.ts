@@ -3,30 +3,12 @@
 export interface AgentStatusShowInput {}
 
 export interface AgentStatusShowOutput {
-  /**
-   * the instance has the agent on (AGT-002)
-   */
-  available: boolean;
-  /**
-   * available and this user has not turned it off (AGT-020)
-   */
-  on: boolean;
-  status: {
-    text: string;
-    tone: "good" | "neutral" | "warning" | "info";
-  };
-  /**
-   * what is left of the caps; null when uncapped (AGT-005)
-   */
-  usage?: {
-    text: string;
-    tone: "good" | "neutral" | "warning" | "info";
-  } | null;
-  /**
-   * what the Coach can and cannot do (AGT-020)
-   */
-  note: string;
-  has_conversation: boolean;
+  enabled: boolean;
+  turns_left?: number | null;
+  tokens_left?: number | null;
+  at_cap: boolean;
+  resets_at?: string | null;
+  notice?: string | null;
 }
 
-export const outputVersion = '572b4ae1d444';
+export const outputVersion = '5e6fdb8ffe60';

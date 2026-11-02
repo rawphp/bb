@@ -1,11 +1,8 @@
 {
-    "available": false,
-    "on": false,
-    "status": {
-        "text": "Not available",
-        "tone": "neutral"
-    },
-    "usage": null,
-    "note": "The Coach can read your plan, meals, workouts and progress, and make the same changes you can, showing each one with Undo. It asks before anything it cannot undo. It cannot delete your account, make access tokens or change your subscription.",
-    "has_conversation": false
+    "enabled": false,
+    "turns_left": null,
+    "tokens_left": null,
+    "at_cap": false,
+    "resets_at": null,
+    "notice": null
 }
