@@ -8,9 +8,9 @@ const states = [
     { name: 'warning', props: { text: 'Adjust foods', tone: 'warning' } },
     { name: 'info', props: { text: '315 under', tone: 'info' } },
     { name: 'empty', props: { text: '', tone: 'neutral' } },
-    { name: 'loading', props: { text: 'on track', tone: 'good', state: 'loading' } },
-    { name: 'error', props: { text: 'on track', tone: 'good', state: 'error' } },
-    { name: 'pending', props: { text: 'Targets met', tone: 'good', state: 'pending' } },
+    { name: 'loading', props: { text: 'on track', tone: 'good', loading: true } },
+    { name: 'error', props: { text: 'on track', tone: 'good', error: "Couldn't load" } },
+    { name: 'pending', props: { text: 'Targets met', tone: 'good', pending: true } },
     { name: 'disabled', props: { text: 'on track', tone: 'good', disabled: true } },
 ] as const;
 </script>

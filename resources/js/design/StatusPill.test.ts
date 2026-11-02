@@ -56,32 +56,54 @@ describe('StatusPill', () => {
     });
 
     it('VIEW-004 loading: a pulsing neutral pill that says Loading', () => {
-        const wrapper = pill({ state: 'loading' });
+        const wrapper = pill({ loading: true });
 
         expect(wrapper.classes()).toEqual(expect.arrayContaining(['animate-pulse', 'bg-tone-neutral-bg']));
         expect(wrapper.find('svg').exists()).toBe(false);
         expect(spoken(wrapper)).toBe('Loading');
     });
 
+    it('VIEW-004 loading before the server sent any text still shows the pill', () => {
+        expect(spoken(pill({ text: '', loading: true }))).toBe('Loading');
+    });
+
     it('VIEW-004 error: a neutral pill with a warning icon and the error in words', () => {
-        const wrapper = pill({ state: 'error' });
+        const wrapper = pill({ error: "Couldn't load" });
 
         expect(wrapper.classes()).toContain('bg-tone-neutral-bg');
         expect(wrapper.get('svg path').attributes('d')).toBe(pill({ tone: 'warning' }).get('svg path').attributes('d'));
         expect(spoken(wrapper)).toBe("Couldn't load");
     });
 
+    it('VIEW-004 error: shows the server error text, even with no status text', () => {
+        expect(spoken(pill({ text: '', error: 'Offline' }))).toBe('Offline');
+    });
+
+    it('VIEW-004 loading wins over error, as on the other components', () => {
+        expect(spoken(pill({ loading: true, error: 'Offline' }))).toBe('Loading');
+    });
+
     it('VIEW-004 pending: keeps its tone and says Waiting to sync (OFF-008)', () => {
-        const wrapper = pill({ state: 'pending' });
+        const wrapper = pill({ pending: true });
 
         expect(wrapper.classes()).toContain('bg-tone-good-bg');
         expect(spoken(wrapper)).toBe('on track · Waiting to sync');
     });
 
-    it('VIEW-004 disabled: greyed out and read as unavailable', () => {
+    it('VIEW-004 pending with no text renders no pill', () => {
+        expect(pill({ text: '', pending: true }).html()).toBe('<!--v-if-->');
+    });
+
+    it('VIEW-004 pending is not shown while loading or after an error', () => {
+        expect(spoken(pill({ pending: true, loading: true }))).toBe('Loading');
+        expect(spoken(pill({ pending: true, error: 'Offline' }))).toBe('Offline');
+    });
+
+    it('VIEW-004 disabled: greyed out, neutral icon, and read as unavailable', () => {
         const wrapper = pill({ disabled: true });
 
         expect(wrapper.classes()).toEqual(expect.arrayContaining(['opacity-50', 'bg-tone-neutral-bg']));
+        expect(wrapper.get('svg path').attributes('d')).toBe(pill({ tone: 'neutral' }).get('svg path').attributes('d'));
         expect(spoken(wrapper)).toBe('on track, unavailable');
     });
 
