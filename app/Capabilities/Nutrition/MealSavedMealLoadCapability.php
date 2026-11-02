@@ -35,7 +35,7 @@ final class MealSavedMealLoadCapability implements HostCapability, OwnsInput
                 }
 
                 return new WriteResult(
-                    // The Pantry opened from this meal marks the foods already in it (FOOD-020).
+                    // The Pantry opened from this meal marks the foods already in it (FOOD-028).
                     invalidates: [
                         ReadKey::for('today_show'),
                         ReadKey::for('today_show', ['date' => $loaded['date']]),

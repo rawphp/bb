@@ -52,7 +52,7 @@ it('MEAL-070 MEAL-071 AGT-010 saved_meal_delete is destructive and no saved meal
     foreach (['saved_meal_save', 'saved_meal_rename', 'saved_meal_delete', 'meal_saved_meal_load'] as $name) {
         expect(HostDefinition::isReversible($registry->get($name)))->toBeFalse();
     }
-    // FOOD-020: the Pantry lists saved meals, and marks the foods already in the meal it was opened from.
+    // The Pantry lists saved meals (FOOD-020) and marks the foods already in the meal it was opened from (FOOD-028).
     expect(HostDefinition::affects($registry->get('saved_meal_save')))->toBe(['saved_meals_show', 'food_search'])
         ->and(HostDefinition::affects($registry->get('saved_meal_rename')))->toBe(['saved_meals_show', 'food_search'])
         ->and(HostDefinition::affects($registry->get('saved_meal_delete')))->toBe(['saved_meals_show', 'food_search'])
