@@ -12,10 +12,10 @@ use Rawphp\CapabilitiesAi\Models\TableNames;
  * messages, turns and proposals, which cascade from the conversation. The
  * package keeps the owner as a string; here it is the users key, with a
  * foreign key. An owner that names a user in another spelling ("007", " 7")
- * keeps the conversation, and the column change makes it that user's id. A
- * conversation whose owner is no user (deleted, or not an id) is deleted first,
- * as the user's own deletion would have done, and logged. down() keeps the column but cannot
- * bring those rows back.
+ * keeps the conversation, and the column change makes it that user's id. An
+ * owner that is no user (deleted, or not an id) is set to null first and
+ * logged: the rows stay, as the package's server-side conversations do, and
+ * nothing is deleted. down() turns the column back into a string.
  */
 return new class extends Migration
 {
@@ -43,11 +43,11 @@ return new class extends Migration
                 continue;
             }
 
-            Log::warning('Deleted Coach conversations whose owner is not a user', [
+            Log::warning('Coach conversations whose owner is not a user now have no owner', [
                 'user_id' => $owner,
                 'conversations' => $conversations()->where('user_id', $owner)->pluck('ulid')->all(),
             ]);
-            $conversations()->where('user_id', $owner)->delete();
+            $conversations()->where('user_id', $owner)->update(['user_id' => null]);
         }
     }
 
