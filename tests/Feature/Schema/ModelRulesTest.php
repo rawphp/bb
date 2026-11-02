@@ -86,6 +86,40 @@ it('removing a meal drops only that meal\'s foods, check-in and planning state',
         ->and(mealChildren($lunch))->toBe(MEAL_HAS_ONE_OF_EACH);
 });
 
+it('meals sent with no ids keep the day\'s meal ids by position, so their foods and check-ins stay', function () {
+    $day = DayTarget::factory()->create(['meals' => [['name' => 'Breakfast'], ['name' => 'Lunch'], ['name' => 'Dinner']]]);
+    [$breakfast, $lunch, $dinner] = array_column($day->meals, 'id');
+    fillMeal($breakfast, $day->user_id);
+    fillMeal($dinner, $day->user_id);
+
+    $day->update(['meals' => [['name' => 'Breakfast', 'kcal' => 600], ['name' => 'Lunch', 'kcal' => 700]]]);
+
+    expect(array_column($day->fresh()->meals, 'id'))->toBe([$breakfast, $lunch])
+        ->and(mealChildren($breakfast))->toBe(MEAL_HAS_ONE_OF_EACH)
+        ->and(mealChildren($dinner))->toBe(MEAL_HAS_NONE);
+
+    $day->update(['meals' => [['name' => 'Breakfast'], ['name' => 'Lunch'], ['name' => 'Snack']]]);
+    $ids = array_column($day->fresh()->meals, 'id');
+
+    expect(array_slice($ids, 0, 2))->toBe([$breakfast, $lunch])
+        ->and($ids[2])->not->toBe($dinner)
+        ->and($day->mealIndex()->orderBy('position')->pluck('id')->all())->toBe($ids)
+        ->and(mealChildren($breakfast))->toBe(MEAL_HAS_ONE_OF_EACH);
+});
+
+it('a meal with no id beside meals with ids is a new meal', function () {
+    $day = DayTarget::factory()->create(['meals' => [['name' => 'Breakfast'], ['name' => 'Lunch']]]);
+    [$breakfast, $lunch] = array_column($day->meals, 'id');
+    fillMeal($breakfast, $day->user_id);
+
+    $day->update(['meals' => [['name' => 'Snack'], $day->meals[1]]]);
+    $ids = array_column($day->fresh()->meals, 'id');
+
+    expect($ids[1])->toBe($lunch)
+        ->and($ids[0])->not->toBeIn([$breakfast, $lunch])
+        ->and(mealChildren($breakfast))->toBe(MEAL_HAS_NONE);
+});
+
 it('a meal holds one check-in: a second one for the same meal is refused', function () {
     $day = DayTarget::factory()->create(['meals' => [['name' => 'Breakfast'], ['name' => 'Lunch']]]);
     [$breakfast, $lunch] = array_column($day->meals, 'id');

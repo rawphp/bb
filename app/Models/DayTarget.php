@@ -29,13 +29,21 @@ class DayTarget extends Model
     /** @use HasFactory<DayTargetFactory> */
     use BelongsToUser, HasFactory, HasUuids, SoftDeletes;
 
-    /** A meal keeps the id it has, gets one if it has none, and the index follows. */
+    /**
+     * A meal keeps the id it has, gets one if it has none, and the index follows. Meals sent with
+     * no ids at all rewrite the day's meals in place: meal N keeps the id of the day's meal N, so a
+     * save that doesn't echo ids keeps the foods and check-ins on the meals it keeps.
+     */
     protected static function booted(): void
     {
         static::saving(function (self $target) {
+            $current = $target->exists && array_filter(array_column($target->meals, 'id')) === []
+                ? $target->mealIndex()->orderBy('position')->pluck('id')->all()
+                : [];
             $target->meals = array_map(
-                fn (array $meal) => ['id' => strtolower($meal['id'] ?? (string) Str::uuid7())] + $meal,
+                fn (array $meal, int $position) => ['id' => strtolower($meal['id'] ?? $current[$position] ?? (string) Str::uuid7())] + $meal,
                 $target->meals,
+                array_keys($target->meals),
             );
             $target->refuseTakenMealIds();
         });
