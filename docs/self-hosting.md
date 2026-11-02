@@ -189,9 +189,12 @@ Imports stream the file and upsert in batches, so re-running one leaves the same
 git pull
 composer install --no-dev --optimize-autoloader
 php artisan migrate --force
+php artisan db:seed --force
 php artisan config:cache
 php artisan route:cache
 php artisan queue:restart
 ```
+
+`db:seed` brings the library (exercises, templates, curated foods, recipes) up to the data files in `database/seeders/data/`, so a corrected value there reaches an install that is already running. It is safe to re-run: rows are matched by name or slug and updated, never duplicated, and the test account is only ever seeded in `local` and `testing`.
 
 With a `package.json` in the repo, rebuild the front end too (`npm ci`, then `npm run build`).
