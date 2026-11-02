@@ -357,14 +357,20 @@ describe('CurrentPhaseView', () => {
         expect(wrapper.find('[data-test="end-sheet"]').exists()).toBe(false);
     });
 
-    it('PH-006 opens the length sheet once, so a saved length closes it for good', async () => {
-        const wrapper = current({ payload: plan, action: 'adjust-length' });
+    it('PH-006 opens the length sheet once, so a later read of the phase does not open it again', async () => {
+        let refresh: (data: PhaseShowOutput) => void = () => {};
+        readMock.mockImplementation(async (name, _input, onUpdate) => {
+            if (name === 'phase_show') refresh = onUpdate as typeof refresh;
+            return name === 'phase_show' ? { ...phase } : plan;
+        });
+        const wrapper = current({ action: 'adjust-length' });
         await flushPromises();
-        await pick(wrapper, '16 weeks');
-        await wrapper.findAll('[data-test="fix"]')[0]!.trigger('click');
+        expect(wrapper.find('[data-test="length-sheet"]').exists()).toBe(true);
+
+        await wrapper.find('[data-cancel]').trigger('click');
+        refresh({ ...phase });
         await flushPromises();
 
-        expect(readMock).toHaveBeenCalledTimes(2);
         expect(wrapper.find('[data-test="length-sheet"]').exists()).toBe(false);
     });
 

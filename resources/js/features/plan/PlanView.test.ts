@@ -184,6 +184,8 @@ describe('PlanView', () => {
         await wrapper.findAll('[data-test="deload"]')[1]!.trigger('click');
         await wrapper.find('input[type="checkbox"]').setValue(true);
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        await wrapper.find('[data-cancel]').trigger('click');
+        await wrapper.find('[data-save]').trigger('click');
         await flushPromises();
 
         expect(wrapper.find('[data-test="deload-sheet"]').exists()).toBe(true);
