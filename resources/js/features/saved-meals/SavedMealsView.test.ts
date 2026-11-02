@@ -70,6 +70,12 @@ describe('SavedMealsView', () => {
         expect(view.getComponent(SavedMealsStatus).text()).toContain('No saved meals yet. Save one from a meal\'s menu.');
     });
 
+    it('MEAL-071 shows no empty line while there are saved meals', () => {
+        const view = show({ payload: { ...content, empty_text: 'No saved meals yet.' } });
+
+        expect(view.text()).not.toContain('No saved meals yet.');
+    });
+
     it('CAP-004 shows a skeleton while it reads saved_meals_show, then the list', async () => {
         const view = show();
 

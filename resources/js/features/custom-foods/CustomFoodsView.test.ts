@@ -50,7 +50,7 @@ describe('CustomFoodsView', () => {
         const rows = view.findAll('li');
         expect(rows).toHaveLength(2);
         expect(rows[0]!.text()).toContain('Mum\'s granola');
-        expect(rows[0]!.text()).toContain('1 cup · 420 kcal');
+        expect(rows[0]!.text()).toContain('Mum\'s granola1 cup · 420 kcal');
         expect(rows[1]!.text()).toContain('Protein pancakes');
         expect(rows[1]!.text()).toContain('Myprotein\n100 g · 210 kcal');
         expect(readMock).not.toHaveBeenCalled();

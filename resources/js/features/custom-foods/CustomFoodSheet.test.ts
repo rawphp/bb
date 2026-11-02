@@ -149,13 +149,17 @@ describe('CustomFoodSheet', () => {
     });
 
     it('CAP-010 a saved food has the screen underneath read again before the sheet reports it', async () => {
-        const reload = vi.fn().mockResolvedValue(undefined);
+        let reread: () => void = () => {};
+        const reload = vi.fn(() => new Promise<void>((resolve) => (reread = resolve)));
         const wrapper = show({ food: pancakes, reload });
 
         button('[data-save]').click();
         await flushPromises();
-
         expect(reload).toHaveBeenCalledTimes(1);
+        expect(wrapper.emitted('saved')).toBeUndefined();
+
+        reread();
+        await flushPromises();
         expect(wrapper.emitted('saved')).toHaveLength(1);
         wrapper.unmount();
     });

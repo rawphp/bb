@@ -52,7 +52,8 @@ describe('SavedMealPickerSheet', () => {
     });
 
     it('MEAL-070 a picked meal is loaded into this meal with meal_saved_meal_load, the meal is read again, then the sheet reports it', async () => {
-        const reload = vi.fn().mockResolvedValue(undefined);
+        let reread: () => void = () => {};
+        const reload = vi.fn(() => new Promise<void>((resolve) => (reread = resolve)));
         const view = show({ payload: content, reload });
 
         pickButton('Protein shake').click();
@@ -65,6 +66,10 @@ describe('SavedMealPickerSheet', () => {
         );
         expect(inputViolations('meal_saved_meal_load', writeMock.mock.calls[0]![1])).toEqual([]);
         expect(reload).toHaveBeenCalledTimes(1);
+        expect(view.emitted('loaded')).toBeUndefined();
+
+        reread();
+        await flushPromises();
         expect(view.emitted('loaded')).toHaveLength(1);
     });
 
@@ -112,6 +117,16 @@ describe('SavedMealPickerSheet', () => {
 
         expect(dialog().querySelectorAll('button[data-pick]')).toHaveLength(0);
         expect(dialog().textContent).toContain('No saved meals yet. Save one from a meal\'s menu.');
+    });
+
+    it('VIEW-004 a sheet shown from its fixture calls nothing when it opens again', async () => {
+        const view = show({ payload: content });
+
+        await view.setProps({ open: false });
+        await view.setProps({ open: true });
+        await flushPromises();
+
+        expect(readMock).not.toHaveBeenCalled();
     });
 
     it('CAP-004 reads saved_meals_show with a skeleton until it answers', async () => {
