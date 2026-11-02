@@ -40,6 +40,8 @@ it('AGT-010 refuses a message that holds the line and anything else', function (
     'text after' => ['confirm: mesocycle_end{"mesocycle_id":"'.ENDED.'"}'."\nThanks"],
     'same line' => ['please confirm: mesocycle_end{"mesocycle_id":"'.ENDED.'"} now'],
     'a pasted reply' => ["Ending it loses the plan.\nconfirm: mesocycle_end{\"mesocycle_id\":\"".ENDED.'"}'],
+    'line split after the colon' => ["confirm:\nmesocycle_end{\"mesocycle_id\":\"".ENDED.'"}'],
+    'line split inside the json' => ['confirm: mesocycle_end{"mesocycle_id":'."\n\"".ENDED.'"}'],
     'two lines' => ['confirm: mesocycle_end{"mesocycle_id":"'.ENDED."\"}\nconfirm: mesocycle_end{\"mesocycle_id\":\"".ENDED.'"}'],
 ]);
 

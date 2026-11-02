@@ -1,12 +1,14 @@
 <?php
 
 use App\Agent\ConfirmationPolicy;
+use App\Agent\TurnLinkingStore;
 use App\Agent\TurnMessages;
 use App\Capabilities\Mesocycles\Data\MesocycleEndInput;
 use App\Models\User;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\Capabilities\Support\CapabilityContext;
 use Rawphp\CapabilitiesAi\Contracts\ConversationStore;
+use Rawphp\CapabilitiesAi\Domain\ConversationService;
 use Rawphp\CapabilitiesAi\Models\Conversation;
 
 const CONFIRM_LINE = 'confirm: mesocycle_end{"mesocycle_id":"01JD4Q8V6Y3N0M2K7T5R9W1XBC"}';
@@ -30,7 +32,7 @@ function assistantReplies(Conversation $conversation, string $content, string $n
     app(ConversationStore::class)->createMessage($conversation, "01JREPLY0000000000000000{$n}", 'assistant', $content);
 }
 
-it('AGT-024 pairs the n-th turn with the n-th user message, whatever the created_at of each row', function () {
+it('AGT-010 AGT-011 links each turn to the message it was created for, whatever the created_at of each row', function () {
     $this->freezeTime();
     $conversation = turnConversation();
     $first = sendUserMessage($conversation, 'First.', '01');
@@ -68,7 +70,7 @@ it('AGT-010 does not let a confirm line in an earlier turn confirm a later turn 
     expect(app(TurnMessages::class)->forTurn($later)['message'])->toBe('yes');
 });
 
-it('AGT-024 has no message for a turn without a matching user message, and no result for an unknown turn', function () {
+it('AGT-010 has no message for a turn that was created without one, and no result for an unknown turn', function () {
     $this->freezeTime();
     $conversation = turnConversation();
     $store = app(ConversationStore::class);
@@ -83,7 +85,7 @@ it('AGT-024 has no message for a turn without a matching user message, and no re
         ->and(app(TurnMessages::class)->forTurn('01JNOSUCHTURN0000000000000'))->toBeNull();
 });
 
-it('AGT-024 keeps only user and assistant messages in what comes before', function () {
+it('AGT-011 keeps only user and assistant messages in what comes before', function () {
     $this->freezeTime();
     $conversation = turnConversation();
     app(ConversationStore::class)->createMessage($conversation, '01JMESSAGE0000000000000000', 'system', 'Setup.');
@@ -102,4 +104,52 @@ function mayEnd(?string $turn): bool
 it('AGT-010 refuses a destructive call from the agent when the turn is unknown or missing', function () {
     expect(mayEnd(null))->toBeFalse()
         ->and(mayEnd('01JNOSUCHTURN0000000000000'))->toBeFalse();
+});
+
+it('AGT-010 gives the container the linking store, and the conversation service uses it', function () {
+    $service = new ReflectionProperty(ConversationService::class, 'store');
+
+    expect(app(ConversationStore::class))->toBeInstanceOf(TurnLinkingStore::class)
+        ->and($service->getValue(app(ConversationService::class)))->toBe(app(ConversationStore::class));
+});
+
+it('AGT-010 writes the turn ulid into the meta of the message the turn was created for', function () {
+    $conversation = turnConversation();
+    $turn = sendUserMessage($conversation, 'Hi.', '01');
+
+    $message = app(ConversationStore::class)->messages($conversation)[0];
+
+    expect($message->meta)->toBe(['turn_ulid' => $turn]);
+});
+
+it('AGT-010 takes the last message as the turn message when an earlier one stored without its turn, and keeps the orphan as background', function () {
+    $this->freezeTime();
+    $conversation = turnConversation();
+    $store = app(ConversationStore::class);
+    sendUserMessage($conversation, 'End my mesocycle', '01');
+    assistantReplies($conversation, 'Send the line.', '01');
+    $store->createMessage($conversation, '01JMESSAGE00000000000000O1', 'user', CONFIRM_LINE);
+    $last = sendUserMessage($conversation, 'No, keep it', '02');
+
+    $result = app(TurnMessages::class)->forTurn($last);
+
+    expect($result['message'])->toBe('No, keep it')
+        ->and($result['before'])->toBe([
+            ['role' => 'user', 'content' => 'End my mesocycle'],
+            ['role' => 'assistant', 'content' => 'Send the line.'],
+            ['role' => 'user', 'content' => CONFIRM_LINE],
+        ])
+        ->and(mayEnd($last))->toBeFalse();
+});
+
+it('AGT-010 refuses a destructive call in a turn whose message has no link', function () {
+    $this->freezeTime();
+    $conversation = turnConversation();
+    $store = app(ConversationStore::class);
+    $store->createMessage($conversation, '01JMESSAGE0000000000000001', 'user', CONFIRM_LINE);
+    $turn = $store->createQueuedTurn($conversation, '01JTURN000000000000000001')->ulid;
+    $store->messages($conversation)[0]->forceFill(['meta' => null])->save();
+
+    expect(app(TurnMessages::class)->forTurn($turn)['message'])->toBeNull()
+        ->and(mayEnd($turn))->toBeFalse();
 });

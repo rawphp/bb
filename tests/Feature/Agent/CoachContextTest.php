@@ -3,6 +3,7 @@
 use App\Capabilities\Support\BillingGate;
 use App\Models\Mesocycle;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Rawphp\Capabilities\Registry\CapabilityDefinition;
@@ -206,3 +207,25 @@ it('AGT-010 lets the agent end the mesocycle when the message is the matching co
     expect($tool)->toMatchArray(['name' => 'mesocycle_end', 'ok' => true])
         ->and($mesocycle->fresh()->ended_on->format('Y-m-d'))->toBe('2026-09-23');
 });
+
+it('AGT-010 AGT-011 gives a user own message to the turn when another user writes in between', function () {
+    config(['capabilities-ai.llm.driver' => 'anthropic', 'capabilities-ai.llm.anthropic.api_key' => 'test-key']);
+    app()->instance(LlmClient::class, new FakeLlmClient([['content' => 'Hello A.'], ['content' => 'Hello B.'], ['content' => 'Hello again A.']]));
+    app()->forgetInstance(TurnRunner::class);
+    [$a, $b] = [User::factory()->create(), User::factory()->create()];
+
+    $first = $this->actingAs($a)->postJson('/capabilities-ai/chat/messages', ['content' => 'First.'])->assertCreated();
+    $this->actingAs($b)->postJson('/capabilities-ai/chat/messages', ['content' => 'Other.'])->assertCreated();
+    $second = $this->actingAs($a)->postJson('/capabilities-ai/chat/messages', ['content' => 'Second.', 'conversation_ulid' => $first->json('conversation_ulid')])->assertCreated();
+
+    $messages = coachMessages($first->json('conversation_ulid'), $second->json('turn_ulid'));
+    $contents = array_column($messages, 'content');
+
+    expect(end($messages))->toBe(['role' => 'user', 'content' => 'Second.'])
+        ->and($contents)->toContain('First.', 'Hello A.')
+        ->and($contents)->not->toContain('Other.');
+});
+
+it('AGT-024 fails for a turn that does not exist', function () {
+    coachMessages('01JC0NVERSAT10N00000000000', '01JNOSUCHTURN0000000000000');
+})->throws(ModelNotFoundException::class);
