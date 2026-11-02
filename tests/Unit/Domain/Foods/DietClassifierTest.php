@@ -230,6 +230,25 @@ it('FOOD-027 rules out vegan, and keeps vegetarian, for honey with no other anim
         ->toMatchArray(['vegan' => false, 'vegetarian' => true, 'dairy_free' => true]);
 });
 
+it('FOOD-027 rules out gluten free for wheat pasta and baked goods named without the word wheat', function (string $ingredients) {
+    $flags = (new DietClassifier)->classify('Product', null, $ingredients, []);
+
+    expect($flags['gluten_free'])->toBeFalse($ingredients)->and($flags['grain_free'])->toBeFalse($ingredients);
+})->with(['SPAGHETTI, TOMATO PUREE, SALT', 'macaroni, cheese', 'lasagna sheets, beef', 'vermicelli, water', 'ravioli, ricotta',
+    'gnocchi, butter', 'noodles, broth', 'pita bread', 'bagels', 'croissant', 'biscuits, jam', 'cookie pieces, ice cream',
+    'cake, frosting', 'pastry, apple', 'wafers, cocoa', 'crispbread', 'tempura batter, shrimp', 'dumplings, pork', 'wonton wrappers']);
+
+it('FOOD-027 keeps rice and starch noodles and rice cakes gluten free', function (string $ingredients) {
+    expect((new DietClassifier)->classify('Product', null, $ingredients, [])['gluten_free'])->toBeTrue($ingredients);
+})->with(['rice noodles, water', 'rice vermicelli', 'rice cakes, salt', 'corn pasta, water', 'glass noodles, sweet potato starch', 'shirataki noodles, water']);
+
+it('FOOD-027 knows more fish, shellfish, game and cured-meat words', function (string $ingredients) {
+    $flags = (new DietClassifier)->classify('Product', null, $ingredients, []);
+
+    expect($flags['vegetarian'])->toBeFalse($ingredients)->and($flags['vegan'])->toBeFalse($ingredients);
+})->with(['sea bass, lemon', 'quail eggs and quail', 'mortadella, pistachio', 'speck, cheese', 'abalone, soy', 'monkfish, butter',
+    'langoustines, garlic', 'escargot, butter', 'venison, pheasant', 'nduja, tomato']);
+
 it('FOOD-027 knows more fish and dairy words in ingredients', function (string $ingredients, array $false) {
     $flags = (new DietClassifier)->classify('Crunchy fillets', null, $ingredients, []);
 

@@ -67,7 +67,10 @@ final class DietClassifier
         'gelatin', 'gelatine', 'pancetta', 'chorizo', 'prosciutto', 'pastrami', 'mutton', 'goat meat', 'rabbit', 'jerky',
         'rennet', 'carmine', 'cochineal', 'collagen', 'isinglass', 'pollock', 'haddock', 'halibut', 'catfish', 'crawfish',
         'crayfish', 'whitefish', 'eel', 'roe', 'caviar', 'bonito', 'surimi', 'krill', 'octopus', 'snapper', 'pangasius',
-        'hake', 'carp', 'swordfish'];
+        'hake', 'carp', 'swordfish', 'sea bass', 'bass', 'turbot', 'plaice', 'sprat', 'monkfish', 'sturgeon', 'pike',
+        'grouper', 'cuttlefish', 'abalone', 'sea urchin', 'whelk', 'cockle', 'langoustine', 'scampi', 'snail', 'escargot',
+        'frog', 'quail', 'pheasant', 'partridge', 'boar', 'elk', 'kangaroo', 'mortadella', 'speck', 'bresaola',
+        'guanciale', 'nduja'];
 
     private const DAIRY = ['milk', 'cheese', 'butter', 'buttermilk', 'cream', 'whey', 'casein', 'caseinate', 'yogurt',
         'yoghurt', 'lactose', 'kefir', 'ghee', 'custard', 'ricotta', 'mascarpone', 'mozzarella', 'parmesan', 'cheddar',
@@ -120,7 +123,15 @@ final class DietClassifier
         'oatmeal', 'breadcrumb', 'flatbread', 'shortbread', 'cornbread', 'gingerbread', 'malted',
         // Foods and sauces made from wheat whose names do not say so.
         'soy sauce', 'shoyu', 'teriyaki', 'orzo', 'farina', 'panko', 'udon', 'ramen', 'matzo', 'matzah', 'einkorn', 'emmer',
-        'freekeh', 'bran', 'cracker', 'pretzel', 'crouton', "brewer's yeast", 'brewers yeast'];
+        'freekeh', 'bran', 'cracker', 'pretzel', 'crouton', "brewer's yeast", 'brewers yeast',
+        // Wheat pasta and baked goods by name. GLUTEN_FREE_COMPOUNDS lists the rice and corn forms they exclude.
+        'spaghetti', 'macaroni', 'lasagna', 'lasagne', 'vermicelli', 'fettuccine', 'linguine', 'penne', 'ravioli',
+        'tortellini', 'gnocchi', 'noodle', 'pita', 'bagel', 'croissant', 'biscuit', 'cookie', 'cake', 'pastry', 'wafer',
+        'crispbread', 'tempura', 'dumpling', 'wonton'];
+
+    /** Rice, corn and starch forms of the pasta and baked-goods words above: left out of the gluten check. */
+    private const GLUTEN_FREE_COMPOUNDS = ['rice noodle', 'rice vermicelli', 'rice pasta', 'rice spaghetti', 'rice cake',
+        'corn pasta', 'glass noodle', 'bean thread noodle', 'konjac noodle', 'shirataki noodle', 'kelp noodle'];
 
     private const OTHER_GRAINS = ['rice', 'corn', 'cornstarch', 'popcorn', 'maize', 'oat', 'quinoa', 'millet', 'sorghum',
         'buckwheat', 'cereal', 'noodle', 'granola', 'tortilla', 'cornmeal', 'cornflour', 'polenta', 'grits', 'amaranth',
@@ -256,6 +267,7 @@ final class DietClassifier
         // The FODMAP check drops only the dairy word of a plant milk or butter: "cashew butter" keeps "cashew", "butter bean" keeps "bean".
         $fodmapText = $this->withoutPlantDairy($text, keepPlant: true);
         $glutenText = (string) preg_replace($this->flourPattern([...self::NON_GRAIN_FLOURS, ...self::GLUTEN_FREE_FLOURS]), '', $text);
+        $glutenText = (string) preg_replace('/\b(?:'.implode('|', array_map(fn (string $c) => str_replace(' ', '\s+', preg_quote($c, '/')), self::GLUTEN_FREE_COMPOUNDS)).')(?:e?s)?\b/', '', $glutenText);
         $grainText = (string) preg_replace($this->flourPattern(self::NON_GRAIN_FLOURS), '', $text);
 
         $signals = array_keys(array_filter([

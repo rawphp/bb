@@ -353,19 +353,46 @@ it('FOOD-001 saves source ids that differ only by case or accent as one food, as
     ];
     $save = new SaveImportedFoods;
 
-    expect($save([$row('ÉCO1', 'accented'), $row('eco1', 'plain'), $row('XYZ9', 'other')]))->toBe(2)
+    expect($save([$row('ÉCO1', 'accented'), $row('eco1', 'plain'), $row('XYZ9', 'other')]))->toBe(['saved' => 2, 'merged' => 1, 'unmatched' => 0])
         ->and(Food::query()->where('source', 'off')->count())->toBe(2)
         ->and(foodsServingsOf(Food::query()->where('source_id', 'XYZ9')->sole()))->toBe([['other', 10.0]]);
     FoodServing::query()->delete();
     Food::query()->forceDelete();
 
-    expect($save([$row('ABC1', 'first'), $row('abc1', 'second')]))->toBe(1)
-        ->and($save([$row('Abc1', 'third')]))->toBe(1)
-        ->and($save([$row('ÀBC1', 'fourth')]))->toBe(1);
+    expect($save([$row('ABC1', 'first'), $row('abc1', 'second')]))->toBe(['saved' => 1, 'merged' => 1, 'unmatched' => 0])
+        ->and($save([$row('Abc1', 'third')]))->toBe(['saved' => 1, 'merged' => 0, 'unmatched' => 0])
+        ->and($save([$row('ÀBC1', 'fourth')]))->toBe(['saved' => 1, 'merged' => 0, 'unmatched' => 0]);
 
     $food = Food::query()->where('source', 'off')->sole();
     expect(foodsServingsOf($food))->toBe([['fourth', 10.0]])
         ->and(FoodServing::count())->toBe(1);
+});
+
+it('FOOD-001 keeps source ids with characters that have no ASCII form apart, as the unique index does', function () {
+    $row = fn (string $id) => [
+        'food' => ['name' => "Thing {$id}", 'source' => 'off', 'source_id' => $id, 'kind' => 'packaged',
+            'kcal' => 10.0, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
+        'servings' => [['label' => "serving {$id}", 'grams' => 10.0]],
+    ];
+
+    expect((new SaveImportedFoods)([$row('食1'), $row('1')]))->toBe(['saved' => 2, 'merged' => 0, 'unmatched' => 0])
+        ->and(Food::query()->where('source', 'off')->count())->toBe(2)
+        ->and(FoodServing::count())->toBe(2);
+});
+
+it('FOOD-001 reports rows merged into another row\'s source id after the import', function () {
+    $line = json_encode(['code' => 'ABC1', 'product_name' => 'Twice', 'nutriments' => ['energy-kcal_100g' => 100]])."\n";
+    $path = tempnam(sys_get_temp_dir(), 'off');
+    file_put_contents($path, $line.str_replace('ABC1', 'abc1', $line));
+
+    try {
+        $this->artisan('foods:import', ['source' => 'off', 'path' => $path])
+            ->expectsOutput('Imported 1 foods, skipped 0.')
+            ->expectsOutputToContain('1 rows repeated another row\'s source id and were merged into it; 0 rows lost their servings')
+            ->assertSuccessful();
+    } finally {
+        unlink($path);
+    }
 });
 
 it('FOOD-001 rolls the foods back when their servings cannot be written', function () {

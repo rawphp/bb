@@ -8,6 +8,7 @@ use App\Models\FoodServing;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Normalizer;
 
 /**
  * The one write path for imported foods (FOOD-001): upsert on (source, source_id), then replace each
@@ -26,16 +27,19 @@ final class SaveImportedFoods
     /**
      * @param  list<Row>  $rows
      * @param  list<string>  $updateColumns  food columns refreshed when the row already exists
-     * @return int the foods saved, each repeated source_id once
+     * @return array{saved: int, merged: int, unmatched: int} foods saved; rows merged into another row with the
+     *                                                        same source id; rows whose servings were dropped because no saved food matched them
      */
-    public function __invoke(array $rows, array $updateColumns = self::UPDATABLE): int
+    public function __invoke(array $rows, array $updateColumns = self::UPDATABLE): array
     {
         $bySource = [];
         foreach ($rows as $row) {
             $bySource[(string) $row['food']['source']][self::key((string) $row['food']['source_id'])] = $row;
         }
+        $saved = array_sum(array_map('count', $bySource));
+        $unmatched = 0;
 
-        DB::transaction(function () use ($bySource, $updateColumns) {
+        DB::transaction(function () use ($bySource, $updateColumns, &$unmatched) {
             $now = now();
 
             foreach ($bySource as $source => $batch) {
@@ -58,6 +62,7 @@ final class SaveImportedFoods
                 foreach ($batch as $r) {
                     $id = $ids[self::key((string) $r['food']['source_id'])] ?? null;
                     if ($id === null) {
+                        $unmatched++;
                         Log::warning('foods:import found no saved food for a row, so its servings were skipped', ['source' => $source, 'source_id' => $r['food']['source_id']]);
                     }
                     foreach ($id === null ? [] : $r['servings'] as $serving) {
@@ -70,15 +75,19 @@ final class SaveImportedFoods
             }
         });
 
-        return array_sum(array_map('count', $bySource));
+        return ['saved' => $saved, 'merged' => count($rows) - $saved, 'unmatched' => $unmatched];
     }
 
     /**
      * One key per row the unique (source, source_id) index sees as one: the column's collation ignores
-     * case and accents, so "ABC1" and "abc1" are the same food. Prefixed so PHP keeps "123" a string key.
+     * case and accents, so "ABC1", "abc1" and "ÀBC1" are the same food. Accents are folded by stripping
+     * combining marks, so a character with no ASCII form ("食1") stays distinct. Prefixed so PHP keeps
+     * "123" a string key.
      */
     private static function key(string $sourceId): string
     {
-        return 's'.mb_strtolower(Str::ascii($sourceId));
+        $decomposed = Normalizer::normalize($sourceId, Normalizer::FORM_D);
+
+        return 's'.mb_strtolower((string) preg_replace('/\p{Mn}+/u', '', $decomposed === false ? $sourceId : $decomposed));
     }
 }

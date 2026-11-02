@@ -35,7 +35,7 @@ final class SearchFoods
 
         $found = new Collection;
         if (! $filters->curatedOnly()) {
-            $found = $this->mine($user, $filters, $terms, $query)?->limit($filters->limit)->get() ?? new Collection;
+            $found = $this->mine($user, $filters, $terms, $query)->limit($filters->limit)->get();
         }
 
         $found = $found->concat($this->curated($filters, $terms, $phrase)->whereNotIn('id', $found->modelKeys())->limit($filters->limit - $found->count())->get());
@@ -72,22 +72,18 @@ final class SearchFoods
      * (newest use first), then favorites, then the rest by name. A barcode query matches by code.
      *
      * @param  list<string>  $terms
-     * @return Builder<Food>|null
+     * @return Builder<Food>
      */
-    private function mine(User $user, FoodSearchFilters $filters, array $terms, string $query): ?Builder
+    private function mine(User $user, FoodSearchFilters $filters, array $terms, string $query): Builder
     {
         $userId = $user->id;
-        // Pluck the user's small, user_id-indexed id sets first, so the LIKE scan is bounded by them, not the whole table.
-        $ids = Food::query()->where('user_id', $userId)->pluck('id')
-            ->merge(FoodRecent::query()->where('user_id', $userId)->pluck('food_id'))
-            ->merge(FoodFavorite::query()->where('user_id', $userId)->pluck('food_id'))
-            ->unique()->values();
-        if ($ids->isEmpty()) {
-            return null;
-        }
-
+        // Subqueries on the user_id-indexed tables, so the database bounds the scan by the user's foods and no
+        // id list, however long the user's history, travels through PHP.
+        $builder = $this->filtered($filters)->where(fn (Builder $q) => $q->where('foods.user_id', $userId)
+            ->orWhereIn('foods.id', FoodRecent::query()->select('food_id')->where('user_id', $userId))
+            ->orWhereIn('foods.id', FoodFavorite::query()->select('food_id')->where('user_id', $userId)));
         // visibleTo: a recent or favorite never reveals another user's custom food (FOOD-060).
-        $builder = $this->filtered($filters)->visibleTo($user)->whereIn('foods.id', $ids->all());
+        $builder->visibleTo($user);
 
         $matchTerms = function (Builder $q) use ($terms) {
             foreach (SearchTerms::meaningful($terms) as $term) {

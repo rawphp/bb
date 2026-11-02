@@ -227,6 +227,21 @@ it('FOOD-060 never shows another user\'s custom foods in search', function () {
         ->and(foodsSearch($this->user, 'secret', 'curated'))->toBe([]);
 });
 
+it('FOOD-023 bounds the user\'s own tier in the database, whatever the length of the user\'s history', function () {
+    foreach (range(1, 60) as $i) {
+        FoodRecent::factory()->create(['user_id' => $this->user->id, 'food_id' => foodsMake("Rice {$i}")->id]);
+    }
+    DB::enableQueryLog();
+
+    $found = foodsSearch($this->user, 'rice', limit: 5);
+
+    $queries = collect(DB::getQueryLog());
+    DB::disableQueryLog();
+    expect($found)->toHaveCount(5)
+        ->and($queries->filter(fn (array $q) => str_starts_with($q['query'], 'select `food_id` from `food_recents`')))->toBeEmpty()
+        ->and($queries->max(fn (array $q) => count($q['bindings'])))->toBeLessThan(20);
+});
+
 it('FOOD-060 never shows another user\'s custom food marked curated, in any tier', function () {
     Food::factory()->custom(User::factory()->create())->create(['name' => 'Secret bar', 'curated' => true, 'curated_group' => 'fat_sparingly']);
 
