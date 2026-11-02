@@ -21,6 +21,7 @@ use Illuminate\Validation\ValidationException;
  * A soft delete leaves the index and everything on it, so a restore brings the day back whole;
  * a force delete cascades through the foreign keys.
  *
+ * @property DayType $day_type
  * @property list<array<string, mixed>> $meals
  */
 #[Fillable(['date', 'day_type', 'kcal', 'protein_g', 'fat_g', 'carbs_g', 'meals'])]
