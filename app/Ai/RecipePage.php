@@ -28,18 +28,29 @@ final class RecipePage
         $this->resolve = $resolve ?? fn (string $host) => gethostbynamel($host) ?: [];
     }
 
+    /**
+     * The options every hop is fetched with, before its pin. Not streamed: the pin is a curl option,
+     * and Guzzle sends a streamed request through its stream handler, which refuses curl options. The
+     * progress callback caps the download instead: curl aborts the transfer once the page says, or
+     * turns out, to be over MAX_BYTES. It counts raw bytes, since the body is not decoded, so a
+     * compressed page cannot grow past the cap.
+     *
+     * @return array<string, mixed>
+     */
+    public static function transferOptions(): array
+    {
+        return [
+            'allow_redirects' => false,
+            'decode_content' => false,
+            'progress' => fn (int $total, int $downloaded): bool => $total > self::MAX_BYTES || $downloaded > self::MAX_BYTES,
+        ];
+    }
+
     /** @throws PageUnavailable */
     public function text(string $url): string
     {
         for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
-            // Not streamed: the pin is a curl option, and Guzzle sends a streamed request through its
-            // stream handler, which refuses curl options. The progress callback caps the download
-            // instead, on raw bytes: the body is not decoded, so a compressed page cannot grow past it.
-            $options = [
-                'allow_redirects' => false,
-                'decode_content' => false,
-                'progress' => fn (int $total, int $downloaded): bool => $total > self::MAX_BYTES || $downloaded > self::MAX_BYTES,
-            ];
+            $options = self::transferOptions();
             $pin = $this->check($url);
             if ($pin !== null) {
                 $options['curl'] = [CURLOPT_RESOLVE => [$pin]];
