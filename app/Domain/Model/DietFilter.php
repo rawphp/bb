@@ -15,7 +15,7 @@ enum DietFilter: string
 
     /**
      * A mix of foods, such as a recipe, passes a filter only when every food in it does. A flag a food
-     * does not name counts as not passing.
+     * does not name counts as not passing, and an empty mix passes none.
      *
      * @param  list<array<string, bool>>  $foods  each food's flags, keyed by filter value
      * @return array<string, bool> every filter's value for the mix, keyed by filter value
@@ -24,7 +24,7 @@ enum DietFilter: string
     {
         $flags = [];
         foreach (self::cases() as $filter) {
-            $flags[$filter->value] = array_all($foods, fn (array $food): bool => $food[$filter->value] ?? false);
+            $flags[$filter->value] = $foods !== [] && array_all($foods, fn (array $food): bool => $food[$filter->value] ?? false);
         }
 
         return $flags;

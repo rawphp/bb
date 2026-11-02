@@ -155,6 +155,7 @@ it('FOOD-027 sets curated diet flags by food knowledge, not by name keywords', f
     'sugary cereal' => ['Sugary breakfast cereal', ['dairy_free']],
     'spinach' => ['Spinach', ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'paleo', 'vegan']],
     // Processed meats can hold a wheat binder or onion and garlic seasoning, so only dairy free is certain.
+    'bacon' => ['Bacon', ['dairy_free']],
     'pork sausage' => ['Pork sausage', ['dairy_free']],
     'italian sausage' => ['Italian sausage', ['dairy_free']],
     'pepperoni' => ['Pepperoni', ['dairy_free']],
