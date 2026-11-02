@@ -75,9 +75,12 @@ function fieldLabel(field: ValueField): string {
     return field.unit ? `${props.label} ${field.title}, ${field.unit}` : `${props.label} ${field.title}`;
 }
 
+// Menu items and tray buttons vanish or turn inert once picked, so focus returns to the menu button,
+// which every row with swipe actions has (WAI-ARIA menu button).
 function run(id: string): void {
     menuOpen.value = false;
     swipeOpen.value = false;
+    menuButton.value?.focus();
     emit('action', id);
 }
 
