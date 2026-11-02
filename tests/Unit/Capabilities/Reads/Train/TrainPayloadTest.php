@@ -153,9 +153,17 @@ it('MESO-060 the prompt stays after the last week until a later mesocycle is sav
         W::mesocycle(['id' => 'draft', 'is_draft' => true, 'start_date' => '2026-10-26']),
     ]));
 
-    expect($over['current']['next_mesocycle']['start_date'])->toBe('2026-10-19')
+    // Sunday 25 October: the week after the deload has passed, so the next plan week.
+    expect($over['current']['next_mesocycle']['start_date'])->toBe('2026-10-26')
         ->and($next['current'])->toBeNull()
         ->and($draftOnly['current']['next_mesocycle'])->not->toBeNull();
+});
+
+it('MESO-060 MESO-004 the prompt of a mesocycle finished weeks ago starts at the default start, not in the past', function () {
+    $next = train(W::snapshot(today: '2026-11-03'))['current']['next_mesocycle'];
+
+    expect($next['start_date'])->toBe('2026-11-09')
+        ->and($next['starts_text'])->toBe('Starts Monday 9 Nov');
 });
 
 it('MESO-060 MESO-043 a mesocycle ended early prompts at once, starting the plan week after the end', function () {

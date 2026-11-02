@@ -32,6 +32,11 @@ it('MESO-004 a start snaps to the first day of its plan week', function () {
         ->and(MesocycleRules::snapped(null, rulesDay('2026-09-24')))->toEqual(rulesDay('2026-09-24'));
 });
 
+it('MESO-060 MESO-004 the next mesocycle never starts before the default start', function () {
+    expect(MesocycleRules::nextMesocycleStart(rulesDay('2026-10-19'), rulesDay('2026-10-12')))->toEqual(rulesDay('2026-10-19'))
+        ->and(MesocycleRules::nextMesocycleStart(rulesDay('2026-03-16'), rulesDay('2026-11-02')))->toEqual(rulesDay('2026-11-02'));
+});
+
 it('MESO-060 a copy of the mesocycle ending starts with the next one, any other copy at the default start', function () {
     expect(MesocycleRules::copyStart(rulesDay('2026-10-19'), rulesDay('2026-10-12')))->toEqual(rulesDay('2026-10-19'))
         ->and(MesocycleRules::copyStart(null, rulesDay('2026-10-12')))->toEqual(rulesDay('2026-10-12'));

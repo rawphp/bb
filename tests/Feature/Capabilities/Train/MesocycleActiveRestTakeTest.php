@@ -47,3 +47,22 @@ it('MESO-064 takes the recommended active rest, and train_show moves the next st
         ->assertJsonPath('data.current.next_mesocycle.start_date', '2026-10-19')
         ->assertJsonPath('data.current.next_mesocycle.active_rest.tone', 'good');
 });
+
+it('MESO-064 a copy waiting for the old start moves too, and its read is invalidated', function () {
+    Carbon::setTestNow('2026-10-06 10:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+    TrainSeed::trained($mesocycle, 3, 1, '2026-09-21', flat: true);
+    TrainSeed::trained($mesocycle, 4, 1, '2026-09-28', flat: true);
+    $draft = TrainSeed::mesocycle($user, ['is_draft' => true, 'route' => 'copy_previous', 'start_date' => '2026-10-12']);
+
+    activeRestOver($user, ['mesocycle_id' => $mesocycle->id])
+        ->assertOk()
+        ->assertJsonPath('data.invalidates', [
+            'train_show{}',
+            "mesocycle_show{\"mesocycle_id\":\"{$mesocycle->id}\"}",
+            "mesocycle_show{\"mesocycle_id\":\"{$draft->id}\"}",
+        ]);
+
+    expect($draft->fresh()->start_date->format('Y-m-d'))->toBe('2026-10-19');
+});

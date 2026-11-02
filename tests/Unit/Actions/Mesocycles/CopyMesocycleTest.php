@@ -86,6 +86,12 @@ it('MESO-060 a copy of the mesocycle ending starts when the next one does', func
     expect(copyOf($user, $source)->start_date->format('Y-m-d'))->toBe('2026-10-12');
 });
 
+it('MESO-060 MESO-004 a copy of a mesocycle finished weeks ago starts at the default start, not in the past', function () {
+    [$user, $source] = copyWorld('2026-11-03');
+
+    expect(copyOf($user, $source)->start_date->format('Y-m-d'))->toBe('2026-11-09');
+});
+
 it('MESO-060 MESO-064 with an active rest taken the copy starts a week later', function () {
     [$user, $source] = copyWorld();
     $source->update(['active_rest' => true]);
