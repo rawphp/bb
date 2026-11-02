@@ -115,6 +115,18 @@ describe('PantryView', () => {
         expect(inputViolations('food_search', lastRead())).toEqual([]);
     });
 
+    it('FOOD-021 a second tap on Show 25 more asks for the group once', async () => {
+        const wrapper = show();
+
+        await wrapper.find('[data-test="show-more"]').trigger('click');
+        await flushPromises();
+        await wrapper.find('[data-test="show-more"]').trigger('click');
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledOnce();
+        expect(lastRead().expanded_groups).toEqual(['protein_recommended']);
+    });
+
     it('FOOD-022 favorites a food by tapping its picture, sending a valid food_favorite_set', async () => {
         const wrapper = show();
 
@@ -296,6 +308,15 @@ describe('PantryView', () => {
         expect(wrapper.text()).toContain('The source filter narrows search results. Type to search.');
     });
 
+    it('FOOD-025 a search of only spaces still shows the source hint', async () => {
+        const wrapper = show();
+
+        await wrapper.find('select[aria-label="Source filter"]').setValue('packaged');
+        await wrapper.find('input[type="search"]').setValue('   ');
+
+        expect(wrapper.text()).toContain('The source filter narrows search results. Type to search.');
+    });
+
     it('FOOD-026 narrows by curated group, and opens on the group it was asked for', async () => {
         readMock.mockReturnValue(new Promise(() => {}));
         show({ mealId: MEAL, group: 'carbs_recommended', search: 'rice' });
@@ -369,6 +390,14 @@ describe('PantryView', () => {
         expect(input.entries[0]!.id).not.toBe(input.entries[1]!.id);
         expect(inputViolations(name, input)).toEqual([]);
         expect(back).toHaveBeenCalledOnce();
+    });
+
+    it('FOOD-028 tapping a food\'s name picks it too', async () => {
+        const wrapper = show();
+
+        await row(wrapper, 'Egg whites').find('[data-test="food-name"]').trigger('click');
+
+        expect(wrapper.find('[data-test="basket"]').text()).toContain('Egg whites');
     });
 
     it('FOOD-028 a basket pick comes out again from its row or its minus button', async () => {
@@ -600,6 +629,18 @@ describe('PantryView', () => {
         expect(wrapper.find('[data-test="favorite"]').exists()).toBe(true);
         await wrapper.find('[data-test="cancel"]').trigger('click');
         expect(back).toHaveBeenCalledOnce();
+    });
+
+    it('NAV-001 browsing recipes and saved meals picks nothing', async () => {
+        const wrapper = show({ payload: curated });
+
+        for (const collection of ['recipes', 'saved_meals']) {
+            await wrapper.find('select[aria-label="Show"]').setValue(collection);
+            await flushPromises();
+            await wrapper.find('[data-test="collection-row"]').trigger('click');
+        }
+
+        expect(wrapper.find('[data-test="basket"]').exists()).toBe(false);
     });
 
     it('FOOD-020 says when a list has nothing in it', () => {

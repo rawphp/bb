@@ -238,6 +238,31 @@ describe('ValueRow', () => {
         expect(wrapper.get('[data-row]').attributes('data-open')).toBe('true');
     });
 
+    it('UI-008 an open row stays open for a short swipe back or a further swipe left, and closes past the threshold', async () => {
+        const wrapper = row({ swipeActions });
+        const open = () => wrapper.get('[data-row]').attributes('data-open');
+
+        await swipe(wrapper, -60);
+        await swipe(wrapper, 20);
+        expect(open()).toBe('true');
+        await swipe(wrapper, -60);
+        expect(open()).toBe('true');
+        await swipe(wrapper, 60);
+        expect(open()).toBeUndefined();
+    });
+
+    it('UI-008 only the finger that started the swipe moves the row', async () => {
+        const wrapper = row({ swipeActions });
+        const el = wrapper.get('[data-row]').element;
+
+        el.dispatchEvent(new PointerEvent('pointerdown', { clientX: 200, pointerId: 1, pointerType: 'touch', bubbles: true }));
+        el.dispatchEvent(new PointerEvent('pointermove', { clientX: 120, pointerId: 2, pointerType: 'touch', bubbles: true }));
+        el.dispatchEvent(new PointerEvent('pointerup', { clientX: 120, pointerId: 1, pointerType: 'touch', bubbles: true }));
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.get('[data-row]').attributes('data-open')).toBeUndefined();
+    });
+
     it('UI-008 with no actions there is no menu button', () => {
         expect(row({ menuActions: [] }).find('[aria-haspopup="menu"]').exists()).toBe(false);
     });
