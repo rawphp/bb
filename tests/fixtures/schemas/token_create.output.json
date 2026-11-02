@@ -1,0 +1,54 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "invalidates": {
+            "type": "array"
+        },
+        "toast": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "undo": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "token": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "plain_text": {
+                    "type": "string"
+                },
+                "scope_text": {
+                    "type": "string"
+                },
+                "expires_text": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "plain_text",
+                "scope_text",
+                "expires_text"
+            ]
+        }
+    },
+    "required": [
+        "invalidates",
+        "token"
+    ]
+}

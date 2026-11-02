@@ -1,0 +1,138 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "tokens": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "scope_text": {
+                        "type": "string"
+                    },
+                    "created_text": {
+                        "type": "string"
+                    },
+                    "expires_text": {
+                        "type": "string"
+                    },
+                    "last_used_text": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "scope_text",
+                    "created_text",
+                    "expires_text",
+                    "last_used_text",
+                    "status"
+                ]
+            }
+        },
+        "scopes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "value": {
+                        "type": "string",
+                        "enum": [
+                            "everything",
+                            "read_only",
+                            "health_bridge",
+                            "custom"
+                        ]
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "value",
+                    "label",
+                    "description"
+                ]
+            }
+        },
+        "expiries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "days": {
+                        "type": "integer"
+                    },
+                    "label": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "days",
+                    "label"
+                ]
+            }
+        },
+        "capabilities": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "name",
+                    "description"
+                ]
+            }
+        }
+    },
+    "required": [
+        "tokens",
+        "scopes",
+        "expiries",
+        "capabilities"
+    ]
+}

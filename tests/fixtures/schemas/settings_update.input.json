@@ -1,0 +1,46 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "weight_unit": {
+            "type": "string",
+            "enum": [
+                "kg",
+                "lb"
+            ]
+        },
+        "height_unit": {
+            "type": "string",
+            "enum": [
+                "cm",
+                "feetInches"
+            ]
+        },
+        "appearance": {
+            "type": "string",
+            "enum": [
+                "system",
+                "light",
+                "dark"
+            ]
+        },
+        "consumed_totals": {
+            "type": "string",
+            "enum": [
+                "planned",
+                "checked_in"
+            ]
+        },
+        "micro_plates": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "weight_unit",
+        "height_unit",
+        "appearance",
+        "consumed_totals",
+        "micro_plates"
+    ]
+}

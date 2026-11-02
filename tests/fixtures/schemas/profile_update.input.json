@@ -1,0 +1,86 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+        },
+        "sex": {
+            "type": "string",
+            "enum": [
+                "female",
+                "male"
+            ]
+        },
+        "birth_date": {
+            "type": "string",
+            "format": "date"
+        },
+        "height": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "unit": {
+                    "type": "string",
+                    "enum": [
+                        "cm",
+                        "feetInches"
+                    ]
+                },
+                "cm": {
+                    "type": [
+                        "number",
+                        "null"
+                    ]
+                },
+                "feet": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ]
+                },
+                "inches": {
+                    "type": [
+                        "number",
+                        "null"
+                    ]
+                }
+            },
+            "required": [
+                "unit"
+            ]
+        },
+        "body_fat_bucket": {
+            "type": "string",
+            "enum": [
+                "lowest",
+                "low",
+                "high",
+                "highest"
+            ]
+        },
+        "uses_glp1": {
+            "type": "boolean"
+        },
+        "experience": {
+            "type": "string",
+            "enum": [
+                "beginner",
+                "intermediate",
+                "advanced"
+            ]
+        }
+    },
+    "required": [
+        "name",
+        "sex",
+        "birth_date",
+        "height",
+        "body_fat_bucket",
+        "uses_glp1",
+        "experience"
+    ]
+}

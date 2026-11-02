@@ -1,0 +1,69 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "weighed_at": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "weight": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "value": {
+                    "type": "number",
+                    "description": "A floor and a ceiling that hold in kg and in lb.",
+                    "minimum": 20,
+                    "maximum": 1000
+                },
+                "unit": {
+                    "type": "string",
+                    "enum": [
+                        "kg",
+                        "lb"
+                    ]
+                }
+            },
+            "required": [
+                "value",
+                "unit"
+            ]
+        },
+        "waist": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "value": {
+                    "type": "number",
+                    "description": "A floor and a ceiling that hold in cm and in inches.",
+                    "minimum": 10,
+                    "maximum": 300
+                },
+                "unit": {
+                    "type": "string",
+                    "enum": [
+                        "cm",
+                        "in"
+                    ]
+                }
+            },
+            "required": [
+                "value",
+                "unit"
+            ],
+            "description": "WT-021: optional waist measurement."
+        }
+    },
+    "required": [
+        "id",
+        "weighed_at",
+        "weight"
+    ]
+}

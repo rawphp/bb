@@ -1,0 +1,58 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "string",
+            "description": "the new token's ULID (CAP-019)"
+        },
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+        },
+        "expires_in_days": {
+            "type": "integer",
+            "enum": [
+                30,
+                90,
+                365
+            ]
+        },
+        "scope": {
+            "type": "string",
+            "enum": [
+                "everything",
+                "read_only",
+                "health_bridge",
+                "custom"
+            ]
+        },
+        "capabilities": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                    }
+                },
+                "required": [
+                    "name"
+                ]
+            },
+            "description": "the custom scope; empty for the others"
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "expires_in_days",
+        "scope",
+        "capabilities"
+    ]
+}
