@@ -37,7 +37,7 @@ final class WeighInSchedule
      */
     public static function daysLabel(array $weekdays): string
     {
-        $days = self::distinct([$weekdays]);
+        $days = self::days([$weekdays]);
         if (count($days) === 7) {
             return 'Every day';
         }
@@ -52,7 +52,7 @@ final class WeighInSchedule
      */
     public static function summary(array $entries): string
     {
-        $count = count(self::distinct($entries));
+        $count = count(self::days($entries));
 
         return match ($count) {
             0 => 'No weigh-in schedule yet',
@@ -71,7 +71,7 @@ final class WeighInSchedule
         $others = $entries;
         unset($others[$index]);
 
-        return count(self::distinct(array_values($others))) >= self::MINIMUM_DAYS;
+        return count(self::days(array_values($others))) >= self::MINIMUM_DAYS;
     }
 
     /**
@@ -104,10 +104,12 @@ final class WeighInSchedule
     }
 
     /**
-     * @param  list<list<int>>  $entries
+     * The different weekdays the entries hold together.
+     *
+     * @param  list<list<int>>  $entries  each entry's weekdays
      * @return list<int> sorted, each once
      */
-    private static function distinct(array $entries): array
+    public static function days(array $entries): array
     {
         $days = array_values(array_unique(array_merge([], ...$entries)));
         sort($days);
