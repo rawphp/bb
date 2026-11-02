@@ -1,12 +1,14 @@
 import { ref } from 'vue';
 import { now } from './clock';
 
-// The install offer (PWA-003). Nothing calls offerInstall() yet: the end of onboarding
-// (V_ONB2) or Today (V_TODAY1) is to call it once the user is through onboarding,
-// from a tap, since Chrome shows its prompt only on a user gesture. Until then no
-// install offer is made, Chrome's own included. Android gets Chrome's prompt; iPhone
-// gets a sheet showing Share, then Add to Home Screen. Dismissed means not offered
-// again for 30 days.
+// The install offer (PWA-003). Android gets Chrome's prompt; iPhone gets a sheet showing
+// Share, then Add to Home Screen. Dismissed means not offered again for 30 days.
+//
+// Nothing offers it yet. The screen that does (the end of onboarding, V_ONB2, or Today,
+// V_TODAY1) wires both halves in the same change: listenForInstall() in main.ts at
+// start-up, and offerInstall() from a tap once the user is through onboarding, since
+// Chrome shows its prompt only on a user gesture. Until then Chrome's own install
+// mini-infobar is left alone.
 
 type InstallPromptEvent = Event & {
     prompt(): Promise<void>;
@@ -23,7 +25,7 @@ export const installSheet = ref(false);
 export function listenForInstall(): void {
     window.addEventListener('beforeinstallprompt', (event) => {
         // Keep Chrome's own mini-bar away; the offer comes after onboarding. Chrome fires
-        // this once, early in the page's life, so it is caught here at start-up.
+        // this once, early in the page's life, which is why this runs at start-up.
         event.preventDefault();
         chromePrompt = event as InstallPromptEvent;
     });
