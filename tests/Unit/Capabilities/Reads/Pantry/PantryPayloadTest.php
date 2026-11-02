@@ -10,6 +10,7 @@ use App\Domain\Model\MealTarget;
 use App\Domain\Pantry\PantryFood;
 use App\Domain\Pantry\PantryRecipe;
 use App\Domain\Pantry\PantrySavedMeal;
+use Tests\Support\ScreenFixture;
 
 // What food_search shows (rp-clone PantryModel and PantryView), from in-memory rows.
 
@@ -49,9 +50,10 @@ it('FOOD-020 FOOD-021 FOOD-022 the Curated tab shows each group with its foods, 
         payloadFood('broccoli', 'Broccoli', [34, 2.8, 0.4, 7], CuratedGroup::Veggies, cookedRatio: 34 / 35),
     ];
 
-    $payload = pantryPayload([], new PantrySnapshot(diets: [DietFilter::GlutenFree], foods: $foods, favoriteIds: ['breast']));
+    $payload = pantryPayload([], new PantrySnapshot(foods: $foods, favoriteIds: ['breast']));
 
     assertMatchesScreenFixture('food_search', $payload);
+    expect(ScreenFixture::differences(ScreenFixture::load('food_search.curated'), $payload))->toBe([]);
     expect(array_column($payload['sections'], 'id'))->toBe(['protein_recommended', 'veggies'])
         ->and(array_column($payload['sections'], 'title'))->toBe(['Protein · Recommended', 'Veggies'])
         ->and(array_column($payload['sections'], 'group'))->toBe(['protein_recommended', 'veggies'])
@@ -158,7 +160,8 @@ it('FOOD-023 a search with only More results has no local section', function () 
 it('FOOD-024 a search that finds nothing offers the corrected spelling', function () {
     $payload = pantryPayload(['query' => 'chiken brest'], new PantrySnapshot(suggestion: 'chicken breast'));
 
-    assertMatchesScreenFixture('food_search.did-you-mean', $payload);
+    assertMatchesScreenFixture('food_search', $payload);
+    expect(ScreenFixture::differences(ScreenFixture::load('food_search.did-you-mean'), $payload))->toBe([]);
     expect($payload['suggestion'])->toBe(['text' => 'Did you mean chicken breast?', 'query' => 'chicken breast'])
         ->and($payload['sections'])->toBe([])
         ->and($payload['empty_text'])->toBe('No foods match chiken brest.')
@@ -176,7 +179,8 @@ it('FOOD-020 an empty tab says so, and says when the filters hid its foods', fun
     $empty = pantryPayload(['tab' => 'custom'], new PantrySnapshot);
     $hidden = pantryPayload(['tab' => 'recents'], new PantrySnapshot(diets: [DietFilter::Vegan], foods: [payloadFood('egg', 'Egg')]));
 
-    assertMatchesScreenFixture('food_search.empty', $empty);
+    assertMatchesScreenFixture('food_search', $empty);
+    expect(ScreenFixture::differences(ScreenFixture::load('food_search.empty'), $empty))->toBe([]);
     expect($empty['sections'])->toBe([])
         ->and($empty['empty_text'])->toBe('No custom foods yet.')
         ->and($empty['create_custom_food'])->toBeNull()

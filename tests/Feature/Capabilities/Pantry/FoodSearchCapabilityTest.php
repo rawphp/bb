@@ -63,7 +63,8 @@ it('FOOD-020 FOOD-021 FOOD-027 shows the Curated tab under the user\'s diet filt
 
     $data = pantrySearch($user)->assertOk()->json('data');
 
-    assertMatchesScreenFixture('food_search.curated', $data);
+    assertMatchesScreenFixture('food_search', $data);
+    expect(ScreenFixture::differences(ScreenFixture::load('food_search.curated'), $data))->toBe([]);
     expect(array_column($data['sections'], 'title'))->toBe(['Protein · Recommended', 'Veggies'])
         ->and(array_column($data['sections'][0]['rows'], 'name'))->toBe(['Chicken breast', 'Egg whites 1', 'Egg whites 2', 'Egg whites 3', 'Egg whites 4'])
         ->and($data['sections'][0]['show_more_title'])->toBe('Show 25 more')
@@ -78,7 +79,8 @@ it('FOOD-024 offers the corrected spelling when a search finds nothing', functio
 
     $data = pantrySearch($user, ['query' => 'chiken brest'])->assertOk()->json('data');
 
-    assertMatchesScreenFixture('food_search.did-you-mean', $data);
+    assertMatchesScreenFixture('food_search', $data);
+    expect(ScreenFixture::differences(ScreenFixture::load('food_search.did-you-mean'), $data))->toBe([]);
     expect($data['suggestion'])->toBe(['text' => 'Did you mean chicken breast?', 'query' => 'chicken breast'])
         ->and($data['empty_text'])->toBe('No foods match chiken brest.');
 });
@@ -86,7 +88,7 @@ it('FOOD-024 offers the corrected spelling when a search finds nothing', functio
 it('FOOD-020 shows an empty Custom tab', function () {
     $data = pantrySearch(User::factory()->create(), ['tab' => 'custom'])->assertOk()->json('data');
 
-    assertMatchesScreenFixture('food_search.empty', $data);
+    assertMatchesScreenFixture('food_search', $data);
     expect($data)->toBe(ScreenFixture::load('food_search.empty'));
 });
 

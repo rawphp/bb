@@ -22,8 +22,8 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    DB::table('foods')->delete();
     User::query()->where('id', '>', $this->usersBefore)->delete();
+    DB::table('foods')->delete();
     DB::beginTransaction();
     Carbon::setTestNow();
 });
@@ -78,9 +78,10 @@ it('FOOD-029 a search costs the same few queries however many foods it finds', f
         }
         DB::flushQueryLog();
         DB::enableQueryLog();
-        $this->actingAs($this->user)->postJson('/capabilities/food_search', ['query' => 'lentil'])->assertOk();
+        $this->actingAs($this->user->fresh())->postJson('/capabilities/food_search', ['query' => 'lentil'])->assertOk();
         $queries = count(DB::getQueryLog());
         DB::disableQueryLog();
+        DB::flushQueryLog();
         DB::table('foods')->delete();
 
         return $queries;
