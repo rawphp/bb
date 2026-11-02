@@ -134,12 +134,30 @@ it('CAP-023 never lets a token create or revoke tokens', function () {
     expect(PersonalAccessToken::query()->whereKey(TOKEN_ID)->exists())->toBeTrue();
 });
 
-it('CAP-021 stops an expired token', function () {
-    $secret = createToken(User::factory()->create(), 'everything');
-    $this->travel(91)->days();
+it('CAP-021 makes a token last the days picked, and stops it after', function (int $days) {
+    $this->freezeTime();
+    $user = User::factory()->create();
 
-    withToken($secret)->postJson('/capabilities/account_show')->assertUnauthorized();
-});
+    $create = $this->actingAs($user)->postJson('/capabilities/token_create', [
+        'id' => TOKEN_ID,
+        'name' => 'Laptop MCP',
+        'expires_in_days' => $days,
+        'scope' => 'everything',
+        'capabilities' => [],
+    ], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+    Auth::forgetGuards();
+    $ends = now()->addDays($days);
+
+    expect(PersonalAccessToken::query()->findOrFail(TOKEN_ID)->expires_at->toDateTimeString())->toBe($ends->toDateTimeString())
+        ->and($create->json('data.token.expires_text'))->toBe('Expires '.$ends->format('j F Y'));
+
+    $this->travel($days - 1)->days();
+    withToken($create->json('data.token.plain_text'))->postJson('/capabilities/account_show')->assertOk();
+    Auth::forgetGuards();
+
+    $this->travel(2)->days();
+    withToken($create->json('data.token.plain_text'))->postJson('/capabilities/account_show')->assertUnauthorized();
+})->with([30, 90, 365]);
 
 it('CAP-021 revokes a token, which stops working at once', function () {
     $user = User::factory()->create();

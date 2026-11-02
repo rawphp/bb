@@ -31,7 +31,12 @@ class PersonalAccessToken extends SanctumToken
         return ['abilities' => 'json', 'scope' => TokenScope::class];
     }
 
-    /** @return Builder<self> the user's tokens */
+    /**
+     * The user's tokens, as this model. Sanctum's `tokens()` relation is typed to its own
+     * model, so it loses the scope cast and the type checker's view of it.
+     *
+     * @return Builder<self>
+     */
     public static function ownedBy(User $user): Builder
     {
         return self::query()->whereMorphedTo('tokenable', $user);
