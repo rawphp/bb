@@ -2,8 +2,13 @@
 
 namespace App\Capabilities\Support;
 
+use App\Domain\Model\BodyFatBucket;
+use App\Domain\Model\ConsumedTotals;
+use App\Domain\Model\DietFilter;
 use App\Domain\Model\Equipment;
 use App\Domain\Model\ExerciseLoadType;
+use App\Domain\Model\ExperienceLevel;
+use App\Domain\Model\HeightUnit;
 use App\Domain\Model\JointPain;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\PhaseType;
@@ -13,6 +18,8 @@ use App\Domain\Model\Sex;
 use App\Domain\Model\Soreness;
 use App\Domain\Model\VolumeFeedback;
 use App\Domain\Model\WeightUnit;
+use App\Domain\Safety\RecheckOutcomeKind;
+use App\Domain\Safety\ScreeningItem;
 
 /**
  * Every value of a domain enum, for a contract's `#[Field(enum: ...)]`. An
@@ -45,4 +52,18 @@ final class DomainValues
     public const JOINT_PAIN = [JointPain::None->value, JointPain::Low->value, JointPain::Moderate->value, JointPain::ALot->value];
 
     public const TONES = [Tone::Good->value, Tone::Neutral->value, Tone::Warning->value, Tone::Info->value];
+
+    public const HEIGHT_UNITS = [HeightUnit::Cm->value, HeightUnit::FeetInches->value];
+
+    public const CONSUMED_TOTALS = [ConsumedTotals::Planned->value, ConsumedTotals::CheckedIn->value];
+
+    public const BODY_FAT_BUCKETS = [BodyFatBucket::Lowest->value, BodyFatBucket::Low->value, BodyFatBucket::High->value, BodyFatBucket::Highest->value];
+
+    public const EXPERIENCE_LEVELS = [ExperienceLevel::Beginner->value, ExperienceLevel::Intermediate->value, ExperienceLevel::Advanced->value];
+
+    public const DIET_FILTERS = [DietFilter::DairyFree->value, DietFilter::GlutenFree->value, DietFilter::GrainFree->value, DietFilter::LowFodmap->value, DietFilter::Vegetarian->value, DietFilter::Paleo->value, DietFilter::Vegan->value];
+
+    public const SCREENING_ITEMS = [ScreeningItem::AgeOutOfRange->value, ScreeningItem::HeightOutOfRange->value, ScreeningItem::WeightOverLimit->value, ScreeningItem::BmiUnderLimit->value, ScreeningItem::PregnantOrBreastfeeding->value, ScreeningItem::TryingToConceive->value, ScreeningItem::TransgenderOnHormoneTherapy->value, ScreeningItem::HeartThyroidOrPCOS->value, ScreeningItem::WeightLossSurgery->value, ScreeningItem::GallbladderDisease->value, ScreeningItem::AutoimmuneDisease->value, ScreeningItem::Diabetes->value, ScreeningItem::EatingDisorderHistory->value];
+
+    public const RECHECK_OUTCOME_KINDS = [RecheckOutcomeKind::RunNutritionSetup->value, RecheckOutcomeKind::SwitchToTrainingOnly->value, RecheckOutcomeKind::LeaveFatLoss->value, RecheckOutcomeKind::Keep->value];
 }

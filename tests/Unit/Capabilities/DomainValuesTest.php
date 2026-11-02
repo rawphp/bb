@@ -2,8 +2,13 @@
 
 use App\Capabilities\Support\DomainValues;
 use App\Capabilities\Support\Tone;
+use App\Domain\Model\BodyFatBucket;
+use App\Domain\Model\ConsumedTotals;
+use App\Domain\Model\DietFilter;
 use App\Domain\Model\Equipment;
 use App\Domain\Model\ExerciseLoadType;
+use App\Domain\Model\ExperienceLevel;
+use App\Domain\Model\HeightUnit;
 use App\Domain\Model\JointPain;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\PhaseType;
@@ -13,6 +18,8 @@ use App\Domain\Model\Sex;
 use App\Domain\Model\Soreness;
 use App\Domain\Model\VolumeFeedback;
 use App\Domain\Model\WeightUnit;
+use App\Domain\Safety\RecheckOutcomeKind;
+use App\Domain\Safety\ScreeningItem;
 
 it('CAP-002 lists every value of each domain enum a contract names, and nothing else', function (array $values, string $enum) {
     $cases = array_column($enum::cases(), 'value');
@@ -33,8 +40,15 @@ it('CAP-002 lists every value of each domain enum a contract names, and nothing 
     'soreness' => [DomainValues::SORENESS, Soreness::class],
     'joint pain' => [DomainValues::JOINT_PAIN, JointPain::class],
     'tones' => [DomainValues::TONES, Tone::class],
+    'height units' => [DomainValues::HEIGHT_UNITS, HeightUnit::class],
+    'consumed totals' => [DomainValues::CONSUMED_TOTALS, ConsumedTotals::class],
+    'body fat buckets' => [DomainValues::BODY_FAT_BUCKETS, BodyFatBucket::class],
+    'experience levels' => [DomainValues::EXPERIENCE_LEVELS, ExperienceLevel::class],
+    'diet filters' => [DomainValues::DIET_FILTERS, DietFilter::class],
+    'screening items' => [DomainValues::SCREENING_ITEMS, ScreeningItem::class],
+    'recheck outcome kinds' => [DomainValues::RECHECK_OUTCOME_KINDS, RecheckOutcomeKind::class],
 ]);
 
 it('CAP-002 has a test row for every list', function () {
-    expect(array_keys((new ReflectionClass(DomainValues::class))->getConstants()))->toHaveCount(12);
+    expect(array_keys((new ReflectionClass(DomainValues::class))->getConstants()))->toHaveCount(19);
 });

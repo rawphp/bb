@@ -1,0 +1,111 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "status": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ]
+        },
+        "lapsed": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "action_label": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "text",
+                "action_label"
+            ],
+            "description": "null unless the subscription has lapsed"
+        },
+        "plans": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "plan": {
+                        "type": "string",
+                        "enum": [
+                            "monthly",
+                            "six_months",
+                            "yearly"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "price_text": {
+                        "type": "string",
+                        "description": "for example \"$34.99 per month\""
+                    },
+                    "detail": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "plan",
+                    "title",
+                    "price_text"
+                ]
+            }
+        },
+        "default_plan": {
+            "type": "string",
+            "enum": [
+                "monthly",
+                "six_months",
+                "yearly"
+            ]
+        },
+        "primary_label": {
+            "type": "string",
+            "description": "\"Start 7-day free trial\" or \"Subscribe\""
+        },
+        "terms_text": {
+            "type": "string"
+        },
+        "can_manage": {
+            "type": "boolean",
+            "description": "the Stripe customer portal can open (SUB-007)"
+        }
+    },
+    "required": [
+        "status",
+        "plans",
+        "default_plan",
+        "primary_label",
+        "terms_text",
+        "can_manage"
+    ]
+}

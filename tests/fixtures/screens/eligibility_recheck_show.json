@@ -1,0 +1,45 @@
+{
+    "mode": {
+        "text": "Training and nutrition",
+        "tone": "good"
+    },
+    "reasons": [],
+    "questions": [
+        {
+            "item": "ageOutOfRange",
+            "label": "You are under 18 or over 65",
+            "applies": false,
+            "measured": true
+        },
+        {
+            "item": "bmiUnderLimit",
+            "label": "Your BMI is under 17",
+            "applies": false,
+            "measured": true
+        },
+        {
+            "item": "pregnantOrBreastfeeding",
+            "label": "You are pregnant or breastfeeding",
+            "applies": false,
+            "measured": false
+        },
+        {
+            "item": "tryingToConceive",
+            "label": "You are trying to conceive or in fertility treatment",
+            "applies": false,
+            "measured": false
+        },
+        {
+            "item": "diabetes",
+            "label": "You have type 1 or type 2 diabetes",
+            "applies": false,
+            "measured": false
+        },
+        {
+            "item": "eatingDisorderHistory",
+            "label": "You have a history of eating disorders",
+            "applies": false,
+            "measured": false
+        }
+    ]
+}

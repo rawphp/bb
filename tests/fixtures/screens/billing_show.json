@@ -1,0 +1,31 @@
+{
+    "status": {
+        "text": "Yearly, renews 3 March 2027",
+        "tone": "good"
+    },
+    "lapsed": null,
+    "plans": [
+        {
+            "plan": "monthly",
+            "title": "Monthly",
+            "price_text": "$34.99 per month",
+            "detail": null
+        },
+        {
+            "plan": "six_months",
+            "title": "6 months",
+            "price_text": "$179.99 per 6 months",
+            "detail": "$30.00 a month"
+        },
+        {
+            "plan": "yearly",
+            "title": "Yearly",
+            "price_text": "$299.99 per year",
+            "detail": "$25.00 a month"
+        }
+    ],
+    "default_plan": "yearly",
+    "primary_label": "Subscribe",
+    "terms_text": "Renews automatically until you cancel. Manage or cancel in Settings.",
+    "can_manage": true
+}
