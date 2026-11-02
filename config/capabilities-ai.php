@@ -7,7 +7,7 @@ use App\Http\Middleware\AgentGate;
  * rawphp/laravel-capabilities-ai, published with Bodybuilder's production
  * defaults (docs/spec/17-agent.md, "Setup defaults"). Changed from the package:
  * routes on, progress on redis, the anthropic driver, claim_ttl 1800, the
- * `agent` queue and proposals off. Tests pin the array store and the fake
+ * `agent` queue on its own connection and proposals off. Tests pin the array store and the fake
  * driver in phpunit.xml.
  */
 $env = static function (string $key, mixed $default = null): mixed {
@@ -113,10 +113,11 @@ return [
 
     /**
      * Default RunTurnJob queue routing (happy path — no ConversationService rebind).
-     * Empty/null → Laravel default queue/connection.
+     * Bodybuilder: the `agent` connection in config/queue.php, whose retry_after
+     * is above claim_ttl, so a running turn is never handed to a second worker.
      */
     'queue' => [
-        'connection' => $env('CAPABILITIES_AI_QUEUE_CONNECTION'),
+        'connection' => $env('CAPABILITIES_AI_QUEUE_CONNECTION', 'agent'),
         'name' => $env('CAPABILITIES_AI_QUEUE_NAME', 'agent'),
     ],
 

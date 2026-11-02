@@ -4,6 +4,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Queue;
 use Rawphp\CapabilitiesAi\Contracts\ConversationStore;
+use Rawphp\CapabilitiesAi\Contracts\TurnClaim;
 use Rawphp\CapabilitiesAi\Models\Turn;
 
 beforeEach(function () {
@@ -15,21 +16,20 @@ beforeEach(function () {
 afterEach(fn () => CarbonImmutable::setTestNow());
 
 /**
- * Turns the user has already run, each with its LLM token use.
+ * Turns the user has already run, each finished through the bound claim with its LLM token use.
  *
  * @param  list<int>  $tokens  tokens per turn
  */
 function pastTurns(User $user, array $tokens, string $at = '2026-11-02 09:00:00'): void
 {
     $store = app(ConversationStore::class);
+    $claim = app(TurnClaim::class);
     $conversation = $store->createConversation(strtoupper(bin2hex(random_bytes(13))), null, (string) $user->id);
     foreach ($tokens as $used) {
         $turn = $store->createQueuedTurn($conversation, strtoupper(bin2hex(random_bytes(13))));
-        Turn::query()->whereKey($turn->getKey())->update([
-            'status' => 'completed',
-            'usage' => json_encode([['latency_ms' => 900, 'input_tokens' => intdiv($used, 2), 'output_tokens' => $used - intdiv($used, 2)]]),
-            'created_at' => $at,
-        ]);
+        $claim->claim($turn->ulid, 'test-worker');
+        $claim->complete($turn->ulid, [['latency_ms' => 900, 'input_tokens' => intdiv($used, 2), 'output_tokens' => $used - intdiv($used, 2)]]);
+        Turn::query()->whereKey($turn->getKey())->update(['created_at' => $at]);
     }
 }
 
@@ -80,6 +80,33 @@ it('AGT-005 says how much is left near the cap, and the chat still takes the mes
         ]);
 
     $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
+});
+
+it('AGT-005 under a token cap takes one Coach message at a time, so a month ends at most one turn over', function () {
+    config(['agent.tokens_per_month' => 1_000_000]);
+    $user = User::factory()->create();
+    pastTurns(User::factory()->create(), [10]);
+
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'And another thing'])
+        ->assertStatus(429)
+        ->assertJsonPath('error.code', 'rate_limited')
+        ->assertJsonPath('error.message', 'The Coach is still answering your last message.');
+    expect(Turn::query()->count())->toBe(2);
+
+    // Once the turn ends, the next message is taken.
+    $turn = Turn::query()->latest('id')->firstOrFail();
+    app(TurnClaim::class)->claim($turn->ulid, 'test-worker');
+    app(TurnClaim::class)->complete($turn->ulid, []);
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'And another thing'])->assertCreated();
+});
+
+it('AGT-005 without a token cap takes a message while another turn runs', function () {
+    config(['agent.turns_per_day' => 10]);
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'And another thing'])->assertCreated();
 });
 
 it('AGT-005 still answers every capability at the cap', function () {

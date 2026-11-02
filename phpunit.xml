@@ -31,6 +31,7 @@
         <env name="SESSION_DRIVER" value="array"/>
         <env name="CAPABILITIES_AI_LLM_DRIVER" value="fake"/>
         <env name="CAPABILITIES_AI_PROGRESS_DRIVER" value="array"/>
+        <env name="CAPABILITIES_AI_QUEUE_CONNECTION" value="sync"/>
         <env name="WARP_MODE" value="1"/>
         <env name="WARP_DB" value="1"/>
         <env name="PULSE_ENABLED" value="false"/>

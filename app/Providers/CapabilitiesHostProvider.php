@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Agent\ConversationHistoryContext;
+use App\Agent\MeteredTurnClaim;
 use App\Agent\RegistryToolCatalog;
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\HostCapability;
@@ -17,6 +18,8 @@ use Rawphp\Capabilities\Contracts\CapabilityBus;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\CapabilitiesAi\Contracts\ConversationContextProvider;
 use Rawphp\CapabilitiesAi\Contracts\ToolCatalog;
+use Rawphp\CapabilitiesAi\Contracts\TurnClaim;
+use Rawphp\CapabilitiesAi\Support\EloquentTurnClaim;
 
 /**
  * The host side of rawphp/laravel-capabilities. Registered last.
@@ -37,6 +40,8 @@ final class CapabilitiesHostProvider extends ServiceProvider
         // The agent's seams in capabilities-ai (AGT-003, AGT-011).
         $this->app->singleton(ToolCatalog::class, RegistryToolCatalog::class);
         $this->app->singleton(ConversationContextProvider::class, ConversationHistoryContext::class);
+        // Replaces the package's claim: the same transitions, plus each turn's token total (AGT-005).
+        $this->app->singleton(TurnClaim::class, fn (): MeteredTurnClaim => new MeteredTurnClaim(new EloquentTurnClaim));
     }
 
     public function boot(CapabilityRegistry $registry): void

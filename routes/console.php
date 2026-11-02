@@ -9,4 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // The package does not schedule its reaper; the host does, once (AGT setup defaults).
-Schedule::command('capabilities-ai:reap-stale-turns')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('capabilities-ai:reap-stale-turns')->everyFiveMinutes()
+    // A run killed mid-way frees its lock after 10 minutes, not Laravel's default day.
+    ->withoutOverlapping(10);

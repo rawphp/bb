@@ -7,11 +7,12 @@ use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Rawphp\CapabilitiesAi\Models\TableNames;
+use Rawphp\CapabilitiesAi\Models\Turn;
 
 /**
  * Whether the instance runs the agent (AGT-002) and how much of the AGT-005
  * caps a user has used. Every turn counts towards the day; the tokens of every
- * LLM round count towards the month.
+ * LLM round count towards the month, from `turns.tokens` (MeteredTurnClaim).
  */
 final class AgentStatus
 {
@@ -38,6 +39,18 @@ final class AgentStatus
         );
     }
 
+    /**
+     * Under a monthly token cap a user has one turn at a time: a turn's tokens
+     * are known only once it ends, so this keeps the overshoot to that one turn.
+     */
+    public function busy(int|string $userId): bool
+    {
+        return $this->config->get('agent.tokens_per_month') !== null
+            && $this->turns($userId, CarbonImmutable::createFromTimestamp(0))
+                ->whereIn('turns.status', [Turn::STATUS_QUEUED, Turn::STATUS_RUNNING])
+                ->exists();
+    }
+
     private function turnsSince(int|string $userId, CarbonImmutable $since): int
     {
         return $this->turns($userId, $since)->count();
@@ -45,14 +58,7 @@ final class AgentStatus
 
     private function tokensSince(int|string $userId, CarbonImmutable $since): int
     {
-        $tokens = 0;
-        foreach ($this->turns($userId, $since)->whereNotNull('turns.usage')->pluck('turns.usage') as $usage) {
-            foreach (json_decode((string) $usage, true) ?: [] as $round) {
-                $tokens += (int) ($round['input_tokens'] ?? 0) + (int) ($round['output_tokens'] ?? 0);
-            }
-        }
-
-        return $tokens;
+        return (int) $this->turns($userId, $since)->sum('turns.tokens');
     }
 
     private function turns(int|string $userId, CarbonImmutable $since): Builder

@@ -73,6 +73,17 @@ return [
             'after_commit' => false,
         ],
 
+        // The Coach's turns (capabilities-ai.queue.connection). A turn runs up to
+        // claim_ttl, so a job is handed out again only after that has passed.
+        'agent' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'agent',
+            'retry_after' => (int) env('CAPABILITIES_AI_CLAIM_TTL', 1800) + 60,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],

@@ -11,7 +11,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * In front of the package's chat routes: a new message, which starts a turn, is
- * refused while the agent is off (AGT-002) or the user is at a cap (AGT-005).
+ * refused while the agent is off (AGT-002), the user is at a cap (AGT-005), or,
+ * under a token cap, one of the user's turns is still queued or running.
  * Nothing is stored or queued then. Every other chat route and every screen keep working.
  */
 final class AgentGate
@@ -33,6 +34,10 @@ final class AgentGate
             return self::refuse(CapabilityResult::failure('rate_limited', (string) $allowance->notice, [
                 'resets_at' => $allowance->resetsAt?->toIso8601String(),
             ]));
+        }
+
+        if ($this->status->busy($request->user()->getAuthIdentifier())) {
+            return self::refuse(CapabilityResult::failure('rate_limited', 'The Coach is still answering your last message.'));
         }
 
         return $next($request);

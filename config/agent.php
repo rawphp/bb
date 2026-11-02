@@ -6,7 +6,8 @@
 */
 
 $cap = static function (string $key): ?int {
-    $value = env($key);
+    // Read like config/capabilities.php, not with Laravel's env helper, so config:cache works (docs/architecture.md).
+    $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
 
     return is_numeric($value) ? max((int) $value, 0) : null;
 };

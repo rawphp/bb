@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Artisan;
 use Rawphp\CapabilitiesAi\Contracts\ConversationContextProvider;
 use Rawphp\CapabilitiesAi\Contracts\ConversationStore;
@@ -11,6 +12,14 @@ it('AGT-002 schedules the package\'s stale turn reaper once', function () {
     Artisan::call('schedule:list');
 
     expect(substr_count(Artisan::output(), 'capabilities-ai:reap-stale-turns'))->toBe(1);
+});
+
+it('AGT-002 frees the reaper\'s overlap lock soon after a killed run', function () {
+    $reaper = collect(app(Schedule::class)->events())
+        ->first(fn ($event) => str_contains((string) $event->command, 'capabilities-ai:reap-stale-turns'));
+
+    expect($reaper->withoutOverlapping)->toBeTrue()
+        ->and($reaper->expiresAt)->toBe(10);
 });
 
 it('AGT-002 passes capabilities:integration-health with the production drivers', function () {

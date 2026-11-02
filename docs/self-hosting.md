@@ -111,10 +111,10 @@ The in-app Coach runs on Anthropic. It is on only when the driver is `anthropic`
 
 | Key | Value |
 |---|---|
-| `CAPABILITIES_AI_LLM_DRIVER` | `anthropic`. `.env.example` ships `fake`, which answers with canned replies for local development and tests; never run production with it. |
+| `CAPABILITIES_AI_LLM_DRIVER` | `anthropic`. `.env.example` ships `fake`, which is for the test suite only: outside tests the Coach reports itself off and the chat refuses messages. Local Coach work needs `anthropic` and a key too. |
 | `ANTHROPIC_API_KEY` | Your Anthropic API key to turn the Coach on, or empty to leave it off. Every user's Coach turns are billed to it. |
 | `AGENT_TURNS_PER_DAY` | Coach messages each user may send per day (AGT-005). Empty for no cap. |
-| `AGENT_TOKENS_PER_MONTH` | Anthropic tokens each user's Coach turns may use per month. Empty for no cap. |
+| `AGENT_TOKENS_PER_MONTH` | Anthropic tokens each user's Coach turns may use per month. Empty for no cap. With a cap, a user has one Coach turn at a time, and a turn that starts under the cap finishes, so a month can end at most one turn over. |
 
 ### Billing (optional)
 
@@ -134,11 +134,11 @@ With billing on, add a webhook endpoint in Stripe pointing at the app's Stripe w
 Two workers:
 
 - `default`: the `default` queue (notifications, mail and other background jobs) and the `capabilities-audit` queue, which writes the audit log.
-- `agent`: the Coach's turns. Only needed with the agent on, but harmless without it.
+- `agent`: the Coach's turns, on the `agent` connection. Its `retry_after` is `CAPABILITIES_AI_CLAIM_TTL` plus 60 seconds, so a turn that runs long is never handed to a second worker. Only needed with the agent on, but harmless without it.
 
 ```bash
 php artisan queue:work redis --queue=default,capabilities-audit --tries=3
-php artisan queue:work redis --queue=agent --tries=1
+php artisan queue:work agent --queue=agent --tries=1
 ```
 
 Keep both running under your supervisor. A systemd unit for the `default` worker:
@@ -158,7 +158,7 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-Copy it for `agent` with `--queue=agent --tries=1`. Restart both workers after every deploy (`php artisan queue:restart`), or they keep running the old code.
+Copy it for `agent` with `queue:work agent --queue=agent --tries=1`. Restart both workers after every deploy (`php artisan queue:restart`), or they keep running the old code.
 
 ## Scheduler
 
