@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\DayTargetMealFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,6 +41,17 @@ class DayTargetMeal extends Model
                 $meal->{$relation}()->get()->each->delete();
             }
         });
+    }
+
+    /**
+     * The user's meals on a day that is not deleted: the meals a capability may name (CAP-020).
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function liveOf(Builder $query, User $user): void
+    {
+        $query->where('user_id', $user->id)->whereHas('dayTarget');
     }
 
     /** @return BelongsTo<DayTarget, $this> */
