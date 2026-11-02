@@ -3,7 +3,6 @@
 use App\Capabilities\Reads\Plan\PhasePayload;
 use App\Domain\Model\PhaseType;
 use App\Support\Plan\PhaseChanges;
-use App\Support\Plan\PlanSnapshot;
 use Tests\Unit\Capabilities\Reads\Plan\PlanWorld as W;
 
 // rp-clone's PhaseDetailModelTests (the read side), on PlanWorld.
@@ -198,6 +197,41 @@ it('PLAN-004 a finished phase can no longer change', function () {
 
 it('PLAN-001 a phase is found by its id in any letter case', function () {
     expect(W::snapshot()->findPhase(strtolower(W::CUT))?->id)->toBe(W::CUT)
-        ->and(W::snapshot()->findPhase('nope'))->toBeNull()
-        ->and(PlanSnapshot::OPEN)->toBe(PHP_INT_MAX);
+        ->and(W::snapshot()->findPhase('nope'))->toBeNull();
+});
+
+it('PLAN-025 a deload week with its diet break off counts towards the sixteen-week cap and the weekly rate', function () {
+    $cut = [W::phase(W::CUT, 'fatLoss', '2026-08-31', '2026-11-23', -0.75)];
+    $mesocycles = array_slice(W::mesocycles(), 0, 2);
+    $on = phasePayload(phases: $cut, mesocycles: $mesocycles);
+    $off = phasePayload(phases: $cut, mesocycles: $mesocycles, weeks: [W::week('2026-11-16', dietBreakOff: true)]);
+
+    // Weeks 5 and 11 are diet breaks; with week 11 off only one deficit-free week is left.
+    expect(max(array_column($on['lengths'], 'weeks')))->toBe(18)
+        ->and(max(array_column($off['lengths'], 'weeks')))->toBe(17)
+        ->and($on['target_weight_text'])->toBeIn(['83.2 kg', '83.3 kg'])
+        // 90 × (1 − 0.0075 × 11).
+        ->and($off['target_weight_text'])->toBe('82.6 kg');
+});
+
+it('PH-006 PH-007 a length that ends the running phase this week is End phase, not a new length', function () {
+    $plan = W::snapshot();
+    $changes = new PhaseChanges($plan);
+
+    expect(array_column(phasePayload()['lengths'], 'weeks'))->not->toContain(7)
+        ->and($changes->lengthRefusal($plan->findPhase(W::CUT), 7))->toBe('That ends the phase this week. Use End phase, which asks first.')
+        ->and($changes->lengthRefusal($plan->findPhase(W::HOLD), 53))->toBe('A phase can run at most 52 weeks.');
+});
+
+it('PLAN-021 MESO-042 changing the mesocycle length is offered only where the mesocycle may take that length', function () {
+    $lengths = lengthsByWeeks(phasePayload());
+    $stored = W::mesocycle(W::MESO2, 'Meso 2', W::CUT, '2026-10-12', 6);
+    $stored->later_weeks = [['01JB6Q400A2B3C4D5E6F7G8H9J']];
+    $rearranged = lengthsByWeeks(phasePayload(mesocycles: [W::mesocycles()[0], $stored, W::mesocycles()[2]]));
+
+    // Lengthening Meso 2 to 8 weeks would run it into Meso 3, which starts in week 12.
+    expect(array_column($lengths[14]['fixes'], 'fix'))->not->toContain('change_mesocycle_length')
+        ->and(array_column($lengths[11]['fixes'], 'fix'))->toContain('change_mesocycle_length')
+        // SCH-039: weeks rearranged for new training days keep their number.
+        ->and(array_column($rearranged[11]['fixes'], 'fix'))->not->toContain('change_mesocycle_length');
 });

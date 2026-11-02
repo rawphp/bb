@@ -2,6 +2,7 @@
 
 use App\Models\Mesocycle;
 use App\Models\Phase;
+use App\Models\PlanWeek;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -96,9 +97,12 @@ it('PH-005 PH-006 a phase with phases after it cannot lose its end; the last Mai
 it('PLAN-021 the user picks to move the end after the nearest deload', function () {
     [$user] = PlanSeed::world();
 
-    phaseLengthSet($user, ['phase_id' => W::CUT, 'weeks' => 11, 'fix' => 'move_end_to_deload'])->assertOk();
+    phaseLengthSet($user, ['phase_id' => W::CUT, 'weeks' => 11, 'fix' => 'move_end_to_deload'])
+        ->assertOk()
+        ->assertJsonPath('data.toast', 'Phase is now 12 weeks');
 
-    expect(phaseDates(W::CUT))->toBe(['2026-08-31', '2026-11-23']);
+    expect(phaseDates(W::CUT))->toBe(['2026-08-31', '2026-11-23'])
+        ->and(Mesocycle::query()->findOrFail(W::MESO2)->weeks)->toBe(6);
 });
 
 it('PLAN-021 the user picks to change the mesocycle length so its deload is the last week', function () {
@@ -118,4 +122,26 @@ it('PLAN-021 a fix that does not fit is refused, and nothing changes', function 
         ->assertJsonPath('error.message', 'No deload falls within 2 weeks of that end, so it cannot move there.');
 
     expect(phaseDates(W::CUT))->toBe(['2026-08-31', '2026-11-23']);
+});
+
+it('PLAN-025 a deload with its diet break off counts towards the sixteen-week cap', function () {
+    [$user] = PlanSeed::world();
+    PlanWeek::factory()->for($user)->create(['start_date' => '2026-11-16', 'is_deload' => false, 'is_diet_break' => false, 'is_away' => false, 'diet_break_off' => true]);
+
+    phaseLengthSet($user, ['phase_id' => W::CUT, 'weeks' => 19, 'fix' => 'keep_end'])
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'A Fat loss phase can run at most 16 weeks. Diet-break weeks do not count.');
+    phaseLengthSet($user, ['phase_id' => W::CUT, 'weeks' => 18, 'fix' => 'keep_end'])->assertOk();
+});
+
+it('PH-006 refuses a length past 52 weeks, and one that ends the running phase this week', function () {
+    [$user] = PlanSeed::world();
+    Phase::query()->findOrFail(W::GAIN)->delete();
+
+    phaseLengthSet($user, ['phase_id' => W::HOLD, 'weeks' => 53, 'fix' => 'keep_end'])
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'A phase can run at most 52 weeks.');
+    phaseLengthSet($user, ['phase_id' => W::CUT, 'weeks' => 7, 'fix' => 'keep_end'])
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'That ends the phase this week. Use End phase, which asks first.');
 });

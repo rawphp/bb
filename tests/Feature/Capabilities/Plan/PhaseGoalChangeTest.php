@@ -1,5 +1,8 @@
 <?php
 
+use App\Domain\Model\ExperienceLevel;
+use App\Domain\Model\PhaseType;
+use App\Domain\Plan\PhaseRules;
 use App\Models\Phase;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -75,6 +78,7 @@ it('PH-009 a phase that has not started changes type in place', function () {
 
     $hold = Phase::query()->findOrFail(W::HOLD);
     expect($hold->type->value)->toBe('muscleGain')
+        ->and($hold->target_rate_percent_per_week)->toBe(PhaseRules::defaultRatePercentPerWeek(PhaseType::MuscleGain, ExperienceLevel::Intermediate))
         ->and($hold->end_date->format('Y-m-d'))->toBe('2026-12-21')
         ->and(Phase::query()->find(NEW_PHASE))->toBeNull();
 });
@@ -86,4 +90,27 @@ it('PH-009 a goal the weeks left cannot hold is refused with TBL-010\'s reason',
     phaseGoalChange($user, ['phase_id' => W::CUT, 'type' => 'miniCut', 'new_phase_id' => NEW_PHASE])
         ->assertStatus(422)
         ->assertJsonPath('error.message', 'A Mini-cut phase can run at most 6 weeks. Diet-break weeks do not count.');
+});
+
+it('PH-043 an event before the switch stays with the phase that ends', function () {
+    [$user] = PlanSeed::world(event: '2026-10-15');
+
+    phaseGoalChange($user, ['phase_id' => W::CUT, 'type' => 'maintenance', 'new_phase_id' => NEW_PHASE])->assertOk();
+
+    expect(Phase::query()->findOrFail(W::CUT)->event_date->format('Y-m-d'))->toBe('2026-10-15')
+        ->and(Phase::query()->findOrFail(NEW_PHASE)->event_date)->toBeNull();
+});
+
+it('PH-009 CAP-019 refuses a new_phase_id that names a phase this change did not create, and writes nothing', function () {
+    [$user] = PlanSeed::world();
+
+    phaseGoalChange($user, ['phase_id' => W::CUT, 'type' => 'maintenance', 'new_phase_id' => W::CUT])
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'That new phase id is already used.');
+    phaseGoalChange($user, ['phase_id' => W::HOLD, 'type' => 'muscleGain', 'new_phase_id' => W::GAIN])
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'That new phase id is already used.');
+
+    expect(Phase::query()->findOrFail(W::CUT)->end_date->format('Y-m-d'))->toBe('2026-11-23')
+        ->and(Phase::query()->findOrFail(W::HOLD)->type->value)->toBe('maintenance');
 });

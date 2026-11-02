@@ -5,6 +5,7 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Tests\Support\PlanSeed;
+use Tests\Unit\Capabilities\Reads\Plan\PlanWorld as W;
 
 // plan_diet_break_set over HTTP: the seam, and PLAN-023 on the database. What is offered is PlanPayloadTest's.
 
@@ -66,4 +67,36 @@ it('PLAN-023 only a Fat loss or Mini-cut deload still ahead can be turned off', 
     dietBreakSet($user, ['week_start' => '2026-10-26', 'diet_break' => false])
         ->assertStatus(422)->assertJsonPath('error.message', 'That week is not a deload on your plan.');
     expect(PlanWeek::query()->count())->toBe(0);
+});
+
+it('PLAN-023 a week that has a row keeps its other flags', function () {
+    [$user] = PlanSeed::world();
+    $row = PlanWeek::factory()->for($user)->create(['start_date' => '2026-11-16', 'is_deload' => true, 'is_diet_break' => true, 'is_away' => false]);
+
+    dietBreakSet($user, ['week_start' => '2026-11-16', 'diet_break' => false])->assertOk();
+
+    $row->refresh();
+    expect($row->diet_break_off)->toBeTrue()
+        ->and($row->is_deload)->toBeTrue()
+        ->and($row->is_diet_break)->toBeTrue()
+        ->and(PlanWeek::query()->where('user_id', $user->id)->count())->toBe(1);
+});
+
+it('PLAN-023 a date inside the week is not a deload week start', function () {
+    [$user] = PlanSeed::world();
+
+    dietBreakSet($user, ['week_start' => '2026-11-17', 'diet_break' => false])
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'That week is not a deload on your plan.');
+    expect(PlanWeek::query()->count())->toBe(0);
+});
+
+it('PLAN-025 CAP-011 turning a diet break off names the phase reads and that week\'s days as changed', function () {
+    [$user] = PlanSeed::world();
+
+    $keys = dietBreakSet($user, ['week_start' => '2026-11-16', 'diet_break' => false])->assertOk()->json('data.invalidates');
+
+    expect($keys)->toContain('phase_show{"phase_id":"'.W::CUT.'"}')
+        ->toContain('today_show{"date":"2026-11-16"}')
+        ->toContain('week_show{"date":"2026-11-22"}');
 });
