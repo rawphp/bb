@@ -7,7 +7,6 @@ use App\Capabilities\HostCapability;
 use App\Capabilities\Mesocycles\MesocycleReads;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\OwnsInput;
-use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Today\Data\WorkoutTimeSetInput;
 use App\Models\Mesocycle;
@@ -32,16 +31,10 @@ final class WorkoutTimeSetCapability implements HostCapability, OwnsInput
                 $timed = ($this->set)($user, $input);
 
                 return new WriteResult(
-                    invalidates: $timed['dates'] === [] ? [] : [...MesocycleReads::keys($input->mesocycle_id), self::workoutKey($input), ...TodayReads::forDays($timed['dates'], $timed['week'])],
+                    invalidates: $timed['dates'] === [] ? [] : [...MesocycleReads::keys($input->mesocycle_id), TodayReads::workout($input->mesocycle_id, $input->week, $input->day), ...TodayReads::forDays($timed['dates'], $timed['week'])],
                     toast: $timed['toast'],
                 );
             });
-    }
-
-    /** The session's workout screen, which shows when it is planned. */
-    private static function workoutKey(WorkoutTimeSetInput $input): string
-    {
-        return ReadKey::for('workout_show', ['mesocycle_id' => $input->mesocycle_id, 'week' => $input->week, 'day' => $input->day]);
     }
 
     public function owned(User $user): array
