@@ -21,7 +21,7 @@ final class ProgressPayload
         return new ProgressShowOutput(
             title: 'Progress',
             scopes: array_map(
-                fn (ProgressScope $choice) => new ScopeChoice($choice === ProgressScope::CurrentPhase ? 'phase' : 'plan', $choice->title(), $choice === $scope),
+                fn (ProgressScope $choice) => new ScopeChoice(self::wire($choice), $choice->title(), $choice === $scope),
                 [ProgressScope::CurrentPhase, ProgressScope::WholePlan],
             ),
             empty: $enough ? null : new ProgressEmpty('Log 4 weigh-ins to see your trend', 'Log a weigh-in'),
@@ -36,6 +36,17 @@ final class ProgressPayload
             mesocycle_history: ProgressHistoryPayload::mesocycles($snapshot),
             exercises: ProgressHistoryPayload::exercises($snapshot),
         );
+    }
+
+    /** The input's `scope` as the rule's scope: `plan` is the whole plan, anything else the current phase. */
+    public static function scope(string $wire): ProgressScope
+    {
+        return $wire === 'plan' ? ProgressScope::WholePlan : ProgressScope::CurrentPhase;
+    }
+
+    private static function wire(ProgressScope $scope): string
+    {
+        return $scope === ProgressScope::WholePlan ? 'plan' : 'phase';
     }
 
     /** Shown in place of the chart when the chosen range has no weigh-ins; the scope is not switched silently. */

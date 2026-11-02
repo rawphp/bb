@@ -14,6 +14,7 @@ use App\Domain\Progress\ProgressChartData;
 use App\Domain\Progress\ProgressScope;
 use App\Domain\Progress\ProgressShare as DomainShare;
 use App\Domain\Progress\ProgressSummary;
+use App\Domain\Model\UnitConversion;
 use App\Models\WeighIn;
 use App\Support\Plan\PlanWords;
 use App\Support\Progress\ProgressSnapshot;
@@ -75,7 +76,7 @@ final class ProgressChartPayload
         $points = [];
         foreach ($byDay as $day => $cm) {
             if ($day >= $from && $day <= $to) {
-                $points[] = new ChartPoint($day, round($centimetres ? $cm : $cm / 2.54, 1));
+                $points[] = new ChartPoint($day, round($centimetres ? $cm : $cm / UnitConversion::CM_PER_INCH, 1));
             }
         }
 

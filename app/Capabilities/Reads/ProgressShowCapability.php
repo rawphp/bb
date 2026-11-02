@@ -7,7 +7,6 @@ use App\Capabilities\Progress\Data\ProgressShowInput;
 use App\Capabilities\Progress\Data\ProgressShowOutput;
 use App\Capabilities\Reads\Progress\ProgressPayload;
 use App\Capabilities\Support\HostDefinition;
-use App\Domain\Progress\ProgressScope;
 use App\Models\User;
 use App\Support\Progress\ProgressSnapshot;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
@@ -28,7 +27,7 @@ final class ProgressShowCapability implements HostCapability
 
                 return ProgressPayload::build(
                     ProgressSnapshot::load($user),
-                    $input->scope === 'plan' ? ProgressScope::WholePlan : ProgressScope::CurrentPhase,
+                    ProgressPayload::scope($input->scope),
                 );
             });
     }
