@@ -4,6 +4,7 @@ use App\Actions\Today\OptimizeDay;
 use App\Actions\Today\RetargetableDay;
 use App\Capabilities\Reads\Data\Today\OptimizeRow;
 use App\Capabilities\Today\Data\DayOptimizeInput;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -103,3 +104,54 @@ it('SCH-036 a past day or a day with no meals shows why and cannot be saved', fu
     'a past day' => ['2026-09-21', RetargetableDay::PAST],
     'a day with no targets' => ['2026-09-25', RetargetableDay::NO_MEALS],
 ]);
+
+it('SCH-036 a session over an hour earns an intra-workout shake: the preview adds its row, and the save stores it at that time', function () {
+    $user = optimizeWorld();
+    // 90 minutes on Thursday (SCH-043).
+    Profile::query()->where('user_id', $user->id)->update(['training_days' => [
+        ['weekday' => 1, 'start' => '17:30', 'minutes' => 60], ['weekday' => 4, 'start' => '17:30', 'minutes' => 90],
+    ]]);
+    $day = SheetSeed::day($user, '2026-09-24');
+
+    $shake = collect(OptimizeDay::preview($user, '2026-09-24')->rows)->firstWhere('name', 'Intra-workout shake');
+    app(OptimizeDay::class)($user, new DayOptimizeInput('2026-09-24'));
+
+    $saved = collect($day->fresh()->meals)->firstWhere('name', 'Intra-workout shake');
+    expect([$shake?->meal_id, $shake?->before_text, $shake?->changed])->toBe([OptimizeDay::PREVIEW_ID, null, true])
+        ->and($shake->after_text)->not->toBeNull()
+        ->and($saved)->not->toBeNull()
+        ->and($saved['id'])->not->toBe(OptimizeDay::PREVIEW_ID)
+        ->and(date('g:i A', strtotime($saved['time'])))->toBe($shake->after_text)
+        ->and(collect($day->fresh()->meals)->sum('kcal'))->toEqualWithDelta($day->fresh()->kcal, 0.5);
+});
+
+it('SCH-036 a stored shake the session no longer earns: the preview drops its row, and the save leaves the day without it at the same total', function () {
+    $user = optimizeWorld();
+    $shakeId = '0199a3f0-0000-7000-8000-000000000009';
+    $day = SheetSeed::day($user, '2026-09-24');
+    $day->update(['meals' => [...$day->meals, ['id' => $shakeId, 'name' => 'Intra-workout shake', 'time' => '18:00', 'kcal' => 100, 'protein_g' => 10, 'fat_g' => 0, 'carbs_g' => 15]]]);
+
+    $row = collect(OptimizeDay::preview($user, '2026-09-24')->rows)->firstWhere('meal_id', $shakeId);
+    app(OptimizeDay::class)($user, new DayOptimizeInput('2026-09-24'));
+
+    expect([$row?->before_text, $row?->after_text, $row?->changed])->toBe(['6:00 PM', null, true])
+        ->and(collect($day->fresh()->meals)->pluck('id'))->not->toContain($shakeId)
+        ->and($day->fresh()->kcal)->toBe(2600.0)
+        ->and(collect($day->fresh()->meals)->sum('kcal'))->toEqualWithDelta(2600.0, 0.5);
+});
+
+it('SCH-036 a day whose meals cannot fit shows the refusal with its meals unchanged, and cannot be saved', function () {
+    $user = optimizeWorld();
+    $day = SheetSeed::day($user, '2026-09-24');
+    Profile::query()->where('user_id', $user->id)->update(['eating_window' => ['start' => '17:00', 'end' => '18:00']]);
+    $before = $day->fresh()->meals;
+    $refusal = 'Your meals can\'t fit around the workout at that time. Nothing was changed.';
+
+    $preview = OptimizeDay::preview($user, '2026-09-24');
+
+    expect([$preview->message, $preview->can_save])->toBe([$refusal, false])
+        ->and(collect($preview->rows)->pluck('before_text')->all())->toBe(['7:30 AM', '12:30 PM', '7:00 PM'])
+        ->and(collect($preview->rows)->every(fn (OptimizeRow $row) => ! $row->changed))->toBeTrue()
+        ->and(fn () => app(OptimizeDay::class)($user, new DayOptimizeInput('2026-09-24')))->toThrow(DomainException::class, $refusal)
+        ->and($day->fresh()->meals)->toEqual($before);
+});

@@ -1,5 +1,6 @@
 <?php
 
+use App\Capabilities\Support\ReadKey;
 use App\Models\DayTarget;
 use App\Models\User;
 use App\Models\WorkoutSession;
@@ -70,6 +71,7 @@ it('SCH-038 SCH-056 CAP-013 a move re-targets both days with a toast, and its un
         'today_show{"date":"2026-09-24"}', 'today_show{"date":"2026-09-26"}', 'day_optimize_show{"date":"2026-09-26"}',
         'day_redistribute_show{"date":"2026-09-24"}', 'day_adjust_show{"date":"2026-09-26"}',
         'week_show{"date":"2026-09-21"}', 'week_show{"date":"2026-09-27"}', 'week_show{}', 'train_show{}',
+        ReadKey::for('workout_show', ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 2]),
     )->and(WorkoutSession::query()->count())->toBe(1);
 
     workoutWrite($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
@@ -87,7 +89,8 @@ it('SCH-056 CAP-013 a new start re-targets its day, and undo puts it back', func
     $response = workoutWrite($user, 'workout_time_set', ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 2, 'time' => '12:00'])
         ->assertOk()
         ->assertJsonPath('data.toast', 'Meals updated for your 12:00 PM workout');
-    expect($response->json('data.invalidates'))->toContain('today_show{"date":"2026-09-24"}', 'day_optimize_show{"date":"2026-09-24"}', 'week_show{"date":"2026-09-24"}');
+    expect($response->json('data.invalidates'))->toContain('today_show{"date":"2026-09-24"}', 'day_optimize_show{"date":"2026-09-24"}', 'week_show{"date":"2026-09-24"}',
+        ReadKey::for('workout_show', ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 2]));
 
     workoutWrite($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
 

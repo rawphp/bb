@@ -233,3 +233,53 @@ it('SCH-056 refuses a new start for a session that has started, is skipped, or w
     'skipped' => [['is_skipped' => true], 2],
     'on a past day' => [[], 1],
 ]);
+
+it('SCH-038 a move named by the mesocycle id in capitals saves the row under the stored id', function () {
+    [$user, $mesocycle] = sessionWorld();
+    SheetSeed::day($user, '2026-09-24');
+    SheetSeed::day($user, '2026-09-26');
+
+    app(MoveWorkout::class)($user, new WorkoutMoveInput(strtoupper($mesocycle->id), 3, 2, '2026-09-26'));
+
+    expect(WorkoutSession::query()->sole()->mesocycle_id)->toBe($mesocycle->id)
+        ->and(TodaySnapshot::load($user, '2026-09-26')->workout(DayPlans::day('2026-09-26'))?->day)->toBe(2);
+});
+
+it('SCH-038 refuses a move onto a day whose session is skipped: a skipped session still holds its day', function () {
+    [$user, $mesocycle] = sessionWorld('2026-09-21');
+    SheetSeed::day($user, '2026-09-21');
+    SheetSeed::day($user, '2026-09-24');
+    WorkoutSession::factory()->for($user)->create([
+        'mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 2, 'is_skipped' => true,
+        'planned_start_at' => '2026-09-24 17:30:00', 'planned_end_at' => '2026-09-24 18:30:00',
+    ]);
+    $rows = WorkoutSession::query()->get()->toArray();
+    $before = storedDays();
+
+    expect(fn () => moveSession($user, $mesocycle, '2026-09-24', day: 1))->toThrow(DomainException::class, 'That day already has a workout. Pick another day.')
+        ->and(WorkoutSession::query()->get()->toArray())->toEqual($rows)
+        ->and(storedDays())->toEqual($before);
+});
+
+it('SCH-038 SCH-056 a move or a new start whose session row fails to save leaves the days as they were', function (string $write) {
+    [$user, $mesocycle] = sessionWorld();
+    SheetSeed::day($user, '2026-09-24');
+    SheetSeed::day($user, '2026-09-26');
+    $before = storedDays();
+    WorkoutSession::saving(fn (): never => throw new RuntimeException('the session could not be saved'));
+
+    expect(fn () => $write === 'move' ? moveSession($user, $mesocycle, '2026-09-26') : timeSession($user, $mesocycle, '12:00'))
+        ->toThrow(RuntimeException::class, 'the session could not be saved')
+        ->and(storedDays())->toEqual($before);
+})->with(['move', 'time']);
+
+it('SCH-056 a start whose meals cannot fit around it is refused in plain words and saves nothing', function () {
+    [$user, $mesocycle] = sessionWorld();
+    SheetSeed::day($user, '2026-09-24');
+    Profile::query()->where('user_id', $user->id)->update(['eating_window' => ['start' => '17:00', 'end' => '18:00']]);
+    $before = storedDays();
+
+    expect(fn () => timeSession($user, $mesocycle, '12:00'))->toThrow(DomainException::class, 'Your meals can\'t fit around the workout at that time. Nothing was changed.')
+        ->and(WorkoutSession::query()->count())->toBe(0)
+        ->and(storedDays())->toEqual($before);
+});

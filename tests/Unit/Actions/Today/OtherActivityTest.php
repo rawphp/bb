@@ -4,8 +4,10 @@ use App\Actions\Today\DeleteOtherActivity;
 use App\Actions\Today\RetargetableDay;
 use App\Actions\Today\SaveOtherActivity;
 use App\Capabilities\Today\Data\OtherActivitySaveInput;
+use App\Models\Mesocycle;
 use App\Models\OtherActivity;
 use App\Models\User;
+use App\Models\WorkoutSession;
 use App\Support\Today\DayPlans;
 use App\Support\Today\TodaySnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -152,3 +154,51 @@ it('SCH-032 a past day\'s activity is not deleted', function () {
     expect(fn () => app(DeleteOtherActivity::class)($user, $row->id))->toThrow(DomainException::class, RetargetableDay::PAST)
         ->and(OtherActivity::query()->count())->toBe(1);
 });
+
+it('SCH-038 SCH-053 a skipped session\'s energy is not on its day: the activity alone sets the day type', function () {
+    $user = activityWorld();
+    $mesocycle = Mesocycle::query()->sole();
+    WorkoutSession::factory()->for($user)->create([
+        'mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 2, 'is_skipped' => true,
+        'planned_start_at' => '2026-09-24 17:30:00', 'planned_end_at' => '2026-09-24 18:30:00',
+    ]);
+    $day = SheetSeed::day($user, '2026-09-24', ['day_type' => 'rest']);
+
+    saveActivity($user, ['date' => '2026-09-24', 'intensity' => 'light']);
+
+    // 0.75 h x 64 kg x 3.
+    expect($day->fresh()->day_type->value)->toBe('light')
+        ->and($day->fresh()->kcal)->toEqualWithDelta(2600.0 + 144.0, 1e-6);
+});
+
+it('SCH-038 TBL-031 a session in the deload week is Light, so a light activity leaves the day light', function () {
+    $user = TrainSeed::user();
+    // Twelve working sets on Thursday: Moderate in a normal week, Light in the deload week (week 5).
+    $mesocycle = TrainSeed::mesocycle($user);
+    $days = $mesocycle->days;
+    $days[1]['slots'][0]['sets'] = 12;
+    $mesocycle->update(['days' => $days]);
+    $normal = SheetSeed::day($user, '2026-09-24');
+    $deload = SheetSeed::day($user, '2026-10-08');
+
+    saveActivity($user, ['date' => '2026-09-24', 'intensity' => 'light']);
+    saveActivity($user, ['id' => '01JBX0A1B2C3D4E5F6G7H8J9K1', 'date' => '2026-10-08', 'intensity' => 'light']);
+
+    expect($normal->fresh()->day_type->value)->toBe('moderate')
+        ->and($deload->fresh()->day_type->value)->toBe('light');
+});
+
+it('SCH-032 a save or a delete whose activity row fails leaves the day as it was', function (string $write) {
+    $user = activityWorld();
+    $day = SheetSeed::day($user);
+    if ($write === 'delete') {
+        saveActivity($user);
+    }
+    $before = $day->fresh()->only(['day_type', 'kcal', 'meals']);
+    OtherActivity::saving(fn (): never => throw new RuntimeException('the activity could not be saved'));
+    OtherActivity::deleting(fn (): never => throw new RuntimeException('the activity could not be saved'));
+
+    expect(fn () => $write === 'save' ? saveActivity($user) : app(DeleteOtherActivity::class)($user, ACTIVITY))
+        ->toThrow(RuntimeException::class, 'the activity could not be saved')
+        ->and($day->fresh()->only(['day_type', 'kcal', 'meals']))->toEqual($before);
+})->with(['save', 'delete']);
