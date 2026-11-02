@@ -3,6 +3,7 @@
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\WriteResult;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
+use Tests\Support\ContractDtos;
 use Tests\Support\Fixtures\Rail\TallyInput;
 
 it('CAP-011 records a write\'s affects in its catalog entry', function () {
@@ -71,8 +72,21 @@ it('CAP-011 names each affects entry that is not a registered read', function ()
     ]);
 });
 
-it('CAP-011 has every registered affects entry name a registered read', function () {
-    expect(HostDefinition::unknownAffects(app(CapabilityRegistry::class)))->toBe([]);
+it('CAP-011 has every registered affects entry name a registered read, or a contract read waiting for its API issue', function () {
+    // As in PARITY: a read with an output snapshot and an owners entry naming the issue that registers it. Once
+    // that issue registers it, the entry is checked like any other.
+    $root = dirname(__DIR__, 4);
+    $owners = ContractDtos::owners($root);
+    $waiting = array_filter(
+        HostDefinition::unknownAffects(app(CapabilityRegistry::class)),
+        function (string $entry) use ($root, $owners): bool {
+            $read = substr($entry, strrpos($entry, ' ') + 1);
+
+            return ! isset($owners[$read]) || ! is_file("{$root}/tests/fixtures/schemas/{$read}.output.json");
+        },
+    );
+
+    expect(array_values($waiting))->toBe([]);
 });
 
 it('CAP-011 has every registered write declare what it affects', function () {
