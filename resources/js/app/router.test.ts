@@ -65,11 +65,14 @@ describe('router', () => {
     it('NAV-001 links a tab\'s screens from its placeholder root until the tab has its own', () => {
         const more = routesFor(false).find((route) => route.path === '/more');
 
+        // Other features add More screens too, so this checks the rule rather than the full list.
         expect(more?.props).toMatchObject({ label: 'More' });
-        expect((more?.props as { links: string[] }).links).toEqual(expect.arrayContaining(['/account', '/settings/tokens']));
+        const links = (more?.props as { links: string[] }).links;
+        expect(links).toEqual(expect.arrayContaining(['/account', '/learn', '/settings/tokens']));
+        expect(links).not.toContain('/learn/:slug');
         // Dev routes stay out unless the server flags them on; the Coach only shows where the agent runs (AGT-002).
-        expect((more?.props as { links: string[] }).links).not.toContain('/dev/clock');
-        expect((more?.props as { links: string[] }).links).not.toContain('/settings/coach');
+        expect(links).not.toContain('/dev/clock');
+        expect(links).not.toContain('/settings/coach');
     });
 
     it('PWA-025 gives each router its navigation', () => {

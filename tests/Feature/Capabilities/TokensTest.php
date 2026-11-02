@@ -253,7 +253,7 @@ it('CAP-014 replays a token create without its secret, and stores no secret', fu
 
     expect($secret)->not->toBe('')
         ->and(json_encode(DB::table('capabilities_idempotency')->get()))->not->toContain($secret)
-        ->and(json_encode(DB::table('capabilities_audit_outbox')->get()))->not->toContain($secret)
+        ->and(json_encode(DB::table('audit_records')->get()))->not->toContain($secret)
         ->and(PersonalAccessToken::query()->count())->toBe(1);
 });
 

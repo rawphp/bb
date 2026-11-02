@@ -8,6 +8,7 @@ use App\Agent\RegistryToolCatalog;
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Support\AgentPolicy;
+use App\Capabilities\Support\AuditRecordWriter;
 use App\Capabilities\Support\BillingGate;
 use App\Capabilities\Support\HostBus;
 use App\Capabilities\Support\HostDefinition;
@@ -21,6 +22,7 @@ use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
 use LogicException;
 use Rawphp\Capabilities\Adapters\Artisan\IntegrationHealthCommand;
+use Rawphp\Capabilities\Contracts\AuditWriter;
 use Rawphp\Capabilities\Contracts\Authorizer;
 use Rawphp\Capabilities\Contracts\CapabilityBus;
 use Rawphp\Capabilities\Contracts\IdempotencyStore;
@@ -49,6 +51,9 @@ final class CapabilitiesHostProvider extends ServiceProvider
         $this->app->singletonIf(BillingGate::class, NoBilling::class);
         $this->app->singletonIf(AgentPolicy::class, NoAgentPolicy::class);
         $this->app->singleton(Authorizer::class, HostAuthorizer::class);
+
+        // Replaces the package's outbox writer: Activity reads these rows (CAP-022).
+        $this->app->singleton(AuditWriter::class, AuditRecordWriter::class);
 
         // Replaces the package's alias of CapabilityBus to the registry (CAP-012, CAP-014).
         $this->app->singleton(CapabilityBus::class, fn (Container $app): HostBus => new HostBus($app->make(CapabilityRegistry::class), $app->make(Ownership::class)));

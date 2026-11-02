@@ -133,11 +133,11 @@ With billing on, add a webhook endpoint in Stripe pointing at the app's Stripe w
 
 Two workers:
 
-- `default`: the `default` queue (notifications, mail and other background jobs) and the `capabilities-audit` queue, which writes the audit log.
+- `default`: the `default` queue (notifications, mail and other background jobs). The audit log needs no worker: each row is written during the request that made the change. Earlier versions of this guide also listed a `capabilities-audit` queue. Nothing was ever pushed to it, so an upgrade has nothing to drain there. A failed audit insert is reported to the app's exception handler (your error tracker or `storage/logs`).
 - `agent`: the Coach's turns, on the `agent` connection. Its `retry_after` is `CAPABILITIES_AI_CLAIM_TTL` plus 60 seconds, so a turn that runs long is never handed to a second worker. Only needed with the agent on, but harmless without it.
 
 ```bash
-php artisan queue:work redis --queue=default,capabilities-audit --tries=3
+php artisan queue:work redis --queue=default --tries=3
 php artisan queue:work agent --queue=agent --tries=1
 ```
 
@@ -151,7 +151,7 @@ After=network.target mysql.service redis.service
 [Service]
 User=www-data
 WorkingDirectory=/var/www/bodybuilder
-ExecStart=/usr/bin/php artisan queue:work redis --queue=default,capabilities-audit --tries=3
+ExecStart=/usr/bin/php artisan queue:work redis --queue=default --tries=3
 Restart=always
 
 [Install]
@@ -162,11 +162,13 @@ Copy it for `agent` with `queue:work agent --queue=agent --tries=1`. Restart bot
 
 ## Scheduler
 
-The scheduler sends due Web Push notifications, reaps the agent's stale turns and prunes the idempotency and audit tables. Run it every minute from cron, as the web server user:
+The scheduler reaps the agent's stale turns, prunes the audit log (`audit_records`, kept 90 days) and prunes expired undo tokens. Sending due Web Push notifications is not scheduled yet. Run it every minute from cron, as the web server user:
 
 ```cron
 * * * * * cd /var/www/bodybuilder && php artisan schedule:run >> /dev/null 2>&1
 ```
+
+An instance that ran before the audit log moved to `audit_records` also has audit rows in the package's `capabilities_audit_outbox` table. Nothing writes to it any more. The same daily prune keeps those rows to 90 days too, and deleting an account deletes its rows there.
 
 ## Food data
 
@@ -179,9 +181,11 @@ php artisan foods:import off openfoodfacts-products.jsonl.gz
 ```
 
 - USDA FoodData Central (public domain): the Foundation and Branded JSON downloads from <https://fdc.nal.usda.gov/download-datasets>.
-- Open Food Facts (ODbL): the JSONL export from <https://world.openfoodfacts.org/data>. The app shows the ODbL attribution. Any dump you publish that is derived from it stays under ODbL.
+- Open Food Facts (ODbL): the JSONL export from <https://world.openfoodfacts.org/data>. ODbL requires the credit "Food data from Open Food Facts (openfoodfacts.org), available under the Open Database License (ODbL)." in the app. The app does not show it yet: the food detail and Settings → About screens that will are not built. Until they ship, show that text yourself wherever your instance shows food data; `foods:import off` prints this reminder after every successful import. Any dump you publish that is derived from it stays under ODbL.
 
-Imports stream the file and upsert in batches, so re-running one leaves the same rows. Re-run them to refresh the data.
+Imports stream the file and upsert in batches, so re-running one leaves the same rows. An import that finds the file cut off or corrupt exits with an error, keeping the foods it saved before the bad part (a cut-off USDA file loses the batch it was reading): download the file again and re-run it. Import the Open Food Facts `.jsonl.gz` as downloaded rather than unpacking it, since a plain `.jsonl` cut exactly at a line break looks complete. Re-run them to refresh the data.
+
+An import writes `foods` and `food_servings` and, on a re-run, replaces imported foods' values and servings; removing the command does not undo that. On an instance with users, take a full database backup before an import. Restoring it takes the import back out but also discards everything users wrote after the backup, so do it only right after a failed or unwanted import, before users log against the new foods. Later, fix bad data by re-importing a corrected file, which refreshes the same rows in place. Do not delete imported foods by hand: users' favorites, recents, saved meals, plans, recipes and logged entries point at them, so a delete cascades into user data or is refused by a foreign key.
 
 ## Updating
 
@@ -189,9 +193,12 @@ Imports stream the file and upsert in batches, so re-running one leaves the same
 git pull
 composer install --no-dev --optimize-autoloader
 php artisan migrate --force
+php artisan db:seed --force
 php artisan config:cache
 php artisan route:cache
 php artisan queue:restart
 ```
+
+`db:seed` brings the library (exercises, templates, curated foods, recipes) up to the data files in `database/seeders/data/`, so a corrected value there reaches an install that is already running. It is safe to re-run: library rows are matched by name or slug and updated in place, so their IDs and the users' meals, saved meals and recipes that point at them are kept. Nothing is duplicated, and the test account is only ever seeded in `local` and `testing`. `tests/Feature/DatabaseSeederTest.php` re-runs every seeder on a production install with user data. It fails if any row in a non-library table changes, if a user's own food, recipe or exercise changes, or if a library row's ID changes. Take a database backup before updating, as for any release.
 
 With a `package.json` in the repo, rebuild the front end too (`npm ci`, then `npm run build`).

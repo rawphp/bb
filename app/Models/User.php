@@ -48,6 +48,9 @@ class User extends Authenticatable
 
             // Tokens belong to the user through a morph, which no foreign key cascades.
             PersonalAccessToken::ownedBy($user)->delete();
+
+            // The package's old audit rows name the user in their payload, with no foreign key.
+            AuditOutboxRow::ownedBy($user)->delete();
         });
     }
 
