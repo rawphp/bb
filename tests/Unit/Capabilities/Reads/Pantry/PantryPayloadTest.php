@@ -208,7 +208,8 @@ it('FOOD-020 the Recipes filter lists the recipes read, each with a serving\'s m
         ->and($payload['create_custom_food'])->toBeNull()
         ->and($payload['empty_text'])->toBeNull()
         ->and(pantryPayload(['collection' => 'recipes', 'query' => 'pie'], new PantrySnapshot)['empty_text'])->toBe('No recipes match pie.')
-        ->and(pantryPayload(['collection' => 'recipes'], new PantrySnapshot)['empty_text'])->toBe('No recipes yet.');
+        ->and(pantryPayload(['collection' => 'recipes'], new PantrySnapshot)['empty_text'])->toBe('No recipes yet.')
+        ->and(pantryPayload(['collection' => 'recipes'], new PantrySnapshot(recipesHidden: true))['empty_text'])->toBe('No recipes match your filters.');
 });
 
 it('FOOD-020 the Saved Meals filter lists the saved meals read, with how many foods each holds', function () {

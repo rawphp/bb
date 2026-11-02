@@ -161,15 +161,26 @@ it('FOOD-020 FOOD-027 the Recipes filter lists the user\'s own recipes, then the
     RecipeIngredient::factory()->create(['recipe_id' => $mine->id, 'food_id' => $rice->id, 'grams' => 200, 'is_cooked' => true]);
     Recipe::factory()->create(['name' => 'Bean burrito', 'meal_type' => 'dinner', 'vegan' => true]);
     Recipe::factory()->create(['name' => 'Beef burrito', 'meal_type' => 'dinner']);
+    Recipe::factory()->create(['name' => 'Lentil soup', 'meal_type' => 'dinner', 'vegan' => true]);
     Recipe::factory()->for($other)->create(['name' => 'Their bowl', 'vegan' => true]);
 
     $recipes = pantrySearch($user, ['collection' => 'recipes'])->assertOk()->json('data.recipes');
 
-    expect(array_column($recipes, 'name'))->toBe(['Zesty bowl', 'Bean burrito'])
-        ->and(array_column($recipes, 'is_library'))->toBe([false, true])
+    expect(array_column($recipes, 'name'))->toBe(['Zesty bowl', 'Bean burrito', 'Lentil soup'])
+        ->and(array_column($recipes, 'is_library'))->toBe([false, true, true])
         ->and($recipes[0]['macros_text'])->toBe('200 kcal · P 5 · F 4 · C 30')
         ->and($recipes[0]['meal_type_title'])->toBe('Lunch')
-        ->and(array_column(pantrySearch($user, ['collection' => 'recipes', 'query' => 'BURRITO'])->json('data.recipes'), 'name'))->toBe(['Bean burrito']);
+        ->and(array_column(pantrySearch($user, ['collection' => 'recipes', 'query' => 'BURRITO'])->json('data.recipes'), 'name'))->toBe(['Bean burrito'])
+        ->and(pantrySearch($user, ['collection' => 'recipes', 'query' => 'beef'])->json('data.empty_text'))->toBe('No recipes match beef.');
+});
+
+it('FOOD-027 a Recipes filter the diet filters emptied says so', function () {
+    $user = User::factory()->create();
+    Profile::factory()->for($user)->create(['diet_filters' => ['vegan']]);
+    Recipe::factory()->for($user)->create(['name' => 'Beef stew']);
+
+    expect(pantrySearch($user, ['collection' => 'recipes'])->json('data.empty_text'))->toBe('No recipes match your filters.')
+        ->and(pantrySearch(User::factory()->create(), ['collection' => 'recipes'])->json('data.empty_text'))->toBe('No recipes yet.');
 });
 
 it('FOOD-020 the Saved Meals filter lists the user\'s saved meals by name with their food counts', function () {
@@ -182,5 +193,6 @@ it('FOOD-020 the Saved Meals filter lists the user\'s saved meals by name with t
     $meals = pantrySearch($user, ['collection' => 'saved_meals'])->assertOk()->json('data.saved_meals');
 
     expect(array_column($meals, 'detail', 'name'))->toBe(['Breakfast' => '0 foods', 'Bulk dinner' => '3 foods'])
-        ->and(array_column(pantrySearch($user, ['collection' => 'saved_meals', 'query' => 'bulk'])->json('data.saved_meals'), 'name'))->toBe(['Bulk dinner']);
+        ->and(array_column(pantrySearch($user, ['collection' => 'saved_meals', 'query' => 'bulk'])->json('data.saved_meals'), 'name'))->toBe(['Bulk dinner'])
+        ->and(pantrySearch($user, ['collection' => 'saved_meals', 'query' => '%'])->json('data'))->toMatchArray(['saved_meals' => [], 'empty_text' => 'No saved meals match %.']);
 });
