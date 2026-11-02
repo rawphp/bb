@@ -148,6 +148,28 @@ describe('PhaseDetailView', () => {
         expect(push).toHaveBeenCalledWith('/plan');
     });
 
+    it('CAP-012 PH-007 stays on the phase with the server\'s refusal when it cannot end', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('phase_end', 422, { error: { code: 'validation_failed', message: 'This phase cannot end yet.', violations: [] } }));
+        const wrapper = show();
+        await wrapper.find('[data-test="end-phase"]').trigger('click');
+        await wrapper.find('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(push).not.toHaveBeenCalled();
+        expect(wrapper.find('[data-test="end-sheet"]').text()).toContain('This phase cannot end yet.');
+    });
+
+    it('UI-022 keeps the End phase sheet open while phase_end is in flight', async () => {
+        writeMock.mockImplementationOnce(() => new Promise(() => undefined));
+        const wrapper = show();
+        await wrapper.find('[data-test="end-phase"]').trigger('click');
+        await wrapper.find('[data-save]').trigger('click');
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="end-sheet"]').exists()).toBe(true);
+    });
+
     it('PH-007 sends nothing when the user keeps going', async () => {
         const wrapper = show();
         await wrapper.find('[data-test="end-phase"]').trigger('click');
@@ -202,6 +224,22 @@ describe('PhaseDetailView', () => {
         expect(wrapper.find('[data-test="goal-sheet"]').exists()).toBe(false);
     });
 
+    it('PH-009 makes a new phase id for a change after the server refused the last one', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('phase_goal_change', 422, { error: { code: 'validation_failed', message: 'Not now.', violations: [] } }));
+        const wrapper = show();
+        await wrapper.find('[data-test="change-goal"]').trigger('click');
+        await pick(wrapper, 'Mini-cut');
+        await wrapper.find('[data-save]').trigger('click');
+        await flushPromises();
+        await pick(wrapper, 'Maintenance');
+        await wrapper.find('[data-save]').trigger('click');
+        await flushPromises();
+
+        const calls = sent();
+        expect(calls).toHaveLength(2);
+        expect(calls[1]![1].new_phase_id).not.toBe(calls[0]![1].new_phase_id);
+    });
+
     it('PH-012 shows a goal\'s warnings without blocking, and a refusal blocks it', async () => {
         const wrapper = show();
         await wrapper.find('[data-test="change-goal"]').trigger('click');
@@ -233,6 +271,15 @@ describe('PhaseDetailView', () => {
         await wrapper.find('[data-test="remove-event"]').trigger('click');
         await flushPromises();
         expect(sent()).toEqual([['phase_event_date_set', { phase_id: ID, event_date: null }]]);
+    });
+
+    it('CAP-012 says why the event date could not be removed', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('phase_event_date_set', 422, { error: { code: 'validation_failed', message: 'The event has passed.', violations: [] } }));
+        const wrapper = show({ payload: warning });
+        await wrapper.find('[data-test="remove-event"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="error"]').text()).toContain('The event has passed.');
     });
 
     it('PLAN-028 offers to end the phase in the event week, opening the lengths at that week (phase_show.warning)', async () => {
@@ -299,6 +346,26 @@ describe('CurrentPhaseView', () => {
         await flushPromises();
 
         expect(wrapper.find('[data-test="end-sheet"]').exists()).toBe(true);
+    });
+
+    it('PH-007 opens no End phase sheet when the server says the running phase cannot end', async () => {
+        readMock.mockResolvedValue({ ...phase, can_end: false });
+        const wrapper = current({ payload: plan, action: 'end' });
+        await flushPromises();
+
+        expect(wrapper.find('h1').text()).toBe('Fat loss');
+        expect(wrapper.find('[data-test="end-sheet"]').exists()).toBe(false);
+    });
+
+    it('PH-006 opens the length sheet once, so a saved length closes it for good', async () => {
+        const wrapper = current({ payload: plan, action: 'adjust-length' });
+        await flushPromises();
+        await pick(wrapper, '16 weeks');
+        await wrapper.findAll('[data-test="fix"]')[0]!.trigger('click');
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledTimes(2);
+        expect(wrapper.find('[data-test="length-sheet"]').exists()).toBe(false);
     });
 
     it('PH-006 says no phase is running when there is none (plan_show.empty)', () => {

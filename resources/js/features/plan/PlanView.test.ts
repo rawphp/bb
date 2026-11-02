@@ -173,6 +173,18 @@ describe('PlanView', () => {
         await flushPromises();
 
         expect(wrapper.find('[data-test="deload-sheet"]').text()).toContain('This deload has passed.');
+        expect(wrapper.find<HTMLInputElement>('input[type="checkbox"]').element.checked).toBe(false);
+    });
+
+    it('UI-022 keeps the deload sheet open while its write is in flight', async () => {
+        writeMock.mockImplementationOnce(() => new Promise(() => undefined));
+        const wrapper = show(warning);
+        await wrapper.findAll('[data-test="deload"]')[1]!.trigger('click');
+        await wrapper.find('input[type="checkbox"]').setValue(true);
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="deload-sheet"]').exists()).toBe(true);
     });
 
     it('PLAN-003 says the plan appears once setup is done, and still offers to add a phase (plan_show.empty)', () => {
@@ -189,6 +201,13 @@ describe('PlanView', () => {
         expect(wrapper.findAll('[data-mark]')).toHaveLength(1);
         expect(wrapper.find('[data-test="timeline"]').classes()).toContain('opacity-60');
         expect(wrapper.find('[data-value]').text()).toBe('52 days to your event');
+    });
+
+    it('OFF-008 marks a plan with no event countdown as waiting to sync too', () => {
+        const wrapper = show(plan, true);
+
+        expect(wrapper.findAll('[data-mark]')).toHaveLength(1);
+        expect(wrapper.find('[data-test="timeline"]').classes()).toContain('opacity-60');
     });
 
     it('OFF-008 shows no mark when nothing waits to sync', () => {
