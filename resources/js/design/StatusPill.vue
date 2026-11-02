@@ -30,9 +30,14 @@ const tones = {
     info: 'text-tone-info bg-tone-info-bg',
 } as const;
 
-// Loading, error and disabled show no decided status, so they stay neutral.
+// Loading and disabled show no decided status, so they stay neutral. An error
+// uses the warning tone, as the other components' errors do.
 const ready = computed(() => !props.loading && !props.error);
-const tone = computed(() => (ready.value && !props.disabled ? props.tone : 'neutral'));
+const tone = computed(() => {
+    if (props.loading) return 'neutral';
+    if (props.error) return 'warning';
+    return props.disabled ? 'neutral' : props.tone;
+});
 const icon = computed(() => {
     if (props.loading) return null;
     if (props.error) return toneIcons.warning;
@@ -48,6 +53,8 @@ const label = computed(() => {
 <template>
     <span
         v-if="label"
+        :aria-busy="props.loading || undefined"
+        :aria-disabled="props.disabled || undefined"
         class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold"
         :class="[tones[tone], { 'animate-pulse': props.loading, 'opacity-50': props.disabled }]"
     >
@@ -61,7 +68,9 @@ const label = computed(() => {
         >
             <path :d="icon" />
         </svg>
-        <span>{{ label }}</span>
+        <!-- Inserted fresh, so a screen reader announces the error (UI-030). -->
+        <span v-if="!props.loading && props.error" role="alert">{{ label }}</span>
+        <span v-else>{{ label }}</span>
         <span v-if="ready && props.pending" class="font-normal">· Waiting to sync</span>
         <span v-if="props.disabled" class="sr-only">, unavailable</span>
     </span>
