@@ -12,8 +12,9 @@ type DateKey = 'start_date' | 'last_day';
 // Step 6: rate and length (ONB-008, ONB-009). Each change is one answer: a preset, the
 // custom rate, the length, the start, the last day or the target; the server works out
 // the others and sends them all back, with the length limits and recommended range
-// (TBL-010) and any warnings as the step's notices. While a change waits to sync, the
-// numbers the server worked out are marked (OFF-008). Ported from rp-clone's RateLengthStep.
+// (TBL-010) and any warnings as the step's notices. While a change waits to sync, every
+// number the server worked out (the rates, the length, the dates, the target) is dimmed
+// and the length and custom rate carry the mark (OFF-008). Ported from rp-clone's RateLengthStep.
 const props = defineProps<{ rateLength: Section; locked?: boolean; pending?: boolean }>();
 
 const emit = defineEmits<{ answer: [answers: Answers] }>();
@@ -46,6 +47,7 @@ const dateInput = 'rounded-lg bg-background px-3 py-1.5 tabular-nums text-primar
             <h3 :class="heading">Rate</h3>
             <ChoiceList
                 label="Rate"
+                :class="{ 'opacity-60': pending }"
                 :choices="toChoices<string>(rateLength.options)"
                 :model-value="picked<string>(rateLength.options)"
                 :disabled="locked"
@@ -88,7 +90,7 @@ const dateInput = 'rounded-lg bg-background px-3 py-1.5 tabular-nums text-primar
             <StepNote v-if="rateLength.recommended_text" :text="rateLength.recommended_text" />
         </section>
 
-        <section class="flex flex-col gap-1">
+        <section class="flex flex-col gap-1" :class="{ 'opacity-60': pending }">
             <div v-if="rateLength.start_date.is_locked" :class="dateRow">
                 <span class="text-primary-text">Start date</span>
                 <span class="tabular-nums text-primary-text">{{ rateLength.start_date.text }}</span>
@@ -123,6 +125,7 @@ const dateInput = 'rounded-lg bg-background px-3 py-1.5 tabular-nums text-primar
         <section class="flex flex-col gap-1.5">
             <h3 :class="heading">Target weight</h3>
             <NumberField
+                :class="{ 'opacity-60': pending }"
                 label="Target weight"
                 :unit="rateLength.target_weight.unit"
                 :model-value="rateLength.target_weight.value"

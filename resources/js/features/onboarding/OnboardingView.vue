@@ -53,7 +53,11 @@ let wantsMove: 'next' | 'back' | null = null;
 const saving = ref(false);
 const moving = ref(false);
 const starting = ref(false);
-const locked = computed(() => saving.value || moving.value || starting.value);
+// A start that got no answer may have built the plan from the answers as they stood, and
+// a retry replays it with the same key; so until a start is answered, nothing it was
+// built from may change: the answers, Edit and Back stay off, and only the retry is left.
+const startUnsure = ref(false);
+const locked = computed(() => saving.value || moving.value || starting.value || startUnsure.value);
 const fields = ref(0);
 
 async function post(input: OnboardingAnswerInput): Promise<boolean> {
@@ -72,17 +76,19 @@ async function go(to: 'next' | 'back' | 'edit', editStep?: number): Promise<void
     }
 }
 
-// "Start my plan". The install is offered on this tap, as Chrome shows its prompt only
-// on a user gesture (PWA-003). A start that gets no answer may have worked; pressed again
-// it is the same write with the same key, so the server replays it.
+// "Start my plan". The install is offered on this tap, before the plan is sent, as Chrome
+// shows its prompt only on a user gesture (PWA-003). A start that gets no answer may have
+// worked; pressed again it is the same write with the same key, so the server replays it.
 async function start(): Promise<void> {
-    if (locked.value) return;
+    if (saving.value || moving.value || starting.value) return;
     void offerInstall();
     starting.value = true;
-    if ((await sendStart('onboarding_complete', {}, 'Your plan could not be started.')) === 'done') {
+    const outcome = await sendStart('onboarding_complete', {}, 'Your plan could not be started.');
+    if (outcome === 'done') {
         await router.replace('/');
         return;
     }
+    startUnsure.value = outcome === 'no-answer';
     starting.value = false;
 }
 
@@ -102,6 +108,7 @@ async function answer(answers: Answers): Promise<void> {
 
 function move(to: 'next' | 'back'): void {
     if (moving.value || starting.value) return;
+    if (startUnsure.value && to === 'back') return;
     if (to === 'next' && data.value?.step.key === 'review') {
         void start();
         return;
@@ -113,7 +120,8 @@ function move(to: 'next' | 'back'): void {
 const step = computed((): StepFlowStep | null => {
     const shown = data.value?.step;
     if (!shown) return null;
-    return moving.value ? { ...shown, can_go_back: false, can_continue: false, continue_hint: null } : shown;
+    if (moving.value) return { ...shown, can_go_back: false, can_continue: false, continue_hint: null };
+    return startUnsure.value ? { ...shown, can_go_back: false } : shown;
 });
 
 function edit(step: number): void {

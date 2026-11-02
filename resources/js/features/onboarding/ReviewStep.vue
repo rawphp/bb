@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
 import PendingMark from '@/design/PendingMark.vue';
-import { toneClasses } from '@/design/tones';
+import StatusPill from '@/design/StatusPill.vue';
 import OnboardingCallout from './parts/OnboardingCallout.vue';
 import StepPanel from './parts/StepPanel.vue';
 
@@ -17,7 +17,7 @@ const emit = defineEmits<{ edit: [step: number] }>();
 <template>
     <div class="flex flex-col gap-4">
         <PendingMark v-if="pending" />
-        <StepPanel v-for="section in review.sections" :key="section.title">
+        <StepPanel v-for="section in review.sections" :key="section.title" data-test="review-section">
             <div class="flex items-center justify-between gap-2">
                 <h3 class="text-base font-semibold text-primary-text">{{ section.title }}</h3>
                 <button
@@ -36,9 +36,7 @@ const emit = defineEmits<{ edit: [step: number] }>();
                 <span class="flex flex-col items-end gap-1" :class="{ 'opacity-60': pending }">
                     <span class="text-right text-sm text-primary-text">{{ row.value }}</span>
                     <span v-if="row.badges.length > 0" class="flex flex-wrap justify-end gap-1">
-                        <span v-for="badge in row.badges" :key="badge.text" class="rounded-full px-2 py-0.5 text-xs font-semibold" :class="toneClasses[badge.tone]">
-                            {{ badge.text }}
-                        </span>
+                        <StatusPill v-for="badge in row.badges" :key="badge.text" :text="badge.text" :tone="badge.tone" />
                     </span>
                 </span>
             </div>

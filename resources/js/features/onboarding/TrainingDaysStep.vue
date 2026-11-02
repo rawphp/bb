@@ -35,12 +35,8 @@ function toggle(weekday: number): void {
     });
 }
 
-function setStart(weekday: number, minutes: number): void {
-    send((day) => (day.is_on ? (day.weekday === weekday ? { ...saved(day), start_minutes: minutes } : saved(day)) : null));
-}
-
-function setLength(weekday: number, minutes: number): void {
-    send((day) => (day.is_on ? (day.weekday === weekday ? { ...saved(day), length_minutes: minutes } : saved(day)) : null));
+function setDay(weekday: number, change: Partial<DayAnswer>): void {
+    send((day) => (day.is_on ? { ...saved(day), ...(day.weekday === weekday ? change : {}) } : null));
 }
 </script>
 
@@ -51,7 +47,7 @@ function setLength(weekday: number, minutes: number): void {
         <template v-for="day in trainingDays.days" :key="day.weekday">
             <StepPanel v-if="day.is_on">
                 <span class="text-sm font-semibold text-primary-text">{{ day.full_name }}</span>
-                <TimeOfDayPicker label="Start time" :model-value="day.start.minutes" :disabled="locked" @update:model-value="(minutes) => setStart(day.weekday, minutes)" />
+                <TimeOfDayPicker label="Start time" :model-value="day.start.minutes" :disabled="locked" @update:model-value="(minutes) => setDay(day.weekday, { start_minutes: minutes })" />
                 <Stepper
                     :label="`${day.full_name} length`"
                     :text="day.length_text"
@@ -60,7 +56,7 @@ function setLength(weekday: number, minutes: number): void {
                     :max="trainingDays.length_max"
                     :step="trainingDays.length_step"
                     :disabled="locked"
-                    @update:model-value="(minutes) => setLength(day.weekday, minutes)"
+                    @update:model-value="(minutes) => setDay(day.weekday, { length_minutes: minutes })"
                 />
             </StepPanel>
         </template>
