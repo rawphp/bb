@@ -527,3 +527,61 @@ it('NUT-031 the 2-meal row has no bedtime or rest share: pre 40, post 60', funct
 
     expect(mealSplitValues($items, 'carbsG'))->toEqual([200, 300]);
 });
+
+// Review round 3: kcal when a fixed meal leaves little of the day, and a fixed meal on a training day.
+
+it('NUT-035 NUT-036 free meals keep the kcal of their food when the floors overshoot the day and a few kcal are left', function () {
+    $m = mealSplitIds(3);
+    $fixed = new MealTarget(kcal: 1499, proteinG: 60, fatG: 40, carbsG: 100);
+    $entries = [DayEntry::meal($m[0], fixed: $fixed), DayEntry::meal($m[1]), DayEntry::meal($m[2])];
+    $items = MealSplit::split(mealSplitDay(kcal: 1500, protein: 120, fat: 45, carbs: 120), $entries);
+
+    // 5 g fat left for two meals, so the floors win. Each free meal holds P 30, F 5, C 10: 205 kcal,
+    // the same as when the fixed meal overspends the day (1600 kcal), not 1 kcal shared out.
+    expect(mealSplitValues($items, 'fatG'))->toEqual([40, 5, 5])
+        ->and(mealSplitValues($items, 'kcal'))->toEqual([1499, 205, 205]);
+});
+
+it('NUT-035 a hand-edited post-workout meal stays fixed and the training-day split works around it', function () {
+    [$m, $entries] = mealSplitTrainingDay6();
+    $fixed = new MealTarget(kcal: 600, proteinG: 30, fatG: 10, carbsG: 125);
+    $entries[3] = DayEntry::meal($m[2], fixed: $fixed);
+    $items = MealSplit::split(mealSplitDay(kcal: 3000, protein: 180, fat: 80, carbs: 500), $entries);
+
+    // Carbs: 375 g left over pre 18, bedtime 18 and rest 13 x 3 = 75 points, 5 g a point.
+    // Fat: 70 g left; pre stays at half weight, so 1 : 0.5 : 1 : 1 : 1.
+    expect(mealSplitItemIds($items))->toBe($m)
+        ->and($items[2]->target)->toEqual($fixed)
+        ->and(mealSplitValues($items, 'carbsG'))->toEqual([65, 90, 125, 65, 65, 90])
+        ->and(mealSplitValues($items, 'fatG'))->toEqual([15, 10, 10, 15, 15, 15])
+        ->and(mealSplitValues($items, 'proteinG'))->toEqual([30, 30, 30, 30, 30, 30])
+        ->and(mealSplitValues($items, 'kcal'))->toEqual([455, 500, 600, 455, 450, 540])
+        ->and(mealSplitSum($items, 'carbsG'))->toEqualWithDelta(500, 1e-9)
+        ->and(mealSplitSum($items, 'fatG'))->toEqualWithDelta(80, 1e-9)
+        ->and(mealSplitSum($items, 'proteinG'))->toEqualWithDelta(180, 1e-9)
+        ->and(mealSplitSum($items, 'kcal'))->toEqualWithDelta(3000, 1e-9);
+});
+
+it('NUT-037 evening-weighted changes nothing on a rest day or a one-meal training day', function () {
+    [, $rest] = mealSplitRestDay(4);
+    [$meal] = mealSplitIds(1);
+    $oneMeal = [DayEntry::meal($meal), DayEntry::workout()];
+    $target = mealSplitDay(protein: 160, fat: 80, carbs: 400);
+
+    expect(MealSplit::split($target, $rest, CarbPlacement::EveningWeighted))->toEqual(MealSplit::split($target, $rest))
+        ->and(MealSplit::split($target, $oneMeal, CarbPlacement::EveningWeighted))->toEqual(MealSplit::split($target, $oneMeal));
+});
+
+it('NUT-036 when the floors win, a shake gets no fat or carbs and every meal gets 5 g', function () {
+    $m = mealSplitIds(6);
+    [$shake] = mealSplitIds(1);
+    $entries = [
+        DayEntry::meal($m[0]), DayEntry::meal($m[1]), DayEntry::workout(), DayEntry::intraWorkoutShake($shake),
+        DayEntry::meal($m[2]), DayEntry::meal($m[3]), DayEntry::meal($m[4]), DayEntry::meal($m[5]),
+    ];
+    $items = MealSplit::split(mealSplitDay(protein: 180, fat: 20, carbs: 20), $entries);
+
+    // The floors (30 g) beat the day (20 g), as SCH-053 allows; the shake has no floor, so it takes nothing.
+    expect(mealSplitValues($items, 'carbsG'))->toEqual([5, 5, 0, 5, 5, 5, 5])
+        ->and(mealSplitValues($items, 'fatG'))->toEqual([5, 5, 0, 5, 5, 5, 5]);
+});

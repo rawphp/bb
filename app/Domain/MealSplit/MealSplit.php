@@ -77,7 +77,9 @@ final class MealSplit
         $protein = self::distribute($day->proteinG, $slots, $proteinWeights, fn (MealTarget $t) => $t->proteinG, hasFloor: false);
         $fat = self::distribute($day->fatG, $slots, $fatWeights, fn (MealTarget $t) => $t->fatG, hasFloor: true);
         $carbs = self::distribute($day->carbsG, $slots, $carbWeights, fn (MealTarget $t) => $t->carbsG, hasFloor: true);
-        $kcal = self::distributeEnergy($day, $slots, $protein, $fat, $carbs);
+        $floorsWin = self::floorsWin($day->fatG, $slots, fn (MealTarget $t) => $t->fatG)
+            || self::floorsWin($day->carbsG, $slots, fn (MealTarget $t) => $t->carbsG);
+        $kcal = self::distributeEnergy($day, $slots, $protein, $fat, $carbs, $floorsWin);
 
         $items = [];
         foreach ($slots as $i => $slot) {
@@ -235,18 +237,11 @@ final class MealSplit
             return $result;
         }
 
-        $fixedSum = 0.0;
-        foreach ($slots as $slot) {
-            if ($slot->fixed !== null) {
-                $fixedSum += $field($slot->fixed);
-            }
-        }
-        $remaining = max(0.0, $total - $fixedSum);
-        $freeMeals = array_values(array_filter($free, fn (int $i) => ! self::isShake($slots[$i])));
+        $remaining = self::remaining($total, $slots, $field);
 
-        if ($hasFloor && $remaining < MacroRules::MEAL_MINIMUM_G * count($freeMeals)) {
+        if ($hasFloor && self::floorsWin($total, $slots, $field)) {
             // NUT-036, SCH-053: the floors win over the day total.
-            foreach ($freeMeals as $i) {
+            foreach (self::freeMeals($slots) as $i) {
                 $result[$i] = MacroRules::MEAL_MINIMUM_G;
             }
 
@@ -334,7 +329,54 @@ final class MealSplit
     }
 
     /**
-     * kcal follows the rounded grams (MacroRules::kcal) and is scaled to what the day has left.
+     * What the day has left of one macro once the fixed items take theirs, never below 0.
+     *
+     * @param  list<DayEntry>  $slots
+     * @param  callable(MealTarget): float  $field
+     */
+    private static function remaining(float $total, array $slots, callable $field): float
+    {
+        $fixedSum = 0.0;
+        foreach ($slots as $slot) {
+            if ($slot->fixed !== null) {
+                $fixedSum += $field($slot->fixed);
+            }
+        }
+
+        return max(0.0, $total - $fixedSum);
+    }
+
+    /**
+     * Unfixed meals, not shakes: the slots the SAFE-010 floor applies to.
+     *
+     * @param  list<DayEntry>  $slots
+     * @return list<int>
+     */
+    private static function freeMeals(array $slots): array
+    {
+        return array_keys(array_filter($slots, fn (DayEntry $slot) => $slot->fixed === null && ! self::isShake($slot)));
+    }
+
+    /**
+     * NUT-036, SCH-053: what the day has left of a floored macro cannot give every free meal its 5 g, so the free
+     * meals get 5 g each and together hold more than the day.
+     *
+     * @param  list<DayEntry>  $slots
+     * @param  callable(MealTarget): float  $field
+     */
+    private static function floorsWin(float $total, array $slots, callable $field): bool
+    {
+        return self::remaining($total, $slots, $field) < MacroRules::MEAL_MINIMUM_G * count(self::freeMeals($slots));
+    }
+
+    /**
+     * kcal follows the rounded grams (MacroRules::kcal) and is scaled to what the day has left, so the meals add up
+     * to the day (NUT-030).
+     *
+     * It is not scaled when the day has no kcal left, or when the SAFE-010 floors already put more fat or carbs in
+     * the free meals than the day holds ($floorsWin). The day is overspent either way, and scaling would squeeze the
+     * free meals' food into the few kcal left: 205 kcal of food would read 0 kcal. Their kcal follows their grams
+     * instead, as the grams do. rp-clone scales whenever any kcal is left; this departs from it on purpose.
      *
      * @param  list<DayEntry>  $slots
      * @param  list<float>  $protein
@@ -342,7 +384,7 @@ final class MealSplit
      * @param  list<float>  $carbs
      * @return list<float>
      */
-    private static function distributeEnergy(MealTarget $day, array $slots, array $protein, array $fat, array $carbs): array
+    private static function distributeEnergy(MealTarget $day, array $slots, array $protein, array $fat, array $carbs, bool $floorsWin): array
     {
         $result = array_fill(0, count($slots), 0.0);
         $free = array_keys(array_filter($slots, fn (DayEntry $slot) => $slot->fixed === null));
@@ -358,7 +400,7 @@ final class MealSplit
         }
         $remainingKcal = $day->kcal - $fixedKcal;
 
-        if ($remainingKcal > 0 && $energySum > 0) {
+        if (! $floorsWin && $remainingKcal > 0 && $energySum > 0) {
             $values = array_map(fn (float $e) => $remainingKcal * $e / $energySum, $energy);
             $total = $remainingKcal;
         } else {
