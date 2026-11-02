@@ -227,6 +227,27 @@ it('FOOD-001 fails a gzipped download that lost its end, even when every line it
     }
 });
 
+it('FOOD-001 fails a gzipped download with a corrupt block that zlib refuses', function () {
+    $lines = '';
+    for ($i = 1; $i <= 10; $i++) {
+        $lines .= json_encode(['code' => (string) (2000000000000 + $i), 'product_name' => "Product {$i}", 'nutriments' => ['energy-kcal_100g' => 100]])."\n";
+    }
+    $gzip = (string) gzencode($lines);
+    // Byte 10 starts the deflate data: 0xFF names block type 3, which does not exist, so inflate fails.
+    $gzip[10] = "\xFF";
+    $path = tempnam(sys_get_temp_dir(), 'off').'.jsonl.gz';
+    file_put_contents($path, $gzip);
+
+    try {
+        $this->artisan('foods:import', ['source' => 'off', 'path' => $path])
+            ->expectsOutputToContain('is truncated or corrupt')
+            ->assertFailed();
+        expect(Food::count())->toBe(0);
+    } finally {
+        unlink($path);
+    }
+});
+
 it('FOOD-001 re-imports one source without touching another source\'s food that has the same source id', function () {
     $row = fn (string $source, string $name, string $label) => [
         'food' => ['name' => $name, 'source' => $source, 'source_id' => '7', 'kind' => 'packaged',

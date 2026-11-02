@@ -136,6 +136,59 @@ it('FOOD-027 keeps the high-FODMAP word of a plant milk or butter, and lets the 
     'peanut butter stays low FODMAP' => ['Spread', null, 'peanut butter, salt', true],
 ]);
 
+it('FOOD-027 leaves substitute categories out, so plant milks and meat substitutes keep their flags', function (string $category) {
+    $flags = (new DietClassifier)->classify('Product', $category, 'filtered water, almonds, pea protein, salt', []);
+
+    expect($flags)->toMatchArray(['dairy_free' => true, 'vegetarian' => true, 'vegan' => true]);
+})->with([
+    'USDA plant based milk' => ['Plant Based Milk'],
+    'USDA vegetarian meats' => ['Vegetarian Frozen Meats'],
+    'OFF milk alternatives' => ['plant based foods and beverages, beverages, plant based milk alternatives, almond milks'],
+    'OFF meat analogues' => ['plant based foods, meat analogues, vegetarian sausages'],
+    'OFF milk substitutes' => ['dairy substitutes, milk substitutes'],
+]);
+
+it('FOOD-027 still lets a real category rule a diet out next to a substitute one', function () {
+    expect((new DietClassifier)->classify('Product', 'cheeses, vegan cheeses', 'water, salt', [])['dairy_free'])->toBeFalse();
+});
+
+it('FOOD-027 knows named cheeses and dairy solids, cured meats and animal additives', function (string $ingredients, array $false) {
+    $flags = (new DietClassifier)->classify('Product', null, $ingredients, []);
+
+    expect(array_intersect_key($flags, array_flip($false)))->toBe(array_fill_keys($false, false));
+})->with([
+    'ricotta' => ['RICOTTA, SPINACH, SALT', ['dairy_free', 'vegan']],
+    'mascarpone' => ['mascarpone, sugar', ['dairy_free', 'vegan']],
+    'mozzarella' => ['mozzarella, tomato', ['dairy_free', 'vegan']],
+    'parmesan' => ['parmesan, basil', ['dairy_free', 'vegan']],
+    'paneer' => ['paneer, spices', ['dairy_free', 'vegan']],
+    'curd' => ['curd, water', ['dairy_free', 'vegan']],
+    'milkfat' => ['MILKFAT, SUGAR', ['dairy_free', 'vegan']],
+    'pancetta' => ['PANCETTA, PEPPER', ['vegetarian', 'vegan']],
+    'chorizo' => ['chorizo, rice', ['vegetarian', 'vegan']],
+    'prosciutto' => ['prosciutto, melon', ['vegetarian', 'vegan']],
+    'mutton' => ['MUTTON, ONION', ['vegetarian', 'vegan']],
+    'goat meat' => ['goat meat, spices', ['vegetarian', 'vegan']],
+    'rabbit' => ['rabbit, herbs', ['vegetarian', 'vegan']],
+    'rennet' => ['milk, salt, rennet', ['vegetarian', 'vegan']],
+    'carmine' => ['sugar, carmine', ['vegetarian', 'vegan']],
+    'collagen' => ['collagen, water', ['vegetarian', 'vegan']],
+]);
+
+it('FOOD-027 keeps bean curd and goat cheese in the diets they belong to', function () {
+    $tofu = (new DietClassifier)->classify('Tofu', null, 'bean curd, water', []);
+    $goatCheese = (new DietClassifier)->classify('Cheese', null, 'goat milk, salt, cultures', []);
+
+    expect($tofu)->toMatchArray(['dairy_free' => true, 'vegan' => true])
+        ->and($goatCheese)->toMatchArray(['vegetarian' => true, 'dairy_free' => false]);
+});
+
+it('FOOD-027 counts corn and pseudo-grain words in ingredients as grains', function (string $ingredients) {
+    $flags = (new DietClassifier)->classify('Product', null, $ingredients, []);
+
+    expect($flags['grain_free'])->toBeFalse($ingredients)->and($flags['paleo'])->toBeFalse($ingredients)->and($flags['gluten_free'])->toBeTrue($ingredients);
+})->with(['cornmeal, salt', 'cornflour, water', 'polenta, salt', 'grits, salt', 'amaranth, water', 'teff, water', 'masa, water']);
+
 it('FOOD-027 treats soybeans as a high-FODMAP legume, not paleo', function (string $name, string $category, ?string $ingredients) {
     $flags = (new DietClassifier)->classify($name, $category, $ingredients, [], generic: $ingredients === null);
 

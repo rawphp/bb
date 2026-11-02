@@ -10,17 +10,21 @@ use App\Domain\Model\DietFilter;
  * product with no ingredient data and no tags gets every flag false.
  *
  * Flags come from lowercased name + category + ingredients:
- *  - vegetarian (ovo-lacto): false on meat, fish, poultry, seafood, gelatin words.
+ *  - vegetarian (ovo-lacto): false on meat, fish, poultry, seafood, cured meats, gelatin,
+ *    rennet, carmine and collagen words.
  *  - vegan: also false on dairy, egg, honey.
- *  - dairy_free: false on milk, cheese, butter, cream, whey, casein, yogurt,
- *    lactose and similar (not on nut/plant milks and butters, cream of tartar).
+ *  - dairy_free: false on milk, cheese (and named cheeses), butter, cream, whey, casein,
+ *    yogurt, curd, lactose and similar (not on nut/plant milks and butters, bean curd,
+ *    cream of tartar).
+ *  - A category that names a substitute (plant based milk, milk substitutes, meat analogues,
+ *    vegetarian meats, imitation...) is left out of the text: it says what the food replaces.
  *  - gluten_free: false on wheat, barley, rye, spelt, malt, semolina, couscous,
  *    seitan, bread, pasta, flour, breaded, batter, crumbs, gluten, triticale, durum, graham,
  *    compounds such as oatmeal, breadcrumb, flatbread and malted, and oats, which are usually
  *    cross-contaminated (not rice, almond, coconut, corn... flour). Keywords match whole words
  *    with an -s or -es plural, so other plurals and compounds are listed.
- *  - grain_free: false on the gluten words plus rice, corn, oat, quinoa, millet,
- *    sorghum, buckwheat, cereal, noodle, granola.
+ *  - grain_free: false on the gluten words plus rice, corn, cornmeal, polenta, grits, masa,
+ *    oat, quinoa, millet, sorghum, buckwheat, amaranth, teff, cereal, noodle, granola.
  *  - paleo: false on dairy, grains, legumes (bean, lentil, chickpea, pea, peanut,
  *    soy, tofu), and sugar, syrup, sweeteners, sweetened, cola, soda, juice cocktail.
  *  - low_fodmap: false on a high-FODMAP list (garlic, onion, wheat, rye, barley,
@@ -53,12 +57,16 @@ final class DietClassifier
         'pepperoni', 'duck', 'goose', 'venison', 'bison', 'meat', 'steak', 'liver', 'lard', 'tallow', 'suet', 'poultry',
         'fish', 'salmon', 'tuna', 'cod', 'tilapia', 'trout', 'sardine', 'anchovy', 'anchovies', 'mackerel', 'herring',
         'shrimp', 'prawn', 'crab', 'lobster', 'oyster', 'clam', 'mussel', 'scallop', 'squid', 'seafood', 'shellfish',
-        'gelatin', 'gelatine'];
+        'gelatin', 'gelatine', 'pancetta', 'chorizo', 'prosciutto', 'pastrami', 'mutton', 'goat meat', 'rabbit', 'jerky',
+        'rennet', 'carmine', 'cochineal', 'collagen', 'isinglass'];
 
     private const DAIRY = ['milk', 'cheese', 'butter', 'buttermilk', 'cream', 'whey', 'casein', 'caseinate', 'yogurt',
-        'yoghurt', 'lactose', 'kefir', 'ghee', 'custard'];
+        'yoghurt', 'lactose', 'kefir', 'ghee', 'custard', 'ricotta', 'mascarpone', 'mozzarella', 'parmesan', 'cheddar',
+        'paneer', 'curd', 'milkfat', 'milk solids', 'quark', 'skyr'];
 
     private const EGG_HONEY = ['egg', 'honey'];
+
+    private const SUBSTITUTE_CATEGORY = '/\b(?:substitutes?|alternatives?|analogues?|analogs?|imitation|meatless|plant\s+based|non\s+dairy|dairy\s+free|vegan|vegetarian)\b/';
 
     private const GLUTEN = ['wheat', 'barley', 'rye', 'spelt', 'malt', 'semolina', 'couscous', 'seitan', 'bread', 'pasta',
         'flour', 'bulgur', 'farro', 'kamut', 'beer', 'lager', 'ale', 'breaded', 'breading', 'batter', 'battered', 'crumb',
@@ -67,7 +75,8 @@ final class DietClassifier
         'oatmeal', 'breadcrumb', 'flatbread', 'shortbread', 'cornbread', 'gingerbread', 'malted'];
 
     private const OTHER_GRAINS = ['rice', 'corn', 'cornstarch', 'popcorn', 'maize', 'oat', 'quinoa', 'millet', 'sorghum',
-        'buckwheat', 'cereal', 'noodle', 'granola', 'tortilla'];
+        'buckwheat', 'cereal', 'noodle', 'granola', 'tortilla', 'cornmeal', 'cornflour', 'polenta', 'grits', 'amaranth',
+        'teff', 'masa'];
 
     private const LEGUMES = ['bean', 'lentil', 'chickpea', 'garbanzo', 'pea', 'peanut', 'soy', 'soya', 'tofu', 'tempeh',
         'edamame', 'hummus', 'lupin', 'legume', 'soybean'];
@@ -83,7 +92,8 @@ final class DietClassifier
     /** Plant products whose names contain a dairy word. */
     private const NOT_DAIRY = ['peanut butter', 'almond butter', 'cashew butter', 'nut butter', 'seed butter',
         'sunflower butter', 'cocoa butter', 'shea butter', 'butter bean', 'butternut', 'coconut milk', 'almond milk',
-        'oat milk', 'soy milk', 'soya milk', 'rice milk', 'hemp milk', 'cashew milk', 'coconut cream', 'cream of tartar'];
+        'oat milk', 'soy milk', 'soya milk', 'rice milk', 'hemp milk', 'cashew milk', 'coconut cream', 'cream of tartar',
+        'bean curd', 'soy curd'];
 
     /** Flours that are not gluten grains. Rice, corn, oat and buckwheat flour are still grains. */
     private const NON_GRAIN_FLOURS = ['almond', 'coconut', 'tapioca', 'potato', 'chickpea', 'cassava', 'arrowroot',
@@ -158,6 +168,9 @@ final class DietClassifier
     private function fromKeywords(string $name, ?string $category, string $ingredients): array
     {
         $category = str_replace(self::UMBRELLA_CATEGORIES, '', mb_strtolower((string) $category));
+        // A category that names a substitute ("Plant Based Milk", "Vegetarian Frozen Meats", OFF's "meat analogues")
+        // says what the food replaces, not what is in it, so its words must not rule a diet out.
+        $category = implode(', ', array_filter(explode(',', $category), fn (string $part) => ! preg_match(self::SUBSTITUTE_CATEGORY, $part)));
         $text = mb_strtolower($name.' '.$category.' '.$ingredients);
 
         $dairyText = str_replace(self::NOT_DAIRY, '', $text);
