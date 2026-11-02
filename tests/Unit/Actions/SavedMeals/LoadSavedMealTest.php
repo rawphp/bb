@@ -18,6 +18,7 @@ use App\Models\SavedMealFood;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 
 // Ported from rp-clone ios/Tests/RPCoreTests/Features/Meal/SavedMealTests.swift (load). The fit is
 // SavedMealLoadTest's; this proves what the action reads and writes, so it runs on the database.
@@ -188,6 +189,58 @@ it('MEAL-070 load refits an unlocked recipe serving with the foods', function ()
     expect(PlannedRecipe::query()->where('meal_id', $meal)->sole()->servings)->toBe($expected['bowl'] / RecipeServing::GRAMS_PER_SERVING)
         ->and($expected['bowl'])->not->toBe(30.0)
         ->and(array_column(loadSavedMealPlanned($meal), 'grams'))->toBe([300.0, $expected['rice'], $expected['oil']]);
+});
+
+it('MEAL-070 RCP-002 load still fits a recipe serving whose recipe was deleted, from its ingredients', function () {
+    $user = User::factory()->create();
+    [$chicken, $rice, $oil] = loadSavedMealFoods();
+    $meal = loadSavedMealDinner($user);
+    $bowl = Recipe::factory()->create(['servings' => 1]);
+    RecipeIngredient::factory()->create(['recipe_id' => $bowl->id, 'food_id' => $rice->id, 'grams' => 200]);
+    PlannedRecipe::factory()->create(['meal_id' => $meal, 'recipe_id' => $bowl->id, 'position' => 0, 'servings' => 3]);
+    $bowl->delete();
+    $saved = loadSavedMealBulkDinner($user, $chicken, $rice, $oil);
+
+    (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $meal, $saved->id);
+
+    $expected = savedLoadExpected(
+        [RecipeServing::food('bowl', 'Bowl', new MealTarget(kcal: 260, proteinG: 5.4, fatG: 0.6, carbsG: 56), 3)],
+        [
+            new MealFood('chicken', loadSavedMealFitFood($chicken), 300, isLocked: true),
+            new MealFood('rice', loadSavedMealFitFood($rice), 100),
+            new MealFood('oil', loadSavedMealFitFood($oil), 5),
+        ],
+    );
+    expect(PlannedRecipe::query()->where('meal_id', $meal)->sole()->servings)->toBe($expected['bowl'] / RecipeServing::GRAMS_PER_SERVING)
+        ->and(array_column(loadSavedMealPlanned($meal), 'grams'))->toBe([300.0, $expected['rice'], $expected['oil']]);
+});
+
+it('MEAL-070 load plans a saved food whose food was deleted, at its saved amount', function () {
+    $user = User::factory()->create();
+    [, $rice] = loadSavedMealFoods();
+    $bar = Food::factory()->custom($user)->create(['name' => 'Protein bar']);
+    $meal = loadSavedMealDinner($user);
+    $saved = SavedMeal::factory()->for($user)->create();
+    SavedMealFood::factory()->create(['saved_meal_id' => $saved->id, 'food_id' => $bar->id, 'position' => 0, 'grams' => 60, 'is_locked' => true]);
+    SavedMealFood::factory()->create(['saved_meal_id' => $saved->id, 'food_id' => $rice->id, 'position' => 1, 'grams' => 100]);
+    $bar->delete();
+
+    $loaded = (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $meal, $saved->id);
+
+    expect($loaded['added'])->toBe(2)
+        ->and(loadSavedMealPlanned($meal)[0])->toBe(['food_id' => $bar->id, 'position' => 0, 'grams' => 60.0, 'is_cooked' => false, 'is_locked' => true, 'unit' => 'g']);
+});
+
+it('MEAL-070 NUT-030 load refuses a meal its day holds no targets for, and writes nothing', function () {
+    $user = User::factory()->create();
+    [$chicken, $rice, $oil] = loadSavedMealFoods();
+    $meal = loadSavedMealDinner($user);
+    // The meal's index row stays while its day's meals no longer list it.
+    DB::table('day_targets')->where('user_id', $user->id)->update(['meals' => '[]']);
+    $saved = loadSavedMealBulkDinner($user, $chicken, $rice, $oil);
+
+    expect(fn () => (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $meal, $saved->id))->toThrow(ModelNotFoundException::class)
+        ->and(PlannedFood::query()->count())->toBe(0);
 });
 
 it('MEAL-070 load writes nothing when every saved food is already in the meal', function () {
