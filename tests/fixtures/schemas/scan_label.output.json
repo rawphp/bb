@@ -1,0 +1,64 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string"
+        },
+        "brand": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "barcode": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "serving_size": {
+            "type": "number"
+        },
+        "serving_unit": {
+            "type": "string",
+            "enum": [
+                "g",
+                "cup",
+                "tbsp",
+                "tsp",
+                "piece"
+            ]
+        },
+        "serving_grams": {
+            "type": "number"
+        },
+        "protein": {
+            "type": "number"
+        },
+        "fat": {
+            "type": "number"
+        },
+        "carbs": {
+            "type": "number"
+        },
+        "fiber": {
+            "type": "number"
+        },
+        "kcal_text": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "name",
+        "serving_size",
+        "serving_unit",
+        "serving_grams",
+        "protein",
+        "fat",
+        "carbs",
+        "fiber",
+        "kcal_text"
+    ]
+}

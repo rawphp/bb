@@ -1,0 +1,17 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "meal_id": {
+            "type": "string"
+        },
+        "done": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "meal_id",
+        "done"
+    ]
+}

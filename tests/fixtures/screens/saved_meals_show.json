@@ -1,0 +1,15 @@
+{
+    "meals": [
+        {
+            "saved_meal_id": "01JBX5S0000000000000000001",
+            "name": "Bulk dinner",
+            "detail": "3 foods"
+        },
+        {
+            "saved_meal_id": "01JBX5S0000000000000000002",
+            "name": "Protein shake",
+            "detail": "1 food"
+        }
+    ],
+    "empty_text": null
+}
