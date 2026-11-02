@@ -103,9 +103,13 @@ return [
 
     'audit' => [
         'enabled' => true,
+        // best_effort: a failed audit insert is reported to the exception handler and the
+        // write stands. strict would answer a write that already committed (wrap_run is
+        // off) with a failure, and the client's retry would make it twice.
         'mode' => $env('CAPABILITIES_AUDIT_MODE', 'best_effort'),
+        // The host binds AuditRecordWriter (CAP-022), which wins over this driver;
+        // the package has no driver name for a host-bound writer.
         'driver' => 'database',
-        'queue' => 'capabilities-audit',
         'required' => false,
     ],
 
@@ -207,9 +211,12 @@ return [
 
     'clients' => [
         'oauth' => [],
-        'token_abilities' => [
-            'capabilities:cli' => 'cli',
-        ],
+        // No ability names a caller. A token's abilities are capability names (CAP-023), or `*`,
+        // and HostAuthorizer limits it to them, so a `capabilities:cli` ability would allow
+        // nothing. A token's audit channel is derived from its scope (Channel, CAP-022).
+        // No AuthTokenIssuer is bound yet, so auth/token and auth/device mint nothing; the CLI
+        // login that binds one (#11) must issue `*` or capability names, never capabilities:cli.
+        'token_abilities' => [],
         'privilege_order' => ['http', 'cli', 'mcp', 'agent', 'job'],
         'reject_upgrade_attempts' => false,
     ],
