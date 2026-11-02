@@ -14,8 +14,8 @@ type Pick = NonNullable<Answers['calories']>;
 
 // Step 13: the recommendation or the user's own daily average (ONB-017), and the week
 // the server works out from it. The daily average is saved when the field is left. While
-// a change waits to sync, the recommendation's average and the week are dimmed and marked
-// (OFF-008). Ported from rp-clone's LifestyleSteps.
+// a change waits to sync, the choices (with the recommendation's average) and the week are
+// dimmed, and the week carries the mark (OFF-008). Ported from rp-clone's LifestyleSteps.
 const props = defineProps<{ calories: Section; locked?: boolean; pending?: boolean }>();
 
 const emit = defineEmits<{ answer: [answers: Answers] }>();
