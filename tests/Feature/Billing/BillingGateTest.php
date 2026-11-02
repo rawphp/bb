@@ -57,6 +57,24 @@ it('SUB-001 lets a trial or a subscription write', function (string $status) {
     createTokenAs(userWithStatus($status))->assertOk();
 })->with(['trialing', 'active']);
 
+it('SUB-024 a user who has never subscribed can still onboard by chat before the paywall (AGT-030)', function () {
+    config(['capabilities-ai.llm.driver' => 'anthropic', 'capabilities-ai.llm.anthropic.api_key' => 'test-key']);
+    Queue::fake();
+
+    $this->actingAs(userWithStatus(null))
+        ->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])
+        ->assertCreated();
+});
+
+it('SUB-022 a lapsed user can still revoke an access token', function () {
+    $user = userWithStatus('active');
+    $id = (string) Str::ulid();
+    test()->actingAs($user)->postJson('/capabilities/token_create', ['id' => $id, 'name' => 'Laptop MCP', 'expires_in_days' => 90, 'scope' => 'everything', 'capabilities' => []])->assertOk();
+    Subscription::query()->where('user_id', $user->id)->update(['status' => 'canceled']);
+
+    $this->actingAs($user)->postJson('/capabilities/token_revoke', ['id' => $id])->assertOk();
+});
+
 it('SUB-003 the bound gate holds the first plan back until the trial starts', function () {
     $first = new CapabilityDefinition(name: 'onboarding_complete', input: OnboardingCompleteInput::class);
     $gate = app(BillingGate::class);

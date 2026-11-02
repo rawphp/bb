@@ -16,6 +16,9 @@ final class FakeStripe implements StripeGateway
     /** @var list<array{customer: string, return_url: string}> */
     public array $portals = [];
 
+    /** @var array<string, list<array<string, mixed>>> each customer's subscriptions, as Stripe would list them now */
+    public array $subscriptions = [];
+
     /** @var array<string, array{amount: int, currency: string, interval: string, interval_count: int}> */
     public array $prices = [
         'price_monthly' => ['amount' => 3499, 'currency' => 'usd', 'interval' => 'month', 'interval_count' => 1],
@@ -42,6 +45,11 @@ final class FakeStripe implements StripeGateway
         $this->portals[] = ['customer' => $customer, 'return_url' => $returnUrl];
 
         return 'https://billing.stripe.com/p/session/test_'.count($this->portals);
+    }
+
+    public function subscriptions(string $customer): array
+    {
+        return $this->subscriptions[$customer] ?? [];
     }
 
     public function price(string $price): array

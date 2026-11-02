@@ -15,6 +15,10 @@ it('SUB-022 a lapsed user can still delete the account and pay', function (strin
     expect(BillingRule::allows(Access::Lapsed, $write, readOnly: false))->toBeTrue();
 })->with(['account_delete', 'billing_checkout_start', 'billing_portal_open']);
 
+it('SUB-022 a lapsed user can still withdraw access and consent: revoke a token, stop push', function (string $write) {
+    expect(BillingRule::allows(Access::Lapsed, $write, readOnly: false))->toBeTrue();
+})->with(['token_revoke', 'push_unsubscribe']);
+
 it('SUB-001 a trial or a subscription unlocks every write', function (Access $access, string $write) {
     expect(BillingRule::allows($access, $write, readOnly: false))->toBeTrue();
 })->with(fn () => [Access::Trial, Access::Active])->with(['meal_check_in', 'onboarding_complete', 'token_create']);
@@ -34,6 +38,6 @@ it('SUB-024 the Coach is part of the plan: a trial or a subscription gets it, a 
         ->and(BillingRule::allowsCoach(Access::Lapsed))->toBeFalse();
 });
 
-it('SUB-024 a new user can still onboard by chat before the paywall (AGT-030)', function () {
+it('SUB-024 a user who has never subscribed keeps the Coach, so chat onboarding works before the paywall (AGT-030)', function () {
     expect(BillingRule::allowsCoach(Access::None))->toBeTrue();
 });

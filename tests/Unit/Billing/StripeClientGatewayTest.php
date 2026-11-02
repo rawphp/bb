@@ -1,6 +1,8 @@
 <?php
 
 use App\Billing\StripeClientGateway;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Exceptions;
 use Stripe\ApiRequestor;
 use Stripe\HttpClient\ClientInterface;
 use Stripe\StripeClient;
@@ -19,13 +21,19 @@ function stripeApi(array $bodies): object
         {
             $this->requests[] = ['method' => $method, 'url' => $absUrl, 'params' => $params, 'headers' => $headers];
 
-            return [json_encode(array_shift($this->bodies)), 200, []];
+            $body = array_shift($this->bodies);
+            $code = $body['_status'] ?? 200;
+            unset($body['_status']);
+
+            return [json_encode($body), $code, []];
         }
     };
     ApiRequestor::setHttpClient($api);
 
     return $api;
 }
+
+beforeEach(fn () => Cache::forget('billing:price:price_yearly') && Cache::forget('billing:price:price_yearly:last'));
 
 afterEach(fn () => ApiRequestor::setHttpClient(null));
 
@@ -78,6 +86,35 @@ it('SUB-007 opens the customer portal for the customer', function () {
 
 it('SUB-002 reads a plan\'s price from Stripe', function () {
     stripeApi([['id' => 'price_yearly', 'object' => 'price', 'unit_amount' => 29999, 'currency' => 'usd', 'recurring' => ['interval' => 'year', 'interval_count' => 1]]]);
+
+    expect(stripeClientGateway()->price('price_yearly'))->toBe(['amount' => 29999, 'currency' => 'usd', 'interval' => 'year', 'interval_count' => 1]);
+});
+
+it('SUB-021 lists every subscription of the customer, ended ones too', function () {
+    $api = stripeApi([['object' => 'list', 'data' => [['id' => 'sub_1', 'object' => 'subscription', 'status' => 'canceled']], 'has_more' => false]]);
+
+    expect(stripeClientGateway()->subscriptions('cus_123'))->toBe([['id' => 'sub_1', 'object' => 'subscription', 'status' => 'canceled']])
+        ->and($api->requests[0]['url'])->toContain('/v1/subscriptions')
+        ->and($api->requests[0]['params'])->toBe(['customer' => 'cus_123', 'status' => 'all', 'limit' => 100]);
+});
+
+it('SUB-021 reports a Stripe failure and tells the user only that payments are unavailable', function () {
+    Exceptions::fake();
+    stripeApi([['_status' => 401, 'error' => ['message' => 'Invalid API Key provided: sk_live_****abcd', 'type' => 'invalid_request_error']]]);
+
+    expect(fn () => stripeClientGateway()->portalUrl('cus_123', 'https://bb.test'))
+        ->toThrow(RuntimeException::class, 'Payments are unavailable right now. Try again shortly.');
+    Exceptions::assertReported(Stripe\Exception\AuthenticationException::class);
+});
+
+it('SUB-002 shows the last price Stripe gave while Stripe cannot be reached', function () {
+    Exceptions::fake();
+    stripeApi([
+        ['id' => 'price_yearly', 'object' => 'price', 'unit_amount' => 29999, 'currency' => 'usd', 'recurring' => ['interval' => 'year', 'interval_count' => 1]],
+        ['_status' => 500, 'error' => ['message' => 'Stripe is down', 'type' => 'api_error']],
+    ]);
+    stripeClientGateway()->price('price_yearly');
+    Cache::forget('billing:price:price_yearly');
 
     expect(stripeClientGateway()->price('price_yearly'))->toBe(['amount' => 29999, 'currency' => 'usd', 'interval' => 'year', 'interval_count' => 1]);
 });

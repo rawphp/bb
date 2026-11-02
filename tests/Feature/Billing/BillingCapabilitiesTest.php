@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Route;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
+use Rawphp\Capabilities\Support\SchemaSnapshot;
 use Tests\Support\BillingOn;
 use Tests\Support\FakeStripe;
 use Tests\Support\ScreenFixture;
@@ -21,6 +22,29 @@ beforeEach(function () {
 });
 
 afterEach(fn () => CarbonImmutable::setTestNow());
+
+it('CAP-032 keeps each billing capability\'s schema snapshot equal to its live schema', function () {
+    $registry = app(CapabilityRegistry::class);
+
+    foreach (['billing_show', 'billing_checkout_start', 'billing_portal_open'] as $name) {
+        foreach (['input', 'output'] as $side) {
+            $definition = $registry->get($name);
+            $live = $side === 'input' ? $definition->inputSchema() : $definition->outputSchema();
+            $snapshot = json_decode((string) file_get_contents(base_path("tests/fixtures/schemas/{$name}.{$side}.json")), true, flags: JSON_THROW_ON_ERROR);
+
+            expect(SchemaSnapshot::schemasEqual($snapshot, $live))->toBeTrue("{$name}.{$side}.json differs from the live schema");
+        }
+    }
+});
+
+it('SUB-007 billing_checkout_start sends a subscribed user to the portal instead of a second subscription', function () {
+    $user = User::factory()->create();
+    Subscription::factory()->for($user)->create(['status' => 'active']);
+
+    $this->actingAs($user)->postJson('/capabilities/billing_checkout_start', ['plan' => 'yearly'])
+        ->assertStatus(409)
+        ->assertJsonPath('error.message', 'You already have a subscription. Switch plans in Manage subscription.');
+});
 
 it('SUB-020 registers the billing capabilities, the Stripe gate and the webhook with billing on', function () {
     $names = array_keys(app(CapabilityRegistry::class)->all());
