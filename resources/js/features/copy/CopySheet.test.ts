@@ -5,8 +5,6 @@ import type { CopyShowOutput } from '@/contracts/copy_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import CopySheet from './CopySheet.vue';
 
-const back = vi.fn();
-vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back }) }));
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
 
 const readMock = vi.mocked(read);
@@ -201,15 +199,39 @@ describe('CopySheet', () => {
         expect(wrapper.emitted('close')).toBeUndefined();
     });
 
-    it('NAV-001 goes back when it was opened at its own route, and only then', async () => {
-        back.mockReset();
-        const routed = show({ payload: foods, mealId: SOURCE_MEAL, page: true });
-        await routed.findAll('[role="dialog"]')[0]!.findAll('header button')[0]!.trigger('click');
-        expect(back).toHaveBeenCalledTimes(1);
+    it('CAP-002 reads copy_show for the day it copies, and keeps that day when it shows another week', async () => {
+        readMock.mockReturnValueOnce(new Promise(() => undefined));
+        const pendingRead = show({ sourceDate: '2026-09-23' });
+        await flushPromises();
+        expect(readMock).toHaveBeenLastCalledWith('copy_show', { meal_id: null, source_date: '2026-09-23', shown_date: null }, expect.any(Function), expect.any(Function));
+        expect(pendingRead.find('[data-test="skeleton"]').exists()).toBe(true);
 
-        const over = show();
-        await over.findAll('[role="dialog"]')[0]!.findAll('header button')[0]!.trigger('click');
-        expect(back).toHaveBeenCalledTimes(1);
-        expect(over.emitted('close')).toHaveLength(1);
+        const wrapper = show({ payload: day, sourceDate: '2026-09-23' });
+        await wrapper.get('[aria-label="Next week"]').trigger('click');
+        await flushPromises();
+        expect(readMock).toHaveBeenLastCalledWith('copy_show', { meal_id: null, source_date: '2026-09-23', shown_date: '2026-10-01' }, expect.any(Function), expect.any(Function));
+    });
+
+    it('CAP-004 sends each read the day it asked for, even when the user moves on before it is sent', async () => {
+        const wrapper = show();
+
+        await strip(wrapper).findAll('button')[6]!.trigger('click');
+        await wrapper.get('[aria-label="Previous week"]').trigger('click');
+        await flushPromises();
+
+        const asked = readMock.mock.calls.map((call) => (call[1] as { shown_date: string }).shown_date);
+        expect(asked).toEqual(['2026-09-25', '2026-09-17']);
+    });
+
+    it('UI-022 cannot be dismissed while its write is on the way', async () => {
+        writeMock.mockReturnValue(new Promise(() => undefined));
+        const wrapper = show();
+
+        await wrapper.findAll('[data-kind="meal"]')[0]!.trigger('click');
+        await save(wrapper).trigger('click');
+        await wrapper.find('[data-scrim]').trigger('click');
+
+        expect(wrapper.emitted('close')).toBeUndefined();
+        expect(wrapper.findAll('[role="dialog"]')).toHaveLength(1);
     });
 });

@@ -5,8 +5,6 @@ import type { AwayWeekShowOutput } from '@/contracts/away_week_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import AwayWeekSheet from './AwayWeekSheet.vue';
 
-const back = vi.fn();
-vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back }) }));
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
 
 const readMock = vi.mocked(read);
@@ -162,15 +160,47 @@ describe('AwayWeekSheet', () => {
         expect(writeMock).not.toHaveBeenCalled();
     });
 
-    it('NAV-001 goes back when it was opened at its own route, and only then', async () => {
-        back.mockReset();
-        const routed = show({ payload: marking, page: true });
-        await routed.findAll('[role="dialog"] header button')[0]!.trigger('click');
-        expect(back).toHaveBeenCalledTimes(1);
+    it('SCH-060 saves an edited away week with its changed calories', async () => {
+        const wrapper = show({ payload: editing });
 
-        const over = show();
-        await over.findAll('[role="dialog"] header button')[0]!.trigger('click');
-        expect(back).toHaveBeenCalledTimes(1);
-        expect(over.emitted('close')).toHaveLength(1);
+        await wrapper.get('[role="radiogroup"][aria-label="Calories"]').findAll('[role="radio"]')[1]!.trigger('click');
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(sent('away_week_set')).toEqual({ week_starts: ['2026-09-26'], away: true, training: 'pause', calories: 'maintenance' });
+    });
+
+    it('PLAN-025 sends keep_phase_end only once the user has set it, so an edit never resets a saved choice', async () => {
+        const offered = { ...editing, shows_keep_phase_end: true };
+        const untouched = show({ payload: offered });
+        await untouched.get('[data-test="not-away"]').trigger('click');
+        await flushPromises();
+        expect(sent('away_week_set')).toEqual({ week_starts: ['2026-09-26'], away: false });
+
+        const kept = show({ payload: offered });
+        await kept.get('[data-test="keep-phase-end"] input').setValue(true);
+        await kept.get('[data-test="not-away"]').trigger('click');
+        await flushPromises();
+        expect(sent('away_week_set')).toEqual({ week_starts: ['2026-09-26'], away: false, keep_phase_end: true });
+    });
+
+    it('PLAN-025 says the phase keeps its end date while the switch is on', async () => {
+        const wrapper = show();
+        expect(wrapper.find('[data-test="keeps-end"]').exists()).toBe(false);
+
+        await wrapper.get('[data-test="keep-phase-end"] input').setValue(true);
+
+        expect(wrapper.get('[data-test="keeps-end"]').text()).toBe('The phase keeps its end date.');
+    });
+
+    it('UI-022 cannot be dismissed while its write is on the way', async () => {
+        writeMock.mockReturnValue(new Promise(() => undefined));
+        const wrapper = show();
+
+        await wrapper.get('[data-save]').trigger('click');
+        await wrapper.get('[data-scrim]').trigger('click');
+
+        expect(wrapper.emitted('close')).toBeUndefined();
+        expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
     });
 });

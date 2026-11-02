@@ -5,8 +5,6 @@ import type { TodayShowOutput } from '@/contracts/today_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import TodayMissedWeeksSheet from './TodayMissedWeeksSheet.vue';
 
-const back = vi.fn();
-vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back }) }));
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
 
 const readMock = vi.mocked(read);
@@ -133,15 +131,25 @@ describe('TodayMissedWeeksSheet', () => {
         expect(wrapper.emitted('close')).toBeUndefined();
     });
 
-    it('NAV-001 goes back when it was opened at its own route, and only then', async () => {
-        back.mockReset();
-        const routed = show({ payload: today, page: true });
-        await routed.findAll('[role="dialog"] header button')[0]!.trigger('click');
-        expect(back).toHaveBeenCalledTimes(1);
+    it('SCH-058 goes back from the end warning to both answers without a write', async () => {
+        const wrapper = show();
 
-        const over = show();
-        await over.findAll('[role="dialog"] header button')[0]!.trigger('click');
-        expect(back).toHaveBeenCalledTimes(1);
-        expect(over.emitted('close')).toHaveLength(1);
+        await wrapper.get('[data-test="end"]').trigger('click');
+        await wrapper.get('[data-test="end-back"]').trigger('click');
+
+        expect(wrapper.find('[data-test="end-warning"]').exists()).toBe(false);
+        expect(wrapper.find('[data-test="restart"]').exists()).toBe(true);
+        expect(writeMock).not.toHaveBeenCalled();
+    });
+
+    it('UI-022 cannot be dismissed while its write is on the way', async () => {
+        writeMock.mockReturnValue(new Promise(() => undefined));
+        const wrapper = show();
+
+        await wrapper.get('[data-test="restart"]').trigger('click');
+        await wrapper.get('[data-scrim]').trigger('click');
+
+        expect(wrapper.emitted('close')).toBeUndefined();
+        expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
     });
 });
