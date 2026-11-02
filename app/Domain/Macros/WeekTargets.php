@@ -99,7 +99,7 @@ final readonly class WeekTargets
      * NUT-015: how many grams of fat a cut of $cut kcal a day takes. Fat goes first, down to the fat floor for the
      * new calories; less than $cut / 9 means the cut reaches the fat floor.
      */
-    private function fatCutG(float $cut): float
+    public function fatCutG(float $cut): float
     {
         $newFloor = MacroRules::fatFloorG($this->maxDayKcal() - $cut, $this->leanMassKg, $this->mealsPerDay);
 
