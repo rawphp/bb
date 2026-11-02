@@ -6,8 +6,8 @@ const SLOP = 10;
 const THRESHOLD = 40;
 
 /**
- * A row's swipe left that reveals actions behind it (UI-008), as SwiftUI's swipeActions
- * does: it never runs one by itself. Touch and pen only; a mouse uses the row's own
+ * A row's swipe left that reveals actions behind it (UI-008), like SwiftUI's swipeActions
+ * with allowsFullSwipe off: it never runs one by itself. Touch and pen only; a mouse uses the row's own
  * buttons. Once a drag is a swipe the row captures the pointer, so the drag never ends
  * in a click on what it started on. A tap anywhere outside `root`, or on the row, hides
  * the actions again, and so does `canSwipe` turning off.

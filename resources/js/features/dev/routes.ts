@@ -2,7 +2,8 @@ import type { RouteRecordRaw } from 'vue-router';
 
 // Local and testing only: the router drops meta.dev routes unless the server flags them on.
 export default [
-    // Every query key but view is a prop of the screen: /dev/screens/food_search?mealId=… opens the Pantry for a meal.
+    // Every single-valued query key but view is a prop of the screen, as a string:
+    // /dev/screens/food_search?mealId=… opens the Pantry for a meal, and ?pending= turns a Boolean prop on.
     {
         path: '/dev/screens/:name',
         component: () => import('./ScreenView.vue'),

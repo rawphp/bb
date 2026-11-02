@@ -172,15 +172,19 @@ function showMore(group: PantryGroup): void {
     if (!expandedGroups.value.includes(group)) expandedGroups.value = [...expandedGroups.value, group];
 }
 
-// The Pantry left the screen (Cancel or a swipe back) while Add ran; it must not go back again.
+// Add finishes only while the Pantry is the screen on show. A swipe back, another tab or
+// a pushed screen means the user left: it neither goes back nor sends what is left, which
+// stays in the basket.
 let gone = false;
 onUnmounted(() => (gone = true));
 
 // FOOD-028: the foods and recipes go in one write; each saved meal loads on its own.
 // Each pick leaves the basket once its write is done, so a retry sends only the rest.
-// The basket cannot change meanwhile: its controls wait for Add.
+// The basket cannot change meanwhile: the screen is inert while Add runs.
 async function confirm(): Promise<void> {
     if (!props.mealId || basket.value.length === 0) return;
+    const here = router.currentRoute.value.fullPath;
+    const shown = () => !gone && router.currentRoute.value.fullPath === here;
     const sent = basket.value.filter((pick) => pick.kind !== 'saved_meal');
     const entries = sent.map((pick): MealFoodAddInput['entries'][number] =>
         pick.kind === 'food' ? { id: pick.entryId, food_id: pick.id, weighing: weighingOf(pick.id, pick.hasCooked) } : { id: pick.entryId, recipe_id: pick.id },
@@ -191,11 +195,12 @@ async function confirm(): Promise<void> {
         basket.value = basket.value.filter((pick) => !sent.some((done) => done.key === pick.key));
     }
     for (const pick of basket.value.filter((pick) => pick.kind === 'saved_meal')) {
+        if (!shown()) return;
         const input = { meal_id: props.mealId, saved_meal_id: pick.id } satisfies MealSavedMealLoadInput;
         if ((await adding.send('meal_saved_meal_load', input, "Couldn't add the saved meal. Try again.")) !== 'done') return;
         remove(pick.key);
     }
-    if (!gone) router.back();
+    if (shown()) router.back();
 }
 
 const confirmTitle = computed(() => (basket.value.length === 0 ? 'Add to meal' : `Add ${basket.value.length} to meal`));
@@ -204,6 +209,8 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
 
 <template>
     <main class="bb-screen-content flex min-h-full flex-col gap-3 pb-0">
+        <!-- FOOD-028: while Add runs nothing here can change what it sends, or leave the screen. -->
+        <div data-test="pantry-content" class="flex flex-col gap-3" :inert="adding.busy.value || undefined">
         <header class="grid grid-cols-[1fr_auto_1fr] items-center">
             <button type="button" data-test="cancel" class="min-h-tap justify-self-start rounded-full bg-surface px-4 text-primary-text" @click="router.back()">
                 {{ forMeal ? 'Cancel' : 'Done' }}
@@ -268,9 +275,8 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                         </span>
                         <button
                             type="button"
-                            class="flex min-h-tap min-w-tap items-center justify-center text-secondary-text disabled:opacity-40"
+                            class="flex min-h-tap min-w-tap items-center justify-center text-secondary-text"
                             :aria-label="`Remove ${pick.name}`"
-                            :disabled="adding.busy.value"
                             @click="remove(pick.key)"
                         >
                             <svg aria-hidden="true" viewBox="0 0 24 24" class="size-6">
@@ -314,7 +320,6 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                             :type="forMeal ? 'button' : undefined"
                             data-test="collection-row"
                             :aria-pressed="forMeal ? isPicked(`recipe-${recipe.recipe_id}`) : undefined"
-                            :disabled="forMeal && adding.busy.value ? true : undefined"
                             class="flex min-h-tap w-full items-center gap-3 py-2 text-left"
                             @click="forMeal && toggleRecipe(recipe)"
                         >
@@ -335,7 +340,6 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                         :type="forMeal ? 'button' : undefined"
                         data-test="collection-row"
                         :aria-pressed="forMeal ? isPicked(`saved-meal-${meal.saved_meal_id}`) : undefined"
-                        :disabled="forMeal && adding.busy.value ? true : undefined"
                         class="flex min-h-tap w-full items-center gap-3 py-2 text-left"
                         @click="forMeal && toggleSavedMeal(meal)"
                     >
@@ -364,7 +368,6 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                             :pickable="forMeal"
                             :pending="pending"
                             :favorite-disabled="favorites.busy.value"
-                            :pick-disabled="adding.busy.value"
                             @pick="toggleFood(food)"
                             @favorite="toggleFavorite(food)"
                             @weighing="(weighing) => (weighings[food.food_id] = weighing)"
@@ -394,6 +397,8 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
             </RouterLink>
         </template>
         <ReadState v-else :failure="failure" what="The Pantry" @retry="load" />
+
+        </div>
 
         <div v-if="forMeal" class="sticky bottom-0 -mx-4 mt-auto bg-background/90 px-4 py-2 backdrop-blur">
             <p v-if="adding.error.value" role="alert" data-test="confirm-error" class="pb-2 text-sm text-tone-warning">{{ adding.error.value }}</p>

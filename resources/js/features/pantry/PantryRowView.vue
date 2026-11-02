@@ -22,10 +22,8 @@ const props = withDefaults(
         /** The nutrition is the server's and waits on the outbox (OFF-008). */
         pending?: boolean;
         favoriteDisabled?: boolean;
-        /** Add is running: the basket waits for it. */
-        pickDisabled?: boolean;
     }>(),
-    { pickable: true, pending: false, favoriteDisabled: false, pickDisabled: false },
+    { pickable: true, pending: false, favoriteDisabled: false },
 );
 
 const emit = defineEmits<{ pick: []; favorite: []; weighing: [weighing: Weighing] }>();
@@ -96,7 +94,6 @@ function favoriteFromSwipe(): void {
                 <component
                     :is="pickable ? 'button' : 'div'"
                     :type="pickable ? 'button' : undefined"
-                    :disabled="pickable && pickDisabled ? true : undefined"
                     class="block w-full text-left"
                     @click="pickable && emit('pick')"
                 >
@@ -133,7 +130,6 @@ function favoriteFromSwipe(): void {
                 class="flex min-h-tap min-w-tap shrink-0 items-center justify-center"
                 :aria-label="picked ? `Remove ${row.name} from meal` : `Add ${row.name} to meal`"
                 :aria-pressed="picked"
-                :disabled="pickDisabled"
                 @click="emit('pick')"
             >
                 <svg v-if="picked" aria-hidden="true" viewBox="0 0 24 24" class="size-7 text-accent">
