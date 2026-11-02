@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 import { CapabilityError, write, type CapabilityInput } from './call';
-import { failureMessage, isRefusal, isTimeout } from './errors';
+import { isRefusal, isTimeout, writeFailureMessage } from './errors';
 
 /**
  * How a write ended: the server took it, the server refused it (4xx), or no answer came.
@@ -9,10 +9,11 @@ import { failureMessage, isRefusal, isTimeout } from './errors';
 export type WriteOutcome = 'done' | 'refused' | 'no-answer';
 
 /**
- * A screen's writes (CAP-010): one at a time, then the screen's read again. A failure
+ * A screen's writes (CAP-010): one at a time, then the screen's read again. A refusal
  * leaves the server's words in `error` (CAP-012). A write that got no answer may have
  * happened, and the cached reads predate it, so unless the device is offline the screen
- * reads the server's copy, not the cache, to show what the server holds.
+ * reads the server's copy, not the cache, to show what the server holds, and `error`
+ * says the write may have worked.
  */
 export function useWrite(load: (options?: { fresh?: boolean }) => Promise<void>): {
     send: (name: string, input: CapabilityInput, fallback: string) => Promise<WriteOutcome | null>;
@@ -32,9 +33,10 @@ export function useWrite(load: (options?: { fresh?: boolean }) => Promise<void>)
             await load();
             return 'done';
         } catch (failure) {
-            error.value = failureMessage(failure, fallback);
+            error.value = writeFailureMessage(failure, fallback);
             if (!(failure instanceof CapabilityError) || isRefusal(failure)) return 'refused';
-            if (failure.status !== 0 || isTimeout(failure)) await load({ fresh: true });
+            // A failed re-read leaves the screen as load() leaves it; the write's error stays the message.
+            if (failure.status !== 0 || isTimeout(failure)) await load({ fresh: true }).catch(() => undefined);
             return 'no-answer';
         } finally {
             busy.value = false;

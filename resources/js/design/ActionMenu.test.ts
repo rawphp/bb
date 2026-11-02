@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it } from 'vitest';
+import GalleryView from '@/features/dev/GalleryView.vue';
 import ActionMenu from './ActionMenu.vue';
 
 const items = [
@@ -72,5 +73,13 @@ describe('ActionMenu', () => {
         await wrapper.vm.$nextTick();
 
         expect(focused()).toBe('item-a');
+    });
+
+    it('VIEW-004 the gallery lists ActionMenu with every state', () => {
+        const gallery = mount(GalleryView);
+        expect(gallery.findAll('h2').map((h) => h.text())).toContain('ActionMenu');
+        expect(gallery.findAll('[data-test="menu"]').map((b) => b.attributes('aria-label'))).toEqual(
+            expect.arrayContaining(['default', 'empty', 'loading', 'error', 'pending', 'disabled'].map((state) => `Mesocycle menu (${state})`)),
+        );
     });
 });

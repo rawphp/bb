@@ -177,7 +177,7 @@ describe('useScreenRead', () => {
         const { wrapper, api } = screen();
         await flushPromises();
 
-        await api().load({ fresh: true });
+        await api().load({ fresh: true }).catch(() => undefined);
         await flushPromises();
 
         expect(readFreshMock).toHaveBeenCalledWith('probe_show', {});
@@ -191,7 +191,7 @@ describe('useScreenRead', () => {
         const { wrapper, api } = screen();
         await flushPromises();
 
-        await api().load({ fresh: true });
+        await api().load({ fresh: true }).catch(() => undefined);
         await flushPromises();
 
         expect(wrapper.text()).toBe('1');
@@ -203,7 +203,7 @@ describe('useScreenRead', () => {
         const { wrapper, api } = screen();
         await flushPromises();
 
-        await api().load({ fresh: true });
+        await api().load({ fresh: true }).catch(() => undefined);
         await flushPromises();
 
         expect(wrapper.text()).toBe('error');
@@ -220,13 +220,32 @@ describe('useScreenRead', () => {
         expect(wrapper.text()).toBe('error');
     });
 
+    it('OFF-011 a fresh read that did not get the server\'s answer rejects with the error, so a caller can tell', async () => {
+        readMock.mockResolvedValueOnce({ n: 1 });
+        const failure = new CapabilityError('probe_show', 0, { reason: 'network' });
+        readFreshMock.mockRejectedValueOnce(failure);
+        const { api } = screen();
+        await flushPromises();
+
+        await expect(api().load({ fresh: true })).rejects.toBe(failure);
+    });
+
+    it('CAP-002 a plain load never rejects', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('probe_show', 500, null));
+        const { api } = screen();
+        await flushPromises();
+        readMock.mockRejectedValueOnce(new CapabilityError('probe_show', 0, null));
+
+        await expect(api().load()).resolves.toBeUndefined();
+    });
+
     it('OFF-003 stops showing the screen when a fresh read is refused', async () => {
         readMock.mockResolvedValueOnce({ n: 1 });
         readFreshMock.mockRejectedValueOnce(new CapabilityError('probe_show', 401, null));
         const { wrapper, api } = screen();
         await flushPromises();
 
-        await api().load({ fresh: true });
+        await api().load({ fresh: true }).catch(() => undefined);
         await flushPromises();
 
         expect(wrapper.text()).toBe('signed-out');

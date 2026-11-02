@@ -96,9 +96,30 @@ describe('MesocyclesView', () => {
         await wrapper.find('[data-test="item-template"]').trigger('click');
         await flushPromises();
 
-        expect(readFreshMock).toHaveBeenCalledWith('train_show');
+        expect(readFreshMock).toHaveBeenCalledWith('train_show', {});
         expect(wrapper.text()).toContain('Replace your draft?');
         expect(push).not.toHaveBeenCalled();
+    });
+
+    it('MESO-007 OFF-003 keeps the draft check\'s answer when an older background refresh lands after it', async () => {
+        let staleRefresh: (data: TrainShowOutput) => void = () => {};
+        readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {
+            staleRefresh = onUpdate as typeof staleRefresh;
+            return empty;
+        });
+        readFreshMock.mockResolvedValueOnce({ ...empty, draft: train.draft });
+        const wrapper = mount(MesocyclesView, { global });
+        await flushPromises();
+
+        await wrapper.find('[data-test="menu"]').trigger('click');
+        await wrapper.find('[data-test="item-template"]').trigger('click');
+        await flushPromises();
+        expect(wrapper.find('[data-test="draft"]').exists()).toBe(true);
+
+        staleRefresh(empty);
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="draft"]').exists()).toBe(true);
     });
 
     it('MESO-007 starts nothing when the server cannot say whether there is a draft', async () => {

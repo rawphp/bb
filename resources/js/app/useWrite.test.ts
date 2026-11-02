@@ -44,10 +44,11 @@ describe('useWrite', () => {
     it.each([500, 502, 504, 200])('OFF-011 counts a %i answer as no answer, not a refusal, and reads the server again', async (status) => {
         writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', status, null));
         const load = vi.fn(async () => {});
-        const { send } = useWrite(load);
+        const { send, error } = useWrite(load);
 
         expect(await send('mesocycle_day_add', {}, 'No.')).toBe('no-answer');
         expect(load).toHaveBeenCalledExactlyOnceWith({ fresh: true });
+        expect(error.value).toContain('may have worked');
     });
 
     it.each([400, 404, 422, 499])('OFF-011 counts a %i answer as a refusal', async (status) => {
@@ -80,5 +81,13 @@ describe('useWrite', () => {
         expect(await first).toBe('done');
         await flushPromises();
         expect(busy.value).toBe(false);
+    });
+
+    it('OFF-011 keeps the write\'s message when the read after it fails too', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', 0, { reason: 'timeout' }));
+        const { send, error } = useWrite(vi.fn(async () => Promise.reject(new CapabilityError('mesocycle_show', 0, { reason: 'network' }))));
+
+        expect(await send('mesocycle_day_add', {}, 'No.')).toBe('no-answer');
+        expect(error.value).toContain('may have worked');
     });
 });

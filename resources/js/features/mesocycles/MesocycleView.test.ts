@@ -312,6 +312,7 @@ describe('MesocycleView', () => {
 
         await openMenu(wrapper, 'add-day');
         await flushPromises();
+        expect(wrapper.find('[data-test="error"]').text()).toContain('may have worked');
         await openMenu(wrapper, 'add-day');
         await flushPromises();
 

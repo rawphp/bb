@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { readFresh } from '@/app/call';
 import { failureMessage } from '@/app/errors';
 import ReadState from '@/app/ReadState.vue';
 import { useScreenRead } from '@/app/useScreenRead';
 import type { TrainShowOutput } from '@/contracts/train_show';
 import BottomSheet from '@/design/BottomSheet.vue';
-import ActionMenu, { type ActionMenuItem } from './ActionMenu.vue';
+import ActionMenu, { type ActionMenuItem } from '@/design/ActionMenu.vue';
 
 // Train → Mesocycles: the unfinished draft (MESO-007), every mesocycle grouped current,
 // planned and past (MESO-001), and the + menu with the four ways to build one (MESO-002).
@@ -42,12 +41,14 @@ function build(route: CreateRoute): void {
 // Starting another build replaces the draft, so it asks first (MESO-007). Whether there
 // is a draft comes from the server, never the cached copy, so a draft started since
 // (on another screen or device) still gets the question. With no answer, nothing starts.
+// The check is the screen's own read, so a background refresh that started before it
+// cannot replace its answer.
 async function choose(key: string): Promise<void> {
     checkError.value = null;
     if (props.payload === undefined) {
         checking.value = true;
         try {
-            data.value = await readFresh<TrainShowOutput>('train_show');
+            await load({ fresh: true });
         } catch (error) {
             checkError.value = failureMessage(error, 'Your mesocycles could not be checked for a draft.');
             return;

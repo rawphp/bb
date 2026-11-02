@@ -10,9 +10,10 @@ export type ReadFailure = 'signed-out' | 'error';
  * on mount, cached copy first (OFF-003), and again each time the screen comes back on
  * show, so a screen under a pushed one never acts on what it read before.
  * load() reads again, for Try again and after a write. load({ fresh: true }) asks the
- * server, not the cache, for when the cached copy may predate a write that got no answer.
- * When that read fails, the screen keeps what it shows, unless the failure is one after
- * which read() would also stop showing its cached copy (401, 419, 403, 404).
+ * server, not the cache, for a decision or a write that a cached copy may predate. When
+ * that read fails, the screen keeps what it shows, unless the failure is one after which
+ * read() would also stop showing its cached copy (401, 419, 403, 404), and the call
+ * rejects with the error, so the caller knows it did not get the server's answer.
  */
 export function useScreenRead<T>(
     name: string,
@@ -51,8 +52,8 @@ export function useScreenRead<T>(
             // A refresh that already landed wins over the copy read() was handed.
             if (current() && failure.value === null && !refreshed) data.value = copy;
         } catch (error) {
-            if (fresh && data.value !== undefined && !removesCopy(error)) return;
-            refused(error);
+            if (!fresh || data.value === undefined || removesCopy(error)) refused(error);
+            if (fresh) throw error;
         }
     }
 

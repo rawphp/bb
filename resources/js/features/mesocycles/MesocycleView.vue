@@ -12,7 +12,7 @@ import type { MesocycleShowOutput } from '@/contracts/mesocycle_show';
 import BottomSheet from '@/design/BottomSheet.vue';
 import PendingMark from '@/design/PendingMark.vue';
 import { PENDING_DIM } from './types';
-import ActionMenu, { type ActionMenuItem } from './ActionMenu.vue';
+import ActionMenu, { type ActionMenuItem } from '@/design/ActionMenu.vue';
 import WeekColumn from './WeekColumn.vue';
 
 // A mesocycle (MESO-040 to MESO-045): a column per week with each day's exercises, the

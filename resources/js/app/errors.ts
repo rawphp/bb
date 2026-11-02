@@ -15,6 +15,18 @@ export function failureMessage(error: unknown, fallback: string): string {
     return typeof message === 'string' && message !== '' ? message : fallback;
 }
 
+/**
+ * A failed write's message. A 5xx or an answer that could not be read may have come
+ * after the write was done (OFF-011), so it says that rather than that the write failed.
+ */
+export function writeFailureMessage(error: unknown, fallback: string): string {
+    if (error instanceof CapabilityError && error.status !== 0 && !isRefusal(error)) {
+        return 'The server had a problem answering, so this may have worked. Check, then try again.';
+    }
+
+    return failureMessage(error, fallback);
+}
+
 /** The server answered and refused the call (4xx), so it did nothing. A 5xx or no answer may have done it (OFF-011). */
 export function isRefusal(error: unknown): boolean {
     return error instanceof CapabilityError && error.status >= 400 && error.status < 500;
