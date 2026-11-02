@@ -7,6 +7,7 @@ use App\Domain\Model\MuscleGroup;
 use App\Models\Exercise;
 use App\Models\User;
 use App\Models\WorkoutExercise;
+use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Workout\WorkoutIds;
 use Illuminate\Database\Events\QueryExecuted;
@@ -181,4 +182,24 @@ it('WO-003 CAP-011 logging a set names the reads it changes from the session row
             ...array_map(fn (string $day) => 'week_show{"date":"2026-09-'.$day.'"}', ['21', '22', '23', '24', '25', '26', '27']),
             'week_show{}',
         ]);
+});
+
+it('SCH-039 CAP-011 a set write in a moved floating-day session still names the day the plan put it on', function () {
+    // Both days float (no weekday), so the plan puts day 1 on the user's first training day of week 3, Monday 21
+    // September. The session was moved to Tuesday 29th, a week later, and started there: only the plan names the 21st.
+    Carbon::setTestNow('2026-09-29 07:05:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+    $mesocycle->update(['days' => array_map(fn (array $day) => ['weekday' => null] + $day, $mesocycle->days)]);
+    WorkoutSession::factory()->for($user)->create([
+        'mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1,
+        'planned_start_at' => '2026-09-29 07:00:00', 'planned_end_at' => '2026-09-29 08:00:00', 'actual_start_at' => null,
+    ]);
+    writeOver($user, 'workout_start', ['workout_id' => WorkoutIds::workout($mesocycle->id, 3, 1)])->assertOk();
+    $set = writeOver($user, 'workout_show', ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1])->json('data.exercises.0.sets.0.id');
+
+    $keys = writeOver($user, 'workout_set_log', ['set_id' => $set, 'weight' => ['value' => 80, 'unit' => 'kg'], 'reps' => 10, 'is_logged' => true])
+        ->assertOk()->json('data.invalidates');
+
+    expect($keys)->toContain('today_show{"date":"2026-09-21"}', 'week_show{"date":"2026-09-21"}', 'today_show{"date":"2026-09-29"}');
 });
