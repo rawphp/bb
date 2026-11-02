@@ -43,7 +43,7 @@ final class ProgressSnapshot
      * @param  Collection<int, WeighIn>  $weighIns  all of them
      * @param  ?int  $steps  today's step count; null when none is stored
      * @param  Collection<int, stdClass>  $sets  one row (mesocycle_id, week, exercise_id, is_logged, is_skipped) per set of a live session in a mesocycle that names an exercise
-     * @param  Collection<int, Exercise>  $exercises  the ones the user can see
+     * @param  Collection<int, Exercise>  $exercises  the visible exercises that occur in `$sets` or `$lastUsed`
      * @param  array<int, string>  $lastUsed  exercise id => start of the latest session with a logged set of it
      */
     public function __construct(

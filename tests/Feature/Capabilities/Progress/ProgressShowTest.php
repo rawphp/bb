@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Model\MuscleGroup;
 use App\Models\Exercise;
 use App\Models\Step;
 use App\Models\User;
@@ -9,6 +10,7 @@ use App\Models\WorkoutSet;
 use Illuminate\Support\Carbon;
 use Tests\Support\ProgressSeed;
 use Tests\Support\ScreenFixture;
+use Tests\Support\TrainSeed;
 
 // The HTTP seam of progress_show and its screen fixtures. The rules are unit tests (ProgressChartPayloadTest and
 // its neighbours).
@@ -157,12 +159,42 @@ it('EX-013 dates an exercise by its planned start when the session has no actual
     // Curl, last logged on 5 October, is also in a planned-only session on 12 October: it moves to the top.
     $planned = WorkoutSession::factory()->for($user)->create(['actual_start_at' => null, 'planned_start_at' => '2026-10-12 09:00:00']);
     WorkoutSet::factory()->create([...$logged, 'workout_session_id' => $planned->id, 'exercise_id' => $curl->id]);
-    // Row has an actual start on 9 October and a planned start later: the actual one counts, so Bench (8 October)
-    // stays behind it and the planned 26 October does not move Row any higher than the actual start would.
+    // Bench has an actual start on 8 October and a planned start later: the actual one counts, so Bench stays
+    // behind Row (9 October) and the planned 26 October does not move Bench to the top.
     $both = WorkoutSession::factory()->for($user)->create(['actual_start_at' => '2026-10-08 20:00:00', 'planned_start_at' => '2026-10-26 09:00:00']);
     WorkoutSet::factory()->create([...$logged, 'workout_session_id' => $both->id, 'exercise_id' => $bench->id]);
 
     $data = $this->actingAs($user)->postJson('/capabilities/progress_show')->assertOk()->json('data');
 
     expect(array_column($data['exercises'], 'id'))->toBe([(string) $curl->id, (string) $row->id, (string) $bench->id]);
+});
+
+it('ANA-007 WO-025 averages a mesocycle\'s sets without a deleted session\'s sets or a logged-and-skipped set', function () {
+    ['user' => $user, 'bench' => $bench] = ProgressSeed::world();
+    $cutA = $user->mesocycles()->where('name', 'Cut A')->firstOrFail();
+    // A deleted Cut A session holding three logged Bench sets, and a skipped Bench set in a live Cut A session.
+    $gone = ProgressSeed::session($user, $cutA, 1, '2026-10-06 09:00:00', [[$bench, 60, 8], [$bench, 60, 8], [$bench, 60, 8]]);
+    $gone->delete();
+    $live = WorkoutSession::query()->where('mesocycle_id', $cutA->id)->where('week', 2)->firstOrFail();
+    WorkoutSet::factory()->create(['workout_session_id' => $live->id, 'exercise_id' => $bench->id, 'position' => 9, 'is_logged' => true, 'is_skipped' => true, 'actual_weight_kg' => 60, 'actual_reps' => 8]);
+
+    $sets = $this->actingAs($user)->postJson('/capabilities/progress_show')->assertOk()->json('data.mesocycle_history.0.sets');
+
+    // Chest 5 working sets, Back 1 and Biceps 1, over 2 weeks.
+    expect($sets)->toBe([
+        ['label' => 'Chest', 'value' => '2.5', 'tone' => 'neutral'],
+        ['label' => 'Back', 'value' => '0.5', 'tone' => 'neutral'],
+        ['label' => 'Biceps', 'value' => '0.5', 'tone' => 'neutral'],
+    ]);
+});
+
+it('EX-013 lists an exercise logged only in a session with no mesocycle, at its date', function () {
+    ['user' => $user, 'bench' => $bench, 'row' => $row, 'curl' => $curl] = ProgressSeed::world();
+    $squat = TrainSeed::exercise('Squat', MuscleGroup::Quads);
+    $session = WorkoutSession::factory()->for($user)->create(['mesocycle_id' => null, 'actual_start_at' => '2026-10-07 09:00:00', 'planned_start_at' => null]);
+    WorkoutSet::factory()->create(['workout_session_id' => $session->id, 'exercise_id' => $squat->id, 'is_logged' => true, 'actual_weight_kg' => 100, 'actual_reps' => 5]);
+
+    $data = $this->actingAs($user)->postJson('/capabilities/progress_show')->assertOk()->json('data');
+
+    expect(array_column($data['exercises'], 'id'))->toBe([(string) $row->id, (string) $bench->id, (string) $squat->id, (string) $curl->id]);
 });

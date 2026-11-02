@@ -120,10 +120,10 @@ it('ANA-007 WO-025 a logged set that was skipped is not a working set, and a wee
     expect(W::payload($snapshot)['mesocycle_history'][0]['sets'])->toBe([['label' => 'Chest', 'value' => '1.0', 'tone' => 'neutral']]);
 });
 
-it('ANA-007 a set of an exercise the user cannot see, or of a session that is gone, is ignored', function () {
+it('ANA-007 a set of an exercise the user cannot see is ignored', function () {
     $snapshot = W::snapshot(
         sessions: [W::session('s-a', W::CUT_A, 1)],
-        sets: [W::set('1', 's-a', 12), W::set('2', 's-a', 999), W::set('3', 's-gone', 12)],
+        sets: [W::set('1', 's-a', 12), W::set('2', 's-a', 999)],
     );
 
     expect(W::payload($snapshot)['mesocycle_history'][0]['sets'])->toBe([['label' => 'Chest', 'value' => '1.0', 'tone' => 'neutral']]);
