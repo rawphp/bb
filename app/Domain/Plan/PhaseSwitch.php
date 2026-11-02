@@ -10,8 +10,9 @@ use DateTimeImmutable;
 /**
  * SAFE-017: a re-check that changes the phase does it from the first day of the plan week holding today. The phase
  * covering that day ends there, or is replaced in place when it starts that day; the new phase starts there. Later
- * phases and the mesocycles are not touched (PLAN-002 governs their remaining weeks). An event after the switch day
- * goes with the new phase, as a goal change takes it (PH-043).
+ * phases and the mesocycles are not touched (PLAN-002 governs their remaining weeks). An event on or after the switch
+ * day goes with the new phase, as a goal change takes it (PH-043); ChangePhaseGoal splits a phase the same way at the
+ * next plan week, for a phase named by id rather than the one covering a day.
  */
 final class PhaseSwitch
 {
@@ -82,7 +83,9 @@ final class PhaseSwitch
 
     /**
      * SAFE-017, PLAN-007: a nutrition user who now fails moves to training only from the switch day: the type of the
-     * phase they are in (Maintenance with none), no rate, one default mesocycle long.
+     * phase they are in (Maintenance with none) with no rate, for the rest of that phase, so the phases after it keep
+     * their place. A phase with no end, or no phase at all, gets PLAN-007's one default mesocycle (TBL-020), ending no
+     * later than the next phase starts.
      *
      * @param  list<Phase>  $phases
      * @return list<PhaseWrite>
@@ -93,9 +96,21 @@ final class PhaseSwitch
         $day = self::day($grid, $today);
         $week = $grid->weekIndexContaining($day) ?? 0;
         $type = self::current($phases, $grid, $today)->type ?? PhaseType::Maintenance;
-        $phase = PlanRules::trainingOnlyPhase($newId, $type, $week, $experience, $grid);
+        $default = PlanRules::trainingOnlyPhase($newId, $type, $week, $experience, $grid);
+        $end = self::covering($day, $phases)->end ?? self::beforeNextPhase($default->end ?? $grid->start($week + 1), $phases, $day);
 
-        return self::writes(
-            $phases, $day, $type, $phase->targetRatePercentPerWeek, $phase->end ?? $grid->start($week + 1), $newId);
+        return self::writes($phases, $day, $type, $default->targetRatePercentPerWeek, $end, $newId);
+    }
+
+    /** @param  list<Phase>  $phases */
+    private static function beforeNextPhase(DateTimeImmutable $end, array $phases, DateTimeImmutable $day): DateTimeImmutable
+    {
+        foreach ($phases as $phase) {
+            if ($phase->start > $day && $phase->start < $end) {
+                $end = $phase->start;
+            }
+        }
+
+        return $end;
     }
 }

@@ -15,6 +15,7 @@ use App\Models\Phase;
 use App\Models\User;
 use App\Support\Plan\PlanSnapshot;
 use App\Support\Settings\ProfileScreening;
+use App\Support\Settings\Recheck;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;

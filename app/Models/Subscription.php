@@ -62,6 +62,15 @@ class Subscription extends Model
         return Access::fromStripeStatus(self::of($user)?->status);
     }
 
+    /**
+     * Whether Stripe will charge the account again: a trial or a paid subscription not set to end at its period's
+     * end. Deleting the account would leave it charging with nothing left to cancel it from (ACC-005, SUB-007).
+     */
+    public function renews(): bool
+    {
+        return in_array(Access::fromStripeStatus($this->status), [Access::Trial, Access::Active], true) && ! $this->cancel_at_period_end;
+    }
+
     /** Whether Stripe has billed this account before: the free trial is given once (SUB-003). */
     public function hasSubscribed(): bool
     {

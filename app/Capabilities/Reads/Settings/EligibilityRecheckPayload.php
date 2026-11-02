@@ -7,6 +7,8 @@ use App\Capabilities\Reads\Data\Settings\ScreeningQuestion;
 use App\Capabilities\Reads\Data\Settings\TextLine;
 use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Support\Tone;
+use App\Domain\Safety\EligibilityMode;
+use App\Domain\Safety\Screening;
 use App\Domain\Safety\ScreeningItem;
 use App\Models\Profile;
 use App\Support\Settings\ProfileScreening;
@@ -41,9 +43,13 @@ final class EligibilityRecheckPayload
             return new Status('Training only', Tone::Warning->value);
         }
 
-        return in_array(ScreeningItem::TryingToConceive, ProfileScreening::saved($profile), true)
-            ? new Status('Training and nutrition, no fat loss', Tone::Info->value)
-            : new Status('Training and nutrition', Tone::Good->value);
+        // SAFE-001: what the saved items allow; training_only above wins, since a passing user stays training only
+        // until the nutrition steps are done.
+        return match (Screening::eligibilityFor(ProfileScreening::saved($profile))->mode) {
+            EligibilityMode::AllTargets => new Status('Training and nutrition', Tone::Good->value),
+            EligibilityMode::FatLossBlocked => new Status('Training and nutrition, no fat loss', Tone::Info->value),
+            EligibilityMode::TrainingOnly => new Status('Training only', Tone::Warning->value),
+        };
     }
 
     /**

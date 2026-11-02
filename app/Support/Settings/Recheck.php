@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Actions\Settings;
+namespace App\Support\Settings;
 
 use App\Domain\Safety\RecheckOutcomeKind;
 

@@ -25,7 +25,7 @@ final class AccountDeleteCapability implements HostCapability
     {
         // The agent and every token are refused it (CAP-031): a person deletes their own account.
         return HostDefinition::write('account_delete', affects: ['account_show'], destructive: true)
-            ->description('Delete the signed-in account and all its data: profile, plan, weigh-ins, workouts, meals and tokens, and sign out. It cannot be undone, so it needs the word DELETE typed as the confirmation. Only the user can call it, never the agent or a token.')
+            ->description('Delete the signed-in account and all its data: profile, plan, weigh-ins, workouts, meals and tokens, and sign out. It cannot be undone, so it needs the word DELETE typed as the confirmation; a subscription that would renew must be cancelled first. Only the user can call it, never the agent or a token.')
             ->cli('account', 'delete')
             ->input(AccountDeleteInput::class)
             ->run(fn (AccountDeleteInput $input, CapabilityContext $context): WriteResult => $this->run($context));
