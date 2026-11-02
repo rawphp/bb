@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import ReadState from '@/app/ReadState.vue';
 import { screenRead, type ReadFailure } from '@/app/screenRead';
 import { useWrite } from '@/app/useWrite';
@@ -42,9 +42,15 @@ const load = (options?: { fresh?: boolean }): Promise<void> =>
     read({ meal_id: props.mealId ?? null, source_date: props.sourceDate ?? null, shown_date: shownDate.value } satisfies CopyShowInput, options);
 const { send, busy, error } = useWrite(load);
 
+// Offline with nothing to show, it reads again when the device reconnects (OFF-004), as useRead does.
+const reconnected = (): void => {
+    if (failure.value?.offline) void load();
+};
 onMounted(() => {
+    window.addEventListener('online', reconnected);
     if (!data.value) void load();
 });
+onUnmounted(() => window.removeEventListener('online', reconnected));
 
 const open = ref(true);
 const showsAdvanced = ref(false);
