@@ -5,6 +5,7 @@ namespace App\Capabilities\Nutrition;
 use App\Actions\Foods\SaveCustomFood;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Nutrition\Data\CustomFoodSaveInput;
+use App\Capabilities\Reads\Pantry\PantryKeys;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Support\UsesClientUlid;
@@ -25,7 +26,7 @@ final class CustomFoodSaveCapability implements HostCapability
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('custom_food_save', affects: ['custom_foods_show'])
+        return HostDefinition::write('custom_food_save', affects: ['custom_foods_show', 'food_search'])
             ->description('Create a custom food, or edit one of the user\'s own, from one serving: its size and unit, its weight in grams, and its protein, fat, carbs and fiber, with an optional brand and barcode. Use it when a food is not in the database; calories are worked out from the macros. A new food takes a new id; sending an existing food\'s id replaces its values.')
             ->cli('custom-food', 'save')
             ->input(CustomFoodSaveInput::class)
@@ -52,7 +53,7 @@ final class CustomFoodSaveCapability implements HostCapability
                     ),
                 );
 
-                return new WriteResult(invalidates: [ReadKey::for('custom_foods_show')]);
+                return new WriteResult(invalidates: [ReadKey::for('custom_foods_show'), ...PantryKeys::opened()]);
             });
     }
 }

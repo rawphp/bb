@@ -5,11 +5,10 @@ namespace App\Capabilities\Nutrition;
 use App\Actions\Foods\SetFoodFavorite;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Nutrition\Data\FoodFavoriteSetInput;
+use App\Capabilities\Reads\Pantry\PantryKeys;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\OwnsInput;
-use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Support\WriteResult;
-use App\Domain\Pantry\PantryTab;
 use App\Models\Food;
 use App\Models\User;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
@@ -21,7 +20,7 @@ final class FoodFavoriteSetCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('food_favorite_set', affects: ['food_search'])
+        return HostDefinition::write('food_favorite_set', affects: ['food_search', 'food_barcode_lookup'])
             ->description('Favourite a food, or take it back, so it shows on the Pantry\'s Favorites tab and ranks first in the user\'s search. Use it when the user stars or unstars a food; setting the same value again changes nothing. It changes only the user\'s favourites.')
             ->cli('food', 'favorite-set')
             ->input(FoodFavoriteSetInput::class)
@@ -30,27 +29,12 @@ final class FoodFavoriteSetCapability implements HostCapability, OwnsInput
                 $user = $context->user();
                 ($this->setFavorite)($user, $input->food_id, $input->favorite);
 
-                return new WriteResult(invalidates: self::pantryKeys());
+                return new WriteResult(invalidates: PantryKeys::opened());
             });
     }
 
     public function owned(User $user): array
     {
         return ['food_id' => Food::query()->visibleTo($user)];
-    }
-
-    /**
-     * Every Pantry list shows a food's star, but a food_search key holds its whole input (a search's text, the meal,
-     * the unit), so no write can name them all. This names the keys it can know: the Pantry as it opens, and each
-     * tab with no other input. A cached read under any other input is refreshed by the client's next read, not here.
-     *
-     * @return list<string>
-     */
-    private static function pantryKeys(): array
-    {
-        return [
-            ReadKey::for('food_search'),
-            ...array_map(fn (PantryTab $tab) => ReadKey::for('food_search', ['tab' => $tab->value]), PantryTab::cases()),
-        ];
     }
 }
