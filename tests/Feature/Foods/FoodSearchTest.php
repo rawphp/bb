@@ -247,6 +247,8 @@ it('FOOD-023 bounds the user\'s own tier in the database, whatever the length of
     foreach (range(1, 60) as $i) {
         FoodRecent::factory()->create(['user_id' => $this->user->id, 'food_id' => foodsMake("Rice {$i}")->id]);
     }
+    // Only the search's own queries: the warm app keeps the connection, and another test may have logged.
+    DB::flushQueryLog();
     DB::enableQueryLog();
 
     $found = foodsSearch($this->user, 'rice', limit: 5);
