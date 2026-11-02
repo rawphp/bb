@@ -10,26 +10,31 @@ type WeightUnit = AboutYou['weight']['unit'];
 
 // Step 2: name, sex, date of birth, height and weight (ONB-004). Units come from the
 // server and switch here; the server converts a saved number to the new unit. A pick is
-// saved at once, a typed field when it loses focus. A field cleared and left goes back to
-// what is saved: the server keeps an answer it is sent no value for. Ported from
-// rp-clone's AboutYouStep.
-const props = defineProps<{ about: AboutYou }>();
+// saved at once, a typed field when it loses focus. A number or date cleared and left
+// goes back to what is saved, since a missing value keeps the saved answer; a cleared
+// name is sent as typed, for the server to judge. Ported from rp-clone's AboutYouStep.
+const props = defineProps<{ about: AboutYou; locked?: boolean }>();
 
 const emit = defineEmits<{ answer: [answers: Answers] }>();
 
 // The name as the field shows it. A re-read replaces it only while nobody is typing, as
-// NumberField does, so a save landing mid-word does not wipe the word.
+// NumberField does, so a save landing mid-word does not wipe the word. A change is judged
+// against the name last sent, since the read lags a save still out.
 const name = ref(props.about.name);
 const typingName = ref(false);
+let sentName = props.about.name;
 watch(
     () => props.about.name,
     (saved) => {
+        sentName = saved;
         if (!typingName.value) name.value = saved;
     },
 );
 
 function typedName(): void {
-    if (name.value !== props.about.name) emit('answer', { name: name.value });
+    if (name.value === sentName) return;
+    sentName = name.value;
+    emit('answer', { name: name.value });
 }
 
 function pickedBirthDate(event: Event): void {
@@ -103,7 +108,7 @@ const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3
                     type="button"
                     role="radio"
                     :aria-checked="option.is_selected"
-                    :disabled="!option.is_enabled"
+                    :disabled="locked || !option.is_enabled"
                     :class="[segment, option.is_selected ? 'bg-surface text-primary-text shadow-sm' : 'text-primary-text']"
                     @click="option.is_selected || emit('answer', { sex: option.value as 'male' | 'female' })"
                 >
@@ -119,7 +124,7 @@ const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3
                 type="button"
                 data-test="set-birth-date"
                 class="min-h-tap self-start rounded-xl bg-accent/15 px-4 font-medium text-accent active:opacity-70 disabled:opacity-50"
-                :disabled="about.birth_date.is_locked"
+                :disabled="locked || about.birth_date.is_locked"
                 @click="emit('answer', { birth_date: about.birth_date.initial })"
             >
                 Set date of birth
@@ -146,7 +151,7 @@ const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3
                     type="button"
                     role="radio"
                     :aria-checked="option.is_selected"
-                    :disabled="!option.is_enabled"
+                    :disabled="locked || !option.is_enabled"
                     :class="[segment, option.is_selected ? 'bg-surface text-primary-text shadow-sm' : 'text-primary-text']"
                     @click="option.is_selected || emit('answer', { height: { unit: option.value as HeightUnit } })"
                 >
@@ -169,7 +174,7 @@ const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3
                     type="button"
                     role="radio"
                     :aria-checked="option.is_selected"
-                    :disabled="!option.is_enabled"
+                    :disabled="locked || !option.is_enabled"
                     :class="[segment, option.is_selected ? 'bg-surface text-primary-text shadow-sm' : 'text-primary-text']"
                     @click="option.is_selected || emit('answer', { weight: { unit: option.value as WeightUnit } })"
                 >

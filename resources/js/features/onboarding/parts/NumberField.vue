@@ -26,10 +26,16 @@ function parse(text: string): number | null {
 
 const text = ref(format(props.modelValue));
 const focused = ref(false);
+// The value last given to the parent, or the parent's own once it changes. A parent that
+// saves to a server holds the old value until the save lands, so a number put back to it
+// meanwhile is still a change.
+let sent = props.modelValue;
 
 function push(): void {
     const parsed = parse(text.value);
-    if (parsed !== props.modelValue) emit('update:modelValue', parsed);
+    if (parsed === sent) return;
+    sent = parsed;
+    emit('update:modelValue', parsed);
 }
 
 function typed(): void {
@@ -48,6 +54,7 @@ function left(): void {
 watch(
     () => props.modelValue,
     (value) => {
+        sent = value;
         if (!focused.value && parse(text.value) !== value) text.value = format(value);
     },
 );

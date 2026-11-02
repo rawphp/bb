@@ -25,21 +25,40 @@ const props = defineProps<{ payload?: OnboardingShowOutput }>();
 const { data, failure, load } = useRead<OnboardingShowOutput>('onboarding_show', {}, 'Your setup could not be loaded.', props.payload);
 const { send, error } = useWrite(load);
 
-// One queue, in the order things were done. Answers made while one is saving wait their
-// turn rather than being dropped, and a Back or Next pressed meanwhile goes after them.
-// One that is refused, or gets no answer, drops what waits behind it: those were made on
-// a screen now out of date. While a move is out the step is locked (the fieldset), so
-// nothing is made on a screen that is going away.
+// One queue, in the order things were done. A pick reads what the screen shows, which is
+// out of date while a save is out, so the step's picks are locked until it lands (`locked`).
+// Typing is never locked: a typed answer made meanwhile waits its turn, and a Back or Next
+// pressed meanwhile goes after the answers, first press wins. One that is refused, or gets
+// no answer, drops what waits behind it: those were made on a screen now out of date.
+// While a move is out the whole step is locked (the fieldset), so nothing is made on a
+// screen that is going away.
 const waiting: Answers[] = [];
 let wantsMove: 'next' | 'back' | null = null;
 const saving = ref(false);
 const moving = ref(false);
-// Remounts the step's fields after a refusal, so they show what is saved, not what was refused.
+const locked = computed(() => saving.value || moving.value);
+
+// After a failed write the step's fields are remounted, so they show what is saved, not
+// what was refused. Not under someone's typing: then it waits until focus leaves the step.
 const fields = ref(0);
+const fieldset = ref<HTMLFieldSetElement>();
+let staleFields = false;
+
+function resetFields(): void {
+    staleFields = false;
+    fields.value += 1;
+}
+
+function leftField(event: FocusEvent): void {
+    if (staleFields && !fieldset.value?.contains(event.relatedTarget as Node | null)) resetFields();
+}
 
 async function post(input: OnboardingAnswerInput): Promise<boolean> {
     const done = (await send('onboarding_answer', { ...input }, 'Your answer could not be saved.')) === 'done';
-    if (!done) fields.value += 1;
+    if (!done) {
+        if (fieldset.value?.contains(document.activeElement)) staleFields = true;
+        else resetFields();
+    }
     return done;
 }
 
@@ -89,13 +108,13 @@ const step = computed((): StepFlowStep | null => {
 <template>
     <main class="mx-auto w-full max-w-[560px] px-4 pb-6 pt-[max(1rem,env(safe-area-inset-top))]">
         <StepFlow v-if="data && step" :key="data.step.number" :step="step" @back="move('back')" @next="move('next')">
-            <fieldset :key="fields" :disabled="moving" class="flex min-w-0 flex-col gap-4">
+            <fieldset ref="fieldset" :key="fields" :disabled="moving" class="flex min-w-0 flex-col gap-4" @focusout="leftField">
                 <OnboardingCallout v-for="notice in data.notices" :key="notice.text" :text="notice.text" :tone="notice.tone" />
-                <GoalStep v-if="data.step.key === 'goal'" :goal="data.goal" @answer="answer" />
-                <AboutYouStep v-else-if="data.step.key === 'about_you'" :about="data.about_you" @answer="answer" />
-                <ScreeningStep v-else-if="data.step.key === 'screening'" :screening="data.screening" @answer="answer" />
-                <GLP1Step v-else-if="data.step.key === 'glp1'" :glp1="data.glp1" @answer="answer" />
-                <BodyFatStep v-else-if="data.step.key === 'body_fat'" :body-fat="data.body_fat" @answer="answer" />
+                <GoalStep v-if="data.step.key === 'goal'" :goal="data.goal" :locked="locked" @answer="answer" />
+                <AboutYouStep v-else-if="data.step.key === 'about_you'" :about="data.about_you" :locked="locked" @answer="answer" />
+                <ScreeningStep v-else-if="data.step.key === 'screening'" :screening="data.screening" :locked="locked" @answer="answer" />
+                <GLP1Step v-else-if="data.step.key === 'glp1'" :glp1="data.glp1" :locked="locked" @answer="answer" />
+                <BodyFatStep v-else-if="data.step.key === 'body_fat'" :body-fat="data.body_fat" :locked="locked" @answer="answer" />
                 <p v-if="error" role="alert" class="rounded-xl p-3 text-sm" :class="toneClasses.warning">{{ error }}</p>
             </fieldset>
         </StepFlow>

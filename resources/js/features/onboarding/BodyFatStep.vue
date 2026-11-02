@@ -8,7 +8,7 @@ type Bucket = NonNullable<Answers['body_fat']>;
 
 // Step 5: body fat (ONB-007). Four buckets for the user's sex, labelled by the server
 // (TBL-001). Ported from rp-clone's BodyFatStep.
-defineProps<{ bodyFat: OnboardingShowOutput['body_fat'] }>();
+defineProps<{ bodyFat: OnboardingShowOutput['body_fat']; locked?: boolean }>();
 
 const emit = defineEmits<{ answer: [answers: Answers] }>();
 </script>
@@ -24,7 +24,7 @@ const emit = defineEmits<{ answer: [answers: Answers] }>();
                 :sex="bodyFat.sex ?? 'female'"
                 :index="index"
                 :selected="option.is_selected"
-                :disabled="!option.is_enabled"
+                :disabled="locked || !option.is_enabled"
                 @select="emit('answer', { body_fat: option.value as Bucket })"
             />
         </div>

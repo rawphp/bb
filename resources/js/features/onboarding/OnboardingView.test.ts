@@ -454,13 +454,16 @@ describe('OnboardingView', () => {
             expect(sent()).toEqual([{ answers: { sex: 'male' }, move: 'stay' }]);
         });
 
-        it('ONB-004 a unit switched straight after typing saves the number first, in its own unit, so the server converts it', async () => {
+        it('ONB-004 a unit switched after typing goes after the number, saved in its own unit, so the server converts it', async () => {
             wrapper = view(aboutYou);
             const weight = wrapper.get('input[aria-label="Weight in kg"]');
 
-            // A tap on lb takes focus from the field first, so its save goes out first.
+            // A tap on lb takes focus from the field first, so the number's save goes out
+            // first; the unit is a pick, so it is taken once that save lands.
             await weight.setValue('80');
             await weight.trigger('blur');
+            expect(radio(wrapper, 'Weight unit', 'lb').attributes('disabled')).toBeDefined();
+            await flushPromises();
             await radio(wrapper, 'Weight unit', 'lb').trigger('click');
             await flushPromises();
 
