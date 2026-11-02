@@ -1,18 +1,17 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 // Today's away week and missed week sheets (SCH-057, SCH-058, SCH-060). Today opens them
-// over itself; each also has its own route, where closing it goes back. The two that read
-// today_show are named: /dev/screens/today_show?view=<name>.
-const DATE = '(\\d{4}-\\d{2}-\\d{2})';
+// over itself; until it does, and for screenshots, each opens on its own here, in local
+// and testing only: /dev/screens/<fixture>?view=<name> renders it from a fixture.
+// Today's route (#96) must go above these, so /dev/screens/today_show opens the screen.
+const sheet = (path: string, name: string, component: RouteRecordRaw['component'], screen = 'today_show'): RouteRecordRaw =>
+    ({ path: `/dev/today/${path}`, name, component, meta: { dev: true, shell: false, screen } }) as RouteRecordRaw;
 
-export default [
-    {
-        path: `/today/away/:weekStart${DATE}`,
-        name: 'away-week-sheet',
-        component: () => import('./sheets/AwayWeekSheet.vue'),
-        props: (route) => ({ weekStart: route.params.weekStart, page: true }),
-        meta: { screen: 'away_week_show', tab: 'today' },
-    },
-    { path: '/today/missed-weeks', name: 'today-missed-weeks-sheet', component: () => import('./sheets/TodayMissedWeeksSheet.vue'), props: { page: true }, meta: { screen: 'today_show', tab: 'today' } },
-    { path: '/today/missed-day', name: 'today-missed-day-sheet', component: () => import('./sheets/TodayMissedDaySheet.vue'), props: { page: true }, meta: { screen: 'today_show', tab: 'today' } },
-] satisfies RouteRecordRaw[];
+// Dev routes stay out of a production build (CAP-004), as features/dev's do.
+export default (import.meta.env.DEV
+    ? [
+          sheet('away-week', 'away-week', () => import('./sheets/AwayWeekSheet.vue'), 'away_week_show'),
+          sheet('missed-weeks', 'today-missed-weeks', () => import('./sheets/TodayMissedWeeksSheet.vue')),
+          sheet('missed-day', 'today-missed-day', () => import('./sheets/TodayMissedDaySheet.vue')),
+      ]
+    : []) satisfies RouteRecordRaw[];

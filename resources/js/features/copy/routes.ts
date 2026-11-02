@@ -1,23 +1,9 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-// Copy foods (MEAL-060) and Copy day (SCH-034). A meal or Today opens the sheet over itself;
-// each also has its own route, where closing it goes back.
-const ULID = '([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26})';
-const DATE = '(\\d{4}-\\d{2}-\\d{2})';
-
-export default [
-    {
-        path: `/copy/meal/:mealId${ULID}`,
-        name: 'copy-foods',
-        component: () => import('./CopySheet.vue'),
-        props: (route) => ({ mealId: route.params.mealId, page: true }),
-        meta: { screen: 'copy_show', tab: 'today' },
-    },
-    {
-        path: `/copy/day/:sourceDate${DATE}`,
-        name: 'copy-day',
-        component: () => import('./CopySheet.vue'),
-        props: (route) => ({ sourceDate: route.params.sourceDate, page: true }),
-        meta: { screen: 'copy_show', tab: 'today' },
-    },
-] satisfies RouteRecordRaw[];
+// Copy foods (MEAL-060) and Copy day (SCH-034) open over a meal or Today; until those
+// screens open them, and for screenshots, the sheet opens on its own here, in local and
+// testing only: /dev/screens/copy_show renders it from a fixture.
+// Dev routes stay out of a production build (CAP-004), as features/dev's do.
+export default (import.meta.env.DEV
+    ? [{ path: '/dev/copy', name: 'copy', component: () => import('./CopySheet.vue'), meta: { dev: true, shell: false, screen: 'copy_show' } }]
+    : []) satisfies RouteRecordRaw[];

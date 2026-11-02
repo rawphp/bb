@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import ReadState from '@/app/ReadState.vue';
 import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
@@ -13,10 +12,8 @@ import { toneClasses } from '@/design/tones';
 // Mark plan weeks away (SCH-060, PLAN-025): which weeks, what happens to training and
 // calories, and whether the phase keeps its end date. Ported from rp-clone's AwayWeekSheet.
 // The server words every week and choice; the sheet keeps only what the user has picked.
-const props = defineProps<{ payload?: AwayWeekShowOutput; weekStart?: string; page?: boolean }>();
+const props = defineProps<{ payload?: AwayWeekShowOutput; weekStart?: string }>();
 const emit = defineEmits<{ close: [] }>();
-// Opened at its own route, not over a screen: closing goes back (architecture.md, Shell slots).
-const router = props.page ? useRouter() : null;
 
 const { data, failure, load } = useRead<AwayWeekShowOutput>(
     'away_week_show',
@@ -30,7 +27,9 @@ const open = ref(true);
 const chosen = ref<string[]>([]);
 const training = ref<AwayWeekShowOutput['training'] | null>(null);
 const calories = ref<AwayWeekShowOutput['calories'] | null>(null);
-const keepPhaseEnd = ref(false);
+// null until the user sets it: away_week_show does not say what an away week saved, so an
+// edit sends keep_phase_end only when the user has chosen it here (PLAN-025).
+const keepPhaseEnd = ref<boolean | null>(null);
 
 // The sheet opens with what the server chose; a read again after a write leaves the user's picks.
 watch(
@@ -56,10 +55,13 @@ function toggle(weekStart: string): void {
 }
 
 function close(): void {
+    if (!open.value) return;
     open.value = false;
     emit('close');
-    router?.back();
 }
+
+const keepInput = (): Pick<AwayWeekSetInput, 'keep_phase_end'> =>
+    data.value?.shows_keep_phase_end && keepPhaseEnd.value !== null ? { keep_phase_end: keepPhaseEnd.value } : {};
 
 async function save(): Promise<void> {
     if (!data.value || !picked.value || !training.value || !calories.value) return;
@@ -68,13 +70,13 @@ async function save(): Promise<void> {
         away: true,
         training: training.value,
         calories: calories.value,
-        ...(data.value.shows_keep_phase_end ? { keep_phase_end: keepPhaseEnd.value } : {}),
+        ...keepInput(),
     };
     if ((await send('away_week_set', { ...input }, 'The away weeks could not be saved.')) === 'done') close();
 }
 
 async function notAway(): Promise<void> {
-    const input: AwayWeekSetInput = { week_starts: chosen.value, away: false };
+    const input: AwayWeekSetInput = { week_starts: chosen.value, away: false, ...keepInput() };
     if ((await send('away_week_set', { ...input }, 'The week could not be changed.')) === 'done') close();
 }
 </script>
@@ -85,6 +87,7 @@ async function notAway(): Promise<void> {
         :title="data?.is_editing ? 'Edit away week' : 'Mark weeks away'"
         :save-disabled="!data || !picked || busy"
         :cancel-disabled="busy"
+        :dismissible="!busy"
         :error="error"
         @cancel="close"
         @save="save"
@@ -129,14 +132,18 @@ async function notAway(): Promise<void> {
                 <li v-for="note in data.notes" :key="note.text" class="rounded-xl p-3 text-sm" :class="toneClasses[note.tone]">{{ note.text }}</li>
             </ul>
 
-            <label v-if="data.shows_keep_phase_end" class="flex min-h-tap items-center justify-between gap-3" data-test="keep-phase-end">
-                <span>Keep the phase end date</span>
-                <input v-model="keepPhaseEnd" type="checkbox" role="switch" class="peer sr-only" :disabled="busy" />
-                <span
-                    aria-hidden="true"
-                    class="relative h-8 w-13 shrink-0 rounded-full bg-tone-neutral-bg transition-colors peer-checked:bg-accent peer-disabled:opacity-60 peer-focus-visible:ring-2 peer-focus-visible:ring-accent after:absolute after:top-0.5 after:left-0.5 after:size-7 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"
-                />
-            </label>
+            <div v-if="data.shows_keep_phase_end" class="space-y-1">
+                <label class="flex min-h-tap items-center justify-between gap-3" data-test="keep-phase-end">
+                    <span>Keep the phase end date</span>
+                    <input v-model="keepPhaseEnd" type="checkbox" role="switch" class="peer sr-only" :disabled="busy" />
+                    <span
+                        aria-hidden="true"
+                        class="relative h-8 w-13 shrink-0 rounded-full bg-tone-neutral-bg transition-colors peer-checked:bg-accent peer-disabled:opacity-60 peer-focus-visible:ring-2 peer-focus-visible:ring-accent after:absolute after:top-0.5 after:left-0.5 after:size-7 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"
+                    />
+                </label>
+                <!-- The server's notes say what happens when the end date moves; this line is the switch's own (rp-clone's footnote). -->
+                <p v-if="keepPhaseEnd" class="text-sm text-secondary-text" data-test="keeps-end">The phase keeps its end date.</p>
+            </div>
 
             <button
                 v-if="data.is_editing && picked"

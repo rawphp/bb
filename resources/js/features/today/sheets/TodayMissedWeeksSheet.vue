@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import ReadState from '@/app/ReadState.vue';
 import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
@@ -12,10 +11,8 @@ import { toneClasses } from '@/design/tones';
 // Back after a week or more without training (SCH-058): restart the week, or end the
 // mesocycle and build a new one. Ported from rp-clone's TodayMissedWeeksSheet; Today's
 // read says whether to ask and words the question.
-const props = defineProps<{ payload?: TodayShowOutput; date?: string; page?: boolean }>();
+const props = defineProps<{ payload?: TodayShowOutput; date?: string }>();
 const emit = defineEmits<{ close: [] }>();
-// Opened at its own route, not over a screen: closing goes back (architecture.md, Shell slots).
-const router = props.page ? useRouter() : null;
 
 const { data, failure, load } = useRead<TodayShowOutput>('today_show', props.date ? { date: props.date } : {}, 'Today could not be loaded.', props.payload);
 const { send, busy, error } = useWrite(load);
@@ -27,9 +24,9 @@ const missed = computed(() => data.value?.missed_weeks ?? null);
 const open = computed(() => !dismissed.value && (data.value === undefined || missed.value !== null));
 
 function close(): void {
+    if (dismissed.value) return;
     dismissed.value = true;
     emit('close');
-    router?.back();
 }
 
 async function resolve(choice: MissedWeekResolveInput['choice'], dietBreak?: boolean): Promise<void> {
@@ -50,6 +47,7 @@ const secondary = 'min-h-tap w-full rounded-full bg-accent/15 px-4 font-semibold
         :save-title="null"
         :heights="['half']"
         :cancel-disabled="busy"
+        :dismissible="!busy"
         :error="error"
         @cancel="close"
     >
@@ -74,7 +72,9 @@ const secondary = 'min-h-tap w-full rounded-full bg-accent/15 px-4 font-semibold
                     </button>
                 </template>
                 <button v-else type="button" :class="primary" data-test="end-confirm" :disabled="busy" @click="resolve('end')">End the mesocycle</button>
-                <button type="button" class="min-h-tap w-full font-semibold text-accent active:opacity-70" :disabled="busy" @click="ending = false">Back</button>
+                <button type="button" class="min-h-tap w-full font-semibold text-accent active:opacity-70" data-test="end-back" :disabled="busy" @click="ending = false">
+                    Back
+                </button>
             </template>
         </div>
         <div v-else class="p-4"><ReadState :failure="failure" what="Today" @retry="load" /></div>

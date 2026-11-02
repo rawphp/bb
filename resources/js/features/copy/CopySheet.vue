@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onMounted, ref, watch } from 'vue';
 import ReadState from '@/app/ReadState.vue';
-import { useRead } from '@/app/useRead';
+import { screenRead, type ReadFailure } from '@/app/screenRead';
 import { useWrite } from '@/app/useWrite';
 import type { CopyShowInput, CopyShowOutput } from '@/contracts/copy_show';
 import type { DayCopyInput } from '@/contracts/day_copy';
@@ -19,15 +18,33 @@ import CopyWorkoutBlockView from './CopyWorkoutBlockView.vue';
 // discards. Ported from rp-clone's CopySheet. The server says which days and meals can take
 // the copy; the sheet keeps only what the user has picked. `pending` dims the server's
 // calories and targets while a write waits to sync (OFF-008).
-const props = withDefaults(defineProps<{ payload?: CopyShowOutput; mealId?: string; sourceDate?: string; pending?: boolean; page?: boolean }>(), { pending: false });
+const props = withDefaults(defineProps<{ payload?: CopyShowOutput; mealId?: string; sourceDate?: string; pending?: boolean }>(), { pending: false });
 const emit = defineEmits<{ close: [] }>();
-// Opened at its own route, not over a screen: closing goes back (architecture.md, Shell slots).
-const router = props.page ? useRouter() : null;
 
-// One input for every read; showing another day or week changes its shown_date.
-const input = { meal_id: props.mealId ?? null, source_date: props.sourceDate ?? null, shown_date: null as string | null } satisfies CopyShowInput;
-const { data, failure, load } = useRead<CopyShowOutput>('copy_show', input, 'The copy could not be loaded.', props.payload);
+// Showing another day or week reads copy_show again for it. Each read gets its own input,
+// so one still on its way keeps the day it asked for (screenRead ignores its late answer).
+const data = ref<CopyShowOutput | undefined>(props.payload);
+const failure = ref<ReadFailure | null>(null);
+const shownDate = ref<string | null>(null);
+const read = screenRead<CopyShowOutput>(
+    'copy_show',
+    'The copy could not be loaded.',
+    (shown) => {
+        failure.value = null;
+        data.value = shown;
+    },
+    (why) => {
+        data.value = undefined;
+        failure.value = why;
+    },
+);
+const load = (options?: { fresh?: boolean }): Promise<void> =>
+    read({ meal_id: props.mealId ?? null, source_date: props.sourceDate ?? null, shown_date: shownDate.value } satisfies CopyShowInput, options);
 const { send, busy, error } = useWrite(load);
+
+onMounted(() => {
+    if (!data.value) void load();
+});
 
 const open = ref(true);
 const showsAdvanced = ref(false);
@@ -64,7 +81,7 @@ function flip(list: string[], id: string): string[] {
 
 function show(date: string | null | undefined): void {
     if (!date) return;
-    input.shown_date = date;
+    shownDate.value = date;
     void load();
 }
 
@@ -80,9 +97,9 @@ function pickMeal(meal: Meal): void {
 }
 
 function close(): void {
+    if (!open.value) return;
     open.value = false;
     emit('close');
-    router?.back();
 }
 
 async function save(): Promise<void> {
@@ -100,6 +117,7 @@ async function save(): Promise<void> {
         :title="data?.title ?? (sourceDate ? 'Copy day' : 'Copy foods')"
         :save-disabled="!ready || busy"
         :cancel-disabled="busy"
+        :dismissible="!busy"
         :error="error"
         @cancel="close"
         @save="save"
