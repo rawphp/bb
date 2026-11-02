@@ -1,13 +1,14 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { CopyShowOutput } from '@/contracts/copy_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import CopySheet from './CopySheet.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
 
 const readMock = vi.mocked(read);
+const readFreshMock = vi.mocked(readFresh);
 const writeMock = vi.mocked(write);
 const foods = screenFixture<CopyShowOutput>('copy_show');
 const day = screenFixture<CopyShowOutput>('copy_show.day');
@@ -32,6 +33,7 @@ const strip = (wrapper: ReturnType<typeof show>) => wrapper.get('[role="group"][
 describe('CopySheet', () => {
     beforeEach(() => {
         readMock.mockReset().mockResolvedValue(foods);
+        readFreshMock.mockReset().mockResolvedValue(foods);
         writeMock.mockReset().mockResolvedValue({});
     });
 
@@ -257,5 +259,41 @@ describe('CopySheet', () => {
         window.dispatchEvent(new Event('online'));
         await flushPromises();
         expect(readMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('MEAL-060 copies to meals picked on more than one day, keeping the picks of a day no longer shown', async () => {
+        const friday = structuredClone(foods);
+        friday.shown_date = '2026-09-25';
+        friday.meals = friday.meals.map((meal, n) => ({ ...meal, id: `01JBX0M1N2P3Q4R5S6T7V8W9Y${n}`, enabled: true, note: null }));
+        friday.timeline = friday.meals.map((meal) => ({ kind: 'meal' as const, id: meal.id }));
+        readMock.mockResolvedValueOnce(friday);
+        const wrapper = show();
+
+        await wrapper.findAll('[data-kind="meal"]')[0]!.trigger('click');
+        await strip(wrapper).findAll('button')[6]!.trigger('click');
+        await flushPromises();
+        expect(wrapper.findAll('[data-kind="meal"]').map((row) => row.attributes('aria-pressed'))).toEqual(['false', 'false']);
+        await wrapper.findAll('[data-kind="meal"]')[1]!.trigger('click');
+        expect(wrapper.get('[data-test="chosen"]').text()).toBe('2 meals chosen');
+
+        await save(wrapper).trigger('click');
+        await flushPromises();
+        expect(sent('meal_copy').target_meal_ids).toEqual(['01JBX0M1N2P3Q4R5S6T7V8W9X0', '01JBX0M1N2P3Q4R5S6T7V8W9Y1']);
+    });
+
+    it('MEAL-060 drops a pick once a read again says that meal can no longer take the copy', async () => {
+        const checkedIn = structuredClone(foods);
+        checkedIn.meals[0] = { ...checkedIn.meals[0]!, enabled: false, note: 'Checked in' };
+        writeMock.mockRejectedValueOnce(new CapabilityError('meal_copy', 503, null));
+        readFreshMock.mockResolvedValueOnce(checkedIn);
+        const wrapper = show();
+
+        await wrapper.findAll('[data-kind="meal"]')[0]!.trigger('click');
+        await save(wrapper).trigger('click');
+        await flushPromises();
+
+        expect(readFreshMock).toHaveBeenCalled();
+        expect(wrapper.find('[data-test="chosen"]').exists()).toBe(false);
+        expect(save(wrapper).attributes('disabled')).toBeDefined();
     });
 });
