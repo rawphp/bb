@@ -564,9 +564,14 @@ it('NUT-036 when the floors win, a shake gets no fat or carbs and every meal get
         ->and(mealSplitValues($items, 'fatG'))->toEqual([5, 5, 0, 5, 5, 5, 5]);
 });
 
-// Meal kcal (NUT-030, NUT-035): shared out to add up to the day, never under MIN_FREE_KCAL_SHARE of the food's kcal.
+// Meal kcal (NUT-030, NUT-035): rp-clone's rule as is. The free meals share what the day has left, in proportion to
+// their food, and take their food's kcal when nothing is left. docs/architecture.md, "Open questions", "Meal kcal
+// after a hand edit", asks whether the squeeze in the last two tests should stay.
 
-/** @param  list<MealSplitItem>  $items */
+/**
+ * @param  list<MealSplitItem>  $items
+ * @return list<float>
+ */
 function mealSplitFoodKcal(array $items): array
 {
     return array_map(
@@ -583,8 +588,7 @@ it('NUT-030 NUT-035 a fixed meal with a little more kcal per gram than the day s
     ];
     $items = MealSplit::split(mealSplitDay(kcal: 2900, protein: 160, fat: 80, carbs: 400), $entries);
 
-    // The day carries 2900 kcal for 2960 kcal of food (ratio 0.98); the fixed meal's ratio is 1. The free meals
-    // hold 660 kcal of food each and share the 1920 kcal left: 640 each.
+    // The free meals hold 660 kcal of food each and share the 1920 kcal left: 640 each.
     expect(array_values(array_diff_key(mealSplitFoodKcal($items), [1 => 0])))->toEqual([660, 660, 660])
         ->and(mealSplitValues($items, 'kcal'))->toEqual([640, 980, 640, 640])
         ->and(mealSplitSum($items, 'kcal'))->toEqualWithDelta(2900, 1e-9);
@@ -594,28 +598,26 @@ it('NUT-030 NUT-036 when the carb floors win with no fixed meal, the meals still
     [, $entries] = mealSplitTrainingDay6();
     $items = MealSplit::split(mealSplitDay(kcal: 2500, protein: 180, fat: 150, carbs: 20), $entries);
 
-    // The floors put 30 g of carbs in for a 20 g day: 2190 kcal of food, against 2150 for the day's grams. Sharing
-    // the 2500 kcal out is well above the floor, so it holds.
+    // The floors put 30 g of carbs in for a 20 g day; the 2500 kcal are still shared out by food.
     expect(mealSplitValues($items, 'carbsG'))->toEqual([5, 5, 5, 5, 5, 5])
         ->and(mealSplitFoodKcal($items))->toEqual([410, 275, 275, 410, 410, 410])
         ->and(mealSplitValues($items, 'kcal'))->toEqual([470, 315, 315, 470, 465, 465])
         ->and(mealSplitSum($items, 'kcal'))->toEqualWithDelta(2500, 1e-9);
 });
 
-it('NUT-035 a fixed meal that takes most of the day leaves the others half their food\'s kcal, not a sliver', function () {
+it('NUT-030 NUT-035 a fixed meal that takes most of the day leaves the others what is left', function () {
     $m = mealSplitIds(3);
     $fixed = new MealTarget(kcal: 1400, proteinG: 60, fatG: 40, carbsG: 100);
     $entries = [DayEntry::meal($m[0], fixed: $fixed), DayEntry::meal($m[1]), DayEntry::meal($m[2])];
     $items = MealSplit::split(mealSplitDay(kcal: 1500, protein: 120, fat: 60, carbs: 120), $entries);
 
-    // Each free meal holds P 30, F 10, C 10: 250 kcal of food, and the day's ratio is 1. Sharing the 100 kcal left
-    // would show 50 each; the floor gives 125 each, and the day is overspent.
-    expect(mealSplitValues($items, 'carbsG'))->toEqual([100, 10, 10])
-        ->and(mealSplitFoodKcal($items))->toEqual([1000, 250, 250])
-        ->and(mealSplitValues($items, 'kcal'))->toEqual([1400, 125, 125]);
+    // Each free meal holds 250 kcal of food, and the two share the 100 kcal left.
+    expect(mealSplitFoodKcal($items))->toEqual([1000, 250, 250])
+        ->and(mealSplitValues($items, 'kcal'))->toEqual([1400, 50, 50])
+        ->and(mealSplitSum($items, 'kcal'))->toEqualWithDelta(1500, 1e-9);
 });
 
-it('NUT-035 NUT-036 a fixed meal past the day\'s kcal, with the fat floors winning, leaves the others at the floor', function () {
+it('NUT-035 with a few kcal left the free meals share them, and with none left they take their food\'s kcal', function () {
     $m = mealSplitIds(3);
     $entries = fn (float $kcal) => [
         DayEntry::meal($m[0], fixed: new MealTarget(kcal: $kcal, proteinG: 60, fatG: 40, carbsG: 100)),
@@ -623,23 +625,24 @@ it('NUT-035 NUT-036 a fixed meal past the day\'s kcal, with the fat floors winni
     ];
     $day = mealSplitDay(kcal: 1500, protein: 120, fat: 45, carbs: 120);
 
-    // Each free meal holds P 30, F 5, C 10: 205 kcal of food; the day's ratio is 1500 / 1365. Half of that is
-    // 225 kcal for the pair, 115 and 110 after rounding. 1 kcal left and 100 kcal over read the same.
-    expect(mealSplitValues(MealSplit::split($day, $entries(1600)), 'kcal'))->toEqual([1600, 115, 110])
-        ->and(mealSplitValues(MealSplit::split($day, $entries(1499)), 'kcal'))->toEqual([1499, 115, 110])
-        ->and(mealSplitFoodKcal(MealSplit::split($day, $entries(1499))))->toEqual([1000, 205, 205]);
+    // Each free meal holds P 30, F 5, C 10: 205 kcal of food. 1 kcal left is shared (the remainder goes to the
+    // first meal on a tie); 100 kcal over leaves nothing to share, so they read 205.
+    expect(mealSplitFoodKcal(MealSplit::split($day, $entries(1499))))->toEqual([1000, 205, 205])
+        ->and(mealSplitValues(MealSplit::split($day, $entries(1499)), 'kcal'))->toEqual([1499, 1, 0])
+        ->and(mealSplitValues(MealSplit::split($day, $entries(1500)), 'kcal'))->toEqual([1500, 205, 205])
+        ->and(mealSplitValues(MealSplit::split($day, $entries(1600)), 'kcal'))->toEqual([1600, 205, 205]);
 });
 
-it('NUT-035 the kcal floor follows a day ratio under 1', function () {
-    $m = mealSplitIds(3);
-    $fixed = new MealTarget(kcal: 990, proteinG: 30, fatG: 20, carbsG: 30);
-    $entries = [DayEntry::meal($m[0], fixed: $fixed), DayEntry::meal($m[1]), DayEntry::meal($m[2])];
-    $items = MealSplit::split(mealSplitDay(kcal: 1000, protein: 100, fat: 63, carbs: 100), $entries);
+it('NUT-030 a free slot with no food gets 0 kcal, and the day\'s leftover stays unallocated', function () {
+    $m = mealSplitIds(2);
+    [$shake] = mealSplitIds(1);
+    $fixed = new MealTarget(kcal: 500, proteinG: 40, fatG: 20, carbsG: 50);
+    $entries = [DayEntry::meal($m[0], fixed: $fixed), DayEntry::meal($m[1], fixed: $fixed), DayEntry::intraWorkoutShake($shake)];
+    $items = MealSplit::split(mealSplitDay(kcal: 2000, protein: 150, fat: 60, carbs: 300), $entries);
 
-    // The day carries 1000 kcal for 1367 kcal of food (ratio 0.73), so the floor is 0.37 kcal per kcal of food:
-    // 487 and 460 kcal of food read 175 and 170, not a share of the 10 kcal left.
-    expect(array_slice(mealSplitFoodKcal($items), 1))->toEqual([487, 460])
-        ->and(mealSplitValues($items, 'kcal'))->toEqual([990, 175, 170]);
+    // A rest day: the shake carries no protein or carbs and never fat, so it has no food and no kcal.
+    expect($items[2]->id)->toBe($shake)
+        ->and($items[2]->target)->toEqual(new MealTarget(kcal: 0, proteinG: 0, fatG: 0, carbsG: 0));
 });
 
 // Edges

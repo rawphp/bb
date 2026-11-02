@@ -31,14 +31,6 @@ final class MealSplit
     public const EVENING_SHIFT_POINTS = 10.0;
 
     /**
-     * NUT-030, NUT-035: the fewest kcal a free meal may read, as a share of its food's kcal at the day's own
-     * kcal-to-food ratio, when hand-edited meals have taken most of the day. The spec leaves this open; 0.5 is a
-     * guess that only binds when an edit leaves the other meals far less than their food carries. It departs from
-     * rp-clone, which shares whatever is left; docs/architecture.md lists it under "Open questions".
-     */
-    public const MIN_FREE_KCAL_SHARE = 0.5;
-
-    /**
      * @param  list<DayEntry>  $entries
      * @return list<MealSplitItem> one per meal and shake, in day order
      */
@@ -377,15 +369,10 @@ final class MealSplit
     }
 
     /**
-     * kcal follows the rounded grams (MacroRules::kcal), scaled so the meals add up to the day (NUT-030).
-     *
-     * Normally the free meals share what the day has left, in proportion to their food. A hand edit (NUT-035) can
-     * leave too little for that: a fixed meal at 1400 of a 1500 kcal day would show 250 kcal of food as 50 kcal,
-     * and a fixed meal past the day's kcal would show it as nothing. So the scale never goes below
-     * MIN_FREE_KCAL_SHARE of the day's own ratio (day kcal / kcal of the day's grams). Only there do the free meals
-     * take that floor, rounded to 5, and the day is overspent. The scale is the larger of the two, so a small change
-     * in the edit makes a small change in the kcal. rp-clone scales to whatever kcal is left and falls back to the
-     * food's kcal at or below zero; this departs from it on purpose and leaves every rp-clone test value unchanged.
+     * kcal follows the rounded grams (MacroRules::kcal) and is scaled to what the day has left, so the meals add up
+     * to the day (NUT-030). With nothing left, it is the food's kcal. This is rp-clone's rule as is; docs/architecture.md
+     * ("Open questions", "Meal kcal after a hand edit") asks whether a hand edit that leaves only a few kcal should
+     * squeeze the other meals that far.
      *
      * @param  list<DayEntry>  $slots
      * @param  list<float>  $protein
@@ -408,17 +395,13 @@ final class MealSplit
             $fixedKcal += $slot->fixed !== null ? $slot->fixed->kcal : 0.0;
         }
         $remainingKcal = $day->kcal - $fixedKcal;
-        $dayFoodKcal = MacroRules::kcal(proteinG: $day->proteinG, carbsG: $day->carbsG, fatG: $day->fatG);
-        $dayRatio = $dayFoodKcal > 0 ? $day->kcal / $dayFoodKcal : 1.0;
 
-        $floorRatio = self::MIN_FREE_KCAL_SHARE * $dayRatio;
-
-        if ($energySum > 0 && $remainingKcal >= $floorRatio * $energySum) {
+        if ($remainingKcal > 0 && $energySum > 0) {
             $values = array_map(fn (float $e) => $remainingKcal * $e / $energySum, $energy);
             $total = $remainingKcal;
         } else {
-            $values = array_map(fn (float $e) => $floorRatio * $e, $energy);
-            $total = round(array_sum($values) / self::ROUNDING_STEP) * self::ROUNDING_STEP;
+            $values = $energy;
+            $total = $energySum;
         }
         $rounded = self::roundHamilton($values, $total);
         foreach ($free as $k => $i) {
