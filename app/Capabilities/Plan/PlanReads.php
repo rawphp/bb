@@ -32,6 +32,17 @@ final class PlanReads
     }
 
     /**
+     * The same, naming every phase the user has: a write that changes what each phase shows, such as its target
+     * weight (PLAN-025) or whether it has a rate at all (PLAN-007).
+     *
+     * @return list<string>
+     */
+    public static function everyPhaseKeys(User $user): array
+    {
+        return self::keys($user, ...Phase::query()->where('user_id', $user->id)->pluck('id')->map(fn ($id) => (string) $id)->all());
+    }
+
+    /**
      * PLAN-023, PLAN-025: a deload's diet break changes that week's days and every phase's target weight and length
      * cap, which count diet-break weeks.
      *
@@ -40,10 +51,8 @@ final class PlanReads
      */
     public static function dietBreakKeys(User $user, array $days): array
     {
-        $phases = Phase::query()->where('user_id', $user->id)->pluck('id')->map(fn ($id) => (string) $id)->all();
-
         return array_values(array_unique([
-            ...self::keys($user, ...$phases),
+            ...self::everyPhaseKeys($user),
             ...TodayReads::keys($days),
             ...TodayReads::weekKeys($days),
         ]));
