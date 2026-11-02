@@ -1,0 +1,13 @@
+<!-- Placeholder mark: a dumbbell on the light accent (tokens.css). Tom replaces it.
+     Drawn on 512 x 512 in currentColor, which scripts/icons.mjs sets to the light --bb-on-accent;
+     inside the maskable safe zone (a centred circle of radius 205).
+     After editing, run `npm run icons` and commit public/icons and resources/views/pwa.blade.php. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <g fill="currentColor">
+        <rect x="96" y="240" width="320" height="32" rx="16"/>
+        <rect x="136" y="160" width="48" height="192" rx="20"/>
+        <rect x="328" y="160" width="48" height="192" rx="20"/>
+        <rect x="88" y="200" width="40" height="112" rx="16"/>
+        <rect x="384" y="200" width="40" height="112" rx="16"/>
+    </g>
+</svg>

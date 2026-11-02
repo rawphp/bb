@@ -3,6 +3,7 @@
 namespace App\Capabilities\Support;
 
 use InvalidArgumentException;
+use JsonSerializable;
 use Rawphp\Capabilities\Support\CapabilityData;
 
 /**
@@ -11,7 +12,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
  * On the wire, WriteResult's fields stand at the top level beside them, as
  * the client reads `invalidates` there. So CAP-010 is declared only in WriteResult.
  */
-abstract class WriteOutput extends CapabilityData
+abstract class WriteOutput extends CapabilityData implements JsonSerializable
 {
     public static function jsonSchema(): array
     {
@@ -43,5 +44,15 @@ abstract class WriteOutput extends CapabilityData
         unset($out['result']);
 
         return $result + $out;
+    }
+
+    /**
+     * The HTTP response encodes the output object itself, so it must take the wire shape too.
+     *
+     * @return array<string, mixed>
+     */
+    public function jsonSerialize(): array
+    {
+        return $this->toArray();
     }
 }

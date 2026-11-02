@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, ref, useId } from 'vue';
 import { RouterLink, type RouteLocationRaw } from 'vue-router';
+import { useModalFocus } from './useModalFocus';
 
 // A "?" icon that opens a short sheet with a Read more link (UI-009). On a
 // feature screen, `to` is the screen's Learn article (LRN-003). Ported from
@@ -31,40 +32,23 @@ const isShowing = ref(false);
 const trigger = ref<HTMLButtonElement>();
 const sheet = ref<HTMLElement>();
 const titleId = useId();
+// The sheet is modal: Tab and Shift+Tab cycle through its own controls and never reach the page behind it.
+const focus = useModalFocus(sheet);
 
 async function show(): Promise<void> {
     isShowing.value = true;
-    await nextTick();
-    sheet.value?.focus();
+    await focus.opened(trigger.value);
 }
 
 async function hide(): Promise<void> {
     isShowing.value = false;
     await nextTick();
-    trigger.value?.focus();
+    focus.closed();
 }
 
 function readMore(): void {
     void hide();
     emit('read-more');
-}
-
-// The sheet is modal: Tab and Shift+Tab cycle through its own controls and never reach the page behind it.
-function keepFocus(event: KeyboardEvent): void {
-    const controls = Array.from(sheet.value?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? []);
-    const first = controls[0];
-    const last = controls[controls.length - 1];
-    if (!first || !last) {
-        return;
-    }
-    const active = document.activeElement;
-    if (event.shiftKey && (active === first || active === sheet.value)) {
-        event.preventDefault();
-        last.focus();
-    } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-    }
 }
 
 const readMoreClass = 'inline-flex min-h-tap items-center text-accent';
@@ -97,9 +81,9 @@ const readMoreClass = 'inline-flex min-h-tap items-center text-accent';
             data-help-overlay
             class="fixed inset-0 z-50 flex flex-col justify-end"
             @keydown.esc="hide"
-            @keydown.tab="keepFocus"
+            @keydown.tab="focus.keepFocus"
         >
-            <div data-scrim aria-hidden="true" class="absolute inset-0 bg-background/80" @click="hide" />
+            <div data-scrim aria-hidden="true" class="absolute inset-0 bg-scrim" @click="hide" />
             <div
                 ref="sheet"
                 role="dialog"
