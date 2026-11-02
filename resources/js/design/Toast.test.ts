@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, expectTypeOf, it, type MockInstance, vi } from 'vitest';
-import { CapabilityError, write } from '@/app/call';
+import { CapabilityError, writeNow } from '@/app/call';
 import type { BillingCheckoutStartOutput } from '@/contracts/billing_checkout_start';
 import type { EligibilityRecheckOutput } from '@/contracts/eligibility_recheck';
 import type { TokenCreateOutput } from '@/contracts/token_create';
@@ -10,9 +10,9 @@ import { TOAST_HOST, TOAST_HOST_ID } from '@/app/hosts';
 import ToastGallery from './gallery/Toast.gallery.vue';
 import Toast, { type ToastResult } from './Toast.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), writeNow: vi.fn() }));
 
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 
 const message = 'Meals 3 and 4 re-targeted';
 

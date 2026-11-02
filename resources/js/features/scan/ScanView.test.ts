@@ -1,7 +1,7 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
-import { CapabilityError, readFresh, write } from '@/app/call';
+import { CapabilityError, readFresh, writeNow } from '@/app/call';
 import type { FoodBarcodeLookupOutput } from '@/contracts/food_barcode_lookup';
 import type { ScanLabelOutput } from '@/contracts/scan_label';
 import type { ScanPhotoOutput } from '@/contracts/scan_photo';
@@ -9,7 +9,7 @@ import { inputViolations, screenFixture } from '@/testing/schemas';
 import ScanView from './ScanView.vue';
 import { prepareImage, readBarcode, ReaderUnavailable } from './useCamera';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const camera = vi.hoisted(() => ({ access: { value: 'ready' as string }, live: { value: false }, start: vi.fn(), stop: vi.fn() }));
 vi.mock('./useCamera', async () => {
@@ -25,7 +25,7 @@ vi.mock('./useCamera', async () => {
 });
 
 const readMock = vi.mocked(readFresh);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const MEAL = '01JBX5M0000000000000000001';
 const found = () => screenFixture<FoodBarcodeLookupOutput>('food_barcode_lookup');
 const notFound = () => screenFixture<FoodBarcodeLookupOutput>('food_barcode_lookup.not-found');

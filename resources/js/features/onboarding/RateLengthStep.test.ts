@@ -1,9 +1,9 @@
 import { flushPromises, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { read, write } from '@/app/call';
+import { read, writeNow } from '@/app/call';
 import { answers, commit, fixture, radio, view } from './onboardingTesting';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), writeNow: vi.fn() }));
 
 const rateLength = fixture('rate_length');
 const warning = fixture('warning');
@@ -21,7 +21,7 @@ describe('step 6, rate and length', () => {
     beforeEach(() => {
         wrapper?.unmount();
         vi.mocked(read).mockReset().mockResolvedValue(rateLength);
-        vi.mocked(write).mockReset().mockResolvedValue({});
+        vi.mocked(writeNow).mockReset().mockResolvedValue({});
     });
 
     it('ONB-008 shows the presets with their rates, the length, the dates and the target, as the server sends them', () => {
@@ -83,11 +83,11 @@ describe('step 6, rate and length', () => {
             (slider.element as HTMLInputElement).value = value!;
             await slider.trigger('input');
             await flushPromises();
-            expect(write, `${label} is sent while it is dragged`).not.toHaveBeenCalled();
+            expect(writeNow, `${label} is sent while it is dragged`).not.toHaveBeenCalled();
             await slider.trigger('change');
             await flushPromises();
             expect(answers()).toEqual([label === 'Custom rate' ? { custom_rate: 0.5 } : { weeks: 10 }]);
-            vi.mocked(write).mockClear();
+            vi.mocked(writeNow).mockClear();
         }
     });
 
@@ -112,7 +112,7 @@ describe('step 6, rate and length', () => {
 
         await target.trigger('focus');
         await target.setValue('155');
-        expect(write).not.toHaveBeenCalled();
+        expect(writeNow).not.toHaveBeenCalled();
         await target.trigger('blur');
         await flushPromises();
 
@@ -167,7 +167,7 @@ describe('step 6, rate and length', () => {
 
     it('CAP-010 the sliders, dates and target take no input while an answer saves', async () => {
         let finish: (value: unknown) => void = () => {};
-        vi.mocked(write).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+        vi.mocked(writeNow).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
         wrapper = view(custom());
 
         await radio(wrapper, 'Rate', 'Slow & steady').trigger('click');

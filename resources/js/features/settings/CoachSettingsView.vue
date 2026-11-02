@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { write } from '@/app/call';
+import { writeNow } from '@/app/call';
 import { failureMessage } from '@/app/errors';
 import { useRead } from '@/app/useRead';
 import type { AgentStatusShowOutput } from '@/contracts/agent_status_show';
@@ -38,7 +38,7 @@ async function toggle(event: Event): Promise<void> {
     busy.value = true;
     error.value = null;
     try {
-        await write('coach_enabled_set', { on: wanted } satisfies CoachEnabledSetInput);
+        await writeNow('coach_enabled_set', { on: wanted } satisfies CoachEnabledSetInput);
         await load();
     } catch (failed) {
         error.value = failureMessage(failed, `The Coach could not be turned ${wanted ? 'on' : 'off'}. Try again.`);
@@ -53,7 +53,7 @@ async function clear(): Promise<void> {
     busy.value = true;
     clearError.value = null;
     try {
-        const result = await write<ToastResult | undefined>('coach_conversation_clear', {} satisfies CoachConversationClearInput);
+        const result = await writeNow<ToastResult | undefined>('coach_conversation_clear', {} satisfies CoachConversationClearInput);
         cleared.value = { toast: result?.toast || 'Conversation cleared.', undo: result?.undo ?? null };
         confirming.value = false;
     } catch (failed) {

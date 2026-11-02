@@ -1,13 +1,13 @@
 import { flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import AddWorkoutSheet from './AddWorkoutSheet.vue';
 import { refusal, sent, sheet, today } from './sheetTesting';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const day = today();
 const fresh = today('empty');
 

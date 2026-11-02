@@ -18,7 +18,7 @@ export interface ToastResult {
 
 <script setup lang="ts">
 import { computed, ref, useId, watch } from 'vue';
-import { CapabilityError, write } from '@/app/call';
+import { CapabilityError, writeNow } from '@/app/call';
 import type { UndoApplyInput } from '@/contracts/undo_apply';
 
 // A message with Undo, for every automatic change (UI-010), ported from rp-clone's Toast.swift.
@@ -86,7 +86,7 @@ async function undo(): Promise<void> {
     let answer: unknown;
     let refusal: string | null = null;
     try {
-        answer = await write('undo_apply', { token: sent } satisfies UndoApplyInput);
+        answer = await writeNow('undo_apply', { token: sent } satisfies UndoApplyInput);
     } catch (error) {
         refusal = messageOf(error);
     }

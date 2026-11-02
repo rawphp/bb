@@ -1,11 +1,11 @@
 import { flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, write } from './call';
+import { CapabilityError, writeNow } from './call';
 import { useWrite } from './useWrite';
 
-vi.mock('./call', async (original) => ({ ...(await original<typeof import('./call')>()), write: vi.fn() }));
+vi.mock('./call', async (original) => ({ ...(await original<typeof import('./call')>()), writeNow: vi.fn() }));
 
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 
 describe('useWrite', () => {
     beforeEach(() => writeMock.mockReset());
