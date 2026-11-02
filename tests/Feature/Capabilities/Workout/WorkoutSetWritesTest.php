@@ -72,7 +72,7 @@ it('WO-020 WO-022 answers 422 naming the field for one bad input', function (str
 
 it('AGT-010 only deleting a set is destructive; no workout write is reversible, and each names the reads it changes', function () {
     $registry = app(CapabilityRegistry::class);
-    $sets = ['workout_show', 'today_show', 'train_show', 'mesocycle_show'];
+    $sets = ['workout_show', 'today_show', 'week_show', 'train_show', 'mesocycle_show'];
 
     foreach (['workout_set_log', 'workout_set_add', 'workout_set_delete', 'workout_set_skip', 'workout_set_type_set', 'workout_exercise_note_set'] as $name) {
         $definition = $registry->get($name);

@@ -25,7 +25,7 @@ it('WO-010 workout_start is neither destructive nor reversible, and names the re
 
     expect(HostDefinition::isDestructive($definition))->toBeFalse()
         ->and(HostDefinition::isReversible($definition))->toBeFalse()
-        ->and(HostDefinition::affects($definition))->toBe(['workout_show', 'today_show', 'train_show', 'mesocycle_show']);
+        ->and(HostDefinition::affects($definition))->toBe(['workout_show', 'today_show', 'week_show', 'train_show', 'mesocycle_show']);
 });
 
 it('WO-010 refuses workout_start when signed out', function () {
@@ -59,6 +59,24 @@ it('WO-010 starts the session and says which reads changed', function () {
         "mesocycle_show{\"mesocycle_id\":\"{$mesocycle->id}\"}",
         'today_show{"date":"2026-09-21"}',
         'today_show{}',
+        ...array_map(fn (string $day) => 'week_show{"date":"2026-09-'.$day.'"}', ['21', '22', '23', '24', '25', '26', '27']),
+        'week_show{}',
     ])
         ->and(WorkoutSession::query()->sole()->actual_start_at->format('Y-m-d H:i'))->toBe('2026-09-21 17:40');
+});
+
+it('WO-010 SCH-022 a session started away from its planned day refreshes Today and the week strip of both days', function () {
+    // Week 2 day 2, "Lower A", is planned for Thursday 17 September; the user starts it on Tuesday 22nd, a plan week on.
+    Carbon::setTestNow('2026-09-22 07:10:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+
+    $keys = startOver($user, ['workout_id' => WorkoutIds::workout($mesocycle->id, 2, 2)])->assertOk()->json('data.invalidates');
+
+    expect($keys)->toContain('today_show{"date":"2026-09-17"}', 'today_show{"date":"2026-09-22"}', 'today_show{}', 'week_show{}')
+        ->and(array_values(array_filter($keys, fn (string $key) => str_starts_with($key, 'week_show{"'))))->toBe(array_map(
+            fn (string $date) => 'week_show{"date":"'.$date.'"}',
+            ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18', '2026-09-19', '2026-09-20',
+                '2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25', '2026-09-26', '2026-09-27'],
+        ));
 });
