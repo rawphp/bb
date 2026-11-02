@@ -1,9 +1,9 @@
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope } from 'vue';
-import { prepareImage, readBarcode, useCamera } from './useCamera';
+import { prepareImage, readBarcode, ReaderUnavailable, useCamera } from './useCamera';
 
-const zxing = vi.hoisted(() => ({ readBarcodes: vi.fn(), prepareZXingModule: vi.fn() }));
+const zxing = vi.hoisted(() => ({ readBarcodes: vi.fn(), prepareZXingModule: vi.fn(), purgeZXingModule: vi.fn() }));
 vi.mock('zxing-wasm/reader', () => zxing);
 vi.mock('zxing-wasm/reader/zxing_reader.wasm?url', () => ({ default: '/build/zxing_reader.wasm' }));
 
@@ -20,8 +20,12 @@ function devices(kinds: MediaDeviceKind[], getUserMedia = vi.fn().mockResolvedVa
 }
 
 class FakeDetector {
-    static getSupportedFormats = vi.fn().mockResolvedValue(['ean_13', 'qr_code']);
+    static getSupportedFormats = vi.fn().mockResolvedValue(['ean_13', 'qr_code', 'upc_a']);
     static found: { rawValue: string }[] = [];
+    static options: unknown;
+    constructor(options?: unknown) {
+        FakeDetector.options = options;
+    }
     detect = vi.fn(async () => FakeDetector.found);
 }
 
@@ -33,6 +37,8 @@ beforeEach(() => {
     vi.useFakeTimers();
     track.stop.mockReset();
     zxing.readBarcodes.mockReset().mockResolvedValue([]);
+    zxing.prepareZXingModule.mockReset().mockResolvedValue({});
+    zxing.purgeZXingModule.mockReset();
     FakeDetector.found = [];
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
 });
@@ -69,7 +75,15 @@ describe('useCamera', () => {
         expect(video.srcObject).toBe(stream);
         expect(camera.live.value).toBe(true);
 
-        FakeDetector.found = [{ rawValue: '5000159484695' }];
+        expect(FakeDetector.options).toEqual({ formats: ['ean_13', 'upc_a'] });
+
+        // A QR code on the pack is not a product code: the camera keeps reading.
+        FakeDetector.found = [{ rawValue: 'https://id.gs1.org/01/09506000134352' }];
+        await vi.advanceTimersByTimeAsync(500);
+        expect(onCode).not.toHaveBeenCalled();
+        expect(camera.live.value).toBe(true);
+
+        FakeDetector.found = [{ rawValue: 'https://example.com' }, { rawValue: '5000159484695' }];
         await vi.advanceTimersByTimeAsync(500);
 
         expect(onCode).toHaveBeenCalledExactlyOnceWith('5000159484695');
@@ -94,26 +108,112 @@ describe('useCamera', () => {
         const scope = effectScope();
         const camera = scope.run(() => useCamera())!;
         await flushPromises();
-        await camera.start(document.createElement('video'), vi.fn());
+        const onCode = vi.fn();
+        await camera.start(document.createElement('video'), onCode);
 
         scope.stop();
+        FakeDetector.found = [{ rawValue: '5000159484695' }];
+        await vi.advanceTimersByTimeAsync(1000);
 
         expect(track.stop).toHaveBeenCalled();
         expect(camera.live.value).toBe(false);
+        expect(onCode).not.toHaveBeenCalled();
+    });
+
+    it('PWA-031 drops a camera that opens after a newer start, and reads only for the newer one', async () => {
+        vi.stubGlobal('BarcodeDetector', FakeDetector);
+        const late = { stop: vi.fn() };
+        let openLate!: (value: MediaStream) => void;
+        devices(['videoinput'], vi.fn()
+            .mockReturnValueOnce(new Promise<MediaStream>((resolve) => (openLate = resolve)))
+            .mockResolvedValueOnce(stream));
+        const camera = inScope(() => useCamera());
+        await flushPromises();
+        const first = vi.fn();
+        const second = vi.fn();
+
+        const starting = camera.start(document.createElement('video'), first);
+        await flushPromises();
+        await camera.start(document.createElement('video'), second);
+        openLate({ getTracks: () => [late] } as unknown as MediaStream);
+        await starting;
+        FakeDetector.found = [{ rawValue: '5000159484695' }];
+        await vi.advanceTimersByTimeAsync(500);
+
+        expect(late.stop).toHaveBeenCalled();
+        expect(first).not.toHaveBeenCalled();
+        expect(second).toHaveBeenCalledExactlyOnceWith('5000159484695');
+    });
+
+    it('PWA-031 stays off when it is stopped while the picture starts to play', async () => {
+        vi.stubGlobal('BarcodeDetector', FakeDetector);
+        devices(['videoinput']);
+        let playing!: () => void;
+        vi.mocked(HTMLMediaElement.prototype.play).mockReturnValue(new Promise<void>((resolve) => (playing = resolve)));
+        const camera = inScope(() => useCamera());
+        await flushPromises();
+
+        const starting = camera.start(document.createElement('video'), vi.fn());
+        await flushPromises();
+        camera.stop();
+        playing();
+        await starting;
+
+        expect(camera.live.value).toBe(false);
+    });
+
+    it('PLT-003 and FOOD-040 read no camera and a camera the browser already refuses', async () => {
+        devices(['videoinput'], vi.fn().mockRejectedValue(new DOMException('None', 'NotFoundError')));
+        const missing = inScope(() => useCamera());
+        await flushPromises();
+        await missing.start(document.createElement('video'), vi.fn());
+        expect(missing.access.value).toBe('none');
+
+        Object.defineProperty(navigator, 'permissions', { configurable: true, value: { query: vi.fn().mockResolvedValue({ state: 'denied' }) } });
+        const refused = inScope(() => useCamera());
+        await flushPromises();
+        expect(refused.access.value).toBe('denied');
+        Reflect.deleteProperty(navigator, 'permissions');
     });
 });
 
 describe('readBarcode', () => {
-    it('PWA-031 reads a photo with zxing-wasm where the browser has no BarcodeDetector, digits first', async () => {
+    it('PWA-031 says the reader is unavailable when zxing-wasm cannot load, and loads it again next time', async () => {
+        vi.resetModules();
+        const fresh = await import('./useCamera');
+        zxing.prepareZXingModule.mockRejectedValueOnce(new Error('offline'));
+        zxing.readBarcodes.mockResolvedValue([{ text: '5000159484695' }]);
+
+        await expect(fresh.readBarcode(new Blob(['jpeg']))).rejects.toBeInstanceOf(fresh.ReaderUnavailable);
+        expect(zxing.purgeZXingModule).toHaveBeenCalled();
+        await expect(fresh.readBarcode(new Blob(['jpeg']))).resolves.toBe('5000159484695');
+    });
+
+    it('PWA-031 reads a photo with zxing-wasm where the browser has no BarcodeDetector, a product code only', async () => {
         zxing.readBarcodes.mockResolvedValue([{ text: 'https://example.com' }, { text: '0123456789012' }]);
         const photo = new Blob(['jpeg'], { type: 'image/jpeg' });
 
         await expect(readBarcode(photo)).resolves.toBe('0123456789012');
-        expect(zxing.readBarcodes).toHaveBeenCalledWith(photo, expect.anything());
+        expect(zxing.readBarcodes).toHaveBeenCalledWith(photo, expect.objectContaining({ formats: ['EAN13', 'EAN8', 'UPCA', 'UPCE', 'ITF'] }));
     });
 
-    it('PWA-031 answers null for a photo with no barcode in it', async () => {
+    it('PWA-031 loads the zxing wasm from the app, not a CDN', async () => {
+        vi.resetModules();
+        const fresh = await import('./useCamera');
+        await fresh.readBarcode(new Blob(['jpeg']));
+
+        const { overrides } = zxing.prepareZXingModule.mock.calls[0]![0] as { overrides: { locateFile: (path: string, prefix: string) => string } };
+        expect(overrides.locateFile('zxing_reader.wasm', 'https://cdn.example/')).toBe('/build/zxing_reader.wasm');
+    });
+
+    it('PWA-031 answers null for a photo with no product code in it', async () => {
         await expect(readBarcode(new Blob(['jpeg']))).resolves.toBeNull();
+        zxing.readBarcodes.mockResolvedValue([{ text: 'https://id.gs1.org/01/09506000134352' }]);
+        await expect(readBarcode(new Blob(['jpeg']))).resolves.toBeNull();
+    });
+
+    it('PWA-031 is the class the screen tells an unloadable reader by', () => {
+        expect(new ReaderUnavailable()).toBeInstanceOf(Error);
     });
 });
 
@@ -129,6 +229,30 @@ describe('prepareImage', () => {
         expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 2048, 1536);
         expect(toDataURL).toHaveBeenCalledWith('image/jpeg', 0.85);
         expect(close).toHaveBeenCalled();
+    });
+
+    it('PWA-032 lowers the quality until the photo fits the upload, and gives up past the lowest', async () => {
+        const close = vi.fn();
+        vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ width: 3024, height: 4032, close }));
+        const drawImage = vi.fn();
+        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+        const toDataURL = vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation((_type, quality) => (quality === 0.7 ? 'data:fits' : 'x'.repeat(2_000_001)));
+
+        await expect(prepareImage(new Blob(['jpeg']))).resolves.toBe('data:fits');
+        expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 1536, 2048);
+
+        toDataURL.mockReturnValue('x'.repeat(2_000_001));
+        await expect(prepareImage(new Blob(['jpeg']))).resolves.toBeNull();
+    });
+
+    it('PWA-032 never enlarges a small photo', async () => {
+        vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ width: 800, height: 600, close: vi.fn() }));
+        const drawImage = vi.fn();
+        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+        vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:small');
+
+        await expect(prepareImage(new Blob(['jpeg']))).resolves.toBe('data:small');
+        expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 800, 600);
     });
 
     it('PWA-032 answers null for a file that is not a picture', async () => {

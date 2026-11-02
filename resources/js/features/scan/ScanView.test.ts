@@ -7,7 +7,7 @@ import type { ScanLabelOutput } from '@/contracts/scan_label';
 import type { ScanPhotoOutput } from '@/contracts/scan_photo';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import ScanView from './ScanView.vue';
-import { prepareImage, readBarcode } from './useCamera';
+import { prepareImage, readBarcode, ReaderUnavailable } from './useCamera';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
 
@@ -19,7 +19,9 @@ vi.mock('./useCamera', async () => {
     camera.access = access;
     camera.live = live;
 
-    return { useCamera: () => ({ access, live, start: camera.start, stop: camera.stop }), readBarcode: vi.fn(), prepareImage: vi.fn() };
+    class ReaderUnavailable extends Error {}
+
+    return { useCamera: () => ({ access, live, start: camera.start, stop: camera.stop }), readBarcode: vi.fn(), prepareImage: vi.fn(), ReaderUnavailable };
 });
 
 const readMock = vi.mocked(readFresh);
@@ -380,6 +382,7 @@ describe('ScanView', () => {
         expect(wrapper.find('[data-test="estimate"]').attributes('disabled')).toBeDefined();
         expect(wrapper.find('[data-test="choose-photo"]').attributes('disabled')).toBeDefined();
         expect(wrapper.findAll('[role="radio"]').every((radio) => radio.attributes('disabled') !== undefined)).toBe(true);
+        expect(wrapper.find('[data-cancel]').attributes('disabled')).toBeDefined();
 
         answer(draft());
         await flushPromises();
@@ -410,5 +413,122 @@ describe('ScanView', () => {
 
         expect(wrapper.find('[data-test="error"]').text()).toBe('This meal is checked in.');
         expect(wrapper.emitted('close')).toBeUndefined();
+    });
+    it('PWA-031 turns the camera off when the user stops it, leaves barcode mode or picks a photo', async () => {
+        vi.mocked(readBarcode).mockResolvedValue(null);
+        const wrapper = scan();
+        camera.live.value = true;
+        await flushPromises();
+
+        await wrapper.findAll('button').find((button) => button.text() === 'Stop camera')!.trigger('click');
+        expect(camera.stop).toHaveBeenCalledTimes(1);
+
+        await choose(wrapper, '[data-test="choose-photo"]', photo);
+        expect(camera.stop).toHaveBeenCalledTimes(2);
+
+        await pickMode(wrapper, 'Nutrition label');
+        expect(camera.stop).toHaveBeenCalledTimes(3);
+    });
+
+    it('PWA-031 says when the barcode reader or the camera cannot start', async () => {
+        vi.mocked(readBarcode).mockRejectedValue(new ReaderUnavailable());
+        const wrapper = scan();
+
+        await choose(wrapper, '[data-test="choose-photo"]', photo);
+        expect(wrapper.find('[data-test="error"]').text()).toBe("The barcode reader couldn't load. Type the code instead.");
+
+        camera.start.mockRejectedValueOnce(new ReaderUnavailable());
+        await wrapper.find('[data-test="scan-live"]').trigger('click');
+        await flushPromises();
+        expect(wrapper.find('[data-test="error"]').text()).toBe("The barcode reader couldn't load. Type the code instead.");
+
+        camera.start.mockRejectedValueOnce(new Error('busy'));
+        await wrapper.find('[data-test="scan-live"]').trigger('click');
+        await flushPromises();
+        expect(wrapper.find('[data-test="error"]').text()).toBe("The camera couldn't start. Choose a photo or type the code.");
+    });
+
+    it('PWA-032 says when a photo cannot be read', async () => {
+        vi.mocked(prepareImage).mockResolvedValue(null);
+        const wrapper = scan();
+
+        await pickMode(wrapper, 'Photo');
+        await choose(wrapper, '[data-test="choose-photo"]', photo);
+
+        expect(wrapper.find('[data-test="error"]').text()).toBe("Couldn't read that photo. Try another.");
+        expect(readMock).not.toHaveBeenCalled();
+    });
+
+    it('FOOD-043 puts the list\'s grams back in the field when the server refuses a typed amount', async () => {
+        readMock.mockRejectedValue(new CapabilityError('scan_adjust', 422, { error: { code: 'validation_failed', message: 'An amount is at least 0.1 g.' } }));
+        const wrapper = scan({ payload: draft() });
+        const grams = wrapper.findAll('[data-test="grams"]')[1]!;
+
+        await grams.setValue('0.05');
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="error"]').text()).toBe('An amount is at least 0.1 g.');
+        expect((grams.element as HTMLInputElement).value).toBe('37.5');
+    });
+
+    it('FOOD-045 steps the portion down too', async () => {
+        readMock.mockResolvedValue(draft());
+        const wrapper = scan({ payload: draft() });
+
+        await wrapper.find('[data-test="portion-down"]').trigger('click');
+        await flushPromises();
+
+        expect(calls(readMock)[0]![1]).toMatchObject({ from_portion: 1.25, portion: 1 });
+    });
+
+    it('FOOD-041 retries an add that got no answer with the same new rows, and a new food with new ones (CAP-019)', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('meal_food_add', 0, { reason: 'timeout' }));
+        const wrapper = scan({ payload: found() }, {
+            'custom-food': ({ saved }: { saved: (id: string) => void }) => h('button', { 'data-test': 'form-saved', onClick: () => saved('01JBX5F00000000000000000CF') }),
+        });
+
+        await wrapper.find('[data-test="add-found"]').trigger('click');
+        await flushPromises();
+        expect(wrapper.find('[data-test="error"]').text()).toContain('may have worked');
+        await wrapper.find('[data-test="add-found"]').trigger('click');
+        await flushPromises();
+
+        const [first, retry] = calls(writeMock).map(([, input]) => (input.entries as { id: string }[])[0]!.id);
+        expect(retry).toBe(first);
+        expect(wrapper.emitted('close')).toEqual([[true]]);
+    });
+
+    it('FOOD-046 retries a save that got no answer with the same id and the name typed, and a new name with a new id', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('saved_meal_save', 0, { reason: 'timeout' })).mockRejectedValueOnce(new CapabilityError('saved_meal_save', 0, { reason: 'timeout' }));
+        const wrapper = scan({ payload: draft() });
+        const save = async (name?: string) => {
+            await wrapper.find('[data-test="save-meal"]').trigger('click');
+            if (name !== undefined) await wrapper.find('[data-test="saved-meal-name"]').setValue(name);
+            await wrapper.findAll('[data-save]').at(-1)!.trigger('click');
+            await flushPromises();
+        };
+
+        await save('Burrito night');
+        await save();
+        await save('Taco night');
+
+        const sentNames = calls(writeMock).map(([, input]) => [input.id, input.name]);
+        expect(sentNames[1]).toEqual(sentNames[0]);
+        expect(sentNames[0]![1]).toBe('Burrito night');
+        expect(sentNames[2]![1]).toBe('Taco night');
+        expect(sentNames[2]![0]).not.toBe(sentNames[0]![0]);
+    });
+
+    it('FOOD-041 shows one message at a time: a new scan clears a refused add', async () => {
+        writeMock.mockRejectedValue(new CapabilityError('meal_food_add', 422, { error: { code: 'validation_failed', message: 'This meal is checked in.' } }));
+        const wrapper = scan({ payload: found() });
+
+        await wrapper.find('[data-test="add-found"]').trigger('click');
+        await flushPromises();
+        expect(wrapper.find('[data-test="error"]').exists()).toBe(true);
+
+        await wrapper.find('[data-test="scan-live"]').trigger('click');
+        await flushPromises();
+        expect(wrapper.find('[data-test="error"]').exists()).toBe(false);
     });
 });
