@@ -14,5 +14,5 @@ Schedule::command('capabilities-ai:reap-stale-turns')->everyFiveMinutes()
     // A run killed mid-way frees its lock after 10 minutes, not Laravel's default day.
     ->withoutOverlapping(10);
 
-// Expired undo tokens hold copies of the rows their write changed (CAP-013).
-Schedule::command('model:prune', ['--model' => [UndoToken::class]])->daily();
+// Expired undo tokens hold copies of the rows their write changed (CAP-013): hourly, so none outlives its 24 hours by more than one.
+Schedule::command('model:prune', ['--model' => [UndoToken::class]])->hourly();

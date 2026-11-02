@@ -3,11 +3,11 @@
 // Feature, not unit: undo is persistence itself. It snapshots real rows and
 // compares them with what the database holds later, which a mock would fake.
 //
-// The capabilities' run() is called directly, not through the HTTP pipeline:
-// the pipeline's idempotency and audit stores hold a database connection from
-// before the test harness swapped it, and using it drops the test's
-// RefreshDatabase transaction. UndoApplyTest covers the HTTP seam.
+// The capabilities' run() is called directly, as registered by HostDefinition,
+// to keep these tests on undo's rules. UndoHttpTest and UndoApplyTest cover the
+// HTTP seam.
 
+use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\UndoLog;
 use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Undo\Data\UndoApplyInput;
@@ -27,8 +27,10 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\Capabilities\Support\CapabilityContext;
 use Rawphp\Capabilities\Support\CapabilityFailure;
 use Tests\Support\Fixtures\Undo\StepCountSetCapability;
@@ -43,7 +45,8 @@ beforeEach(function () {
 
 function setStepsAs(User $user, int $count): WriteResult
 {
-    $run = app(StepCountSetCapability::class)->definition()->toDefinition()->run;
+    // Registered the way the host registers it, which records it for undo.
+    $run = HostDefinition::register(app(StepCountSetCapability::class)->definition(), new CapabilityRegistry)->run;
 
     return $run(new StepCountSetInput($count), CapabilityContext::make(['caller' => 'http', 'actor' => $user]));
 }
@@ -76,6 +79,31 @@ function storedRows(): array
 
 it('CAP-013 marks the fake write reversible', function () {
     expect(app(StepCountSetCapability::class)->definition()->toDefinition()->tags)->toContain('reversible');
+});
+
+it('CAP-013 records a write tagged reversible for undo, and only such a write, wherever it is registered', function (bool $reversible) {
+    $definition = HostDefinition::write('step_add', affects: ['steps_show'], reversible: $reversible)
+        ->input(StepCountSetInput::class)
+        ->run(function (StepCountSetInput $input, CapabilityContext $context): WriteResult {
+            Step::factory()->for($context->user())->create(['date' => '2026-11-20', 'count' => $input->count]);
+
+            return new WriteResult(invalidates: ['steps_show{}']);
+        });
+    $run = HostDefinition::register($definition, new CapabilityRegistry)->run;
+
+    $result = $run(new StepCountSetInput(100), CapabilityContext::make(['caller' => 'http', 'actor' => $this->user]));
+
+    expect($result->undo === null)->toBe(! $reversible)
+        ->and(UndoToken::query()->count())->toBe($reversible ? 1 : 0);
+})->with(['reversible' => true, 'not reversible' => false]);
+
+it('CAP-013 leaves recording to the registration of reversible writes: no capability calls UndoLog::record() itself', function () {
+    $callers = collect(File::allFiles(app_path()))
+        ->filter(fn ($file) => str_contains($file->getContents(), '->record('))
+        ->map(fn ($file) => str_replace(app_path().'/', '', $file->getPathname()))
+        ->values()->all();
+
+    expect($callers)->toBe(['Capabilities/Support/HostDefinition.php']);
 });
 
 it('CAP-013 returns an undo token from a reversible write and stores its inverse with it', function () {

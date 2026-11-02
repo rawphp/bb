@@ -5,7 +5,6 @@ namespace Tests\Support\Fixtures\Undo;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\ReadKey;
-use App\Capabilities\Support\UndoLog;
 use App\Capabilities\Support\WriteResult;
 use App\Enums\MeasurementSource;
 use App\Models\Step;
@@ -21,8 +20,6 @@ use Rawphp\Capabilities\Support\CapabilityContext;
  */
 final class StepCountSetCapability implements HostCapability
 {
-    public function __construct(private readonly UndoLog $undo) {}
-
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('step_count_set', affects: ['steps_show'], reversible: true)
@@ -33,18 +30,16 @@ final class StepCountSetCapability implements HostCapability
                 /** @var User $user */
                 $user = $context->user();
 
-                return $this->undo->record($user, function () use ($input, $user): WriteResult {
-                    Step::query()->whereBelongsTo($user)->whereDate('date', '2026-11-02')->firstOrFail()
-                        ->update(['count' => $input->count]);
+                Step::query()->whereBelongsTo($user)->whereDate('date', '2026-11-02')->firstOrFail()
+                    ->update(['count' => $input->count]);
 
-                    $next = Step::query()->whereBelongsTo($user)->whereDate('date', '2026-11-03')->firstOrNew();
-                    $next->fill(['date' => '2026-11-03', 'count' => $input->count, 'source' => MeasurementSource::Manual]);
-                    $next->user()->associate($user)->save();
+                $next = Step::query()->whereBelongsTo($user)->whereDate('date', '2026-11-03')->firstOrNew();
+                $next->fill(['date' => '2026-11-03', 'count' => $input->count, 'source' => MeasurementSource::Manual]);
+                $next->user()->associate($user)->save();
 
-                    WeighIn::query()->whereBelongsTo($user)->get()->each->delete();
+                WeighIn::query()->whereBelongsTo($user)->get()->each->delete();
 
-                    return new WriteResult(invalidates: [ReadKey::for('steps_show')], toast: "Steps set to {$input->count}");
-                });
+                return new WriteResult(invalidates: [ReadKey::for('steps_show')], toast: "Steps set to {$input->count}");
             });
     }
 }

@@ -8,6 +8,7 @@ use App\Agent\RegistryToolCatalog;
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Support\HostBus;
+use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\PrefetchesKeys;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
@@ -73,7 +74,7 @@ final class CapabilitiesHostProvider extends ServiceProvider
                 throw new LogicException(sprintf('%s must implement %s.', $class, HostCapability::class));
             }
 
-            $names[] = $capability->definition()->register($registry)->name;
+            $names[] = HostDefinition::register($capability->definition(), $registry)->name;
 
             if ($capability instanceof PrefetchesKeys) {
                 $container->tag([$class], PrefetchesKeys::class);

@@ -2,11 +2,15 @@
 
 namespace App\Capabilities\Support;
 
+use App\Models\User;
 use InvalidArgumentException;
+use LogicException;
 use Rawphp\Capabilities\Capability;
 use Rawphp\Capabilities\Registry\CapabilityDefinition;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
+use Rawphp\Capabilities\Support\CapabilityContext;
+use ReflectionMethod;
 
 /**
  * The start of every capability definition. A read is read-only; a write
@@ -17,8 +21,9 @@ use Rawphp\Capabilities\Registry\CapabilityRegistry;
  * A read may register after the write that names it, so {@see unknownAffects()}
  * checks the names against the whole registry once it is built (a freeze test).
  *
- * A write marked reversible carries the tag `reversible` and returns an undo
- * token from {@see UndoLog::record()} (CAP-013).
+ * A write marked reversible carries the tag `reversible`, and {@see register()}
+ * runs it inside {@see UndoLog::record()}, which returns its undo token (CAP-013).
+ * The tag and the recording are set in that one place, so they cannot drift apart.
  */
 final class HostDefinition
 {
@@ -66,6 +71,40 @@ final class HostDefinition
                 ...array_map(fn (string $read): string => self::AFFECTS_TAG.$read, $affects),
                 ...($reversible ? [self::REVERSIBLE_TAG] : []),
             ]);
+    }
+
+    /**
+     * Register a host capability's definition. A reversible write's run is wrapped in
+     * {@see UndoLog::record()} here, so every write tagged reversible returns an undo token.
+     */
+    public static function register(CapabilityDefinitionBuilder $builder, CapabilityRegistry $registry): CapabilityDefinition
+    {
+        $definition = $builder->toDefinition();
+
+        if (self::isReversible($definition)) {
+            $run = $definition->run;
+            if (! is_callable($run)) {
+                throw new LogicException("{$definition->name} is reversible but has no run closure to record.");
+            }
+
+            $arguments = [];
+            foreach ((new ReflectionMethod(CapabilityDefinition::class, '__construct'))->getParameters() as $parameter) {
+                $arguments[$parameter->getName()] = $definition->{$parameter->getName()};
+            }
+            $arguments['run'] = function (mixed $input, CapabilityContext $context) use ($definition, $run): WriteResult {
+                $user = $context->user();
+                if (! $user instanceof User) {
+                    throw new LogicException("{$definition->name} is reversible, so it needs a user to hold its undo token.");
+                }
+
+                return app(UndoLog::class)->record($user, fn (): WriteResult => $run($input, $context));
+            };
+            $definition = new CapabilityDefinition(...$arguments);
+        }
+
+        $registry->register($definition);
+
+        return $definition;
     }
 
     public static function isReversible(CapabilityDefinition $definition): bool
