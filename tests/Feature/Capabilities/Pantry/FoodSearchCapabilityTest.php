@@ -174,13 +174,19 @@ it('FOOD-020 FOOD-027 the Recipes filter lists the user\'s own recipes, then the
         ->and(pantrySearch($user, ['collection' => 'recipes', 'query' => 'beef'])->json('data.empty_text'))->toBe('No recipes match beef.');
 });
 
-it('FOOD-027 a Recipes filter the diet filters emptied says so', function () {
-    $user = User::factory()->create();
-    Profile::factory()->for($user)->create(['diet_filters' => ['vegan']]);
-    Recipe::factory()->for($user)->create(['name' => 'Beef stew']);
+it('FOOD-027 a Recipes filter the diet filters emptied says so, counting only the user\'s and the library\'s recipes', function () {
+    [$cook, $newcomer] = User::factory()->count(2)->create();
+    Profile::factory()->for($cook)->create(['diet_filters' => ['vegan']]);
+    Profile::factory()->for($newcomer)->create(['diet_filters' => ['vegan']]);
+    Recipe::factory()->for($cook)->create(['name' => 'Beef stew']);
+    $emptyText = fn (User $user) => pantrySearch($user, ['collection' => 'recipes'])->json('data.empty_text');
 
-    expect(pantrySearch($user, ['collection' => 'recipes'])->json('data.empty_text'))->toBe('No recipes match your filters.')
-        ->and(pantrySearch(User::factory()->create(), ['collection' => 'recipes'])->json('data.empty_text'))->toBe('No recipes yet.');
+    expect($emptyText($cook))->toBe('No recipes match your filters.')
+        ->and($emptyText($newcomer))->toBe('No recipes yet.');
+
+    Recipe::factory()->create(['name' => 'Pork pie']);
+
+    expect($emptyText($newcomer))->toBe('No recipes match your filters.');
 });
 
 it('FOOD-020 the Saved Meals filter lists the user\'s saved meals by name with their food counts', function () {
