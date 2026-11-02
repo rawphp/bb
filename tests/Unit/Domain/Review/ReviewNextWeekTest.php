@@ -19,8 +19,8 @@ use App\Domain\WeekBuilder\CalorieMove;
 use App\Domain\WeekBuilder\WeekBuildRefusalReason;
 use App\Domain\WeekBuilder\WeekDay;
 use Tests\Unit\Domain\Plan\PlanFixtures;
-use Tests\Unit\Domain\WeekBuilder\WeekBuilderFixtures as W;
 use Tests\Unit\Domain\Review\NextWeekFixtures as F;
+use Tests\Unit\Domain\WeekBuilder\WeekBuilderFixtures as W;
 
 function plannedNextWeek(ReviewWorld $world): BuiltWeek
 {
