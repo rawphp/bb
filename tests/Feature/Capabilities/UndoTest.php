@@ -312,11 +312,12 @@ it('CAP-013 fails a reversible write whose delete would cascade to rows it did n
 it('CAP-013 undoes a delete of a row and the rows that pointed at it, deleted first', function () {
     $session = WorkoutSession::factory()->for($this->user)->create();
     WorkoutSet::factory()->create(['workout_session_id' => $session->id]);
-    $rows = fn () => [DB::table('workout_sessions')->get()->all(), DB::table('workout_sets')->get()->all()];
+    $rows = fn () => [DB::table('workout_sessions')->get()->all(), DB::table('workout_exercises')->get()->all(), DB::table('workout_sets')->get()->all()];
     $before = $rows();
 
     $token = recordAs($this->user, function () use ($session) {
         $session->sets()->get()->each->forceDelete();
+        $session->exercises()->get()->each->forceDelete();
         $session->forceDelete();
     })->undo;
     undoAs($this->user, $token);
