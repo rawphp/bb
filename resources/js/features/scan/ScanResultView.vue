@@ -23,7 +23,10 @@ defineEmits<{ portion: [portion: number]; grams: [index: number, grams: number];
                 data-test="portion-down"
                 @click="draft.portion_down != null && $emit('portion', draft.portion_down)"
             >
-                <svg viewBox="0 0 24 24" class="size-6" aria-hidden="true"><path :d="toneIcons.neutral" class="fill-current" fill-rule="evenodd" /></svg>
+                <svg viewBox="0 0 24 24" class="size-6" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" class="fill-current" />
+                    <path d="M7 12h10" class="stroke-surface" stroke-width="2" stroke-linecap="round" />
+                </svg>
             </button>
             <span class="min-w-16 text-center font-semibold text-primary-text tabular-nums" :aria-label="`Portion ${draft.portion_text}`" data-test="portion">{{ draft.portion_text }}</span>
             <button

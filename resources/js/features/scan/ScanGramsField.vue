@@ -2,7 +2,8 @@
 import { ref, watch } from 'vue';
 
 // FOOD-043: a scanned row's grams, typed. A finished amount (Enter, or leaving the field) that is a number
-// above zero and not what the row has goes to the server; anything else puts the row's grams back.
+// above zero and not what the row has goes to the server; anything else puts the row's grams back. ScanView
+// renders the list afresh after every answer, so a refused amount does not stay.
 const props = withDefaults(defineProps<{ grams: number; disabled?: boolean }>(), { disabled: false });
 const emit = defineEmits<{ commit: [grams: number] }>();
 

@@ -468,7 +468,7 @@ describe('ScanView', () => {
         await flushPromises();
 
         expect(wrapper.find('[data-test="error"]').text()).toBe('An amount is at least 0.1 g.');
-        expect((grams.element as HTMLInputElement).value).toBe('37.5');
+        expect(wrapper.findAll<HTMLInputElement>('[data-test="grams"]')[1]!.element.value).toBe('37.5');
     });
 
     it('FOOD-045 steps the portion down too', async () => {

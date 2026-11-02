@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { readFresh } from '@/app/call';
 import { failureMessage } from '@/app/errors';
 import { ulid } from '@/app/ulid';
-import { useWrite } from '@/app/useWrite';
+import { useWrite, type WriteOutcome } from '@/app/useWrite';
 import type { FoodBarcodeLookupOutput } from '@/contracts/food_barcode_lookup';
 import type { MealFoodAddInput } from '@/contracts/meal_food_add';
 import type { SavedMealSaveInput } from '@/contracts/saved_meal_save';
@@ -17,7 +17,7 @@ import SegmentedPicker from '@/features/today/sheets/SegmentedPicker.vue';
 import ScanFoundCard from './ScanFoundCard.vue';
 import ScanNotFoundCard from './ScanNotFoundCard.vue';
 import ScanResultView from './ScanResultView.vue';
-import { prepareImage, readBarcode, useCamera } from './useCamera';
+import { prepareImage, ReaderUnavailable, readBarcode, useCamera } from './useCamera';
 
 // The scanner (FOOD-040 to FOOD-046), ported from rp-clone's ScanView.swift: the meal screen's camera button opens
 // it over the meal. Barcode mode reads the rear camera live (PWA-031); label and photo modes take or choose a photo
@@ -57,6 +57,9 @@ const naming = ref(false);
 const mealName = ref('');
 const saved = ref<string | null>(null);
 const busyText = ref<string | null>(null);
+// Counts scan_adjust answers, refused ones too: the list renders afresh, so no field keeps an amount the server
+// did not take.
+const adjusted = ref(0);
 const error = ref<string | null>(null);
 const preview = ref<string | null>(null);
 const video = ref<HTMLVideoElement | null>(null);
@@ -64,11 +67,13 @@ const video = ref<HTMLVideoElement | null>(null);
 const { access, live, start, stop } = useCamera();
 const { send, error: writeError } = useWrite(async () => {});
 const busy = computed(() => busyText.value !== null);
-const shownError = computed(() => error.value ?? writeError.value);
+const NO_READER = "The barcode reader couldn't load. Type the code instead.";
 
-// The new rows' ids (CAP-019), kept while the foods they add are the same, so a retry is the same create.
-let entryIds: string[] = [];
-let savedMealId = ulid();
+// The ids of each create's last attempt (CAP-019), kept while a retry sends the same thing, so a retry after no
+// answer replays that create; anything else gets new ids.
+const lastIds = new Map<string, { sent: string; ids: string[] }>();
+// The draft the saved meal's name was filled in for, so a retry keeps what was typed.
+let namedFor: ScanPhotoOutput | null = null;
 
 if (props.payload && 'status' in props.payload) showLookup(props.payload);
 else if (props.payload && 'rows' in props.payload) showDraft(props.payload);
@@ -79,7 +84,6 @@ else if (props.payload) {
 
 watch(mode, (now) => {
     error.value = null;
-    writeError.value = null;
     if (now !== 'barcode') stop();
 });
 
@@ -88,7 +92,6 @@ onBeforeUnmount(() => showPreview(null));
 /** One call at a time: the busy line says what it is doing, and a refusal shows the server's words. */
 async function run<T>(text: string, call: () => Promise<T>, fallback: string): Promise<T | null> {
     error.value = null;
-    writeError.value = null;
     busyText.value = text;
     try {
         return await call();
@@ -100,6 +103,27 @@ async function run<T>(text: string, call: () => Promise<T>, fallback: string): P
     }
 }
 
+/** A write, through useWrite (its idempotency key, CAP-014), with the same busy line and message as a read. */
+async function save(text: string, name: string, input: Record<string, unknown>, fallback: string): Promise<WriteOutcome | null> {
+    error.value = null;
+    busyText.value = text;
+    const outcome = await send(name, input, fallback);
+    busyText.value = null;
+    error.value = writeError.value;
+
+    return outcome;
+}
+
+function idsFor(name: string, sent: unknown, count: number): string[] {
+    const key = JSON.stringify(sent);
+    const last = lastIds.get(name);
+    if (last?.sent === key) return last.ids;
+    const ids = Array.from({ length: count }, () => ulid());
+    lastIds.set(name, { sent: key, ids });
+
+    return ids;
+}
+
 function showPreview(url: string | null): void {
     if (preview.value?.startsWith('blob:')) URL.revokeObjectURL(preview.value);
     preview.value = url;
@@ -109,15 +133,12 @@ function showLookup(answer: FoodBarcodeLookupOutput): void {
     mode.value = 'barcode';
     lookup.value = answer;
     remembered.value = answer.status === 'not_found' ? answer.barcode : null;
-    entryIds = [];
 }
 
 function showDraft(next: ScanPhotoOutput | ScanAdjustOutput): void {
     mode.value = 'photo';
     draft.value = next;
     saved.value = null;
-    entryIds = [];
-    savedMealId = ulid();
 }
 
 // FOOD-041
@@ -137,8 +158,8 @@ async function scanLive(): Promise<void> {
     showPreview(null);
     try {
         await start(video.value, (code) => void lookUp(code));
-    } catch {
-        error.value = "The camera couldn't start. Choose a photo or type the code.";
+    } catch (failure) {
+        error.value = failure instanceof ReaderUnavailable ? NO_READER : "The camera couldn't start. Choose a photo or type the code.";
     }
 }
 
@@ -150,16 +171,13 @@ function scanLabelInstead(): void {
 /** The meal gets these foods, raw, and the scanner closes. A food with no grams is fitted to the meal. */
 async function addToMeal(foods: { food_id: string; grams?: number }[]): Promise<void> {
     if (busy.value || foods.length === 0) return;
-    while (entryIds.length < foods.length) entryIds.push(ulid());
+    const ids = idsFor('meal_food_add', foods, foods.length);
     const input: MealFoodAddInput = {
         meal_id: props.mealId ?? '',
         // foods is not empty, so neither are the entries.
-        entries: foods.map((food, index) => ({ id: entryIds[index]!, food_id: food.food_id, weighing: 'raw' as const, ...(food.grams === undefined ? {} : { grams: food.grams }) })) as MealFoodAddInput['entries'],
+        entries: foods.map((food, index) => ({ id: ids[index]!, food_id: food.food_id, weighing: 'raw' as const, ...(food.grams === undefined ? {} : { grams: food.grams }) })) as MealFoodAddInput['entries'],
     };
-    error.value = null;
-    busyText.value = 'Adding to the meal';
-    const outcome = await send('meal_food_add', { ...input }, 'The foods could not be added to the meal.');
-    busyText.value = null;
+    const outcome = await save('Adding to the meal', 'meal_food_add', { ...input }, 'The foods could not be added to the meal.');
     if (outcome === 'done') emit('close', true);
 }
 
@@ -184,9 +202,10 @@ async function photoPicked(event: Event): Promise<void> {
         lookup.value = null;
         showPreview(URL.createObjectURL(file));
         busyText.value = 'Reading the barcode';
-        const code = await readBarcode(file);
+        const code = await readBarcode(file).catch((failure: unknown) => (failure instanceof ReaderUnavailable ? failure : null));
         busyText.value = null;
-        if (code === null) error.value = 'No barcode found in that photo. Try again or type the code.';
+        if (code instanceof ReaderUnavailable) error.value = NO_READER;
+        else if (code === null) error.value = 'No barcode found in that photo. Try again or type the code.';
         else await lookUp(code);
         return;
     }
@@ -230,6 +249,7 @@ async function adjust(rows: Row[], portion?: number): Promise<void> {
     if (busy.value || !current) return;
     const input: ScanAdjustInput = { rows, from_portion: current.portion, portion: portion ?? current.portion, saved_meal_name: current.saved_meal_name };
     const next = await run('Updating the list', () => readFresh<ScanAdjustOutput>('scan_adjust', { ...input }), 'The list could not be updated.');
+    adjusted.value++;
     if (next) showDraft(next);
 }
 
@@ -258,7 +278,8 @@ function matched(foodId: string): void {
 
 function beginSaving(): void {
     if (!draft.value) return;
-    mealName.value = draft.value.saved_meal_name;
+    if (namedFor !== draft.value) mealName.value = draft.value.saved_meal_name;
+    namedFor = draft.value;
     naming.value = true;
 }
 
@@ -267,18 +288,15 @@ async function saveMeal(): Promise<void> {
     const name = mealName.value.trim();
     if (busy.value || !sent || name === '') return;
     naming.value = false;
-    const input: SavedMealSaveInput = { id: savedMealId, name, foods: sent.matched };
-    error.value = null;
-    busyText.value = 'Saving';
-    const outcome = await send('saved_meal_save', { ...input }, 'The saved meal could not be saved.');
-    busyText.value = null;
+    const input: SavedMealSaveInput = { id: idsFor('saved_meal_save', { name, foods: sent.matched }, 1)[0]!, name, foods: sent.matched };
+    const outcome = await save('Saving', 'saved_meal_save', { ...input }, 'The saved meal could not be saved.');
     // A list changed while the save was out is not what was saved.
     if (outcome === 'done' && draft.value === sent) saved.value = `Saved “${name}” to your saved meals.`;
 }
 </script>
 
 <template>
-    <BottomSheet :open="true" title="Scan a food" :save-title="null" :dismissible="!busy" @cancel="emit('close', false)">
+    <BottomSheet :open="true" title="Scan a food" :save-title="null" :dismissible="!busy" :cancel-disabled="busy" @cancel="emit('close', false)">
         <div class="min-h-full space-y-4 bg-background p-4">
             <SegmentedPicker v-model="mode" label="Mode" :options="MODES" :disabled="busy" class="bg-secondary-text/15!" />
 
@@ -408,6 +426,7 @@ async function saveMeal(): Promise<void> {
                 </form>
                 <ScanResultView
                     v-if="draft && draft.rows.length > 0"
+                    :key="adjusted"
                     :draft="draft"
                     :disabled="busy"
                     :saved="saved"
@@ -424,8 +443,8 @@ async function saveMeal(): Promise<void> {
             <p v-if="busyText" class="flex items-center gap-2 text-sm text-secondary-text" role="status" data-test="busy">
                 <span class="size-4 animate-spin rounded-full border-2 border-secondary-text/30 border-t-secondary-text" aria-hidden="true" />{{ busyText }}
             </p>
-            <p v-if="shownError" class="flex gap-2 text-sm text-tone-warning" role="alert" data-test="error">
-                <svg viewBox="0 0 24 24" class="mt-0.5 size-4 shrink-0 fill-current" aria-hidden="true"><path :d="toneIcons.warning" fill-rule="evenodd" /></svg>{{ shownError }}
+            <p v-if="error" class="flex gap-2 text-sm text-tone-warning" role="alert" data-test="error">
+                <svg viewBox="0 0 24 24" class="mt-0.5 size-4 shrink-0 fill-current" aria-hidden="true"><path :d="toneIcons.warning" fill-rule="evenodd" /></svg>{{ error }}
             </p>
         </div>
 
