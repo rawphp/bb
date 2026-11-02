@@ -2,7 +2,7 @@
     "title": "Weigh-ins",
     "trend": {
         "label": "Trend weight",
-        "value": "83.3 kg",
+        "value": "83.0 kg",
         "tone": "neutral"
     },
     "help": {
@@ -85,7 +85,7 @@
             "time_label": "8:35 AM",
             "weight_label": "82.5 kg",
             "waist_label": "86 cm",
-            "weighed_at": "2026-10-10T08:35:00+01:00",
+            "weighed_at": "2026-10-10T08:35:00+00:00",
             "weight_field": "82.5",
             "waist_field": "86"
         },
@@ -96,7 +96,7 @@
             "time_label": "",
             "weight_label": "",
             "waist_label": "",
-            "weighed_at": "2026-10-09T07:00:00+01:00",
+            "weighed_at": "2026-10-09T07:00:00+00:00",
             "weight_field": "",
             "waist_field": ""
         },
@@ -107,7 +107,7 @@
             "time_label": "",
             "weight_label": "",
             "waist_label": "",
-            "weighed_at": "2026-10-07T07:00:00+01:00",
+            "weighed_at": "2026-10-07T07:00:00+00:00",
             "weight_field": "",
             "waist_field": ""
         },
@@ -118,7 +118,7 @@
             "time_label": "7:00 AM",
             "weight_label": "82.9 kg",
             "waist_label": "",
-            "weighed_at": "2026-10-05T07:00:00+01:00",
+            "weighed_at": "2026-10-05T07:00:00+00:00",
             "weight_field": "82.9",
             "waist_field": ""
         },
@@ -129,7 +129,7 @@
             "time_label": "9:05 AM",
             "weight_label": "83.2 kg",
             "waist_label": "",
-            "weighed_at": "2026-10-04T09:05:00+01:00",
+            "weighed_at": "2026-10-04T09:05:00+00:00",
             "weight_field": "83.2",
             "waist_field": ""
         }
