@@ -2,7 +2,11 @@
 /**
  * The two fields of a write's answer the toast shows, as the server sends them
  * (CAP-010), so a host passes any write's output straight in: `<Toast :result="output">`.
- * The toast places itself in the shell's TOAST_HOST, the live region that announces it.
+ *
+ * Placement belongs to whoever shows the toast, not to the toast: the shell's toast host
+ * (19-views.md) draws it in TOAST_HOST, the live region that announces it, and it alone knows
+ * which screen is on top. A Toast drawn anywhere else passes `inline` and carries its own
+ * status region. In development a Toast that is neither warns.
  */
 export interface ToastResult {
     /** The toast the server wrote. Null or empty draws nothing. */
@@ -13,8 +17,7 @@ export interface ToastResult {
 </script>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, useId, watch } from 'vue';
-import { TOAST_HOST } from '@/app/hosts';
+import { computed, ref, useId, watch } from 'vue';
 import { CapabilityError, write } from '@/app/call';
 import type { UndoApplyInput } from '@/contracts/undo_apply';
 
@@ -28,7 +31,7 @@ const props = withDefaults(
         /** The change is waiting in the outbox (OFF-008). */
         pending?: boolean;
         disabled?: boolean;
-        /** Draw in place, in its own live region, instead of in TOAST_HOST (the gallery). */
+        /** Drawn in place rather than in TOAST_HOST (the gallery), so it carries its own live region. */
         inline?: boolean;
     }>(),
     { loading: false, error: null, pending: false, disabled: false, inline: false },
@@ -43,14 +46,14 @@ const uid = useId();
 const undoing = ref<string | null>(null);
 const failure = ref<string | null>(null);
 
-// The toast goes to TOAST_HOST, which announces it (AppShell.vue). The host is checked once the
-// tree is mounted, since a screen sets up before the shell has drawn it. Without a host, or
-// inline, the toast stays in place and carries its own live region, so it is always announced.
-const hostFound = ref(false);
-onMounted(() => (hostFound.value = document.querySelector(TOAST_HOST) !== null));
-const inPlace = computed(() => props.inline || !hostFound.value);
-// Teleport resolves its target when `to` changes, not when `disabled` does, so `to` changes with
-// inPlace; while in place the target ('body') is never used.
+const rootEl = ref<HTMLElement | null>(null);
+
+// Outside a live region a toast is never announced (UI-030); say so while building, not in production.
+watch(rootEl, (el) => {
+    if (import.meta.env.DEV && el && !props.inline && !el.parentElement?.closest('[aria-live], [role="status"]')) {
+        console.warn('Toast is outside a live region: draw it in TOAST_HOST, or pass inline.');
+    }
+});
 
 const message = computed(() => props.result.toast ?? '');
 const token = computed(() => props.result.undo ?? null);
@@ -89,30 +92,34 @@ async function undo(): Promise<void> {
 </script>
 
 <template>
-    <Teleport v-if="message || inPlace" :to="inPlace ? 'body' : TOAST_HOST" :disabled="inPlace">
-        <!-- In place, this region stays in the page so a toast that appears in it is announced. -->
-        <div :role="inPlace ? 'status' : undefined" :aria-busy="message && busy ? 'true' : undefined">
-            <template v-if="message">
-                <div class="flex items-center gap-3 rounded-xl border border-secondary-text/25 bg-surface pr-2 pl-4">
-                    <span class="flex min-w-0 grow flex-col gap-0.5 py-2">
-                        <span class="text-sm text-primary-text">{{ message }}</span>
-                        <span v-if="pending" :id="`${uid}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
-                    </span>
-                    <button
-                        v-if="token !== null"
-                        type="button"
-                        :aria-describedby="pending ? `${uid}-hint ${uid}-pending` : `${uid}-hint`"
-                        :disabled="busy || disabled"
-                        class="min-h-tap min-w-tap shrink-0 text-sm font-semibold text-accent disabled:opacity-50"
-                        @click="undo"
-                    >
-                        Undo
-                    </button>
-                    <span v-if="token !== null" :id="`${uid}-hint`" class="sr-only">Reverts this change</span>
-                </div>
-                <!-- Always inside a live region (TOAST_HOST or the one above), so no role="alert" of its own. -->
-                <p v-if="shownError" data-toast-error class="mt-2 text-sm text-tone-warning">{{ shownError }}</p>
-            </template>
-        </div>
-    </Teleport>
+    <!-- Inline, this status region stays in the page so a toast that appears in it is announced. -->
+    <div
+        v-if="message || inline"
+        ref="rootEl"
+        :role="inline ? 'status' : undefined"
+        :aria-busy="message && busy ? 'true' : undefined"
+        data-toast
+    >
+        <template v-if="message">
+            <div class="flex items-center gap-3 rounded-xl border border-secondary-text/25 bg-surface pr-2 pl-4">
+                <span class="flex min-w-0 grow flex-col gap-0.5 py-2">
+                    <span class="text-sm text-primary-text">{{ message }}</span>
+                    <span v-if="pending" :id="`${uid}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
+                </span>
+                <button
+                    v-if="token !== null"
+                    type="button"
+                    :aria-describedby="pending ? `${uid}-hint ${uid}-pending` : `${uid}-hint`"
+                    :disabled="busy || disabled"
+                    class="min-h-tap min-w-tap shrink-0 text-sm font-semibold text-accent disabled:opacity-50"
+                    @click="undo"
+                >
+                    Undo
+                </button>
+                <span v-if="token !== null" :id="`${uid}-hint`" class="sr-only">Reverts this change</span>
+            </div>
+            <!-- Always inside a live region (TOAST_HOST or the one above), so no role="alert" of its own. -->
+            <p v-if="shownError" data-toast-error class="mt-2 text-sm text-tone-warning">{{ shownError }}</p>
+        </template>
+    </div>
 </template>

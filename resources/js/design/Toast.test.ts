@@ -1,13 +1,14 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, expectTypeOf, it, type MockInstance, vi } from 'vitest';
 import { CapabilityError, write } from '@/app/call';
 import type { BillingCheckoutStartOutput } from '@/contracts/billing_checkout_start';
 import type { EligibilityRecheckOutput } from '@/contracts/eligibility_recheck';
 import type { TokenCreateOutput } from '@/contracts/token_create';
 import GalleryView from '@/features/dev/GalleryView.vue';
-import Toast, { type ToastResult } from './Toast.vue';
-import { TOAST_HOST_ID } from '@/app/hosts';
 import { defineComponent, nextTick } from 'vue';
+import { TOAST_HOST, TOAST_HOST_ID } from '@/app/hosts';
+import ToastGallery from './gallery/Toast.gallery.vue';
+import Toast, { type ToastResult } from './Toast.vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), write: vi.fn() }));
 
@@ -15,8 +16,21 @@ const writeMock = vi.mocked(write);
 
 const message = 'Meals 3 and 4 re-targeted';
 
+// Inline, so each state test sees the toast's own status region.
 function toast(props: Record<string, unknown> = {}, result: ToastResult = { toast: message, undo: 'tok-1' }) {
-    return mount(Toast, { props: { result, ...props } });
+    return mount(Toast, { props: { result, inline: true, ...props } });
+}
+
+// Everything attached to the page is removed after each test, whether it passed or not.
+const mounted: { unmount: () => void }[] = [];
+const cleanups: (() => void)[] = [];
+
+// A toast in TOAST_HOST, as the shell's toast host draws it.
+function inHost(props: Record<string, unknown> = {}) {
+    const wrapper = mount(Toast, { props: { result: { toast: message, undo: 'tok-1' }, ...props }, attachTo: TOAST_HOST });
+    mounted.push(wrapper);
+
+    return wrapper;
 }
 
 function undoButton(wrapper: ReturnType<typeof toast>) {
@@ -34,6 +48,7 @@ function withHost(): HTMLElement {
     host.setAttribute('role', 'status');
     host.setAttribute('aria-live', 'polite');
     document.body.append(host);
+    cleanups.push(() => host.remove());
 
     return host;
 }
@@ -42,7 +57,18 @@ const refusal = () =>
     new CapabilityError('undo_apply', 409, { ok: false, error: { code: 'conflict', message: 'A later change depends on this.' } });
 
 describe('Toast', () => {
-    beforeEach(() => writeMock.mockReset());
+    let warn: MockInstance<typeof console.warn>;
+
+    beforeEach(() => {
+        writeMock.mockReset();
+        warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        mounted.splice(0).forEach((wrapper) => wrapper.unmount());
+        cleanups.splice(0).forEach((cleanup) => cleanup());
+        warn.mockRestore();
+    });
 
     it("CAP-010 takes a write's answer as the server sends it", () => {
         expectTypeOf<TokenCreateOutput>().toExtend<ToastResult>();
@@ -62,48 +88,102 @@ describe('Toast', () => {
         expect(undoButton(wrapper).text()).toBe('Undo');
     });
 
-    it('UI-010 in the shell the toast goes into TOAST_HOST, which announces it, and adds no live region of its own', async () => {
+    it('UI-010 in TOAST_HOST the toast adds no live region of its own and draws nothing without a message', async () => {
         const host = withHost();
-        const wrapper = mount(Toast, { props: { result: { toast: message, undo: 'tok-1' } }, attachTo: document.body });
+        const wrapper = inHost();
         await nextTick();
 
         expect(host.textContent).toContain(message);
         expect(host.querySelector('button')?.textContent?.trim()).toBe('Undo');
         expect(host.querySelectorAll('[role], [aria-live]')).toHaveLength(0);
+        expect(warn).not.toHaveBeenCalled();
 
         await wrapper.setProps({ result: { toast: '', undo: null } });
         expect(host.textContent).toBe('');
-
-        wrapper.unmount();
-        host.remove();
     });
 
-    it('UI-010 finds TOAST_HOST when the shell draws it after the screen, as AppShell does', async () => {
-        const Shell = defineComponent({
-            components: { Toast },
-            setup: () => ({ result: { toast: message, undo: 'tok-1' }, id: TOAST_HOST_ID }),
-            template: '<div><Toast :result="result" /><div :id="id" role="status" aria-live="polite" /></div>',
-        });
-        const wrapper = mount(Shell, { attachTo: document.body });
+    it('UI-010 in TOAST_HOST drawn after the screen, as AppShell does, the toast lands in the host', async () => {
+        const wrapper = mount(
+            defineComponent({
+                components: { Toast },
+                setup: () => ({ TOAST_HOST, TOAST_HOST_ID, result: { toast: message, undo: 'tok-1' } }),
+                template: '<div><Teleport defer :to="TOAST_HOST"><Toast :result="result" /></Teleport><div :id="TOAST_HOST_ID" aria-live="polite" /></div>',
+            }),
+            { attachTo: document.body },
+        );
+        mounted.push(wrapper);
         await nextTick();
 
-        const host = document.getElementById(TOAST_HOST_ID)!;
-        expect(host.textContent).toContain(message);
-        expect(host.querySelectorAll('[role], [aria-live]')).toHaveLength(0);
-
-        wrapper.unmount();
+        expect(document.getElementById(TOAST_HOST_ID)!.textContent).toContain(message);
+        expect(warn).not.toHaveBeenCalled();
     });
 
-    it('VIEW-004 inline stays in place in its own status region, even in the shell', async () => {
+    it('UI-010 the toast does not place itself: a toast on a hidden screen stays in that screen, out of TOAST_HOST', async () => {
         const host = withHost();
-        const wrapper = mount(Toast, { props: { result: { toast: message, undo: 'tok-1' }, inline: true }, attachTo: document.body });
+        const screen = document.createElement('section');
+        screen.setAttribute('inert', '');
+        screen.setAttribute('aria-hidden', 'true');
+        document.body.append(screen);
+        cleanups.push(() => screen.remove());
+
+        mounted.push(mount(Toast, { props: { result: { toast: message, undo: 'tok-1' } }, attachTo: screen }));
         await nextTick();
 
         expect(host.textContent).toBe('');
-        expect(root(wrapper).text()).toContain(message);
+        expect(screen.textContent).toContain(message);
+    });
 
-        wrapper.unmount();
-        host.remove();
+    it('UI-030 a toast outside any live region and not inline warns while building', async () => {
+        mounted.push(mount(Toast, { props: { result: { toast: message, undo: 'tok-1' } }, attachTo: document.body }));
+        await nextTick();
+
+        expect(warn).toHaveBeenCalledWith('Toast is outside a live region: draw it in TOAST_HOST, or pass inline.');
+    });
+
+    it('VIEW-004 in TOAST_HOST: busy while undo_apply runs, then the refusal is shown there and emitted', async () => {
+        const host = withHost();
+        let reject: (error: unknown) => void = () => {};
+        writeMock.mockReturnValueOnce(new Promise((_, fail) => (reject = fail)));
+        const wrapper = inHost();
+        await nextTick();
+
+        host.querySelector('button')!.click();
+        await nextTick();
+        expect(host.querySelector('[data-toast]')!.getAttribute('aria-busy')).toBe('true');
+        expect(host.querySelector('button')!.disabled).toBe(true);
+
+        reject(refusal());
+        await flushPromises();
+        expect(host.querySelector('[data-toast]')!.getAttribute('aria-busy')).toBeNull();
+        expect(host.querySelector('[data-toast-error]')!.textContent).toBe('A later change depends on this.');
+        expect(wrapper.emitted('undo-failed')).toEqual([['A later change depends on this.', 'tok-1']]);
+    });
+
+    it('VIEW-004 in TOAST_HOST: pending is described inside the host, and disabled stops Undo', async () => {
+        const host = withHost();
+        inHost({ pending: true });
+        await nextTick();
+        const ids = host.querySelector('button')!.getAttribute('aria-describedby')!.split(' ');
+        expect(ids.map((id) => host.querySelector(`[id="${id}"]`)?.textContent)).toEqual(['Reverts this change', 'Waiting to sync']);
+
+        mounted.pop()!.unmount();
+        inHost({ disabled: true });
+        await nextTick();
+        host.querySelector('button')!.click();
+        await flushPromises();
+        expect(host.querySelector('button')!.disabled).toBe(true);
+        expect(writeMock).not.toHaveBeenCalled();
+    });
+
+    it('VIEW-004 the gallery draws every toast inline, even with TOAST_HOST in the page', async () => {
+        const host = withHost();
+        const gallery = mount(ToastGallery, { attachTo: document.body });
+        mounted.push(gallery);
+        await nextTick();
+
+        expect(host.textContent).toBe('');
+        expect(gallery.findAll('[role="status"]')).toHaveLength(6);
+        expect(warn).not.toHaveBeenCalled();
     });
 
     it('UI-010 Undo calls undo_apply with the token and emits undone with the result', async () => {
@@ -187,6 +267,7 @@ describe('Toast', () => {
         await flushPromises();
 
         expect(wrapper.get('[data-toast-error]').text()).toBe("Couldn't undo. Try again.");
+        expect(wrapper.emitted('undo-failed')).toEqual([["Couldn't undo. Try again.", 'tok-1']]);
     });
 
     it('CAP-012 a refused undo shows the server message in place of the error prop', async () => {
