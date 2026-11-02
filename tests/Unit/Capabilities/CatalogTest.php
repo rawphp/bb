@@ -19,9 +19,9 @@ it('CAP-005 describes every capability in two or three sentences', function () {
     }
 });
 
-it('CAP-004 registers account_show on http, job, mcp and cli', function () {
+it('CAP-004 registers account_show on http, job, mcp, cli and agent', function () {
     $registry = app(CapabilityRegistry::class);
 
-    expect($registry->get('account_show')->surfaces)->toEqualCanonicalizing(['http', 'job', 'mcp', 'cli'])
-        ->and(array_keys(array_filter($registry->globallyEnabledSurfaces())))->toEqualCanonicalizing(['http', 'job', 'mcp', 'cli']);
+    expect($registry->get('account_show')->surfaces)->toEqualCanonicalizing(['http', 'job', 'mcp', 'cli', 'agent'])
+        ->and(array_keys(array_filter($registry->globallyEnabledSurfaces())))->toEqualCanonicalizing(['http', 'job', 'mcp', 'cli', 'agent']);
 });

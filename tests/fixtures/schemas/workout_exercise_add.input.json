@@ -1,0 +1,25 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "workout_id": {
+            "type": "string"
+        },
+        "workout_exercise_id": {
+            "type": "string"
+        },
+        "exercise_id": {
+            "type": "string"
+        },
+        "remaining_weeks": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "workout_id",
+        "workout_exercise_id",
+        "exercise_id",
+        "remaining_weeks"
+    ]
+}

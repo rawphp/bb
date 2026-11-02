@@ -1,0 +1,91 @@
+{
+    "title": "Weigh-ins",
+    "trend": {
+        "label": "Trend weight",
+        "value": "No weigh-ins yet",
+        "tone": "neutral"
+    },
+    "help": {
+        "title": "Weighing in",
+        "message": "Weigh yourself first thing in the morning, after the bathroom, in minimal clothing. Single readings bounce around; only the trend matters."
+    },
+    "units": {
+        "weight": "kg",
+        "waist": "cm"
+    },
+    "schedule": {
+        "summary": "Schedule: 4 days a week",
+        "note": "The time only sets your reminder. You can weigh in at any time.",
+        "entries": [
+            {
+                "weekdays": [
+                    1,
+                    3,
+                    5
+                ],
+                "days_label": "Mon, Wed, Fri",
+                "time": "07:00",
+                "time_label": "7:00 AM",
+                "can_delete": false
+            },
+            {
+                "weekdays": [
+                    6
+                ],
+                "days_label": "Sat",
+                "time": "08:30",
+                "time_label": "8:30 AM",
+                "can_delete": true
+            }
+        ],
+        "weekdays": [
+            {
+                "number": 1,
+                "short": "Mon",
+                "full": "Monday"
+            },
+            {
+                "number": 2,
+                "short": "Tue",
+                "full": "Tuesday"
+            },
+            {
+                "number": 3,
+                "short": "Wed",
+                "full": "Wednesday"
+            },
+            {
+                "number": 4,
+                "short": "Thu",
+                "full": "Thursday"
+            },
+            {
+                "number": 5,
+                "short": "Fri",
+                "full": "Friday"
+            },
+            {
+                "number": 6,
+                "short": "Sat",
+                "full": "Saturday"
+            },
+            {
+                "number": 7,
+                "short": "Sun",
+                "full": "Sunday"
+            }
+        ],
+        "delete_blocked_message": "Deleting this would leave fewer than 2 weigh-in days a week."
+    },
+    "rows": [],
+    "missed": {
+        "text": "Missed",
+        "tone": "warning"
+    },
+    "empty_message": "No weigh-ins yet. Tap + to log your first.",
+    "steps": {
+        "title": "Steps",
+        "default_date": "2026-10-09",
+        "rows": []
+    }
+}

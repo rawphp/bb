@@ -1,0 +1,107 @@
+{
+    "meal_id": "01JBX5M0000000000000000004",
+    "title": "Meal 4",
+    "time_text": null,
+    "bars": [
+        {
+            "label": "Cal",
+            "value_text": "0/380",
+            "fraction": 0.0,
+            "tone": "neutral"
+        },
+        {
+            "label": "P",
+            "value_text": "0/40",
+            "fraction": 0.0,
+            "tone": "neutral"
+        },
+        {
+            "label": "F",
+            "value_text": "0/10",
+            "fraction": 0.0,
+            "tone": "neutral"
+        },
+        {
+            "label": "C",
+            "value_text": "0/32",
+            "fraction": 0.0,
+            "tone": "neutral"
+        }
+    ],
+    "pills": [
+        {
+            "text": "Calories 380 under",
+            "tone": "warning"
+        },
+        {
+            "text": "Protein 40 g under",
+            "tone": "warning"
+        }
+    ],
+    "targets_met": null,
+    "adjust_badge": null,
+    "peri_workout": null,
+    "check_in": {
+        "state": "notCheckedIn",
+        "text": "Not checked in",
+        "tone": "neutral"
+    },
+    "hints": [],
+    "entries": [],
+    "empty": {
+        "title": "Your meal is empty",
+        "note": "Because this meal has no foods in it, the app assumes you are eating this meal at target macros."
+    },
+    "menu": [
+        {
+            "item": "edit_macros_time",
+            "title": "Edit macros/time",
+            "is_enabled": true
+        },
+        {
+            "item": "load_saved_meal",
+            "title": "Load saved meal",
+            "is_enabled": true
+        },
+        {
+            "item": "save_as_saved_meal",
+            "title": "Save as saved meal",
+            "is_enabled": false
+        },
+        {
+            "item": "copy_foods",
+            "title": "Copy foods",
+            "is_enabled": false
+        },
+        {
+            "item": "remove_foods",
+            "title": "Remove foods",
+            "is_enabled": false
+        },
+        {
+            "item": "check_in_meal",
+            "title": "Check in meal",
+            "is_enabled": true
+        },
+        {
+            "item": "check_in_manual",
+            "title": "Check in at manual macros",
+            "is_enabled": true
+        },
+        {
+            "item": "remove_check_in",
+            "title": "Remove check-in",
+            "is_enabled": false
+        },
+        {
+            "item": "still_planning",
+            "title": "Still planning foods",
+            "is_enabled": true
+        },
+        {
+            "item": "delete_meal",
+            "title": "Delete meal",
+            "is_enabled": true
+        }
+    ]
+}

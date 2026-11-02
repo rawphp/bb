@@ -77,3 +77,5 @@ export interface CopyShowOutput {
     copy_locked_state: boolean;
   };
 }
+
+export const outputVersion = 'df8202f35079';

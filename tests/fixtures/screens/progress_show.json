@@ -1,0 +1,518 @@
+{
+    "title": "Progress",
+    "scopes": [
+        {
+            "value": "phase",
+            "title": "Phase",
+            "selected": true
+        },
+        {
+            "value": "plan",
+            "title": "Whole plan",
+            "selected": false
+        }
+    ],
+    "empty": null,
+    "scope_message": null,
+    "chart": {
+        "unit": "kg",
+        "weights": [
+            {
+                "date": "2026-08-31",
+                "value": 83.8
+            },
+            {
+                "date": "2026-09-01",
+                "value": 83.7
+            },
+            {
+                "date": "2026-09-03",
+                "value": 84.0
+            },
+            {
+                "date": "2026-09-04",
+                "value": 83.6
+            },
+            {
+                "date": "2026-09-06",
+                "value": 83.2
+            },
+            {
+                "date": "2026-09-07",
+                "value": 83.8
+            },
+            {
+                "date": "2026-09-09",
+                "value": 84.1
+            },
+            {
+                "date": "2026-09-10",
+                "value": 83.3
+            },
+            {
+                "date": "2026-09-12",
+                "value": 84.1
+            },
+            {
+                "date": "2026-09-13",
+                "value": 84.1
+            },
+            {
+                "date": "2026-09-15",
+                "value": 83.6
+            },
+            {
+                "date": "2026-09-16",
+                "value": 83.8
+            },
+            {
+                "date": "2026-09-18",
+                "value": 84.0
+            },
+            {
+                "date": "2026-09-19",
+                "value": 84.1
+            },
+            {
+                "date": "2026-09-21",
+                "value": 84.4
+            },
+            {
+                "date": "2026-09-22",
+                "value": 84.0
+            },
+            {
+                "date": "2026-09-24",
+                "value": 84.3
+            },
+            {
+                "date": "2026-09-25",
+                "value": 84.4
+            },
+            {
+                "date": "2026-09-27",
+                "value": 84.6
+            },
+            {
+                "date": "2026-09-28",
+                "value": 84.0
+            },
+            {
+                "date": "2026-09-30",
+                "value": 84.7
+            },
+            {
+                "date": "2026-10-01",
+                "value": 84.4
+            },
+            {
+                "date": "2026-10-03",
+                "value": 84.2
+            },
+            {
+                "date": "2026-10-04",
+                "value": 84.8
+            },
+            {
+                "date": "2026-10-06",
+                "value": 84.3
+            },
+            {
+                "date": "2026-10-07",
+                "value": 84.4
+            },
+            {
+                "date": "2026-10-09",
+                "value": 85.0
+            },
+            {
+                "date": "2026-10-10",
+                "value": 84.8
+            }
+        ],
+        "trend": [
+            {
+                "date": "2026-08-31",
+                "value": 83.26
+            },
+            {
+                "date": "2026-09-01",
+                "value": 83.3
+            },
+            {
+                "date": "2026-09-03",
+                "value": 83.37
+            },
+            {
+                "date": "2026-09-04",
+                "value": 83.39
+            },
+            {
+                "date": "2026-09-06",
+                "value": 83.37
+            },
+            {
+                "date": "2026-09-07",
+                "value": 83.41
+            },
+            {
+                "date": "2026-09-09",
+                "value": 83.48
+            },
+            {
+                "date": "2026-09-10",
+                "value": 83.46
+            },
+            {
+                "date": "2026-09-12",
+                "value": 83.52
+            },
+            {
+                "date": "2026-09-13",
+                "value": 83.58
+            },
+            {
+                "date": "2026-09-15",
+                "value": 83.58
+            },
+            {
+                "date": "2026-09-16",
+                "value": 83.6
+            },
+            {
+                "date": "2026-09-18",
+                "value": 83.64
+            },
+            {
+                "date": "2026-09-19",
+                "value": 83.69
+            },
+            {
+                "date": "2026-09-21",
+                "value": 83.76
+            },
+            {
+                "date": "2026-09-22",
+                "value": 83.78
+            },
+            {
+                "date": "2026-09-24",
+                "value": 83.83
+            },
+            {
+                "date": "2026-09-25",
+                "value": 83.89
+            },
+            {
+                "date": "2026-09-27",
+                "value": 83.96
+            },
+            {
+                "date": "2026-09-28",
+                "value": 83.96
+            },
+            {
+                "date": "2026-09-30",
+                "value": 84.03
+            },
+            {
+                "date": "2026-10-01",
+                "value": 84.07
+            },
+            {
+                "date": "2026-10-03",
+                "value": 84.08
+            },
+            {
+                "date": "2026-10-04",
+                "value": 84.15
+            },
+            {
+                "date": "2026-10-06",
+                "value": 84.17
+            },
+            {
+                "date": "2026-10-07",
+                "value": 84.19
+            },
+            {
+                "date": "2026-10-09",
+                "value": 84.27
+            },
+            {
+                "date": "2026-10-10",
+                "value": 84.32
+            }
+        ],
+        "goal": [
+            {
+                "date": "2026-08-31",
+                "low": 83.2,
+                "goal": 83.2,
+                "high": 83.2
+            },
+            {
+                "date": "2026-09-07",
+                "low": 83.28,
+                "goal": 83.41,
+                "high": 83.52
+            },
+            {
+                "date": "2026-09-14",
+                "low": 83.37,
+                "goal": 83.62,
+                "high": 83.83
+            },
+            {
+                "date": "2026-09-21",
+                "low": 83.45,
+                "goal": 83.83,
+                "high": 84.15
+            },
+            {
+                "date": "2026-09-28",
+                "low": 83.54,
+                "goal": 84.04,
+                "high": 84.46
+            },
+            {
+                "date": "2026-10-05",
+                "low": 83.62,
+                "goal": 84.25,
+                "high": 84.78
+            }
+        ],
+        "waist_unit": "cm",
+        "waist": [
+            {
+                "date": "2026-08-31",
+                "value": 88.0
+            },
+            {
+                "date": "2026-09-14",
+                "value": 87.5
+            },
+            {
+                "date": "2026-09-28",
+                "value": 87.5
+            },
+            {
+                "date": "2026-10-10",
+                "value": 87.0
+            }
+        ],
+        "accessibility_label": "Weight chart. Trend weight from 83.2 kg to 84.3 kg."
+    },
+    "summary": [
+        {
+            "label": "Start",
+            "value": "83.2 kg",
+            "tone": "neutral"
+        },
+        {
+            "label": "Change",
+            "value": "+1.1 kg",
+            "tone": "neutral"
+        },
+        {
+            "label": "Goal",
+            "value": "86.5 kg",
+            "tone": "neutral"
+        }
+    ],
+    "share": {
+        "title": "My progress",
+        "message": "Muscle gain: 83.2 kg to 84.3 kg (+1.1 kg) over 5 weeks"
+    },
+    "this_week": {
+        "title": "This week",
+        "calories": {
+            "title": "Calories this week",
+            "short_label": "Cal",
+            "value_label": "2410/18550",
+            "fraction": 0.13
+        },
+        "days": [
+            {
+                "date": "2026-10-10",
+                "letter": "S",
+                "day_label": "10",
+                "calories_label": "2650",
+                "is_complete": true,
+                "is_today": true
+            },
+            {
+                "date": "2026-10-11",
+                "letter": "S",
+                "day_label": "11",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-12",
+                "letter": "M",
+                "day_label": "12",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-13",
+                "letter": "T",
+                "day_label": "13",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-14",
+                "letter": "W",
+                "day_label": "14",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-15",
+                "letter": "T",
+                "day_label": "15",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            },
+            {
+                "date": "2026-10-16",
+                "letter": "F",
+                "day_label": "16",
+                "calories_label": "2650",
+                "is_complete": false,
+                "is_today": false
+            }
+        ],
+        "edit_schedule_title": "Edit schedule"
+    },
+    "review_card": {
+        "title": "Weekly review available",
+        "action_title": "Open"
+    },
+    "steps": {
+        "title": "Steps",
+        "bar": {
+            "title": "Steps today",
+            "short_label": "Steps",
+            "value_label": "6,240/10,000",
+            "fraction": 0.62
+        },
+        "target_label": "Target 8,000 to 10,000"
+    },
+    "phase_history": [
+        {
+            "id": "01JA0000000000000000PHASE1",
+            "title": "Fat loss",
+            "dates_label": "6 Jul 2026 – 30 Aug 2026",
+            "lines": [
+                {
+                    "label": "Weight change",
+                    "value": "-2.8 kg",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Average rate",
+                    "value": "-0.41% per week",
+                    "tone": "neutral"
+                }
+            ],
+            "mesocycles": [
+                {
+                    "label": "Cut base",
+                    "value": "4 weeks",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Cut peak",
+                    "value": "4 weeks",
+                    "tone": "neutral"
+                }
+            ]
+        }
+    ],
+    "mesocycle_history": [
+        {
+            "id": "01JA00000000000000000MESO3",
+            "title": "Lean gain A",
+            "dates_label": "31 Aug 2026 – 4 Oct 2026",
+            "phase": {
+                "text": "Muscle gain",
+                "tone": "info"
+            },
+            "sets_title": "Average sets per week",
+            "sets": [
+                {
+                    "label": "Chest",
+                    "value": "3.0",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Back",
+                    "value": "5.0",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Quads",
+                    "value": "3.0",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Biceps",
+                    "value": "4.0",
+                    "tone": "neutral"
+                }
+            ]
+        },
+        {
+            "id": "01JA00000000000000000MESO2",
+            "title": "Cut peak",
+            "dates_label": "3 Aug 2026 – 30 Aug 2026",
+            "phase": {
+                "text": "Fat loss",
+                "tone": "info"
+            },
+            "sets_title": "Average sets per week",
+            "sets": [
+                {
+                    "label": "Chest",
+                    "value": "3.0",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Back",
+                    "value": "5.0",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Quads",
+                    "value": "3.0",
+                    "tone": "neutral"
+                },
+                {
+                    "label": "Biceps",
+                    "value": "4.0",
+                    "tone": "neutral"
+                }
+            ]
+        }
+    ],
+    "exercises": [
+        {
+            "id": "01JA000000000000000000EX01",
+            "name": "Bench Press",
+            "muscle": "Chest"
+        },
+        {
+            "id": "01JA000000000000000000EX02",
+            "name": "Barbell Row",
+            "muscle": "Back"
+        }
+    ]
+}

@@ -1,0 +1,40 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "meals": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "saved_meal_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "detail": {
+                        "type": "string",
+                        "description": "3 foods"
+                    }
+                },
+                "required": [
+                    "saved_meal_id",
+                    "name",
+                    "detail"
+                ]
+            }
+        },
+        "empty_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "meals"
+    ]
+}
