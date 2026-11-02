@@ -12,12 +12,16 @@ final class SetLog
     /** No set holds more reps than this. */
     public const MAX_REPS = 999;
 
+    /** No set holds more weight than this, in kg. */
+    public const MAX_KG = 1000.0;
+
     /**
      * WO-025: ticking Log counts the set as a working set, so it needs its reps, and its weight unless the exercise is
      * done with the body's weight. Saving the fields without ticking Log takes what was typed. A skipped set takes
-     * neither until it is unskipped (rp-clone setWeight, setReps, toggleLogged).
+     * neither until it is unskipped (rp-clone setWeight, setReps, toggleLogged). `$weightKg` is the typed weight in kg
+     * ({@see kg()}), bounded at 0 and {@see MAX_KG}.
      */
-    public static function refusal(bool $isLogged, bool $isSkipped, ?int $reps, ?float $weight, ExerciseLoadType $loadType): ?string
+    public static function refusal(bool $isLogged, bool $isSkipped, ?int $reps, ?float $weightKg, ExerciseLoadType $loadType): ?string
     {
         if ($isSkipped) {
             return 'Unskip this set to log it.';
@@ -25,10 +29,16 @@ final class SetLog
         if ($reps !== null && $reps > self::MAX_REPS) {
             return 'Enter '.self::MAX_REPS.' reps or fewer.';
         }
+        if ($weightKg !== null && $weightKg < 0) {
+            return 'Enter a weight of 0 or more.';
+        }
+        if ($weightKg !== null && $weightKg > self::MAX_KG) {
+            return 'Enter a weight of 1000 kg (2204 lb) or less.';
+        }
         if (! $isLogged) {
             return null;
         }
-        if ($reps === null || ($weight === null && ! self::isBodyweight($loadType))) {
+        if ($reps === null || ($weightKg === null && ! self::isBodyweight($loadType))) {
             return 'Enter the weight and reps first.';
         }
 

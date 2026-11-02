@@ -23,7 +23,7 @@ final class LogWorkoutSet
         return DB::transaction(function () use ($user, $setId, $weight, $unit, $reps, $isLogged) {
             $set = OpenWorkout::set($user, $setId);
             $loadType = $set->exercise->load_type ?? ExerciseLoadType::Barbell;
-            $refusal = SetLog::refusal($isLogged, $set->is_skipped, $reps, $weight, $loadType);
+            $refusal = SetLog::refusal($isLogged, $set->is_skipped, $reps, SetLog::kg($weight, $unit, isLogged: false), $loadType);
             if ($refusal !== null) {
                 throw new DomainException($refusal);
             }

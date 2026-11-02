@@ -7,7 +7,7 @@ use App\Domain\Progression\SetLog;
 // What workout_set_log refuses and stores (rp-clone toggleLogged, draft(of:)).
 
 it('WO-003 WO-025 a set is logged only with its reps, and its weight unless the exercise is bodyweight', function () {
-    expect(SetLog::refusal(isLogged: true, isSkipped: false, reps: 10, weight: 80.0, loadType: ExerciseLoadType::Barbell))->toBeNull()
+    expect(SetLog::refusal(isLogged: true, isSkipped: false, reps: 10, weightKg: 80.0, loadType: ExerciseLoadType::Barbell))->toBeNull()
         ->and(SetLog::refusal(true, false, null, 80.0, ExerciseLoadType::Barbell))->toBe('Enter the weight and reps first.')
         ->and(SetLog::refusal(true, false, 10, null, ExerciseLoadType::Dumbbell))->toBe('Enter the weight and reps first.')
         ->and(SetLog::refusal(true, false, 10, null, ExerciseLoadType::Bodyweight))->toBeNull()
