@@ -225,6 +225,11 @@ it('FOOD-027 still treats whole-word plant milks and nut butters as dairy free',
     expect((new DietClassifier)->classify('Product', null, $ingredients, [])['dairy_free'])->toBeTrue($ingredients);
 })->with(['oat milk, salt', 'almond milks, water', 'walnut butter, salt', 'hazelnut butter, cocoa']);
 
+it('FOOD-027 rules out vegan, and keeps vegetarian, for honey with no other animal word', function () {
+    expect((new DietClassifier)->classify('Bar', null, 'almonds, honey, salt', []))
+        ->toMatchArray(['vegan' => false, 'vegetarian' => true, 'dairy_free' => true]);
+});
+
 it('FOOD-027 knows more fish and dairy words in ingredients', function (string $ingredients, array $false) {
     $flags = (new DietClassifier)->classify('Crunchy fillets', null, $ingredients, []);
 

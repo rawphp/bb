@@ -353,6 +353,12 @@ it('FOOD-001 saves source ids that differ only by case or accent as one food, as
     ];
     $save = new SaveImportedFoods;
 
+    expect($save([$row('ÉCO1', 'accented'), $row('eco1', 'plain'), $row('XYZ9', 'other')]))->toBe(2)
+        ->and(Food::query()->where('source', 'off')->count())->toBe(2)
+        ->and(foodsServingsOf(Food::query()->where('source_id', 'XYZ9')->sole()))->toBe([['other', 10.0]]);
+    FoodServing::query()->delete();
+    Food::query()->forceDelete();
+
     expect($save([$row('ABC1', 'first'), $row('abc1', 'second')]))->toBe(1)
         ->and($save([$row('Abc1', 'third')]))->toBe(1)
         ->and($save([$row('ÀBC1', 'fourth')]))->toBe(1);

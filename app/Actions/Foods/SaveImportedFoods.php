@@ -6,6 +6,7 @@ use App\Domain\Foods\DumpRow;
 use App\Models\Food;
 use App\Models\FoodServing;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
@@ -56,6 +57,9 @@ final class SaveImportedFoods
                 $servings = [];
                 foreach ($batch as $r) {
                     $id = $ids[self::key((string) $r['food']['source_id'])] ?? null;
+                    if ($id === null) {
+                        Log::warning('foods:import found no saved food for a row, so its servings were skipped', ['source' => $source, 'source_id' => $r['food']['source_id']]);
+                    }
                     foreach ($id === null ? [] : $r['servings'] as $serving) {
                         $servings[] = $serving + ['food_id' => $id];
                     }
