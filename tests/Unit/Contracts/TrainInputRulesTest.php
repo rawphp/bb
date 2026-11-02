@@ -86,8 +86,8 @@ function trainExample(array $schema, string $key = ''): mixed
 }
 
 /**
- * An input built from its schema, with an integer id in each field whose rule says integer: exercise ids are integers
- * (custom_exercise_save.exercise_id), every other id a ULID.
+ * An input built from its schema, with an integer id in each field that has rules but no ULID rule: exercise ids are
+ * integers (custom_exercise_save.exercise_id), every other id a ULID.
  *
  * @param  class-string<CapabilityData>  $input
  * @return array<string, mixed>
@@ -97,7 +97,7 @@ function trainInputExample(string $input): array
     $data = trainExample($input::jsonSchema());
 
     foreach ($input::rules() as $field => $rules) {
-        if (in_array('integer', (array) $rules, true)) {
+        if (! in_array('ulid', (array) $rules, true)) {
             data_set($data, str_replace('*', '0', $field), '12');
         }
     }

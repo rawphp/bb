@@ -34,8 +34,8 @@ final class CustomExerciseSaveInput extends CapabilityData
 
     public static function rules(): array
     {
-        // The package treats `integer` as a rule the JSON schema already checks, but this id is typed as a string,
-        // so only the not_regex runs on the server: digits and nothing else.
-        return ['exercise_id' => ['nullable', 'integer', 'not_regex:/\\D/']];
+        // The id is typed as a string, so the package's portable `integer` rule would never run (it counts on the
+        // schema); not_regex does. Digits and nothing else: an integer id, as a string.
+        return ['exercise_id' => ['nullable', 'not_regex:/\\D/']];
     }
 }
