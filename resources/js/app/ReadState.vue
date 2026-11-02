@@ -14,8 +14,16 @@ defineEmits<{ retry: [] }>();
     <div v-else-if="failure" class="space-y-3 rounded-2xl p-4" :class="toneClasses.warning" role="alert">
         <p>{{ failure.error }}</p>
         <!-- A gone session needs a sign-in, not another read. -->
+        <a
+            v-if="failure.signedOut"
+            href="/sign-in"
+            class="inline-flex min-h-tap items-center rounded-xl bg-accent px-4 font-medium text-on-accent active:opacity-70"
+            data-test="sign-in"
+        >
+            Sign in
+        </a>
         <button
-            v-if="!failure.signedOut"
+            v-else
             type="button"
             class="min-h-tap rounded-xl border border-secondary-text/25 px-4 active:opacity-70"
             data-test="retry"

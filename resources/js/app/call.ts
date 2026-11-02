@@ -250,3 +250,38 @@ function cookie(name: string): string | null {
 
     return match === undefined ? null : decodeURIComponent(match.slice(name.length + 1));
 }
+
+/**
+ * POST to one of AUTH's host routes (CAP-004): /sign-in, /register, the code routes and
+ * /forgot-password. They sit outside the capability rail, so they answer Laravel's own
+ * shape: 204, or 422 with `errors` per field, or 429 from the throttle. A sign-in screen
+ * left open outlives its session, so the CSRF cookie is fetched fresh first.
+ * A refusal throws a CapabilityError named after the path; no answer is status 0.
+ */
+export async function postHost(path: string, input: CapabilityInput): Promise<void> {
+    const deadline = new AbortController();
+    const timer = setTimeout(() => deadline.abort(), TIMEOUT_MS);
+    let response: Response;
+
+    try {
+        await fetch('/sanctum/csrf-cookie', { credentials: 'same-origin', signal: deadline.signal });
+        response = await fetch(path, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': cookie('XSRF-TOKEN') ?? '',
+            },
+            body: JSON.stringify(input),
+            signal: deadline.signal,
+        });
+    } catch {
+        throw new CapabilityError(path, 0, { reason: deadline.signal.aborted ? 'timeout' : 'network' });
+    } finally {
+        clearTimeout(timer);
+    }
+
+    if (!response.ok) throw new CapabilityError(path, response.status, await response.json().catch(() => null));
+}
