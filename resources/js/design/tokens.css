@@ -6,8 +6,13 @@
  * The production build lowers light-dark() to --lightningcss-light/-dark
  * fallbacks, so browsers without it keep the colours and the switch
  * (tokens.build.test.ts).
+ *
+ * .bb-light pins the light palette on one element whatever the page shows: the
+ * shared progress picture (PWA-034). The tokens are declared on it again, so they
+ * resolve against its own colour scheme rather than inheriting :root's.
  */
-:root {
+:root,
+.bb-light {
     color-scheme: light dark;
 
     --bb-background: light-dark(#f2f2f7, #0b0b0f);
@@ -49,6 +54,7 @@
 
 :root[data-appearance='light'] { color-scheme: light; }
 :root[data-appearance='dark'] { color-scheme: dark; }
+.bb-light { color-scheme: light; }
 
 /* Tailwind utilities on the tokens: bg-surface, text-secondary-text, bg-tone-good-bg, min-h-tap. */
 @theme inline {
