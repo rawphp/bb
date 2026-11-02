@@ -7,6 +7,7 @@ use App\Domain\Mesocycle\MesoBuilder;
 use App\Domain\Mesocycle\MesocycleCalendar;
 use App\Domain\Mesocycle\MesocycleRules;
 use App\Domain\Model\ExerciseSlot;
+use App\Domain\Model\ExperienceLevel;
 use App\Domain\Model\FeedbackAnswers;
 use App\Domain\Model\Mesocycle as DomainMesocycle;
 use App\Domain\Model\MuscleGroup;
@@ -413,7 +414,8 @@ final class TrainSnapshot
             id: (string) $mesocycle->id,
             phase: $this->phaseType($mesocycle) ?? PhaseType::Maintenance,
             weeks: (int) $mesocycle->weeks,
-            // MESO-034: an Off muscle's slots are left out of the sessions still to come; the weeks that ran keep theirs.
+            // MESO-034: an Off muscle's slots are left out of the rotation; setting it Off stored the weeks that ran in
+            // earlier_weeks first ({@see \App\Actions\Mesocycles\SetMusclePriority}), so those keep theirs.
             sessions: MesocycleRules::withoutOff($sessions($mesocycle->dayRows()), self::off($mesocycle)),
             musclePriorities: self::priorities($mesocycle),
             isResensitization: $mesocycle->is_resensitization,
@@ -481,6 +483,24 @@ final class TrainSnapshot
         }
 
         return ($this->named ??= ($this->exercises)($this->namedExerciseIds())->keyBy('id'))->get($id);
+    }
+
+    /** MESO-004: where a build starts: its start moved to the first day of its plan week, else the default start. */
+    public function buildStart(Mesocycle $build): DateTimeImmutable
+    {
+        return $build->start_date === null ? $this->defaultStart() : $this->snapped(self::day($build->start_date));
+    }
+
+    /** MESO-003, TBL-012: the defaults of the phase covering a build's start; balanced maintenance without one. */
+    public function buildColumn(Mesocycle $build): Column
+    {
+        return Column::for($this->phaseCovering($this->buildStart($build))->type ?? PhaseType::Maintenance, $build->is_resensitization);
+    }
+
+    /** TBL-020: the user's experience, intermediate until the profile says. */
+    public function experience(): ExperienceLevel
+    {
+        return ExperienceLevel::tryFrom((string) $this->profile?->experience) ?? ExperienceLevel::Intermediate;
     }
 
     /** @return list<MuscleGroup> MESO-034: the muscles set Off */

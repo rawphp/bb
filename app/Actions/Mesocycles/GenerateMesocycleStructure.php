@@ -2,12 +2,9 @@
 
 namespace App\Actions\Mesocycles;
 
-use App\Capabilities\Reads\Train\MesocyclePayload;
-use App\Domain\Defaults\TBL012TrainingDefaults\Column;
 use App\Domain\Mesocycle\MesoBuilder;
 use App\Domain\Mesocycle\MesocycleRules;
 use App\Domain\Model\ExerciseSlot;
-use App\Domain\Model\PhaseType;
 use App\Domain\Model\Session;
 use App\Enums\MesocycleRoute;
 use App\Models\Mesocycle;
@@ -38,12 +35,11 @@ final class GenerateMesocycleStructure
         }
 
         $training = $snapshot->trainingWeekdaysInPlanOrder();
-        $daysPerWeek = $draft->days_per_week ?? MesocyclePayload::daysPerWeek([], $training);
+        $daysPerWeek = $draft->days_per_week ?? MesoBuilder::daysPerWeek($draft->dayRows(), $training);
         $newId = fn (): string => (string) Str::ulid();
 
         if ($route === MesocycleRoute::Builder) {
-            $start = $draft->start_date === null ? $snapshot->defaultStart() : TrainSnapshot::day($draft->start_date);
-            $column = Column::for($snapshot->phaseCovering($start)->type ?? PhaseType::Maintenance, $draft->is_resensitization);
+            $column = $snapshot->buildColumn($draft);
             $days = array_map(fn (Session $session) => [
                 'id' => $session->id,
                 'slots' => array_map(fn (ExerciseSlot $slot) => [

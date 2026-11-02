@@ -34,7 +34,7 @@ final class MesocycleBuildCapability implements HostCapability, OwnsInput
                 $user = $context->user();
                 $existing = $this->ownedOrNew(Mesocycle::class, $input->mesocycle_id, $user);
                 $replaced = ($this->build)($user, $existing, $input);
-                $name = Mesocycle::query()->whereKey($input->mesocycle_id)->value('name');
+                $name = Mesocycle::query()->where('user_id', $user->id)->whereKey($input->mesocycle_id)->value('name');
 
                 return new WriteResult(
                     invalidates: MesocycleReads::keys($input->mesocycle_id, ...$replaced),

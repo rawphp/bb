@@ -33,9 +33,10 @@ final class FillMesocycleSlots
             $e->name, $e->muscle_group, StimulusToFatigue::from($e->sfr_rating->value), $e->is_compound,
         ))->all();
 
+        // The stored days, so only the exercises change and the labels stay as they were (MESO-005).
+        $days = $draft->days ?? [];
         $filled = 0;
-        $days = $draft->dayRows();
-        foreach ($days as $d => $day) {
+        foreach ($draft->dayRows() as $d => $day) {
             foreach ($day['slots'] as $s => $slot) {
                 if ($slot['exercise_id'] !== null) {
                     continue;
@@ -43,6 +44,7 @@ final class FillMesocycleSlots
                 $pick = MesoBuilder::pickForMe(MuscleGroup::from($slot['muscle_group']), $candidates);
                 $index = $pick === null ? false : array_search($pick, $candidates, true);
                 if ($index !== false) {
+                    $days[$d]['slots'] = array_values($days[$d]['slots']);
                     $days[$d]['slots'][$s]['exercise_id'] = $library[$index]->id;
                     $filled++;
                 }

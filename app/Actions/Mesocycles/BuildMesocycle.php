@@ -5,14 +5,8 @@ namespace App\Actions\Mesocycles;
 use App\Capabilities\Mesocycles\Data\MesocycleBuildDay;
 use App\Capabilities\Mesocycles\Data\MesocycleBuildInput;
 use App\Capabilities\Mesocycles\Data\MesocycleBuildSlot;
-use App\Capabilities\Reads\Train\MesocyclePayload;
-use App\Domain\Defaults\TBL012TrainingDefaults\Column;
-use App\Domain\Defaults\TBL020MesocycleLength;
 use App\Domain\Mesocycle\MesoBuilder;
-use App\Domain\Mesocycle\MesocycleCalendar;
 use App\Domain\Mesocycle\MesocycleRules;
-use App\Domain\Model\ClosedRange;
-use App\Domain\Model\ExperienceLevel;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\Priority;
 use App\Enums\MesocycleRoute;
@@ -57,7 +51,8 @@ final class BuildMesocycle
         $snapshot = TrainSnapshot::load($user);
         $template = $input->template_id === null ? null : Template::query()->with('slots')->findOrFail($input->template_id);
         $draft = $existing ?? (new Mesocycle)->forceFill([
-            'id' => $input->mesocycle_id, 'user_id' => $user->id, 'is_draft' => true, 'days' => [], 'muscle_priorities' => [],
+            'id' => $input->mesocycle_id, 'user_id' => $user->id, 'is_draft' => true, 'is_resensitization' => false,
+            'days' => [], 'muscle_priorities' => [],
         ]);
         $changes = [];
 
@@ -71,7 +66,7 @@ final class BuildMesocycle
             $changes['name'] = $name === '' ? null : $name;
         }
         if ($input->weeks !== null) {
-            $range = self::weeksRange($snapshot);
+            $range = MesocycleRules::lengthRange($snapshot->experience());
             if ($input->weeks < $range->lower || $input->weeks > $range->upper) {
                 throw new DomainException("A mesocycle runs {$range->lower} to {$range->upper} weeks, the deload included.");
             }
@@ -81,7 +76,7 @@ final class BuildMesocycle
             $changes['start_date'] = $snapshot->snapped(TrainSnapshot::day($input->start_date))->format('Y-m-d');
         }
         if ($input->days_per_week !== null) {
-            [$fewest, $most] = MesocyclePayload::DAYS_PER_WEEK;
+            [$fewest, $most] = MesoBuilder::DAYS_PER_WEEK;
             if ($input->days_per_week < $fewest || $input->days_per_week > $most) {
                 throw new DomainException("The Meso Builder plans {$fewest} to {$most} days a week.");
             }
@@ -105,7 +100,7 @@ final class BuildMesocycle
         }
 
         $draft->fill($changes);
-        $start = $draft->start_date === null ? $snapshot->defaultStart() : TrainSnapshot::day($draft->start_date);
+        $start = $snapshot->buildStart($draft);
         $phase = $snapshot->phaseCovering($start);
         $draft->phase_id = $phase?->id;
 
@@ -113,13 +108,13 @@ final class BuildMesocycle
             match (true) {
                 trim((string) $draft->name) === '' => throw new DomainException(self::NEEDS_NAME),
                 $draft->dayRows() === [] => throw new DomainException(self::NEEDS_DAY),
-                $phase === null => throw new DomainException(MesocyclePayload::NO_PHASE),
+                $phase === null => throw new DomainException(MesocycleRules::NO_PHASE),
                 default => null,
             };
-            $column = Column::for($phase->type, $draft->is_resensitization);
+            $column = $snapshot->buildColumn($draft);
             $draft->fill([
                 'is_draft' => false,
-                'weeks' => $draft->weeks ?? self::defaultWeeks($snapshot),
+                'weeks' => $draft->weeks ?? MesocycleRules::defaultLength($snapshot->experience()),
                 'start_date' => $start->format('Y-m-d'),
                 // MESO-003: the priorities the flow showed, the phase's preset until the user changed one.
                 'muscle_priorities' => ($draft->muscle_priorities ?? []) !== [] ? $draft->muscle_priorities
@@ -138,35 +133,15 @@ final class BuildMesocycle
         });
     }
 
-    /** MESO-004, TBL-020: the lengths the user's experience allows, the deload included. */
-    private static function weeksRange(TrainSnapshot $snapshot): ClosedRange
-    {
-        $allowed = TBL020MesocycleLength::row(self::experience($snapshot))->allowedWeeks;
-
-        return new ClosedRange($allowed->lower, min($allowed->upper, MesocycleCalendar::MAX_WEEKS));
-    }
-
-    private static function defaultWeeks(TrainSnapshot $snapshot): int
-    {
-        $range = self::weeksRange($snapshot);
-
-        return (int) max($range->lower, min($range->upper, TBL020MesocycleLength::row(self::experience($snapshot))->defaultWeeks));
-    }
-
-    private static function experience(TrainSnapshot $snapshot): ExperienceLevel
-    {
-        return ExperienceLevel::tryFrom((string) $snapshot->profile?->experience) ?? ExperienceLevel::Intermediate;
-    }
-
     /**
-     * MESO-005: a build is a weekday split until its days float.
+     * MESO-005: a build is a weekday split until its days float; one with no days yet starts as one.
      *
      * @param  list<array{weekday: ?int}>  $days
      * @return 'weekdays'|'floating'
      */
     private static function style(array $days): string
     {
-        return $days === [] || array_any($days, fn (array $day) => $day['weekday'] !== null) ? 'weekdays' : 'floating';
+        return $days === [] || MesocycleRules::isWeekdaySplit(array_column($days, 'weekday')) ? 'weekdays' : 'floating';
     }
 
     /**
