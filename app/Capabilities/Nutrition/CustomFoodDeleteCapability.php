@@ -36,6 +36,6 @@ final class CustomFoodDeleteCapability implements HostCapability, OwnsInput
 
     public function owned(User $user): array
     {
-        return ['food_id' => Food::query()->where('user_id', $user->id)];
+        return ['food_id' => Food::query()->customOf($user)];
     }
 }

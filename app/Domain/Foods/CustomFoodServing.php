@@ -31,6 +31,27 @@ final readonly class CustomFoodServing
         );
     }
 
+    /** A stored serving, or null when it is missing or incomplete: a row this app did not write whole. */
+    public static function fromStored(mixed $stored): ?self
+    {
+        if (! is_array($stored) || ! is_string($stored['unit'] ?? null)) {
+            return null;
+        }
+        foreach (['size', 'grams', 'protein', 'fat', 'carbs', 'fiber'] as $key) {
+            if (! is_int($stored[$key] ?? null) && ! is_float($stored[$key] ?? null)) {
+                return null;
+            }
+        }
+
+        return self::fromArray($stored);
+    }
+
+    /** 100 g of a food from its values per 100 g: how a custom food kept without its serving is shown. */
+    public static function hundredGrams(float $protein, float $fat, float $carbs, float $fiber): self
+    {
+        return new self(100, 'g', 100, $protein, $fat, $carbs, $fiber);
+    }
+
     /** @return array{size: float, unit: string, grams: float, protein: float, fat: float, carbs: float, fiber: float} */
     public function toArray(): array
     {

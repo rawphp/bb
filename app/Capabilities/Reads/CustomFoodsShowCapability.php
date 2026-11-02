@@ -25,7 +25,7 @@ final class CustomFoodsShowCapability implements HostCapability
             ->run(function (CustomFoodsShowInput $input, CapabilityContext $context): CustomFoodsShowOutput {
                 /** @var User $user */
                 $user = $context->user();
-                $foods = Food::query()->where('user_id', $user->id)->orderBy('name')->orderBy('id')->get()
+                $foods = Food::query()->customOf($user)->orderBy('name')->orderBy('id')->get()
                     ->map(fn (Food $food): CustomFoodRow => self::row($food))
                     ->values()
                     ->all();
@@ -39,8 +39,9 @@ final class CustomFoodsShowCapability implements HostCapability
 
     private static function row(Food $food): CustomFoodRow
     {
-        // Every custom food keeps the serving it was saved with (SaveCustomFood).
-        $serving = CustomFoodServing::fromArray($food->getAttribute('custom_serving'));
+        // SaveCustomFood always keeps the serving; a row written any other way is shown as 100 g, never failing the list.
+        $serving = CustomFoodServing::fromStored($food->getAttribute('custom_serving'))
+            ?? CustomFoodServing::hundredGrams($food->protein, $food->fat, $food->carbs, $food->fiber);
 
         return new CustomFoodRow(
             food_id: $food->id,

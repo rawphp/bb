@@ -13,6 +13,6 @@ final class DeleteCustomFood
 {
     public function __invoke(User $user, string $foodId): void
     {
-        Food::query()->where('user_id', $user->id)->findOrFail($foodId)->delete();
+        Food::query()->customOf($user)->findOrFail($foodId)->delete();
     }
 }
