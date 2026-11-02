@@ -66,7 +66,11 @@ it('AGT-004 runs a tool call from a turn as the conversation user, with caller=a
 
     $tool = toolEvents($response->json('turn_ulid'));
 
-    expect((array) $seen)->toBe([['capability' => 'account_show', 'caller' => 'agent', 'user' => $user->id]])
+    // The turn's context reads go through the authorizer too, as the same agent and user.
+    $asked = array_values(array_filter((array) $seen, fn (array $call): bool => $call['capability'] === 'account_show'));
+
+    expect($asked)->toBe([['capability' => 'account_show', 'caller' => 'agent', 'user' => $user->id]])
+        ->and(collect((array) $seen)->every(fn (array $call): bool => $call['caller'] === 'agent' && $call['user'] === $user->id))->toBeTrue()
         ->and($tool)->toHaveCount(1)
         ->and($tool[0]['data'])->toMatchArray(['name' => 'account_show', 'ok' => true]);
 });
