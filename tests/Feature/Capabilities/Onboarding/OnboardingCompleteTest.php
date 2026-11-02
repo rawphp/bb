@@ -1,10 +1,12 @@
 <?php
 
+use App\Capabilities\Support\HostDefinition;
 use App\Models\OnboardingDraft;
 use App\Models\Phase;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Tests\Unit\Actions\Onboarding\StartWorld as W;
 
 // onboarding_complete over HTTP: the seam only. What it saves is StartPlanTest's and OnboardingStartTest's. Its input
@@ -19,6 +21,14 @@ function onboardingComplete(?User $user): mixed
 
     return $request->postJson('/capabilities/onboarding_complete', [], ['Idempotency-Key' => (string) Str::ulid()]);
 }
+
+it('AGT-010 AGT-032 onboarding_complete is destructive, since it deletes the answers and cannot be redone, so the agent needs the user\'s confirmation', function () {
+    $definition = app(CapabilityRegistry::class)->get('onboarding_complete');
+
+    expect(HostDefinition::isDestructive($definition))->toBeTrue()
+        ->and(HostDefinition::isReversible($definition))->toBeFalse()
+        ->and($definition->description)->toContain('deletes');
+});
 
 it('ONB-020 refuses onboarding_complete when signed out', function () {
     onboardingComplete(null)->assertUnauthorized();
