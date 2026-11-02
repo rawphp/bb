@@ -152,6 +152,16 @@ it('SCH-058 PLAN-022 a week that a flag both leaves and arrives at ends with the
     ]);
 });
 
+it('SCH-058 PLAN-022 a deload chain A to B and B to C leaves B a deload, so B is not changed, and C gains one', function () {
+    // The same flag both leaves B (B moves on) and arrives at B (A moves in): B ends as it began.
+    $after = MissedWeeks::flagsAfterMoves(
+        ['2026-09-21' => new Flags(true, false, false), '2026-09-28' => new Flags(true, false, false)],
+        [new FlagMove('2026-09-21', '2026-09-28'), new FlagMove('2026-09-28', '2026-10-05')],
+    );
+
+    expect($after)->toEqual(['2026-09-21' => new Flags(false, false, false), '2026-10-05' => new Flags(true, false, false)]);
+});
+
 it('SCH-058 PLAN-022 a deload moving onto a week that already is one leaves one deload there', function () {
     $after = MissedWeeks::flagsAfterMoves(
         ['2026-09-21' => new Flags(true, false, false), '2026-10-12' => new Flags(true, false, false)],
