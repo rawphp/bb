@@ -54,19 +54,6 @@ abstract class TestCase extends BaseTestCase
     protected function warpResetManifest(): ResetManifest
     {
         // Each test's teardown clears static queue payload hooks; the warm app boots only once.
-        return ResetManifest::default()
-            ->add(fn () => RequestClock::recordInPayloads())
-            ->add(fn (Application $sandbox, Application $base) => self::restoreConnectionResolver($base));
-    }
-
-    /**
-     * A warp-isolated test boots a cold app, whose DatabaseServiceProvider points Eloquent's static
-     * connection resolver at that app's manager. Once the isolated test ends, that app is flushed, and
-     * the next warm test in the same worker failed with "Target class [config] does not exist" on its
-     * first query. Point the resolver back at the warm base's manager before every warm test.
-     */
-    public static function restoreConnectionResolver(Application $base): void
-    {
-        Model::setConnectionResolver($base->make('db'));
+        return ResetManifest::default()->add(fn () => RequestClock::recordInPayloads());
     }
 }

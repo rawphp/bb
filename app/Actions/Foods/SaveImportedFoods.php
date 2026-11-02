@@ -44,17 +44,33 @@ final class SaveImportedFoods
 
             foreach ($bySource as $source => $batch) {
                 $batch = array_values($batch);
-                Food::query()->upsert(
-                    array_map(fn (array $r) => ['id' => (string) Str::ulid()] + $r['food'] + ['created_at' => $now, 'updated_at' => $now], $batch),
+                $sourceIds = array_map(fn (array $r) => (string) $r['food']['source_id'], $batch);
+                // withTrashed: the upsert also updates soft-deleted rows, so they are found and kept too.
+                $existing = fn () => Food::withTrashed()->where('source', $source)->whereIn('source_id', $sourceIds);
+                $before = $existing()->get(['id', 'source_id', ...$updateColumns]);
+                $upsert = fn (array $rows) => Food::query()->upsert(
+                    array_map(fn (array $r) => ['id' => (string) Str::ulid()] + $r['food'] + ['created_at' => $now, 'updated_at' => $now], $rows),
                     ['source', 'source_id'],
                     $updateColumns,
                 );
+                $upsert($batch);
 
-                $sourceIds = array_map(fn (array $r) => (string) $r['food']['source_id'], $batch);
-                // withTrashed: the upsert also updates soft-deleted rows, so their ids must be found too.
                 $ids = [];
-                foreach (Food::withTrashed()->where('source', $source)->whereIn('source_id', $sourceIds)->pluck('id', 'source_id') as $sourceId => $id) {
+                foreach ($existing()->pluck('id', 'source_id') as $sourceId => $id) {
                     $ids[self::key((string) $sourceId)] = $id;
+                }
+
+                // A row the collation folds onto another food (STRAßE1 onto STRASSE1) but key() does not has just
+                // overwritten that food. Put it back: re-save this batch's own rows, and restore any earlier food
+                // no row of this batch names, from its values before the upsert.
+                $folded = array_filter($batch, fn (array $r) => ! isset($ids[self::key((string) $r['food']['source_id'])]));
+                if ($folded !== []) {
+                    $upsert(array_values(array_filter($batch, fn (array $r) => isset($ids[self::key((string) $r['food']['source_id'])]))));
+                    foreach ($before as $food) {
+                        if (! isset($bySource[$source][self::key((string) $food->source_id)])) {
+                            Food::withTrashed()->whereKey($food->id)->toBase()->update(array_intersect_key($food->getAttributes(), array_flip($updateColumns)));
+                        }
+                    }
                 }
 
                 $servings = [];
@@ -63,7 +79,7 @@ final class SaveImportedFoods
                     $id = $ids[self::key((string) $r['food']['source_id'])] ?? null;
                     if ($id === null) {
                         $unmatched++;
-                        Log::warning('foods:import found no saved food for a row, so its servings were skipped', ['source' => $source, 'source_id' => $r['food']['source_id']]);
+                        Log::warning('foods:import skipped a row the database matched to another food; that food was left as it was', ['source' => $source, 'source_id' => $r['food']['source_id']]);
 
                         continue;
                     }
@@ -73,7 +89,7 @@ final class SaveImportedFoods
                     }
                 }
                 // Only the foods a row matched get new servings, so only theirs are replaced: a food the database
-                // folded an unmatched row into keeps the servings it had.
+                // folded an unmatched row onto keeps its servings, as it kept its values above.
                 FoodServing::query()->whereIn('food_id', $matched)->delete();
                 foreach (array_chunk($servings, 1000) as $chunk) {
                     FoodServing::query()->insert($chunk);

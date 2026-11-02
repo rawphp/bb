@@ -413,17 +413,36 @@ it('FOOD-001 reports and logs a row the database merged into another food, and d
     Log::shouldHaveReceived('warning')->once()->withArgs(fn (string $message, array $context) => $context['source_id'] === 'STRAßE1');
 });
 
-it('FOOD-001 keeps a food\'s servings when a later batch\'s row folds into it in the database only', function () {
-    $row = fn (string $id, string $label) => [
-        'food' => ['name' => "Street {$id}", 'source' => 'off', 'source_id' => $id, 'kind' => 'packaged',
-            'kcal' => 10.0, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
+it('FOOD-001 leaves an earlier food as it was when a later row folds onto it in the database only', function () {
+    $row = fn (string $id, string $name, float $kcal, string $label) => [
+        'food' => ['name' => $name, 'source' => 'off', 'source_id' => $id, 'kind' => 'packaged', 'barcode' => '111',
+            'kcal' => $kcal, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
         'servings' => [['label' => $label, 'grams' => 10.0]],
     ];
     $save = new SaveImportedFoods;
-    $save([$row('STRASSE1', '30 g')]);
+    $save([$row('STRASSE1', 'Street bar', 10.0, '30 g')]);
 
-    expect($save([$row('STRAßE1', 'other')]))->toBe(['saved' => 0, 'merged' => 0, 'unmatched' => 1])
-        ->and(foodsServingsOf(Food::query()->where('source', 'off')->sole()))->toBe([['30 g', 10.0]]);
+    expect($save([$row('STRAßE1', 'Other bar', 99.0, 'other')]))->toBe(['saved' => 0, 'merged' => 0, 'unmatched' => 1]);
+
+    $food = Food::query()->where('source', 'off')->sole();
+    expect($food->only(['source_id', 'name', 'kcal']))->toBe(['source_id' => 'STRASSE1', 'name' => 'Street bar', 'kcal' => 10.0])
+        ->and(foodsServingsOf($food))->toBe([['30 g', 10.0]]);
+});
+
+it('FOOD-001 keeps the first of two rows in one batch that fold together in the database only', function () {
+    $row = fn (string $id, string $name, string $label) => [
+        'food' => ['name' => $name, 'source' => 'off', 'source_id' => $id, 'kind' => 'packaged',
+            'kcal' => 10.0, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
+        'servings' => [['label' => $label, 'grams' => 10.0]],
+    ];
+
+    expect((new SaveImportedFoods)([$row('STRASSE1', 'Street bar', 'first'), $row('STRAßE1', 'Other bar', 'second'), $row('PLAIN1', 'Plain', 'plain')]))
+        ->toBe(['saved' => 2, 'merged' => 0, 'unmatched' => 1]);
+
+    $street = Food::query()->where('source_id', 'STRASSE1')->sole();
+    expect($street->name)->toBe('Street bar')
+        ->and(foodsServingsOf($street))->toBe([['first', 10.0]])
+        ->and(Food::query()->where('source', 'off')->count())->toBe(2);
 });
 
 it('FOOD-001 prints a dropped line when the database merged a row into another food', function () {

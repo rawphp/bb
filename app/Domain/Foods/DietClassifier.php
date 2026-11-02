@@ -186,7 +186,6 @@ final class DietClassifier
         'poultry products' => self::MEAT_FLAGS,
         'lamb, veal, and game products' => self::MEAT_FLAGS,
         'finfish and shellfish products' => self::MEAT_FLAGS,
-        'dairy and egg products' => ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'paleo'],
     ];
 
     private const GRAIN_CATEGORY = 'cereal grains and pasta';
