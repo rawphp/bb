@@ -1,22 +1,40 @@
 <script setup lang="ts">
-import StepFlow from '../StepFlow.vue';
+import StepFlow, { type StepFlowStep } from '../StepFlow.vue';
 
 // The step flow in each VIEW-004 state.
-const step = { counter: 'Step 2 of 4', title: 'About you', nextTitle: 'Next', canGoBack: true } as const;
+const step: StepFlowStep = {
+    counter: 'Step 2 of 4',
+    title: 'About you',
+    next_title: 'Next',
+    can_go_back: true,
+    can_continue: true,
+};
 
 const states = [
-    { name: 'default', props: step, content: true },
+    { name: 'default', props: { step }, content: true },
     {
         name: 'last step',
-        props: { counter: 'Step 4 of 4', title: 'Review', nextTitle: 'Done', canGoBack: true },
+        props: { step: { ...step, counter: 'Step 4 of 4', title: 'Review', next_title: 'Done' } },
         content: true,
     },
-    { name: 'empty', props: { ...step, counter: 'Step 1 of 4', canGoBack: false, canContinue: false }, content: false },
-    { name: 'loading', props: { ...step, state: 'loading' }, content: true },
-    { name: 'error', props: { ...step, state: 'error' }, content: true },
-    { name: 'pending', props: { ...step, state: 'pending' }, content: true },
-    { name: 'disabled', props: { ...step, disabled: true }, content: true },
-] as const;
+    {
+        name: 'empty',
+        props: {
+            step: {
+                ...step,
+                counter: 'Step 1 of 4',
+                can_go_back: false,
+                can_continue: false,
+                continue_hint: 'Pick a goal to continue.',
+            },
+        },
+        content: false,
+    },
+    { name: 'loading', props: { step, loading: true }, content: true },
+    { name: 'error', props: { step, error: "Couldn't load this step" }, content: true },
+    { name: 'pending', props: { step, pending: true }, content: true },
+    { name: 'disabled', props: { step, disabled: true }, content: true },
+];
 </script>
 
 <template>
