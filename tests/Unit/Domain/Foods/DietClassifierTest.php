@@ -189,6 +189,18 @@ it('FOOD-027 counts corn and pseudo-grain words in ingredients as grains', funct
     expect($flags['grain_free'])->toBeFalse($ingredients)->and($flags['paleo'])->toBeFalse($ingredients)->and($flags['gluten_free'])->toBeTrue($ingredients);
 })->with(['cornmeal, salt', 'cornflour, water', 'polenta, salt', 'grits, salt', 'amaranth, water', 'teff, water', 'masa, water']);
 
+it('FOOD-027 keeps animal fats in USDA Fats and Oils out of vegan and vegetarian, and plant oils in', function (string $name, bool $plant) {
+    $flags = (new DietClassifier)->classify($name, 'Fats and Oils', null, [], generic: true);
+
+    expect($flags['vegan'])->toBe($plant)->and($flags['vegetarian'])->toBe($plant);
+})->with([
+    'lard' => ['Lard', false],
+    'beef tallow' => ['Fat, beef tallow', false],
+    'suet' => ['Beef suet', false],
+    'cod liver oil' => ['Fish oil, cod liver', false],
+    'olive oil' => ['Oil, olive, extra virgin', true],
+]);
+
 it('FOOD-027 treats soybeans as a high-FODMAP legume, not paleo', function (string $name, string $category, ?string $ingredients) {
     $flags = (new DietClassifier)->classify($name, $category, $ingredients, [], generic: $ingredients === null);
 

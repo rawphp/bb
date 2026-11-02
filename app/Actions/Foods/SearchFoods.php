@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Capabilities\Nutrition;
+namespace App\Actions\Foods;
 
 use App\Domain\Foods\Barcode;
 use App\Domain\Foods\FoodSource;
@@ -17,14 +17,14 @@ use Illuminate\Database\Eloquent\Collection;
 
 /**
  * The food database query behind the Pantry and the scanner: search (FOOD-002, FOOD-023 to FOOD-027,
- * FOOD-029), "Did you mean" (FOOD-024) and barcode lookup (FOOD-041). Not a capability: the module's
- * food_search and food_barcode_lookup capabilities (A_PANTRY, A_SCAN) call it and shape the rows.
+ * FOOD-029), "Did you mean" (FOOD-024) and barcode lookup (FOOD-041). The Action the food_search and
+ * food_barcode_lookup capabilities (A_PANTRY, A_SCAN) call from run(); they shape the rows.
  *
  * Search lists the user's own foods (recents, favorites, custom) first, then curated matches, then the
  * rest of the database. Curated foods are a few hundred rows, so they match with LIKE; the rest uses the
  * full-text index on MySQL and LIKE elsewhere.
  */
-final class FoodSearch
+final class SearchFoods
 {
     /**
      * @param  'curated'|'generic'|'packaged'|'restaurant'|null  $kind  curated, or one food kind

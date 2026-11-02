@@ -1,6 +1,6 @@
 <?php
 
-use App\Capabilities\Nutrition\FoodSearch;
+use App\Actions\Foods\SearchFoods;
 use App\Domain\MealFit\CuratedGroup;
 use App\Domain\Model\DietFilter;
 use App\Models\Food;
@@ -27,12 +27,12 @@ function foodsCurated(string $name, string $group = 'carbs_recommended', array $
  */
 function foodsSearch(User $user, string $query, ?string $kind = null, ?CuratedGroup $group = null, array $diets = [], int $limit = 25): array
 {
-    return (new FoodSearch($user, $kind, $group, $diets, $limit))->search($query)->pluck('name')->all();
+    return (new SearchFoods($user, $kind, $group, $diets, $limit))->search($query)->pluck('name')->all();
 }
 
 // InnoDB indexes full-text only on commit, so a search inside the test's transaction would never see the
 // rows it just made. These tests commit that transaction, write for real, and remove their rows afterwards.
-function foodsDidYouMean(FoodSearch $search, string $query): ?string
+function foodsDidYouMean(SearchFoods $search, string $query): ?string
 {
     return $search->didYouMean($query, $search->search($query));
 }
@@ -55,7 +55,7 @@ it('FOOD-002 lists curated matches before the rest', function () {
     foodsMake('Chicken noodle soup');
     foodsMake('Breaded chicken nuggets');
 
-    $foods = (new FoodSearch($this->user))->search('chicken');
+    $foods = (new SearchFoods($this->user))->search('chicken');
 
     expect($foods->pluck('name')->all())->toContain('Chicken breast', 'Chicken noodle soup', 'Breaded chicken nuggets')
         ->and($foods->first()->name)->toBe('Chicken breast')
@@ -256,7 +256,7 @@ it('FOOD-004 loads each food\'s servings with the results', function () {
     $food = foodsCurated('Chicken breast', 'protein_recommended', ['cooked_ratio' => 0.75]);
     $food->servings()->createMany([['label' => 'breast', 'grams' => 174], ['label' => '4 oz', 'grams' => 113]]);
 
-    $found = (new FoodSearch($this->user))->search('chicken breast')->first();
+    $found = (new SearchFoods($this->user))->search('chicken breast')->first();
 
     expect($found->relationLoaded('servings'))->toBeTrue()
         ->and($found->servings->pluck('label')->all())->toBe(['breast', '4 oz'])
@@ -266,26 +266,26 @@ it('FOOD-004 loads each food\'s servings with the results', function () {
 it('FOOD-024 suggests a corrected query when nothing matches', function () {
     foodsCurated('Chicken breast', 'protein_recommended');
 
-    expect(foodsDidYouMean(new FoodSearch($this->user), 'chiken brest'))->toBe('chicken breast');
+    expect(foodsDidYouMean(new SearchFoods($this->user), 'chiken brest'))->toBe('chicken breast');
 });
 
 it('FOOD-024 gives no suggestion when the query has hits or cannot be corrected', function () {
     foodsCurated('Chicken breast', 'protein_recommended');
 
-    expect(foodsDidYouMean(new FoodSearch($this->user), 'chicken'))->toBeNull()
-        ->and(foodsDidYouMean(new FoodSearch($this->user), 'zzzzzz'))->toBeNull()
-        ->and(foodsDidYouMean(new FoodSearch($this->user), '%%'))->toBeNull();
+    expect(foodsDidYouMean(new SearchFoods($this->user), 'chicken'))->toBeNull()
+        ->and(foodsDidYouMean(new SearchFoods($this->user), 'zzzzzz'))->toBeNull()
+        ->and(foodsDidYouMean(new SearchFoods($this->user), '%%'))->toBeNull();
 });
 
 it('FOOD-024 only suggests a correction that has hits under the same filters', function () {
     foodsCurated('Chicken breast', 'protein_recommended');
 
-    expect(foodsDidYouMean(new FoodSearch($this->user, group: CuratedGroup::Veggies), 'chiken'))->toBeNull()
-        ->and(foodsDidYouMean(new FoodSearch($this->user, group: CuratedGroup::ProteinRecommended), 'chiken'))->toBe('chicken');
+    expect(foodsDidYouMean(new SearchFoods($this->user, group: CuratedGroup::Veggies), 'chiken'))->toBeNull()
+        ->and(foodsDidYouMean(new SearchFoods($this->user, group: CuratedGroup::ProteinRecommended), 'chiken'))->toBe('chicken');
 });
 
 it('FOOD-024 never learns words from another user\'s custom foods', function () {
     Food::factory()->custom(User::factory()->create())->create(['name' => 'Zanzibar bar', 'curated' => true]);
 
-    expect(foodsDidYouMean(new FoodSearch($this->user), 'zanzibr'))->toBeNull();
+    expect(foodsDidYouMean(new SearchFoods($this->user), 'zanzibr'))->toBeNull();
 });

@@ -139,7 +139,7 @@
                                         "string",
                                         "null"
                                     ],
-                                    "description": "The credit the food's dataset asks for, from Food::attribution(); shown in the food detail (ODbL for Open Food Facts). Null for curated and custom foods"
+                                    "description": "The credit the food's dataset asks for, from Food::attribution(); shown in the food detail (ODbL for Open Food Facts). Null when the food's source is curated or custom; an imported food marked curated keeps its dataset's credit"
                                 }
                             },
                             "required": [

@@ -47,7 +47,7 @@ use App\Domain\Model\DietFilter;
  *    buckwheat, amaranth or teff (never oats). Any other or missing category (Baked Products,
  *    Sweets, Snacks, Sausages and Luncheon Meats...) gets every flag false.
  *  - Open Food Facts tags win: en:vegan, en:vegetarian, en:non-vegan,
- *    en:non-vegetarian, allergen en:gluten (gluten_free false), en:milk (dairy_free false).
+ *    en:non-vegetarian, allergen or trace en:gluten (gluten_free false), en:milk (dairy_free false).
  *
  * @phpstan-type DietFlags array{dairy_free: bool, gluten_free: bool, grain_free: bool, low_fodmap: bool, vegetarian: bool, paleo: bool, vegan: bool}
  */
@@ -146,7 +146,7 @@ final class DietClassifier
         'amaranth', 'teff'];
 
     /**
-     * @param  list<string>  $tags  Open Food Facts ingredients_analysis_tags and allergens_tags
+     * @param  list<string>  $tags  Open Food Facts ingredients_analysis_tags, allergens_tags and traces_tags
      * @param  bool  $generic  true for USDA Foundation/SR foods, which have no ingredient list
      * @return DietFlags
      */

@@ -119,6 +119,16 @@ it('FOOD-004 falls back to the English ingredients when ingredients_text is empt
     expect(foodsMapped('off_edge.jsonl')['1000000000003']['food'])->toMatchArray(['gluten_free' => false, 'vegan' => true]);
 });
 
+it('FOOD-027 counts Open Food Facts traces of gluten and milk like allergens', function () {
+    expect(foodsMapped('off_edge.jsonl')['1000000000007']['food'])
+        ->toMatchArray(['gluten_free' => false, 'dairy_free' => false, 'grain_free' => false, 'vegan' => true]);
+});
+
+it('FOOD-001 skips an Open Food Facts code longer than the 64-character source id', function () {
+    expect(foodsMapped('off_edge.jsonl')[str_repeat('1234567890', 6).'12345'])->toBeNull()
+        ->and(foodsMapped('off_edge.jsonl')[str_repeat('1234567890', 4)])->not->toBeNull();
+});
+
 it('FOOD-004 classifies only English ingredients, so another language sets no diet flag', function () {
     $rows = foodsMapped('off_edge.jsonl');
 

@@ -5,3 +5,5 @@
 {"code":"1000000000004","product_name":"Fine","nutriments":{"energy-kcal_100g":100},"serving_quantity":30,"serving_size":"30 g"}
 {"code":"1000000000005","product_name":"Baguette","lang":"fr","nutriments":{"energy-kcal_100g":270},"ingredients_text":"farine de blé, eau, sel, levure"}
 {"code":"1000000000006","product_name":"Pain de mie","lang":"fr","nutriments":{"energy-kcal_100g":270},"ingredients_text":"farine de blé, lait","ingredients_text_en":"wheat flour, milk"}
+{"code":"1000000000007","product_name":"Rice cakes","lang":"en","nutriments":{"energy-kcal_100g":380},"ingredients_text":"rice, sugar, salt","traces_tags":["en:gluten","en:milk"]}
+{"code":"12345678901234567890123456789012345678901234567890123456789012345","product_name":"Sixty-five digit code","nutriments":{"energy-kcal_100g":100}}

@@ -36,7 +36,7 @@ class Food extends Model
     /** FOOD-060: the units a custom food's serving can be measured in. */
     public const SERVING_UNITS = ['g', 'cup', 'tbsp', 'tsp', 'piece'];
 
-    /** The credit the food's dataset asks for, shown in the food detail; null for curated and custom foods. */
+    /** The credit the food's dataset (its source) asks for, shown in the food detail; null for the curated and custom sources. */
     public function attribution(): ?string
     {
         return FoodSource::tryFrom((string) $this->source)?->attribution();

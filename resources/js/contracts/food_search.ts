@@ -69,7 +69,7 @@ export interface FoodSearchOutput {
       is_favorite: boolean;
       is_in_meal: boolean;
       /**
-       * The credit the food's dataset asks for, from Food::attribution(); shown in the food detail (ODbL for Open Food Facts). Null for curated and custom foods
+       * The credit the food's dataset asks for, from Food::attribution(); shown in the food detail (ODbL for Open Food Facts). Null when the food's source is curated or custom; an imported food marked curated keeps its dataset's credit
        */
       attribution?: string | null;
     }[];
@@ -111,4 +111,4 @@ export interface FoodSearchOutput {
   empty_text?: string | null;
 }
 
-export const outputVersion = '90845a56e231';
+export const outputVersion = 'e1d06cdd587d';

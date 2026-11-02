@@ -99,7 +99,9 @@ final class DumpRow
         $restaurant = array_filter($categories, fn (string $c) => str_contains($c, 'restaurant') || str_contains($c, 'fast-food')) !== [];
         // Comma-joined, so the classifier can drop one category (a substitute) and keep the rest.
         $categoryText = str_replace(['en:', '-'], ['', ' '], implode(', ', $categories));
-        $tags = [...$this->strings($p['ingredients_analysis_tags'] ?? null), ...$this->strings($p['allergens_tags'] ?? null)];
+        // Traces ("may contain gluten, milk") count like allergens: a coeliac cannot take the risk.
+        $tags = [...$this->strings($p['ingredients_analysis_tags'] ?? null), ...$this->strings($p['allergens_tags'] ?? null),
+            ...$this->strings($p['traces_tags'] ?? null)];
         // The keyword rules are English: another language's list matches none of them and would set every flag.
         $ingredients = $this->clean($p['ingredients_text_en'] ?? null, 65535)
             ?? ($this->text($p['lang'] ?? null) === 'en' ? $this->clean($p['ingredients_text'] ?? null, 65535) : null);

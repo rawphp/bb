@@ -40,6 +40,15 @@ it('FOOD-008 imports SR Legacy and Branded USDA dumps', function () {
         ->and(Food::query()->where('source_id', '1990002')->value('kind'))->toBe('restaurant');
 });
 
+it('FOOD-001 skips an over-long Open Food Facts code and imports the rest of the file', function () {
+    $this->artisan('foods:import', ['source' => 'off', 'path' => foodsFixture('off_edge.jsonl')])
+        ->expectsOutput('Imported 7 foods, skipped 2.')
+        ->assertSuccessful();
+
+    expect(Food::query()->where('source_id', 'like', str_repeat('1234567890', 6).'%')->exists())->toBeFalse()
+        ->and(Food::query()->where('source_id', str_repeat('1234567890', 4))->exists())->toBeTrue();
+});
+
 it('FOOD-001 imports Open Food Facts JSONL, plain or gzipped, and skips products without a name', function (string $file) {
     $this->artisan('foods:import', ['source' => 'off', 'path' => foodsFixture($file)])
         ->expectsOutput('Imported 3 foods, skipped 1.')
