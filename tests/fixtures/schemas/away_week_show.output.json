@@ -1,0 +1,153 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "is_editing": {
+            "type": "boolean",
+            "description": "The week is away already."
+        },
+        "weeks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "week_start": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "label": {
+                        "type": "string",
+                        "description": "\"Week 5 · Nov 9\""
+                    },
+                    "is_away": {
+                        "type": "boolean"
+                    },
+                    "selected": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "week_start",
+                    "label",
+                    "is_away",
+                    "selected"
+                ]
+            }
+        },
+        "training_options": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "value": {
+                        "type": "string",
+                        "enum": [
+                            "pause",
+                            "deload"
+                        ]
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "value",
+                    "label",
+                    "text",
+                    "enabled"
+                ]
+            }
+        },
+        "calorie_options": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "value": {
+                        "type": "string",
+                        "enum": [
+                            "rest",
+                            "maintenance"
+                        ]
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "text": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "value",
+                    "label",
+                    "text"
+                ]
+            }
+        },
+        "training": {
+            "type": "string",
+            "description": "What the sheet opens with.",
+            "enum": [
+                "pause",
+                "deload"
+            ]
+        },
+        "calories": {
+            "type": "string",
+            "description": "Maintenance during Fat loss.",
+            "enum": [
+                "rest",
+                "maintenance"
+            ]
+        },
+        "notes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "tone": {
+                        "type": "string",
+                        "enum": [
+                            "good",
+                            "neutral",
+                            "warning",
+                            "info"
+                        ]
+                    }
+                },
+                "required": [
+                    "text",
+                    "tone"
+                ]
+            },
+            "description": "\"Counts as a diet break\" and the like."
+        },
+        "shows_keep_phase_end": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "is_editing",
+        "weeks",
+        "training_options",
+        "calorie_options",
+        "training",
+        "calories",
+        "notes",
+        "shows_keep_phase_end"
+    ]
+}

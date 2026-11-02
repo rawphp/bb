@@ -1,0 +1,33 @@
+{
+    "foods": [
+        {
+            "food_id": "01JBX5F0000000000000000012",
+            "name": "Mum's granola",
+            "detail": "1 cup · 420 kcal",
+            "brand": null,
+            "barcode": null,
+            "serving_size": 1,
+            "serving_unit": "cup",
+            "serving_grams": 95,
+            "protein": 10,
+            "fat": 16,
+            "carbs": 58,
+            "fiber": 6
+        },
+        {
+            "food_id": "01JBX5F0000000000000000013",
+            "name": "Protein pancakes",
+            "detail": "100 g · 210 kcal",
+            "brand": "Myprotein",
+            "barcode": "5055534301234",
+            "serving_size": 100,
+            "serving_unit": "g",
+            "serving_grams": 100,
+            "protein": 25,
+            "fat": 4,
+            "carbs": 19,
+            "fiber": 2
+        }
+    ],
+    "empty_text": null
+}

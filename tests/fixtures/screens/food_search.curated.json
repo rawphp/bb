@@ -1,0 +1,135 @@
+{
+    "already_in_meal": [],
+    "sections": [
+        {
+            "id": "protein_recommended",
+            "title": "Protein · Recommended",
+            "group": "protein_recommended",
+            "show_more_title": "Show 25 more",
+            "rows": [
+                {
+                    "food_id": "01JBX5F0000000000000000002",
+                    "name": "Chicken breast",
+                    "detail": null,
+                    "raw": {
+                        "kcal": "120 kcal",
+                        "protein": "P 22.5",
+                        "fat": "F 2.6",
+                        "carbs": "C 0"
+                    },
+                    "cooked": {
+                        "kcal": "165 kcal",
+                        "protein": "P 31",
+                        "fat": "F 3.6",
+                        "carbs": "C 0"
+                    },
+                    "basis_text": "per 100 g",
+                    "is_curated": true,
+                    "is_favorite": true,
+                    "is_in_meal": false
+                },
+                {
+                    "food_id": "01JBX5F0000000000000000007",
+                    "name": "Egg whites",
+                    "detail": null,
+                    "raw": {
+                        "kcal": "52 kcal",
+                        "protein": "P 10.9",
+                        "fat": "F 0.2",
+                        "carbs": "C 0.7"
+                    },
+                    "cooked": null,
+                    "basis_text": "per 100 g",
+                    "is_curated": true,
+                    "is_favorite": false,
+                    "is_in_meal": false
+                }
+            ]
+        },
+        {
+            "id": "veggies",
+            "title": "Veggies",
+            "group": "veggies",
+            "show_more_title": null,
+            "rows": [
+                {
+                    "food_id": "01JBX5F0000000000000000008",
+                    "name": "Broccoli",
+                    "detail": null,
+                    "raw": {
+                        "kcal": "34 kcal",
+                        "protein": "P 2.8",
+                        "fat": "F 0.4",
+                        "carbs": "C 7"
+                    },
+                    "cooked": {
+                        "kcal": "35 kcal",
+                        "protein": "P 2.4",
+                        "fat": "F 0.4",
+                        "carbs": "C 7.2"
+                    },
+                    "basis_text": "per 100 g",
+                    "is_curated": true,
+                    "is_favorite": false,
+                    "is_in_meal": false
+                }
+            ]
+        }
+    ],
+    "recipes": [
+        {
+            "recipe_id": "01JBX5R0000000000000000001",
+            "name": "Overnight oats",
+            "meal_type_title": "Breakfast",
+            "macros_text": "330 kcal · P 28 · F 3 · C 47",
+            "is_library": true
+        }
+    ],
+    "saved_meals": [
+        {
+            "saved_meal_id": "01JBX5S0000000000000000001",
+            "name": "Bulk dinner",
+            "detail": "3 foods"
+        }
+    ],
+    "suggestion": null,
+    "create_custom_food": null,
+    "diets": [
+        {
+            "key": "dairy_free",
+            "title": "Dairy free",
+            "is_on": false
+        },
+        {
+            "key": "gluten_free",
+            "title": "Gluten free",
+            "is_on": true
+        },
+        {
+            "key": "grain_free",
+            "title": "Grain free",
+            "is_on": false
+        },
+        {
+            "key": "low_fodmap",
+            "title": "Low FODMAP",
+            "is_on": false
+        },
+        {
+            "key": "vegetarian",
+            "title": "Ovo-lacto vegetarian",
+            "is_on": false
+        },
+        {
+            "key": "paleo",
+            "title": "Paleo",
+            "is_on": false
+        },
+        {
+            "key": "vegan",
+            "title": "Vegan",
+            "is_on": false
+        }
+    ],
+    "empty_text": null
+}

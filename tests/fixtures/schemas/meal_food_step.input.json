@@ -1,0 +1,25 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "meal_id": {
+            "type": "string"
+        },
+        "entry_id": {
+            "type": "string"
+        },
+        "direction": {
+            "type": "string",
+            "enum": [
+                "up",
+                "down"
+            ]
+        }
+    },
+    "required": [
+        "meal_id",
+        "entry_id",
+        "direction"
+    ]
+}
