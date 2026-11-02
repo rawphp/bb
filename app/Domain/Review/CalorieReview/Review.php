@@ -272,7 +272,7 @@ final class Review
         if ($cutKcal !== null) {
             if ($this->cutIsAllowed($cutKcal)) {
                 // The cut comes out of fat first; fat that falls short of it has hit the fat floor.
-                $fatFloorIsClose = $this->fatCutG($cutKcal) < $cutKcal / MacroRules::KCAL_PER_GRAM_FAT - 1e-6;
+                $fatFloorIsClose = $this->currentTargets->fatCutG($cutKcal) < $cutKcal / MacroRules::KCAL_PER_GRAM_FAT - 1e-6;
             } else {
                 $cutKcal = null; // SAFE-012 refuses it (SAFE-011 was handled up front)
             }
@@ -309,19 +309,6 @@ final class Review
         } catch (TargetRefusal) {
             return false;
         }
-    }
-
-    /**
-     * NUT-015: how many grams of fat a cut of $cut kcal a day takes. Fat goes first, down to the fat floor for the
-     * new calories. The same rule as WeekTargets' own (private) one, which reads only the week's public fields.
-     */
-    private function fatCutG(float $cut): float
-    {
-        $targets = $this->currentTargets;
-        $maxDayKcal = max(array_map(fn ($day) => $day->kcal(), $targets->days));
-        $newFloor = MacroRules::fatFloorG($maxDayKcal - $cut, $targets->leanMassKg, $targets->mealsPerDay);
-
-        return min($cut / MacroRules::KCAL_PER_GRAM_FAT, max(0, $targets->days[0]->fatG - $newFloor));
     }
 
     private function muscleGain(float $rate): ?Decision
