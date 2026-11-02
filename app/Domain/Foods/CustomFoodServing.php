@@ -79,7 +79,7 @@ final readonly class CustomFoodServing
         return $this->label().' · '.(int) round($this->kcal()).' kcal';
     }
 
-    /** 1.5 as "1.5", 30 as "30", 33.333 as "33.333": every entered digit, no trailing zeros. */
+    /** 1.5 as "1.5", 30 as "30", 33.333 as "33.333": up to 6 decimal places, no trailing zeros. */
     private static function number(float $value): string
     {
         return rtrim(rtrim(sprintf('%.6F', $value), '0'), '.');

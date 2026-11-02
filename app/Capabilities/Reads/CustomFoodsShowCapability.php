@@ -7,6 +7,7 @@ use App\Capabilities\Nutrition\Data\CustomFoodRow;
 use App\Capabilities\Nutrition\Data\CustomFoodsShowInput;
 use App\Capabilities\Nutrition\Data\CustomFoodsShowOutput;
 use App\Capabilities\Support\HostDefinition;
+use App\Domain\Foods\CustomFoodServing;
 use App\Models\Food;
 use App\Models\User;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
@@ -38,7 +39,8 @@ final class CustomFoodsShowCapability implements HostCapability
 
     private static function row(Food $food): CustomFoodRow
     {
-        $serving = $food->customServing();
+        // Every custom food keeps the serving it was saved with (SaveCustomFood).
+        $serving = CustomFoodServing::fromArray($food->getAttribute('custom_serving'));
 
         return new CustomFoodRow(
             food_id: $food->id,
