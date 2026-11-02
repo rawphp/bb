@@ -109,7 +109,8 @@ it('SCH-038 refuses to move a session that has started, is skipped, or whose day
     SheetSeed::day($user, '2026-09-24');
     SheetSeed::day($user, '2026-09-26');
     if ($row !== []) {
-        WorkoutSession::factory()->for($user)->create(['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => $day] + $row);
+        WorkoutSession::factory()->for($user)->create(['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => $day,
+            'planned_start_at' => '2026-09-24 17:30:00', 'planned_end_at' => '2026-09-24 18:30:00'] + $row);
     }
     $before = storedDays();
 
@@ -218,7 +219,8 @@ it('SCH-056 refuses a new start for a session that has started, is skipped, or w
     [$user, $mesocycle] = sessionWorld();
     SheetSeed::day($user, '2026-09-24');
     if ($row !== []) {
-        WorkoutSession::factory()->for($user)->create(['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => $day] + $row);
+        WorkoutSession::factory()->for($user)->create(['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => $day,
+            'planned_start_at' => '2026-09-24 17:30:00', 'planned_end_at' => '2026-09-24 18:30:00'] + $row);
     }
     $rows = WorkoutSession::query()->get()->toArray();
     $before = storedDays();
