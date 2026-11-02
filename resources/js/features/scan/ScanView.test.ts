@@ -482,20 +482,67 @@ describe('ScanView', () => {
     });
 
     it('FOOD-041 retries an add that got no answer with the same new rows, and a new food with new ones (CAP-019)', async () => {
-        writeMock.mockRejectedValueOnce(new CapabilityError('meal_food_add', 0, { reason: 'timeout' }));
-        const wrapper = scan({ payload: found() }, {
-            'custom-food': ({ saved }: { saved: (id: string) => void }) => h('button', { 'data-test': 'form-saved', onClick: () => saved('01JBX5F00000000000000000CF') }),
-        });
+        const timeout = () => new CapabilityError('meal_food_add', 0, { reason: 'timeout' });
+        writeMock.mockRejectedValueOnce(timeout()).mockRejectedValueOnce(timeout());
+        readMock.mockResolvedValue({ ...found(), food: { ...found().food!, food_id: '01JBX5F000000000000000000B', name: 'Oat bar' } });
+        const wrapper = scan({ payload: found() });
 
         await wrapper.find('[data-test="add-found"]').trigger('click');
         await flushPromises();
         expect(wrapper.find('[data-test="error"]').text()).toContain('may have worked');
         await wrapper.find('[data-test="add-found"]').trigger('click');
         await flushPromises();
+        await wrapper.find('[data-test="typed-code"]').setValue('5012345678900');
+        await wrapper.find('[data-test="look-up"]').trigger('click');
+        await flushPromises();
+        await wrapper.find('[data-test="add-found"]').trigger('click');
+        await flushPromises();
 
-        const [first, retry] = calls(writeMock).map(([, input]) => (input.entries as { id: string }[])[0]!.id);
-        expect(retry).toBe(first);
+        const [first, retry, other] = calls(writeMock).map(([, input]) => (input.entries as { id: string; food_id: string }[])[0]!);
+        expect(retry!.id).toBe(first!.id);
+        expect(other!.food_id).toBe('01JBX5F000000000000000000B');
+        expect(other!.id).not.toBe(first!.id);
         expect(wrapper.emitted('close')).toEqual([[true]]);
+    });
+
+    it('FOOD-041 tells the host the meal may have changed when it closes after an add that got no answer', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('meal_food_add', 0, { reason: 'timeout' }));
+        const wrapper = scan({ payload: found() });
+
+        await wrapper.find('[data-test="add-found"]').trigger('click');
+        await flushPromises();
+        await wrapper.find('[data-cancel]').trigger('click');
+
+        expect(wrapper.emitted('close')).toEqual([[true]]);
+    });
+
+    it('FOOD-043 takes an amount typed with a decimal comma', async () => {
+        readMock.mockResolvedValue(draft());
+        const wrapper = scan({ payload: draft() });
+
+        await wrapper.findAll('[data-test="grams"]')[1]!.setValue('50,5');
+        await flushPromises();
+
+        expect((calls(readMock)[0]![1].rows as { grams: number }[])[1]!.grams).toBe(50.5);
+    });
+
+    it('FOOD-046 starts the name from the list\'s suggestion for a new list, and after a cancel', async () => {
+        readMock.mockResolvedValue({ ...draft(), saved_meal_name: 'Chicken burrito bowl' });
+        const wrapper = scan({ payload: draft() });
+        const name = () => wrapper.find<HTMLInputElement>('[data-test="saved-meal-name"]');
+
+        await wrapper.find('[data-test="save-meal"]').trigger('click');
+        await name().setValue('Taco');
+        await wrapper.findAll('[data-cancel]').at(-1)!.trigger('click');
+        await wrapper.find('[data-test="save-meal"]').trigger('click');
+        expect(name().element.value).toBe('Scanned meal');
+
+        await name().setValue('Taco');
+        await wrapper.findAll('[data-cancel]').at(-1)!.trigger('click');
+        await wrapper.find('[data-test="portion-up"]').trigger('click');
+        await flushPromises();
+        await wrapper.find('[data-test="save-meal"]').trigger('click');
+        expect(name().element.value).toBe('Chicken burrito bowl');
     });
 
     it('FOOD-046 retries a save that got no answer with the same id and the name typed, and a new name with a new id', async () => {
