@@ -20,8 +20,7 @@ final class TakeActiveRest
     public function __invoke(User $user, string $mesocycleId): array
     {
         $snapshot = TrainSnapshot::load($user, $mesocycleId);
-        /** @var Mesocycle $mesocycle */
-        $mesocycle = $snapshot->mesocycles->firstWhere('id', $mesocycleId);
+        $mesocycle = $snapshot->mesocycle($mesocycleId);
         $next = $snapshot->nextMesocycle();
 
         if ($next === null || ! $next->mesocycle->is($mesocycle) || ! $next->recommendsActiveRest) {

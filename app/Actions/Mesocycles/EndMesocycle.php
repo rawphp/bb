@@ -19,8 +19,7 @@ final class EndMesocycle
     public function __invoke(User $user, string $mesocycleId, bool $dietBreak): Mesocycle
     {
         $snapshot = TrainSnapshot::load($user, $mesocycleId);
-        /** @var Mesocycle $mesocycle */
-        $mesocycle = $snapshot->mesocycles->firstWhere('id', $mesocycleId);
+        $mesocycle = $snapshot->mesocycle($mesocycleId);
         $calendar = $snapshot->calendar($mesocycle);
 
         if (! $calendar->canEnd()) {

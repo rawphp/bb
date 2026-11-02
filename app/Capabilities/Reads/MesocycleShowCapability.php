@@ -27,10 +27,8 @@ final class MesocycleShowCapability implements HostCapability, OwnsInput
                 /** @var User $user */
                 $user = $context->user();
                 $snapshot = TrainSnapshot::load($user, $input->mesocycle_id);
-                /** @var Mesocycle $mesocycle */
-                $mesocycle = $snapshot->mesocycles->firstWhere('id', $input->mesocycle_id);
 
-                return MesocyclePayload::build($snapshot, $mesocycle);
+                return MesocyclePayload::build($snapshot, $snapshot->mesocycle($input->mesocycle_id));
             });
     }
 

@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * MESO-060: copies a saved mesocycle into a draft (MESO-007) the create flow opens at its slots. Days and slots get
- * new ids and keep their labels, weekdays, muscles, sets and exercises. MESO-061, MESO-062: each slot carries the old
+ * MESO-060: copies a saved mesocycle into a draft (MESO-007) the create flow opens at its slots, replacing the user's
+ * other unfinished ones. Days and slots get new ids and keep their labels, weekdays, muscles, sets and exercises. MESO-061, MESO-062: each slot carries the old
  * week-1 load of its exercise, so history follows the exercise; the rise (and the MESO-063 hold) is applied when the
  * targets are planned, from `carried`.
  *
@@ -33,13 +33,12 @@ final class CopyMesocycle
      */
     public function __invoke(User $user, ?Mesocycle $existing, string $id, string $sourceId, ?string $startDate, bool $keepPriorities): array
     {
-        if ($existing !== null && ! $existing->is_draft) {
+        if ($existing !== null && $existing->isSaved()) {
             throw new DomainException('That mesocycle is already saved. Copy into a new one.');
         }
 
         $snapshot = TrainSnapshot::load($user, $sourceId);
-        /** @var Mesocycle $source */
-        $source = $snapshot->mesocycles->firstWhere('id', $sourceId);
+        $source = $snapshot->mesocycle($sourceId);
         $start = $snapshot->snapped($startDate === null ? $snapshot->copyStart($source) : TrainSnapshot::day($startDate));
         $reset = $keepPriorities ? null : $snapshot->priorityReset($source, $start);
 
@@ -57,7 +56,8 @@ final class CopyMesocycle
         ], $source->dayRows());
 
         return DB::transaction(function () use ($user, $existing, $id, $snapshot, $source, $start, $reset, $days) {
-            $replaced = $snapshot->mesocycles->filter(fn (Mesocycle $m) => $m->is_draft && $m->id !== $id)->values();
+            $replaced = $snapshot->mesocycles
+                ->filter(fn (Mesocycle $m) => ! $m->isSaved() && strcasecmp((string) $m->id, $id) !== 0)->values();
             $replaced->each->delete();
 
             $draft = $existing ?? (new Mesocycle)->forceFill(['id' => $id, 'user_id' => $user->id]);

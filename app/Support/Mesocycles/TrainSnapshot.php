@@ -34,6 +34,7 @@ use Closure;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 
 /**
@@ -103,10 +104,10 @@ final class TrainSnapshot
             exercises: new Collection,
         );
 
-        $ids = array_values(array_filter([$mesocycleId, $base->current()?->id]));
+        $focus = $mesocycleId === null ? null : $base->findMesocycle($mesocycleId);
+        $ids = array_values(array_filter([$focus?->id, $base->current()?->id]));
         $sessions = WorkoutSession::query()->whereIn('mesocycle_id', $ids)->get();
         $sessionIds = $sessions->modelKeys();
-        $focus = $mesocycleId === null ? null : $base->mesocycles->firstWhere('id', $mesocycleId);
 
         return new self(
             today: $base->today,
@@ -147,10 +148,20 @@ final class TrainSnapshot
             ->values();
     }
 
-    /** MESO-007: the one unfinished build. */
+    /**
+     * The user's mesocycle with this id, whatever the case of its letters (the owner check ignores it too).
+     *
+     * @throws ModelNotFoundException<Mesocycle> when the user has none, which the seam answers with 404
+     */
+    public function mesocycle(string $id): Mesocycle
+    {
+        return $this->findMesocycle($id) ?? throw (new ModelNotFoundException)->setModel(Mesocycle::class, [$id]);
+    }
+
+    /** MESO-007: the one unfinished build: a draft, or a row saved without dates ({@see Mesocycle::isSaved()}). */
     public function draft(): ?Mesocycle
     {
-        return $this->mesocycles->filter(fn (Mesocycle $m) => $m->is_draft)->sortByDesc('updated_at')->first();
+        return $this->mesocycles->filter(fn (Mesocycle $m) => ! $m->isSaved())->sortByDesc('updated_at')->first();
     }
 
     /** The latest saved mesocycle that has started. */
@@ -187,6 +198,11 @@ final class TrainSnapshot
             recommendsActiveRest: $this->recommendsActiveRest($current),
             tookActiveRest: $current->active_rest,
         );
+    }
+
+    private function findMesocycle(string $id): ?Mesocycle
+    {
+        return $this->mesocycles->first(fn (Mesocycle $m) => strcasecmp((string) $m->id, $id) === 0);
     }
 
     /** MESO-060: when the mesocycle after `$current` starts; MESO-064: a week later with an active rest. */

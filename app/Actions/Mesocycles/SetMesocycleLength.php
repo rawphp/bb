@@ -17,8 +17,7 @@ final class SetMesocycleLength
     public function __invoke(User $user, string $mesocycleId, int $weeks): Mesocycle
     {
         $snapshot = TrainSnapshot::load($user, $mesocycleId);
-        /** @var Mesocycle $mesocycle */
-        $mesocycle = $snapshot->mesocycles->firstWhere('id', $mesocycleId);
+        $mesocycle = $snapshot->mesocycle($mesocycleId);
         $calendar = $snapshot->calendar($mesocycle);
         $laterWeeksStored = $mesocycle->laterWeekIds() !== [];
 

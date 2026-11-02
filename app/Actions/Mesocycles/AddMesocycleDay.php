@@ -19,8 +19,7 @@ final class AddMesocycleDay
     public function __invoke(User $user, string $mesocycleId, string $dayId): Mesocycle
     {
         $snapshot = TrainSnapshot::load($user, $mesocycleId);
-        /** @var Mesocycle $mesocycle */
-        $mesocycle = $snapshot->mesocycles->firstWhere('id', $mesocycleId);
+        $mesocycle = $snapshot->mesocycle($mesocycleId);
         $days = $mesocycle->dayRows();
 
         if (in_array($dayId, array_column($days, 'id'), true)) {

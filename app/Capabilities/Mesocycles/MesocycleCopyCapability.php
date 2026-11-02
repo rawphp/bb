@@ -11,6 +11,7 @@ use App\Capabilities\Support\UsesClientUlid;
 use App\Capabilities\Support\WriteResult;
 use App\Models\Mesocycle;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -30,6 +31,10 @@ final class MesocycleCopyCapability implements HostCapability, OwnsInput
             ->run(function (MesocycleCopyInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */
                 $user = $context->user();
+                // A deleted mesocycle's id is spent, whoever deleted it: a retry of a copy since replaced is not found.
+                if (Mesocycle::onlyTrashed()->whereKey($input->mesocycle_id)->exists()) {
+                    throw (new ModelNotFoundException)->setModel(Mesocycle::class, [$input->mesocycle_id]);
+                }
                 $existing = $this->ownedOrNew(Mesocycle::class, $input->mesocycle_id, $user);
                 $replaced = ($this->copy)($user, $existing, $input->mesocycle_id, $input->source_mesocycle_id, $input->start_date, $input->keep_priorities);
 
