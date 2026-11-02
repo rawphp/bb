@@ -26,9 +26,8 @@ it('SHOP-001 shows the next 7 days from today when no ticks are kept', function 
         ->toBe(['2026-10-10 00:00', '2026-10-16 00:00']);
 });
 
-it('SHOP-005 brings the last ticked range back while it still runs through today', function (int $today, int $hour) {
-    // Most recently ticked first.
-    $saved = [new TickedRange(tickRange(12, 14), ['food:broccoli']), new TickedRange(tickRange(10, 16), ['food:spinach'])];
+it('SHOP-005 brings back the ticked range that starts latest while it still runs through today', function (int $today, int $hour) {
+    $saved = [new TickedRange(tickRange(10, 16), ['food:spinach']), new TickedRange(tickRange(12, 14), ['food:broccoli'])];
 
     expect(tickDays(TickedRange::rangeToShow($saved, tickDay($today, $hour), new DateTimeZone('UTC'))))
         ->toBe(['2026-10-12 00:00', '2026-10-14 00:00']);

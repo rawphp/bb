@@ -100,6 +100,18 @@ it('SHOP-005 a tick drops the ticks of ranges that have ended, and says which', 
         ->toBe([['2026-10-04', '2026-10-10'], ['2026-10-10', '2026-10-16']]);
 });
 
+it('SHOP-005 ticks in a range that has ended are kept together, not dropped by the next tick there', function () {
+    $user = User::factory()->create();
+    $check = new CheckShoppingItem;
+
+    // The screen still shows last week after midnight.
+    $check($user, shopActionRange('2026-10-03', '2026-10-09'), 'food:01jbx5f0000000000000000002', true);
+    $ended = $check($user, shopActionRange('2026-10-03', '2026-10-09'), 'food:01jbx5f0000000000000000007', true);
+
+    expect($ended)->toBe([])
+        ->and(shopActionTicks($user))->toBe([['2026-10-03', '2026-10-09', ['food:01jbx5f0000000000000000002', 'food:01jbx5f0000000000000000007']]]);
+});
+
 it('SHOP-005 an untick before any tick saves nothing', function () {
     $user = User::factory()->create();
 

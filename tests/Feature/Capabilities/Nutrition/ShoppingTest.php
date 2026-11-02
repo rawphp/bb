@@ -139,6 +139,21 @@ it('SHOP-005 brings back the range ticked in while it runs, then the next 7 days
         ]]]);
 });
 
+it('SHOP-005 a late tick, untick or delete in an earlier week does not move the list shown with no dates', function () {
+    Carbon::setTestNow('2026-11-04 09:00:00');
+    $user = User::factory()->create();
+    $soap = ManualShoppingItem::factory()->for($user)->create(['text' => 'Soap']);
+    shoppingCall($user, 'shopping_item_check', ['from' => '2026-11-02', 'to' => '2026-11-08', 'key' => "manual:{$soap->id}", 'ticked' => true])->assertOk();
+    shoppingCall($user, 'shopping_item_check', ['from' => '2026-11-09', 'to' => '2026-11-15', 'key' => 'food:01JBX5F0000000000000000002', 'ticked' => true])->assertOk();
+
+    Carbon::setTestNow('2026-11-04 10:00:00');
+    shoppingCall($user, 'shopping_item_check', ['from' => '2026-11-02', 'to' => '2026-11-08', 'key' => 'food:01JBX5F0000000000000000007', 'ticked' => true])->assertOk();
+    shoppingCall($user, 'shopping_item_delete', ['id' => $soap->id])->assertOk();
+
+    $response = shoppingCall($user, 'shopping_show')->assertOk();
+    expect([$response->json('data.from'), $response->json('data.to')])->toBe(['2026-11-09', '2026-11-15']);
+});
+
 it('SHOP-001 SHOP-005 shows only the user\'s own manual items and ticks', function () {
     Carbon::setTestNow('2026-11-02 09:00:00');
     $user = User::factory()->create();
