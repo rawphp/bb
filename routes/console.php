@@ -11,3 +11,8 @@ Artisan::command('inspire', function () {
 
 // Activity keeps 90 days (CAP-022).
 Schedule::command('model:prune', ['--model' => [AuditRecord::class]])->daily();
+
+// The package does not schedule its reaper; the host does, once (AGT setup defaults).
+Schedule::command('capabilities-ai:reap-stale-turns')->everyFiveMinutes()
+    // A run killed mid-way frees its lock after 10 minutes, not Laravel's default day.
+    ->withoutOverlapping(10);
