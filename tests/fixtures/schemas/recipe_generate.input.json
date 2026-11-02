@@ -1,0 +1,61 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "protein": {
+            "type": "number",
+            "minimum": 0
+        },
+        "fat": {
+            "type": "number",
+            "minimum": 0
+        },
+        "carbs": {
+            "type": "number",
+            "minimum": 0
+        },
+        "meal_type": {
+            "type": "string",
+            "enum": [
+                "breakfast",
+                "lunch",
+                "dinner",
+                "snack"
+            ]
+        },
+        "complexity": {
+            "type": "string",
+            "enum": [
+                "simple",
+                "moderate",
+                "elaborate"
+            ]
+        },
+        "kcal": {
+            "type": [
+                "number",
+                "null"
+            ],
+            "minimum": 0
+        },
+        "ingredients": {
+            "type": "array",
+            "maxItems": 20
+        },
+        "preferences": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "maxLength": 500
+        }
+    },
+    "required": [
+        "protein",
+        "fat",
+        "carbs",
+        "meal_type",
+        "complexity"
+    ]
+}

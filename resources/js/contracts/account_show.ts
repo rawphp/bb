@@ -6,3 +6,5 @@ export interface AccountShowOutput {
   name: string;
   email: string;
 }
+
+export const outputVersion = '6be158e5e376';

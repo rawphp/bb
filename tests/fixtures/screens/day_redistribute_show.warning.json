@@ -1,0 +1,37 @@
+{
+    "date": "2026-09-23",
+    "note": "Small misses are fine. Within 10% on calories and protein each day is a success.",
+    "rows": [
+        {
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X1",
+            "name": "Lunch",
+            "time_text": "12:30 PM",
+            "selected": true,
+            "kcal_text": "880 kcal",
+            "protein_text": "58 g protein"
+        },
+        {
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X2",
+            "name": "Pre-workout",
+            "time_text": "4:00 PM",
+            "selected": false,
+            "kcal_text": "450 kcal",
+            "protein_text": "35 g protein"
+        },
+        {
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X3",
+            "name": "Post-workout",
+            "time_text": "7:30 PM",
+            "selected": true,
+            "kcal_text": "1,010 kcal",
+            "protein_text": "58 g protein"
+        }
+    ],
+    "warnings": [
+        {
+            "text": "Post-workout would hold over 120 g of carbs.",
+            "tone": "warning"
+        }
+    ],
+    "can_confirm": true
+}

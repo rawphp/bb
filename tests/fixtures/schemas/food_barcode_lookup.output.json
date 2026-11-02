@@ -1,0 +1,123 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "barcode": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string",
+            "enum": [
+                "found",
+                "not_found"
+            ]
+        },
+        "food": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "food_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "The brand or restaurant"
+                },
+                "raw": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "kcal": {
+                            "type": "string"
+                        },
+                        "protein": {
+                            "type": "string"
+                        },
+                        "fat": {
+                            "type": "string"
+                        },
+                        "carbs": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "kcal",
+                        "protein",
+                        "fat",
+                        "carbs"
+                    ]
+                },
+                "cooked": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "kcal": {
+                            "type": "string"
+                        },
+                        "protein": {
+                            "type": "string"
+                        },
+                        "fat": {
+                            "type": "string"
+                        },
+                        "carbs": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "kcal",
+                        "protein",
+                        "fat",
+                        "carbs"
+                    ],
+                    "description": "Null when the food has no cooked value, so it has no Raw/Cooked toggle"
+                },
+                "basis_text": {
+                    "type": "string",
+                    "description": "per 100 g, or per 3.5 oz"
+                },
+                "is_curated": {
+                    "type": "boolean"
+                },
+                "is_favorite": {
+                    "type": "boolean"
+                },
+                "is_in_meal": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "food_id",
+                "name",
+                "raw",
+                "basis_text",
+                "is_curated",
+                "is_favorite",
+                "is_in_meal"
+            ]
+        },
+        "message": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "barcode",
+        "status"
+    ]
+}
