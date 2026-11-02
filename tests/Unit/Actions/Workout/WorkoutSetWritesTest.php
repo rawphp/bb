@@ -151,7 +151,7 @@ it('OFF-021 another user\'s set is not found', function () {
 
 // MARK: workout_set_add
 
-it('WO-020 add set below inserts a set starting from the one above, and renumbers', function () {
+it('WO-020 WO-004 add set below inserts a set holding the weight and reps of the one above, with no target, and renumbers', function () {
     [$user, $block, $ids] = setsSeed();
     app(LogWorkoutSet::class)($user, $ids[0], 85.0, WeightUnit::Kg, 9, true);
     $new = strtolower((string) Str::ulid());
@@ -160,21 +160,27 @@ it('WO-020 add set below inserts a set starting from the one above, and renumber
 
     $sets = $block->sets()->get();
     $added = WorkoutSet::query()->find($new);
+    // rp-clone addSet(belowSetID:): the typed fields hold the set above's load; nothing was planned for it.
     expect($sets->pluck('id')->all())->toBe([$ids[0], $new, $ids[1], $ids[2]])
         ->and($sets->pluck('position')->all())->toBe([1, 2, 3, 4])
-        ->and([$added->target_weight_kg, $added->target_reps, $added->is_logged, $added->type, $added->variant])->toBe([85.0, 9, false, 'regular', 'straight'])
+        ->and([$added->actual_weight_kg, $added->actual_reps, $added->is_logged])->toBe([85.0, 9, false])
+        ->and([$added->target_weight_kg, $added->target_reps])->toBe([null, null])
+        ->and([$added->type, $added->variant])->toBe(['regular', 'straight'])
         ->and([$added->user_id, $added->exercise_id, $added->workout_session_id])->toBe([$user->id, $block->exercise_id, $block->workout_session_id]);
 });
 
-it('WO-022 PROG-019 a set added from the exercise menu goes at the end with its type', function () {
+it('WO-022 WO-004 a set added from the exercise menu goes at the end with its type, holding the last set\'s targeted load and no target', function () {
     [$user, $block, $ids] = setsSeed();
     $new = strtolower((string) Str::ulid());
 
     app(AddWorkoutSet::class)($user, $new, $block->id, null, WorkoutSetType::MyorepMatch);
 
     $added = WorkoutSet::query()->find($new);
+    // Nothing typed on the last set yet, so its targets (82.5 kg for 7) are what it holds.
     expect($block->sets()->pluck('id')->all())->toBe([...$ids, $new])
-        ->and([$added->type, $added->variant, $added->target_weight_kg, $added->target_reps])->toBe(['myorep_match', null, 82.5, 7]);
+        ->and([$added->type, $added->variant])->toBe(['myorep_match', null])
+        ->and([$added->actual_weight_kg, $added->actual_reps, $added->is_logged])->toBe([82.5, 7, false])
+        ->and([$added->target_weight_kg, $added->target_reps])->toBe([null, null]);
 });
 
 it('CAP-019 a set added twice under the same id is added once', function () {
@@ -199,7 +205,7 @@ it('WO-020 a set is added below a set of the same exercise only', function () {
 
 // MARK: workout_set_delete, workout_set_skip, workout_set_type_set
 
-it('WO-020 PROG-019 delete set removes the row and renumbers the rest', function () {
+it('WO-020 delete set removes the row and renumbers the rest', function () {
     [$user, $block, $ids] = setsSeed();
 
     app(DeleteWorkoutSet::class)($user, $ids[0]);

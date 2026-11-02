@@ -250,6 +250,20 @@ it('OFF-022 a set logged at another weight changes no other set\'s target or rep
         ->and($second['id'])->toBe($planned[1]['id']);
 });
 
+it('WO-004 WO-020 an added set shows the load it holds with no target and no rep table', function () {
+    $added = W::set('added-bench', 'm2w3d1', W::BENCH, 2, [
+        'workout_exercise_id' => WorkoutIds::block(WorkoutIds::workout(W::MESO, 3, 1), 'slot-12'), 'actual_weight_kg' => 85, 'actual_reps' => 9,
+    ]);
+    $set = woExercise(woShow(...woStarted([
+        woRow('slot-12', 0, W::BENCH, ['target_weight_kg' => 82.5, 'target_reps' => 10, 'actual_weight_kg' => 85, 'actual_reps' => 9, 'is_logged' => true]),
+        $added,
+    ])), 'Bench Press')['sets'][1];
+
+    expect([$set['weight']['value'], $set['reps'], $set['is_logged']])->toBe([85.0, 9, false])
+        ->and([$set['target_weight'], $set['target_text']])->toBe([null, null])
+        ->and([$set['rep_table'], $set['off_table_text']])->toBe([[], null]);
+});
+
 // MARK: WO-006, PROG-026
 
 it('WO-006 week 1 with no carried loads has empty weights and the RIR in the reps field', function () {
