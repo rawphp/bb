@@ -28,3 +28,11 @@ it('FOOD-061 never deletes another user\'s custom food or a library food', funct
         ->and(fn () => (new DeleteCustomFood)($user, $library->id))->toThrow(ModelNotFoundException::class)
         ->and(Food::query()->count())->toBe(2);
 });
+
+it('FOOD-061 never deletes a food the user owns that is not a custom food', function () {
+    $user = User::factory()->create();
+    $owned = Food::factory()->create(['user_id' => $user->id]);
+
+    expect(fn () => (new DeleteCustomFood)($user, $owned->id))->toThrow(ModelNotFoundException::class)
+        ->and($owned->fresh()->trashed())->toBeFalse();
+});

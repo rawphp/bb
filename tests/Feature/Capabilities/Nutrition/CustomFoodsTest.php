@@ -87,6 +87,34 @@ it('FOOD-061 says how to make a custom food when the user has none', function ()
     expect(ScreenFixture::differences(ScreenFixture::load('custom_foods_show.empty'), $response->json('data')))->toBe([]);
 });
 
+it('FOOD-061 lists only custom foods, and one kept without its serving as 100 g of it, never failing the list', function () {
+    $user = User::factory()->create();
+    Food::factory()->create(['user_id' => $user->id, 'name' => 'Owned import']);
+    $bare = Food::factory()->custom($user)->create(['name' => 'Bare bar', 'custom_serving' => null, 'protein' => 20, 'fat' => 10, 'carbs' => 40, 'fiber' => 3.33]);
+    Food::factory()->custom($user)->create(['name' => 'Half bar', 'custom_serving' => ['size' => 1, 'unit' => 'cup'], 'protein' => 5, 'fat' => 0, 'carbs' => 0, 'fiber' => 0]);
+
+    $response = customFoodCall($user, 'custom_foods_show')->assertOk();
+
+    expect(array_column($response->json('data.foods'), 'name'))->toBe(['Bare bar', 'Half bar'])
+        ->and($response->json('data.foods.0'))->toMatchArray([
+            'food_id' => $bare->id, 'detail' => '100 g · 330 kcal',
+            'serving_size' => 100, 'serving_unit' => 'g', 'serving_grams' => 100,
+            'protein' => 20, 'fat' => 10, 'carbs' => 40, 'fiber' => 3.33,
+        ])
+        ->and($response->json('data.foods.1.detail'))->toBe('100 g · 20 kcal');
+    assertMatchesScreenFixture('custom_foods_show', $response->json('data'));
+});
+
+it('FOOD-060 FOOD-061 answers 404 for saving over or deleting a food the user owns that is not a custom food', function () {
+    $user = User::factory()->create();
+    $owned = Food::factory()->create(['user_id' => $user->id, 'name' => 'Owned import']);
+
+    customFoodCall($user, 'custom_food_save', customFoodInput(['id' => $owned->id]))->assertNotFound();
+    customFoodCall($user, 'custom_food_delete', ['food_id' => $owned->id])->assertNotFound();
+
+    expect($owned->fresh())->name->toBe('Owned import')->kind->toBe('generic')->trashed()->toBeFalse();
+});
+
 it('FOOD-060 creates a custom food under the client\'s id and says the list changed', function () {
     $user = User::factory()->create();
     $input = customFoodInput();

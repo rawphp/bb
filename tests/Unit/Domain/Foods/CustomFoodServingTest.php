@@ -55,3 +55,25 @@ it('FOOD-061 shows a fractional serving without trailing zeros and its calories 
     // 4 × 6 + 4 × 12.15 + 9 × 3 = 99.6
     expect(proteinBar(size: 1.5, unit: 'tbsp', carbs: 12.15)->detail())->toBe('1.5 tbsp · 100 kcal');
 });
+
+it('FOOD-061 reads no serving from a stored value that is missing, partial or not a list of values', function (mixed $stored) {
+    expect(CustomFoodServing::fromStored($stored))->toBeNull();
+})->with([
+    'missing' => [null],
+    'partial' => [['size' => 1, 'unit' => 'cup', 'grams' => 95]],
+    'a string' => ['1 cup'],
+    'a unit that is not text' => [['size' => 1, 'unit' => 3, 'grams' => 95, 'protein' => 10, 'fat' => 16, 'carbs' => 58, 'fiber' => 6]],
+    'a weight that is not a number' => [['size' => 1, 'unit' => 'cup', 'grams' => 'lots', 'protein' => 10, 'fat' => 16, 'carbs' => 58, 'fiber' => 6]],
+]);
+
+it('FOOD-061 reads a complete stored serving', function () {
+    expect(CustomFoodServing::fromStored(['size' => 1, 'unit' => 'piece', 'grams' => 30, 'protein' => 6, 'fat' => 3, 'carbs' => 12, 'fiber' => 1]))
+        ->toEqual(proteinBar());
+});
+
+it('FOOD-061 shows a food kept without its serving as 100 g of it', function () {
+    $serving = CustomFoodServing::hundredGrams(protein: 20, fat: 10, carbs: 40, fiber: 3.33);
+
+    expect($serving->toArray())->toBe(['size' => 100.0, 'unit' => 'g', 'grams' => 100.0, 'protein' => 20.0, 'fat' => 10.0, 'carbs' => 40.0, 'fiber' => 3.33])
+        ->and($serving->detail())->toBe('100 g · 330 kcal');
+});
