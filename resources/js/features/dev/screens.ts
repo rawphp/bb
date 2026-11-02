@@ -19,7 +19,7 @@ export function findScreen(name: string, routes: RouteRecordRaw[], view?: string
 }
 
 /** The props the screen's route sets itself (`props: { … }`), so a dev screen opens it as the app does. */
-export function screenProps(name: string, routes: RouteRecordRaw[], view?: string): Record<string, unknown> {
+export function routeProps(name: string, routes: RouteRecordRaw[], view?: string): Record<string, unknown> {
     const props = screenRoute(name, routes, view)?.props;
     return props !== null && typeof props === 'object' ? (props as Record<string, unknown>) : {};
 }

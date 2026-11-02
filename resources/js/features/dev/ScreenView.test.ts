@@ -1,12 +1,15 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { defineComponent } from 'vue';
+import type { RouteLocationNormalized } from 'vue-router';
+import routes from './routes';
 import ScreenView from './ScreenView.vue';
 
 // A screen no fixture under tests/fixtures/screens/ will ever exist for.
 vi.mock('@/app/router', () => ({
     featureRoutes: [
         { path: '/probe', component: defineComponent({ template: '<p />' }), meta: { screen: 'probe_show' } },
+        { path: '/meal', component: defineComponent({ props: ['payload', 'mealId'], template: '<p>{{ mealId }} {{ payload !== undefined }}</p>' }), meta: { screen: 'food_search' } },
         { path: '/form', component: defineComponent({ props: ['payload'], template: '<p>form {{ payload === undefined }}</p>' }), meta: { screen: 'form', fixture: false } },
         { path: '/act', name: 'act', component: defineComponent({ props: ['action'], template: '<p>act {{ action }}</p>' }), props: { action: 'end' }, meta: { screen: 'form', fixture: false } },
     ],
@@ -46,5 +49,22 @@ describe('ScreenView', () => {
         await flushPromises();
 
         expect(wrapper.text()).toBe('act end');
+    });
+
+    it('CAP-001 passes the screen its props from the query, beside the fixture', async () => {
+        const wrapper = mount(ScreenView, { props: { name: 'food_search', screenProps: { mealId: '01JBX5M0000000000000000001' } } });
+
+        // The fixture is a dynamic import.
+        await vi.waitFor(() => expect(wrapper.text()).toBe('01JBX5M0000000000000000001 true'));
+    });
+
+    it('CAP-001 /dev/screens/<name> turns every query key but view into a screen prop', () => {
+        const props = routes[0]!.props as (route: Partial<RouteLocationNormalized>) => Record<string, unknown>;
+
+        expect(props({ params: { name: 'food_search' }, query: { view: 'pantry', mealId: 'm1', pending: ['a', 'b'] } })).toEqual({
+            name: 'food_search',
+            view: 'pantry',
+            screenProps: { mealId: 'm1' },
+        });
     });
 });
