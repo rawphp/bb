@@ -203,7 +203,7 @@ final class Retargeting
             kind: WeekMealKind::Regular,
         );
         $meals = $day->meals;
-        $at = self::firstIndex($meals, fn (RetargetMeal $meal) => $window->offset($meal->time) > $window->offset($time)) ?? count($meals);
+        $at = array_find_key($meals, fn (RetargetMeal $meal) => $window->offset($meal->time) > $window->offset($time)) ?? count($meals);
         array_splice($meals, $at, 0, [$added]);
 
         $position = $day->session === null ? null : self::workoutPositionAmong($meals, $day->session->time, $window);
@@ -231,7 +231,7 @@ final class Retargeting
             $times[$meal->id()] ??= $meal->time->minuteOfDay;
         }
         $moved = count($result->meals) !== count($day->meals)
-            || self::firstIndex($result->meals, fn (RetargetMeal $meal) => ($times[$meal->id()] ?? null) !== $meal->time->minuteOfDay) !== null;
+            || array_any($result->meals, fn (RetargetMeal $meal) => ($times[$meal->id()] ?? null) !== $meal->time->minuteOfDay);
         if (! $moved) {
             return null;
         }
@@ -251,7 +251,7 @@ final class Retargeting
         $zone = $week->start->getTimezone();
         $days = $week->days();
         $isTraining = fn (DateTimeImmutable $date) => self::containsDay($trainingDates, $date, $zone);
-        $todayIndex = self::firstIndex($days, fn (DateTimeImmutable $date) => self::isSameDay($date, $today, $zone));
+        $todayIndex = array_find_key($days, fn (DateTimeImmutable $date) => self::isSameDay($date, $today, $zone));
         if (! self::containsDay($days, $missed, $zone) || $todayIndex === null) {
             return [MissedDayOption::skip()];
         }
@@ -280,7 +280,7 @@ final class Retargeting
      */
     public static function placed(RetargetDay $day, ?WeekWorkout $session, RetargetContext $context, Closure $newId): RetargetDay
     {
-        $shakeIndex = self::firstIndex($day->meals, fn (RetargetMeal $meal) => $meal->kind === WeekMealKind::IntraWorkoutShake);
+        $shakeIndex = array_find_key($day->meals, fn (RetargetMeal $meal) => $meal->kind === WeekMealKind::IntraWorkoutShake);
         $shake = $shakeIndex === null ? null : $day->meals[$shakeIndex];
         $meals = array_values(array_filter($day->meals, fn (RetargetMeal $meal) => $meal->kind !== WeekMealKind::IntraWorkoutShake));
         $slots = array_map(fn (RetargetMeal $meal) => new MealSlot($meal->id(), $meal->keepsTime() ? $meal->time : null), $meals);
@@ -318,7 +318,7 @@ final class Retargeting
         if ($newShake !== null && $newShake->keepsTime()) {
             // A shake that keeps its time goes where its time puts it; the split gives a shake its share anywhere.
             $window = $context->eatingWindow;
-            $at = self::firstIndex($placedMeals, fn (RetargetMeal $meal) => $window->offset($meal->time) > $window->offset($newShake->time))
+            $at = array_find_key($placedMeals, fn (RetargetMeal $meal) => $window->offset($meal->time) > $window->offset($newShake->time))
                 ?? count($placedMeals);
             array_splice($placedMeals, $at, 0, [$newShake]);
             if ($position !== null && $at < $position) {
@@ -440,11 +440,11 @@ final class Retargeting
     private static function workoutPositionIn(DayPlacement $placement, WorkoutTime $workout, ClockRange $window): int
     {
         $placed = $placement->meals;
-        $post = self::firstIndex($placed, fn (PlacedMeal $meal) => $meal->role === MealRole::PostWorkout);
+        $post = array_find_key($placed, fn (PlacedMeal $meal) => $meal->role === MealRole::PostWorkout);
         if ($post !== null) {
             return $post;
         }
-        $pre = self::firstIndex($placed, fn (PlacedMeal $meal) => $meal->role === MealRole::PreWorkout);
+        $pre = array_find_key($placed, fn (PlacedMeal $meal) => $meal->role === MealRole::PreWorkout);
         if ($pre !== null) {
             return $pre + 1;
         }
@@ -460,15 +460,15 @@ final class Retargeting
      */
     private static function workoutPositionAmong(array $meals, WorkoutTime $workout, ClockRange $window): int
     {
-        $shake = self::firstIndex($meals, fn (RetargetMeal $meal) => $meal->kind === WeekMealKind::IntraWorkoutShake);
+        $shake = array_find_key($meals, fn (RetargetMeal $meal) => $meal->kind === WeekMealKind::IntraWorkoutShake);
         if ($shake !== null) {
             return $shake;
         }
-        $post = self::firstIndex($meals, fn (RetargetMeal $meal) => $meal->kind === WeekMealKind::PostWorkout);
+        $post = array_find_key($meals, fn (RetargetMeal $meal) => $meal->kind === WeekMealKind::PostWorkout);
         if ($post !== null) {
             return $post;
         }
-        $pre = self::firstIndex($meals, fn (RetargetMeal $meal) => $meal->kind === WeekMealKind::PreWorkout);
+        $pre = array_find_key($meals, fn (RetargetMeal $meal) => $meal->kind === WeekMealKind::PreWorkout);
         if ($pre !== null) {
             return $pre + 1;
         }
@@ -479,7 +479,7 @@ final class Retargeting
     /** @param  list<ClockTime>  $times */
     private static function positionByClock(array $times, WorkoutTime $workout, ClockRange $window): int
     {
-        return self::firstIndex($times, fn (ClockTime $time) => $window->offset($time) > $window->offset($workout->start)) ?? count($times);
+        return array_find_key($times, fn (ClockTime $time) => $window->offset($time) > $window->offset($workout->start)) ?? count($times);
     }
 
     private static function kindOf(MealRole $role): WeekMealKind
@@ -492,32 +492,15 @@ final class Retargeting
     }
 
     /** SCH-056: "Meals updated for your 5:30 PM workout". */
-    public static function message(ClockTime $start): string
+    private static function message(ClockTime $start): string
     {
         return "Meals updated for your {$start->shortText()} workout";
-    }
-
-    /**
-     * @template T
-     *
-     * @param  list<T>  $items
-     * @param  Closure(T): bool  $test
-     */
-    private static function firstIndex(array $items, Closure $test): ?int
-    {
-        foreach ($items as $index => $item) {
-            if ($test($item)) {
-                return $index;
-            }
-        }
-
-        return null;
     }
 
     /** @param  list<DateTimeImmutable>  $dates */
     private static function containsDay(array $dates, DateTimeImmutable $day, DateTimeZone $zone): bool
     {
-        return self::firstIndex($dates, fn (DateTimeImmutable $date) => self::isSameDay($date, $day, $zone)) !== null;
+        return array_any($dates, fn (DateTimeImmutable $date) => self::isSameDay($date, $day, $zone));
     }
 
     private static function isSameDay(DateTimeImmutable $a, DateTimeImmutable $b, DateTimeZone $zone): bool

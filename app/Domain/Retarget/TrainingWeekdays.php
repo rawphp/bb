@@ -14,8 +14,8 @@ use Closure;
 
 /**
  * Changing training weekdays mid-mesocycle (SCH-039). The new weekdays apply from the next plan week, `fromWeek`,
- * the mesocycle week (0 is its first) that week falls on. This plan week's sessions stay on their days; only the
- * targets of its unchecked days are recomputed.
+ * the mesocycle week (0 is its first) that week falls on. This plan week's sessions stay on their days; its
+ * unchecked days have their meals placed again and re-targeted with the new session times and eating window.
  */
 final class TrainingWeekdays
 {
@@ -97,7 +97,7 @@ final class TrainingWeekdays
         for ($week = $fromWeek; $week < max($fromWeek, $mesocycle->weeks - 1); $week++) {
             $remaining[] = $mesocycle->sessionsInWeek($week);
         }
-        if (array_filter($remaining, fn (array $sessions) => count($sessions) > $days) === []) {
+        if (! array_any($remaining, fn (array $sessions) => count($sessions) > $days)) {
             return $mesocycle;
         }
 
@@ -151,7 +151,7 @@ final class TrainingWeekdays
     {
         $unchecked = array_values(array_filter(
             $days,
-            fn (RetargetDay $day) => array_filter($day->meals, fn (RetargetMeal $meal) => $meal->isCheckedIn) === [],
+            fn (RetargetDay $day) => ! array_any($day->meals, fn (RetargetMeal $meal) => $meal->isCheckedIn),
         ));
         $result = [];
         foreach ($unchecked as $day) {
@@ -182,12 +182,6 @@ final class TrainingWeekdays
 
     private static function trains(Session $session, MuscleGroup $muscle): bool
     {
-        foreach ($session->slots as $slot) {
-            if ($slot->muscle === $muscle) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($session->slots, fn (ExerciseSlot $slot) => $slot->muscle === $muscle);
     }
 }
