@@ -28,7 +28,7 @@ final class PushSubscribeCapability implements HostCapability
 
                 ($this->subscribe)($user, $input->endpoint, $input->public_key, $input->auth_token);
 
-                return new WriteResult(invalidates: [ReadKey::for('push_show')]);
+                return new WriteResult(invalidates: [ReadKey::for('push_show'), ReadKey::for('push_show', ['endpoint' => $input->endpoint])]);
             });
     }
 }

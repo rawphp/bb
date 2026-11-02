@@ -28,7 +28,7 @@ final class PushUnsubscribeCapability implements HostCapability
 
                 ($this->unsubscribe)($user, $input->endpoint);
 
-                return new WriteResult(invalidates: [ReadKey::for('push_show')]);
+                return new WriteResult(invalidates: [ReadKey::for('push_show'), ReadKey::for('push_show', ['endpoint' => $input->endpoint])]);
             });
     }
 }

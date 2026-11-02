@@ -14,10 +14,14 @@
         },
         "devices": {
             "type": "integer"
+        },
+        "this_browser": {
+            "type": "boolean"
         }
     },
     "required": [
         "available",
-        "devices"
+        "devices",
+        "this_browser"
     ]
 }

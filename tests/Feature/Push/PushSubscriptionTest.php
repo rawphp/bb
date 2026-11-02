@@ -19,7 +19,7 @@ it('NOTIF-010 push_subscribe saves this device\'s subscription for the signed-in
     $this->actingAs($user)
         ->postJson('/capabilities/push_subscribe', subscription())
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['push_show{}']);
+        ->assertJsonPath('data.invalidates', ['push_show{}', 'push_show{"endpoint":"https://fcm.googleapis.com/fcm/send/device-1"}']);
 
     expect($user->pushSubscriptions()->sole())
         ->endpoint->toBe('https://fcm.googleapis.com/fcm/send/device-1')
@@ -85,7 +85,7 @@ it('NOTIF-010 push_unsubscribe removes the caller\'s subscription and leaves oth
     $this->actingAs($user)
         ->postJson('/capabilities/push_unsubscribe', ['endpoint' => 'https://fcm.googleapis.com/fcm/send/device-1'])
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['push_show{}']);
+        ->assertJsonPath('data.invalidates', ['push_show{}', 'push_show{"endpoint":"https://fcm.googleapis.com/fcm/send/device-1"}']);
     expect($user->pushSubscriptions()->count())->toBe(0);
 });
 
@@ -98,11 +98,25 @@ it('NOTIF-010 push_show gives the VAPID public key and how many devices are subs
     $this->actingAs($user)
         ->postJson('/capabilities/push_show')
         ->assertOk()
-        ->assertJsonPath('data', ['available' => true, 'public_key' => 'public-key', 'devices' => 1]);
+        ->assertJsonPath('data', ['available' => true, 'public_key' => 'public-key', 'devices' => 1, 'this_browser' => false]);
     $this->actingAs($none)
         ->postJson('/capabilities/push_show')
         ->assertOk()
         ->assertJsonPath('data.devices', 0);
+});
+
+it('NOTIF-010 push_show says whether the browser it is given is subscribed for this user, not for someone else', function () {
+    [$user, $other] = User::factory()->count(2)->create();
+    $this->actingAs($user)->postJson('/capabilities/push_subscribe', subscription())->assertOk();
+
+    $this->actingAs($user)
+        ->postJson('/capabilities/push_show', ['endpoint' => 'https://fcm.googleapis.com/fcm/send/device-1'])
+        ->assertOk()
+        ->assertJsonPath('data.this_browser', true);
+    $this->actingAs($other)
+        ->postJson('/capabilities/push_show', ['endpoint' => 'https://fcm.googleapis.com/fcm/send/device-1'])
+        ->assertOk()
+        ->assertJsonPath('data.this_browser', false);
 });
 
 it('NOTIF-010 push_show says notifications are unavailable when the instance has no VAPID keys', function () {
@@ -111,7 +125,7 @@ it('NOTIF-010 push_show says notifications are unavailable when the instance has
     $this->actingAs(User::factory()->create())
         ->postJson('/capabilities/push_show')
         ->assertOk()
-        ->assertJsonPath('data', ['available' => false, 'public_key' => null, 'devices' => 0]);
+        ->assertJsonPath('data', ['available' => false, 'public_key' => null, 'devices' => 0, 'this_browser' => false]);
 });
 
 it('NOTIF-010 refuses push capabilities when signed out', function (string $name) {

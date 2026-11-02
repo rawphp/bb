@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { read, write } from '@/app/call';
-import type { PushShowOutput } from '@/contracts/push_show';
+import type { PushShowInput, PushShowOutput } from '@/contracts/push_show';
 import type { PushSubscribeInput } from '@/contracts/push_subscribe';
 import type { PushUnsubscribeInput } from '@/contracts/push_unsubscribe';
 
@@ -26,19 +26,17 @@ export function usePush() {
         if (isIos() && !isStandalone()) return 'needs-home-screen';
         if (!browserSupportsPush()) return 'unavailable';
 
-        const push = await read<PushShowOutput>('push_show');
+        const registration = await navigator.serviceWorker.getRegistration();
+        const subscription = await registration?.pushManager.getSubscription();
+
+        const push = await read<PushShowOutput>('push_show', subscription ? ({ endpoint: subscription.endpoint } satisfies PushShowInput) : {});
         publicKey = push.available ? (push.public_key ?? null) : null;
         if (publicKey === null) return 'unavailable';
         if (Notification.permission === 'denied') return 'denied';
 
-        const registration = await navigator.serviceWorker.getRegistration();
-        const subscription = await registration?.pushManager.getSubscription();
-        if (!subscription) return 'off';
-
-        // The server's row follows whoever is signed in on this browser, so a
-        // browser that switched accounts moves to this one. The save is an upsert.
-        await save(subscription);
-        return 'on';
+        // A browser another account subscribed stays off for this one until
+        // they turn it on here themselves; enable() then moves it.
+        return subscription && push.this_browser ? 'on' : 'off';
     }
 
     async function save(subscription: PushSubscription): Promise<void> {
@@ -68,7 +66,7 @@ export function usePush() {
             (await registration.pushManager.getSubscription()) ??
             (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(publicKey) }));
 
-        // A failed save leaves the state 'off' and rejects; the next refresh() saves again.
+        // A failed save leaves the state 'off' and rejects; enable() again saves it.
         await save(subscription);
 
         state.value = 'on';

@@ -2,5 +2,14 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "additionalProperties": false,
-    "properties": []
+    "properties": {
+        "endpoint": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "This browser's push service URL, to learn whether it is subscribed for the user.",
+            "maxLength": 1024
+        }
+    }
 }

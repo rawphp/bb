@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { read, write } from '@/app/call';
+import type { PushShowOutput } from '@/contracts/push_show';
 import { usePush } from './usePush';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
@@ -41,9 +42,13 @@ function installBrowser(options: { agent?: string; standalone?: boolean; permiss
     return { pushManager, requestPermission };
 }
 
+function shown(overrides: Partial<PushShowOutput> = {}): PushShowOutput {
+    return { available: true, public_key: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U', devices: 0, this_browser: false, ...overrides };
+}
+
 describe('usePush', () => {
     beforeEach(() => {
-        readMock.mockReset().mockResolvedValue({ available: true, public_key: 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U', devices: 0 });
+        readMock.mockReset().mockResolvedValue(shown());
         writeMock.mockReset().mockResolvedValue({ invalidates: ['push_show{}'], toast: null, undo: null });
     });
 
@@ -104,23 +109,33 @@ describe('usePush', () => {
 
     it('NOTIF-010 is unavailable when the instance has no VAPID keys', async () => {
         const { requestPermission } = installBrowser();
-        readMock.mockResolvedValueOnce({ available: false, public_key: null, devices: 0 });
+        readMock.mockResolvedValueOnce(shown({ available: false, public_key: null }));
         const push = usePush();
 
         expect(await push.enable()).toBe('unavailable');
         expect(requestPermission).not.toHaveBeenCalled();
     });
 
-    it('NOTIF-010 a subscribed browser saves its subscription again, so it follows the signed-in account', async () => {
+    it('NOTIF-010 a subscribed browser is on when the server has it for this account, and refresh() saves nothing', async () => {
         installBrowser({ permission: 'granted', subscribed: true });
+        readMock.mockResolvedValue(shown({ this_browser: true }));
         const push = usePush();
 
         expect(await push.refresh()).toBe('on');
-        expect(writeMock).toHaveBeenCalledWith('push_subscribe', {
-            endpoint: 'https://push.example.com/send/device-1',
-            public_key: 'p256dh-key',
-            auth_token: 'auth-key',
-        });
+        expect(readMock).toHaveBeenCalledWith('push_show', { endpoint: 'https://push.example.com/send/device-1' });
+        expect(writeMock).not.toHaveBeenCalled();
+    });
+
+    it('NOTIF-010 a browser another account subscribed is off for this one until they opt in themselves', async () => {
+        const { requestPermission } = installBrowser({ permission: 'granted', subscribed: true });
+        const push = usePush();
+
+        expect(await push.refresh()).toBe('off');
+        expect(writeMock).not.toHaveBeenCalled();
+        expect(requestPermission).not.toHaveBeenCalled();
+
+        expect(await push.enable()).toBe('on');
+        expect(writeMock).toHaveBeenCalledWith('push_subscribe', expect.objectContaining({ endpoint: 'https://push.example.com/send/device-1' }));
     });
 
     it('NOTIF-010 does not report on when the server refuses to save the subscription', async () => {
@@ -134,6 +149,7 @@ describe('usePush', () => {
 
     it('NOTIF-010 turning off still stops this browser when the server cannot be told', async () => {
         installBrowser({ permission: 'granted', subscribed: true });
+        readMock.mockResolvedValue(shown({ this_browser: true }));
         const push = usePush();
         expect(await push.refresh()).toBe('on');
         const subscription = await (await navigator.serviceWorker.getRegistration())!.pushManager.getSubscription();
@@ -147,6 +163,7 @@ describe('usePush', () => {
 
     it('NOTIF-010 turning off removes the subscription from the server and the browser', async () => {
         installBrowser({ permission: 'granted', subscribed: true });
+        readMock.mockResolvedValue(shown({ this_browser: true }));
         const push = usePush();
         expect(await push.refresh()).toBe('on');
         const subscription = await (await navigator.serviceWorker.getRegistration())!.pushManager.getSubscription();
@@ -180,7 +197,7 @@ describe('usePush', () => {
     it('NOTIF-010 turning off removes the endpoint cookie, even when the server cannot be told', async () => {
         installBrowser({ permission: 'granted', subscribed: true });
         const push = usePush();
-        await push.refresh();
+        await push.enable();
         expect(document.cookie).toContain('bb_push_endpoint=');
         writeMock.mockRejectedValueOnce(new Error('network'));
 

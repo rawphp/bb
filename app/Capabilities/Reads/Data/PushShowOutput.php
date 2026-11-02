@@ -10,5 +10,6 @@ final class PushShowOutput extends CapabilityData
         public readonly bool $available,
         public readonly ?string $public_key,
         public readonly int $devices,
+        public readonly bool $this_browser,
     ) {}
 }
