@@ -20,7 +20,7 @@ final class WeighInDeleteCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         // AGT-010: it deletes, so the coach needs the user's say-so.
-        return HostDefinition::write('weigh_in_delete', affects: WeighInReads::AFFECTS, destructive: true)
+        return HostDefinition::write('weigh_in_delete', affects: WeighInReads::WEIGH_IN_AFFECTS, destructive: true)
             ->description('Delete one of the user\'s weigh-ins, such as a reading logged by mistake. The trend weight is worked out again without it. It cannot be undone.')
             ->cli('weigh-in', 'delete')
             ->input(WeighInDeleteInput::class)
@@ -28,7 +28,7 @@ final class WeighInDeleteCapability implements HostCapability, OwnsInput
                 /** @var User $user */
                 $user = $context->user();
 
-                return new WriteResult(invalidates: WeighInReads::keys([($this->delete)($user, $input->id)]));
+                return new WriteResult(invalidates: WeighInReads::weighInKeys($user, [($this->delete)($user, $input->id)]));
             });
     }
 

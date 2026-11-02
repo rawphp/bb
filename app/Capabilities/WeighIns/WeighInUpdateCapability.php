@@ -19,7 +19,7 @@ final class WeighInUpdateCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('weigh_in_update', affects: WeighInReads::AFFECTS)
+        return HostDefinition::write('weigh_in_update', affects: WeighInReads::WEIGH_IN_AFFECTS)
             ->description('Correct one of the user\'s weigh-ins: its time, weight and waist, sent whole in the user\'s units. Leaving out the waist removes it. The trend weight and Today update from the change.')
             ->cli('weigh-in', 'update')
             ->input(WeighInUpdateInput::class)
@@ -28,7 +28,7 @@ final class WeighInUpdateCapability implements HostCapability, OwnsInput
                 $user = $context->user();
                 $days = ($this->update)($user, $input->id, $input->weighed_at, $input->weight, $input->waist);
 
-                return new WriteResult(invalidates: WeighInReads::keys($days));
+                return new WriteResult(invalidates: WeighInReads::weighInKeys($user, $days));
             });
     }
 
