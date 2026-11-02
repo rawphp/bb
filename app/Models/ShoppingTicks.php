@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * The shopping lines a user ticked off and the range they were ticked in (SHOP-005): what rp-clone kept
- * on the device. One row per user.
+ * The shopping lines a user ticked off in one date range (SHOP-005): what rp-clone kept on the device.
+ * One row per user and range.
  *
  * @property CarbonImmutable $starts_on
  * @property CarbonImmutable $ends_on
@@ -25,6 +25,19 @@ class ShoppingTicks extends Model
 {
     /** @use HasFactory<ShoppingTicksFactory> */
     use BelongsToUser, HasFactory;
+
+    /**
+     * The user's ticked ranges, the most recently ticked first.
+     *
+     * @return list<TickedRange>
+     */
+    public static function of(User $user): array
+    {
+        return self::query()->where('user_id', $user->id)->orderByDesc('updated_at')->orderByDesc('id')->get()
+            ->map(fn (self $row) => $row->ticked())
+            ->values()
+            ->all();
+    }
 
     public function ticked(): TickedRange
     {

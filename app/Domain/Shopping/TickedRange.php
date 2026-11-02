@@ -6,8 +6,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 
 /**
- * SHOP-005: the lines ticked off, and the date range they were ticked in. Ticks belong to one range
- * at a time: a tick in another range starts that range with no other ticks. Days compare as
+ * SHOP-005: the lines ticked off in one date range. Each range keeps its own ticks. Days compare as
  * calendar dates, so a range's times of day do not matter.
  */
 final readonly class TickedRange
@@ -43,42 +42,59 @@ final readonly class TickedRange
     }
 
     /**
-     * SHOP-001, SHOP-005: with no range asked for, the ticked range comes back while it still runs through
-     * today; otherwise the list shows the next 7 days from today.
+     * SHOP-001, SHOP-005: with no range asked for, the last range ticked in comes back while it still runs
+     * through today; otherwise the list shows the next 7 days from today.
+     *
+     * @param  list<self>  $saved  the most recently ticked first
      */
-    public static function rangeToShow(?self $saved, DateTimeImmutable $today, DateTimeZone $timezone): DateRange
+    public static function rangeToShow(array $saved, DateTimeImmutable $today, DateTimeZone $timezone): DateRange
     {
-        if ($saved !== null && $saved->range->upper->format('Y-m-d') >= $today->setTimezone($timezone)->format('Y-m-d')) {
-            return $saved->range;
+        foreach ($saved as $ticked) {
+            if (! $ticked->hasEnded($today, $timezone)) {
+                return $ticked->range;
+            }
         }
 
         return ShoppingList::defaultRange($today, $timezone);
     }
 
     /**
-     * SHOP-005, OFF-030: tick a line off, or take the tick back. The tick names the state it leaves, so the
-     * same tick twice changes nothing. A tick in another range clears the ticks of the old one; an untick
-     * there (a stale one replayed from the outbox) leaves them alone, and with nothing kept keeps nothing.
+     * SHOP-005: the keys ticked in `$range`. Each range keeps its own ticks; a range never ticked has none.
+     *
+     * @param  list<self>  $saved
+     * @return list<string>
+     */
+    public static function keysIn(array $saved, DateRange $range): array
+    {
+        foreach ($saved as $ticked) {
+            if ($ticked->isFor($range)) {
+                return $ticked->keys;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * SHOP-005, OFF-030: tick a line off in `$range`, or take the tick back, given the ticks of that range.
+     * The tick names the state it leaves, so the same tick twice changes nothing, and a tick in one range
+     * never touches another's. An untick in a range with no ticks keeps nothing.
      */
     public static function check(?self $saved, DateRange $range, string $key, bool $ticked): ?self
     {
-        if (! $ticked && ($saved === null || ! $saved->isFor($range))) {
-            return $saved;
+        if (! $ticked && $saved === null) {
+            return null;
         }
 
-        $keys = array_values(array_filter($saved?->keysIn($range) ?? [], fn (string $kept) => $kept !== $key));
+        $keys = array_values(array_filter($saved->keys ?? [], fn (string $kept) => $kept !== $key));
 
         return new self($range, $ticked ? [...$keys, $key] : $keys);
     }
 
-    /**
-     * SHOP-005: the keys ticked in `$range`; none when the ticks belong to another range.
-     *
-     * @return list<string>
-     */
-    public function keysIn(DateRange $range): array
+    /** SHOP-005: a range has ended once its last day is before today; its ticks then go. */
+    public function hasEnded(DateTimeImmutable $today, DateTimeZone $timezone): bool
     {
-        return $this->isFor($range) ? $this->keys : [];
+        return $this->range->upper->format('Y-m-d') < $today->setTimezone($timezone)->format('Y-m-d');
     }
 
     /** Whether these ticks were made in `$range`: the same first and last day. */

@@ -8,14 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // SHOP-005: the lines a user ticked off and the date range they were ticked in. One row per user.
+        // SHOP-005: the lines a user ticked off in a date range. One row per user and range, so a tick in
+        // one range never touches another's; a tick drops the ranges that have ended.
         Schema::create('shopping_ticks', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->unique()->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->date('starts_on');
             $table->date('ends_on');
             $table->json('keys');
             $table->timestamps();
+            $table->unique(['user_id', 'starts_on', 'ends_on']);
         });
 
         // SHOP-005: items the user typed in. A ULID key, so the outbox can add one offline (CAP-019);

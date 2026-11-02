@@ -4,6 +4,7 @@ namespace App\Capabilities\Nutrition;
 
 use App\Capabilities\Support\ReadKey;
 use App\Domain\Shopping\DateRange;
+use App\Domain\Shopping\TickedRange;
 use App\Models\ShoppingTicks;
 use App\Models\User;
 use App\Support\Mesocycles\TrainSnapshot;
@@ -40,12 +41,12 @@ final class ShoppingReads
 
     /**
      * A manual item is on every range's list. The ones the app can have on screen: the list with no range,
-     * the range the ticks are in, and the range the write was made on.
+     * each range the user ticked in, and the range the write was made on.
      *
      * @return list<string>
      */
     public static function listsOnScreen(User $user, ?DateRange $shown): array
     {
-        return self::keys(ShoppingTicks::query()->where('user_id', $user->id)->first()?->ticked()->range, $shown);
+        return self::keys(...array_map(fn (TickedRange $ticked) => $ticked->range, ShoppingTicks::of($user)), ...[$shown]);
     }
 }

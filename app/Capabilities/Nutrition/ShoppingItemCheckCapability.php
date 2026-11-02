@@ -18,16 +18,16 @@ final class ShoppingItemCheckCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('shopping_item_check', affects: ['shopping_show'])
-            ->description('Tick a line of the shopping list off, or take the tick back, by its key from shopping_show and the dates that list showed. Ticks belong to one date range, so a tick in another range clears the ticks of the old one. It changes only the ticks, never the planned meals.')
+            ->description('Tick a line of the shopping list off, or take the tick back, by its key from shopping_show and the dates that list showed. Each date range keeps its own ticks, and the ticks of ranges that have ended are dropped. It changes only the ticks, never the planned meals.')
             ->cli('shopping', 'item-check')
             ->input(ShoppingItemCheckInput::class)
             ->run(function (ShoppingItemCheckInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */
                 $user = $context->user();
                 $range = ShoppingReads::range($input->from, $input->to);
-                $cleared = ($this->check)($user, $range, $input->key, $input->ticked);
+                $ended = ($this->check)($user, $range, $input->key, $input->ticked);
 
-                return new WriteResult(invalidates: ShoppingReads::keys($range, $cleared));
+                return new WriteResult(invalidates: ShoppingReads::keys($range, ...$ended));
             });
     }
 }

@@ -36,7 +36,7 @@ final class ShoppingShowCapability implements HostCapability
             ->run(function (ShoppingShowInput $input, CapabilityContext $context): ShoppingShowOutput {
                 /** @var User $user */
                 $user = $context->user();
-                $saved = ShoppingTicks::query()->where('user_id', $user->id)->first()?->ticked();
+                $saved = ShoppingTicks::of($user);
                 $range = ShoppingReads::shown($input->from, $input->to)
                     ?? TickedRange::rangeToShow($saved, CarbonImmutable::now()->toDateTimeImmutable(), new DateTimeZone('UTC'));
 
@@ -44,7 +44,7 @@ final class ShoppingShowCapability implements HostCapability
                     ->map(fn (ManualShoppingItem $item) => new ManualItem((string) $item->id, $item->text))
                     ->values()
                     ->all();
-                $sections = ShoppingScreen::sections(PlannedShopping::groups($user, $range), $manual, $saved?->keysIn($range) ?? []);
+                $sections = ShoppingScreen::sections(PlannedShopping::groups($user, $range), $manual, TickedRange::keysIn($saved, $range));
 
                 return new ShoppingShowOutput(
                     from: $range->lower->format('Y-m-d'),
