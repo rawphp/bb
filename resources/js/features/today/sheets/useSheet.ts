@@ -40,7 +40,9 @@ export function useSheet(listeners: SheetListeners) {
     const busy = ref(false);
     const error = ref<string | null>(null);
     const unsure = ref(false);
-    let last: { name: string; body: string; retry: RetryKey } | null = null;
+    // A sheet has one write. Its key is renewed by every final answer (RetryKey.settle), and
+    // while an attempt got none the sheet is locked, so the retry is the same input.
+    let retry: RetryKey | null = null;
 
     function leave(): void {
         if (nav && nav.state.stacks[nav.state.active].length > 1) nav.back();
@@ -56,19 +58,17 @@ export function useSheet(listeners: SheetListeners) {
         if (busy.value) return;
         busy.value = true;
         error.value = null;
-        const body = JSON.stringify(input);
-        if (last?.name !== name || last.body !== body) last = { name, body, retry: useRetryKey(name) };
-        const retry = last.retry;
+        const key = (retry ??= useRetryKey(name));
         try {
-            const result = await write<ToastResult>(name, input, { idempotencyKey: retry.key.value });
-            retry.settle();
+            const result = await write<ToastResult>(name, input, { idempotencyKey: key.key.value });
+            key.settle();
             if (listeners.onSaved) listeners.onSaved(result);
             else leave();
         } catch (failure) {
-            retry.settle(failure);
+            key.settle(failure);
             error.value = writeFailureMessage(failure, fallback);
         } finally {
-            unsure.value = retry.unsure.value;
+            unsure.value = key.unsure.value;
             busy.value = false;
         }
     }
