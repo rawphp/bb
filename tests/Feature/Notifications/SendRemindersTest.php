@@ -11,6 +11,7 @@ use App\Models\Plan;
 use App\Models\PlanWeek;
 use App\Models\Profile;
 use App\Models\PushSubscription;
+use App\Models\ReminderMorning;
 use App\Models\SentReminder;
 use App\Models\User;
 use App\Models\WeighInScheduleEntry;
@@ -227,7 +228,10 @@ it('NOTIF-004 NOTIF-005 a user is queued once for the morning, even when the pas
 
     Carbon::setTestNow('2026-09-26 09:00:00');
     $this->artisan('reminders:send')->assertSuccessful();
-    expect(sentLines($user))->toBe([]);
+    expect(sentLines($user))->toBe([])
+        // The judged morning has its own row; sent_reminders holds only reminders that went out.
+        ->and(ReminderMorning::query()->where('user_id', $user->id)->pluck('date')->map->format('Y-m-d')->all())->toBe(['2026-09-26'])
+        ->and(SentReminder::query()->where('user_id', $user->id)->count())->toBe(0);
 
     Queue::fake();
     foreach (['2026-09-26 09:01:00', '2026-09-26 09:05:00'] as $at) {
@@ -480,7 +484,7 @@ it('NOTIF-001 reminders:send reaches every user with a subscribed browser, and o
 it('NOTIF-001 reminders:send runs every minute, and the sent log is pruned daily', function () {
     $events = collect(app(Schedule::class)->events());
     $send = $events->first(fn ($event) => str_contains((string) $event->command, 'reminders:send'));
-    $prune = $events->first(fn ($event) => str_contains((string) $event->command, 'model:prune') && str_contains((string) $event->command, 'SentReminder'));
+    $prune = $events->first(fn ($event) => str_contains((string) $event->command, 'model:prune') && str_contains((string) $event->command, 'SentReminder') && str_contains((string) $event->command, 'ReminderMorning'));
 
     expect($send?->expression)->toBe('* * * * *')
         ->and($send->withoutOverlapping)->toBeTrue()
@@ -538,4 +542,14 @@ it('NOTIF-001 a minute with nothing due skips the full read of the plan', functi
 
     expect($queries)->toBeLessThanOrEqual(6);
     Notification::assertNothingSent();
+});
+
+it('NOTIF-004 the judged-morning log keeps two days', function () {
+    $user = remindedUser();
+    ReminderMorning::query()->create(['user_id' => $user->id, 'date' => '2026-09-26', 'judged_at' => '2026-09-26 09:00:00']);
+
+    Carbon::setTestNow('2026-09-28 08:59:00');
+    expect((new ReminderMorning)->prunable()->count())->toBe(0);
+    Carbon::setTestNow('2026-09-28 09:01:00');
+    expect((new ReminderMorning)->prunable()->count())->toBe(1);
 });
