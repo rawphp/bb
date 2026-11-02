@@ -16,7 +16,7 @@ it('RCP-003 rejects hosts that resolve to private or reserved addresses', functi
 
     expect(fn () => recipePage([$ip])->text('http://recipes.example/pie'))->toThrow(PageUnavailable::class);
     Http::assertNothingSent();
-})->with(['127.0.0.1', '10.1.2.3', '169.254.169.254', '192.168.0.9', '::1', '100.64.0.1', '198.18.0.1', '64:ff9b::7f00:1', '2002:7f00:1::', 'fc00::1']);
+})->with(['127.0.0.1', '10.1.2.3', '169.254.169.254', '192.168.0.9', '::1', '100.64.0.1', '198.18.0.1', '64:ff9b::7f00:1', '2002:7f00:1::', 'fc00::1', '::ffff:127.0.0.1', '::ffff:a9fe:a9fe', '0.0.0.0', '::', '64:ff9b:1::7f00:1', 'fe80::1', '172.16.0.1']);
 
 it('RCP-003 rejects a host when any resolved address is private', function () {
     Http::fake();
@@ -173,4 +173,24 @@ it('RCP-003 falls back to stripped page text', function () {
 
     expect($text)->toContain('Big Soup 1 onion & 2 carrots')
         ->and($text)->not->toContain('color:red')->not->toContain('var x')->not->toContain('<');
+});
+
+it('RCP-003 fetches a host that resolves to a public IPv6 address, pinned to it', function () {
+    $sent = [];
+    Http::fake(function ($request, $opts) use (&$sent) {
+        $sent[] = $opts['curl'][CURLOPT_RESOLVE] ?? null;
+
+        return Http::response('<p>Pie</p>');
+    });
+
+    expect(recipePage(['2606:4700::1111'])->text('https://recipes.example/pie'))->toBe('Pie')
+        ->and($sent)->toBe([['recipes.example:443:2606:4700::1111']]);
+});
+
+it('RCP-003 fetches a public IPv6 literal URL and refuses a private one', function () {
+    Http::fake(['*' => Http::response('<p>Pie</p>')]);
+
+    expect(recipePage()->text('https://[2606:4700::1111]/pie'))->toBe('Pie')
+        ->and(fn () => recipePage()->text('http://[::ffff:127.0.0.1]/pie'))->toThrow(PageUnavailable::class);
+    Http::assertSentCount(1);
 });
