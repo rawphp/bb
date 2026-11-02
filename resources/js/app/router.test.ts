@@ -65,7 +65,10 @@ describe('router', () => {
     it('NAV-001 links a tab\'s screens from its placeholder root until the tab has its own', () => {
         const more = routesFor(false).find((route) => route.path === '/more');
 
-        expect(more?.props).toMatchObject({ label: 'More', links: ['/account'] });
+        expect(more?.props).toMatchObject({ label: 'More' });
+        expect((more?.props as { links: string[] }).links).toEqual(expect.arrayContaining(['/account', '/settings/tokens', '/settings/coach']));
+        // Dev routes stay out unless the server flags them on.
+        expect((more?.props as { links: string[] }).links).not.toContain('/dev/clock');
     });
 
     it('PWA-025 gives each router its navigation', () => {

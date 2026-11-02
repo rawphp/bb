@@ -1,0 +1,122 @@
+import { flushPromises, mount } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createMemoryHistory, createRouter } from 'vue-router';
+import { CapabilityError, read, write } from '@/app/call';
+import type { EligibilityRecheckShowOutput } from '@/contracts/eligibility_recheck_show';
+import type { EligibilityRecheckOutput } from '@/contracts/eligibility_recheck';
+import { inputViolations, screenFixture } from '@/testing/schemas';
+import EligibilityRecheckView from './EligibilityRecheckView.vue';
+
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+
+const readMock = vi.mocked(read);
+const writeMock = vi.mocked(write);
+const content = screenFixture<EligibilityRecheckShowOutput>('eligibility_recheck_show');
+const trainingOnly = screenFixture<EligibilityRecheckShowOutput>('eligibility_recheck_show.warning');
+
+function result(over: Partial<EligibilityRecheckOutput>): EligibilityRecheckOutput {
+    return { invalidates: [], outcome: 'keep', message: 'Nothing changed. Your answers are saved.', next: 'done', ...over };
+}
+
+async function view(payload?: EligibilityRecheckShowOutput) {
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:any(.*)*', component: { template: '<p />' } }] });
+    await router.push('/settings/eligibility');
+    const wrapper = mount(EligibilityRecheckView, { props: { payload }, global: { plugins: [router] } });
+    return { wrapper, router };
+}
+
+function sent(): Record<string, unknown> {
+    const [name, input] = writeMock.mock.calls.at(-1)!;
+    expect(name).toBe('eligibility_recheck');
+    expect(inputViolations('eligibility_recheck', input)).toEqual([]);
+    return input as Record<string, unknown>;
+}
+
+describe('EligibilityRecheckView', () => {
+    beforeEach(() => {
+        readMock.mockReset();
+        writeMock.mockReset();
+    });
+
+    it('SAFE-017 shows the current mode and every screening question', async () => {
+        const { wrapper } = await view(content);
+
+        expect(wrapper.text()).toContain('Training and nutrition');
+        for (const question of content.questions) expect(wrapper.text()).toContain(question.label);
+        expect(readMock).not.toHaveBeenCalled();
+    });
+
+    it('SAFE-017 shows why a training-only user is training only', async () => {
+        const { wrapper } = await view(trainingOnly);
+
+        expect(wrapper.text()).toContain('Training only');
+        expect(wrapper.text()).toContain(trainingOnly.reasons[0]!.text);
+    });
+
+    it('SAFE-017 locks the questions the profile answers', async () => {
+        const { wrapper } = await view(content);
+        const boxes = wrapper.findAll<HTMLInputElement>('input[type="checkbox"]');
+
+        content.questions.forEach((question, index) => {
+            expect(boxes[index]!.element.disabled).toBe(question.measured);
+            expect(boxes[index]!.element.checked).toBe(question.applies);
+        });
+    });
+
+    it('SAFE-017 sends every answer, as ticked, and shows the server\'s outcome', async () => {
+        writeMock.mockResolvedValueOnce(result({ outcome: 'switchToTrainingOnly', message: 'You are now on training only.' }));
+        const { wrapper } = await view(content);
+
+        const pregnant = content.questions.findIndex((q) => q.item === 'pregnantOrBreastfeeding');
+        await wrapper.findAll('input[type="checkbox"]')[pregnant]!.setValue(true);
+        await wrapper.get('[data-test="check"]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual({ answers: content.questions.map((q) => ({ item: q.item, applies: q.item === 'pregnantOrBreastfeeding' ? true : q.applies })) });
+        expect(wrapper.text()).toContain('You are now on training only.');
+        expect(wrapper.find('[data-test="check"]').exists()).toBe(false);
+    });
+
+    it('SAFE-017 sends a user who now passes to the nutrition steps', async () => {
+        writeMock.mockResolvedValueOnce(result({ outcome: 'runNutritionSetup', message: 'Set up your nutrition next.', next: 'onboarding' }));
+        const { wrapper, router } = await view(trainingOnly);
+
+        await wrapper.get('[data-test="check"]').trigger('click');
+        await flushPromises();
+        await wrapper.get('[data-test="continue"]').trigger('click');
+        await flushPromises();
+
+        expect(router.currentRoute.value.path).toBe('/onboarding');
+    });
+
+    it('CAP-012 shows a refused check in the server\'s words and keeps the answers', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('eligibility_recheck', 422, { ok: false, error: { message: 'Answer every question.' } }));
+        const { wrapper } = await view(content);
+
+        await wrapper.get('[data-test="check"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[role="alert"]').text()).toBe('Answer every question.');
+        expect(wrapper.find('[data-test="check"]').exists()).toBe(true);
+    });
+
+    it('PWA-024 shows a skeleton while it loads', async () => {
+        readMock.mockReturnValueOnce(new Promise(() => {}));
+        const { wrapper } = await view();
+
+        expect(wrapper.find('[data-test="skeleton"]').exists()).toBe(true);
+        expect(readMock).toHaveBeenCalledWith('eligibility_recheck_show', {}, expect.any(Function), expect.any(Function));
+    });
+
+    it('CAP-004 says the screening did not load, and tries again', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('eligibility_recheck_show', 500, null)).mockResolvedValueOnce(content);
+        const { wrapper } = await view();
+        await flushPromises();
+        expect(wrapper.text()).toContain('could not be loaded');
+
+        await wrapper.get('[data-test="retry"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.text()).toContain(content.questions[0]!.label);
+    });
+});
