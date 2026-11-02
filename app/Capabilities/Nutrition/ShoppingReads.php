@@ -44,7 +44,7 @@ final class ShoppingReads
      *
      * @return list<string>
      */
-    public static function everyList(User $user, ?DateRange $shown): array
+    public static function listsOnScreen(User $user, ?DateRange $shown): array
     {
         return self::keys(ShoppingTicks::query()->where('user_id', $user->id)->first()?->ticked()->range, $shown);
     }

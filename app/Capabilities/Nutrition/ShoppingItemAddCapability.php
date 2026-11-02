@@ -30,7 +30,7 @@ final class ShoppingItemAddCapability implements HostCapability
                 $user = $context->user();
                 ($this->add)($user, $this->ownedOrNew(ManualShoppingItem::class, $input->id, $user), $input->id, $input->text);
 
-                return new WriteResult(invalidates: ShoppingReads::everyList($user, ShoppingReads::shown($input->from, $input->to)));
+                return new WriteResult(invalidates: ShoppingReads::listsOnScreen($user, ShoppingReads::shown($input->from, $input->to)));
             });
     }
 }

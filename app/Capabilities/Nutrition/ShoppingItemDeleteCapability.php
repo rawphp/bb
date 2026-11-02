@@ -29,7 +29,7 @@ final class ShoppingItemDeleteCapability implements HostCapability, OwnsInput
                 $user = $context->user();
                 ($this->delete)($user, $input->id);
 
-                return new WriteResult(invalidates: ShoppingReads::everyList($user, ShoppingReads::shown($input->from, $input->to)));
+                return new WriteResult(invalidates: ShoppingReads::listsOnScreen($user, ShoppingReads::shown($input->from, $input->to)));
             });
     }
 
