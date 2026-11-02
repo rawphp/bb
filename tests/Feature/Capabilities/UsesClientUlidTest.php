@@ -4,7 +4,9 @@
 // and the 404 and 422 are the package's mapping of what the trait and the DTO do.
 // The users are not saved, so nothing here touches the default connection's data.
 
+use App\Capabilities\Support\UsesClientUlid;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -13,6 +15,7 @@ use Illuminate\Testing\TestResponse;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Tests\Support\Fixtures\Rail\ClientUlidRow;
 use Tests\Support\Fixtures\Rail\ClientUlidRowSaveCapability;
+use Tests\Support\Fixtures\Rail\SoftDeletingClientUlidRow;
 
 // Registers a test-only capability, so each test gets its own application.
 uses()->group('warp-isolated');
@@ -22,6 +25,7 @@ beforeEach(function () {
     Schema::connection('client_ulid_rows')->create('client_ulid_rows', function (Blueprint $table) {
         $table->ulid('id')->primary();
         $table->unsignedBigInteger('user_id');
+        $table->softDeletes();
     });
 
     (new ClientUlidRowSaveCapability)->definition()->register(app(CapabilityRegistry::class));
@@ -79,4 +83,26 @@ it('CAP-019 refuses an ID that is not a ULID with a 422 on the field', function 
         ->assertJsonPath('error.violations.0.field', 'id');
 
     expect(ClientUlidRow::query()->count())->toBe(0);
+});
+
+it('CAP-019 a soft-deleted row\'s ULID is spent: not found, whoever owned it', function () {
+    $rail = new class
+    {
+        use UsesClientUlid;
+
+        public function find(string $ulid, User $user): ?SoftDeletingClientUlidRow
+        {
+            return $this->ownedOrNew(SoftDeletingClientUlidRow::class, $ulid, $user);
+        }
+    };
+    $mine = SoftDeletingClientUlidRow::create(['id' => (string) Str::ulid(), 'user_id' => $this->user->id]);
+    $theirs = SoftDeletingClientUlidRow::create(['id' => (string) Str::ulid(), 'user_id' => $this->other->id]);
+    $kept = SoftDeletingClientUlidRow::create(['id' => (string) Str::ulid(), 'user_id' => $this->user->id]);
+    $mine->delete();
+    $theirs->delete();
+
+    expect(fn () => $rail->find($mine->id, $this->user))->toThrow(ModelNotFoundException::class)
+        ->and(fn () => $rail->find($theirs->id, $this->user))->toThrow(ModelNotFoundException::class)
+        ->and($rail->find($kept->id, $this->user)?->id)->toBe($kept->id)
+        ->and($rail->find((string) Str::ulid(), $this->user))->toBeNull();
 });

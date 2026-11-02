@@ -4,6 +4,7 @@ use App\Agent\Exclusions;
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\Support\AgentPolicy;
 use App\Capabilities\Support\BillingGate;
+use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\NoAgentPolicy;
 use App\Capabilities\Support\NoBilling;
 use App\Capabilities\Support\Ownership;
@@ -217,9 +218,30 @@ it('CAP-020 asks billing, then the agent policy', function () {
         ->and($asked->getArrayCopy())->toBe(['billing account_show', 'agent account_show', 'billing token_list', 'billing token_revoke', 'agent token_revoke']);
 });
 
-it('CAP-020 allows everything by default where billing and the agent policy are not set up', function () {
+it('CAP-020 allows a call that is not destructive by default where billing and the agent policy are not set up', function () {
     expect(app(BillingGate::class))->toBeInstanceOf(NoBilling::class)
         ->and(app(AgentPolicy::class))->toBeInstanceOf(NoAgentPolicy::class)
         ->and(app(BillingGate::class)->allows(authorizerUser(), app(CapabilityRegistry::class)->get('account_show')))->toBeTrue()
         ->and(app(AgentPolicy::class)->allows(app(CapabilityRegistry::class)->get('account_show'), [], new CapabilityContext(caller: 'agent', actor: authorizerUser())))->toBeTrue();
+});
+
+it('AGT-010 refuses a destructive capability to the agent until a turn can carry the user\'s confirmation', function (string $capability) {
+    $registry = app(CapabilityRegistry::class);
+    $definition = $registry->get($capability);
+    $policy = new NoAgentPolicy;
+
+    expect(HostDefinition::isDestructive($definition))->toBeTrue()
+        ->and($policy->allows($definition, [], new CapabilityContext(caller: 'agent', actor: authorizerUser())))->toBeFalse()
+        ->and(hostAuthorizer()->authorize($capability, [], new CapabilityContext(caller: 'agent', actor: authorizerUser())))->toBeFalse();
+
+    foreach (['http', 'mcp', 'cli', 'job'] as $caller) {
+        expect($policy->allows($definition, [], new CapabilityContext(caller: $caller, actor: authorizerUser())))->toBeTrue();
+    }
+})->with(['mesocycle_end', 'mesocycle_copy']);
+
+it('AGT-010 still lets the agent call a write that is not destructive', function () {
+    $definition = app(CapabilityRegistry::class)->get('mesocycle_length_set');
+
+    expect(HostDefinition::isDestructive($definition))->toBeFalse()
+        ->and((new NoAgentPolicy)->allows($definition, [], new CapabilityContext(caller: 'agent', actor: authorizerUser())))->toBeTrue();
 });

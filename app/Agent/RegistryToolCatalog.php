@@ -16,23 +16,35 @@ final class RegistryToolCatalog implements ToolCatalog
 
     public function toolsForTurn(string $conversationUlid, string $turnUlid): array
     {
-        $enabled = $this->registry->globallyEnabledSurfaces();
-        $tools = [];
-
-        foreach ($this->registry->all() as $name => $definition) {
-            if (Exclusions::reason($name) !== null || ! in_array('agent', $definition->effectiveSurfaces($enabled), true)) {
-                continue;
-            }
-
-            $tools[$name] = [
-                'name' => $name,
-                'description' => $definition->description,
-                'parameters' => AnthropicToolSchema::normalise($definition->inputSchema() ?? []),
-            ];
+        if (($this->registry->globallyEnabledSurfaces()['agent'] ?? false) !== true) {
+            return [];
         }
 
-        ksort($tools);
+        return array_map(fn (string $name): array => [
+            'name' => $name,
+            'description' => $this->registry->get($name)->description,
+            'parameters' => AnthropicToolSchema::normalise($this->registry->get($name)->inputSchema() ?? []),
+        ], $this->names());
+    }
 
-        return array_values($tools);
+    /**
+     * The agent's tool profile: every capability declared on the agent surface, minus
+     * the CAP-031 exclusions, in name order. It does not depend on the agent surface
+     * being on, because product MCP serves the same profile (AGT-040).
+     *
+     * @return list<string>
+     */
+    public function names(): array
+    {
+        $names = [];
+        foreach ($this->registry->all() as $name => $definition) {
+            if (Exclusions::reason($name) === null && in_array('agent', $definition->surfaces, true)) {
+                $names[] = $name;
+            }
+        }
+
+        sort($names);
+
+        return $names;
     }
 }

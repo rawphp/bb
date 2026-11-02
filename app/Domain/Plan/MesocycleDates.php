@@ -16,7 +16,10 @@ final readonly class MesocycleDates
         public ?DateTimeImmutable $endedOn,
     ) {}
 
-    /** The last day it runs; null for a draft, which has no dates. */
+    /**
+     * The last day it runs on 7-day weeks from its start; null for a draft, which has no dates. With a plan the
+     * weeks are plan weeks, so {@see MesocycleSpan::lastDayOnGrid()} applies.
+     */
     public function lastDay(): ?DateTimeImmutable
     {
         if ($this->startDate === null || $this->weeks === null) {
