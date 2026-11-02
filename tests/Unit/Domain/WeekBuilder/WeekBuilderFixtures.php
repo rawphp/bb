@@ -25,12 +25,14 @@ use App\Domain\Placement\WorkoutTime;
 use App\Domain\Retarget\OtherActivity;
 use App\Domain\WeekBuilder\AwayWeek;
 use App\Domain\WeekBuilder\BuiltWeek;
+use App\Domain\WeekBuilder\CalorieMove;
 use App\Domain\WeekBuilder\NutritionSchedule;
 use App\Domain\WeekBuilder\WeekBuilder;
 use App\Domain\WeekBuilder\WeekBuildRefusal;
 use App\Domain\WeekBuilder\WeekDay;
 use App\Domain\WeekBuilder\WeekMeal;
 use App\Domain\WeekBuilder\WeekSchedule;
+use App\Domain\WeekBuilder\WeekSessions\SessionRow;
 use Closure;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -154,7 +156,11 @@ final class WeekBuilderFixtures
         };
     }
 
-    /** @param  array<string, OtherActivity>  $otherActivities */
+    /**
+     * @param  array<string, OtherActivity>  $otherActivities
+     * @param  list<CalorieMove>  $moves
+     * @param  list<SessionRow>  $sessionRows
+     */
     public static function build(
         ?Plan $plan = null,
         ?Profile $profile = null,
@@ -167,15 +173,19 @@ final class WeekBuilderFixtures
         bool $dietBreakTurnedOff = false,
         array $otherActivities = [],
         float $calorieChangePerDay = 0,
+        array $moves = [],
+        array $sessionRows = [],
+        ?Closure $newId = null,
     ): BuiltWeek {
         $plan ??= self::fatLossPlan();
 
         return WeekBuilder::build(
             plan: $plan, profile: $profile ?? self::profile(),
             mesocycle: $mesocycle ?? self::mesocycle($plan->phases[0]->type), mesocycleStartWeek: $mesocycleStartWeek,
-            week: $week, schedule: $schedule ?? self::schedule(), newId: self::newId(), away: $away,
+            week: $week, schedule: $schedule ?? self::schedule(), newId: $newId ?? self::newId(), away: $away,
             isDietBreak: $isDietBreak, dietBreakTurnedOff: $dietBreakTurnedOff,
-            calorieChangePerDay: $calorieChangePerDay, otherActivities: $otherActivities,
+            calorieChangePerDay: $calorieChangePerDay, moves: $moves, sessionRows: $sessionRows,
+            otherActivities: $otherActivities,
         );
     }
 

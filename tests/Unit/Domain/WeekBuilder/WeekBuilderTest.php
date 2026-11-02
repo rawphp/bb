@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Macros\MoveRefusalReason;
 use App\Domain\Macros\TargetRefusalReason;
 use App\Domain\Model\DayType;
 use App\Domain\Model\ExerciseSlot;
@@ -9,17 +10,20 @@ use App\Domain\Placement\ClockRange;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Placement\TrainingDay;
 use App\Domain\Placement\WorkoutTime;
+use App\Domain\Plan\PlanWeekGrid;
 use App\Domain\Retarget\OtherActivity;
 use App\Domain\Retarget\TrainingWeekdays;
 use App\Domain\WeekBuilder\AwayWeek;
 use App\Domain\WeekBuilder\AwayWeek\Calories;
 use App\Domain\WeekBuilder\AwayWeek\Training;
+use App\Domain\WeekBuilder\CalorieMove;
 use App\Domain\WeekBuilder\NutritionSchedule;
 use App\Domain\WeekBuilder\WeekBuildRefusalReason;
 use App\Domain\WeekBuilder\WeekDay;
 use App\Domain\WeekBuilder\WeekMeal;
 use App\Domain\WeekBuilder\WeekMealKind;
 use App\Domain\WeekBuilder\WeekSchedule;
+use App\Domain\WeekBuilder\WeekSessions\SessionRow;
 use App\Domain\WeekBuilder\WeekWorkout;
 use Tests\Unit\Domain\Plan\PlanFixtures;
 use Tests\Unit\Domain\WeekBuilder\WeekBuilderFixtures as F;
@@ -336,7 +340,7 @@ it('SCH-060 a deload away week keeps deloaded light sessions', function () {
  *
  * @param  list<ClockRange>  $busy
  */
-function mondayWorkout(ClockTime $start, array $busy = []): WeekDay
+function weekBuilderMondayWorkout(ClockTime $start, array $busy = []): WeekDay
 {
     $nutrition = new NutritionSchedule(steps: F::steps(), eatingWindow: F::window(), mealsPerDay: 6, busy: $busy);
     $schedule = new WeekSchedule([new TrainingDay(F::MONDAY, new WorkoutTime($start, 0))], $nutrition);
@@ -348,7 +352,7 @@ function mondayWorkout(ClockTime $start, array $busy = []): WeekDay
 
 it('SCH-042 only a pre-workout meal fits: the last meal before the workout takes the post share too', function () {
     // Ends 21:15: the post-workout range 21:15 to 22:15 is outside the 05:00 to 21:00 window.
-    $day = mondayWorkout(ClockTime::at(20, 45));
+    $day = weekBuilderMondayWorkout(ClockTime::at(20, 45));
 
     $pres = array_values(array_filter($day->meals, fn (WeekMeal $meal) => $meal->kind === WeekMealKind::PreWorkout));
     expect($day->meals)->toHaveCount(6)
@@ -372,7 +376,7 @@ it('SCH-042 only a pre-workout meal fits: the last meal before the workout takes
 it('SCH-042 no peri-workout meal fits after the window: the last meal is treated as pre-workout', function () {
     // 00:30 is nearer the window's end than its start. The pre range 21:30 to 23:30 and the post
     // range 01:00 to 02:00 are outside the window. (At 22:00 a pre meal fits on the 21:00 edge.)
-    $day = mondayWorkout(ClockTime::at(0, 30));
+    $day = weekBuilderMondayWorkout(ClockTime::at(0, 30));
 
     expect($day->meals)->toHaveCount(6)
         ->and(array_map(fn (WeekMeal $meal) => $meal->kind, $day->meals))->each->toBe(WeekMealKind::Regular);
@@ -385,7 +389,7 @@ it('SCH-042 no peri-workout meal fits after the window: the last meal is treated
 
 it('SCH-042 no peri-workout meal fits before the window: the first meal is treated as post-workout', function () {
     // Pre range 00:00 to 02:00 and post range 03:30 to 04:30 are both outside 05:00 to 21:00.
-    $day = mondayWorkout(ClockTime::at(3));
+    $day = weekBuilderMondayWorkout(ClockTime::at(3));
 
     expect($day->meals)->toHaveCount(6)
         ->and(array_map(fn (WeekMeal $meal) => $meal->kind, $day->meals))->each->toBe(WeekMealKind::Regular);
@@ -587,4 +591,57 @@ it('SCH-038 a training day with a hard activity is hard and keeps its meal times
         ->toBe(array_map(fn (WeekWorkout $w) => $w->intensity, $plain->days[0]->workouts));
     $energy = F::workoutKcal(30, DayType::Hard);
     expect($with->days[0]->target->kcal - $plain->days[0]->target->kcal)->toEqualWithDelta($energy, F::ACC);
+});
+
+// Port decisions and inputs the Swift suite does not cover
+
+it('SCH-041 SCH-043 every meal of the week takes its own id from newId', function () {
+    // 22 working sets: each training day has an intra-workout shake, so 7 x 6 meals and 3 shakes.
+    $long = F::session('Long', chest: 12, back: 8, traps: 2);
+    $built = F::build(mesocycle: F::mesocycle(PhaseType::FatLoss, [$long, $long, $long]));
+
+    $ids = array_merge(...array_map(fn (WeekDay $day) => array_map(fn (WeekMeal $meal) => $meal->id(), $day->meals), $built->days));
+    expect($ids)->toEqualCanonicalizing(array_map(fn (int $n) => "n{$n}", range(1, 45)));
+});
+
+it('SCH-038 a plan outside UTC reads its days and other activities in its own time zone', function () {
+    // A Brisbane plan (UTC+10) from Monday 5 January; the run is on Tuesday 6 in Brisbane.
+    $grid = new PlanWeekGrid(PlanFixtures::date(2026, 1, 5, zone: 'Australia/Brisbane'), PlanFixtures::MONDAY);
+    $plan = PlanFixtures::plan([PlanFixtures::phase(PhaseType::FatLoss, 0, 8, -0.75, $grid)], $grid);
+    $built = F::build(plan: $plan, otherActivities: ['2026-01-06' => new OtherActivity('Run', 60, DayType::Moderate)]);
+
+    expect($built->days[0]->day->date)->toEqual(PlanFixtures::date(2026, 1, 5, zone: 'Australia/Brisbane'))
+        ->and($built->days[0]->workouts)->toHaveCount(1)
+        ->and($built->days[1]->day->type)->toBe(DayType::Moderate)
+        ->and($built->days[2]->day->type)->toBe(DayType::Light);
+});
+
+it('SCH-053 a skipped session trains nothing and its day is a rest day', function () {
+    // B is day 2 of the mesocycle's first week, on Wednesday.
+    $plain = F::build();
+    $skipped = F::build(sessionRows: [new SessionRow(week: 1, day: 2, start: null, isSkipped: true)]);
+
+    expect($skipped->days[2]->workouts)->toBe([])
+        ->and($skipped->days[2]->day->type)->toBe(DayType::Rest)
+        ->and($skipped->days[2]->target->kcal)->toEqualWithDelta($plain->days[3]->target->kcal, F::ACC)
+        ->and($skipped->days[0]->workouts[0]->session->name)->toBe('A');
+    F::assertMealsSumToDay($skipped->days[2]);
+});
+
+it('NUT-021 a calorie move shifts one day to another and the meals follow', function () {
+    $plain = F::build();
+    $moved = F::build(moves: [new CalorieMove(from: 1, to: 5, kcal: 100)]);
+
+    expect($moved->days[1]->target->kcal)->toEqualWithDelta($plain->days[1]->target->kcal - 100, F::ACC)
+        ->and($moved->days[5]->target->kcal)->toEqualWithDelta($plain->days[5]->target->kcal + 100, F::ACC)
+        ->and(array_sum(F::kcal($moved)))->toEqualWithDelta(array_sum(F::kcal($plain)), F::ACC);
+    F::assertMealsSumToDay($moved->days[1]);
+    F::assertMealsSumToDay($moved->days[5]);
+});
+
+it('NUT-022 a move past the band is refused as a move', function () {
+    $refusal = F::refusal(fn () => F::build(moves: [new CalorieMove(from: 1, to: 5, kcal: 2_000)]));
+
+    expect($refusal->reason)->toBe(WeekBuildRefusalReason::Move)
+        ->and($refusal->move?->reason)->toBe(MoveRefusalReason::OutsideBand);
 });
