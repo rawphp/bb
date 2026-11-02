@@ -6,9 +6,9 @@ use Rawphp\Capabilities\Registry\CapabilityDefinition;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
 /**
- * CAP-020 step 5: the agent policy (AGT-010). Bound to {@see NoAgentPolicy}
- * until the coach (COACH_CTX) binds its own, which refuses a destructive call
- * the user has not confirmed in chat.
+ * CAP-020 step 5: the agent policy (AGT-010). Bound to {@see NoAgentPolicy}, which
+ * refuses every destructive capability to the agent, until the coach (COACH_CTX)
+ * binds its own, which allows one the user has confirmed in chat.
  */
 interface AgentPolicy
 {
