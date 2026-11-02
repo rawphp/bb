@@ -1,5 +1,6 @@
 <?php
 
+use App\Ai\AiFailed;
 use App\Ai\AiRecipe;
 use App\Ai\FoodAi;
 use App\Ai\PageUnavailable;
@@ -92,7 +93,7 @@ it('FOOD-044 sends the typed description and returns its ingredients matched to 
 it('FOOD-043 FOOD-044 refuses an item with negative grams', function () {
     RecordingLlmClient::answering(['items' => [['name' => 'Chicken', 'search' => 'chicken', 'grams' => -5]]])->install();
 
-    expect(fn () => app(FoodAi::class)->describe(User::factory()->create(), 'chicken'))->toThrow(App\Ai\AiFailed::class);
+    expect(fn () => app(FoodAi::class)->describe(User::factory()->create(), 'chicken'))->toThrow(AiFailed::class);
 });
 
 it('RCP-010 generates a recipe from the brief and matches its foods under the diet filters', function () {
@@ -148,7 +149,7 @@ it('RCP-010 sends only what the brief gives', function () {
 it('RCP-010 refuses a recipe of no servings', function () {
     RecordingLlmClient::answering(['name' => 'Bowl', 'servings' => 0, 'instructions' => [], 'items' => []])->install();
 
-    expect(fn () => app(FoodAi::class)->recipe(User::factory()->create(), recipeBrief()))->toThrow(App\Ai\AiFailed::class);
+    expect(fn () => app(FoodAi::class)->recipe(User::factory()->create(), recipeBrief()))->toThrow(AiFailed::class);
 });
 
 it('RCP-003 imports a recipe page and matches its ingredients', function () {
