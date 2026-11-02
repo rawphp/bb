@@ -1,0 +1,595 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "title": {
+            "type": "string"
+        },
+        "scopes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "value": {
+                        "type": "string",
+                        "enum": [
+                            "phase",
+                            "plan"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "selected": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "value",
+                    "title",
+                    "selected"
+                ]
+            }
+        },
+        "empty": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "action_title": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "message",
+                "action_title"
+            ],
+            "description": "Replaces the chart and summary until there are 4 weigh-ins; null after."
+        },
+        "scope_message": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Shown instead of the chart when the chosen range has no weigh-ins."
+        },
+        "chart": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "unit": {
+                    "type": "string",
+                    "enum": [
+                        "kg",
+                        "lb"
+                    ]
+                },
+                "weights": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "date": {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            "value": {
+                                "type": "number"
+                            }
+                        },
+                        "required": [
+                            "date",
+                            "value"
+                        ]
+                    }
+                },
+                "trend": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "date": {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            "value": {
+                                "type": "number"
+                            }
+                        },
+                        "required": [
+                            "date",
+                            "value"
+                        ]
+                    }
+                },
+                "goal": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "date": {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            "low": {
+                                "type": "number"
+                            },
+                            "goal": {
+                                "type": "number"
+                            },
+                            "high": {
+                                "type": "number"
+                            }
+                        },
+                        "required": [
+                            "date",
+                            "low",
+                            "goal",
+                            "high"
+                        ]
+                    }
+                },
+                "waist_unit": {
+                    "type": "string",
+                    "enum": [
+                        "cm",
+                        "in"
+                    ]
+                },
+                "waist": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "date": {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            "value": {
+                                "type": "number"
+                            }
+                        },
+                        "required": [
+                            "date",
+                            "value"
+                        ]
+                    }
+                },
+                "accessibility_label": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "unit",
+                "weights",
+                "trend",
+                "goal",
+                "waist_unit",
+                "waist",
+                "accessibility_label"
+            ]
+        },
+        "summary": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "label": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    },
+                    "tone": {
+                        "type": "string",
+                        "description": "The value's colour; neutral for plain text.",
+                        "enum": [
+                            "good",
+                            "neutral",
+                            "warning",
+                            "info"
+                        ]
+                    }
+                },
+                "required": [
+                    "label",
+                    "value",
+                    "tone"
+                ]
+            },
+            "description": "ANA-002: start weight, change so far and goal weight."
+        },
+        "share": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "title",
+                "message"
+            ]
+        },
+        "this_week": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "calories": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "title": {
+                            "type": "string"
+                        },
+                        "short_label": {
+                            "type": "string"
+                        },
+                        "value_label": {
+                            "type": "string"
+                        },
+                        "fraction": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        }
+                    },
+                    "required": [
+                        "title",
+                        "short_label",
+                        "value_label",
+                        "fraction"
+                    ],
+                    "description": "Null when the week has no calorie target (SAFE-003)."
+                },
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "date": {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            "letter": {
+                                "type": "string"
+                            },
+                            "day_label": {
+                                "type": "string"
+                            },
+                            "calories_label": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "The day's calorie target, null when the day has none."
+                            },
+                            "is_complete": {
+                                "type": "boolean",
+                                "description": "ANA-011: the green adherence dot."
+                            },
+                            "is_today": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "date",
+                            "letter",
+                            "day_label",
+                            "is_complete",
+                            "is_today"
+                        ]
+                    }
+                },
+                "edit_schedule_title": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "title",
+                "days",
+                "edit_schedule_title"
+            ]
+        },
+        "review_card": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "action_title": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "title",
+                "action_title"
+            ]
+        },
+        "steps": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "bar": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "title": {
+                            "type": "string"
+                        },
+                        "short_label": {
+                            "type": "string"
+                        },
+                        "value_label": {
+                            "type": "string"
+                        },
+                        "fraction": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                        }
+                    },
+                    "required": [
+                        "title",
+                        "short_label",
+                        "value_label",
+                        "fraction"
+                    ]
+                },
+                "target_label": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "title",
+                "bar",
+                "target_label"
+            ],
+            "description": "Null when there is no step data (ANA-005)."
+        },
+        "phase_history": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "dates_label": {
+                        "type": "string"
+                    },
+                    "lines": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "label": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
+                                },
+                                "tone": {
+                                    "type": "string",
+                                    "description": "The value's colour; neutral for plain text.",
+                                    "enum": [
+                                        "good",
+                                        "neutral",
+                                        "warning",
+                                        "info"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "label",
+                                "value",
+                                "tone"
+                            ]
+                        }
+                    },
+                    "mesocycles": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "label": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
+                                },
+                                "tone": {
+                                    "type": "string",
+                                    "description": "The value's colour; neutral for plain text.",
+                                    "enum": [
+                                        "good",
+                                        "neutral",
+                                        "warning",
+                                        "info"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "label",
+                                "value",
+                                "tone"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "dates_label",
+                    "lines",
+                    "mesocycles"
+                ]
+            }
+        },
+        "mesocycle_history": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "dates_label": {
+                        "type": "string"
+                    },
+                    "phase": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ],
+                        "description": "The phase it ran in, null when none."
+                    },
+                    "sets_title": {
+                        "type": "string",
+                        "description": "\"Average sets per week\", or \"No sets logged\" when sets is empty."
+                    },
+                    "sets": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "label": {
+                                    "type": "string"
+                                },
+                                "value": {
+                                    "type": "string"
+                                },
+                                "tone": {
+                                    "type": "string",
+                                    "description": "The value's colour; neutral for plain text.",
+                                    "enum": [
+                                        "good",
+                                        "neutral",
+                                        "warning",
+                                        "info"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "label",
+                                "value",
+                                "tone"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "dates_label",
+                    "sets_title",
+                    "sets"
+                ]
+            }
+        },
+        "exercises": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "muscle": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "muscle"
+                ]
+            },
+            "description": "Exercises with a logged set, most recently used first (ANA-009)."
+        }
+    },
+    "required": [
+        "title",
+        "scopes",
+        "summary",
+        "phase_history",
+        "mesocycle_history",
+        "exercises"
+    ]
+}

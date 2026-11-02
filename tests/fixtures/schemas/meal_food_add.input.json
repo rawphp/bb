@@ -1,0 +1,57 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "meal_id": {
+            "type": "string"
+        },
+        "entries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The new entry's ULID (CAP-019)"
+                    },
+                    "food_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "recipe_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "weighing": {
+                        "type": "string",
+                        "enum": [
+                            "raw",
+                            "cooked"
+                        ]
+                    },
+                    "grams": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "minimum": 0.1
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            },
+            "minItems": 1
+        }
+    },
+    "required": [
+        "meal_id",
+        "entries"
+    ]
+}

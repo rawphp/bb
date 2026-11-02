@@ -1,0 +1,181 @@
+{
+    "meal_id": "01JBX5M0000000000000000003",
+    "title": "Dinner",
+    "time_text": "6:30 PM",
+    "bars": [
+        {
+            "label": "Cal",
+            "value_text": "1040/1040",
+            "fraction": 1.0,
+            "tone": "neutral"
+        },
+        {
+            "label": "P",
+            "value_text": "68/68",
+            "fraction": 1.0,
+            "tone": "neutral"
+        },
+        {
+            "label": "F",
+            "value_text": "28/28",
+            "fraction": 1.0,
+            "tone": "neutral"
+        },
+        {
+            "label": "C",
+            "value_text": "128/128",
+            "fraction": 1.0,
+            "tone": "neutral"
+        }
+    ],
+    "pills": [
+        {
+            "text": "Calories on track",
+            "tone": "good"
+        },
+        {
+            "text": "Protein on track",
+            "tone": "good"
+        }
+    ],
+    "targets_met": {
+        "text": "Targets met",
+        "tone": "good"
+    },
+    "adjust_badge": null,
+    "peri_workout": {
+        "kind": "post",
+        "title": "Post-workout",
+        "detail": "Workout 5:30 PM",
+        "help": "These meals carry most of the day's carbs."
+    },
+    "check_in": {
+        "state": "notCheckedIn",
+        "text": "Not checked in",
+        "tone": "neutral"
+    },
+    "hints": [],
+    "entries": [
+        {
+            "id": "01JBX5E0000000000000000001",
+            "kind": "food",
+            "name": "Chicken breast",
+            "amount_text": "296 g (about 2 fillets)",
+            "amount": 296,
+            "amount_unit": "g",
+            "household_unit": "fillet",
+            "weighing": "raw",
+            "macros": {
+                "kcal": "355 kcal",
+                "protein": "P 68",
+                "fat": "F 6",
+                "carbs": "C 0"
+            },
+            "is_locked": true
+        },
+        {
+            "id": "01JBX5E0000000000000000002",
+            "kind": "food",
+            "name": "White rice",
+            "amount_text": "160 g (about 1 cup)",
+            "amount": 160,
+            "amount_unit": "g",
+            "household_unit": "cup",
+            "weighing": "cooked",
+            "macros": {
+                "kcal": "208 kcal",
+                "protein": "P 4",
+                "fat": "F 0",
+                "carbs": "C 46"
+            },
+            "is_locked": false
+        },
+        {
+            "id": "01JBX5E0000000000000000003",
+            "kind": "food",
+            "name": "Olive oil",
+            "amount_text": "22 g (about 1.6 tbsps)",
+            "amount": 22,
+            "amount_unit": "g",
+            "household_unit": "tbsp",
+            "weighing": "raw",
+            "macros": {
+                "kcal": "194 kcal",
+                "protein": "P 0",
+                "fat": "F 22",
+                "carbs": "C 0"
+            },
+            "is_locked": false
+        },
+        {
+            "id": "01JBX5E0000000000000000004",
+            "kind": "recipe",
+            "name": "Overnight oats",
+            "amount_text": "1.5 servings",
+            "amount": 1.5,
+            "amount_unit": "servings",
+            "household_unit": null,
+            "weighing": null,
+            "macros": {
+                "kcal": "283 kcal",
+                "protein": "P 0",
+                "fat": "F 0",
+                "carbs": "C 82"
+            },
+            "is_locked": false
+        }
+    ],
+    "empty": null,
+    "menu": [
+        {
+            "item": "edit_macros_time",
+            "title": "Edit macros/time",
+            "is_enabled": true
+        },
+        {
+            "item": "load_saved_meal",
+            "title": "Load saved meal",
+            "is_enabled": true
+        },
+        {
+            "item": "save_as_saved_meal",
+            "title": "Save as saved meal",
+            "is_enabled": true
+        },
+        {
+            "item": "copy_foods",
+            "title": "Copy foods",
+            "is_enabled": true
+        },
+        {
+            "item": "remove_foods",
+            "title": "Remove foods",
+            "is_enabled": true
+        },
+        {
+            "item": "check_in_meal",
+            "title": "Check in meal",
+            "is_enabled": true
+        },
+        {
+            "item": "check_in_manual",
+            "title": "Check in at manual macros",
+            "is_enabled": true
+        },
+        {
+            "item": "remove_check_in",
+            "title": "Remove check-in",
+            "is_enabled": false
+        },
+        {
+            "item": "still_planning",
+            "title": "Still planning foods",
+            "is_enabled": true
+        },
+        {
+            "item": "delete_meal",
+            "title": "Delete meal",
+            "is_enabled": true
+        }
+    ]
+}

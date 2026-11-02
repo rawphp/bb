@@ -19,7 +19,7 @@ use Rawphp\Capabilities\Registry\CapabilityRegistry;
  */
 final class HostDefinition
 {
-    public const SURFACES = ['http', 'job', 'mcp', 'cli'];
+    public const SURFACES = ['http', 'job', 'mcp', 'cli', 'agent'];
 
     private const AFFECTS_TAG = 'affects:';
 

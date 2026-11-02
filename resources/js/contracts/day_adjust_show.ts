@@ -62,3 +62,5 @@ export interface DayAdjustShowOutput {
   }[];
   can_save: boolean;
 }
+
+export const outputVersion = 'ef4de1498bf9';

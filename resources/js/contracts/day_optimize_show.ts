@@ -25,3 +25,5 @@ export interface DayOptimizeShowOutput {
   message?: string | null;
   can_save: boolean;
 }
+
+export const outputVersion = '5da36d1f854e';
