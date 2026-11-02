@@ -22,7 +22,7 @@ final class AddWorkoutSet
     {
         return DB::transaction(function () use ($user, $setId, $blockId, $afterSetId, $type) {
             $block = OpenWorkout::block($user, $blockId);
-            $existing = WorkoutSet::query()->whereKey($setId)->first();
+            $existing = WorkoutSet::query()->where('user_id', $user->id)->whereKey($setId)->first();
             if ($existing !== null) {
                 // A replay of this create: the set is there already.
                 return $block->session;
