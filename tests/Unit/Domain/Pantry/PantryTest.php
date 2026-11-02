@@ -176,12 +176,6 @@ it('FOOD-025 the Curated filter shows curated matches as local ones', function (
     expect(pantryNames($local))->toBe(['Chicken thigh'])->and($more)->toBe([]);
 });
 
-it('FOOD-020 FOOD-023 a recipe or saved meal matches a search by name, ignoring case', function () {
-    expect(Pantry::nameMatches('Overnight oats', ''))->toBeTrue()
-        ->and(Pantry::nameMatches('Overnight oats', 'OATS'))->toBeTrue()
-        ->and(Pantry::nameMatches('Overnight oats', 'rice'))->toBeFalse();
-});
-
 it('FOOD-024 the suggestion asks about the corrected spelling', function () {
     expect(Pantry::didYouMean('chicken breast'))->toBe('Did you mean chicken breast?');
 });

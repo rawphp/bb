@@ -33,8 +33,14 @@ it('FOOD-023 FOOD-028 FOOD-062 lists recents, favourites and curated matches fir
     FoodRecent::factory()->create(['user_id' => $this->user->id, 'food_id' => $soup->id, 'used_at' => '2026-11-02 08:00:00']);
     $breast = Food::factory()->create(['name' => 'Chicken breast', 'source' => 'curated', 'curated' => true, 'curated_group' => 'protein_recommended', 'cooked_ratio' => 0.75]);
     FoodFavorite::factory()->create(['user_id' => $this->user->id, 'food_id' => $breast->id]);
-    Food::factory()->create(['name' => 'Chicken stock']);
+    $stock = Food::factory()->create(['name' => 'Chicken stock']);
+    FoodFavorite::factory()->create(['user_id' => $this->user->id, 'food_id' => $stock->id]);
+    Food::factory()->custom($this->user)->create(['name' => 'Chicken shake']);
     $nuggets = Food::factory()->create(['name' => 'Chicken nuggets', 'brand' => 'Generic']);
+    $other = User::factory()->create();
+    FoodRecent::factory()->create(['user_id' => $other->id, 'food_id' => $nuggets->id, 'used_at' => '2026-11-02 08:00:00']);
+    FoodFavorite::factory()->create(['user_id' => $other->id, 'food_id' => $nuggets->id]);
+    Food::factory()->create(['name' => 'Chicken wings']);
     Food::factory()->create(['name' => 'Rice']);
     $meal = DayTargetMeal::factory()->create(['day_target_id' => DayTarget::factory()->for($this->user)->state(['meals' => []])]);
     PlannedFood::factory()->create(['meal_id' => $meal->id, 'food_id' => $nuggets->id]);
@@ -45,10 +51,11 @@ it('FOOD-023 FOOD-028 FOOD-062 lists recents, favourites and curated matches fir
 
     assertMatchesScreenFixture('food_search', $data);
     expect(array_column($data['sections'], 'title'))->toBe([null, 'More results'])
-        ->and(array_column($data['sections'][0]['rows'], 'name'))->toBe(['Chicken noodle soup', 'Chicken breast'])
-        ->and(array_column($data['sections'][1]['rows'], 'name'))->toEqualCanonicalizing(['Chicken stock', 'Chicken nuggets'])
-        ->and(array_column($data['sections'][0]['rows'], 'is_favorite'))->toBe([false, true])
-        ->and(array_column($data['sections'][1]['rows'], 'is_in_meal', 'name'))->toEqual(['Chicken stock' => false, 'Chicken nuggets' => true])
+        ->and(array_column($data['sections'][0]['rows'], 'name'))->toBe(['Chicken noodle soup', 'Chicken breast', 'Chicken stock', 'Chicken shake'])
+        ->and(array_column($data['sections'][1]['rows'], 'name'))->toEqualCanonicalizing(['Chicken wings', 'Chicken nuggets'])
+        ->and(array_column($data['sections'][0]['rows'], 'is_favorite'))->toBe([false, true, true, false])
+        ->and(array_column($data['sections'][1]['rows'], 'is_favorite'))->toBe([false, false])
+        ->and(array_column($data['sections'][1]['rows'], 'is_in_meal', 'name'))->toEqual(['Chicken wings' => false, 'Chicken nuggets' => true])
         ->and($data['already_in_meal'])->toBe([['food_id' => $nuggets->id, 'name' => 'Chicken nuggets']])
         ->and($data['create_custom_food'])->toBe(['title' => "Can't find it? Create a custom food", 'name' => 'chicken']);
 });

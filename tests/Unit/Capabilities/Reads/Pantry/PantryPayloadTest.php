@@ -189,15 +189,14 @@ it('FOOD-020 an empty tab says so, and says when the filters hid its foods', fun
         ->and(pantryPayload([], new PantrySnapshot)['empty_text'])->toBe('No curated foods match your filters.');
 });
 
-it('FOOD-020 FOOD-027 the Recipes filter lists recipes that pass the diet filters and the search, with a serving\'s macros', function () {
+it('FOOD-020 the Recipes filter lists the recipes read, each with a serving\'s macros in whole numbers', function () {
     $recipes = [
-        new PantryRecipe('chilli', 'Vegan chilli', 'dinner', new MealTarget(kcal: 412.4, proteinG: 21.6, fatG: 9.5, carbsG: 58.2), isLibrary: false, diets: [DietFilter::Vegan, DietFilter::Vegetarian]),
-        new PantryRecipe('oats', 'Overnight oats', null, new MealTarget(kcal: 330, proteinG: 28, fatG: 3, carbsG: 47), isLibrary: true, diets: [DietFilter::Vegan]),
-        new PantryRecipe('burrito', 'Burrito', 'lunch', new MealTarget(kcal: 600, proteinG: 40, fatG: 20, carbsG: 60), isLibrary: true, diets: [DietFilter::Vegetarian]),
+        new PantryRecipe('chilli', 'Vegan chilli', 'dinner', new MealTarget(kcal: 412.4, proteinG: 21.6, fatG: 9.5, carbsG: 58.2), isLibrary: false),
+        new PantryRecipe('oats', 'Overnight oats', null, new MealTarget(kcal: 330, proteinG: 28, fatG: 3, carbsG: 47), isLibrary: true),
     ];
-    $snapshot = new PantrySnapshot(diets: [DietFilter::Vegan], foods: [payloadFood('x', 'Chilli powder')], recipes: $recipes);
+    $snapshot = new PantrySnapshot(foods: [payloadFood('x', 'Chilli powder')], recipes: $recipes);
 
-    $payload = pantryPayload(['collection' => 'recipes'], $snapshot);
+    $payload = pantryPayload(['collection' => 'recipes', 'query' => 'chilli'], $snapshot);
 
     assertMatchesScreenFixture('food_search', $payload);
     expect($payload['recipes'])->toBe([
@@ -206,19 +205,19 @@ it('FOOD-020 FOOD-027 the Recipes filter lists recipes that pass the diet filter
     ])
         ->and($payload['sections'])->toBe([])
         ->and($payload['saved_meals'])->toBe([])
-        ->and(array_column(pantryPayload(['collection' => 'recipes', 'query' => 'OATS'], $snapshot)['recipes'], 'name'))->toBe(['Overnight oats'])
-        ->and(pantryPayload(['collection' => 'recipes', 'query' => 'chilli'], $snapshot)['create_custom_food'])->toBeNull()
-        ->and(pantryPayload(['collection' => 'recipes', 'query' => 'pie'], $snapshot)['empty_text'])->toBe('No recipes match pie.')
+        ->and($payload['create_custom_food'])->toBeNull()
+        ->and($payload['empty_text'])->toBeNull()
+        ->and(pantryPayload(['collection' => 'recipes', 'query' => 'pie'], new PantrySnapshot)['empty_text'])->toBe('No recipes match pie.')
         ->and(pantryPayload(['collection' => 'recipes'], new PantrySnapshot)['empty_text'])->toBe('No recipes yet.');
 });
 
-it('FOOD-020 the Saved Meals filter lists saved meals that match the search, with how many foods each holds', function () {
+it('FOOD-020 the Saved Meals filter lists the saved meals read, with how many foods each holds', function () {
     $snapshot = new PantrySnapshot(savedMeals: [new PantrySavedMeal('bulk', 'Bulk dinner', 3), new PantrySavedMeal('shake', 'Shake', 1)]);
 
     expect(pantryPayload(['collection' => 'saved_meals'], $snapshot)['saved_meals'])->toBe([
         ['saved_meal_id' => 'bulk', 'name' => 'Bulk dinner', 'detail' => '3 foods'],
         ['saved_meal_id' => 'shake', 'name' => 'Shake', 'detail' => '1 food'],
     ])
-        ->and(array_column(pantryPayload(['collection' => 'saved_meals', 'query' => 'bulk'], $snapshot)['saved_meals'], 'name'))->toBe(['Bulk dinner'])
+        ->and(pantryPayload(['collection' => 'saved_meals', 'query' => 'pie'], new PantrySnapshot)['empty_text'])->toBe('No saved meals match pie.')
         ->and(pantryPayload(['collection' => 'saved_meals'], new PantrySnapshot)['empty_text'])->toBe('No saved meals yet.');
 });

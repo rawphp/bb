@@ -57,9 +57,10 @@ it('FOOD-020 FOOD-021 FOOD-027 shows the Curated tab under the user\'s diet filt
     foreach (range(1, 5) as $n) {
         pantryCurated("Egg whites {$n}", 'protein_recommended', ['gluten_free' => true]);
     }
-    pantryCurated('Broccoli', 'veggies', ['gluten_free' => true]);
+    $broccoli = pantryCurated('Broccoli', 'veggies', ['gluten_free' => true]);
     pantryCurated('Bread', 'carbs_recommended');
     FoodFavorite::factory()->create(['user_id' => $user->id, 'food_id' => $breast->id]);
+    FoodFavorite::factory()->create(['user_id' => User::factory()->create()->id, 'food_id' => $broccoli->id]);
 
     $data = pantrySearch($user)->assertOk()->json('data');
 
@@ -69,6 +70,7 @@ it('FOOD-020 FOOD-021 FOOD-027 shows the Curated tab under the user\'s diet filt
         ->and(array_column($data['sections'][0]['rows'], 'name'))->toBe(['Chicken breast', 'Egg whites 1', 'Egg whites 2', 'Egg whites 3', 'Egg whites 4'])
         ->and($data['sections'][0]['show_more_title'])->toBe('Show 25 more')
         ->and($data['sections'][0]['rows'][0]['is_favorite'])->toBeTrue()
+        ->and($data['sections'][1]['rows'][0]['is_favorite'])->toBeFalse()
         ->and($data['sections'][0]['rows'][0]['cooked'])->toBe(['kcal' => '165 kcal', 'protein' => 'P 30.9', 'fat' => 'F 3.6', 'carbs' => 'C 0'])
         ->and(array_column(array_filter($data['diets'], fn (array $d) => $d['is_on']), 'key'))->toBe(['gluten_free']);
 });
@@ -92,11 +94,15 @@ it('FOOD-020 shows an empty Custom tab', function () {
     expect($data)->toBe(ScreenFixture::load('food_search.empty'));
 });
 
-it('FOOD-020 lists the user\'s recents newest first, favourites and custom foods by name, never another user\'s custom food', function () {
-    $user = User::factory()->create();
+it('FOOD-020 lists the user\'s recents newest first, favourites and custom foods by name, never another user\'s', function () {
+    [$user, $other] = User::factory()->count(2)->create();
     $oats = Food::factory()->create(['name' => 'Oats']);
     $banana = Food::factory()->create(['name' => 'Banana']);
-    $theirs = Food::factory()->custom()->create(['name' => 'Their shake']);
+    $theirs = Food::factory()->custom($other)->create(['name' => 'Their shake']);
+    $theirOats = Food::factory()->create(['name' => 'Their oats']);
+    FoodRecent::factory()->create(['user_id' => $other->id, 'food_id' => $theirOats->id, 'used_at' => '2026-11-03 08:00:00']);
+    FoodFavorite::factory()->create(['user_id' => $other->id, 'food_id' => $theirOats->id]);
+    FoodFavorite::factory()->create(['user_id' => $user->id, 'food_id' => $theirs->id]);
     FoodRecent::factory()->create(['user_id' => $user->id, 'food_id' => $banana->id, 'used_at' => '2026-11-01 08:00:00']);
     FoodRecent::factory()->create(['user_id' => $user->id, 'food_id' => $oats->id, 'used_at' => '2026-11-02 08:00:00']);
     FoodRecent::factory()->create(['user_id' => $user->id, 'food_id' => $theirs->id, 'used_at' => '2026-11-03 08:00:00']);
@@ -112,6 +118,28 @@ it('FOOD-020 lists the user\'s recents newest first, favourites and custom foods
         ->and($names('custom'))->toBe(['My bar', 'My shake']);
 });
 
+it('FOOD-020 the Recents tab lists the last 100 foods used, newest first', function () {
+    $user = User::factory()->create();
+    foreach (range(1, 101) as $n) {
+        FoodRecent::factory()->create(['user_id' => $user->id, 'food_id' => Food::factory()->create(['name' => "Food {$n}"])->id, 'used_at' => Carbon::parse('2026-01-01')->addHours($n)]);
+    }
+
+    $names = array_column(pantrySearch($user, ['tab' => 'recents'])->json('data.sections.0.rows'), 'name');
+
+    expect($names)->toHaveCount(100)
+        ->and(array_slice($names, 0, 2))->toBe(['Food 101', 'Food 100'])
+        ->and($names)->not->toContain('Food 1');
+});
+
+it('FOOD-027 ignores a saved diet filter this version does not know', function () {
+    $user = User::factory()->create();
+    Profile::factory()->for($user)->create(['diet_filters' => ['vegan', 'keto', 7]]);
+
+    $diets = pantrySearch($user)->assertOk()->json('data.diets');
+
+    expect(array_column(array_filter($diets, fn (array $d) => $d['is_on']), 'key'))->toBe(['vegan']);
+});
+
 it('FOOD-028 marks the foods already in the meal', function () {
     $user = User::factory()->create();
     $meal = DayTargetMeal::factory()->create(['day_target_id' => DayTarget::factory()->for($user)->state(['meals' => []])]);
@@ -125,20 +153,23 @@ it('FOOD-028 marks the foods already in the meal', function () {
         ->and(array_column($data['sections'][0]['rows'], 'is_in_meal', 'name'))->toBe(['Beef eye of round' => true, 'Chicken breast' => false]);
 });
 
-it('FOOD-020 the Recipes filter lists the user\'s own recipes, then the library\'s, with a serving\'s macros', function () {
-    $user = User::factory()->create();
-    $oats = Food::factory()->create(['kcal' => 400, 'protein' => 10, 'fat' => 8, 'carbs' => 60]);
-    $mine = Recipe::factory()->for($user)->create(['name' => 'Zesty bowl', 'servings' => 2, 'meal_type' => 'lunch']);
-    RecipeIngredient::factory()->create(['recipe_id' => $mine->id, 'food_id' => $oats->id, 'grams' => 100]);
-    Recipe::factory()->create(['name' => 'Burrito', 'meal_type' => 'dinner']);
-    Recipe::factory()->for(User::factory()->create())->create(['name' => 'Their recipe']);
+it('FOOD-020 FOOD-027 the Recipes filter lists the user\'s own recipes, then the library\'s, that pass the diet filters and the search', function () {
+    [$user, $other] = User::factory()->count(2)->create();
+    Profile::factory()->for($user)->create(['diet_filters' => ['vegan']]);
+    $rice = Food::factory()->create(['kcal' => 400, 'protein' => 10, 'fat' => 8, 'carbs' => 60, 'cooked_ratio' => 2.0]);
+    $mine = Recipe::factory()->for($user)->create(['name' => 'Zesty bowl', 'servings' => 2, 'meal_type' => 'lunch', 'vegan' => true]);
+    RecipeIngredient::factory()->create(['recipe_id' => $mine->id, 'food_id' => $rice->id, 'grams' => 200, 'is_cooked' => true]);
+    Recipe::factory()->create(['name' => 'Bean burrito', 'meal_type' => 'dinner', 'vegan' => true]);
+    Recipe::factory()->create(['name' => 'Beef burrito', 'meal_type' => 'dinner']);
+    Recipe::factory()->for($other)->create(['name' => 'Their bowl', 'vegan' => true]);
 
     $recipes = pantrySearch($user, ['collection' => 'recipes'])->assertOk()->json('data.recipes');
 
-    expect(array_column($recipes, 'name'))->toBe(['Zesty bowl', 'Burrito'])
+    expect(array_column($recipes, 'name'))->toBe(['Zesty bowl', 'Bean burrito'])
         ->and(array_column($recipes, 'is_library'))->toBe([false, true])
         ->and($recipes[0]['macros_text'])->toBe('200 kcal · P 5 · F 4 · C 30')
-        ->and($recipes[0]['meal_type_title'])->toBe('Lunch');
+        ->and($recipes[0]['meal_type_title'])->toBe('Lunch')
+        ->and(array_column(pantrySearch($user, ['collection' => 'recipes', 'query' => 'BURRITO'])->json('data.recipes'), 'name'))->toBe(['Bean burrito']);
 });
 
 it('FOOD-020 the Saved Meals filter lists the user\'s saved meals by name with their food counts', function () {
@@ -150,5 +181,6 @@ it('FOOD-020 the Saved Meals filter lists the user\'s saved meals by name with t
 
     $meals = pantrySearch($user, ['collection' => 'saved_meals'])->assertOk()->json('data.saved_meals');
 
-    expect(array_column($meals, 'detail', 'name'))->toBe(['Breakfast' => '0 foods', 'Bulk dinner' => '3 foods']);
+    expect(array_column($meals, 'detail', 'name'))->toBe(['Breakfast' => '0 foods', 'Bulk dinner' => '3 foods'])
+        ->and(array_column(pantrySearch($user, ['collection' => 'saved_meals', 'query' => 'bulk'])->json('data.saved_meals'), 'name'))->toBe(['Bulk dinner']);
 });
