@@ -74,6 +74,9 @@ describe('ProgressScreen', () => {
         expect(week.text()).toContain('2410/18550');
         expect(week.findAll('[role="group"] button')).toHaveLength(7);
         expect(week.get('[role="group"]').text()).toContain('2650');
+        expect(week.findAll('[role="group"] button').map((b) => b.attributes('aria-pressed'))).toEqual([
+            'true', 'false', 'false', 'false', 'false', 'false', 'false',
+        ]);
 
         await week.get('[data-edit-schedule]').trigger('click');
         expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('Edit schedule');
@@ -212,6 +215,13 @@ describe('ProgressScreen', () => {
         expect(card.querySelector('svg[role="img"]')).not.toBeNull();
         expect(sharePng).toHaveBeenCalledWith(png, full.share);
         expect(wrapper.find('[data-share-card]').exists()).toBe(false);
+    });
+
+    it('PWA-034 offers Share only when the server sends something to share', () => {
+        const wrapper = render({ payload: { ...full, share: null } });
+
+        expect(wrapper.find('svg[role="img"]').exists()).toBe(true);
+        expect(wrapper.find('[data-share]').exists()).toBe(false);
     });
 
     it('PWA-034 draws the shared card in the light palette', async () => {

@@ -17,6 +17,10 @@ describe('chartGeometry', () => {
         expect(timeAxis(dates, 0, 100).ticks).toEqual(['2026-08-31', '2026-09-14', '2026-09-28']);
     });
 
+    it('ANA-001 marks three weeks or more on whole weeks', () => {
+        expect(timeAxis(['2026-08-31', '2026-09-30'], 0, 90).ticks).toEqual(['2026-08-31', '2026-09-14', '2026-09-28']);
+    });
+
     it('ANA-001 marks a short span about three times, a whole number of days apart', () => {
         expect(timeAxis(['2026-08-31', '2026-09-09'], 0, 90).ticks).toEqual(['2026-08-31', '2026-09-03', '2026-09-06', '2026-09-09']);
     });
