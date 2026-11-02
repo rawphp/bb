@@ -33,7 +33,7 @@ const emit = defineEmits<{ pick: []; favorite: []; weighing: [weighing: Weighing
 const nutrition = computed(() => (props.weighing === 'cooked' && props.row.cooked ? props.row.cooked : props.row.raw));
 const nutritionText = computed(() => {
     const n = nutrition.value;
-    return `${n.kcal} · ${n.protein} · ${n.fat} · ${n.carbs} · ${props.row.basis_text}`;
+    return `${n.kcal} · ${n.protein} · ${n.fat} · ${n.carbs} ·`;
 });
 
 // The swipe action's width; a drag past half of it opens the action.
@@ -93,6 +93,7 @@ const shift = computed(() => drag.value ?? (open.value ? -ACTION : 0));
             type="button"
             data-test="swipe-favorite"
             class="absolute inset-y-0 right-0 flex items-center justify-center bg-macro-fat font-medium text-white"
+            :class="open || drag !== null ? '' : 'invisible'"
             :style="{ width: `${ACTION}px` }"
             :aria-hidden="open ? undefined : 'true'"
             :tabindex="open ? 0 : -1"
@@ -143,12 +144,12 @@ const shift = computed(() => drag.value ?? (open.value ? -ACTION : 0));
                         <StatusPill v-if="row.is_in_meal" text="In meal" tone="info" />
                     </span>
                     <span v-if="row.detail" class="block text-sm text-secondary-text">{{ row.detail }}</span>
-                    <span data-test="nutrition" class="block text-sm text-secondary-text tabular-nums">
-                        <PendingMark v-if="pending" derived>{{ nutritionText }}</PendingMark>
-                        <template v-else>{{ nutritionText }}</template>
+                    <span data-test="nutrition" class="block text-[0.8125rem] text-secondary-text tabular-nums">
+                        <PendingMark v-if="pending" derived>{{ nutritionText }} <span class="whitespace-nowrap">{{ row.basis_text }}</span></PendingMark>
+                        <template v-else>{{ nutritionText }} <span class="whitespace-nowrap">{{ row.basis_text }}</span></template>
                     </span>
                 </component>
-                <div v-if="row.cooked" role="group" :aria-label="`${row.name} weighed`" class="flex max-w-50 rounded-full bg-surface p-0.5">
+                <div v-if="row.cooked" role="group" :aria-label="`${row.name} weighed`" class="flex max-w-50 rounded-full bg-secondary-text/15 p-0.5">
                     <button
                         v-for="option in (['raw', 'cooked'] as const)"
                         :key="option"
@@ -156,7 +157,7 @@ const shift = computed(() => drag.value ?? (open.value ? -ACTION : 0));
                         :data-test="`weighing-${option}`"
                         :aria-pressed="weighing === option"
                         class="min-h-9 flex-1 rounded-full text-sm font-medium"
-                        :class="weighing === option ? 'bg-background text-primary-text shadow-sm' : 'text-secondary-text'"
+                        :class="weighing === option ? 'bg-surface text-primary-text shadow-sm ring-1 ring-secondary-text/25' : 'text-secondary-text'"
                         @click="emit('weighing', option)"
                     >
                         {{ option === 'raw' ? 'Raw' : 'Cooked' }}

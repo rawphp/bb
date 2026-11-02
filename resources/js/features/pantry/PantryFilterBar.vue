@@ -95,7 +95,7 @@ function picked<T extends string>(event: Event): T | null {
             >
                 <PantryChip :title="dietsOn === 0 ? 'Diet' : `Diet · ${dietsOn}`" :active="dietsOn > 0" />
             </button>
-            <div role="group" aria-label="Unit" class="flex shrink-0 rounded-full bg-surface p-0.5">
+            <div role="group" aria-label="Unit" class="flex shrink-0 rounded-full bg-secondary-text/15 p-0.5">
                 <button
                     v-for="option in UNITS"
                     :key="option"
@@ -103,7 +103,7 @@ function picked<T extends string>(event: Event): T | null {
                     :data-test="`unit-${option}`"
                     :aria-pressed="unit === option"
                     class="min-h-[calc(var(--spacing-tap)_-_4px)] min-w-12 rounded-full px-3 text-sm font-medium"
-                    :class="unit === option ? 'bg-background text-primary-text shadow-sm' : 'text-secondary-text'"
+                    :class="unit === option ? 'bg-surface text-primary-text shadow-sm ring-1 ring-secondary-text/25' : 'text-secondary-text'"
                     @click="emit('update:unit', option)"
                 >
                     {{ option }}

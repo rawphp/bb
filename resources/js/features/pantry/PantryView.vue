@@ -224,7 +224,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
             />
         </label>
 
-        <div v-if="collection === null" role="tablist" aria-label="Foods" class="grid grid-cols-4 rounded-full bg-surface p-0.5">
+        <div v-if="collection === null" role="tablist" aria-label="Foods" class="grid grid-cols-4 rounded-full bg-secondary-text/15 p-0.5">
             <button
                 v-for="option in TABS"
                 :key="option.value"
@@ -232,7 +232,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                 role="tab"
                 :aria-selected="tab === option.value"
                 class="min-h-9 rounded-full text-sm font-medium"
-                :class="tab === option.value ? 'bg-background text-primary-text shadow-sm' : 'text-secondary-text'"
+                :class="tab === option.value ? 'bg-surface text-primary-text shadow-sm ring-1 ring-secondary-text/25' : 'text-secondary-text'"
                 @click="tab = option.value"
             >
                 {{ option.title }}
@@ -368,16 +368,17 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                         {{ section.show_more_title }}
                     </button>
                 </section>
-                <RouterLink
-                    v-if="data.create_custom_food"
-                    :to="{ path: '/nutrition/custom-foods/new', query: { name: data.create_custom_food.name } }"
-                    class="flex min-h-tap items-center text-sm font-semibold text-accent"
-                >
-                    {{ data.create_custom_food.title }}
-                </RouterLink>
             </template>
 
             <p v-if="data.empty_text" data-test="empty" class="text-secondary-text">{{ data.empty_text }}</p>
+            <!-- FOOD-062: after the empty note, as rp-clone puts it. -->
+            <RouterLink
+                v-if="collection === null && data.create_custom_food"
+                :to="{ path: '/nutrition/custom-foods/new', query: { name: data.create_custom_food.name } }"
+                class="flex min-h-tap items-center self-start text-sm font-semibold text-accent"
+            >
+                {{ data.create_custom_food.title }}
+            </RouterLink>
         </template>
         <ReadState v-else :failure="failure" what="The Pantry" @retry="load" />
 
