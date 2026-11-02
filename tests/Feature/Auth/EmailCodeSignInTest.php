@@ -150,6 +150,9 @@ it('ACC-001 locks the code row while it checks a guess, so parallel guesses take
 
     $locked = collect(DB::getQueryLog())->pluck('query')
         ->filter(fn (string $sql) => str_contains($sql, 'pending_sign_in_codes') && str_contains($sql, 'for update'));
+    // The warm app keeps the connection between tests, so the log is turned off again.
+    DB::disableQueryLog();
+    DB::flushQueryLog();
     expect($locked)->toHaveCount(1);
 });
 
