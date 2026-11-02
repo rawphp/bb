@@ -238,6 +238,22 @@ describe('PhaseDetailView', () => {
         expect(wrapper.find('[data-test="goal-sheet"]').exists()).toBe(false);
     });
 
+    it('PH-009 makes a new phase id when the user picks another goal after no answer', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('phase_goal_change', 0, { reason: 'network' })).mockResolvedValueOnce({});
+        const wrapper = show();
+        await wrapper.find('[data-test="change-goal"]').trigger('click');
+        await pick(wrapper, 'Mini-cut');
+        await wrapper.find('[data-save]').trigger('click');
+        await flushPromises();
+        await pick(wrapper, 'Maintenance');
+        await wrapper.find('[data-save]').trigger('click');
+        await flushPromises();
+
+        const calls = sent();
+        expect(calls.map(([, input]) => input.type)).toEqual(['miniCut', 'maintenance']);
+        expect(calls[1]![1].new_phase_id).not.toBe(calls[0]![1].new_phase_id);
+    });
+
     it('PH-009 makes a new phase id for a change after the server refused the last one', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('phase_goal_change', 422, { error: { code: 'validation_failed', message: 'Not now.', violations: [] } }));
         const wrapper = show();
