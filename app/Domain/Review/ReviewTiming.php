@@ -4,7 +4,6 @@ namespace App\Domain\Review;
 
 use App\Domain\Model\PlanWeek;
 use App\Domain\Plan\PlanWeekGrid;
-use App\Domain\Progress\Days;
 use DateTimeImmutable;
 
 /** REV-001, REV-002, SCH-061: when the weekly review can be done. */
@@ -19,7 +18,7 @@ final class ReviewTiming
      *
      * REV-001: available from day 1 of the new week once the week that ended has 2 weigh-ins (SCH-061: an away week
      * needs none). REV-002: it stays available however long after day 1; "done" is the week's `reviewed_at`.
-     * Days are read in the time zone of the plan start.
+     * Days are read in the time zone of the plan start; a stored row matches its week by its date.
      *
      * @param  list<StoredPlanWeek>  $storedWeeks
      * @param  list<DateTimeImmutable>  $weighInTimes
@@ -54,9 +53,9 @@ final class ReviewTiming
     /** @param  list<StoredPlanWeek>  $storedWeeks */
     private static function stored(PlanWeek $week, array $storedWeeks): ?StoredPlanWeek
     {
-        $zone = $week->start->getTimezone();
+        $day = $week->start->format('Y-m-d');
         foreach ($storedWeeks as $row) {
-            if (Days::startOf($row->start, $zone) == Days::startOf($week->start, $zone)) {
+            if ($row->start->format('Y-m-d') === $day) {
                 return $row;
             }
         }
