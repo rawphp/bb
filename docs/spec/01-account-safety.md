@@ -14,10 +14,10 @@
 Bodybuilder ships two ways from one codebase: free to self-host, and a paid hosted version run by the project. Billing is a module, off unless `BILLING_ENABLED=true`. The hosted instance turns it on; a self-hosted instance leaves it off. With the module off, SUB-001 to SUB-011 do not apply and no paywall, price or banner appears anywhere (SUB-020). Hosted-only behaviour must be configuration, never a fork or a private branch (SUB-023).
 
 - **SUB-020** [B] With billing off, every feature must be available to every signed-in user, and no screen may mention a subscription.
-- **SUB-021** [B] With billing on, payments must go through Stripe Checkout and the Stripe customer portal. The server learns subscription state only from verified Stripe webhooks, never from the browser.
-- **SUB-022** [B] Lapsed-user write blocking (SUB-010) must be enforced once, in the capability authorizer (CAP-020), so it covers the UI, the agent, MCP and the CLI alike. Deleting the account, signing in and out, and billing actions stay allowed.
+- **SUB-021** [B] With billing on, payments must go through Stripe Checkout and the Stripe customer portal. The server learns subscription state only from Stripe, never from the browser: a verified Stripe webhook, or Stripe's API read back by the server.
+- **SUB-022** [B] Lapsed-user write blocking (SUB-010) must be enforced once, in the capability authorizer (CAP-020), so it covers the UI, the agent, MCP and the CLI alike. Deleting the account, signing in and out, revoking an access token, turning off push, and billing actions stay allowed.
 - **SUB-023** [B] Everything the hosted version needs must be in the public repo behind configuration: billing, agent usage limits (AGT-005), the instance's Anthropic key, Web Push keys, mail. A self-hosted instance with the same settings behaves the same.
-- **SUB-024** [B] With billing on, the agent is part of the paid plan, and trial users get it too, within the trial's usage limit (AGT-005).
+- **SUB-024** [B] With billing on, the agent is part of the paid plan, and trial users get it too, within the trial's usage limit (AGT-005). A user who has never subscribed keeps it within the same limits, so chat onboarding (AGT-030) works before the paywall; a user whose subscription has ended loses it.
 
 With billing on, these apply:
 

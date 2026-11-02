@@ -1,10 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-// holdUpdates() and offerInstall() are called by screens later issues build (docs/plan/build-plan.md):
-// the workout view (V_WO1) holds updates for a workout (useHoldUpdates); the end of onboarding (V_ONB2) or Today
-// (V_TODAY1) offers the install. These tests fail as soon as such a screen lands without the call,
-// so that issue has to wire it, and keep start-up honest until then.
+// holdUpdates() and offerInstall() are called by screens (docs/plan/build-plan.md): the workout view
+// (V_WO1) holds updates for a workout (useHoldUpdates); the end of onboarding (V_ONB2) offers the install.
+// These tests fail as soon as such a screen lands without the call, and keep start-up honest.
 
 const sources: Record<string, string> = import.meta.glob('../features/**/*.{vue,ts}', { query: '?raw', import: 'default', eager: true });
 const main = readFileSync('resources/js/app/main.ts', 'utf8');
