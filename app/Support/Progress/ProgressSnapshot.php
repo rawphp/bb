@@ -26,6 +26,7 @@ use App\Support\Today\TodaySnapshot;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Support\Collection;
+use stdClass;
 
 /**
  * What the Progress tab looks at, read once per invoke (ANA-001 to ANA-011): the plan, phases, mesocycles and week
@@ -41,7 +42,7 @@ final class ProgressSnapshot
      * @param  TodaySnapshot  $week  the plan, profile, phases, mesocycles and plan weeks, and the week around today
      * @param  Collection<int, WeighIn>  $weighIns  all of them
      * @param  ?int  $steps  today's step count; null when none is stored
-     * @param  Collection<int, object{mesocycle_id: string, week: int, exercise_id: int, is_logged: bool|int, is_skipped: bool|int}>  $sets  one row per set of a live session in a mesocycle that names an exercise
+     * @param  Collection<int, stdClass>  $sets  one row (mesocycle_id, week, exercise_id, is_logged, is_skipped) per set of a live session in a mesocycle that names an exercise
      * @param  Collection<int, Exercise>  $exercises  the ones the user can see
      * @param  array<int, string>  $lastUsed  exercise id => start of the latest session with a logged set of it
      */
@@ -77,7 +78,7 @@ final class ProgressSnapshot
      * ANA-007: the user's sets of live sessions in a mesocycle that name an exercise, one joined read and no models.
      * Which of them are working sets is {@see workingSets()}'s to say.
      *
-     * @return Collection<int, object>
+     * @return Collection<int, stdClass>
      */
     private static function sets(User $user): Collection
     {

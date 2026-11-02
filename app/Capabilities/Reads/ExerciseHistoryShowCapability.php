@@ -11,6 +11,7 @@ use App\Capabilities\Support\OwnsInput;
 use App\Models\Exercise;
 use App\Models\User;
 use App\Support\Progress\ExerciseHistorySnapshot;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -26,8 +27,8 @@ final class ExerciseHistoryShowCapability implements HostCapability, OwnsInput
             ->run(function (ExerciseHistoryShowInput $input, CapabilityContext $context): ExerciseHistoryShowOutput {
                 /** @var User $user */
                 $user = $context->user();
-                $history = ExerciseHistorySnapshot::load($user, $input->exercise_id);
-                abort_if($history === null, 404);
+                $history = ExerciseHistorySnapshot::load($user, $input->exercise_id)
+                    ?? throw (new ModelNotFoundException)->setModel(Exercise::class, [$input->exercise_id]);
 
                 return ExerciseHistoryPayload::build($history->exercise, $history->sets, $history->unit);
             });
