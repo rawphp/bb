@@ -103,6 +103,14 @@ it('SCH-063 refuses marking an away week and saves nothing', function () {
         ->and(roughRow($user)->is_rough)->toBeFalse();
 });
 
+it('SCH-063 refuses marking an away week that pauses training, which is not a deload', function () {
+    $user = roughWorld();
+    PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-19', 'is_away' => true, 'away_training' => 'pause', 'away_calories' => 'rest_days']);
+
+    expect(fn () => setRough($user, true))->toThrow(DomainException::class, 'A deload or an away week cannot be a rough week.')
+        ->and(roughRow($user)->is_rough)->toBeFalse();
+});
+
 it('SCH-063 allows unmarking while the week is in progress, even once it is away', function () {
     $user = roughWorld();
     PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-19', 'is_rough' => true, 'is_away' => true, 'away_training' => 'pause']);
