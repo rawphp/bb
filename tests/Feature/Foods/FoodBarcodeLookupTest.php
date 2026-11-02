@@ -48,6 +48,13 @@ it('FOOD-041 prefers the user\'s own food, then curated, then Open Food Facts, t
     expect(FoodSearch::byBarcode($this->user, '555')?->name)->toBe('Mine');
 });
 
+it('FOOD-041 ranks a curated food by its curated flag, not its source, ahead of Open Food Facts', function () {
+    foodsWithBarcode('Off one', '556', ['source' => 'off']);
+    foodsWithBarcode('Curated usda one', '556', ['source' => 'usda', 'curated' => true, 'curated_group' => 'veggies']);
+
+    expect(FoodSearch::byBarcode($this->user, '556')?->name)->toBe('Curated usda one');
+});
+
 it('FOOD-060 never finds another user\'s custom food by barcode, nor the user\'s deleted one', function () {
     Food::factory()->custom(User::factory()->create())->create(['name' => 'Theirs', 'barcode' => '777']);
     Food::factory()->custom($this->user)->create(['name' => 'Deleted', 'barcode' => '888'])->delete();

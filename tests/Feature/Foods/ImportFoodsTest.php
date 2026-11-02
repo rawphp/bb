@@ -200,6 +200,40 @@ it('FOOD-001 fails a cut-off Open Food Facts download, plain or gzipped, so the 
     }
 })->with(['plain' => false, 'gzipped' => true]);
 
+it('FOOD-001 fails an empty download, plain or gzipped, and imports nothing', function (bool $gzip) {
+    $path = tempnam(sys_get_temp_dir(), 'off').($gzip ? '.jsonl.gz' : '.jsonl');
+    file_put_contents($path, $gzip ? gzencode('') : '');
+
+    try {
+        $this->artisan('foods:import', ['source' => 'off', 'path' => $path])
+            ->expectsOutputToContain('Imported 0 foods, skipped 0.')
+            ->assertFailed();
+        expect(Food::count())->toBe(0);
+    } finally {
+        unlink($path);
+    }
+})->with(['plain' => false, 'gzipped' => true]);
+
+it('FOOD-001 fails a cut-off USDA download after the batches it read, so the install fetches it again', function () {
+    $foods = [];
+    for ($i = 1; $i <= 2500; $i++) {
+        $foods[] = ['fdcId' => 3000000 + $i, 'description' => "Food {$i}, raw", 'foodCategory' => ['description' => 'Vegetables and Vegetable Products'],
+            'foodNutrients' => [['nutrient' => ['number' => '208'], 'amount' => 50]]];
+    }
+    $json = json_encode(['FoundationFoods' => $foods]);
+    $path = tempnam(sys_get_temp_dir(), 'usda').'.json';
+    file_put_contents($path, substr($json, 0, intdiv(strlen($json), 2)));
+
+    try {
+        $this->artisan('foods:import', ['source' => 'usda', 'path' => $path])
+            ->expectsOutputToContain('is truncated or corrupt')
+            ->assertFailed();
+        expect(Food::count())->toBeGreaterThan(0)->toBeLessThan(2500);
+    } finally {
+        unlink($path);
+    }
+});
+
 it('FOOD-001 rolls the foods back when their servings cannot be written', function () {
     $rows = [[
         'food' => ['name' => 'Broken', 'source' => 'usda', 'source_id' => '1', 'kind' => 'generic',

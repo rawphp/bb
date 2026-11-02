@@ -15,8 +15,8 @@ use App\Domain\Model\DietFilter;
  *  - dairy_free: false on milk, cheese, butter, cream, whey, casein, yogurt,
  *    lactose and similar (not on nut/plant milks and butters, cream of tartar).
  *  - gluten_free: false on wheat, barley, rye, spelt, malt, semolina, couscous,
- *    seitan, bread, pasta, flour, breaded, batter, crumbs (not rice, almond, coconut,
- *    corn... flour).
+ *    seitan, bread, pasta, flour, breaded, batter, crumbs, and oats, which are usually
+ *    cross-contaminated (not rice, almond, coconut, corn... flour).
  *  - grain_free: false on the gluten words plus rice, corn, oat, quinoa, millet,
  *    sorghum, buckwheat, cereal, noodle, granola.
  *  - paleo: false on dairy, grains, legumes (bean, lentil, chickpea, pea, peanut,
@@ -30,8 +30,9 @@ use App\Domain\Model\DietFilter;
  *  - Foundation/SR (generic) foods have no ingredients, so the USDA category gates every
  *    flag: a flag can be true only when the category makes it plausible, and no keyword
  *    rules it out. Plants (vegetables, fruits, legumes, nuts and seeds, spices, fats and
- *    oils, beverages) may get all flags, except Fats and Oils entries named dressing,
- *    mayonnaise, sauce, spread, margarine, dip or gravy, which get none. Beef, pork, poultry,
+ *    oils, beverages) may get all flags. In any category, a name that marks a prepared dish
+ *    or product (souffle, pancake, salad, soup, sauce, dressing, mix, supplement, recipe...)
+ *    or carries an upper-case brand (ABBOTT, ENSURE PLUS) gets none: its ingredients are unknown. Beef, pork, poultry,
  *    lamb/game and fish may get dairy_free, gluten_free, grain_free, low_fodmap and paleo.
  *    Dairy and Egg may get gluten_free, grain_free and vegetarian, plus dairy_free, low_fodmap
  *    and paleo for egg foods only (name has "egg" and no dairy word). Cereal Grains and Pasta
@@ -59,7 +60,7 @@ final class DietClassifier
 
     private const GLUTEN = ['wheat', 'barley', 'rye', 'spelt', 'malt', 'semolina', 'couscous', 'seitan', 'bread', 'pasta',
         'flour', 'bulgur', 'farro', 'kamut', 'beer', 'lager', 'ale', 'breaded', 'breading', 'batter', 'battered', 'crumb',
-        'crumbs'];
+        'crumbs', 'oat'];
 
     private const OTHER_GRAINS = ['rice', 'corn', 'cornstarch', 'popcorn', 'maize', 'oat', 'quinoa', 'millet', 'sorghum',
         'buckwheat', 'cereal', 'noodle', 'granola', 'tortilla'];
@@ -84,7 +85,8 @@ final class DietClassifier
     private const NON_GRAIN_FLOURS = ['almond', 'coconut', 'tapioca', 'potato', 'chickpea', 'cassava', 'arrowroot',
         'tigernut', 'hazelnut', 'banana'];
 
-    private const GLUTEN_FREE_FLOURS = ['rice', 'corn', 'oat', 'buckwheat', 'sorghum', 'quinoa', 'millet'];
+    /** Oat flour is left out: oats are usually cross-contaminated, so they count as gluten. */
+    private const GLUTEN_FREE_FLOURS = ['rice', 'corn', 'buckwheat', 'sorghum', 'quinoa', 'millet'];
 
     /** USDA umbrella categories that mix grains with non-grains, or dairy with egg; they say nothing about one food. */
     private const UMBRELLA_CATEGORIES = ['cereal grains and pasta', 'dairy and egg products'];
@@ -114,10 +116,11 @@ final class DietClassifier
 
     private const DAIRY_EGG_CATEGORY = 'dairy and egg products';
 
-    private const FATS_CATEGORY = 'fats and oils';
-
-    /** Fats and Oils entries that are really prepared foods: their ingredients are unknown, so no flag. */
-    private const PREPARED_FATS = ['dressing', 'mayonnaise', 'sauce', 'spread', 'margarine', 'dip', 'gravy'];
+    /** Generic names that are prepared dishes or products: their ingredients are unknown, so no flag. */
+    private const PREPARED = ['dressing', 'mayonnaise', 'sauce', 'spread', 'margarine', 'dip', 'gravy', 'souffle',
+        'pancake', 'fritter', 'salad', 'coleslaw', 'soup', 'stew', 'chowder', 'casserole', 'pie', 'pudding', 'dessert',
+        'gratin', 'scalloped', 'recipe', 'mix', 'supplement', 'formula', 'shake', 'smoothie', 'drink', 'puff', 'patty',
+        'nugget', 'babyfood', 'entree'];
 
     /** Pasta that is probably made with egg. */
     private const EGG_PASTA = ['fresh', 'egg', 'noodle'];
@@ -183,6 +186,10 @@ final class DietClassifier
     private function limitToCategory(array $flags, string $name, ?string $category): array
     {
         $category = mb_strtolower(trim((string) $category));
+        // An upper-case word is a brand (SR Legacy writes "Beverages, ABBOTT, ENSURE PLUS").
+        if ($this->has(self::PREPARED, mb_strtolower($name)) || preg_match('/\b\p{Lu}{3,}\b/u', $name)) {
+            return array_map(fn () => false, $flags);
+        }
 
         if ($category === self::GRAIN_CATEGORY) {
             $safeGrain = $this->has(self::GLUTEN_FREE_GRAIN_NAMES, mb_strtolower($name));
@@ -192,8 +199,6 @@ final class DietClassifier
             }
         } elseif ($category === self::DAIRY_EGG_CATEGORY) {
             $allowed = $this->isEggFood($name) ? ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'paleo'] : ['gluten_free', 'grain_free', 'vegetarian'];
-        } elseif ($category === self::FATS_CATEGORY && $this->has(self::PREPARED_FATS, mb_strtolower($name))) {
-            $allowed = [];
         } else {
             $allowed = self::GENERIC_CATEGORIES[$category] ?? [];
         }

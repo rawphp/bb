@@ -60,10 +60,15 @@ final class FoodSearch
         return $found->concat($this->others($terms, $phrase)->whereNotIn('id', $found->modelKeys())->limit($remaining)->get())->values();
     }
 
-    /** FOOD-024: the corrected query, only when the query finds nothing and the correction does, under the same filters. */
-    public function didYouMean(string $query): ?string
+    /**
+     * FOOD-024: the corrected query, only when the query found nothing and the correction finds something,
+     * under the same filters. Takes the caller's search() result, so the query is not run twice.
+     *
+     * @param  Collection<int, Food>  $found  what search($query) returned
+     */
+    public function didYouMean(string $query, Collection $found): ?string
     {
-        if ($this->search($query)->isNotEmpty()) {
+        if ($found->isNotEmpty()) {
             return null;
         }
 
@@ -114,7 +119,7 @@ final class FoodSearch
 
         $matchTerms = function (Builder $q) use ($terms) {
             foreach (SearchTerms::meaningful($terms) as $term) {
-                $q->where(fn (Builder $q) => $q->where('name', 'like', "%{$term}%")->orWhere('brand', 'like', "%{$term}%"));
+                $this->nameOrBrandLike($q, $term);
             }
         };
         $barcode = Barcode::normalize($query);
@@ -174,7 +179,7 @@ final class FoodSearch
         }
 
         foreach (SearchTerms::meaningful($terms) as $term) {
-            $query->where(fn (Builder $q) => $q->where('name', 'like', "%{$term}%")->orWhere('brand', 'like', "%{$term}%"));
+            $this->nameOrBrandLike($query, $term);
         }
 
         return $query->orderByRaw('name like ? desc', [$phrase.'%'])->orderByRaw('length(name)')->orderBy('name');
@@ -194,7 +199,7 @@ final class FoodSearch
         if ($boolean !== null) {
             $query->whereRaw('match(name, brand) against (? in boolean mode)', [$boolean]);
             foreach ($short as $term) {
-                $query->where(fn (Builder $q) => $q->where('name', 'like', "%{$term}%")->orWhere('brand', 'like', "%{$term}%"));
+                $this->nameOrBrandLike($query, $term);
             }
 
             // Relevance only: a name tie-break forces a filesort of every match (350-640 ms vs 11-30 ms on 750k rows).
@@ -206,9 +211,15 @@ final class FoodSearch
         $short = array_values(array_diff($short, [$first]));
         $query->where('name', 'like', $first.'%');
         foreach ($short as $term) {
-            $query->where(fn (Builder $q) => $q->where('name', 'like', "%{$term}%")->orWhere('brand', 'like', "%{$term}%"));
+            $this->nameOrBrandLike($query, $term);
         }
 
         return $query->orderBy('name');
+    }
+
+    /** @param  Builder<Food>  $query */
+    private function nameOrBrandLike(Builder $query, string $term): void
+    {
+        $query->where(fn (Builder $q) => $q->where('name', 'like', "%{$term}%")->orWhere('brand', 'like', "%{$term}%"));
     }
 }

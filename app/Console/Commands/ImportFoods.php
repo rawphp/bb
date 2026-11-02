@@ -8,6 +8,7 @@ use App\Domain\Foods\FoodSource;
 use Generator;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use JsonMachine\Exception\JsonMachineException;
 use JsonMachine\Items;
 use JsonMachine\JsonDecoder\ExtJsonDecoder;
 
@@ -22,9 +23,10 @@ use JsonMachine\JsonDecoder\ExtJsonDecoder;
  *
  * USDA FoodData Central JSON: the top-level key (FoundationFoods, SRLegacyFoods or BrandedFoods) picks
  * the type. Open Food Facts: JSONL, plain or .gz. How a record maps to a food: DumpRow. The command
- * fails when the file cannot be read, when every record was skipped, or when a JSONL line is not JSON:
- * a cut-off download ends mid-line (zlib reports a truncated .gz as a normal end of file), so the
- * install stops and can fetch the file again instead of carrying on with part of the database.
+ * fails when the file cannot be read, when it imports no food (an empty or wrong file), or when the
+ * file is cut off or corrupt: a USDA file whose JSON does not parse, or a JSONL line that is not JSON
+ * (a cut-off download ends mid-line, and zlib reports a truncated .gz as a normal end of file). The
+ * install then stops and can fetch the file again instead of carrying on with part of the database.
  *
  * @phpstan-import-type Row from DumpRow
  */
@@ -82,12 +84,18 @@ final class ImportFoods extends Command
         }
 
         $batch = [];
-        foreach ($records as $row) {
-            $batch[] = $row;
-            if (count($batch) >= self::BATCH) {
-                $this->flush($save, $batch);
-                $batch = [];
+        try {
+            foreach ($records as $row) {
+                $batch[] = $row;
+                if (count($batch) >= self::BATCH) {
+                    $this->flush($save, $batch);
+                    $batch = [];
+                }
             }
+        } catch (JsonMachineException $e) {
+            $this->error("Imported {$this->imported} foods, but {$path} is truncated or corrupt ({$e->getMessage()}). Download it again and re-run the import.");
+
+            return self::FAILURE;
         }
         $this->flush($save, $batch);
 
@@ -98,7 +106,7 @@ final class ImportFoods extends Command
 
             return self::FAILURE;
         }
-        if ($this->imported === 0 && $this->skipped > 0) {
+        if ($this->imported === 0) {
             $this->error("Imported 0 foods, skipped {$this->skipped}. Is this the right file for source {$source->value}?");
 
             return self::FAILURE;

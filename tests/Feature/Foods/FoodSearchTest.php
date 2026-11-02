@@ -32,6 +32,11 @@ function foodsSearch(User $user, string $query, ?string $kind = null, ?CuratedGr
 
 // InnoDB indexes full-text only on commit, so a search inside the test's transaction would never see the
 // rows it just made. These tests commit that transaction, write for real, and remove their rows afterwards.
+function foodsDidYouMean(FoodSearch $search, string $query): ?string
+{
+    return $search->didYouMean($query, $search->search($query));
+}
+
 beforeEach(function () {
     DB::commit();
     expect(Food::withTrashed()->count())->toBe(0);
@@ -124,6 +129,14 @@ it('FOOD-027 requires every selected diet filter to match', function () {
     expect(foodsSearch($this->user, 'bar', diets: [DietFilter::Vegan]))->toEqualCanonicalizing(['Bar vegan only', 'Bar vegan and gluten free'])
         ->and(foodsSearch($this->user, 'bar', diets: [DietFilter::Vegan, DietFilter::GlutenFree]))->toBe(['Bar vegan and gluten free'])
         ->and(foodsSearch($this->user, 'bar', diets: [DietFilter::Vegan, DietFilter::GlutenFree, DietFilter::Paleo]))->toBe([]);
+});
+
+it('FOOD-027 applies the diet filters to curated foods too', function () {
+    foodsCurated('Chicken breaded', 'protein_recommended', ['gluten_free' => false]);
+    foodsCurated('Chicken breast', 'protein_recommended', ['gluten_free' => true]);
+
+    expect(foodsSearch($this->user, 'chicken', diets: [DietFilter::GlutenFree]))->toBe(['Chicken breast'])
+        ->and(foodsSearch($this->user, 'chicken', 'curated', diets: [DietFilter::GlutenFree]))->toBe(['Chicken breast']);
 });
 
 it('FOOD-023 ignores stopwords when matching curated foods', function () {
@@ -244,26 +257,26 @@ it('FOOD-004 loads each food\'s servings with the results', function () {
 it('FOOD-024 suggests a corrected query when nothing matches', function () {
     foodsCurated('Chicken breast', 'protein_recommended');
 
-    expect((new FoodSearch($this->user))->didYouMean('chiken brest'))->toBe('chicken breast');
+    expect(foodsDidYouMean(new FoodSearch($this->user), 'chiken brest'))->toBe('chicken breast');
 });
 
 it('FOOD-024 gives no suggestion when the query has hits or cannot be corrected', function () {
     foodsCurated('Chicken breast', 'protein_recommended');
 
-    expect((new FoodSearch($this->user))->didYouMean('chicken'))->toBeNull()
-        ->and((new FoodSearch($this->user))->didYouMean('zzzzzz'))->toBeNull()
-        ->and((new FoodSearch($this->user))->didYouMean('%%'))->toBeNull();
+    expect(foodsDidYouMean(new FoodSearch($this->user), 'chicken'))->toBeNull()
+        ->and(foodsDidYouMean(new FoodSearch($this->user), 'zzzzzz'))->toBeNull()
+        ->and(foodsDidYouMean(new FoodSearch($this->user), '%%'))->toBeNull();
 });
 
 it('FOOD-024 only suggests a correction that has hits under the same filters', function () {
     foodsCurated('Chicken breast', 'protein_recommended');
 
-    expect((new FoodSearch($this->user, group: CuratedGroup::Veggies))->didYouMean('chiken'))->toBeNull()
-        ->and((new FoodSearch($this->user, group: CuratedGroup::ProteinRecommended))->didYouMean('chiken'))->toBe('chicken');
+    expect(foodsDidYouMean(new FoodSearch($this->user, group: CuratedGroup::Veggies), 'chiken'))->toBeNull()
+        ->and(foodsDidYouMean(new FoodSearch($this->user, group: CuratedGroup::ProteinRecommended), 'chiken'))->toBe('chicken');
 });
 
 it('FOOD-024 never learns words from another user\'s custom foods', function () {
     Food::factory()->custom(User::factory()->create())->create(['name' => 'Zanzibar bar', 'curated' => true]);
 
-    expect((new FoodSearch($this->user))->didYouMean('zanzibr'))->toBeNull();
+    expect(foodsDidYouMean(new FoodSearch($this->user), 'zanzibr'))->toBeNull();
 });

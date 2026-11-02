@@ -82,12 +82,36 @@ it('FOOD-027 uses tags alone when a packaged product has no ingredients text', f
     expect($flags)->toBe(foodsDiets(['vegan' => true, 'vegetarian' => true]));
 });
 
-it('FOOD-027 keeps USDA dressings and spreads in Fats and Oils out of every diet', function (string $name) {
-    expect((new DietClassifier)->classify($name, 'Fats and Oils', null, [], generic: true))->toBe(FOODS_ALL_DIETS_FALSE);
+it('FOOD-027 keeps USDA prepared dishes and branded products out of every diet, whatever the category', function (string $name, string $category) {
+    expect((new DietClassifier)->classify($name, $category, null, [], generic: true))->toBe(FOODS_ALL_DIETS_FALSE);
 })->with([
-    'mayonnaise' => 'Salad dressing, mayonnaise, regular',
-    'ranch' => 'Salad dressing, ranch dressing, regular',
-    'caesar' => 'Salad dressing, caesar dressing, regular',
+    'mayonnaise' => ['Salad dressing, mayonnaise, regular', 'Fats and Oils'],
+    'ranch' => ['Salad dressing, ranch dressing, regular', 'Fats and Oils'],
+    'caesar' => ['Salad dressing, caesar dressing, regular', 'Fats and Oils'],
+    'spinach souffle' => ['Spinach souffle', 'Vegetables and Vegetable Products'],
+    'potato pancakes' => ['Potato pancakes', 'Vegetables and Vegetable Products'],
+    'coleslaw' => ['Coleslaw, home-prepared', 'Vegetables and Vegetable Products'],
+    'fruit salad' => ['Fruit salad, (peach and pear and apricot and pineapple and cherry), canned, water pack, solids and liquids', 'Fruits and Fruit Juices'],
+    'bean soup' => ['Soup, bean with pork, canned, condensed', 'Legumes and Legume Products'],
+    'branded supplement drink' => ['Beverages, ABBOTT, ENSURE PLUS, ready-to-drink', 'Beverages'],
+    'drink mix' => ['Beverages, Orange-flavor drink, breakfast type, powder', 'Beverages'],
+]);
+
+it('FOOD-027 still flags single-ingredient plant foods whose names are close to a prepared marker', function (string $name, string $category) {
+    expect((new DietClassifier)->classify($name, $category, null, [], generic: true))->toMatchArray(['vegan' => true, 'gluten_free' => true]);
+})->with([
+    'mixed vegetables' => ['Vegetables, mixed, frozen, unprepared', 'Vegetables and Vegetable Products'],
+    'applesauce' => ['Applesauce, canned, unsweetened, without added ascorbic acid', 'Fruits and Fruit Juices'],
+    'coffee prepared with water' => ['Beverages, coffee, brewed, prepared with tap water', 'Beverages'],
+]);
+
+it('FOOD-027 treats oats as gluten in ingredients, as for generic foods, since they are usually cross-contaminated', function (string $ingredients) {
+    $flags = (new DietClassifier)->classify('Granola', null, $ingredients, []);
+
+    expect($flags['gluten_free'])->toBeFalse()->and($flags['grain_free'])->toBeFalse()->and($flags['vegan'])->toBeTrue();
+})->with([
+    'rolled oats' => ['rolled oats, sugar, salt'],
+    'oat flour' => ['oat flour, water'],
 ]);
 
 it('FOOD-027 treats breaded and battered foods as gluten and grain', function (string $name, string $category) {
