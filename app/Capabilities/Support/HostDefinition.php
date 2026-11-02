@@ -16,12 +16,23 @@ use Rawphp\Capabilities\Registry\CapabilityRegistry;
  * `affects:<read name>`. Clients read it from the catalog's `tags`.
  * A read may register after the write that names it, so {@see unknownAffects()}
  * checks the names against the whole registry once it is built (a freeze test).
+ *
+ * A write marked reversible carries the tag `reversible` and returns an undo
+ * token from {@see UndoLog::record()} (CAP-013).
  */
 final class HostDefinition
 {
     public const SURFACES = ['http', 'job', 'mcp', 'cli'];
 
+    /**
+     * An affects entry for a write that can change any read, such as undo_apply.
+     * Its result's `invalidates` names the reads it did change.
+     */
+    public const ANY_READ = '*';
+
     private const AFFECTS_TAG = 'affects:';
+
+    private const REVERSIBLE_TAG = 'reversible';
 
     public static function read(string $name): CapabilityDefinitionBuilder
     {
@@ -33,14 +44,14 @@ final class HostDefinition
     /**
      * @param  list<string>  $affects  the read capabilities this write can change
      */
-    public static function write(string $name, array $affects): CapabilityDefinitionBuilder
+    public static function write(string $name, array $affects, bool $reversible = false): CapabilityDefinitionBuilder
     {
         if ($affects === []) {
             throw new InvalidArgumentException("{$name} must list the reads it affects (CAP-011).");
         }
 
         foreach ($affects as $read) {
-            if (preg_match('/^[a-z][a-z0-9_]{0,63}$/', $read) !== 1) {
+            if ($read !== self::ANY_READ && preg_match('/^[a-z][a-z0-9_]{0,63}$/', $read) !== 1) {
                 throw new InvalidArgumentException("{$name} affects \"{$read}\", which is not a capability name.");
             }
         }
@@ -48,7 +59,15 @@ final class HostDefinition
         return Capability::define($name)
             ->surfaces(self::SURFACES)
             ->output(WriteResult::class)
-            ->tags(array_map(fn (string $read): string => self::AFFECTS_TAG.$read, $affects));
+            ->tags([
+                ...array_map(fn (string $read): string => self::AFFECTS_TAG.$read, $affects),
+                ...($reversible ? [self::REVERSIBLE_TAG] : []),
+            ]);
+    }
+
+    public static function isReversible(CapabilityDefinition $definition): bool
+    {
+        return in_array(self::REVERSIBLE_TAG, $definition->tags, true);
     }
 
     /**
@@ -77,7 +96,7 @@ final class HostDefinition
         $unknown = [];
         foreach ($definitions as $definition) {
             foreach (self::affects($definition) as $read) {
-                if (! ($definitions[$read]->readOnly ?? false)) {
+                if ($read !== self::ANY_READ && ! ($definitions[$read]->readOnly ?? false)) {
                     $unknown[] = "{$definition->name} affects {$read}";
                 }
             }
