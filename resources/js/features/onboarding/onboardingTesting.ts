@@ -1,7 +1,7 @@
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { expect, vi } from 'vitest';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
-import { write } from '@/app/call';
+import { writeNow } from '@/app/call';
 import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import OnboardingView from './OnboardingView.vue';
@@ -27,7 +27,7 @@ export function view(payload?: OnboardingShowOutput, options: { pending?: boolea
 
 /** Each write sent, as [name, input], checked against that write's schema snapshot. */
 export function writes(): [string, Record<string, unknown>][] {
-    return vi.mocked(write).mock.calls.map(([name, input]) => {
+    return vi.mocked(writeNow).mock.calls.map(([name, input]) => {
         expect(inputViolations(name, input)).toEqual([]);
         return [name, input as Record<string, unknown>];
     });

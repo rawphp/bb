@@ -1,14 +1,14 @@
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, write } from '@/app/call';
+import { CapabilityError, writeNow } from '@/app/call';
 import { refusal, sent, sheet } from './sheetTesting';
 import { useWeekdayChange } from './useWeekdayChange';
 import WeekdayChangeSheet from './WeekdayChangeSheet.vue';
 import WeekdayChips from './WeekdayChips.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), writeNow: vi.fn() }));
 
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 
 beforeEach(() => {
     writeMock.mockReset().mockResolvedValue({});

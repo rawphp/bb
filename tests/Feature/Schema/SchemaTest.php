@@ -17,6 +17,7 @@ use App\Models\MealCheckIn;
 use App\Models\MealPlanningState;
 use App\Models\Mesocycle;
 use App\Models\MuscleFeedback;
+use App\Models\NotificationPref;
 use App\Models\OffPlanEntry;
 use App\Models\OtherActivity;
 use App\Models\PendingSignInCode;
@@ -29,8 +30,10 @@ use App\Models\Profile;
 use App\Models\PushSubscription;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
+use App\Models\ReminderMorning;
 use App\Models\SavedMeal;
 use App\Models\SavedMealFood;
+use App\Models\SentReminder;
 use App\Models\ShoppingTicks;
 use App\Models\Step;
 use App\Models\Subscription;
@@ -109,6 +112,9 @@ function fillAccount(User $user): void
     UndoToken::factory()->for($user)->create();
     PushSubscription::factory()->for($user)->create();
     Subscription::factory()->for($user)->create();
+    NotificationPref::factory()->for($user)->create();
+    SentReminder::factory()->for($user)->create();
+    ReminderMorning::factory()->for($user)->create();
 
     // A Coach conversation with a message and a turn (the package's tables).
     $store = app(ConversationStore::class);

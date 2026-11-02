@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { CapabilityError, write } from '@/app/call';
+import { CapabilityError, writeNow } from '@/app/call';
 import { failureMessage } from '@/app/errors';
 import { useRetryKey } from '@/app/retryKey';
 import { ulid } from '@/app/ulid';
@@ -76,7 +76,7 @@ async function create(): Promise<void> {
         capabilities: scope.value === 'custom' ? picked.value.map((capability) => ({ name: capability })) : [],
     };
     try {
-        shown.value = (await write<TokenCreateOutput>('token_create', { ...input }, { idempotencyKey: createKey.key.value })).token;
+        shown.value = (await writeNow<TokenCreateOutput>('token_create', { ...input }, { idempotencyKey: createKey.key.value })).token;
         createKey.settle();
         creating.value = false;
         copied.value = false;
@@ -123,7 +123,7 @@ async function revoke(id: string): Promise<void> {
     revokeError.value = null;
     try {
         // The key makes a retry after a lost answer replay the first revoke (CAP-014).
-        await write('token_revoke', { id } satisfies TokenRevokeInput, { idempotencyKey: revokeKey.key.value });
+        await writeNow('token_revoke', { id } satisfies TokenRevokeInput, { idempotencyKey: revokeKey.key.value });
         revokeKey.settle();
         confirming.value = null;
         await load();
