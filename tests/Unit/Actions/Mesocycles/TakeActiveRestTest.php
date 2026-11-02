@@ -80,10 +80,44 @@ it('MESO-064 MESO-060 MESO-003 a copy made to start with the next mesocycle move
     $moved = app(TakeActiveRest::class)($user, $mesocycle->id);
     $draft = Mesocycle::query()->findOrFail($copy);
 
+    // 12 October is still muscle gain, so keeping chose nothing: the copy is as one made without keep, and like one
+    // made now on 19 October it takes the fat loss preset, with the offer to keep the old ones again.
+    $preset = array_map(fn (Priority $p) => $p->value, MesoBuilder::defaultPriorities(Column::for(PhaseType::FatLoss, false)));
+
     expect($moved)->toBe([$copy])
         ->and($draft->start_date->format('Y-m-d'))->toBe('2026-10-19')
-        ->and($draft->phase_id)->toBe($cut->id);
+        ->and($draft->phase_id)->toBe($cut->id)
+        ->and($draft->muscle_priorities)->toEqual($preset);
 });
+
+it('MESO-064 MESO-065 a moved copy keeps the priorities the user kept or edited', function (string $cutFrom, bool $keep, ?array $edited) {
+    Carbon::setTestNow('2026-10-06 10:00:00');
+    $user = TrainSeed::user();
+    $gain = TrainSeed::phase($user, 'muscleGain', '2026-08-31', $cutFrom);
+    $cut = TrainSeed::phase($user, 'fatLoss', $cutFrom);
+    $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => $gain->id]);
+    TrainSeed::trained($mesocycle, 3, 1, '2026-09-21', flat: true);
+    TrainSeed::trained($mesocycle, 4, 1, '2026-09-28', flat: true);
+    $copy = '01JD0000000000000000000001';
+    app(CopyMesocycle::class)($user, null, $copy, $mesocycle->id, null, $keep);
+    if ($edited !== null) {
+        Mesocycle::query()->findOrFail($copy)->update(['muscle_priorities' => $edited]);
+    }
+    $before = Mesocycle::query()->findOrFail($copy)->muscle_priorities;
+
+    app(TakeActiveRest::class)($user, $mesocycle->id);
+    $draft = Mesocycle::query()->findOrFail($copy);
+
+    expect($draft->start_date->format('Y-m-d'))->toBe('2026-10-19')
+        ->and($draft->phase_id)->toBe($cut->id)
+        ->and($draft->muscle_priorities)->toBe($before)
+        ->and($draft->muscle_priorities)->toBe($edited ?? $mesocycle->muscle_priorities);
+})->with([
+    // Fat loss from 12 October: the copy is offered the preset and keeps Meso 2's priorities instead.
+    'kept' => ['2026-10-12', true, null],
+    // Fat loss from 19 October: the copy starts in muscle gain with Meso 2's priorities, and the user changes them.
+    'edited' => ['2026-10-19', false, ['chest' => 'maintain', 'back' => 'emphasize']],
+]);
 
 it('MESO-064 MESO-065 a copy moved into a phase of another type takes that phase\'s preset, and the draft says so', function () {
     Carbon::setTestNow('2026-10-06 10:00:00');

@@ -337,14 +337,19 @@ it('MESO-003 a draft no phase covers warns and cannot be finished', function () 
         ->and(draftOf(['days' => W::days()])['build']['can_finish'])->toBeFalse();
 });
 
-it('MESO-005 days carry weekday names when every day has one, else Day 1, Day 2', function () {
+it('MESO-005 a day carries its weekday\'s name when it has one, else its own label, as the saved view does', function () {
     $weekdays = draftOf(['days' => W::days()])['build'];
-    $floating = draftOf(['days' => [W::days()[0], array_replace(W::days()[1], ['weekday' => null])]])['build'];
+    $mixed = draftOf(['days' => [W::days()[0], array_replace(W::days()[1], ['weekday' => null])]])['build'];
+    $floating = draftOf(['days' => array_map(fn (array $day) => array_replace($day, ['weekday' => null]), W::days())])['build'];
+    $unlabelled = draftOf(['days' => [array_replace(W::days()[0], ['weekday' => null, 'label' => ''])]])['build'];
 
     expect($weekdays['label_style'])->toBe('weekdays')
         ->and(array_column($weekdays['days'], 'label'))->toBe(['Monday', 'Thursday'])
+        ->and($mixed['label_style'])->toBe('weekdays')
+        ->and(array_column($mixed['days'], 'label'))->toBe(['Monday', 'Lower A'])
         ->and($floating['label_style'])->toBe('floating')
-        ->and(array_column($floating['days'], 'label'))->toBe(['Day 1', 'Day 2'])
+        ->and(array_column($floating['days'], 'label'))->toBe(['Upper A', 'Lower A'])
+        ->and(array_column($unlabelled['days'], 'label'))->toBe(['Day 1'])
         ->and($weekdays['weekdays_available'])->toBeTrue()
         ->and(draftOf(world: ['trainingDays' => []])['build']['weekdays_available'])->toBeFalse()
         ->and($weekdays['days_per_week'])->toBe(2)

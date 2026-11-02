@@ -1,6 +1,8 @@
 <?php
 
+use App\Actions\Mesocycles\AddMesocycleDay;
 use App\Actions\Mesocycles\CopyMesocycle;
+use App\Capabilities\Reads\Train\MesocyclePayload;
 use App\Domain\Defaults\TBL012TrainingDefaults\Column;
 use App\Domain\Mesocycle\MesoBuilder;
 use App\Domain\Model\PhaseType;
@@ -11,6 +13,7 @@ use App\Models\Phase;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
+use App\Support\Mesocycles\TrainSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Support\TrainSeed;
@@ -146,6 +149,17 @@ it('MESO-065 a copy into a phase of another type takes its priority preset, unle
     expect($reset)->toHaveCount(14)
         ->and(array_unique(array_values($reset)))->toBe(['emphasize'])
         ->and($kept)->toBe($source->muscle_priorities);
+});
+
+it('MESO-060 MESO-005 a copy of a weekday split with a day added labels each day as the saved one does', function () {
+    [$user, $source] = copyWorld();
+    // The user trains Monday and Thursday, both taken, so the day added is "Day 3" with no weekday.
+    app(AddMesocycleDay::class)($user, $source->id, '01JC0000000000000000000000');
+
+    $build = MesocyclePayload::build(TrainSnapshot::load($user, COPY), copyOf($user, $source->fresh()))->toArray()['build'];
+
+    expect(array_column($build['days'], 'label'))->toBe(['Monday', 'Thursday', 'Day 3'])
+        ->and($build['label_style'])->toBe('weekdays');
 });
 
 it('MESO-007 a new copy replaces the user\'s other draft, and the same id updates its own', function () {
