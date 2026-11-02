@@ -28,8 +28,9 @@ final class ScanDrafts
         return new $class(
             rows: array_map(fn (ScanItem $item): ScanRow => new ScanRow(
                 name: $item->name,
-                grams: $item->grams,
-                grams_text: sprintf('%g g', $item->grams),
+                grams: $meal->grams($item),
+                base_grams: $item->baseGrams,
+                grams_text: sprintf('%g g', $meal->grams($item)),
                 food_id: $item->food?->id,
                 match_text: $item->food === null ? self::NO_MATCH : $item->food->name,
                 detail: $item->detail,

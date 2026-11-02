@@ -14,6 +14,10 @@ export interface ScanDescribeOutput {
      * At the current portion; sent back unchanged to scan_adjust
      */
     grams: number;
+    /**
+     * The grams at 1×, unrounded; sent back unchanged to scan_adjust so a portion step rounds once (FOOD-045)
+     */
+    base_grams: number;
     grams_text: string;
     food_id?: string | null;
     /**
@@ -54,4 +58,4 @@ export interface ScanDescribeOutput {
   empty_text?: string | null;
 }
 
-export const outputVersion = 'e9badd81cfb9';
+export const outputVersion = 'b64e4d77f381';

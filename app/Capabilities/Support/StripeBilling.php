@@ -15,9 +15,12 @@ final class StripeBilling implements BillingGate
 {
     public function allows(User $user, CapabilityDefinition $capability): bool
     {
-        // A read never needs the subscription, so it costs no query.
-        return $capability->readOnly
-            || BillingRule::allows(Subscription::accessOf($user), $capability->name, readOnly: false);
+        // A read never needs the subscription, so it costs no query; an AI scan does (BillingRule::AI_READS).
+        if ($capability->readOnly && ! BillingRule::isAiRead($capability->name)) {
+            return true;
+        }
+
+        return BillingRule::allows(Subscription::accessOf($user), $capability->name, $capability->readOnly);
     }
 
     public function allowsCoach(User $user): bool

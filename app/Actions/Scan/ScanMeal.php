@@ -2,12 +2,14 @@
 
 namespace App\Actions\Scan;
 
+use App\Actions\Foods\MealFitFoods;
 use App\Ai\FoodAi;
 use App\Ai\MatchedItem;
 use App\Capabilities\Nutrition\Data\ScanAdjustRow;
-use App\Domain\MealFit\Food as MealFitFood;
+use App\Domain\Scan\ScanDescription;
 use App\Domain\Scan\ScanItem;
 use App\Domain\Scan\ScannedMeal;
+use App\Domain\Scan\ScanPortion;
 use App\Models\Food;
 use App\Models\User;
 use DomainException;
@@ -18,8 +20,6 @@ use DomainException;
  */
 final class ScanMeal
 {
-    public const DESCRIPTION_LIMIT = 1000;
-
     public function __construct(private readonly FoodAi $ai) {}
 
     /** FOOD-043 */
@@ -29,23 +29,20 @@ final class ScanMeal
     }
 
     /**
-     * FOOD-044: the description is trimmed, and also starts the saved meal's name (FOOD-046).
+     * FOOD-044: the description, trimmed, also starts the saved meal's name (FOOD-046).
      *
-     * @throws DomainException when nothing is left once trimmed; nothing is sent
+     * @throws DomainException when it is blank or too long once trimmed; nothing is sent
      */
     public function describe(User $user, string $description): ScannedMeal
     {
-        $text = trim($description);
-        if ($text === '') {
-            throw new DomainException('Describe the meal in 1 to '.self::DESCRIPTION_LIMIT.' characters.');
-        }
+        $text = ScanDescription::text($description);
 
         return ScannedMeal::scanned($this->items($this->ai->describe($user, $text)), $text);
     }
 
     /**
-     * FOOD-043, FOOD-045: the rows as the user left them (a typed amount, a new match, a row removed), from
-     * portion `from` to portion `to`. A food the user cannot see is no match; the authorizer has already
+     * FOOD-043, FOOD-045: the rows as the user left them (a typed amount, a new match, a row removed), shown at
+     * portion `from`, at portion `to`. A food the user cannot see is no match; the authorizer has already
      * answered 404 for one (CAP-020).
      *
      * @param  list<ScanAdjustRow>  $rows
@@ -55,13 +52,13 @@ final class ScanMeal
         $ids = array_values(array_unique(array_filter(array_map(fn (ScanAdjustRow $row): ?string => $row->food_id, $rows))));
         $foods = $ids === [] ? collect() : Food::query()->visibleTo($user)->whereKey($ids)->get()->keyBy('id');
 
-        $items = array_map(function (ScanAdjustRow $row) use ($foods): ScanItem {
+        $items = array_map(function (ScanAdjustRow $row) use ($foods, $from): ScanItem {
             $food = $row->food_id === null ? null : $foods->get($row->food_id);
 
-            return $this->item($row->name, $row->grams, $food);
+            return $this->item($row->name, ScanPortion::base($row->grams, $row->base_grams, $from), $food);
         }, $rows);
 
-        return ScannedMeal::adjusted($items, $from, $to, $savedMealName);
+        return ScannedMeal::adjusted($items, $to, $savedMealName);
     }
 
     /**
@@ -73,20 +70,12 @@ final class ScanMeal
         return array_map(fn (MatchedItem $match): ScanItem => $this->item($match->name, $match->grams, $match->food), $matches);
     }
 
-    private function item(string $name, float $grams, ?Food $food): ScanItem
+    private function item(string $name, float $baseGrams, ?Food $food): ScanItem
     {
         return new ScanItem(
             name: $name,
-            grams: $grams,
-            food: $food === null ? null : new MealFitFood(
-                id: (string) $food->id,
-                name: $food->name,
-                kcal: $food->kcal,
-                proteinG: $food->protein,
-                fatG: $food->fat,
-                carbsG: $food->carbs,
-                cookedRatio: $food->cooked_ratio,
-            ),
+            baseGrams: $baseGrams,
+            food: $food === null ? null : MealFitFoods::of($food),
             detail: $food?->brand,
         );
     }

@@ -3,12 +3,16 @@
 namespace App\Capabilities\Nutrition;
 
 use App\Actions\Foods\LookUpFoodBarcode;
+use App\Actions\Foods\MealFitFoods;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Nutrition\Data\FoodBarcodeLookupInput;
 use App\Capabilities\Nutrition\Data\FoodBarcodeLookupOutput;
 use App\Capabilities\Nutrition\Data\FoodRow;
 use App\Capabilities\Nutrition\Data\Macros;
 use App\Capabilities\Support\HostDefinition;
+use App\Domain\MealFit\MealFood;
+use App\Domain\MealFit\Weighing;
+use App\Domain\Model\MealTarget;
 use App\Models\Food;
 use App\Models\FoodFavorite;
 use App\Models\User;
@@ -54,14 +58,16 @@ final class FoodBarcodeLookupCapability implements HostCapability
     /** FOOD-006: cooked values are per 100 g cooked, so the toggle swaps text; a food that keeps its weight has none. */
     private function row(User $user, Food $food): FoodRow
     {
-        $ratio = $food->cooked_ratio;
+        $mealFit = MealFitFoods::of($food);
+        $raw = new MealFood($mealFit->id, $mealFit, 100, Weighing::Raw);
+        $cooked = new MealFood($mealFit->id, $mealFit, 100, Weighing::Cooked);
 
         return new FoodRow(
-            food_id: (string) $food->id,
+            food_id: $mealFit->id,
             name: $food->name,
             detail: $food->brand,
-            raw: self::per100g($food, 1.0),
-            cooked: $ratio === null || $ratio <= 0 ? null : self::per100g($food, 1 / $ratio),
+            raw: self::macros($raw->macros()),
+            cooked: $cooked->rawGrams() === $raw->rawGrams() ? null : self::macros($cooked->macros()),
             basis_text: 'per 100 g',
             is_curated: (bool) $food->curated,
             is_favorite: FoodFavorite::query()->where('user_id', $user->id)->where('food_id', $food->id)->exists(),
@@ -71,15 +77,15 @@ final class FoodBarcodeLookupCapability implements HostCapability
     }
 
     /** "380 kcal", "P 22.5": calories whole, macros to one decimal. */
-    private static function per100g(Food $food, float $scale): Macros
+    private static function macros(MealTarget $per100g): Macros
     {
-        $macro = fn (float $grams): string => sprintf('%g', round($grams * $scale, 1));
+        $macro = fn (float $grams): string => sprintf('%g', round($grams, 1));
 
         return new Macros(
-            kcal: ScanDrafts::kcal($food->kcal * $scale),
-            protein: 'P '.$macro($food->protein),
-            fat: 'F '.$macro($food->fat),
-            carbs: 'C '.$macro($food->carbs),
+            kcal: ScanDrafts::kcal($per100g->kcal),
+            protein: 'P '.$macro($per100g->proteinG),
+            fat: 'F '.$macro($per100g->fatG),
+            carbs: 'C '.$macro($per100g->carbsG),
         );
     }
 }

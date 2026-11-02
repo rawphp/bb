@@ -21,6 +21,14 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "base_grams": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "description": "The row's base_grams as the draft returned it; left out, grams is taken as typed at from_portion",
+                        "minimum": 0
                     }
                 },
                 "required": [

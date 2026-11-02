@@ -20,7 +20,7 @@ final readonly class ScannedMeal
     public const EMPTY_TEXT = 'No foods found. Try another photo or describe the meal.';
 
     /**
-     * @param  list<ScanItem>  $items  their grams are at `portion`
+     * @param  list<ScanItem>  $items
      */
     private function __construct(
         public array $items,
@@ -36,25 +36,23 @@ final readonly class ScannedMeal
      */
     public static function scanned(array $items, ?string $description): self
     {
-        return new self(
-            array_map(fn (ScanItem $item): ScanItem => $item->withGrams(ScanPortion::grams($item->grams)), $items),
-            1.0,
-            self::name($description),
-        );
+        return new self($items, 1.0, self::name($description));
     }
 
     /**
-     * FOOD-043, FOOD-045: the list as the user left it, with its grams as shown at portion `from`, at portion `to`.
+     * FOOD-043, FOOD-045: the list as the user left it (each row's base from ScanPortion::base), at `portion`.
      *
      * @param  list<ScanItem>  $items
      */
-    public static function adjusted(array $items, float $from, float $to, ?string $savedMealName): self
+    public static function adjusted(array $items, float $portion, ?string $savedMealName): self
     {
-        return new self(
-            array_map(fn (ScanItem $item): ScanItem => $item->withGrams(ScanPortion::rescale($item->grams, $from, $to)), $items),
-            $to,
-            self::name($savedMealName),
-        );
+        return new self($items, $portion, self::name($savedMealName));
+    }
+
+    /** The item's grams as shown at this portion. */
+    public function grams(ScanItem $item): float
+    {
+        return ScanPortion::grams($item->baseGrams * $this->portion);
     }
 
     /** FOOD-046: trimmed and cut to the name limit, or "Scanned meal" when there is none. */
@@ -68,7 +66,7 @@ final readonly class ScannedMeal
     /** The item's calories by the meal's own rule; null with no match. */
     public function kcal(ScanItem $item): ?float
     {
-        return $item->food === null ? null : (new MealFood($item->food->id, $item->food, $item->grams))->macros()->kcal;
+        return $item->food === null ? null : (new MealFood($item->food->id, $item->food, $this->grams($item)))->macros()->kcal;
     }
 
     /**
@@ -85,7 +83,7 @@ final readonly class ScannedMeal
                 continue;
             }
             $id = $item->food->id;
-            $grams = isset($foods[$id]) ? ScanPortion::grams($foods[$id]->grams + $item->grams) : $item->grams;
+            $grams = isset($foods[$id]) ? ScanPortion::grams($foods[$id]->grams + $this->grams($item)) : $this->grams($item);
             $foods[$id] = new MealFood($id, $item->food, $grams);
         }
 

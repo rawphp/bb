@@ -15,7 +15,7 @@ final class ScanLabelCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::read('scan_label')
-            ->description('Read a photo of a nutrition label into a custom food draft: name, brand, a serving and its protein, fat, carbs and fiber. Use it when a barcode found nothing or the user photographs a label; pass that barcode so the new food carries it, and save the confirmed draft with custom_food_save. It saves nothing.')
+            ->description('Read a photo of a nutrition label into a custom food draft: name, brand, a serving, its protein, fat, carbs and fiber, and the calories those give. Use it when a barcode found nothing or the user photographs a label; pass that barcode so the new food carries it, and save the confirmed draft with custom_food_save. It saves nothing.')
             ->cli('scan', 'label')
             ->input(ScanLabelInput::class)
             ->output(ScanLabelOutput::class)
@@ -27,7 +27,7 @@ final class ScanLabelCapability implements HostCapability
     {
         // Resolved per call: capabilities are built at boot, and the AI key the call checks can change after.
         $label = app(FoodAi::class)->label($input->image);
-        $draft = LabelDraft::perServing($label->servingGrams, $label->kcal, $label->protein, $label->fat, $label->carbs, $label->fiber);
+        $draft = LabelDraft::perServing($label->servingGrams, $label->protein, $label->fat, $label->carbs, $label->fiber);
 
         return new ScanLabelOutput(
             name: $label->name,

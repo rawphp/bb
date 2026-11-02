@@ -5,6 +5,8 @@ namespace App\Domain\Scan;
 /**
  * FOOD-045: the portion control that scales the whole scanned meal, and the one rule for a scanned
  * food's grams: to 0.1 g and never below 0.1 g. The rows, the merge per food and the totals use it.
+ * Each row keeps its grams at 1× unrounded (its base), as rp-clone's ScanModel does, so the shown grams
+ * are rounded once and stepping the portion down and back up returns the same amount.
  */
 final class ScanPortion
 {
@@ -16,7 +18,7 @@ final class ScanPortion
 
     public const MIN_GRAMS = 0.1;
 
-    /** Steps are quarters, so a sum like 3.75 + 0.25 lands exactly; this only absorbs input like 1.1. */
+    /** Steps are quarters, so a sum like 3.75 + 0.25 lands exactly; this absorbs input like 1.1 and float noise. */
     private const EPSILON = 1e-9;
 
     public static function grams(float $grams): float
@@ -24,10 +26,17 @@ final class ScanPortion
         return max(self::MIN_GRAMS, round($grams * 10) / 10);
     }
 
-    /** Grams shown at portion `from`, shown again at portion `to`. */
-    public static function rescale(float $grams, float $from, float $to): float
+    /**
+     * A row's grams at 1×, from what the screen sent back: the base it was given when `grams` is still what
+     * that base shows at portion `from`, else the amount the user typed, which is the amount shown at `from`.
+     */
+    public static function base(float $grams, ?float $baseGrams, float $from): float
     {
-        return self::grams($grams / $from * $to);
+        if ($baseGrams !== null && abs(self::grams($baseGrams * $from) - $grams) < self::EPSILON) {
+            return $baseGrams;
+        }
+
+        return $grams / $from;
     }
 
     /** "1×", "1.25×". */

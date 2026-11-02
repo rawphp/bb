@@ -18,7 +18,7 @@ final class ScanAdjustCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::read('scan_adjust')
-            ->description('Recalculate a scanned meal after the user edits it: a new portion size, a typed amount, a food matched to another one, or a row removed. Send the rows as scan_photo, scan_describe or this returned them, with any edits, and the portion they are at. It saves nothing.')
+            ->description('Recalculate a scanned meal after the user edits it: a new portion size, a typed amount, a food matched to another one, or a row removed. Send each row\'s name, grams, base_grams and food_id as scan_photo, scan_describe or this returned them (a typed amount replaces grams), the draft\'s portion as from_portion, the new portion, and its saved_meal_name unchanged. It saves nothing.')
             ->cli('scan', 'adjust')
             ->input(ScanAdjustInput::class)
             ->output(ScanAdjustOutput::class)
