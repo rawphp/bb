@@ -276,8 +276,10 @@ describe('outbox', () => {
         await m.call.write('weigh_in_log', { weight: 80 }, { label });
         await settle();
 
-        // Each pass stands for the backoff's next try.
-        while (sent().filter(([name]) => name === 'steps_log').length < m.call.STUCK_AFTER - 1) await m.call.replay();
+        // Each pass stands for the backoff's next try; the two writes already sent some.
+        const steps = () => sent().filter(([name]) => name === 'steps_log').length;
+        for (let pass = steps(); pass < m.call.STUCK_AFTER - 1; pass++) await m.call.replay();
+        expect(steps()).toBe(m.call.STUCK_AFTER - 1);
         expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['waiting', 'waiting']);
 
         await m.call.replay();
@@ -302,8 +304,9 @@ describe('outbox', () => {
         await m.call.write('steps_log', { steps: 9000 }, { label });
         await settle();
 
-        while (tries < 2 * m.call.STUCK_AFTER - 1) await m.call.replay();
+        for (let pass = 1; pass < 2 * m.call.STUCK_AFTER - 1; pass++) await m.call.replay();
         // Nineteen tries: nine 409s, no answer, nine 409s.
+        expect(tries).toBe(2 * m.call.STUCK_AFTER - 1);
         expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['waiting']);
 
         await m.call.replay();
