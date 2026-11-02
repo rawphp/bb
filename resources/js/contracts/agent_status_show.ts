@@ -10,3 +10,5 @@ export interface AgentStatusShowOutput {
   resets_at?: string | null;
   notice?: string | null;
 }
+
+export const outputVersion = '5e6fdb8ffe60';
