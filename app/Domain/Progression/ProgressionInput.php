@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domain\Workout;
+namespace App\Domain\Progression;
 
 use App\Domain\Model\ExperienceLevel;
 use App\Domain\Model\FeedbackAnswers;

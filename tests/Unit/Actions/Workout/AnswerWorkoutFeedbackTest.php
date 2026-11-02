@@ -1,7 +1,7 @@
 <?php
 
-use App\Actions\Workouts\AnswerWorkoutFeedback;
-use App\Actions\Workouts\FinishWorkout;
+use App\Actions\Workout\AnswerWorkoutFeedback;
+use App\Actions\Workout\FinishWorkout;
 use App\Capabilities\Workout\Data\WorkoutFeedbackAnswerInput;
 use App\Models\ExerciseFeedback;
 use App\Models\Mesocycle;
@@ -37,7 +37,7 @@ function chestAnswer(WorkoutSession $session, Mesocycle $mesocycle, array $input
     unset($input['joint_pain']);
 
     return WorkoutFeedbackAnswerInput::from([
-        'workout_id' => $session->id, 'muscle_group' => 'chest', 'pump' => 'low', 'volume' => 'notEnough', ...$input,
+        'workout_id' => WorkoutSeed::id($session), 'muscle_group' => 'chest', 'pump' => 'low', 'volume' => 'notEnough', ...$input,
         'joint_pain' => $joint,
     ]);
 }
@@ -142,7 +142,7 @@ it('FB-009 saving again updates the rows that changed and keeps their ids', func
 it('FB-009 PROG-019 an edit after finish works next week out again from the same base and shows the toast', function () {
     [$user, $mesocycle, $session] = feedbackSession();
     app(AnswerWorkoutFeedback::class)($user, chestAnswer($session, $mesocycle, ['pump' => 'moderate', 'volume' => 'justRight']));
-    app(FinishWorkout::class)($user, $session->id, Carbon::now());
+    app(FinishWorkout::class)($user, WorkoutSeed::id($session), Carbon::now());
 
     expect($mesocycle->fresh()->dayRows()[0]['slots'][0]['sets'])->toBe(3);
 
@@ -157,7 +157,7 @@ it('FB-009 PROG-019 an edit after finish works next week out again from the same
 it('FB-009 refuses a change after finish once a later session has trained the muscle, and keeps the stored answers', function () {
     [$user, $mesocycle, $session] = feedbackSession();
     app(AnswerWorkoutFeedback::class)($user, chestAnswer($session, $mesocycle, ['pump' => 'moderate', 'volume' => 'justRight']));
-    app(FinishWorkout::class)($user, $session->id, Carbon::now());
+    app(FinishWorkout::class)($user, WorkoutSeed::id($session), Carbon::now());
     TrainSeed::trained($mesocycle, 4, 1, '2026-09-28');
 
     expect(answerRefusal($user, chestAnswer($session, $mesocycle)))

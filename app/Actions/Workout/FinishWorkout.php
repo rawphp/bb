@@ -1,18 +1,21 @@
 <?php
 
-namespace App\Actions\Workouts;
+namespace App\Actions\Workout;
 
+use App\Capabilities\Reads\Workout\WorkoutWords;
 use App\Domain\Model\MuscleGroup;
+use App\Domain\Progression\WorkoutStatus;
 use App\Domain\Retarget\Retargeting;
 use App\Domain\Retarget\RetargetRefused;
-use App\Domain\Workout\WorkoutHelp;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Today\DayPlans;
 use App\Support\Today\RetargetDays;
 use App\Support\Today\SessionWeek;
-use App\Support\Workouts\NextWeekSets;
-use App\Support\Workouts\WorkoutSnapshot;
+use App\Support\Workout\NextWeekSets;
+use App\Support\Workout\WorkoutBlock;
+use App\Support\Workout\WorkoutSetRow;
+use App\Support\Workout\WorkoutSnapshot;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DomainException;
@@ -40,27 +43,29 @@ final class FinishWorkout
      */
     public function __invoke(User $user, string $workoutId, DateTimeInterface $at): array
     {
-        $snapshot = WorkoutSnapshot::load($user, $workoutId);
-        $session = $snapshot->session;
-        if ($session->is_skipped || ! $snapshot->isStarted()) {
+        $snapshot = WorkoutSnapshot::forWorkout($user, $workoutId);
+        $session = $snapshot->session();
+        $status = $snapshot->status();
+        if ($session === null || $status === WorkoutStatus::NotStarted || $status === WorkoutStatus::Skipped) {
             throw new DomainException(self::NOT_STARTED);
         }
-        if ($snapshot->isFinished()) {
+        if ($status === WorkoutStatus::Finished) {
             throw new DomainException(self::FINISHED);
         }
-        if ($snapshot->sets->isEmpty() || $snapshot->sessionExercises() === [] || ! array_all($snapshot->sessionExercises(), fn ($exercise) => $exercise->isDone)) {
+        $sets = array_merge(...array_map(fn (WorkoutBlock $block) => $block->sets, $snapshot->blocks()));
+        if ($sets === [] || ! array_all($sets, fn (WorkoutSetRow $set) => $set->isDone())) {
             throw new DomainException(self::SETS_LEFT);
         }
-        $pending = $snapshot->sheets()->pending();
+        $pending = $snapshot->pendingFeedback();
         if ($pending !== []) {
-            throw new DomainException(WorkoutHelp::FEEDBACK_REQUIRED.' for '.self::list($pending).'.');
+            throw new DomainException(WorkoutWords::FEEDBACK_REQUIRED.' for '.self::list($pending).'.');
         }
 
         $start = DayPlans::instant((string) $session->getRawOriginal('actual_start_at'));
         $end = max($start, DateTimeImmutable::createFromInterface($at));
 
-        return DB::transaction(function () use ($user, $snapshot, $start, $end): array {
-            $snapshot->session->forceFill(['actual_end_at' => $end])->save();
+        return DB::transaction(function () use ($user, $snapshot, $session, $start, $end): array {
+            $session->forceFill(['actual_end_at' => $end])->save();
             // Today's session is sized by the sets it ran, so the day is re-targeted before next week's counts change.
             $meals = $this->retarget($user, $snapshot, $start, $end);
             $sets = NextWeekSets::save($snapshot);
@@ -68,7 +73,7 @@ final class FinishWorkout
 
             return [
                 'toast' => $lines === [] ? null : implode("\n", $lines),
-                'session' => $snapshot->session,
+                'session' => $session,
                 'dates' => $meals['dates'],
                 'week' => $meals['week'],
             ];
@@ -85,8 +90,8 @@ final class FinishWorkout
     private function retarget(User $user, WorkoutSnapshot $snapshot, DateTimeImmutable $start, DateTimeImmutable $end): array
     {
         $none = ['message' => null, 'dates' => [], 'week' => []];
-        $session = $snapshot->session;
-        if ($snapshot->train === null || $snapshot->mesocycle === null || ! $snapshot->mesocycle->isSaved()) {
+        $session = $snapshot->session();
+        if ($session === null) {
             return $none;
         }
         try {

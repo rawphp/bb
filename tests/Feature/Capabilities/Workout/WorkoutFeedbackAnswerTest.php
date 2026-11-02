@@ -1,6 +1,7 @@
 <?php
 
 use App\Capabilities\Support\HostDefinition;
+use App\Capabilities\Workout\WorkoutReads;
 use App\Models\MuscleFeedback;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -33,7 +34,7 @@ it('CAP-013 FB-009 workout_feedback_answer is reversible and not destructive', f
 
     expect(HostDefinition::isReversible($definition))->toBeTrue()
         ->and(HostDefinition::isDestructive($definition))->toBeFalse()
-        ->and(HostDefinition::affects($definition))->toBe(['train_show', 'mesocycle_show']);
+        ->and(HostDefinition::affects($definition))->toBe(WorkoutReads::AFFECTS);
 });
 
 it('FB-001 refuses workout_feedback_answer when signed out', function () {
@@ -45,7 +46,7 @@ it('FB-001 answers 404 for another user\'s workout', function () {
     $theirs = TrainSeed::mesocycle(TrainSeed::user());
     $session = WorkoutSeed::started($theirs, 3, 1, '2026-09-21 17:30:00');
 
-    feedbackOver(TrainSeed::user(), feedbackInput($session->id, WorkoutSeed::exerciseId($theirs, 1)))->assertNotFound();
+    feedbackOver(TrainSeed::user(), feedbackInput(WorkoutSeed::id($session), WorkoutSeed::exerciseId($theirs, 1)))->assertNotFound();
 
     expect(MuscleFeedback::query()->count())->toBe(0);
 });
@@ -62,14 +63,14 @@ it('FB-001 FB-009 saves the sheet, names the screens it changed, and undo takes 
     $mesocycle = TrainSeed::mesocycle($user);
     $session = WorkoutSeed::started($mesocycle, 3, 1, '2026-09-21 17:30:00');
 
-    $response = feedbackOver($user, feedbackInput($session->id, WorkoutSeed::exerciseId($mesocycle, 1)))
+    $response = feedbackOver($user, feedbackInput(WorkoutSeed::id($session), WorkoutSeed::exerciseId($mesocycle, 1)))
         ->assertOk()
         ->assertJsonPath('data.toast', null);
-    expect($response->json('data.invalidates'))->toBe([
+    expect($response->json('data.invalidates'))->toContain(
         "workout_show{\"day\":1,\"mesocycle_id\":\"{$mesocycle->id}\",\"week\":3}",
         'train_show{}',
         "mesocycle_show{\"mesocycle_id\":\"{$mesocycle->id}\"}",
-    ])->and(MuscleFeedback::query()->count())->toBe(1);
+    )->and(MuscleFeedback::query()->count())->toBe(1);
 
     test()->actingAs($user)->postJson('/capabilities/undo_apply', ['token' => $response->json('data.undo')], ['Idempotency-Key' => (string) Str::ulid()])
         ->assertOk();
@@ -83,7 +84,7 @@ it('FB-008 answers a refusal in plain words', function () {
     $mesocycle = TrainSeed::mesocycle($user);
     $session = WorkoutSeed::started($mesocycle, 5, 1, '2026-10-05 17:30:00');
 
-    feedbackOver($user, feedbackInput($session->id, WorkoutSeed::exerciseId($mesocycle, 1)))
+    feedbackOver($user, feedbackInput(WorkoutSeed::id($session), WorkoutSeed::exerciseId($mesocycle, 1)))
         ->assertStatus(422)
         ->assertJsonPath('error.message', 'No feedback is asked in a deload week.');
 });

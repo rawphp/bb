@@ -38,7 +38,7 @@ it('WO-010 answers 404 for another user\'s workout, and finishes nothing', funct
     $theirs = TrainSeed::mesocycle(TrainSeed::user());
     $session = WorkoutSeed::started($theirs, 3, 1, '2026-09-21 17:30:00');
 
-    finishOver(TrainSeed::user(), ['workout_id' => $session->id])->assertNotFound();
+    finishOver(TrainSeed::user(), ['workout_id' => WorkoutSeed::id($session)])->assertNotFound();
 
     expect($session->fresh()->actual_end_at)->toBeNull();
 });
@@ -54,7 +54,7 @@ it('WO-040 answers 422 with the banner\'s words and the muscle while feedback is
     $user = TrainSeed::user();
     $session = WorkoutSeed::started(TrainSeed::mesocycle($user), 3, 1, '2026-09-21 17:30:00');
 
-    finishOver($user, ['workout_id' => $session->id])
+    finishOver($user, ['workout_id' => WorkoutSeed::id($session)])
         ->assertStatus(422)
         ->assertJsonPath('error.message', 'Your feedback is required for chest.');
 });
@@ -69,7 +69,7 @@ it('WO-010 SCH-054 OFF-023 UI-010 finishes the workout, re-targets today, and un
     $before = [$day->fresh()->only(['kcal', 'carbs_g', 'meals']), $mesocycle->fresh()->days];
     $key = (string) Str::ulid();
 
-    $response = finishOver($user, ['workout_id' => $session->id], $key)
+    $response = finishOver($user, ['workout_id' => WorkoutSeed::id($session)], $key)
         ->assertOk()
         ->assertJsonPath('data.toast', "Chest +2 sets next week\nMeals updated for your 5:30 PM workout");
     expect($response->json('data.invalidates'))->toContain(
@@ -79,7 +79,7 @@ it('WO-010 SCH-054 OFF-023 UI-010 finishes the workout, re-targets today, and un
     )->and($session->fresh()->actual_end_at->format('H:i'))->toBe('19:00');
 
     // OFF-023: the outbox replays a finish under the same key; it answers as before and finishes nothing twice.
-    finishOver($user, ['workout_id' => $session->id], $key)->assertOk()->assertJsonPath('data.undo', $response->json('data.undo'));
+    finishOver($user, ['workout_id' => WorkoutSeed::id($session)], $key)->assertOk()->assertJsonPath('data.undo', $response->json('data.undo'));
 
     test()->actingAs($user)->postJson('/capabilities/undo_apply', ['token' => $response->json('data.undo')], ['Idempotency-Key' => (string) Str::ulid()])
         ->assertOk();

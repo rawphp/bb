@@ -9,8 +9,8 @@ use App\Domain\Model\Priority;
 use App\Domain\Model\Pump;
 use App\Domain\Model\Soreness;
 use App\Domain\Model\VolumeFeedback;
-use App\Domain\Workout\ProgressionApply;
-use App\Domain\Workout\ProgressionInput;
+use App\Domain\Progression\ProgressionApply;
+use App\Domain\Progression\ProgressionInput;
 
 // PROG-010 to PROG-019, PROG-050, PROG-051, UI-010: the session as it ran and its feedback, turned into the day's
 // slot counts and the toast lines. From rp-clone's ProgressionApplyTests.

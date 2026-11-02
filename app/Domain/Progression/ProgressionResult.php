@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domain\Workout;
+namespace App\Domain\Progression;
 
 /** The day's new slot counts after {@see ProgressionApply}, what they were, and the UI-010 toast lines. */
 final readonly class ProgressionResult

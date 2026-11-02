@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Workouts;
+namespace App\Support\Workout;
 
 /**
  * PROG-010 to PROG-019, UI-010: saves next week's counts for a finished session's day when they differ from the
@@ -11,10 +11,10 @@ final class NextWeekSets
     public static function save(WorkoutSnapshot $snapshot): ?string
     {
         $result = $snapshot->progression();
-        $mesocycle = $snapshot->mesocycle;
-        if ($result === null || $mesocycle === null || ! $result->changed()) {
+        if ($result === null || ! $result->changed()) {
             return null;
         }
+        $mesocycle = $snapshot->mesocycle;
         $mesocycle->days = $result->applying($mesocycle->days ?? []);
         $mesocycle->save();
 

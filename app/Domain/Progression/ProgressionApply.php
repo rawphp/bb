@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Domain\Workout;
+namespace App\Domain\Progression;
 
 use App\Domain\Model\ExerciseSlot;
 use App\Domain\Model\FeedbackAnswers;
@@ -8,7 +8,6 @@ use App\Domain\Model\Mesocycle;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\Session;
 use App\Domain\Model\Workout;
-use App\Domain\Progression\VolumeProgression;
 
 /**
  * PROG-010 to PROG-019, PROG-050, PROG-051, UI-010: a finished session and its feedback, turned into the day's new slot

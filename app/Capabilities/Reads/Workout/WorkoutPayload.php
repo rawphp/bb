@@ -122,9 +122,8 @@ final class WorkoutPayload
             },
             pinned_note: $s->pinnedNote($exercise),
             session_note: $block->note,
-            // PROG-051, PROG-053, PROG-018 and EX-009 belong to the recovery rules (#84, #85).
-            recovery_note: null,
-            swap_suggestion: null,
+            recovery_note: ($note = $s->recoveryNote($exercise, max(1, count($block->sets)))) === null ? null : new Pill($note, Tone::Info->value),
+            swap_suggestion: ($swap = $s->swapSuggestion($exercise)) === null ? null : new Pill($swap, Tone::Warning->value),
             carries_first_weight: $editable && $exercise->load_type !== ExerciseLoadType::Bodyweight && $block->sets !== []
                 && array_filter($block->sets, fn (WorkoutSetRow $set) => $set->targetKg !== null) === [],
             can_move_up: $index > 0,

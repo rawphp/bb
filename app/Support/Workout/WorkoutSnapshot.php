@@ -6,18 +6,37 @@ use App\Domain\Mesocycle\MesocycleCalendar;
 use App\Domain\Model\ClosedRange;
 use App\Domain\Model\ExerciseLoadType;
 use App\Domain\Model\ExperienceLevel;
+use App\Domain\Model\FeedbackAnswers;
+use App\Domain\Model\JointPain;
 use App\Domain\Model\MuscleGroup;
+use App\Domain\Model\PhaseType;
+use App\Domain\Model\Pump;
 use App\Domain\Model\Session;
+use App\Domain\Model\Soreness;
 use App\Domain\Model\UnitConversion;
+use App\Domain\Model\VolumeFeedback;
 use App\Domain\Model\WeightUnit;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Progression\Deload;
+use App\Domain\Progression\FeedbackSheet;
 use App\Domain\Progression\FeedbackSheets;
+use App\Domain\Progression\JointPainSwap;
 use App\Domain\Progression\LoadRules;
+use App\Domain\Progression\LoggedExercise;
+use App\Domain\Progression\LoggedSet;
+use App\Domain\Progression\PlannedLoad;
+use App\Domain\Progression\ProgressionApply;
+use App\Domain\Progression\ProgressionInput;
+use App\Domain\Progression\ProgressionResult;
+use App\Domain\Progression\RecoveryLoad;
+use App\Domain\Progression\RecoveryLoadInputs;
+use App\Domain\Progression\RecoveryLoadResult;
 use App\Domain\Progression\RIRSchedule;
 use App\Domain\Progression\SetLoad;
 use App\Domain\Progression\SetPlan;
 use App\Domain\Progression\SetPlanInputs;
+use App\Domain\Progression\Underperformance;
+use App\Domain\Progression\WorkingSet;
 use App\Domain\Progression\WorkoutSetType;
 use App\Domain\Progression\WorkoutStatus;
 use App\Models\DayTarget;
@@ -26,6 +45,7 @@ use App\Models\ExerciseFeedback;
 use App\Models\ExerciseLoadStep;
 use App\Models\ExerciseNote;
 use App\Models\Mesocycle;
+use App\Models\MuscleFeedback;
 use App\Models\User;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
@@ -281,7 +301,6 @@ final class WorkoutSnapshot
     public function plannedBlocks(): array
     {
         $isDeload = $this->isDeload();
-        $sessionsInWeek = count($this->train->domain($this->mesocycle)->sessionsInWeek($this->week - 1));
         $workoutId = $this->workoutId();
         $blocks = [];
         foreach ($this->dayRow()['slots'] ?? [] as $slot) {
@@ -289,17 +308,8 @@ final class WorkoutSnapshot
             if ($exercise === null || ($isDeload && in_array(MuscleGroup::from($slot['muscle_group']), Deload::REMOVED_MUSCLES, true))) {
                 continue;
             }
-            $carried = $slot['carried'] ?? null;
-            $loads = SetPlan::targets(new SetPlanInputs(
-                sets: $isDeload ? Deload::sets($slot['sets']) : $slot['sets'],
-                lastWeek: $this->lastWeekLoads($exercise),
-                carried: $carried === null ? null : new SetLoad($this->weightOf($carried['weight_kg'], $exercise), $carried['reps']),
-                rir: $this->rir(),
-                deloadHalf: $isDeload ? Deload::half($this->day - 1, $sessionsInWeek) : null,
-                isFatLoss: $this->isFatLoss(),
-                experience: ExperienceLevel::tryFrom((string) $this->train->profile?->experience) ?? ExperienceLevel::Intermediate,
-                rules: $this->rules($exercise),
-            ));
+            // PROG-018, PROG-051, PROG-053: the recovery flags move the targets the session starts with.
+            $loads = $this->recovery($exercise, $this->targets($exercise, $isDeload ? Deload::sets($slot['sets']) : $slot['sets'], $slot['carried'] ?? null))->targets;
             $sets = [];
             foreach ($loads as $index => $load) {
                 $sets[] = new WorkoutSetRow(
@@ -317,6 +327,28 @@ final class WorkoutSnapshot
         }
 
         return $blocks;
+    }
+
+    /**
+     * PROG-020, PROG-041, MESO-061: an exercise's planned targets for `$sets` sets, before the recovery flags.
+     *
+     * @param  ?array{weight_kg: float, reps: int}  $carried
+     * @return list<PlannedLoad>
+     */
+    private function targets(Exercise $exercise, int $sets, ?array $carried): array
+    {
+        $isDeload = $this->isDeload();
+
+        return SetPlan::targets(new SetPlanInputs(
+            sets: $sets,
+            lastWeek: $this->lastWeekLoads($exercise),
+            carried: $carried === null ? null : new SetLoad($this->weightOf($carried['weight_kg'], $exercise), $carried['reps']),
+            rir: $this->rir(),
+            deloadHalf: $isDeload ? Deload::half($this->day - 1, count($this->train->domain($this->mesocycle)->sessionsInWeek($this->week - 1))) : null,
+            isFatLoss: $this->isFatLoss(),
+            experience: ExperienceLevel::tryFrom((string) $this->train->profile?->experience) ?? ExperienceLevel::Intermediate,
+            rules: $this->rules($exercise),
+        ));
     }
 
     /**
@@ -400,6 +432,219 @@ final class WorkoutSnapshot
         }
 
         return false;
+    }
+
+    // MARK: answers (FB-002 to FB-005, WO-040)
+
+    /** @return list<FeedbackSheet> FB-001: the session's sheets, due or not */
+    public function sheets(): array
+    {
+        return FeedbackSheets::sheets(array_map(fn (WorkoutBlock $block) => $block->feedback(), $this->blocks()), $this->isDeload(), $this->status());
+    }
+
+    /** The muscle's stored soreness, pump and volume for this session. */
+    public function muscleAnswers(MuscleGroup $muscle): ?MuscleFeedback
+    {
+        $session = $this->session();
+
+        return $session === null ? null
+            : $this->train->feedback->first(fn (MuscleFeedback $row) => $row->workout_session_id === $session->id && $row->muscle_group === $muscle);
+    }
+
+    /** @return array<int, JointPain> this session's FB-002 answers, by library exercise id */
+    public function jointAnswers(): array
+    {
+        $session = $this->session();
+        $answers = [];
+        foreach ($this->exerciseFeedback as $row) {
+            $pain = JointPain::tryFrom((string) $row->joint_pain);
+            if ($session !== null && $row->workout_session_id === $session->id && $pain !== null) {
+                $answers[(int) $row->exercise_id] = $pain;
+            }
+        }
+
+        return $answers;
+    }
+
+    /** FB-007. */
+    public function asksSoreness(MuscleGroup $muscle): bool
+    {
+        return FeedbackSheets::asksSoreness($this->start(), $this->lastTrained($muscle));
+    }
+
+    /**
+     * WO-040: the muscles whose sheet is due and not fully answered. They block Finish.
+     *
+     * @return list<MuscleGroup>
+     */
+    public function pendingFeedback(): array
+    {
+        $pending = [];
+        foreach ($this->sheets() as $sheet) {
+            $row = $this->muscleAnswers($sheet->muscle);
+            if ($sheet->isDue && ! FeedbackSheets::isAnswered($sheet, $this->asksSoreness($sheet->muscle), $row?->soreness, $row?->pump, $row?->volume, array_keys($this->jointAnswers()))) {
+                $pending[] = $sheet->muscle;
+            }
+        }
+
+        return $pending;
+    }
+
+    // MARK: next week (PROG-010 to PROG-019, PROG-050, PROG-051) and recovery (PROG-018, PROG-051, PROG-053, EX-009)
+
+    /**
+     * Next week's counts for the session's day of the rotation, from the session as it ran and its stored answers.
+     * Null before it starts, in a deload week, for a day only an earlier week ran (SCH-039), or once a later week's
+     * session of the same day has started: only the latest occurrence sets next week.
+     */
+    public function progression(): ?ProgressionResult
+    {
+        $session = $this->session();
+        $dayIndex = array_search($this->plan()->id, array_column($this->mesocycle->dayRows(), 'id'), true);
+        if ($session === null || $this->status() === WorkoutStatus::NotStarted || $this->isDeload() || $dayIndex === false
+            || $this->mine()->contains(fn (WorkoutSession $other) => $other->day === $this->day && $other->week > $this->week
+                && $other->actual_start_at !== null && ! $other->is_skipped)) {
+            return null;
+        }
+
+        $counts = [];
+        foreach ($this->setsOf($session) as $set) {
+            if ($set->exercise_id !== null) {
+                $counts[(int) $set->exercise_id] = ($counts[(int) $set->exercise_id] ?? 0) + 1;
+            }
+        }
+        $answers = [];
+        foreach ($this->train->feedback as $row) {
+            if ($row->workout_session_id === $session->id) {
+                $answers[$row->muscle_group->value] = new FeedbackAnswers(
+                    soreness: Soreness::tryFrom((string) $row->soreness),
+                    pump: Pump::tryFrom((string) $row->pump),
+                    volume: VolumeFeedback::tryFrom((string) $row->volume),
+                );
+            }
+        }
+
+        return ProgressionApply::apply(new ProgressionInput(
+            days: $this->mesocycle->dayRows(),
+            dayIndex: (int) $dayIndex,
+            phase: $this->train->phaseType($this->mesocycle) ?? PhaseType::Maintenance,
+            isResensitization: $this->mesocycle->is_resensitization,
+            weeks: (int) $this->mesocycle->weeks,
+            priorities: TrainSnapshot::priorities($this->mesocycle),
+            experience: ExperienceLevel::tryFrom((string) $this->train->profile?->experience) ?? ExperienceLevel::Intermediate,
+            setCounts: $counts,
+            muscleAnswers: $answers,
+            jointPain: $this->jointAnswers(),
+            held: Underperformance::flaggedMuscles([...$this->earlierLogged(), $this->logged($session)]),
+            now: $this->start(),
+        ));
+    }
+
+    /**
+     * PROG-020 with the recovery flags on top (rp-clone WorkoutModel+Recovery): an exercise's targets and why they
+     * moved, if they did. Week 1 and a deload week keep the planned targets. Weights are in the user's unit.
+     *
+     * @param  list<PlannedLoad>  $planned
+     */
+    public function recovery(Exercise $exercise, array $planned): RecoveryLoadResult
+    {
+        $lastWeek = $this->lastWeekLoads($exercise);
+        if ($this->isDeload() || $lastWeek === []) {
+            return new RecoveryLoadResult($planned, null);
+        }
+        $earlier = $this->earlierSessions();
+        $flagged = Underperformance::flaggedMuscles($this->earlierLogged());
+        $lastWeekSession = $earlier->first(fn (WorkoutSession $s) => $s->week === $this->week - 1 && $s->day === $this->day);
+        $pain = $lastWeekSession === null ? null : ExerciseFeedback::query()->where('workout_session_id', $lastWeekSession->id)
+            ->where('exercise_id', $exercise->id)->value('joint_pain');
+
+        return RecoveryLoad::apply(new RecoveryLoadInputs(
+            planned: $planned,
+            lastWeek: $lastWeek,
+            rir: $this->rir(),
+            isDeload: false,
+            isFatLoss: $this->isFatLoss(),
+            rules: $this->rules($exercise),
+            muscle: $exercise->muscle_group,
+            flaggedMuscle: in_array($exercise->muscle_group, $flagged, true) ? $exercise->muscle_group : null,
+            history: $earlier->map(fn (WorkoutSession $s) => $this->loggedExercise($s, $exercise))->filter()->values()->all(),
+            lastWeekJointPain: JointPain::tryFrom((string) $pain),
+        ));
+    }
+
+    /** WO-002: why an exercise's weight is not the plain PROG-020 one this week; null when it is. */
+    public function recoveryNote(Exercise $exercise, int $sets): ?string
+    {
+        return $this->recovery($exercise, $this->targets($exercise, $sets, null))->note;
+    }
+
+    /**
+     * EX-009: "{exercise} hurt 2 sessions running. Consider swapping it." while the exercise's latest two joint answers
+     * (FB-002), on any day or mesocycle, are both Moderate or A lot. Answers are ordered by the start of their session
+     * (actual, else planned), then week, day and row id.
+     */
+    public function swapSuggestion(Exercise $exercise): ?string
+    {
+        $user = (int) $this->mesocycle->user_id;
+        $rows = ExerciseFeedback::query()->where('user_id', $user)->where('exercise_id', $exercise->id)->get();
+        // Each answer's place: its session's start (actual, else planned), week and day.
+        $places = WorkoutSession::query()->where('user_id', $user)->whereIn('id', $rows->pluck('workout_session_id'))->get()
+            ->mapWithKeys(fn (WorkoutSession $session) => [$session->id => [
+                self::instant($session->actual_start_at ?? $session->planned_start_at)?->getTimestamp() ?? PHP_INT_MIN, $session->week, $session->day,
+            ]]);
+        $answers = $rows->filter(fn (ExerciseFeedback $row) => $places->has($row->workout_session_id))
+            ->sortBy(fn (ExerciseFeedback $row) => [...$places->get($row->workout_session_id), (string) $row->id])
+            ->map(fn (ExerciseFeedback $row) => JointPain::tryFrom((string) $row->joint_pain))->filter()->values()->all();
+
+        return JointPainSwap::isSuggested($answers) ? JointPainSwap::suggestion($exercise->name) : null;
+    }
+
+    /** @return Collection<int, WorkoutSession> PROG-050: the mesocycle's sessions before this one, not skipped, oldest first */
+    private function earlierSessions(): Collection
+    {
+        return $this->mine()
+            ->filter(fn (WorkoutSession $s) => ! $s->is_skipped && [$s->week, $s->day] < [$this->week, $this->day])
+            ->sortBy(fn (WorkoutSession $s) => [$s->week, $s->day])->values();
+    }
+
+    /** @return list<list<LoggedExercise>> */
+    private function earlierLogged(): array
+    {
+        return $this->earlierSessions()->map(fn (WorkoutSession $s) => $this->logged($s))->values()->all();
+    }
+
+    /** @return Collection<int, WorkoutSet> a session of this mesocycle's sets, in order */
+    private function setsOf(WorkoutSession $session): Collection
+    {
+        return $this->train->sets->filter(fn (WorkoutSet $set) => $set->workout_session_id === $session->id)->sortBy('position')->values();
+    }
+
+    /** @return list<LoggedExercise> a session as the flags read it: its logged working sets that had a rep target */
+    private function logged(WorkoutSession $session): array
+    {
+        $logged = [];
+        foreach ($this->setsOf($session)->pluck('exercise_id')->filter()->unique() as $id) {
+            $exercise = $this->train->exercise((int) $id);
+            $one = $exercise === null ? null : $this->loggedExercise($session, $exercise);
+            if ($one !== null) {
+                $logged[] = $one;
+            }
+        }
+
+        return $logged;
+    }
+
+    private function loggedExercise(WorkoutSession $session, Exercise $exercise): ?LoggedExercise
+    {
+        $sets = $this->setsOf($session)
+            ->filter(fn (WorkoutSet $set) => (int) $set->exercise_id === (int) $exercise->id && WorkingSet::counts((bool) $set->is_logged, (bool) $set->is_skipped)
+                && $set->target_reps !== null && $set->actual_reps !== null)
+            ->map(fn (WorkoutSet $set) => new LoggedSet($this->weightOf($set->actual_weight_kg, $exercise) ?? 0.0, (int) $set->target_reps, (int) $set->actual_reps))
+            ->values()->all();
+
+        return $sets === [] ? null : new LoggedExercise(
+            $exercise->name, $exercise->muscle_group, new ClosedRange((int) $exercise->rep_range_min, (int) $exercise->rep_range_max), $sets,
+        );
     }
 
     // MARK: helpers
