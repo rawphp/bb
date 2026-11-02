@@ -263,7 +263,18 @@ it('MEAL-003 shows no Targets met when a macro is more than 5 g off', function (
 });
 
 it('MEAL-003 shows no Targets met on an empty meal, even with targets of zero', function () {
-    expect(mealShow(W::snapshot(), MEAL_DINNER)['targets_met'])->toBeNull();
+    $snapshot = W::snapshot();
+    expect(mealShow($snapshot, MEAL_DINNER)['targets_met'])->toBeNull();
+
+    $target = $snapshot->dayTarget($snapshot->date);
+    $meals = $target->meals;
+    $meals[2] = [...$meals[2], 'kcal' => 0, 'protein_g' => 0, 'fat_g' => 0, 'carbs_g' => 0];
+    $target->forceFill(['meals' => $meals]);
+    $payload = mealShow($snapshot, MEAL_DINNER);
+
+    expect($payload['targets_met'])->toBeNull()
+        ->and(array_column($payload['bars'], 'value_text'))->toBe(['0/0', '0/0', '0/0', '0/0'])
+        ->and(array_column($payload['bars'], 'fraction'))->toBe([0.0, 0.0, 0.0, 0.0]);
 });
 
 // MARK: MEAL-007
@@ -430,6 +441,17 @@ it('MEAL-010 only the earliest meal after the workout is post-workout', function
         ->and(mealShow($snapshot, MEAL_DINNER)['peri_workout'])->toBeNull();
 });
 
+it('MEAL-010 of two meals at the same minute, the first is tagged', function () {
+    $snapshot = W::snapshot();
+    mealRetime($snapshot, [MEAL_LUNCH => '18:30', MEAL_DINNER => '18:30']);
+    expect(mealShow($snapshot, MEAL_LUNCH)['peri_workout']['kind'] ?? null)->toBe('post')
+        ->and(mealShow($snapshot, MEAL_DINNER)['peri_workout'])->toBeNull();
+
+    mealRetime($snapshot, [MEAL_LUNCH => '16:00', MEAL_DINNER => '16:00']);
+    expect(mealShow($snapshot, MEAL_LUNCH)['peri_workout']['kind'] ?? null)->toBe('pre')
+        ->and(mealShow($snapshot, MEAL_DINNER)['peri_workout'])->toBeNull();
+});
+
 it('MEAL-010 a meal during the workout, on a rest day or without a time has no tag', function () {
     $snapshot = W::snapshot();
     mealRetime($snapshot, [MEAL_LUNCH => '17:30', MEAL_DINNER => '17:45']);
@@ -508,6 +530,6 @@ it('MEAL-047 shows the check-in state with its text and tone', function () {
         ->and(mealShow($snapshot, '20260921-0000-4000-8000-000000000002', '2026-09-21')['check_in'])->toBe(['state' => 'over', 'text' => 'Checked in, over target', 'tone' => 'warning']);
 });
 
-it('MEAL-047 answers not found for a meal that is not on the day', function () {
+it('CAP-020 answers not found for a meal that is not on the day', function () {
     mealShow(W::snapshot(), 'no-such-meal');
 })->throws(ModelNotFoundException::class);
