@@ -40,6 +40,7 @@ use App\Models\UndoToken;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WeighInScheduleEntry;
+use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use Illuminate\Database\Eloquent\Model;
@@ -90,7 +91,8 @@ function fillAccount(User $user): void
     FoodRecent::factory()->for($user)->create(['food_id' => $food->id]);
 
     $session = WorkoutSession::factory()->for($user)->create();
-    WorkoutSet::factory()->for($session, 'session')->create(['exercise_id' => $exercise->id]);
+    $block = WorkoutExercise::factory()->for($session, 'session')->create(['exercise_id' => $exercise->id]);
+    WorkoutSet::factory()->for($session, 'session')->create(['exercise_id' => $exercise->id, 'workout_exercise_id' => $block->id]);
     MuscleFeedback::factory()->for($session, 'session')->create();
     ExerciseFeedback::factory()->for($session, 'session')->create(['exercise_id' => $exercise->id]);
     ExerciseNote::factory()->for($user)->create(['exercise_id' => $exercise->id]);
@@ -201,6 +203,16 @@ it('WT-020 keeps one step count per user per day, typed or from the bridge', fun
         ->toBe([MeasurementSource::Manual, MeasurementSource::Shortcut]);
 
     expect(fn () => Step::factory()->for($user)->create(['date' => '2026-10-12']))
+        ->toThrow(QueryException::class);
+});
+
+it('WO-002 every set belongs to an exercise of its session', function () {
+    $set = WorkoutSet::factory()->create();
+
+    expect($set->workoutExercise?->only(['workout_session_id', 'exercise_id', 'user_id']))
+        ->toBe($set->only(['workout_session_id', 'exercise_id', 'user_id']));
+
+    expect(fn () => WorkoutSet::factory()->create(['workout_exercise_id' => null]))
         ->toThrow(QueryException::class);
 });
 
