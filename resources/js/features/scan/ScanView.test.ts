@@ -195,7 +195,7 @@ describe('ScanView', () => {
 
     it('FOOD-042 reads a label photo into the custom food form, carrying the barcode that found nothing', async () => {
         readMock.mockResolvedValue(label());
-        const wrapper = scan({ payload: notFound() }, { 'custom-food': ({ draft }: { draft: ScanLabelOutput | null }) => h('p', { 'data-test': 'custom-food' }, draft?.name) });
+        const wrapper = scan({ payload: notFound() }, { 'custom-food': ({ draft }: { draft: ScanLabelOutput | null }) => h('p', { 'data-test': 'custom-food' }, draft?.name ?? '') });
 
         await wrapper.find('[data-test="scan-label"]').trigger('click');
         await choose(wrapper, '[data-test="take-photo"]', photo);
@@ -361,7 +361,7 @@ describe('ScanView', () => {
     });
 
     it('FOOD-042 opens the custom food form on a read label (scan_label)', () => {
-        const wrapper = scan({ payload: label() }, { 'custom-food': ({ draft }: { draft: ScanLabelOutput | null }) => h('p', { 'data-test': 'custom-food' }, draft?.barcode) });
+        const wrapper = scan({ payload: label() }, { 'custom-food': ({ draft }: { draft: ScanLabelOutput | null }) => h('p', { 'data-test': 'custom-food' }, draft?.barcode ?? '') });
 
         expect(wrapper.find('[role="radio"][aria-checked="true"]').text()).toBe('Nutrition label');
         expect(wrapper.find('[data-test="custom-food"]').text()).toBe('5012345678900');
