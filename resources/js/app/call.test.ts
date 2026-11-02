@@ -76,6 +76,18 @@ describe('call', () => {
         expect(headers[2]).not.toHaveProperty('X-BB-Now');
     });
 
+    it('CAP-014 sends the idempotency key a write is given, and none otherwise', async () => {
+        document.cookie = 'XSRF-TOKEN=t; path=/';
+        fetchMock.mockImplementation(async () => json({ ok: true, data: {} }));
+
+        await write('token_revoke', { id: 'x' }, { idempotencyKey: 'token_revoke:x' });
+        await write('token_revoke', { id: 'x' });
+
+        const headers = fetchMock.mock.calls.map(([, init]) => init?.headers as Record<string, string>);
+        expect(headers[0]).toMatchObject({ 'Idempotency-Key': 'token_revoke:x' });
+        expect(headers[1]).not.toHaveProperty('Idempotency-Key');
+    });
+
     it('CAP-004 fetches the CSRF cookie first when it is missing', async () => {
         fetchMock.mockImplementationOnce(async () => {
             document.cookie = 'XSRF-TOKEN=fresh; path=/';

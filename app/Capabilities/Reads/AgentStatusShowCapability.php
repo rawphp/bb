@@ -6,7 +6,9 @@ use App\Agent\AgentStatus;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Reads\Data\AgentStatusShowInput;
 use App\Capabilities\Reads\Data\AgentStatusShowOutput;
+use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Support\HostDefinition;
+use App\Capabilities\Support\Tone;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
@@ -38,6 +40,8 @@ final class AgentStatusShowCapability implements HostCapability
             at_cap: $allowance->atCap,
             resets_at: $allowance->resetsAt?->toIso8601String(),
             notice: $allowance->notice,
+            // A reached cap is a warning; how much is left near it is information.
+            notice_status: $allowance->notice === null ? null : new Status($allowance->notice, ($allowance->atCap ? Tone::Warning : Tone::Info)->value),
         );
     }
 }

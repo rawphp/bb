@@ -57,23 +57,44 @@ describe('LearnIndexView', () => {
         readMock.mockResolvedValueOnce(content);
         const { wrapper } = await mountIndex();
 
-        expect(wrapper.find('[aria-busy="true"]').exists()).toBe(true);
+        expect(wrapper.find('[data-test="skeleton"]').exists()).toBe(true);
         await flushPromises();
 
         expect(readMock).toHaveBeenCalledWith('learn_show', {}, expect.any(Function), expect.any(Function));
-        expect(wrapper.find('[aria-busy="true"]').exists()).toBe(false);
+        expect(wrapper.find('[data-test="skeleton"]').exists()).toBe(false);
         expect(wrapper.text()).toContain('Weighing in');
     });
 
     it.each([
         [new CapabilityError('learn_show', 401, null), 'You are signed out.'],
-        [new CapabilityError('learn_show', 0, null), 'Learn could not be loaded.'],
+        [new CapabilityError('learn_show', 500, null), 'Learn could not be loaded.'],
     ])('CAP-004 says why the index did not load', async (error, message) => {
         readMock.mockRejectedValueOnce(error);
         const { wrapper } = await mountIndex();
         await flushPromises();
 
-        expect(wrapper.find('[role="alert"]').text()).toBe(message);
+        expect(wrapper.get('[role="alert"]').text()).toContain(message);
+    });
+
+    it('CAP-010 Try again reads the index again after a failed read', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('learn_show', 500, null)).mockResolvedValueOnce(content as LearnShowOutput);
+        const { wrapper } = await mountIndex();
+        await flushPromises();
+
+        await wrapper.get('[data-test="retry"]').trigger('click');
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledTimes(2);
+        expect(wrapper.text()).toContain('Weighing in');
+    });
+
+    it('OFF-003 offline with nothing cached says Learn needs a connection', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('learn_show', 0, null));
+        const { wrapper } = await mountIndex();
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('Not available offline');
+        expect(wrapper.text()).toContain("Learn will load when you're back online.");
     });
 
     it('OFF-003 shows the cached index at once, then the refreshed one, and drops it when the refresh is refused', async () => {

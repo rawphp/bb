@@ -15,6 +15,8 @@ declare module 'vue-router' {
         edgeZone?: number;
         dev?: boolean;
         screen?: string;
+        /** false: the screen reads nothing, so /dev/screens renders it without a fixture. */
+        fixture?: boolean;
     }
 }
 

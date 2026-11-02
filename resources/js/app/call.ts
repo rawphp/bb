@@ -162,9 +162,12 @@ async function fetchRead<T>(name: string, input: CapabilityInput, key: string): 
     return data;
 }
 
-/** A write drops the cached reads its WriteResult invalidates (CAP-010), so the next read of them waits for the server. */
-export async function write<T = unknown>(name: string, input: CapabilityInput = {}): Promise<T> {
-    const data = await invoke<T>(name, input);
+/**
+ * A write drops the cached reads its WriteResult invalidates (CAP-010), so the next read of them waits for the server.
+ * With an idempotency key, a retry after a lost answer returns the first result instead of running again (CAP-014).
+ */
+export async function write<T = unknown>(name: string, input: CapabilityInput = {}, options: { idempotencyKey?: string } = {}): Promise<T> {
+    const data = await invoke<T>(name, input, options.idempotencyKey);
     const invalidates = (data as { invalidates?: unknown } | null)?.invalidates;
 
     if (Array.isArray(invalidates)) {
@@ -174,12 +177,12 @@ export async function write<T = unknown>(name: string, input: CapabilityInput = 
     return data;
 }
 
-async function invoke<T>(name: string, input: CapabilityInput): Promise<T> {
+async function invoke<T>(name: string, input: CapabilityInput, idempotencyKey?: string): Promise<T> {
     const deadline = new AbortController();
     const timer = setTimeout(() => deadline.abort(), TIMEOUT_MS);
 
     try {
-        return await send<T>(name, input, deadline.signal);
+        return await send<T>(name, input, deadline.signal, idempotencyKey);
     } catch (error) {
         await forget(error);
         throw error;
@@ -195,7 +198,7 @@ async function forget(error: unknown): Promise<void> {
     if (hasStatus(error, SESSION_GONE)) await clearReads().catch(() => undefined);
 }
 
-async function send<T>(name: string, input: CapabilityInput, signal: AbortSignal): Promise<T> {
+async function send<T>(name: string, input: CapabilityInput, signal: AbortSignal, idempotencyKey?: string): Promise<T> {
     let response: Response;
 
     try {
@@ -208,6 +211,7 @@ async function send<T>(name: string, input: CapabilityInput, signal: AbortSignal
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-XSRF-TOKEN': await csrfToken(signal),
                 ...(isWalked() ? { 'X-BB-Now': now().toISOString() } : {}),
+                ...(idempotencyKey === undefined ? {} : { 'Idempotency-Key': idempotencyKey }),
             },
             body: JSON.stringify(input),
             signal,
