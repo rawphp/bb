@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import ReadState from '@/app/ReadState.vue';
 import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
@@ -9,8 +10,10 @@ import BottomSheet from '@/design/BottomSheet.vue';
 
 // The morning after a missed training day (SCH-057): what to do with the session. Ported
 // from rp-clone's TodayMissedDaySheet; Today's read offers the choices and the day each moves to.
-const props = defineProps<{ payload?: TodayShowOutput; date?: string }>();
+const props = defineProps<{ payload?: TodayShowOutput; date?: string; page?: boolean }>();
 const emit = defineEmits<{ close: [] }>();
+// Opened at its own route, not over a screen: closing goes back (architecture.md, Shell slots).
+const router = props.page ? useRouter() : null;
 
 const { data, failure, load } = useRead<TodayShowOutput>('today_show', props.date ? { date: props.date } : {}, 'Today could not be loaded.', props.payload);
 const { send, busy, error } = useWrite(load);
@@ -25,6 +28,7 @@ const open = computed(() => !dismissed.value && (data.value === undefined || mis
 function close(): void {
     dismissed.value = true;
     emit('close');
+    router?.back();
 }
 
 async function choose(session: Missed, choice: Missed['choices'][number]): Promise<void> {

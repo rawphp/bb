@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import ReadState from '@/app/ReadState.vue';
 import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
@@ -18,8 +19,10 @@ import CopyWorkoutBlockView from './CopyWorkoutBlockView.vue';
 // discards. Ported from rp-clone's CopySheet. The server says which days and meals can take
 // the copy; the sheet keeps only what the user has picked. `pending` dims the server's
 // calories and targets while a write waits to sync (OFF-008).
-const props = withDefaults(defineProps<{ payload?: CopyShowOutput; mealId?: string; sourceDate?: string; pending?: boolean }>(), { pending: false });
+const props = withDefaults(defineProps<{ payload?: CopyShowOutput; mealId?: string; sourceDate?: string; pending?: boolean; page?: boolean }>(), { pending: false });
 const emit = defineEmits<{ close: [] }>();
+// Opened at its own route, not over a screen: closing goes back (architecture.md, Shell slots).
+const router = props.page ? useRouter() : null;
 
 // One input for every read; showing another day or week changes its shown_date.
 const input = { meal_id: props.mealId ?? null, source_date: props.sourceDate ?? null, shown_date: null as string | null } satisfies CopyShowInput;
@@ -79,6 +82,7 @@ function pickMeal(meal: Meal): void {
 function close(): void {
     open.value = false;
     emit('close');
+    router?.back();
 }
 
 async function save(): Promise<void> {

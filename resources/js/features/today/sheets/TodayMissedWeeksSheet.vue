@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import ReadState from '@/app/ReadState.vue';
 import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
@@ -11,8 +12,10 @@ import { toneClasses } from '@/design/tones';
 // Back after a week or more without training (SCH-058): restart the week, or end the
 // mesocycle and build a new one. Ported from rp-clone's TodayMissedWeeksSheet; Today's
 // read says whether to ask and words the question.
-const props = defineProps<{ payload?: TodayShowOutput; date?: string }>();
+const props = defineProps<{ payload?: TodayShowOutput; date?: string; page?: boolean }>();
 const emit = defineEmits<{ close: [] }>();
+// Opened at its own route, not over a screen: closing goes back (architecture.md, Shell slots).
+const router = props.page ? useRouter() : null;
 
 const { data, failure, load } = useRead<TodayShowOutput>('today_show', props.date ? { date: props.date } : {}, 'Today could not be loaded.', props.payload);
 const { send, busy, error } = useWrite(load);
@@ -26,6 +29,7 @@ const open = computed(() => !dismissed.value && (data.value === undefined || mis
 function close(): void {
     dismissed.value = true;
     emit('close');
+    router?.back();
 }
 
 async function resolve(choice: MissedWeekResolveInput['choice'], dietBreak?: boolean): Promise<void> {

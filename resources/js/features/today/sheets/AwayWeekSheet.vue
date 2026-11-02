@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import ReadState from '@/app/ReadState.vue';
 import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
@@ -12,8 +13,10 @@ import { toneClasses } from '@/design/tones';
 // Mark plan weeks away (SCH-060, PLAN-025): which weeks, what happens to training and
 // calories, and whether the phase keeps its end date. Ported from rp-clone's AwayWeekSheet.
 // The server words every week and choice; the sheet keeps only what the user has picked.
-const props = defineProps<{ payload?: AwayWeekShowOutput; weekStart?: string }>();
+const props = defineProps<{ payload?: AwayWeekShowOutput; weekStart?: string; page?: boolean }>();
 const emit = defineEmits<{ close: [] }>();
+// Opened at its own route, not over a screen: closing goes back (architecture.md, Shell slots).
+const router = props.page ? useRouter() : null;
 
 const { data, failure, load } = useRead<AwayWeekShowOutput>(
     'away_week_show',
@@ -55,6 +58,7 @@ function toggle(weekStart: string): void {
 function close(): void {
     open.value = false;
     emit('close');
+    router?.back();
 }
 
 async function save(): Promise<void> {

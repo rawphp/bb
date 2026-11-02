@@ -1,7 +1,23 @@
 import type { RouteRecordRaw } from 'vue-router';
 
-// Copy foods and Copy day open over a meal or Today, not on a page of their own, so this
-// route is the dev screen only: /dev/screens/copy_show.
+// Copy foods (MEAL-060) and Copy day (SCH-034). A meal or Today opens the sheet over itself;
+// each also has its own route, where closing it goes back.
+const ULID = '([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26})';
+const DATE = '(\\d{4}-\\d{2}-\\d{2})';
+
 export default [
-    { path: '/dev/copy', name: 'copy-sheet', component: () => import('./CopySheet.vue'), meta: { dev: true, shell: false, screen: 'copy_show' } },
+    {
+        path: `/copy/meal/:mealId${ULID}`,
+        name: 'copy-foods',
+        component: () => import('./CopySheet.vue'),
+        props: (route) => ({ mealId: route.params.mealId, page: true }),
+        meta: { screen: 'copy_show', tab: 'today' },
+    },
+    {
+        path: `/copy/day/:sourceDate${DATE}`,
+        name: 'copy-day',
+        component: () => import('./CopySheet.vue'),
+        props: (route) => ({ sourceDate: route.params.sourceDate, page: true }),
+        meta: { screen: 'copy_show', tab: 'today' },
+    },
 ] satisfies RouteRecordRaw[];
