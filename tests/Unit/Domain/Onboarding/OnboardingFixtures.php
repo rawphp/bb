@@ -8,6 +8,7 @@ use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\PhaseType;
 use App\Domain\Model\Sex;
 use App\Domain\Onboarding\Draft;
+use App\Domain\Onboarding\OnboardingStart;
 use App\Domain\Onboarding\OnboardingTemplate;
 use App\Domain\Onboarding\OnboardingTemplateDay;
 use App\Domain\Onboarding\OnboardingTemplateSlot;
@@ -190,5 +191,39 @@ final class OnboardingFixtures
             self::template(2, 'Full body three'),
             self::template(3, 'Delts three', Split::Specialisation, phaseFit: [PhaseFit::Gain, PhaseFit::Cut, PhaseFit::Maintain]),
         ];
+    }
+
+    /**
+     * The review templates with exercise ids: day d's slots are exercises 100 + d and 200 + d.
+     *
+     * @return list<OnboardingTemplate>
+     */
+    public static function startCatalogue(): array
+    {
+        $template = fn (int $id, string $name, Split $split, array $phaseFit) => new OnboardingTemplate(
+            id: $id, name: $name, split: $split, daysPerWeek: 3, sex: SexFit::Any, phaseFit: $phaseFit,
+            priorities: ['chest' => 'grow', 'sideDelts' => 'emphasize'],
+            days: array_map(fn (int $day) => new OnboardingTemplateDay("Day {$day}", [
+                new OnboardingTemplateSlot("Bench press {$day}", MuscleGroup::Chest, 3, 100 + $day),
+                new OnboardingTemplateSlot("Lateral raise {$day}", MuscleGroup::SideDelts, 2, 200 + $day),
+            ]), [1, 2, 3]),
+        );
+
+        return [
+            $template(2, 'Full body three', Split::FullBody, [PhaseFit::Cut, PhaseFit::Maintain]),
+            $template(3, 'Delts three', Split::Specialisation, [PhaseFit::Gain, PhaseFit::Cut, PhaseFit::Maintain]),
+        ];
+    }
+
+    /** "Start my plan" on the start catalogue, with numbered ids. */
+    public static function start(Draft $draft, ?DateTimeImmutable $today = null): OnboardingStart
+    {
+        $ids = 0;
+
+        return OnboardingStart::from($draft, $today ?? self::today(), self::startCatalogue(), function () use (&$ids) {
+            $ids++;
+
+            return sprintf('00000000-0000-4000-8000-%012d', $ids);
+        });
     }
 }

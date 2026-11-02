@@ -44,7 +44,7 @@ final class OnboardingCompleteCapability implements HostCapability
 
                 return new WriteResult(
                     invalidates: self::keys($user, $start),
-                    toast: 'Your plan starts '.TodayWords::shortDate(TrainSnapshot::day($start->plan['start_date'])),
+                    toast: 'Your plan starts '.TodayWords::shortDate(TrainSnapshot::day($start->inputs->plan->start->format('Y-m-d'))),
                 );
             });
     }
@@ -52,12 +52,12 @@ final class OnboardingCompleteCapability implements HostCapability
     /** @return list<string> */
     private static function keys(User $user, OnboardingStart $start): array
     {
-        $dates = $start->weekDates;
+        $dates = $start->weekDates();
 
         return array_values(array_unique([
             ReadKey::for('onboarding_show'),
-            ...PlanReads::keys($user, $start->phase['id']),
-            ReadKey::for('mesocycle_show', ['mesocycle_id' => $start->mesocycle['id']]),
+            ...PlanReads::keys($user, $start->phase->id),
+            ReadKey::for('mesocycle_show', ['mesocycle_id' => $start->inputs->mesocycle->id]),
             ...TodayReads::keys($dates, ['day_adjust_show', 'day_redistribute_show']),
             ...TodayReads::weekKeys($dates),
             ReadKey::for('progress_show'),

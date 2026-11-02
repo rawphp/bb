@@ -20,9 +20,9 @@ use Illuminate\Support\Str;
 use Rawphp\Capabilities\Support\CapabilityFailure;
 
 /**
- * "Start my plan" (ONB-020): saves what the user's setup answers describe ({@see OnboardingStart}) and deletes the
- * draft, in one transaction. The profile, the plan, its first phase and mesocycle, plan week 0 with its day targets
- * and meals, and the weigh-in schedule are written through their models. A retry under the same Idempotency-Key gets
+ * "Start my plan" (ONB-020): saves what the user's setup answers describe ({@see OnboardingStart}), in the rows
+ * {@see StartRows} lays out, and deletes the draft, in one transaction. The profile, the plan, its first phase and
+ * mesocycle, plan week 0 with its day targets and meals, and the weigh-in schedule are written through their models. A retry under the same Idempotency-Key gets
  * the first answer back (CAP-014); a start after the plan exists is refused.
  */
 final class StartPlan
@@ -43,20 +43,21 @@ final class StartPlan
             }
 
             $draft = ($row ?? OnboardingDraft::for($user))->toDraft();
+            $newId = fn (): string => (string) Str::uuid7();
             $start = OnboardingStart::from(
                 $draft,
                 TrainSnapshot::day(CarbonImmutable::now()),
                 OnboardingDraft::templates($draft),
-                fn (): string => (string) Str::uuid7(),
+                $newId,
             );
 
             $owned = ['user_id' => $user->id];
-            (new Profile)->forceFill([...$start->profile, ...$owned])->save();
-            (new Plan)->forceFill([...$start->plan, ...$owned])->save();
-            (new Phase)->forceFill([...$start->phase, ...$owned])->save();
-            (new Mesocycle)->forceFill([...$start->mesocycle, ...$owned])->save();
-            (new PlanWeek)->forceFill([...$start->planWeek, ...$owned])->save();
-            foreach ($start->dayTargets as $day) {
+            (new Profile)->forceFill([...StartRows::profile($start), ...$owned])->save();
+            (new Plan)->forceFill([...StartRows::plan($start), ...$owned])->save();
+            (new Phase)->forceFill([...StartRows::phase($start), ...$owned])->save();
+            (new Mesocycle)->forceFill([...StartRows::mesocycle($start), ...$owned])->save();
+            (new PlanWeek)->forceFill([...StartRows::planWeek($start, $newId()), ...$owned])->save();
+            foreach (StartRows::dayTargets($start, $newId) as $day) {
                 (new DayTarget)->forceFill([...$day, ...$owned])->save();
             }
             foreach ($start->weighInSchedule as $entry) {
