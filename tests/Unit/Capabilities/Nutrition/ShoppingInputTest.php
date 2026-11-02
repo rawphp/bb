@@ -58,7 +58,7 @@ it('SHOP-005 ticks a food line or a manual line', function (string $key) {
 
 it('SHOP-005 refuses a tick of something that is not a line of the list', function (string $key) {
     expect(shoppingCheck(['key' => $key]))->toHaveKey('key');
-})->with(['chicken', 'food:chicken', 'recipe:01JBX5F0000000000000000002', '']);
+})->with(['chicken', 'food:chicken', 'recipe:01JBX5F0000000000000000002', '', 'food:01JBX5F000000000000000000', 'manual:01JBX5H00000000000000000001']);
 
 it('SHOP-005 refuses a tick in a range that ends before it starts', function () {
     expect(shoppingCheck(['from' => '2026-11-08', 'to' => '2026-11-02']))->toHaveKey('to');

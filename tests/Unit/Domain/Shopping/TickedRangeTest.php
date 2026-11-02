@@ -118,5 +118,7 @@ it('SHOP-005 knows a line key: a food or a manual item, by its id', function (st
     'no prefix' => ['01JBX5H0000000000000000001', false],
     'another prefix' => ['recipe:01JBX5H0000000000000000001', false],
     'not a ULID' => ['food:chicken', false],
+    'one character short' => ['food:01JBX5F000000000000000000', false],
+    'one character long' => ['manual:01JBX5H00000000000000000001', false],
     'empty' => ['', false],
 ]);
