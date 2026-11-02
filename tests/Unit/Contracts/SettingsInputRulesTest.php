@@ -1,5 +1,6 @@
 <?php
 
+use App\Capabilities\Account\Data\AccountDeleteInput;
 use App\Capabilities\Settings\Data\ScheduleDefaultsUpdateInput;
 use App\Capabilities\Tokens\Data\TokenCreateInput;
 use App\Capabilities\Tokens\Data\TokenRevokeInput;
@@ -74,3 +75,28 @@ it('SET-005 takes every Schedule defaults time only as 24-hour HH:mm', function 
         return $d;
     }],
 ]);
+
+it('ACC-005 deletes the account only when the confirmation is the word DELETE, typed', function (string $typed, array $violations) {
+    expect(settingsInputViolations(AccountDeleteInput::class, ['confirmation' => $typed]))->toBe($violations);
+})->with([
+    'DELETE' => ['DELETE', []],
+    'empty' => ['', ['confirmation']],
+    'yes' => ['yes', ['confirmation']],
+    'lower case' => ['delete', ['confirmation']],
+    'padded' => [' DELETE', ['confirmation']],
+]);
+
+it('SET-005 refuses a step range whose max is below its min', function () {
+    $range = fn (int $min, int $max) => ['step_plan' => [['weekday' => 1, 'min' => $min, 'max' => $max]]] + validScheduleDefaults();
+
+    expect(settingsInputViolations(ScheduleDefaultsUpdateInput::class, $range(8000, 10000)))->toBe([])
+        ->and(settingsInputViolations(ScheduleDefaultsUpdateInput::class, $range(9000, 9000)))->toBe([])
+        ->and(settingsInputViolations(ScheduleDefaultsUpdateInput::class, $range(10000, 8000)))->toBe(['step_plan.0.max']);
+});
+
+it('SCH-045 takes an eating window and a busy period that cross midnight', function () {
+    $night = ['eating_window_start' => '20:00', 'eating_window_end' => '04:00'] + validScheduleDefaults();
+    $night['busy_periods'][0] = ['label' => 'Night shift', 'start' => '22:00', 'end' => '06:00', 'weekdays' => [['weekday' => 1]]];
+
+    expect(settingsInputViolations(ScheduleDefaultsUpdateInput::class, $night))->toBe([]);
+});

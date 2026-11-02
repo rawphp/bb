@@ -2,7 +2,7 @@
 
 export interface AccountDeleteInput {
   /**
-   * the word DELETE, typed
+   * the word DELETE, typed; anything else is refused
    */
-  confirmation: string;
+  confirmation: "DELETE";
 }

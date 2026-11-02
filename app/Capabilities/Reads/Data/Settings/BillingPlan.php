@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Reads\Data\Settings;
 
+use App\Capabilities\Support\SettingsValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -9,7 +10,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class BillingPlan extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: ['monthly', 'six_months', 'yearly'])]
+        #[Field(enum: SettingsValues::BILLING_PLANS)]
         public readonly string $plan,
         public readonly string $title,
         #[Field(description: 'for example "$34.99 per month"')]

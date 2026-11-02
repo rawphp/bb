@@ -31,6 +31,10 @@ final class ScheduleDefaultsUpdateInput extends CapabilityData
         public readonly ?int $review_weekday,
     ) {}
 
+    /**
+     * An end time before its start is a window that crosses midnight (SCH-045),
+     * so the times are checked for format only, never for order.
+     */
     public static function rules(): array
     {
         return [
@@ -39,6 +43,7 @@ final class ScheduleDefaultsUpdateInput extends CapabilityData
             'training_days.*.start' => [Rule::date()->format('H:i')],
             'busy_periods.*.start' => [Rule::date()->format('H:i')],
             'busy_periods.*.end' => [Rule::date()->format('H:i')],
+            'step_plan.*.max' => ['gte:step_plan.*.min'],
         ];
     }
 }
