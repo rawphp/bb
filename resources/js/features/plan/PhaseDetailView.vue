@@ -38,9 +38,10 @@ const sheet = ref<Sheet | null>(null);
 const lengthWeeks = ref<number | undefined>(undefined);
 const eventDate = ref('');
 
-// The new phase a goal change makes (CAP-019), kept until the server has answered, so a
-// retry after no answer sends the same id and cannot make a second phase.
-let newPhaseId: string | null = null;
+// The new phase a goal change makes (CAP-019), with the goal it was made for. It is kept
+// until the server has answered, so a retry of the same change after no answer sends the
+// same id and cannot make a second phase; a change to another goal gets its own id.
+let newPhase: { type: PhaseGoalChangeInput['type']; id: string } | null = null;
 
 const rows = computed(() => {
     const phase = data.value;
@@ -74,10 +75,10 @@ function setLength(weeks: PhaseLengthSetInput['weeks'], fix: PhaseLengthSetInput
 }
 
 async function changeGoal(type: PhaseGoalChangeInput['type']): Promise<void> {
-    newPhaseId ??= ulid();
-    const input = { phase_id: data.value!.id, type, new_phase_id: newPhaseId } satisfies PhaseGoalChangeInput;
+    if (newPhase?.type !== type) newPhase = { type, id: ulid() };
+    const input = { phase_id: data.value!.id, type, new_phase_id: newPhase.id } satisfies PhaseGoalChangeInput;
     const outcome = await send('phase_goal_change', input, 'The goal could not be changed.');
-    if (outcome === 'done' || outcome === 'refused') newPhaseId = null;
+    if (outcome === 'done' || outcome === 'refused') newPhase = null;
     if (outcome === 'done') sheet.value = null;
 }
 
