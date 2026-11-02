@@ -276,6 +276,9 @@ describe('SignInView', () => {
     async function signIn(wrapper: VueWrapper): Promise<void> {
         await fill(wrapper, { email: 'sam@example.com', password: 'secret' });
         await wrapper.get('form').trigger('submit');
+        // Reading the outbox is on the device's storage, which answers in its own time.
+        await vi.waitFor(() => expect(postMock).toHaveBeenCalled());
+        await new Promise((resolve) => setTimeout(resolve, 20));
         await flushPromises();
     }
 
@@ -293,11 +296,11 @@ describe('SignInView', () => {
         expect(othersWaiting.value).toBe(2);
 
         await button(wrapper, 'discard-others').trigger('click');
-        await flushPromises();
+        // The delete is on the device's storage, which answers in its own time.
+        await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/'));
 
         expect(othersWaiting.value).toBe(0);
         expect(sync).toHaveBeenCalled();
-        expect(router.currentRoute.value.path).toBe('/');
     });
 
     it('OFF-012 signs out instead and keeps the changes, so their account can sign in and sync them', async () => {
@@ -310,7 +313,7 @@ describe('SignInView', () => {
             document.cookie = 'bb_cache_owner=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
         });
         await button(wrapper, 'sign-out-instead').trigger('click');
-        await flushPromises();
+        await vi.waitFor(() => expect(wrapper.find('input[name="email"]').exists()).toBe(true));
 
         expect(postMock).toHaveBeenLastCalledWith('/sign-out', {});
         expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false);

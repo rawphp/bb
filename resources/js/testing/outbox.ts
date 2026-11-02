@@ -1,4 +1,4 @@
-import { addEntry, entries, loadOutbox, removeEntries, removeOthers, updateEntry, type OutboxEntry } from '@/app/outbox';
+import { addEntry, entries, loadOutbox, removeEntries, removeOthers, syncedAt, updateEntry, type OutboxEntry } from '@/app/outbox';
 
 // Puts entries in the real outbox for a component test, as the signed-in user a1.
 
@@ -7,6 +7,7 @@ export async function resetOutbox(): Promise<void> {
     await loadOutbox();
     await removeOthers();
     await removeEntries(entries.value.map((entry) => entry.seq));
+    syncedAt.value = null;
 }
 
 export async function queue(fields: Partial<OutboxEntry> & { label: string }): Promise<OutboxEntry> {
