@@ -13,7 +13,6 @@ use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Today\TodayReads;
 use App\Domain\Safety\ScreeningItem;
-use App\Models\Phase;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
@@ -48,10 +47,9 @@ final class EligibilityRecheckCapability implements HostCapability
         if ($recheck->phaseIds !== []) {
             // Training only changes today's screen too, and every phase's, which then show no rates or calories (SAFE-003).
             $today = CarbonImmutable::now()->format('Y-m-d');
-            $phaseIds = Phase::query()->where('user_id', $user->id)->pluck('id')->map(fn ($id) => (string) $id)->all();
             $invalidates = array_values(array_unique([
                 ...$invalidates,
-                ...PlanReads::keys($user, ...$phaseIds),
+                ...PlanReads::everyPhaseKeys($user),
                 ...TodayReads::keys([$today, ...$recheck->removedDates]),
                 ...TodayReads::weekKeys($recheck->weekDates),
             ]));
