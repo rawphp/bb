@@ -1,9 +1,14 @@
 <?php
 
+use App\Actions\Notifications\SendDueReminders;
 use App\Billing\PlanPrices;
 use App\Models\AuditOutboxRow;
 use App\Models\AuditRecord;
+use App\Models\SentReminder;
 use App\Models\UndoToken;
+use App\Models\User;
+use App\Notifications\PushNotification;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -37,3 +42,17 @@ Artisan::command('billing:refresh-prices', function (PlanPrices $prices): int {
 })->purpose('Read the price of every plan on sale from Stripe and keep it for the paywall');
 
 Schedule::command('billing:refresh-prices')->everyFifteenMinutes()->when(fn (): bool => (bool) config('billing.enabled'));
+
+// NOTIF-001 to NOTIF-005: the server decides when each reminder is due and sends it. Only users with a subscribed
+// browser have anywhere to send to; without VAPID keys nothing is sent.
+Artisan::command('reminders:send', function (SendDueReminders $send): int {
+    $now = CarbonImmutable::now();
+    User::query()->whereHas('pushSubscriptions')->each(fn (User $user) => $send($user, $now));
+
+    return 0;
+})->purpose('Send each user the reminders that fell due in the last few minutes');
+
+Schedule::command('reminders:send')->everyMinute()->withoutOverlapping(10)->when(fn (): bool => PushNotification::available());
+
+// A reminder is sent within minutes of falling due, so its sent row is only needed for two days.
+Schedule::command('model:prune', ['--model' => [SentReminder::class]])->daily();

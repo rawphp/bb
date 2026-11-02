@@ -1,0 +1,74 @@
+<?php
+
+namespace App\Support\Notifications;
+
+use App\Domain\Notifications\ReminderDay;
+use App\Domain\Notifications\ReminderMeal;
+use App\Domain\Notifications\ReminderWeighIn;
+use App\Domain\Notifications\ReminderWorkout;
+use App\Domain\Placement\ClockTime;
+use App\Models\User;
+use App\Models\WeighInScheduleEntry;
+use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\Today\TodayMealItem;
+use App\Support\Today\TodaySnapshot;
+use App\Support\Today\TodayWorkoutItem;
+use DateTimeImmutable;
+
+/**
+ * A stored day as the reminder planner reads it (NOTIF-001 to NOTIF-005), from the same snapshot Today shows, so a
+ * reminder names what the Today screen has. Ported from rp-clone's TodayModel+Reminders.
+ */
+final class ReminderDays
+{
+    /**
+     * The days from `$first` to `$last`, both whole days; a day before the plan, past its last target, or before
+     * the profile exists has nothing to remind about and is left out.
+     *
+     * @return list<ReminderDay>
+     */
+    public static function between(User $user, DateTimeImmutable $first, DateTimeImmutable $last): array
+    {
+        $days = [];
+        for ($day = TrainSnapshot::day($first); $day <= TrainSnapshot::day($last); $day = $day->modify('+1 day')) {
+            $found = self::on($user, $day);
+            if ($found !== null) {
+                $days[] = $found;
+            }
+        }
+
+        return $days;
+    }
+
+    private static function on(User $user, DateTimeImmutable $day): ?ReminderDay
+    {
+        $snapshot = TodaySnapshot::load($user, $day->format('Y-m-d'));
+        $start = $snapshot->planStart();
+        // Today shows a day outside the plan at its nearest edge (SCH-023); that is another day.
+        if ($snapshot->date != $day || $start === null || $snapshot->isBeforePlan($day) || $snapshot->train->profile === null) {
+            return null;
+        }
+        $weekday = (int) $day->format('N');
+        $workout = $snapshot->workout($day);
+
+        return new ReminderDay(
+            date: $day,
+            weighIn: self::weighIn($snapshot, $weekday),
+            meals: array_map(fn (TodayMealItem $meal) => new ReminderMeal($meal->id, $meal->name, $meal->time, $meal->isChecked()), $snapshot->meals($day)),
+            workout: $workout === null ? null : new ReminderWorkout($workout->session->name, $workout->time, $workout->state !== TodayWorkoutItem::PLANNED),
+            // NOTIF-004: a review day, but not before one full plan week has passed since the plan start.
+            hasWeeklyReview: $weekday === (int) $snapshot->train->plan?->review_weekday && $start->diff($day)->days >= 7,
+            // NOTIF-005: MESO-060 prompts from the first day of the deload week.
+            startsDeloadWeek: $snapshot->isDeload($day) && ! $snapshot->isDeload($day->modify('-1 day')),
+        );
+    }
+
+    /** WT-001, SCH-004: the day's scheduled weigh-in, and whether one is already logged that day. */
+    private static function weighIn(TodaySnapshot $snapshot, int $weekday): ?ReminderWeighIn
+    {
+        $entry = $snapshot->weighInSchedule->first(fn (WeighInScheduleEntry $e) => in_array($weekday, array_map('intval', $e->weekdays ?? []), true));
+        $time = $entry === null ? null : ClockTime::fromHhmm((string) $entry->time);
+
+        return $time === null ? null : new ReminderWeighIn($time, $snapshot->weighIns->isNotEmpty());
+    }
+}

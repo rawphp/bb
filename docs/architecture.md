@@ -71,8 +71,9 @@ Parallel issues rely on these names.
 - Laravel 13, PHP 8.4 (raise to 8.5 once the gate host has it), MySQL 8, Redis (cache, queues, the AI progress store).
 - Auth: Sanctum. The PWA uses SPA cookie auth on the same domain. Tokens (CAP-021) are Sanctum personal access tokens whose abilities are capability names.
 - Queues: `default` and `agent` (AGT setup defaults), each with its own worker.
-- Scheduler: the package's stale-turn reaper, pruning of `audit_records` and the old audit outbox rows (daily) and of expired undo tokens (hourly, CAP-013). The Web Push sender (NOTIF) and pruning of the idempotency table are planned but not scheduled yet.
+- Scheduler: the package's stale-turn reaper, pruning of `audit_records` and the old audit outbox rows (daily) and of expired undo tokens (hourly, CAP-013). Every minute, `reminders:send` sends the reminders that fell due (NOTIF, below), and daily the sent-reminder log is pruned to two days. Pruning of the idempotency table is planned but not scheduled yet.
 - Web Push: VAPID keys in env, sent with `laravel-notification-channels/webpush`. The server decides when each notification is due.
+- Reminders (NOTIF-001 to NOTIF-007): `ReminderPlanner` (`app/Domain/Notifications`) turns a user's days, read through `TodaySnapshot` so they match the Today screen, into reminders with a due time. `SendDueReminders` sends those due in the last 10 minutes, each once: a row in `sent_reminders` claims it by its unique key. One more than 10 minutes late is dropped, not sent. Times are wall-clock times in the app's time zone, like every day the app reads; there is no per-user time zone yet. The switches are rows in `notification_prefs`; a type with no row keeps its default (meals off). Every re-target saves through `RetargetDays::save`, which sends NOTIF-006's notice after the write commits.
 - Mail: one-time sign-in codes, password reset.
 - Every table holding user data has `user_id` as `foreignId()->constrained()->cascadeOnDelete()`, so `account_delete` removes everything (ACC-005), as in rp-clone.
 
