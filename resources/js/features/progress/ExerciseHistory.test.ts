@@ -10,7 +10,7 @@ import progressEmpty from '../../../../tests/fixtures/screens/progress_show.empt
 import ExerciseHistoryContent from './ExerciseHistoryContent.vue';
 import ExerciseHistoryView from './ExerciseHistoryView.vue';
 import ExerciseListView from './ExerciseListView.vue';
-import { expectMatchesInputSchema } from './inputSchema.testing';
+import { expectMatchesInputSchema } from '@/testing/inputSchema';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn() }));
 

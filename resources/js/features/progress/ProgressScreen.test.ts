@@ -199,13 +199,38 @@ describe('ProgressScreen', () => {
         expect(wrapper.get('[data-mesocycle-history] dd').classes()).toContain('text-tone-info');
     });
 
-    it('PWA-034 shares the progress card as an image', async () => {
+    it('PWA-034 shares the picture straight from the tap, drawn before it, so the browser still sees a user gesture', async () => {
         const png = new Blob(['png'], { type: 'image/png' });
         vi.mocked(toPng).mockResolvedValue(png);
         vi.mocked(sharePng).mockResolvedValue('shared');
         const wrapper = render();
+        await flushPromises();
+        expect(toPng).toHaveBeenCalledOnce();
+
+        // No await between the tap and the share call.
+        (wrapper.get('[data-share]').element as HTMLButtonElement).click();
+        expect(sharePng).toHaveBeenCalledWith(png, full.share);
+        expect(toPng).toHaveBeenCalledOnce();
+    });
+
+    it('PWA-034 draws the picture on the tap when it was not ready yet', async () => {
+        const png = new Blob(['png'], { type: 'image/png' });
+        vi.mocked(toPng).mockRejectedValueOnce(new Error('not yet')).mockResolvedValue(png);
+        vi.mocked(sharePng).mockResolvedValue('shared');
+        const wrapper = render();
+        await flushPromises();
 
         await wrapper.get('[data-share]').trigger('click');
+        await flushPromises();
+
+        expect(sharePng).toHaveBeenCalledWith(png, full.share);
+    });
+
+    it('PWA-034 draws the progress card as the shared picture', async () => {
+        const png = new Blob(['png'], { type: 'image/png' });
+        vi.mocked(toPng).mockResolvedValue(png);
+        vi.mocked(sharePng).mockResolvedValue('shared');
+        const wrapper = render();
         await flushPromises();
 
         const card = vi.mocked(toPng).mock.calls[0]![0];
@@ -213,7 +238,6 @@ describe('ProgressScreen', () => {
         const lines = [...card.querySelectorAll('text')].map((t) => t.textContent);
         expect(lines.join(' ')).toContain('Muscle gain: 83.2 kg to 84.3 kg (+1.1 kg) over 5 weeks');
         expect(card.querySelector('svg[role="img"]')).not.toBeNull();
-        expect(sharePng).toHaveBeenCalledWith(png, full.share);
         expect(wrapper.find('[data-share-card]').exists()).toBe(false);
     });
 
@@ -222,6 +246,13 @@ describe('ProgressScreen', () => {
 
         expect(wrapper.find('svg[role="img"]').exists()).toBe(true);
         expect(wrapper.find('[data-share]').exists()).toBe(false);
+    });
+
+    it('PWA-034 offers Share only with a chart to draw', () => {
+        const wrapper = render({ payload: { ...full, chart: null, scope_message: 'No weigh-ins in this phase yet' } });
+
+        expect(wrapper.find('[data-share]').exists()).toBe(false);
+        expect(toPng).not.toHaveBeenCalled();
     });
 
     it('PWA-034 draws the shared card in the light palette', async () => {

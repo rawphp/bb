@@ -10,10 +10,10 @@ type Fail = (error: CapabilityError) => void;
 
 describe('readFailure', () => {
     it.each([
-        [new CapabilityError('x', 0, null), { offline: true, error: null }],
-        [new CapabilityError('x', 401, null), { offline: false, error: 'You are signed out.' }],
-        [new CapabilityError('x', 500, null), { offline: false, error: 'Nope.' }],
-        [new Error('boom'), { offline: false, error: 'Nope.' }],
+        [new CapabilityError('x', 0, null), { offline: true, error: null, signedOut: false }],
+        [new CapabilityError('x', 401, null), { offline: false, error: 'You are signed out.', signedOut: true }],
+        [new CapabilityError('x', 500, null), { offline: false, error: 'Nope.', signedOut: false }],
+        [new Error('boom'), { offline: false, error: 'Nope.', signedOut: false }],
     ])('CAP-012 OFF-003 words a failed read for the screen', (error, failure) => {
         expect(readFailure(error, 'Nope.')).toEqual(failure);
     });
@@ -22,7 +22,7 @@ describe('readFailure', () => {
 describe('screenRead', () => {
     const shown: string[] = [];
     const failures: unknown[] = [];
-    const load = () => screenRead<string>('x_show', 'Nope.', (data) => shown.push(data), (failure) => failures.push(failure));
+    const load = () => screenRead<string>('x_show', 'Nope.', (data) => shown.push(data), (failure, hadData) => failures.push({ ...failure, hadData }));
 
     beforeEach(() => {
         readMock.mockReset();
@@ -58,14 +58,15 @@ describe('screenRead', () => {
         failRefresh(new CapabilityError('x_show', 404, null));
 
         expect(shown).toEqual(['cached']);
-        expect(failures).toEqual([{ offline: false, error: 'Nope.' }]);
+        // This load showed a copy, so the screen must take it away (OFF-003).
+        expect(failures).toEqual([{ offline: false, error: 'Nope.', signedOut: false, hadData: true }]);
     });
 
     it('OFF-003 a read that fails with no cached copy says why', async () => {
         readMock.mockRejectedValueOnce(new CapabilityError('x_show', 0, null));
         await load()({});
 
-        expect(failures).toEqual([{ offline: true, error: null }]);
+        expect(failures).toEqual([{ offline: true, error: null, signedOut: false, hadData: false }]);
     });
 
     it('ANA-001 an answer to an older load never replaces a newer one', async () => {

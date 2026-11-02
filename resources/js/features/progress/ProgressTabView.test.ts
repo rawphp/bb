@@ -5,7 +5,7 @@ import type { ProgressShowOutput } from '@/contracts/progress_show';
 import schema from '../../../../tests/fixtures/schemas/progress_show.input.json';
 import content from '../../../../tests/fixtures/screens/progress_show.json';
 import scopeEmpty from '../../../../tests/fixtures/screens/progress_show.scope_empty.json';
-import { expectMatchesInputSchema } from './inputSchema.testing';
+import { expectMatchesInputSchema } from '@/testing/inputSchema';
 import ProgressTabView from './ProgressTabView.vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn() }));
@@ -81,6 +81,59 @@ describe('ProgressTabView', () => {
         await flushPromises();
 
         expect(wrapper.text()).toContain('No weigh-ins in this phase yet');
+    });
+
+    it.each([
+        [new CapabilityError('progress_show', 0, null), 'Progress needs a connection.'],
+        [new CapabilityError('progress_show', 500, null), 'Progress could not be loaded.'],
+    ])('ANA-001 a scope that fails to load keeps the progress shown and says why', async (error, message) => {
+        readMock.mockResolvedValueOnce(full).mockRejectedValueOnce(error).mockResolvedValueOnce(scopeEmpty);
+        const wrapper = render();
+        await flushPromises();
+
+        await wrapper.findAll('[data-scope]')[1]!.trigger('click');
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('+1.1 kg');
+        expect(wrapper.get('[data-chart-card] [role="alert"]').text()).toBe(message);
+        expect(wrapper.findAll('[data-scope]')[0]!.attributes('aria-pressed')).toBe('true');
+
+        // The picker still works, so the user can try again.
+        await wrapper.findAll('[data-scope]')[1]!.trigger('click');
+        await flushPromises();
+        expect(readMock).toHaveBeenLastCalledWith('progress_show', { scope: 'plan' }, expect.any(Function), expect.any(Function));
+        expect(wrapper.text()).toContain('No weigh-ins in this phase yet');
+        expect(wrapper.find('[data-chart-card] [role="alert"]').exists()).toBe(false);
+    });
+
+    it('CAP-012 a scope read that finds the user signed out stops showing their progress', async () => {
+        readMock.mockResolvedValueOnce(full).mockRejectedValueOnce(new CapabilityError('progress_show', 401, null));
+        const wrapper = render();
+        await flushPromises();
+
+        await wrapper.findAll('[data-scope]')[1]!.trigger('click');
+        await flushPromises();
+
+        expect(wrapper.text()).not.toContain('+1.1 kg');
+        expect(wrapper.text()).toContain('You are signed out.');
+    });
+
+    it('OFF-003 a cached scope whose refresh is refused is taken away', async () => {
+        let failRefresh: (error: CapabilityError) => void = () => {};
+        readMock.mockResolvedValueOnce(full).mockImplementationOnce(async (_n, _i, _u, onError) => {
+            failRefresh = onError as typeof failRefresh;
+            return scopeEmpty;
+        });
+        const wrapper = render();
+        await flushPromises();
+        await wrapper.findAll('[data-scope]')[1]!.trigger('click');
+        await flushPromises();
+
+        failRefresh(new CapabilityError('progress_show', 404, null));
+        await flushPromises();
+
+        expect(wrapper.text()).not.toContain('No weigh-ins in this phase yet');
+        expect(wrapper.text()).toContain('Progress could not be loaded.');
     });
 
     it.each([
