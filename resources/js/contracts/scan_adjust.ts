@@ -11,6 +11,10 @@ export interface ScanAdjustInput {
    */
   from_portion: number;
   portion: number;
+  /**
+   * The saved_meal_name the draft came with, sent back unchanged (FOOD-046)
+   */
+  saved_meal_name?: string | null;
 }
 
 export interface ScanAdjustOutput {

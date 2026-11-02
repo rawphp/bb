@@ -39,6 +39,14 @@
             "type": "number",
             "minimum": 0.25,
             "maximum": 4
+        },
+        "saved_meal_name": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The saved_meal_name the draft came with, sent back unchanged (FOOD-046)",
+            "maxLength": 255
         }
     },
     "required": [
