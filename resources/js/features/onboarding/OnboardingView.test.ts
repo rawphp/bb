@@ -372,7 +372,7 @@ describe('OnboardingView', () => {
             expect(sent()).toEqual([{ answers: { birth_date: '1991-05-01' }, move: 'stay' }]);
         });
 
-        it('ONB-004 saves whole feet with the saved inches beside them, and inches with the saved feet', async () => {
+        it('ONB-004 saves whole feet, and each half with the other as its field shows it', async () => {
             const feetInches = { ...aboutYou, about_you: review.about_you };
             readMock.mockResolvedValue(feetInches);
             wrapper = view(feetInches);
@@ -386,7 +386,7 @@ describe('OnboardingView', () => {
 
             expect(sent().map((input) => input.answers)).toEqual([
                 { height: { unit: 'feetInches', feet: 6, inches: 7 } },
-                { height: { unit: 'feetInches', feet: 5, inches: 1.5 } },
+                { height: { unit: 'feetInches', feet: 6, inches: 1.5 } },
             ]);
         });
 

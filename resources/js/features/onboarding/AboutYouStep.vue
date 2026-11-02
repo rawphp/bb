@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue';
 import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
 import type { Answers } from './choices';
 import NumberField from './parts/NumberField.vue';
@@ -16,9 +17,19 @@ const props = defineProps<{ about: AboutYou }>();
 
 const emit = defineEmits<{ answer: [answers: Answers] }>();
 
-function typedName(event: Event): void {
-    const name = (event.target as HTMLInputElement).value;
-    if (name !== props.about.name) emit('answer', { name });
+// The name as the field shows it. A re-read replaces it only while nobody is typing, as
+// NumberField does, so a save landing mid-word does not wipe the word.
+const name = ref(props.about.name);
+const typingName = ref(false);
+watch(
+    () => props.about.name,
+    (saved) => {
+        if (!typingName.value) name.value = saved;
+    },
+);
+
+function typedName(): void {
+    if (name.value !== props.about.name) emit('answer', { name: name.value });
 }
 
 function pickedBirthDate(event: Event): void {
@@ -31,13 +42,31 @@ function typedCm(cm: number | null): void {
     if (cm !== null) emit('answer', { height: { unit: 'cm', cm } });
 }
 
+// Feet and inches as their fields show them. A height saves both halves, and the save of
+// the first may still be out when the second is left, so the other half comes from its
+// field, not from the last read. Each follows the server when the server's value changes.
+const feet = ref(props.about.height.feet ?? null);
+const inches = ref(props.about.height.inches ?? null);
+watch(
+    () => props.about.height.feet,
+    (saved) => (feet.value = saved ?? null),
+);
+watch(
+    () => props.about.height.inches,
+    (saved) => (inches.value = saved ?? null),
+);
+
 // Whole feet, as rp-clone's field takes them; inches keep their decimals.
-function typedFeet(feet: number | null): void {
-    if (feet !== null) emit('answer', { height: { unit: 'feetInches', feet: Math.trunc(feet), inches: props.about.height.inches ?? null } });
+function typedFeet(typed: number | null): void {
+    if (typed === null) return;
+    feet.value = Math.trunc(typed);
+    emit('answer', { height: { unit: 'feetInches', feet: feet.value, inches: inches.value } });
 }
 
-function typedInches(inches: number | null): void {
-    if (inches !== null) emit('answer', { height: { unit: 'feetInches', feet: props.about.height.feet ?? null, inches } });
+function typedInches(typed: number | null): void {
+    if (typed === null) return;
+    inches.value = typed;
+    emit('answer', { height: { unit: 'feetInches', feet: feet.value, inches: inches.value } });
 }
 
 function typedWeight(value: number | null): void {
@@ -52,13 +81,15 @@ const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3
         <label class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold text-primary-text">Name</span>
             <input
-                :value="about.name"
+                v-model="name"
                 type="text"
                 maxlength="100"
                 autocomplete="given-name"
                 autocapitalize="words"
                 placeholder="Name"
                 class="min-h-tap rounded-xl bg-background px-3.5 text-primary-text outline-none placeholder:text-secondary-text/60"
+                @focus="typingName = true"
+                @blur="typingName = false"
                 @change="typedName"
             />
         </label>
