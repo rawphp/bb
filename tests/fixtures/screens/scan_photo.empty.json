@@ -1,0 +1,17 @@
+{
+    "rows": [],
+    "portion": 1,
+    "portion_text": "1×",
+    "portion_down": 0.75,
+    "portion_up": 1.25,
+    "totals": {
+        "kcal": "0 kcal",
+        "protein": "P 0",
+        "fat": "F 0",
+        "carbs": "C 0"
+    },
+    "unmatched_note": null,
+    "matched": [],
+    "saved_meal_name": "Scanned meal",
+    "empty_text": "No foods found. Try another photo or describe the meal."
+}
