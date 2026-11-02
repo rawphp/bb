@@ -23,3 +23,13 @@ it('CAP-019 rebuilds a token table that Sanctum\'s shipped migration made, so a 
         $this->warpRecycleDatabase();
     }
 });
+
+it('CAP-019 stops the token table rebuild, either way, while the table holds a token', function () {
+    $migration = require database_path('migrations/2026_11_02_200000_rebuild_personal_access_tokens_table.php');
+    $token = PersonalAccessToken::factory()->for(User::factory(), 'tokenable')->create();
+
+    expect(fn () => $migration->up())->toThrow(RuntimeException::class, 'holds tokens')
+        ->and(fn () => $migration->down())->toThrow(RuntimeException::class, 'holds tokens')
+        ->and(PersonalAccessToken::query()->whereKey($token->id)->exists())->toBeTrue()
+        ->and(Schema::hasColumn('personal_access_tokens', 'scope'))->toBeTrue();
+});

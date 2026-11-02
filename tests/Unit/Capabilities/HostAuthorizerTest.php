@@ -1,5 +1,6 @@
 <?php
 
+use App\Agent\Exclusions;
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\Support\AgentPolicy;
 use App\Capabilities\Support\BillingGate;
@@ -126,12 +127,15 @@ it('CAP-023 allows a token only the capabilities in its abilities', function (ar
     'not named' => [['today_show'], false],
 ]);
 
-it('CAP-023 never lets a token create or revoke tokens, even with Everything', function (string $capability) {
-    app(CapabilityRegistry::class)->get($capability);
-
+it('CAP-031 never lets a token call an exclusion, even with Everything or by name', function (string $capability) {
     expect(authorizeAs($capability, authorizerUser(['*'])))->toBeFalse()
-        ->and(authorizeAs($capability, authorizerUser()))->toBeTrue();
-})->with(HostAuthorizer::SESSION_ONLY);
+        ->and(authorizeAs($capability, authorizerUser([$capability])))->toBeFalse()
+        ->and(HostAuthorizer::tokenMayCall($capability))->toBeFalse();
+})->with([...array_keys(Exclusions::NAMES), 'billing_checkout_start', 'billing_portal_open']);
+
+it('CAP-031 still lets a session call a registered exclusion', function (string $capability) {
+    expect(authorizeAs($capability, authorizerUser()))->toBeTrue();
+})->with(['token_create', 'token_revoke']);
 
 it('CAP-023 does not limit a session, whose token is transient', function () {
     $user = authorizerUser()->withAccessToken(new TransientToken);

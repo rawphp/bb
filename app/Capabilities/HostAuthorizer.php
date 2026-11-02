@@ -17,7 +17,8 @@ use Rawphp\Capabilities\Support\CapabilityContext;
  *  1. a signed-in actor exists, and the agent is not calling a CAP-031 exclusion
  *     (even if a call reaches the bus without the tool catalog);
  *  2. every row ID in the input belongs to the actor ({@see Ownership});
- *  3. a personal access token's scope allows the capability (CAP-023);
+ *  3. a personal access token's scope allows the capability (CAP-023), and it
+ *     is not a CAP-031 exclusion;
  *  4. billing ({@see BillingGate});
  *  5. the agent policy ({@see AgentPolicy}).
  *
@@ -26,9 +27,6 @@ use Rawphp\Capabilities\Support\CapabilityContext;
  */
 final class HostAuthorizer implements Authorizer
 {
-    /** No token may call these: a token must not mint or revoke credentials (CAP-031). */
-    public const SESSION_ONLY = ['token_create', 'token_revoke'];
-
     public function __construct(
         private readonly CapabilityRegistry $registry,
         private readonly Ownership $ownership,
@@ -52,7 +50,17 @@ final class HostAuthorizer implements Authorizer
             && $this->agent->allows($this->registry->get($capability), $input, $context);
     }
 
-    /** A session, the in-app agent and jobs carry no token, so only a token is limited. */
+    /**
+     * A session, the in-app agent and jobs carry no token, so only a token is limited.
+     * No token may call a CAP-031 exclusion, whatever its scope: the reasons that keep
+     * them from the agent (a person deletes the account, pays, and holds the
+     * credentials) keep them from whatever holds a token too, MCP clients included.
+     */
+    public static function tokenMayCall(string $capability): bool
+    {
+        return Exclusions::reason($capability) === null;
+    }
+
     private static function scopeAllows(string $capability, User $user): bool
     {
         $token = $user->currentAccessToken();
@@ -60,6 +68,6 @@ final class HostAuthorizer implements Authorizer
             return true;
         }
 
-        return ! in_array($capability, self::SESSION_ONLY, true) && $token->can($capability);
+        return self::tokenMayCall($capability) && $token->can($capability);
     }
 }

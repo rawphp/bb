@@ -6,7 +6,7 @@ use App\Capabilities\HostAuthorizer;
 use Rawphp\Capabilities\Registry\CapabilityDefinition;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 
-/** The capabilities a token can be scoped to: every one on the http surface but token_create and token_revoke. */
+/** The capabilities a token can be scoped to: every one on the http surface but the CAP-031 exclusions. */
 final class TokenCatalog
 {
     public function __construct(private readonly CapabilityRegistry $registry) {}
@@ -17,7 +17,7 @@ final class TokenCatalog
         $definitions = array_filter(
             $this->registry->all(),
             fn (CapabilityDefinition $definition): bool => in_array('http', $definition->surfaces, true)
-                && ! in_array($definition->name, HostAuthorizer::SESSION_ONLY, true),
+                && HostAuthorizer::tokenMayCall($definition->name),
         );
         ksort($definitions);
 

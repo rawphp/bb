@@ -1,5 +1,10 @@
 <?php
 
+use App\Agent\Exclusions;
+use App\Capabilities\Support\HostDefinition;
+use App\Capabilities\Support\Ownership;
+use App\Capabilities\Support\WriteResult;
+use App\Capabilities\Tokens\TokenCatalog;
 use App\Domain\Tokens\TokenScope;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
@@ -11,6 +16,7 @@ use Rawphp\Capabilities\Adapters\Mcp\McpCredential;
 use Rawphp\Capabilities\Adapters\Mcp\McpToolAdapter;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\CapabilitiesAi\Models\Turn;
+use Tests\Support\Fixtures\Rail\TallyInput;
 
 const TOKEN_ID = '01JBX8Z6Q7M0V2K3N4P5R6S7T8';
 
@@ -254,4 +260,65 @@ it('CAP-023 holds a token to its scope on the MCP surface', function () {
         ->and($mcp('account_show')->errorCode())->toBe('forbidden')
         ->and($mcp('token_create', ['id' => (string) Str::ulid(), 'name' => 'Minted', 'expires_in_days' => 30, 'scope' => 'everything', 'capabilities' => []])->errorCode())->toBe('forbidden')
         ->and(PersonalAccessToken::query()->count())->toBe(1);
+});
+
+it('CAP-031 refuses an Everything token every exclusion, and never offers one for a custom scope', function () {
+    $secret = createToken(User::factory()->create(), 'everything');
+
+    withToken($secret)->postJson('/capabilities/account_delete', ['confirmation' => 'DELETE'], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertStatus(app(CapabilityRegistry::class)->has('account_delete') ? 403 : 404);
+
+    $offered = app(TokenCatalog::class)->names();
+    foreach (app(CapabilityRegistry::class)->all() as $name => $definition) {
+        expect(in_array($name, $offered, true))->toBe(Exclusions::reason($name) === null && in_array('http', $definition->surfaces, true), $name);
+    }
+});
+
+it('INT-001 names, for a Health bridge token, the two writes the weigh-in contracts define', function () {
+    $registry = app(CapabilityRegistry::class);
+
+    foreach (TokenScope::HEALTH_BRIDGE as $name) {
+        expect(base_path("tests/fixtures/schemas/{$name}.input.json"))->toBeFile();
+        if ($registry->has($name)) {
+            expect(app(TokenCatalog::class)->names())->toContain($name)
+                ->and($registry->get($name)->readOnly)->toBeFalse();
+        }
+    }
+});
+
+it('INT-001 lets a Health bridge token post a weigh-in and steps, and nothing else', function () {
+    $registry = app(CapabilityRegistry::class);
+    // Until the weigh-in issue registers them, a stand-in under each name proves the scope.
+    foreach (TokenScope::HEALTH_BRIDGE as $name) {
+        if (! $registry->has($name)) {
+            HostDefinition::write($name, affects: ['account_show'])
+                ->input(TallyInput::class)
+                ->run(fn (): WriteResult => new WriteResult(invalidates: []))
+                ->register($registry);
+        }
+    }
+    $secret = createToken(User::factory()->create(), 'health_bridge');
+
+    foreach (TokenScope::HEALTH_BRIDGE as $name) {
+        $status = withToken($secret)->postJson("/capabilities/{$name}", ['amount' => 1], ['Idempotency-Key' => (string) Str::ulid()])->status();
+        expect($status)->not->toBeIn([401, 403], $name);
+    }
+    withToken($secret)->postJson('/capabilities/account_show')->assertForbidden();
+    withToken($secret)->postJson('/capabilities/token_list')->assertForbidden();
+});
+
+it('CAP-020 makes every capability that takes an existing row\'s ID check its owner', function () {
+    // A create takes a new row's client-made ULID (CAP-019) and checks its owner itself.
+    $creates = ['token_create' => ['id']];
+    $declared = (fn (): array => $this->capabilities)->call(app(Ownership::class));
+
+    foreach (app(CapabilityRegistry::class)->all() as $name => $definition) {
+        $fields = array_values(array_filter(
+            array_keys($definition->inputSchema()['properties'] ?? []),
+            fn (string $field): bool => $field === 'id' || str_ends_with($field, '_id') || str_ends_with($field, '_ids'),
+        ));
+        $owned = isset($declared[$name]) ? array_keys($declared[$name]->owned(new User)) : [];
+
+        expect(array_values(array_diff($fields, $owned, $creates[$name] ?? [])))->toBe([], "{$name} takes a row ID it does not declare in OwnsInput");
+    }
 });

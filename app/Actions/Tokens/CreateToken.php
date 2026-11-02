@@ -7,6 +7,7 @@ use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Rawphp\Capabilities\Support\CapabilityFailure;
 
 /** Makes a personal access token under the client's ULID (CAP-019, CAP-021). */
@@ -28,14 +29,7 @@ final class CreateToken
         array $reads,
         array $allowed,
     ): array {
-        $existing = PersonalAccessToken::query()->find($id);
-        if ($existing !== null) {
-            if ((string) $existing->tokenable_id !== (string) $user->getKey()) {
-                throw (new ModelNotFoundException)->setModel(PersonalAccessToken::class, [$id]);
-            }
-
-            throw CapabilityFailure::conflict('This token already exists.');
-        }
+        $this->refuseTaken($user, $id);
 
         $secret = $user->generateTokenString();
 
@@ -47,8 +41,34 @@ final class CreateToken
             'scope' => $scope,
             'expires_at' => CarbonImmutable::now()->addDays($expiresInDays),
         ]);
-        $token->tokenable()->associate($user)->save();
+        try {
+            $token->tokenable()->associate($user)->save();
+        } catch (UniqueConstraintViolationException $e) {
+            // Another request took this ULID (or, by chance, this hash) since the check above.
+            $this->refuseTaken($user, $id);
+
+            throw $e;
+        }
 
         return [$token, $id.'|'.$secret];
+    }
+
+    /**
+     * A ULID the user already has is a conflict; one another user has is not found (CAP-019).
+     *
+     * @throws ModelNotFoundException<PersonalAccessToken>
+     */
+    private function refuseTaken(User $user, string $id): void
+    {
+        $existing = PersonalAccessToken::query()->find($id);
+        if ($existing === null) {
+            return;
+        }
+
+        if ((string) $existing->tokenable_id !== (string) $user->getKey()) {
+            throw (new ModelNotFoundException)->setModel(PersonalAccessToken::class, [$id]);
+        }
+
+        throw CapabilityFailure::conflict('This token already exists.');
     }
 }
