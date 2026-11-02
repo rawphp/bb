@@ -1,14 +1,14 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import type { PlanShowOutput } from '@/contracts/plan_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import PlanView from './PlanView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const plan = screenFixture<PlanShowOutput>('plan_show');
 const empty = screenFixture<PlanShowOutput>('plan_show.empty');
 const warning = screenFixture<PlanShowOutput>('plan_show.warning');

@@ -1,6 +1,6 @@
 import { flushPromises, mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import type { PhaseShowOutput } from '@/contracts/phase_show';
 import type { PlanShowOutput } from '@/contracts/plan_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
@@ -8,12 +8,12 @@ import CurrentPhaseView from './CurrentPhaseView.vue';
 import ProgressBar from '@/design/ProgressBar.vue';
 import PhaseDetailView from './PhaseDetailView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 const push = vi.fn();
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ push }) }));
 
 const readMock = vi.mocked(read);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const phase = screenFixture<PhaseShowOutput>('phase_show');
 const future = screenFixture<PhaseShowOutput>('phase_show.empty');
 const warning = screenFixture<PhaseShowOutput>('phase_show.warning');
