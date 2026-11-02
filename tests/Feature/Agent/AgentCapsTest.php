@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Middleware\AgentGate;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Rawphp\CapabilitiesAi\Contracts\ConversationStore;
 use Rawphp\CapabilitiesAi\Contracts\TurnClaim;
@@ -99,6 +101,26 @@ it('AGT-005 under a token cap takes one Coach message at a time, so a month ends
     app(TurnClaim::class)->claim($turn->ulid, 'test-worker');
     app(TurnClaim::class)->complete($turn->ulid, []);
     $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'And another thing'])->assertCreated();
+});
+
+it('AGT-005 checks and stores a Coach message under one lock per user, so parallel posts cannot all pass', function () {
+    config(['agent.tokens_per_month' => 1_000_000]);
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    // Another request of this user is between the checks and the store.
+    $held = Cache::lock(AgentGate::LOCK.$user->id, 30);
+    $held->get();
+
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])
+        ->assertStatus(429)
+        ->assertJsonPath('error.message', 'The Coach is still answering your last message.');
+    $this->actingAs($other)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
+    expect(Turn::query()->count())->toBe(1);
+
+    $held->release();
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
+    // The gate let its own lock go: the next request can take it.
+    expect(Cache::lock(AgentGate::LOCK.$user->id, 30)->get())->toBeTrue();
 });
 
 it('AGT-005 without a token cap takes a message while another turn runs', function () {
