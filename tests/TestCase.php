@@ -42,8 +42,9 @@ abstract class TestCase extends BaseTestCase
         if ($connection instanceof Connection) {
             // Reconnect it on its own: through the manager, a reconnect disconnects the live
             // connection the test's transaction is open on.
-            $connection->setReconnector(function (Connection $stale) use ($app): void {
-                $fresh = $app->make('db.factory')->make($app['config']['database.connections.'.$stale->getName()], $stale->getName());
+            // The current app, not this one: the connection outlives the test that set this.
+            $connection->setReconnector(function (Connection $stale): void {
+                $fresh = app('db.factory')->make(config('database.connections.'.$stale->getName()), $stale->getName());
                 $stale->setPdo($fresh->getRawPdo())->setReadPdo($fresh->getRawReadPdo());
             });
             $connection->reconnectIfMissingConnection();
