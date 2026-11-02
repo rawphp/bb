@@ -75,7 +75,8 @@ final class DayBalance
     /**
      * DAY-020: changes the carbs of a day's meals by `$by` grams in all, spread in proportion to the meals' carbs, or
      * equally when they have none. A meal's calories follow its carbs, and its protein and fat hold (NUT-022). A meal
-     * that would keep under 5 g of carbs refuses the change (SAFE-010).
+     * that would lose carbs and keep under 5 g refuses the change (SAFE-010). A meal that gains carbs, or keeps what
+     * it has, never refuses, even when it was under 5 g already.
      *
      * @param  list<Slot>  $over
      * @return list<Slot>
@@ -94,7 +95,7 @@ final class DayBalance
             $share = $total > 0 ? $slot->target->carbsG / $total : 1 / count($over);
             $change = $by * $share;
             $carbsG = $slot->target->carbsG + $change;
-            if ($carbsG < MacroRules::MEAL_MINIMUM_G - self::TOLERANCE) {
+            if ($change < 0 && $carbsG < MacroRules::MEAL_MINIMUM_G - self::TOLERANCE) {
                 throw MealMoveRefusal::belowCarbMinimum($slot->id);
             }
 

@@ -30,9 +30,22 @@ it('DAY-002 what is left is the day target less everything spent', function () {
     $spent = [redistributeTarget(55, 20, 100), new MealTarget(kcal: 300, proteinG: 20, fatG: 10, carbsG: 30)];
     $left = DayBalance::remaining(day: $day, spent: $spent);
 
-    expect($left->proteinG)->toEqual(95)
+    // The first spent meal is 4 * 55 + 9 * 20 + 4 * 100 = 800 kcal.
+    expect($left->kcal)->toEqual(2600 - 800 - 300)
+        ->and($left->proteinG)->toEqual(95)
         ->and($left->fatG)->toEqual(40)
         ->and($left->carbsG)->toEqual(190);
+});
+
+it('DAY-002 an overspent day leaves less than nothing', function () {
+    $day = new MealTarget(kcal: 2000, proteinG: 150, fatG: 60, carbsG: 200);
+    $spent = [new MealTarget(kcal: 1500, proteinG: 100, fatG: 40, carbsG: 150), new MealTarget(kcal: 800, proteinG: 60, fatG: 30, carbsG: 70)];
+    $left = DayBalance::remaining(day: $day, spent: $spent);
+
+    expect($left->kcal)->toEqual(-300)
+        ->and($left->proteinG)->toEqual(-10)
+        ->and($left->fatG)->toEqual(-10)
+        ->and($left->carbsG)->toEqual(-20);
 });
 
 it('DAY-002 each macro is spread in proportion to the meals current target for it', function () {

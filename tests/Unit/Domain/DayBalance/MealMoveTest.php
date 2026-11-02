@@ -66,6 +66,9 @@ it('DAY-020 a move needs calories and two different meals', function (float $kca
         ->toMatchObject(['reason' => MealMoveRefusalReason::Invalid, 'id' => null]);
 })->with([
     'zero kcal' => [0.0, 'a', 'b'],
+    'negative kcal' => [-50.0, 'a', 'b'],
+    'NaN kcal' => [NAN, 'a', 'b'],
+    'infinite kcal' => [INF, 'a', 'b'],
     'same meal' => [50.0, 'a', 'a'],
 ]);
 
@@ -96,4 +99,19 @@ it('SAFE-010 a spread that leaves a meal under five grams is refused', function 
 it('DAY-020 a spread needs meals', function () {
     expect(moveRefusal(fn () => DayBalance::shiftingCarbs(by: 10, over: [])))
         ->toMatchObject(['reason' => MealMoveRefusalReason::NoMeals, 'id' => null]);
+});
+
+it('SAFE-010 adding carbs is never refused, even over a meal already under five grams', function () {
+    // a has no carbs, so a proportional share leaves it at 0 g; it loses nothing.
+    $moved = DayBalance::shiftingCarbs(by: 20, over: [moveSlot('a', carbs: 0), moveSlot('b', carbs: 100)]);
+    expect(array_map(fn (Slot $s) => $s->target->carbsG, $moved))->toEqual([0, 120]);
+
+    // b goes from 3 g up to 4 g: still under the floor, but higher than before.
+    $move = DayBalance::moving(kcal: 4, from: moveSlot('a', carbs: 50), to: moveSlot('b', carbs: 3));
+    expect($move->to->target->carbsG)->toEqualWithDelta(4, MOVE_ACC);
+});
+
+it('SAFE-010 taking carbs from a meal already under five grams is refused', function () {
+    expect(moveRefusal(fn () => DayBalance::moving(kcal: 4, from: moveSlot('a', carbs: 4), to: moveSlot('b', carbs: 50))))
+        ->toMatchObject(['reason' => MealMoveRefusalReason::BelowCarbMinimum, 'id' => 'a']);
 });
