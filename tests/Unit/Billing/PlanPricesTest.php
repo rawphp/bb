@@ -90,3 +90,15 @@ it('SUB-002 while another request reads a stale price again, this one goes on wi
         CarbonImmutable::setTestNow();
     }
 });
+
+it('SUB-002 a kept price in an earlier shape counts as missing and is read again', function () {
+    Cache::forever(PlanPrices::key('price_monthly'), ['amount' => 100, 'currency' => 'usd', 'interval' => 'month', 'interval_count' => 1]);
+    // As in production, where Laravel turns a warning such as an undefined key into an exception.
+    set_error_handler(fn (int $level, string $message) => throw new ErrorException($message, 0, $level));
+
+    try {
+        expect((new PlanPrices($this->stripe))->get('price_monthly'))->toMatchArray(['amount' => 3499]);
+    } finally {
+        restore_error_handler();
+    }
+});
