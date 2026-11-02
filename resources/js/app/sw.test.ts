@@ -145,7 +145,7 @@ describe('sw', () => {
         await install();
 
         expect([...stores.get(PREVIOUS_BUILD)!.entries.keys()].sort()).toEqual([at('/build/assets/main-v1.js'), at('/build/assets/main-v2.js')]);
-        expect(self.clients.matchAll).toHaveBeenCalledWith({ type: 'window', includeUncontrolled: true });
+        expect((self as unknown as ServiceWorkerGlobalScope).clients.matchAll).toHaveBeenCalledWith({ type: 'window', includeUncontrolled: true });
     });
 
     it('PWA-035 a first install, with no build to replace, keeps the copy an earlier update made', async () => {
