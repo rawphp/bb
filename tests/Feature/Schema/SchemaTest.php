@@ -26,6 +26,7 @@ use App\Models\PlannedRecipe;
 use App\Models\PlanWeek;
 use App\Models\Profile;
 use App\Models\PushSubscription;
+use App\Models\Subscription;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\SavedMeal;
@@ -101,6 +102,7 @@ function fillAccount(User $user): void
     AuditRecord::factory()->for($user)->create();
     UndoToken::factory()->for($user)->create();
     PushSubscription::factory()->for($user)->create();
+    Subscription::factory()->for($user)->create();
 
     // A Coach conversation with a message and a turn (the package's tables).
     $store = app(ConversationStore::class);
