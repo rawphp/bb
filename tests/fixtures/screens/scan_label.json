@@ -1,0 +1,13 @@
+{
+    "name": "Crunchy oat bar",
+    "brand": "Barco",
+    "barcode": "5012345678900",
+    "serving_size": 40,
+    "serving_unit": "g",
+    "serving_grams": 40,
+    "protein": 3.6,
+    "fat": 5.6,
+    "carbs": 24.8,
+    "fiber": 2.4,
+    "kcal_text": "164 kcal"
+}
