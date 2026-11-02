@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * A reversible write's inverse, kept under its undo token until it is applied
- * or 24 hours pass (CAP-013). Written and read only by UndoLog; expired ones are
+ * or 24 hours pass (CAP-013). Written by UndoLog and read by ApplyUndo; expired ones are
  * pruned by the scheduled model:prune.
  *
  * @property string $id
@@ -28,6 +28,8 @@ class UndoToken extends Model
 {
     /** @use HasFactory<UndoTokenFactory> */
     use BelongsToUser, HasFactory, HasUlids, MassPrunable;
+
+    public const LIFETIME_HOURS = 24;
 
     /** @return Builder<static> */
     public function prunable(): Builder

@@ -10,7 +10,6 @@ use Rawphp\Capabilities\Registry\CapabilityDefinition;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\Capabilities\Support\CapabilityContext;
-use ReflectionMethod;
 
 /**
  * The start of every capability definition. A read is read-only; a write
@@ -87,19 +86,16 @@ final class HostDefinition
                 throw new LogicException("{$definition->name} is reversible but has no run closure to record.");
             }
 
-            $arguments = [];
-            foreach ((new ReflectionMethod(CapabilityDefinition::class, '__construct'))->getParameters() as $parameter) {
-                $arguments[$parameter->getName()] = $definition->{$parameter->getName()};
-            }
-            $arguments['run'] = function (mixed $input, CapabilityContext $context) use ($definition, $run): WriteResult {
+            // The builder's own run(), so the package builds the definition as it always does.
+            $name = $definition->name;
+            $definition = $builder->run(function (mixed $input, CapabilityContext $context) use ($name, $run): WriteResult {
                 $user = $context->user();
                 if (! $user instanceof User) {
-                    throw new LogicException("{$definition->name} is reversible, so it needs a user to hold its undo token.");
+                    throw new LogicException("{$name} is reversible, so it needs a user to hold its undo token.");
                 }
 
                 return app(UndoLog::class)->record($user, fn (): WriteResult => $run($input, $context));
-            };
-            $definition = new CapabilityDefinition(...$arguments);
+            })->toDefinition();
         }
 
         $registry->register($definition);

@@ -2,9 +2,9 @@
 
 namespace App\Capabilities\Undo;
 
+use App\Actions\Undo\ApplyUndo;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Support\HostDefinition;
-use App\Capabilities\Support\UndoLog;
 use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Undo\Data\UndoApplyInput;
 use App\Models\User;
@@ -17,7 +17,7 @@ use Rawphp\Capabilities\Support\CapabilityContext;
  */
 final class UndoApplyCapability implements HostCapability
 {
-    public function __construct(private readonly UndoLog $undo) {}
+    public function __construct(private readonly ApplyUndo $undo) {}
 
     public function definition(): CapabilityDefinitionBuilder
     {
@@ -29,7 +29,7 @@ final class UndoApplyCapability implements HostCapability
                 /** @var User $user */
                 $user = $context->user();
 
-                return $this->undo->apply($user, $input->token);
+                return ($this->undo)($user, $input->token);
             });
     }
 }
