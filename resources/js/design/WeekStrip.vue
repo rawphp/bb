@@ -25,6 +25,7 @@ export interface WeekStripDay {
 </script>
 
 <script setup lang="ts">
+import PendingMark from './PendingMark.vue';
 import { toneIcons } from './toneIcons';
 
 // Day letter, date, calories, completion dot and training icon (UI-001), ported from rp-clone's WeekStrip.swift.
@@ -108,7 +109,7 @@ function endSwipe(event: MouseEvent): void {
                     :key="n"
                     data-placeholder
                     aria-hidden="true"
-                    class="min-h-tap flex-1 animate-pulse rounded-xl bg-secondary-text/15"
+                    class="min-h-tap flex-1 animate-pulse rounded-xl bg-secondary-text/15 motion-reduce:animate-none"
                 />
             </template>
             <button
@@ -136,7 +137,7 @@ function endSwipe(event: MouseEvent): void {
                 >
                     {{ day.number }}
                 </span>
-                <span data-calories class="text-xs tabular-nums text-secondary-text" :class="{ 'opacity-50': pending }">
+                <span data-calories class="text-xs tabular-nums text-secondary-text" :class="{ 'opacity-60': pending }">
                     {{ day.calories_text }}
                 </span>
                 <svg
@@ -161,7 +162,8 @@ function endSwipe(event: MouseEvent): void {
                 </svg>
             </button>
         </div>
-        <p v-if="pending" class="mt-1 text-xs text-secondary-text" aria-hidden="true">Waiting to sync</p>
+        <!-- Each day's label already says it is waiting to sync. -->
+        <p v-if="pending" class="mt-1" aria-hidden="true"><PendingMark /></p>
         <p v-if="error" role="alert" class="mt-2 text-sm text-tone-warning">{{ error }}</p>
     </div>
 </template>

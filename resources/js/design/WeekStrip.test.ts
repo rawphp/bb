@@ -4,6 +4,7 @@ import type { WeekShowOutput } from '@/contracts/week_show';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import weekShow from '../../../tests/fixtures/screens/week_show.json';
 import weekShowEmpty from '../../../tests/fixtures/screens/week_show.empty.json';
+import PendingMark from './PendingMark.vue';
 import { toneIcons } from './toneIcons';
 import WeekStrip, { type WeekStripDay } from './WeekStrip.vue';
 
@@ -187,6 +188,7 @@ describe('WeekStrip', () => {
         const empty = strip({ days: [], loading: true });
         expect(empty.get('[role="group"]').attributes('aria-busy')).toBe('true');
         expect(empty.findAll('[aria-hidden="true"][data-placeholder]')).toHaveLength(7);
+        expect(empty.get('[data-placeholder]').classes()).toContain('motion-reduce:animate-none');
 
         const loaded = strip({ loading: true });
         expect(loaded.findAll('[data-placeholder]')).toHaveLength(0);
@@ -205,8 +207,8 @@ describe('WeekStrip', () => {
     it('VIEW-004 pending: calories are dimmed and every day says it is waiting to sync (OFF-008)', () => {
         const wrapper = strip({ pending: true });
 
-        expect(wrapper.text()).toContain('Waiting to sync');
-        expect(buttons(wrapper)[1]!.get('[data-calories]').classes()).toContain('opacity-50');
+        expect(wrapper.findComponent(PendingMark).text()).toBe('Waiting to sync');
+        expect(buttons(wrapper)[1]!.get('[data-calories]').classes()).toContain('opacity-60');
         expect(buttons(wrapper).every((day) => day.attributes('aria-label')!.endsWith(', waiting to sync'))).toBe(true);
     });
 
