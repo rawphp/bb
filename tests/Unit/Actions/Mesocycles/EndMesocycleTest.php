@@ -1,7 +1,6 @@
 <?php
 
 use App\Actions\Mesocycles\EndMesocycle;
-use App\Models\Mesocycle;
 use App\Models\PlanWeek;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;

@@ -178,7 +178,7 @@ final class MesocyclePayload
             number: $number,
             title: $isLast ? 'Deload' : "Week {$number}",
             now: $isNow ? new Pill('Now', Tone::Info->value) : null,
-            diet_break: $snapshot->isDietBreakWeek($calendar, $index) ? new Pill('Diet break', Tone::Info->value) : null,
+            diet_break: $snapshot->isDietBreakWeek($mesocycle, $calendar, $index) ? new Pill('Diet break', Tone::Info->value) : null,
             calories_text: self::calories($snapshot, $planWeek->days()),
             muscle_sets: array_values(array_filter(array_map(
                 fn (MuscleGroup $muscle) => ($muscleSets[$muscle->value] ?? 0) > 0

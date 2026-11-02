@@ -15,6 +15,7 @@ use App\Domain\Model\Session;
 use App\Domain\Model\Soreness;
 use App\Domain\Model\VolumeFeedback;
 use App\Domain\Model\Workout;
+use App\Domain\Plan\PlanRules;
 use App\Domain\Plan\PlanWeekGrid;
 use App\Domain\Progress\PlanWeekDays;
 use App\Domain\Progression\ActiveRest;
@@ -271,15 +272,18 @@ final class TrainSnapshot
         return $index + 1 === $calendar->weeks || ($this->planWeekRow($calendar->planWeek($index)->start)->is_deload ?? false);
     }
 
-    /** MESO-041, PLAN-022: whether a week is a diet break. PLAN-002: it follows the phase covering the week. */
-    public function isDietBreakWeek(MesocycleCalendar $calendar, int $index): bool
+    /**
+     * MESO-041, PLAN-022: whether a week is a diet break. PLAN-002: it follows the phase covering the week, falling back
+     * to the mesocycle's own phase past the plan's end, as {@see PlanRules::governingPhaseIndex()} does.
+     */
+    public function isDietBreakWeek(Mesocycle $mesocycle, MesocycleCalendar $calendar, int $index): bool
     {
         $start = $calendar->planWeek($index)->start;
         $row = $this->planWeekRow($start);
 
         return MesocycleRules::isDietBreakWeek(
             flagged: $row->is_diet_break ?? false,
-            phase: $this->phaseCovering($start)?->type,
+            phase: $this->phaseCovering($start)->type ?? $this->phaseType($mesocycle),
             isDeload: $this->isDeloadWeek($calendar, $index),
             turnedOff: $row->diet_break_off ?? false,
         );
@@ -290,7 +294,7 @@ final class TrainSnapshot
     {
         $calendar = $this->calendar($mesocycle);
 
-        return MesocycleRules::endOffersDietBreak($this->phaseType($mesocycle), $this->isDietBreakWeek($calendar, $calendar->currentWeek() - 1));
+        return MesocycleRules::endOffersDietBreak($this->phaseType($mesocycle), $this->isDietBreakWeek($mesocycle, $calendar, $calendar->currentWeek() - 1));
     }
 
     /** The plan week row starting on a day, if the plan keeps one. */

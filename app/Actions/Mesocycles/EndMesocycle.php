@@ -35,10 +35,10 @@ final class EndMesocycle
                 return;
             }
             $start = $calendar->nextPlanWeekStart();
-            $week = $snapshot->planWeekRow($start) ?? new PlanWeek([
+            // The user's own row for the week, else a new one: a row found is never moved to another owner.
+            $week = $snapshot->planWeekRow($start) ?? (new PlanWeek([
                 'start_date' => $start->format('Y-m-d'), 'is_deload' => false, 'is_away' => false,
-            ]);
-            $week->user_id = $user->id;
+            ]))->forceFill(['user_id' => $user->id]);
             $week->is_diet_break = true;
             $week->save();
         });
