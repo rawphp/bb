@@ -157,11 +157,11 @@ describe('sw', () => {
     });
 
     it('PWA-035 keeps the newest two builds, so a tab held through two deploys keeps its files and the copies stay bounded', async () => {
-        const { KEPT_BUILDS } = await import('./sw');
+        await import('./sw');
+        const { KEPT_BUILDS } = await import('./previousBuild');
         expect(KEPT_BUILDS).toBe(2);
 
-        for (const [n, old] of ['v1', 'v2', 'v3'].entries()) {
-            vi.spyOn(Date, 'now').mockReturnValue(1000 + n);
+        for (const old of ['v1', 'v2', 'v3']) {
             stores.delete('precache');
             await cache('precache', [`/build/assets/main-${old}.js`, '/build/assets/main-new.js']);
             await install();
@@ -179,6 +179,19 @@ describe('sw', () => {
         await install();
 
         expect(Object.values(copies())).toEqual([['/build/assets/main-old.js']]);
+    });
+
+    it('PWA-035 copies are ordered by a count, not the device clock, so a clock set back never drops the fresh copy', async () => {
+        await import('./sw');
+        await cache(`${PREFIX}7-aaaa`, ['/build/assets/main-v1.js']);
+        await cache('precache', ['/build/assets/main-v2.js', '/build/assets/main-new.js']);
+        vi.spyOn(Date, 'now').mockReturnValue(0);
+
+        await install();
+
+        expect(Object.keys(copies())[1]).toMatch(new RegExp(`^${PREFIX}8-`));
+        expect(Object.values(copies())).toEqual([['/build/assets/main-v1.js'], ['/build/assets/main-v2.js']]);
+        vi.restoreAllMocks();
     });
 
     it('PWA-035 a first install, with no build to replace, keeps the copies earlier updates made', async () => {
@@ -228,10 +241,7 @@ describe('sw', () => {
         await cache(`${PREFIX}1`, ['/build/assets/main-v1.js']);
         await cache('precache', ['/build/assets/main-v2.js', '/build/assets/main-new.js']);
 
-        for (const now of [2, 3, 4]) {
-            vi.spyOn(Date, 'now').mockReturnValue(now);
-            await install();
-        }
+        for (let attempt = 0; attempt < 3; attempt++) await install();
 
         expect(Object.values(copies())).toEqual([['/build/assets/main-v1.js'], ['/build/assets/main-v2.js']]);
         vi.restoreAllMocks();

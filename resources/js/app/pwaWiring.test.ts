@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 // holdUpdates() and offerInstall() are called by screens later issues build (docs/plan/build-plan.md):
-// the workout view (V_WO1) holds updates for a workout; the end of onboarding (V_ONB2) or Today
+// the workout view (V_WO1) holds updates for a workout (useHoldUpdates); the end of onboarding (V_ONB2) or Today
 // (V_TODAY1) offers the install. These tests fail as soon as such a screen lands without the call,
 // so that issue has to wire it, and keep start-up honest until then.
 
@@ -15,7 +15,7 @@ const calling = (fn: string) => Object.keys(sources).filter((path) => !path.incl
 describe('PWA wiring', () => {
     it('PWA-035 once the workout view exists, it holds updates for the length of a workout', () => {
         for (const view of screens(['WorkoutView'])) {
-            expect(sources[view], `${view} calls holdUpdates()`).toMatch(/\bholdUpdates\(/);
+            expect(sources[view], `${view} calls useHoldUpdates() or holdUpdates()`).toMatch(/\b(useHoldUpdates|holdUpdates)\(/);
         }
     });
 

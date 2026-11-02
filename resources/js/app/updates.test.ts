@@ -1,3 +1,4 @@
+import { effectScope, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Listener = (event: { isExternal?: boolean }) => void;
@@ -169,6 +170,68 @@ describe('updates', () => {
 
         next.activate();
         expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('PWA-035 a workout started after the tap holds the reload until it ends', async () => {
+        const { applyUpdate, holdUpdates, updateBanner } = await load();
+        newVersionWaits();
+
+        applyUpdate();
+        expect(updateBanner.value).toBe(false);
+        const releaseWorkout = holdUpdates();
+        workbox.state.emit('controlling');
+        expect(reload).not.toHaveBeenCalled();
+
+        releaseWorkout();
+        expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('PWA-035 a sheet opened after the tap holds the reload in a tab no worker controls, until it closes', async () => {
+        controlledBy(null);
+        const { applyUpdate } = await load();
+        const { openSheets } = await import('../design/openSheets');
+        const next = newVersionWaits();
+        const sheet = Symbol('sheet');
+
+        applyUpdate();
+        openSheets.push(sheet);
+        next.activate();
+        expect(reload).not.toHaveBeenCalled();
+
+        openSheets.splice(openSheets.indexOf(sheet), 1);
+        expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('PWA-035 a second tap adds nothing, and the reload happens once', async () => {
+        const { applyUpdate } = await load();
+        newVersionWaits();
+
+        applyUpdate();
+        applyUpdate();
+        workbox.state.emit('controlling');
+        workbox.state.emit('controlling');
+
+        expect(workbox.state.messageSkipWaiting).toHaveBeenCalledTimes(1);
+        expect(workbox.state.listeners.controlling).toHaveLength(1);
+        expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('PWA-035 useHoldUpdates holds while active, and lets go when inactive or when its scope ends', async () => {
+        const { useHoldUpdates, updateBanner } = await load();
+        newVersionWaits();
+        const active = ref(true);
+        const scope = effectScope();
+
+        scope.run(() => useHoldUpdates(active));
+        expect(updateBanner.value).toBe(false);
+        active.value = false;
+        expect(updateBanner.value).toBe(true);
+        active.value = true;
+        expect(updateBanner.value).toBe(false);
+
+        // The screen goes away by any path, still active: the hold goes with it.
+        scope.stop();
+        expect(updateBanner.value).toBe(true);
     });
 
     it('PWA-035 a tap reloads at once when another tab already activated the new version', async () => {

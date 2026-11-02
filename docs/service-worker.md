@@ -1,0 +1,19 @@
+# The service worker, and how to take it back
+
+`resources/js/app/sw.ts` builds to `public/sw.js` with scope `/` (PWA-004). `resources/js/app/updates.ts` registers it in production builds. Once a browser has it, it serves the cached shell and build to every app path, and keeps `bb-previous-build-*` copies of replaced builds (PWA-035).
+
+## Rolling it back
+
+Reverting the code does not remove the worker from devices. If `/sw.js` answers 404, the browser keeps the worker it has. If the Laravel fallback answers with the app's HTML, the update fails and the worker is kept too. A stale `public/sw.js` left on the server (it is gitignored build output) keeps the worker alive as well.
+
+To take it off every device, serve the kill switch at `/sw.js`:
+
+1. Deploy a build where `public/sw.js` is a copy of `public/sw-kill.js`:
+   - with the PWA code still in place, run `cp public/sw-kill.js public/sw.js` after `vite build` in the deploy script;
+   - after a revert of the PWA code, keep `public/sw-kill.js`, and commit it as `public/sw.js` with `git add -f public/sw.js`, since `public/sw.js` is gitignored.
+2. Leave it there until the devices you care about have opened the app at least once. Each browser picks it up on its next navigation or return to the foreground.
+3. The kill switch installs at once, deletes every cache the worker made (the precache and the `bb-previous-build-*` copies), unregisters itself and reloads the tabs it controlled from the network.
+
+The install snooze (`bb.install-snoozed-until` in localStorage) is harmless after a rollback and needs no clean-up.
+
+While the PWA code is in place and `/sw.js` is the kill switch, every page load registers it again, and it unregisters itself again. No page reloads more than once, because only tabs it controlled are reloaded.
