@@ -2,10 +2,11 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Rawphp\CapabilitiesAi\Models\TableNames;
 
-it('ACC-005 drops ownerless Coach conversations, and all under them, before keying user_id to users', function () {
+it('ACC-005 keys user_id to users: another spelling of a user\'s id is that user, an owner that is no user is deleted with all under it', function () {
     $migration = require database_path('migrations/2026_11_02_151100_cascade_capabilities_ai_conversations_user_id.php');
     // DDL commits on MySQL, so this test rebuilds the database when it is done.
     try {
@@ -26,22 +27,24 @@ it('ACC-005 drops ownerless Coach conversations, and all under them, before keyi
 
         $kept = $chat('KEPT', (string) $user->id);
         $serverSide = $chat('SERVER', null);
+        $spaced = $chat('SPACED', ' '.$user->id);
+        $zeros = $chat('ZEROS', '000'.$user->id);
         $chat('GONE', (string) ($user->id + 1000));
         $chat('NOTANID', 'abc');
         $chat('EMPTY', '');
-        $chat('SPACED', ' '.$user->id);
-        $chat('ZEROS', '000'.$user->id);
+        Log::spy();
 
         $migration->up();
 
-        $left = [$kept, $serverSide];
+        $left = [$kept, $serverSide, $spaced, $zeros];
         expect(DB::table(TableNames::conversations())->orderBy('id')->pluck('id')->all())->toBe($left)
             ->and(DB::table(TableNames::messages())->orderBy('conversation_id')->pluck('conversation_id')->all())->toBe($left)
             ->and(DB::table(TableNames::turns())->orderBy('conversation_id')->pluck('conversation_id')->all())->toBe($left)
             ->and(DB::table(TableNames::proposals())->orderBy('conversation_id')->pluck('conversation_id')->all())->toBe($left)
-            ->and(DB::table(TableNames::conversations())->where('id', $kept)->value('user_id'))->toBe($user->id)
+            ->and(DB::table(TableNames::conversations())->whereIn('id', [$kept, $spaced, $zeros])->pluck('user_id')->unique()->all())->toBe([$user->id])
             ->and(collect(Schema::getForeignKeys(TableNames::conversations()))->firstWhere('columns', ['user_id']))
             ->toMatchArray(['foreign_table' => 'users', 'on_delete' => 'cascade']);
+        Log::shouldHaveReceived('warning')->times(3);
     } finally {
         $this->warpRecycleDatabase();
     }

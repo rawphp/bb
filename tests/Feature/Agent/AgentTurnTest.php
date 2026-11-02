@@ -8,6 +8,7 @@ use Rawphp\Capabilities\Support\CapabilityContext;
 use Rawphp\CapabilitiesAi\Contracts\LlmClient;
 use Rawphp\CapabilitiesAi\Contracts\ProgressStore;
 use Rawphp\CapabilitiesAi\Domain\TurnRunner;
+use Rawphp\CapabilitiesAi\Models\Turn;
 use Rawphp\CapabilitiesAi\Support\FakeLlmClient;
 
 // A classic boot per test: the warm registry would keep asking the base app's authorizer, not the spy.
@@ -86,4 +87,21 @@ it('AGT-004 stops every agent tool call with CAPABILITIES_SURFACE_AGENT off', fu
     // The turn offers no tools, and the bus refuses the agent surface even if a call got through.
     expect(toolEvents($response->json('turn_ulid'))[0]['data'])->toMatchArray(['name' => 'account_show', 'ok' => false, 'error_code' => 'capability_not_in_profile'])
         ->and($direct->errorCode())->toBe('forbidden');
+});
+
+it('AGT-005 counts a real turn\'s reported tokens, every round, toward the month', function () {
+    config(['agent.tokens_per_month' => 1_000_000]);
+    $user = User::factory()->create();
+    agentWithScript([
+        ['tool_calls' => [['name' => 'account_show', 'arguments' => []]], 'usage' => ['input_tokens' => 1_200, 'output_tokens' => 300]],
+        ['content' => 'Done.', 'usage' => ['input_tokens' => 1_500, 'output_tokens' => 200]],
+    ]);
+
+    $response = $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Which account is this?'])
+        ->assertCreated();
+
+    expect(Turn::query()->where('ulid', $response->json('turn_ulid'))->value('tokens'))->toBe(3_200);
+    $this->actingAs($user)->postJson('/capabilities/agent_status_show')
+        ->assertOk()
+        ->assertJsonPath('data.tokens_left', 996_800);
 });

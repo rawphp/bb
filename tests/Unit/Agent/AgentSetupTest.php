@@ -69,17 +69,41 @@ it('AGT-005 sets no per-user cap unless the instance configures one', function (
     expect($config)->toBe(['turns_per_day' => null, 'tokens_per_month' => null]);
 });
 
-it('AGT-005 reads the caps from the environment without env(), so config:cache keeps them', function () {
+/**
+ * Load config/agent.php with the given cap values in the environment.
+ *
+ * @param  array<string, string>  $values
+ */
+function agentConfigWith(array $values): array
+{
     $saved = [$_ENV, $_SERVER];
-    $_ENV['AGENT_TURNS_PER_DAY'] = $_SERVER['AGENT_TURNS_PER_DAY'] = '25';
-    $_ENV['AGENT_TOKENS_PER_MONTH'] = $_SERVER['AGENT_TOKENS_PER_MONTH'] = '-3';
+    foreach ($values as $key => $value) {
+        $_ENV[$key] = $_SERVER[$key] = $value;
+    }
     try {
-        expect(require config_path('agent.php'))->toBe(['turns_per_day' => 25, 'tokens_per_month' => 0])
-            ->and(file_get_contents(config_path('agent.php')))->not->toMatch('/\\benv\\(/');
+        return require config_path('agent.php');
     } finally {
         [$_ENV, $_SERVER] = $saved;
     }
+}
+
+it('AGT-005 reads the caps from the environment without env(), so config:cache keeps them', function () {
+    expect(agentConfigWith(['AGENT_TURNS_PER_DAY' => '25', 'AGENT_TOKENS_PER_MONTH' => ' 0 ']))
+        ->toBe(['turns_per_day' => 25, 'tokens_per_month' => 0])
+        ->and(file_get_contents(config_path('agent.php')))->not->toMatch('/\\benv\\(/');
 });
+
+it('AGT-005 refuses to boot on a cap that is not a whole number, rather than lift it or block everyone', function (string $value) {
+    expect(fn () => agentConfigWith(['AGENT_TURNS_PER_DAY' => $value]))
+        ->toThrow(InvalidArgumentException::class, 'AGENT_TURNS_PER_DAY must be a whole number of 0 or more');
+})->with(['abc', '-3', '2.5', '1e6']);
+
+it('AGT-002 every agent config reads the environment through App\\Support\\Env', function (string $file) {
+    $source = file_get_contents(config_path($file));
+
+    expect($source)->toContain('Env::raw(')
+        ->and($source)->not->toContain('getenv(');
+})->with(['agent.php', 'capabilities.php', 'capabilities-ai.php']);
 
 it('AGT-004 opens the core agent surface unless CAPABILITIES_SURFACE_AGENT turns it off', function () {
     expect(configWithout('capabilities.php', ['CAPABILITIES_SURFACE_AGENT'])['surfaces']['agent'])

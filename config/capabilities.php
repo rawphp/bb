@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Env;
 use Rawphp\Capabilities\Adapters\PeerSupportMatrix;
 
 /**
@@ -10,10 +11,10 @@ use Rawphp\Capabilities\Adapters\PeerSupportMatrix;
  * still apply via published config overrides.
  */
 // Avoid Laravel's env() helper here — monorepo unit tests load this file without
-// a full Illuminate env repository (PhpOption). Host apps override via published config.
+// a full Illuminate env repository (PhpOption). The lookup is App\Support\Env's.
 $env = static function (string $key, mixed $default = null): mixed {
-    $v = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
-    if ($v === false || $v === null || $v === '') {
+    $v = Env::raw($key);
+    if ($v === null) {
         return $default;
     }
 

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 use App\Http\Middleware\AgentGate;
+use App\Support\Env;
 
 /**
  * rawphp/laravel-capabilities-ai, published with Bodybuilder's production
@@ -11,8 +12,8 @@ use App\Http\Middleware\AgentGate;
  * driver in phpunit.xml.
  */
 $env = static function (string $key, mixed $default = null): mixed {
-    $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
-    if ($value === false || $value === null || $value === '') {
+    $value = Env::raw($key);
+    if ($value === null) {
         return $default;
     }
 
