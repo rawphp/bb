@@ -4,6 +4,7 @@ namespace Tests;
 
 use App\Support\RequestClock;
 use Illuminate\Database\Connection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Events\DatabaseRefreshed;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
@@ -22,6 +23,11 @@ abstract class TestCase extends BaseTestCase
     {
         $boots = WarmApplicationFactory::bootCount();
         $app = $this->createWarmApplication();
+
+        // Warp restores Eloquent's event dispatcher on each sandbox but not its connection
+        // resolver, so after an isolated test Model::$resolver is that app's flushed DB
+        // manager and the next query fails with "Target class [config] does not exist".
+        Model::setConnectionResolver($app->make('db'));
 
         // migrate:fresh can purge the default connection. The capability
         // package's stores keep the Connection they resolved at boot, and their

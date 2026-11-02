@@ -72,7 +72,8 @@ final class ActivityShowCapability implements HostCapability
             ->latest()
             ->latest('id')
             ->limit(self::LIMIT)
-            ->get();
+            // The input is audited but not shown, so it is not loaded.
+            ->get(['id', 'event', 'capability', 'channel', 'result', 'created_at']);
 
         return new ActivityShowOutput(
             entries: $records->map(fn (AuditRecord $record): ActivityEntry => self::entry($record, $now))->values()->all(),
