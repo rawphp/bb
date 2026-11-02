@@ -52,6 +52,8 @@ it('FOOD-060 edits the food in place and replaces its serving', function () {
         ->id->toBe($id)
         ->name->toBe('Protein bar XL')
         ->protein->toBe(44.44)
+        // From the rounded values: 4 × 44.44 + 4 × 59.26 + 9 × 14.81. The unrounded ones give 548.15.
+        ->kcal->toBe(548.09)
         ->and($food->servings()->get(['label', 'grams'])->toArray())->toBe([['label' => '1.5 tbsp', 'grams' => 20.25]]);
 });
 

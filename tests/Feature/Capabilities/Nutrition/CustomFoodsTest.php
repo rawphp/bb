@@ -95,17 +95,24 @@ it('FOOD-060 creates a custom food under the client\'s id and says the list chan
         ->assertOk()
         ->assertJsonPath('data.invalidates', ['custom_foods_show{}']);
 
-    expect(Food::query()->findOrFail($input['id']))->user_id->toBe($user->id)->name->toBe('Protein bar')->kcal->toBe(330.0)
-        ->and(customFoodCall($user, 'custom_foods_show')->json('data.foods.0.detail'))->toBe('1 piece · 99 kcal');
+    // Protein and carbs are both 4 kcal a gram, so each value is read back, not only the calories.
+    expect(Food::query()->findOrFail($input['id']))->user_id->toBe($user->id)
+        ->protein->toBe(20.0)->fat->toBe(10.0)->carbs->toBe(40.0)->fiber->toBe(3.33)->kcal->toBe(330.0)
+        ->and(customFoodCall($user, 'custom_foods_show')->json('data.foods.0'))->toEqual([
+            'food_id' => $input['id'], 'name' => 'Protein bar', 'detail' => '1 piece · 99 kcal',
+            'brand' => 'Barco', 'barcode' => '12345678905',
+            'serving_size' => 1, 'serving_unit' => 'piece', 'serving_grams' => 30,
+            'protein' => 6, 'fat' => 3, 'carbs' => 12, 'fiber' => 1,
+        ]);
 });
 
 it('FOOD-060 edits the user\'s own custom food under its id', function () {
     $user = User::factory()->create();
     $food = Food::factory()->custom($user)->create();
 
-    customFoodCall($user, 'custom_food_save', customFoodInput(['id' => $food->id, 'name' => 'Protein bar XL']))->assertOk();
+    customFoodCall($user, 'custom_food_save', customFoodInput(['id' => $food->id, 'name' => 'Protein bar XL', 'protein' => 9, 'brand' => null]))->assertOk();
 
-    expect($food->fresh()->name)->toBe('Protein bar XL')
+    expect($food->fresh())->name->toBe('Protein bar XL')->protein->toBe(30.0)->brand->toBeNull()->barcode->toBe('12345678905')
         ->and(Food::query()->count())->toBe(1);
 });
 
