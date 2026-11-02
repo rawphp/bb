@@ -83,21 +83,21 @@ final readonly class ScannedMeal
      */
     public function matched(): array
     {
-        $raw = [];
         $foods = [];
         foreach ($this->items as $item) {
             if ($item->food === null) {
                 continue;
             }
-            $id = $item->food->id;
-            $raw[$id] = ($raw[$id] ?? 0.0) + $this->served($item->food, $this->grams($item))->rawGrams();
-            $foods[$id] = $item->food;
+            $raw = $this->served($item->food, $this->grams($item))->rawGrams();
+            $foods[$item->food->id] = ['food' => $item->food, 'raw' => ($foods[$item->food->id]['raw'] ?? 0.0) + $raw];
         }
 
-        return array_values(array_map(
-            fn (string $id): MealFood => new MealFood($id, $foods[$id], ScanPortion::grams($raw[$id])),
-            array_map('strval', array_keys($foods)),
-        ));
+        $matched = [];
+        foreach ($foods as $food) {
+            $matched[] = new MealFood($food['food']->id, $food['food'], ScanPortion::grams($food['raw']));
+        }
+
+        return $matched;
     }
 
     /** The food at `grams` as served: cooked weight when it has a cooked ratio. */
