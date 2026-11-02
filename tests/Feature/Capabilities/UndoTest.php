@@ -473,6 +473,29 @@ it('CAP-013 reads the foreign keys from the schema once per migration, not once 
         ->and(WorkoutSession::query()->count())->toBe(0);
 });
 
+it('CAP-013 reads the foreign keys from the schema again after a migration', function () {
+    $schemaReads = 0;
+    DB::listen(function ($query) use (&$schemaReads) {
+        $schemaReads += (int) str_contains(strtolower($query->sql), 'information_schema');
+    });
+    $cycle = function () {
+        $token = recordAs($this->user, fn () => WorkoutSession::factory()->for($this->user)->create())->undo;
+        undoAs($this->user, $token);
+    };
+
+    $cycle();
+    $schemaReads = 0;
+    $cycle();
+    expect($schemaReads)->toBe(0);
+
+    // A migration runs: the latest migration id moves on, so the cached map is read afresh.
+    DB::table('migrations')->insert(['migration' => '2099_01_01_000000_add_a_foreign_key', 'batch' => 99]);
+    $cycle();
+
+    expect($schemaReads)->toBeGreaterThan(0)
+        ->and(WorkoutSession::query()->count())->toBe(0);
+});
+
 it('CAP-013 undoes a write that deletes a row and creates its replacement under the same unique key', function () {
     $before = storedRows();
 

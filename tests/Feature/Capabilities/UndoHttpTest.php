@@ -4,12 +4,15 @@
 // answers as the client gets them, through the package's write pipeline.
 
 use App\Models\Step;
+use App\Models\UndoToken;
 use App\Models\User;
 use App\Providers\CapabilitiesHostProvider;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Rawphp\Capabilities\Contracts\CapabilityBus;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
+use Rawphp\Capabilities\Support\SystemActor;
 
 // Registers a test-only capability, so each test gets its own application.
 uses()->group('warp-isolated');
@@ -79,3 +82,17 @@ it('CAP-013 answers 409 with the message over HTTP once the token is 24 hours ol
         ->assertJsonPath('error.code', 'conflict')
         ->assertJsonPath('error.message', 'This can no longer be undone. Undo lasts 24 hours.');
 });
+
+it('CAP-013 refuses a reversible write and undo_apply to a caller that is not a user, before either runs', function (string $capability, Closure $input) {
+    $token = setStepsOverHttp($this->user, 9000, '01JBX8Z6Q7M0V2K3N4P5R6S7T8');
+
+    $result = app(CapabilityBus::class)->invoke($capability, $input($token), ['caller' => 'job', 'actor' => SystemActor::named('nightly')]);
+
+    expect($result->errorCode())->toBe('forbidden')
+        ->and($result->error['message'])->toBe('You can\'t do that.')
+        ->and(Step::query()->findOrFail($this->step->id)->count)->toBe(9000)
+        ->and(UndoToken::query()->count())->toBe(1);
+})->with([
+    'the reversible write' => ['step_count_set', fn (string $token) => ['count' => 100]],
+    'undo_apply' => ['undo_apply', fn (string $token) => ['token' => $token]],
+]);

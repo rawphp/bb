@@ -8,6 +8,7 @@ use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Undo\Data\UndoApplyInput;
 use App\Models\User;
+use LogicException;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -26,8 +27,11 @@ final class UndoApplyCapability implements HostCapability
             ->cli('undo', 'apply')
             ->input(UndoApplyInput::class)
             ->run(function (UndoApplyInput $input, CapabilityContext $context): WriteResult {
-                /** @var User $user */
+                // HostAuthorizer lets only a signed-in user reach run(), on every surface.
                 $user = $context->user();
+                if (! $user instanceof User) {
+                    throw new LogicException('undo_apply needs the user who holds the undo token.');
+                }
 
                 return ($this->undo)($user, $input->token);
             });
