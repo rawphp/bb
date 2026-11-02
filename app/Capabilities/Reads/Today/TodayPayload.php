@@ -238,7 +238,7 @@ final class TodayPayload
             return null;
         }
         $weekday = (int) $snapshot->date->format('N');
-        $range = collect($snapshot->train->profile->step_plan ?? [])->first(fn (array $day) => (int) ($day['weekday'] ?? 0) === $weekday);
+        $range = self::onWeekday(TodaySnapshot::json($snapshot->train->profile?->step_plan), $weekday);
         if ($range === null) {
             return null;
         }
@@ -454,7 +454,7 @@ final class TodayPayload
         $weekday = (int) $day->format('N');
 
         return array_values(array_filter(
-            $snapshot->train->profile->busy_periods ?? [],
+            TodaySnapshot::json($snapshot->train->profile?->busy_periods),
             fn (array $period) => in_array($weekday, array_map('intval', $period['weekdays'] ?? []), true),
         ));
     }
@@ -475,7 +475,7 @@ final class TodayPayload
     /** SCH-031: the middle of the eating window, to the 5 minutes before; null on a day with no target. */
     private static function addMealTime(TodaySnapshot $snapshot): ?string
     {
-        $window = $snapshot->train->profile->eating_window ?? null;
+        $window = TodaySnapshot::json($snapshot->train->profile?->eating_window);
         $start = ClockTime::fromHhmm((string) ($window['start'] ?? ''));
         $end = ClockTime::fromHhmm((string) ($window['end'] ?? ''));
         if ($start === null || $end === null || $snapshot->dayTarget($snapshot->date) === null) {
@@ -531,10 +531,11 @@ final class TodayPayload
             return null;
         }
         $weekday = (int) $snapshot->date->format('N');
-        $training = collect($profile->training_days ?? [])->first(fn (array $day) => (int) $day['weekday'] === $weekday);
+        $window = TodaySnapshot::json($profile->eating_window);
+        $training = self::onWeekday(TodaySnapshot::json($profile->training_days), $weekday);
         $values = fn (?string $trainingStart) => new ScheduleValues(
-            window_start: (string) ($profile->eating_window['start'] ?? ''),
-            window_end: (string) ($profile->eating_window['end'] ?? ''),
+            window_start: (string) ($window['start'] ?? ''),
+            window_end: (string) ($window['end'] ?? ''),
             meal_count: (int) $profile->meal_count,
             busy_periods: array_map(fn (array $period) => new BusyPeriodValue(
                 label: (string) $period['label'],
@@ -543,7 +544,7 @@ final class TodayPayload
             ), self::busyOn($snapshot, $snapshot->date)),
             training_start: $trainingStart,
         );
-        $trainingDays = array_map(fn (array $day) => (int) $day['weekday'], $profile->training_days ?? []);
+        $trainingDays = array_map(fn (array $day) => (int) $day['weekday'], TodaySnapshot::json($profile->training_days));
 
         return new DaySchedule(
             apply_to: [new ApplyToChoice('this_day', 'This day'), new ApplyToChoice('all_future_days', 'All future days')],
@@ -555,6 +556,23 @@ final class TodayPayload
                 self::WEEKDAYS,
             ),
         );
+    }
+
+    /**
+     * The profile entry for an ISO weekday, if there is one.
+     *
+     * @param  array<array-key, mixed>  $rows
+     * @return ?array<string, mixed>
+     */
+    private static function onWeekday(array $rows, int $weekday): ?array
+    {
+        foreach ($rows as $row) {
+            if (is_array($row) && (int) ($row['weekday'] ?? 0) === $weekday) {
+                return $row;
+            }
+        }
+
+        return null;
     }
 
     private static function clock(string $hhmm): ClockTime

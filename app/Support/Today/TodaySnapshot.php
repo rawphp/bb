@@ -6,8 +6,8 @@ use App\Domain\Energy\EnergyRules;
 use App\Domain\MealFit\Food as MealFitFood;
 use App\Domain\MealFit\MealFood;
 use App\Domain\MealFit\Weighing;
-use App\Domain\Model\Mesocycle as DomainMesocycle;
 use App\Domain\Model\MealTarget;
+use App\Domain\Model\Mesocycle as DomainMesocycle;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Placement\TrainingDay;
 use App\Domain\Placement\WorkoutTime;
@@ -238,8 +238,8 @@ final class TodaySnapshot
                 week: $s->week,
                 day: $s->day,
                 isSkipped: $s->is_skipped,
-                plannedStartAt: $s->planned_start_at?->toDateTimeImmutable(),
-                actualStartAt: $s->actual_start_at?->toDateTimeImmutable(),
+                plannedStartAt: self::instant($s->planned_start_at),
+                actualStartAt: self::instant($s->actual_start_at),
             ))->values()->all();
         $logged = array_values(array_map(
             fn (WorkoutSessionRecord $r) => new LoggedDay($r->week, (int) $r->day),
@@ -281,6 +281,7 @@ final class TodaySnapshot
     }
 
     /** SCH-060: the plan weeks an away week pauses. */
+    /** @return list<int> */
     private function pausedWeeks(): array
     {
         $grid = $this->train->grid();
@@ -299,7 +300,7 @@ final class TodaySnapshot
     public function trainingDays(): array
     {
         $days = [];
-        foreach ($this->train->profile->training_days ?? [] as $day) {
+        foreach (self::json($this->train->profile?->training_days) as $day) {
             $start = ClockTime::fromHhmm((string) ($day['start'] ?? ''));
             if ($start !== null) {
                 $days[] = new TrainingDay(
@@ -328,7 +329,7 @@ final class TodaySnapshot
         $mine = $this->train->sessions->filter(fn (WorkoutSession $s) => $s->mesocycle_id === $mesocycle->id && $s->day === $number);
         $past = $mine->filter(fn (WorkoutSession $s) => $s->week < $week && $s->actual_start_at !== null && $s->actual_end_at !== null)
             ->sortBy('week')
-            ->map(fn (WorkoutSession $s) => (int) round(($s->actual_end_at->getTimestamp() - $s->actual_start_at->getTimestamp()) / 60))
+            ->map(fn (WorkoutSession $s) => (int) round((self::instant($s->actual_end_at)->getTimestamp() - self::instant($s->actual_start_at)->getTimestamp()) / 60))
             ->values()->all();
         $row = $mine->first(fn (WorkoutSession $s) => $s->week === $week);
         $workingSets = array_sum(array_map(fn ($slot) => $slot->sets, $placed->session->slots));
@@ -387,7 +388,7 @@ final class TodaySnapshot
         }
         $index = $this->meals->keyBy(fn (DayTargetMeal $m) => strtolower((string) $m->id));
         $items = [];
-        foreach (array_values($target->meals) as $position => $meal) {
+        foreach (self::json($target->meals) as $position => $meal) {
             $row = $index->get(strtolower((string) ($meal['id'] ?? '')));
             $checkIn = $row?->checkIn;
             $items[] = new TodayMealItem(
@@ -442,7 +443,7 @@ final class TodaySnapshot
         $servings = $planned->servings;
 
         return new TodayPlannedEntry(
-            (string) ($planned->recipe['name'] ?? $recipe->name ?? 'Recipe'),
+            (string) (self::json($planned->recipe)['name'] ?? $recipe->name ?? 'Recipe'),
             self::number($servings).($servings == 1.0 ? ' serving' : ' servings'),
             new MealTarget(
                 kcal: $perServing->kcal * $servings,
@@ -464,6 +465,22 @@ final class TodaySnapshot
             carbsG: $food->carbs,
             cookedRatio: $food->cooked_ratio,
         );
+    }
+
+    /**
+     * A JSON column's value; nothing when it holds none.
+     *
+     * @return array<array-key, mixed>
+     */
+    public static function json(mixed $value): array
+    {
+        return is_array($value) ? $value : [];
+    }
+
+    /** A stored time as an instant; null when there is none. */
+    public static function instant(mixed $value): ?DateTimeImmutable
+    {
+        return $value === null ? null : CarbonImmutable::parse($value)->toDateTimeImmutable();
     }
 
     /** "80", "1.5". */
