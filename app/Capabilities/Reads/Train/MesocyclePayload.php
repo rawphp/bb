@@ -26,7 +26,6 @@ use App\Domain\Defaults\TBL020MesocycleLength;
 use App\Domain\Mesocycle\MesoBuilder;
 use App\Domain\Mesocycle\MesoBuilder\Warning;
 use App\Domain\Mesocycle\MesocycleCalendar;
-use App\Domain\Mesocycle\MesocycleRules;
 use App\Domain\Model\ClosedRange;
 use App\Domain\Model\ExperienceLevel;
 use App\Domain\Model\Mesocycle as DomainMesocycle;
@@ -229,7 +228,8 @@ final class MesocyclePayload
         $stored = $mesocycle->muscle_priorities ?? [];
         $priorities = $stored !== [] ? $stored : array_map(fn (Priority $p) => $p->value, MesoBuilder::defaultPriorities($column));
         $training = $snapshot->trainingWeekdays();
-        // MESO-005: a day is labelled on its own terms, as the saved view does, so a mixed split keeps its weekdays.
+        // MESO-005: days are labelled as the saved view labels them ({@see Mesocycle::dayRows()}); a split with any day
+        // on a weekday is a weekday split.
         $pinned = array_any($days, fn (array $day) => $day['weekday'] !== null);
 
         return new MesocycleBuild(
@@ -255,9 +255,9 @@ final class MesocyclePayload
                 ),
             ),
             priority_notice: self::draftPriorityNotice($snapshot, $mesocycle, $start, $priorities),
-            days: array_map(fn (array $day, int $index) => new MesocycleBuildDayRow(
+            days: array_map(fn (array $day) => new MesocycleBuildDayRow(
                 id: $day['id'],
-                label: $day['weekday'] !== null ? MesocycleRules::weekdayName($day['weekday']) : ($day['label'] ?: 'Day '.($index + 1)),
+                label: $day['label'],
                 slots: array_map(fn (array $slot) => new MesocycleBuildSlotRow(
                     id: $slot['id'],
                     muscle: $slot['muscle_group'],
@@ -267,7 +267,7 @@ final class MesocyclePayload
                     exercise_id: $slot['exercise_id'] === null ? null : (string) $slot['exercise_id'],
                     exercise_name: $snapshot->exercise($slot['exercise_id'])?->name,
                 ), $day['slots']),
-            ), $days, array_keys($days)),
+            ), $days),
             sets_options: self::options(new ClosedRange(...self::SETS), 'set'),
             exercise_options: array_map(fn (MuscleGroup $muscle) => new MesocycleMuscleExercises(
                 muscle: $muscle->value,
@@ -284,13 +284,15 @@ final class MesocyclePayload
     }
 
     /**
-     * MESO-065: a copy whose priorities were reset to the new phase's preset says so.
+     * MESO-065: a copy whose priorities were reset to the new phase's preset says so, judged against the mesocycle it
+     * was copied from.
      *
      * @param  array<string, ?string>  $priorities
      */
     private static function draftPriorityNotice(TrainSnapshot $snapshot, Mesocycle $draft, DateTimeImmutable $start, array $priorities): ?Pill
     {
-        $source = $snapshot->copySource();
+        $source = $draft->copied_from_id === null ? null
+            : $snapshot->mesocycles->first(fn (Mesocycle $m) => $m->id === $draft->copied_from_id);
         if ($draft->route !== MesocycleRoute::CopyPrevious || $source === null) {
             return null;
         }

@@ -13,12 +13,15 @@ return new class extends Migration
             $table->string('route')->nullable()->after('is_resensitization');
             // MESO-064: the user took the recommended active rest, so the next mesocycle starts a week later.
             $table->boolean('active_rest')->default(false)->after('route');
+            // MESO-060, MESO-065: the saved mesocycle a copy was made from.
+            $table->foreignUuid('copied_from_id')->nullable()->after('active_rest')->constrained('mesocycles')->nullOnDelete();
         });
     }
 
     public function down(): void
     {
         Schema::table('mesocycles', function (Blueprint $table) {
+            $table->dropConstrainedForeignId('copied_from_id');
             $table->dropColumn(['route', 'active_rest']);
         });
     }

@@ -54,7 +54,7 @@ it('MESO-064 a copy waiting for the old start moves too, and its read is invalid
     $mesocycle = TrainSeed::mesocycle($user);
     TrainSeed::trained($mesocycle, 3, 1, '2026-09-21', flat: true);
     TrainSeed::trained($mesocycle, 4, 1, '2026-09-28', flat: true);
-    $draft = TrainSeed::mesocycle($user, ['is_draft' => true, 'route' => 'copy_previous', 'start_date' => '2026-10-12']);
+    $draft = TrainSeed::mesocycle($user, ['is_draft' => true, 'route' => 'copy_previous', 'copied_from_id' => $mesocycle->id, 'start_date' => '2026-10-12']);
 
     activeRestOver($user, ['mesocycle_id' => $mesocycle->id])
         ->assertOk()

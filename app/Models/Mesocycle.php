@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Mesocycle\MesocycleRules;
 use App\Enums\MesocycleRoute;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\MesocycleFactory;
@@ -27,16 +28,18 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *   out reads as Maintain.
  *
  * Rows written before ids were stored have none; {@see dayRows()} gives each day and slot one from its position.
+ * MESO-005: a day reads as its stored label, else its weekday's name, else "Day i"; every view shows that.
  *
  * @property list<array<string, mixed>>|null $days
  * @property list<list<array<string, mixed>>>|null $earlier_weeks
  * @property list<list<string>>|null $later_weeks
  * @property array<string, ?string>|null $muscle_priorities
  * @property ?MesocycleRoute $route MESO-007: the route a draft came from
+ * @property ?string $copied_from_id MESO-060, MESO-065: the saved mesocycle a copy was made from
  */
 #[Fillable([
     'phase_id', 'name', 'weeks', 'start_date', 'ended_on', 'is_draft', 'is_resensitization',
-    'route', 'active_rest', 'days', 'muscle_priorities', 'earlier_weeks', 'later_weeks',
+    'route', 'active_rest', 'copied_from_id', 'days', 'muscle_priorities', 'earlier_weeks', 'later_weeks',
 ])]
 class Mesocycle extends Model
 {
@@ -47,6 +50,12 @@ class Mesocycle extends Model
     public function phase(): BelongsTo
     {
         return $this->belongsTo(Phase::class);
+    }
+
+    /** @return BelongsTo<self, $this> MESO-060: the saved mesocycle this copy was made from */
+    public function copiedFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'copied_from_id');
     }
 
     /** @return HasMany<WorkoutSession, $this> */
@@ -141,12 +150,28 @@ class Mesocycle extends Model
             }
             $rows[] = [
                 'id' => $id,
-                'label' => (string) ($day['label'] ?? 'Day '.($index + 1)),
+                'label' => self::label($day, $index),
                 'weekday' => isset($day['weekday']) ? (int) $day['weekday'] : null,
                 'slots' => $slots,
             ];
         }
 
         return $rows;
+    }
+
+    /**
+     * MESO-005: the stored label, else the weekday's name, else "Day i".
+     *
+     * @param  array<mixed>  $day
+     */
+    private static function label(array $day, int $index): string
+    {
+        $label = trim((string) ($day['label'] ?? ''));
+
+        return match (true) {
+            $label !== '' => $label,
+            isset($day['weekday']) => MesocycleRules::weekdayName((int) $day['weekday']),
+            default => 'Day '.($index + 1),
+        };
     }
 }

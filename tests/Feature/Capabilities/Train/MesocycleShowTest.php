@@ -89,7 +89,7 @@ it('MESO-005 MESO-021 shows a draft with days, its labels, exercises and priorit
     assertMatchesScreenFixture('mesocycle_show', $data);
     expect(ScreenFixture::differences(ScreenFixture::load('mesocycle_show.warning'), $data))->toBe([]);
     $names = collect($data['build']['exercise_options'])->pluck('exercises')->flatten(1)->pluck('name');
-    expect(array_column($data['build']['days'], 'label'))->toBe(['Monday', 'Thursday'])
+    expect(array_column($data['build']['days'], 'label'))->toBe(['Upper A', 'Lower A'])
         ->and($data['build']['warnings'][0]['tone'])->toBe('warning')
         ->and($data['build']['can_pick_for_me'])->toBeTrue()
         ->and($data['build']['can_finish'])->toBeTrue()

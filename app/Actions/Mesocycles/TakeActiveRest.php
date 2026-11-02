@@ -11,9 +11,10 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * MESO-064: takes the active rest train_show recommends: the deload week plus a week off, so the next mesocycle
- * starts one plan week later. A copy already made to start with the next mesocycle (MESO-060) moves with it, into the
- * phase covering its new start (MESO-003). A copy whose priorities are still the ones it was given takes them again
- * from the mesocycle taking the rest, as a copy made now would (MESO-065); priorities the user kept or edited stay.
+ * starts one plan week later. A copy of this mesocycle already made to start with the next one (MESO-060) moves with
+ * it, into the phase covering its new start (MESO-003); copies of other mesocycles stay where they are. A copy whose
+ * priorities are still the ones it was given takes them again from its source, as a copy made now would (MESO-065);
+ * priorities the user kept or edited stay.
  */
 final class TakeActiveRest
 {
@@ -30,7 +31,7 @@ final class TakeActiveRest
 
         $start = $snapshot->nextMesocycleStart($mesocycle, activeRest: true);
         $waiting = $snapshot->mesocycles->filter(fn (Mesocycle $m) => ! $m->isSaved()
-            && $m->route === MesocycleRoute::CopyPrevious
+            && $m->route === MesocycleRoute::CopyPrevious && $m->copied_from_id === $mesocycle->id
             && $m->start_date !== null && TrainSnapshot::day($m->start_date) == $next->start)->values();
 
         $phase = $snapshot->phaseCovering($start);

@@ -14,9 +14,10 @@ use Illuminate\Support\Str;
 
 /**
  * MESO-060: copies a saved mesocycle into a draft (MESO-007) the create flow opens at its slots, replacing the user's
- * other unfinished ones. Days and slots get new ids and keep their labels, weekdays, muscles, sets and exercises. MESO-061, MESO-062: each slot carries the old
- * week-1 load of its exercise, so history follows the exercise; the rise (and the MESO-063 hold) is applied when the
- * targets are planned, from `carried`.
+ * other unfinished ones, and records its source in `copied_from_id`. Days and slots get new ids and keep their labels,
+ * weekdays, muscles, sets and exercises. MESO-061, MESO-062: each slot carries the old week-1 load of its exercise, so
+ * history follows the exercise; the rise (and the MESO-063 hold) is applied when the targets are planned, from
+ * `carried`.
  *
  * MESO-003: the draft belongs to the phase covering its start. MESO-065: in a phase of another type it takes that
  * phase's priority preset, unless the old priorities are kept.
@@ -68,6 +69,7 @@ final class CopyMesocycle
                 'is_resensitization' => false,
                 'route' => MesocycleRoute::CopyPrevious,
                 'active_rest' => false,
+                'copied_from_id' => $source->id,
                 'days' => $days,
                 'muscle_priorities' => $priorities,
                 'earlier_weeks' => [],

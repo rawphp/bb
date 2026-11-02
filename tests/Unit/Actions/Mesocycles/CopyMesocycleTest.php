@@ -159,10 +159,11 @@ it('MESO-060 MESO-005 a copy of a weekday split with a day added labels each day
 
     $build = MesocyclePayload::build(TrainSnapshot::load($user, COPY), copyOf($user, $source->fresh()))->toArray()['build'];
 
+    // The day joins from the current week on, the deload.
     $saved = MesocyclePayload::build(TrainSnapshot::load($user, $source->id), $source->fresh())->toArray()['saved'];
 
     expect(array_column($build['days'], 'label'))->toBe(['Upper A', 'Lower A', 'Day 3'])
-        ->and(array_column($saved['weeks'][0]['days'], 'label'))->toBe(['Upper A', 'Lower A', 'Day 3'])
+        ->and(array_column($saved['weeks'][4]['days'], 'label'))->toBe(['Upper A', 'Lower A', 'Day 3'])
         ->and($build['label_style'])->toBe('weekdays');
 });
 
