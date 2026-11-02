@@ -332,9 +332,7 @@ final class WorkoutSnapshot
 
     /**
      * A started, finished or skipped session from its rows: each exercise in order with its sets in order. An
-     * exercise left with no sets still shows. Sets written before sessions had exercises (no workout_exercise_id)
-     * show grouped by their exercise, in the order they come, under a derived id that names no row, so a write
-     * naming it is not found.
+     * exercise left with no sets still shows.
      *
      * @return list<WorkoutBlock>
      */
@@ -351,12 +349,6 @@ final class WorkoutSnapshot
             if ($exercise !== null) {
                 $mine = $sets->filter(fn (WorkoutSet $set) => strcasecmp((string) $set->workout_exercise_id, (string) $row->id) === 0);
                 $blocks[] = new WorkoutBlock(strtolower((string) $row->id), $exercise, $row->note, self::rows($mine));
-            }
-        }
-        foreach ($sets->filter(fn (WorkoutSet $set) => $set->workout_exercise_id === null)->groupBy('exercise_id') as $exerciseId => $legacy) {
-            $exercise = $this->train->exercise((int) $exerciseId);
-            if ($exercise !== null) {
-                $blocks[] = new WorkoutBlock(WorkoutIds::block($this->workoutId(), "exercise-{$exerciseId}"), $exercise, null, self::rows($legacy));
             }
         }
 

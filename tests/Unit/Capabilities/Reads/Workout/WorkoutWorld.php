@@ -54,7 +54,7 @@ final class WorkoutWorld
     /**
      * @param  list<WorkoutSession>|null  $sessions  the logged history when null
      * @param  list<WorkoutSet>|null  $sets  the logged history's sets when null
-     * @param  list<WorkoutExercise>  $blocks
+     * @param  list<WorkoutExercise>|null  $blocks  the viewed session's, one per exercise of its sets when null
      * @param  list<MuscleFeedback>  $muscleFeedback
      * @param  list<ExerciseFeedback>  $exerciseFeedback
      * @param  list<WorkoutSession>|null  $history  the sessions FB-007 and FB-009 look at; the logged history when null
@@ -72,7 +72,7 @@ final class WorkoutWorld
         string $now = '2026-09-28 17:35',
         ?array $sessions = null,
         ?array $sets = null,
-        array $blocks = [],
+        ?array $blocks = null,
         array $muscleFeedback = [],
         array $exerciseFeedback = [],
         ?array $history = null,
@@ -87,6 +87,7 @@ final class WorkoutWorld
     ): WorkoutSnapshot {
         $sessions ??= self::sessions();
         $sets ??= self::sets();
+        $blocks ??= self::blocksOf($sessions, $sets, $week, $day);
         $clock = new DateTimeImmutable($now, new DateTimeZone('UTC'));
         $train = new TrainSnapshot(
             today: TrainSnapshot::day($clock),
@@ -189,7 +190,7 @@ final class WorkoutWorld
     public static function set(string $id, string $session, int $exercise, int $position, array $attributes = []): WorkoutSet
     {
         return (new WorkoutSet)->forceFill(array_replace([
-            'id' => $id, 'user_id' => 1, 'workout_session_id' => $session, 'workout_exercise_id' => null,
+            'id' => $id, 'user_id' => 1, 'workout_session_id' => $session, 'workout_exercise_id' => "{$session}-{$exercise}",
             'exercise_id' => $exercise, 'position' => $position, 'type' => 'regular', 'variant' => 'straight',
             'target_weight_kg' => null, 'target_reps' => null, 'actual_weight_kg' => null, 'actual_reps' => null,
             'is_logged' => false, 'is_skipped' => false,
@@ -207,6 +208,27 @@ final class WorkoutWorld
             'id' => $id, 'user_id' => 1, 'workout_session_id' => $session, 'exercise_id' => $exercise,
             'position' => $position, 'note' => $note,
         ]);
+    }
+
+    /**
+     * The exercise rows of the session viewed, as workout_start writes them: one per exercise of its sets, in the
+     * order they come.
+     *
+     * @param  list<WorkoutSession>  $sessions
+     * @param  list<WorkoutSet>  $sets
+     * @return list<WorkoutExercise>
+     */
+    private static function blocksOf(array $sessions, array $sets, int $week, int $day): array
+    {
+        $viewed = array_map(fn (WorkoutSession $s) => $s->id, array_filter($sessions, fn (WorkoutSession $s) => $s->week === $week && $s->day === $day));
+        $blocks = [];
+        foreach ($sets as $set) {
+            if (in_array($set->workout_session_id, $viewed, true) && ! isset($blocks[$set->workout_exercise_id])) {
+                $blocks[$set->workout_exercise_id] = self::block($set->workout_exercise_id, $set->workout_session_id, $set->exercise_id, count($blocks) + 1);
+            }
+        }
+
+        return array_values($blocks);
     }
 
     /** @return list<WorkoutSession> */

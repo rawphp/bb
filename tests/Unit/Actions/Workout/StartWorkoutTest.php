@@ -56,7 +56,7 @@ it('WO-010 OFF-021 starts the session at the instant the user acted, not the clo
     expect(startIt($user, strtoupper($shown['workout_id'])))->toBeNull();
 
     $session = WorkoutSession::query()->where('week', 3)->sole();
-    $block = WorkoutExercise::query()->sole();
+    $block = WorkoutExercise::query()->where('workout_session_id', $session->id)->sole();
     $sets = WorkoutSet::query()->where('workout_session_id', $session->id)->orderBy('position')->get();
     expect([$session->user_id, $session->mesocycle_id, $session->week, $session->day])->toBe([$user->id, $mesocycle->id, 3, 1])
         ->and($session->actual_start_at->format('Y-m-d H:i'))->toBe('2026-09-21 17:40')

@@ -45,8 +45,8 @@ function setsSeed(string $loadType = 'barbell'): array
     $user = TrainSeed::user();
     $mesocycle = TrainSeed::mesocycle($user);
     TrainSeed::trained($mesocycle, 2, 1, '2026-09-14');
-    app(StartWorkout::class)($user, WorkoutIds::workout($mesocycle->id, 3, 1), CarbonImmutable::parse('2026-09-21 17:40:00'));
-    $block = WorkoutExercise::query()->sole();
+    $session = app(StartWorkout::class)($user, WorkoutIds::workout($mesocycle->id, 3, 1), CarbonImmutable::parse('2026-09-21 17:40:00'));
+    $block = WorkoutExercise::query()->where('workout_session_id', $session->id)->sole();
 
     return [$user, $block, $block->sets()->pluck('id')->all()];
 }
@@ -145,8 +145,8 @@ it('WO-020 a skipped set cannot be logged, and what it holds stays', function ()
 
 it('WO-010 a set of a finished, skipped or not started session cannot change', function (array $session, string $message) {
     [$user, , $ids] = setsSeed();
+    $block = WorkoutExercise::query()->find(WorkoutSet::query()->find($ids[0])->workout_exercise_id);
     WorkoutSession::query()->where('week', 3)->sole()->update($session);
-    $block = WorkoutExercise::query()->sole();
 
     expect(refusalOf(fn () => app(LogWorkoutSet::class)($user, $ids[0], 82.5, WeightUnit::Kg, 10, true)))->toBe($message)
         ->and(refusalOf(fn () => app(SkipWorkoutSet::class)($user, $ids[0], true)))->toBe($message)

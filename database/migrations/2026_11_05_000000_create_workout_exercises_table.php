@@ -22,8 +22,9 @@ return new class extends Migration
             $table->softDeletes();
         });
 
+        // Every set belongs to one exercise of its session; no set rows existed before this.
         Schema::table('workout_sets', function (Blueprint $table) {
-            $table->foreignUlid('workout_exercise_id')->nullable()->after('workout_session_id')
+            $table->foreignUlid('workout_exercise_id')->after('workout_session_id')
                 ->constrained('workout_exercises')->cascadeOnDelete();
         });
     }
