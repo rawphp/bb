@@ -211,32 +211,47 @@ final class TodaySnapshot
         return $start === null || $day < $start;
     }
 
-    /** SCH-023: a day outside the days the plan can show goes to its nearest edge. Without a plan, any day. */
-    public function insidePlan(DateTimeImmutable $day): DateTimeImmutable
+    /**
+     * SCH-020, SCH-023: the last day to browse to: the last day with a target, or today after it, so today's week can
+     * always be opened.
+     */
+    public function browseEnd(): ?DateTimeImmutable
     {
-        $lower = $this->firstDay();
-        $upper = $this->lastDay();
-        if ($lower !== null && $day < $lower) {
-            return $lower;
-        }
+        $last = $this->lastDay();
 
-        return $upper !== null && $day > $upper ? $upper : $day;
+        return $last === null ? null : max($last, $this->today());
     }
 
     /**
-     * SCH-020: the same weekday `$days` later or earlier, kept inside the plan; null when that week is outside it.
+     * SCH-023: a date in a week outside the weeks the plan can show goes to its nearest edge; a date in one of those
+     * weeks is shown as it is. Without a plan, any day.
+     */
+    public function insidePlan(DateTimeImmutable $day): DateTimeImmutable
+    {
+        $lower = $this->firstDay();
+        $upper = $this->browseEnd();
+        if ($lower !== null && $this->weekStart($day) < $this->weekStart($lower)) {
+            return $lower;
+        }
+
+        return $upper !== null && $this->weekStart($day) > $this->weekStart($upper) ? $upper : $day;
+    }
+
+    /**
+     * SCH-020: the same weekday `$days` later or earlier, kept inside the days the plan can show; null when that week
+     * is outside them.
      */
     public function weekShifted(DateTimeImmutable $day, int $days): ?DateTimeImmutable
     {
         $target = $day->modify(sprintf('%+d days', $days));
         $start = $this->weekStart($target);
         $lower = $this->firstDay();
-        $upper = $this->lastDay();
+        $upper = $this->browseEnd();
         if (($lower !== null && $start < $this->weekStart($lower)) || ($upper !== null && $start > $upper)) {
             return null;
         }
 
-        return $this->insidePlan($target);
+        return max($lower ?? $target, min($upper ?? $target, $target));
     }
 
     // MARK: sessions (SCH-040)

@@ -55,7 +55,7 @@ final class TodaySeed
     }
 
     /**
-     * Another user whose rows differ from {@see user()}'s in everything Today shows: a plan from Monday 2026-09-07
+     * Another user whose rows differ from TodaySeed::user()'s in everything Today shows: a plan from Monday 2026-09-07
      * with Monday reviews, other training days, busy periods, steps and weigh-ins, an away week, a phase, targets
      * of 3000 kcal to 2026-11-30, and a logged Wednesday. Made first, so an unscoped `first()` would find it.
      */

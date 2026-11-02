@@ -154,7 +154,7 @@ final class TodayPayload
                 time_text: $entry->time === null ? null : ClockTime::fromHhmm($entry->time)?->shortText(),
                 macros: TodayWords::macros(new MealTarget($entry->kcal, $entry->protein_g, $entry->fat_g, $entry->carbs_g)),
             ), $inPlan ? $snapshot->offPlan($day) : []),
-            schedule_menu: self::scheduleMenu($isPast, $addMealTime !== null, $addWorkout !== null),
+            schedule_menu: self::scheduleMenu($isPast),
             add_meal_time: $addMealTime,
             add_workout: $addWorkout,
             schedule: self::schedule($snapshot, $workout),
@@ -442,18 +442,12 @@ final class TodayPayload
         ));
     }
 
-    /**
-     * SCH-030, NUT-024: a past day offers neither Add meal nor Optimize; Add meal and Add workout show only when
-     * their sheets have what they open with.
-     *
-     * @return list<ScheduleMenuItem>
-     */
-    private static function scheduleMenu(bool $isPast, bool $canAddMeal, bool $canAddWorkout): array
+    /** @return list<ScheduleMenuItem> SCH-030, NUT-024: a past day offers neither Add meal nor Optimize. */
+    private static function scheduleMenu(bool $isPast): array
     {
-        $offered = ['add_meal' => $canAddMeal, 'add_workout' => $canAddWorkout, 'optimize_schedule' => ! $isPast];
         $items = [];
         foreach (self::SCHEDULE_MENU as $action => $label) {
-            if ($offered[$action] ?? true) {
+            if (! $isPast || ($action !== 'add_meal' && $action !== 'optimize_schedule')) {
                 $items[] = new ScheduleMenuItem($action, $label);
             }
         }
