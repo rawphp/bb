@@ -47,6 +47,8 @@ final class PhaseHistory
             $rate = null;
             if ($first !== null && $last !== null && $last->day >= $first->day) {
                 $change = $last->trendKg - $first->trendKg;
+                // Over the phase's whole weeks, as rp-clone does and its ANA-006 test pins: a trend that starts late or
+                // stops early (WT-010 holds it) counts as no change on those days, not as a shorter phase.
                 $weeks = Days::whole($start, $end, $zone) / 7;
                 if ($weeks > 0) {
                     $rate = $change / $first->trendKg * 100 / $weeks;

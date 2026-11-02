@@ -2,16 +2,17 @@
 
 namespace App\Domain\Progress;
 
-use App\Capabilities\Support\Tone;
-
-/** DAY-010: the status of a day's totals against its target. */
+/**
+ * DAY-010: the status of a day's totals against its target. The rule says only whether the day is on track;
+ * the read that shows it picks the tone (on track is good, anything else a warning, as rp-clone's DayStatus).
+ */
 final readonly class DayStatus
 {
     public const ON_TRACK_TEXT = 'on track';
 
     public function __construct(
         public string $text,
-        public Tone $tone,
+        public bool $onTrack,
     ) {}
 
     /**
@@ -21,13 +22,13 @@ final readonly class DayStatus
     public static function make(DayTotals $consumed, DayTotals $target): self
     {
         if (! Adherence::within($consumed->kcal, $target->kcal)) {
-            return new self(self::describe($consumed->kcal - $target->kcal, ''), Tone::Warning);
+            return new self(self::describe($consumed->kcal - $target->kcal, ''), false);
         }
         if (! Adherence::within($consumed->proteinG, $target->proteinG)) {
-            return new self(self::describe($consumed->proteinG - $target->proteinG, ' g protein'), Tone::Warning);
+            return new self(self::describe($consumed->proteinG - $target->proteinG, ' g protein'), false);
         }
 
-        return new self(self::ON_TRACK_TEXT, Tone::Good);
+        return new self(self::ON_TRACK_TEXT, true);
     }
 
     private static function describe(float $difference, string $unit): string

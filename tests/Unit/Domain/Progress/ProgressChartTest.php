@@ -166,3 +166,22 @@ it('ANA-010 share text without a phase and in pounds', function () {
     );
     expect(ProgressShare::text($summary, WeightUnit::Lb))->toBe('Progress: 200.0 lb to 200.0 lb (+0.0 lb) over 2 weeks');
 });
+
+it('ANA-002 trend points after today are left out of the summary', function () {
+    // Weigh-ins run past today (10 October) and change after it: the current weight is today's trend.
+    $trend = F::trend([...F::steady('2026-09-01', 40, 80), ...F::steady('2026-10-11', 10, 70)]);
+    $summary = progressSummary(ProgressScope::CurrentPhase, $trend);
+    expect($summary?->currentDay)->toEqual(F::day('2026-10-10'))
+        ->and($summary?->currentKg)->toEqualWithDelta($trend->trendKg(F::day('2026-10-10')), 1e-9)
+        ->and($summary?->currentKg)->toEqualWithDelta(80, 1e-9);
+});
+
+it('ANA-001 the scope titles', function () {
+    expect(ProgressScope::CurrentPhase->title())->toBe('Phase')
+        ->and(ProgressScope::WholePlan->title())->toBe('Whole plan');
+});
+
+it('PH-001 every phase type has the name a user reads', function () {
+    expect(array_map(fn (PhaseType $type) => $type->title(), PhaseType::cases()))
+        ->toBe(['Fat loss', 'Mini-cut', 'Maintenance', 'Muscle gain']);
+});
