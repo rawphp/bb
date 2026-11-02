@@ -226,7 +226,7 @@ describe('outbox', () => {
 
         await vi.advanceTimersByTimeAsync(m.call.RETRY_FIRST_MS);
         expect(calls).toBe(2);
-        expect(m.outbox.entries.value).toEqual([]);
+        await vi.waitFor(() => expect(m.outbox.entries.value).toEqual([]));
     });
 
     it.each([
@@ -245,16 +245,17 @@ describe('outbox', () => {
     });
 
     it("OFF-011 moves an entry to Couldn't sync once the server has said it is still running it ten times running", async () => {
-        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         const busy = { ok: false, error: { code: 'conflict', message: 'Still processing.', retryable: true } };
         fetchMock.mockImplementation(async (url) => (url === '/capabilities/steps_log' ? json(busy, 409) : Promise.reject(new TypeError('offline'))));
-
         await m.call.write('steps_log', { steps: 9000 }, { label });
         await m.call.write('weigh_in_log', { weight: 80 }, { label });
-        for (let attempt = 1; attempt < m.call.STUCK_AFTER; attempt++) await vi.advanceTimersByTimeAsync(m.call.RETRY_MAX_MS);
+        await settle();
+
+        // Each pass stands for the backoff's next try.
+        while (sent().filter(([name]) => name === 'steps_log').length < m.call.STUCK_AFTER - 1) await m.call.replay();
         expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['waiting', 'waiting']);
 
-        await vi.advanceTimersByTimeAsync(m.call.RETRY_MAX_MS);
+        await m.call.replay();
 
         expect(m.outbox.entries.value.map((entry) => [entry.name, m.outbox.stateOf(entry)])).toEqual([
             ['steps_log', 'failed'],
@@ -276,7 +277,7 @@ describe('outbox', () => {
         await vi.advanceTimersByTimeAsync(2_000 + 4_000);
         failing = false;
         await vi.advanceTimersByTimeAsync(8_000);
-        expect(m.outbox.entries.value).toEqual([]);
+        await vi.waitFor(() => expect(m.outbox.entries.value).toEqual([]));
 
         failing = true;
         await m.call.write('steps_log', { steps: 2 }, { label });

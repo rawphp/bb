@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Middleware\AcceptOccurredAt;
 use App\Support\Env;
+use App\Support\OccurredAt;
 use Rawphp\Capabilities\Adapters\PeerSupportMatrix;
 
 /**
@@ -81,7 +83,9 @@ return [
             // (e.g. 'capabilities' → --base-url=https://host, 'api/capabilities' →
             // --base-url=https://host/api). Any other last segment is unreachable from the CLI.
             'prefix' => 'capabilities',
-            'middleware' => ['api', 'auth:sanctum'],
+            // AcceptOccurredAt after auth: it lets a write the user already sent past the
+            // occurred_at window, so the stored answer is replayed (OFF-007, CAP-014).
+            'middleware' => ['api', 'auth:sanctum', AcceptOccurredAt::class],
             // Stack for the unauthenticated auth/token, auth/device and auth/callback routes.
             // null → `middleware` minus auth:* plus 'throttle:6,1,capabilities-auth'.
             // Set a list to replace it (e.g. a looser throttle for device-code polling).
@@ -167,7 +171,9 @@ return [
         // Aligned with approval.store=database (L-009 / REQ-070).
         'driver' => $env('CAPABILITIES_IDEMPOTENCY_DRIVER', 'database'),
         'connection' => $env('CAPABILITIES_IDEMPOTENCY_CONNECTION', null),
-        'ttl_hours' => 24,
+        // Longer than the outbox may replay a write (OFF-007's 7 days and 5 minutes),
+        // so a key it sends again is never one the server has forgotten (OFF-051).
+        'ttl_hours' => (OccurredAt::MAX_AGE_DAYS + 1) * 24,
         'header' => 'Idempotency-Key',
         'warn_missing_key' => $env('CAPABILITIES_IDEMPOTENCY_WARN', true),
     ],

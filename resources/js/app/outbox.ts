@@ -72,10 +72,13 @@ export function stateOf(entry: OutboxEntry): EntryState {
     return held.value.has(entry.seq) ? 'held' : 'waiting';
 }
 
+/** Show and send the entries of whoever is signed in now (OFF-012). */
+export function followSignedInUser(): void {
+    user.value = owner();
+}
+
 /** The next entry to send: the oldest that neither failed nor waits on one that did. */
 export function nextToSend(): OutboxEntry | undefined {
-    user.value = owner();
-
     return entries.value.find((entry) => stateOf(entry) === 'waiting');
 }
 
@@ -99,14 +102,16 @@ export function pendingInput<T = Record<string, unknown>>(name: string, matches:
     return found?.input as T | undefined;
 }
 
-// Storage. Memory is the source of truth, so the app keeps working where IndexedDB
-// doesn't (a private window); there the outbox lasts as long as the page.
+// Storage. An entry counts as made only once IndexedDB holds it; memory mirrors the
+// stored entries so screens can read them at once.
 
 interface Schema extends DBSchema {
     entries: { key: number; value: OutboxEntry };
 }
 
 let db: Promise<IDBPDatabase<Schema>> | undefined;
+// The last seq handed out, so two writes in one millisecond, or in flight together, never share one.
+let lastSeq = 0;
 // Removed this page load, so a stored copy whose delete hasn't landed yet never comes back.
 const removed = new Set<number>();
 
@@ -114,6 +119,10 @@ function open(): Promise<IDBPDatabase<Schema>> {
     db ??= openDB<Schema>('bodybuilder-outbox', 1, {
         upgrade(database) {
             database.createObjectStore('entries', { keyPath: 'seq' });
+        },
+        // The browser closed the connection (site data cleared, an app in the background).
+        terminated() {
+            db = undefined;
         },
     }).catch((error: unknown) => {
         db = undefined;
@@ -123,46 +132,55 @@ function open(): Promise<IDBPDatabase<Schema>> {
     return db;
 }
 
+/** One storage step, tried once more on a fresh connection when the one held has gone bad. */
+async function onDisk<T>(step: (database: IDBPDatabase<Schema>) => Promise<T>): Promise<T> {
+    try {
+        return await step(await open());
+    } catch {
+        db = undefined;
+        return step(await open());
+    }
+}
+
 /** Read the device's entries, and whose they are now (OFF-012). */
 export async function loadOutbox(): Promise<void> {
-    user.value = owner();
-    const stored = await open()
-        .then((database) => database.getAll('entries'))
-        .catch(() => []);
+    followSignedInUser();
+    const stored = await onDisk((database) => database.getAll('entries')).catch(() => []);
     const bySeq = new Map(stored.filter((entry) => !removed.has(entry.seq)).map((entry) => [entry.seq, entry]));
     for (const entry of all.value) bySeq.set(entry.seq, entry);
     all.value = [...bySeq.values()].sort((a, b) => a.seq - b.seq);
+    lastSeq = Math.max(lastSeq, all.value.at(-1)?.seq ?? 0);
 }
 
-/** Stores the entry before it resolves: what the user did is on the device. */
+/**
+ * Resolves once the entry is stored, so what the user did is on the device (OFF-006).
+ * Rejects when the device can't store it (storage full, no IndexedDB): the entry is then
+ * not in the outbox at all, and the screen says the change wasn't saved.
+ */
 export async function addEntry(fields: Omit<OutboxEntry, 'seq'>): Promise<OutboxEntry> {
-    const last = all.value.at(-1)?.seq ?? 0;
     // Microseconds since the epoch: unique and ordered across reloads.
-    const entry = { ...fields, seq: Math.max(Date.now() * 1000, last + 1) };
-    all.value = [...all.value, entry];
-    await open()
-        .then((database) => database.put('entries', entry))
-        .catch(() => undefined);
+    lastSeq = Math.max(Date.now() * 1000, lastSeq + 1);
+    const entry = { ...fields, seq: lastSeq };
+    await onDisk((database) => database.put('entries', entry));
+    all.value = [...all.value, entry].sort((a, b) => a.seq - b.seq);
 
     return entry;
 }
 
+// A failed update or delete is not reported: the entry is sent again and the server
+// answers it from its idempotency store (CAP-014), or refuses it again.
 export async function updateEntry(entry: OutboxEntry): Promise<void> {
     all.value = all.value.map((each) => (each.seq === entry.seq ? entry : each));
-    await open()
-        .then((database) => database.put('entries', entry))
-        .catch(() => undefined);
+    await onDisk((database) => database.put('entries', entry)).catch(() => undefined);
 }
 
 export async function removeEntries(seqs: readonly number[]): Promise<void> {
     for (const seq of seqs) removed.add(seq);
     all.value = all.value.filter((entry) => !seqs.includes(entry.seq));
-    await open()
-        .then(async (database) => {
-            const tx = database.transaction('entries', 'readwrite');
-            await Promise.all([...seqs.map((seq) => tx.store.delete(seq)), tx.done]);
-        })
-        .catch(() => undefined);
+    await onDisk(async (database) => {
+        const tx = database.transaction('entries', 'readwrite');
+        await Promise.all([...seqs.map((seq) => tx.store.delete(seq)), tx.done]);
+    }).catch(() => undefined);
 }
 
 /** OFF-012: delete what another user left unsynced, once the signed-in user has confirmed. */

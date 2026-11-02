@@ -10,7 +10,8 @@ export function failureMessage(error: unknown, fallback: string): string {
     if (!(error instanceof CapabilityError)) return fallback;
     if (error.status === 0) {
         // call.ts writeNow(): not sent, because entries made before it can't be sent yet.
-        if ((error.body as { reason?: unknown } | null)?.reason === 'waiting') return "Earlier changes haven't synced yet. Try again once they have.";
+        const body = error.body as { reason?: unknown; offline?: unknown } | null;
+        if (body?.reason === 'waiting' && body.offline !== true) return "Earlier changes haven't synced yet. Try again once they have.";
         return 'No connection. Try again when you are online.';
     }
 

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { entries, stateOf, syncedAt } from '@/app/outbox';
+import { entries, syncedAt } from '@/app/outbox';
 
 // The More menu's sync line (ACC-003, OFF-010): when the device last synced, or how many
-// changes wait in the outbox and how many of those couldn't sync. It opens the outbox.
+// changes wait in the outbox. It opens the outbox, which says which couldn't sync.
 
 const ago = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 const UNITS = [
@@ -26,8 +26,6 @@ function synced(at: number): string {
     return unit === undefined ? 'Synced a few seconds ago' : `Synced ${ago.format(-Math.floor(seconds / unit[1]), unit[0])}`;
 }
 
-const failed = computed(() => entries.value.filter((entry) => stateOf(entry) === 'failed').length);
-
 const status = computed(() => {
     const count = entries.value.length;
     if (count > 0) return `${count} ${count === 1 ? 'change' : 'changes'} waiting to sync`;
@@ -39,10 +37,7 @@ const status = computed(() => {
 <template>
     <RouterLink to="/sync" class="min-h-tap flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 active:opacity-70" data-test="sync-line">
         <span class="flex-1 font-medium">Sync</span>
-        <span class="flex flex-col items-end text-sm">
-            <span class="text-secondary-text">{{ status }}</span>
-            <span v-if="failed > 0" class="text-tone-warning" data-test="sync-failed">{{ failed }} couldn't sync</span>
-        </span>
+        <span class="text-sm text-secondary-text">{{ status }}</span>
         <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4 shrink-0 text-secondary-text" fill="none" stroke="currentColor" stroke-width="2">
             <path d="m9 6 6 6-6 6" />
         </svg>

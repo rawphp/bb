@@ -5,6 +5,7 @@ import {
     addEntry,
     affectsOf,
     announceReplayed,
+    followSignedInUser,
     loadOutbox,
     markSynced,
     nextToSend,
@@ -167,9 +168,9 @@ async function inBatches<T>(items: readonly T[], limit: number, task: (item: T) 
 export async function sync(): Promise<void> {
     await loadOutbox();
     await learnAffects();
-    await replay();
+    const stalled = await replay();
     await warm();
-    markSynced();
+    if (stalled === undefined) markSynced();
 }
 
 /** Sync now and on every reconnect, which also retries the outbox at once (OFF-004, OFF-011). */
@@ -272,17 +273,18 @@ export async function write(name: string, input: CapabilityInput, options: Write
  * and account changes, settings, undo. It takes its turn behind the outbox, so it never
  * overtakes a write made before it, but it is never kept: with no answer it fails at
  * once, and when earlier entries can't be sent it fails without sending (status 0,
- * reason `waiting`). It resolves with the server's answer and drops the cached reads
+ * reason `waiting`, `offline` when no answer came for them). It resolves with the server's answer and drops the cached reads
  * that answer invalidates (CAP-010). Pass the idempotency key of a retry after no
  * answer, so the server replays the first attempt rather than running it twice (CAP-014).
  */
 export async function writeNow<T = unknown>(name: string, input: CapabilityInput = {}, options: { idempotencyKey?: string } = {}): Promise<T> {
     const stalled = await replay();
     if (stalled !== undefined) {
-        // Signed out stays signed out; anything else is the outbox still waiting.
+        // Signed out stays signed out; anything else is the outbox still waiting, and
+        // this write was not sent, so it can't have run (unanswered() says no).
         throw SESSION_GONE.includes(stalled.status)
             ? new CapabilityError(name, stalled.status, stalled.body)
-            : new CapabilityError(name, 0, { reason: 'waiting' });
+            : new CapabilityError(name, 0, { reason: 'waiting', offline: stalled.status === 0 });
     }
 
     const data = await invoke<T>(name, input, { 'Idempotency-Key': options.idempotencyKey ?? newKey(name) });
@@ -301,22 +303,27 @@ function invalidatesOf(data: unknown): string[] {
     return Array.isArray(invalidates) ? invalidates.filter((key) => typeof key === 'string') : [];
 }
 
-// OFF-011: after a network failure or a 5xx, the outbox tries again in 2 s, then
-// doubling up to 5 minutes, and at once on reconnect (keepSynced).
+// OFF-011: an entry with no answer tries again in 2 s, then doubling up to 5 minutes,
+// and at once on reconnect (keepSynced).
 export const RETRY_FIRST_MS = 2_000;
 export const RETRY_MAX_MS = 5 * 60_000;
+// The app saying "still running it" this many times in a row means the run that held
+// the key died: the key will answer nothing else, so the entry couldn't sync.
+export const STUCK_AFTER = 10;
 
 let replaying: Promise<CapabilityError | undefined> | undefined;
 let retries = 0;
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
+const stillRunning = new Map<number, number>();
 
 /**
  * Send the signed-in user's entries one at a time, oldest first (OFF-006). Resolves with
  * undefined once nothing is left to send, or with the error that stopped it: no answer
- * or a 5xx (retried with backoff), or a gone session (401, 419), after which the outbox
- * waits for that user to sign in again (OFF-012). A refusal moves the entry to "Couldn't
- * sync" and goes on (OFF-011). A call while it runs joins it; the loop picks up entries
- * added meanwhile. After it sends anything it warms the cache (OFF-004).
+ * (retried with backoff), or a gone session (401, 419), after which the outbox waits for
+ * that user to sign in again (OFF-012). Any other answer from the app is final, so the
+ * entry moves to "Couldn't sync" and the replay goes on (OFF-011). A call while it runs
+ * joins it; the loop picks up entries added meanwhile. Once it ends, screens hear every
+ * read the answers invalidated, and, after it sent anything, the cache warms (OFF-004).
  */
 export function replay(): Promise<CapabilityError | undefined> {
     replaying ??= replayAll();
@@ -329,6 +336,8 @@ async function replayAll(): Promise<CapabilityError | undefined> {
     await Promise.resolve();
     clearTimeout(retryTimer);
     retryTimer = undefined;
+    followSignedInUser();
+    const invalidated: string[] = [];
     let sent = false;
 
     try {
@@ -338,13 +347,14 @@ async function replayAll(): Promise<CapabilityError | undefined> {
                 if (sent) markSynced();
                 return undefined;
             }
-            const stalled = await deliver(entry);
+            const stalled = await deliver(entry, invalidated);
             if (stalled !== undefined) return stalled;
             sent = true;
         }
     } finally {
         // Cleared in the same step the loop ends, so an entry added after it starts a new one.
         replaying = undefined;
+        if (invalidated.length > 0) announceReplayed([...new Set(invalidated)]);
         if (sent) {
             warm().catch(() => {
                 // Offline or signed out: the next sync warms again.
@@ -354,42 +364,74 @@ async function replayAll(): Promise<CapabilityError | undefined> {
 }
 
 /** Sends one entry, and resolves with the error that must stop the replay, if any. */
-async function deliver(entry: OutboxEntry): Promise<CapabilityError | undefined> {
+async function deliver(entry: OutboxEntry, invalidated: string[]): Promise<CapabilityError | undefined> {
     try {
         const data = await invoke(entry.name, entry.input, { 'Idempotency-Key': entry.idempotencyKey, 'X-BB-Occurred-At': entry.occurredAt });
         retries = 0;
+        stillRunning.delete(entry.seq);
         const keys = invalidatesOf(data);
         await drop(keys).catch(() => undefined);
         await removeEntries([entry.seq]);
-        announceReplayed(keys);
+        invalidated.push(...keys);
 
         return undefined;
     } catch (failure) {
         const error = failure instanceof CapabilityError ? failure : new CapabilityError(entry.name, 0, { reason: 'network' });
         if (SESSION_GONE.includes(error.status)) return error;
-        if (retryable(error)) {
+        if (retryable(error) && !stuck(entry, error)) {
             retryLater();
             return error;
         }
+        stillRunning.delete(entry.seq);
         await updateEntry({ ...entry, refusal: { status: error.status, body: error.body } });
 
         return undefined;
     }
 }
 
-// No answer, a 5xx, the throttle, or the app's "already processing" 409 (CAP-014):
-// the entry may still go through, so it stays and is sent again.
+// No answer to this entry yet: no response, a gateway's 5xx, the throttle in front of
+// the app, or the app still running it. Anything else the app keeps under the key.
 function retryable(error: CapabilityError): boolean {
-    if (error.status === 0 || error.status >= 500 || error.status === 429) return true;
-    const envelope = (error.body as { error?: { retryable?: unknown } } | null)?.error;
+    return unanswered(error) || (error.status === 429 && appError(error) === null);
+}
 
-    return error.status === 409 && envelope?.retryable === true;
+function stuck(entry: OutboxEntry, error: CapabilityError): boolean {
+    if (error.status !== 409) {
+        stillRunning.delete(entry.seq);
+        return false;
+    }
+    const times = (stillRunning.get(entry.seq) ?? 0) + 1;
+    stillRunning.set(entry.seq, times);
+
+    return times >= STUCK_AFTER;
 }
 
 function retryLater(): void {
     const delay = Math.min(RETRY_FIRST_MS * 2 ** retries, RETRY_MAX_MS);
     retries++;
     retryTimer = setTimeout(() => void replay(), delay);
+}
+
+/** The app's own error envelope in a failed answer, or null when something in front of the app answered. */
+function appError(error: CapabilityError): { retryable?: unknown } | null {
+    const envelope = (error.body as { error?: unknown } | null)?.error;
+
+    return typeof envelope === 'object' && envelope !== null ? (envelope as { retryable?: unknown }) : null;
+}
+
+/**
+ * Whether an attempt ended without the app's final answer, so it may have run or may
+ * still be running: no response at all (status 0); a 5xx without the app's error
+ * envelope, which a proxy sends when it gives up while the app carries on; or the app's
+ * own "already processing" 409, which it marks retryable (CAP-014, D-005). A write the
+ * outbox held back (reason `waiting`) was never sent, so it has an answer: it didn't run.
+ */
+export function unanswered(error: unknown): boolean {
+    if (!(error instanceof CapabilityError)) return false;
+    if (error.status === 0) return (error.body as { reason?: unknown } | null)?.reason !== 'waiting';
+    if (error.status >= 500) return appError(error) === null;
+
+    return error.status === 409 && appError(error)?.retryable === true;
 }
 
 /**

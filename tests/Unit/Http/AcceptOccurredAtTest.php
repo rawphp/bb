@@ -25,7 +25,6 @@ function outboxRequest(?string $occurredAt, ?string $key = null): Request
     }
     $route = (new Route('POST', 'capabilities/{name}', fn () => null))->bind($request);
     $request->setRouteResolver(fn () => $route);
-    $request->setUserResolver(fn () => tap(new User, fn (User $user) => $user->id = 7));
 
     return $request;
 }
@@ -41,7 +40,7 @@ function storedAnswer(string $key, string $expires): InMemoryIdempotencyStore
 {
     $store = idempotencyStore();
     $store->put([
-        'tenant_id' => null,
+        'tenant_id' => 'default-tenant',
         'actor_type' => 'user',
         'actor_id' => '7',
         'capability_name' => 'tally_add',
@@ -59,6 +58,8 @@ function storedAnswer(string $key, string $expires): InMemoryIdempotencyStore
 function acceptOccurredAt(Request $request, ?InMemoryIdempotencyStore $store = null): array
 {
     app()->instance('request', $request);
+    // After instance(): rebinding the request gives it the auth guard's resolver.
+    $request->setUserResolver(fn () => tap(new User, fn (User $user) => $user->id = 7));
     $seen = null;
     $response = (new AcceptOccurredAt($store ?? idempotencyStore()))->handle($request, function () use (&$seen): Response {
         $seen = OccurredAt::get()->toIso8601ZuluString();

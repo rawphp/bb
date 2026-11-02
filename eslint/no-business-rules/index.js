@@ -1,7 +1,7 @@
 // no-business-rules: the CAP-001 boundary. See README.md for what it allows.
 
 const ARITHMETIC = new Set(['+', '-', '*', '/', '%', '**']);
-const CAPABILITY_CALLS = new Set(['read', 'write']);
+const CAPABILITY_CALLS = new Set(['read', 'readFresh', 'write', 'writeNow']);
 const NUMBER_CASTS = new Set(['Number', 'parseFloat', 'parseInt']);
 const GLOBALS = new Set(['window', 'globalThis', 'self']);
 

@@ -34,6 +34,13 @@ function fixable(entry: OutboxEntry): { field: string; message: string }[] {
     );
 }
 
+// A change refused for when it was made (OFF-007) is refused the same way every time.
+function retryable(entry: OutboxEntry): boolean {
+    const violations = (entry.refusal?.body as { error?: { violations?: unknown } } | null)?.error?.violations;
+
+    return !(Array.isArray(violations) && violations.some((violation) => violation?.field === 'occurred_at'));
+}
+
 function edit(entry: OutboxEntry): void {
     editing.value = entry.seq;
     discarding.value = null;
@@ -112,7 +119,9 @@ function words(field: string): string {
 
                     <div v-else class="flex flex-wrap gap-x-4">
                         <button v-if="fixable(entry).length > 0" type="button" class="min-h-tap text-accent active:opacity-70" data-test="edit" @click="edit(entry)">Edit</button>
-                        <button v-else type="button" class="min-h-tap text-accent active:opacity-70" data-test="retry" @click="send(entry)">Try again</button>
+                        <button v-else-if="retryable(entry)" type="button" class="min-h-tap text-accent active:opacity-70" data-test="retry" @click="send(entry)">
+                            Try again
+                        </button>
                         <button type="button" class="min-h-tap text-tone-warning active:opacity-70" data-test="discard" @click="(discarding = entry.seq), (editing = null)">Discard</button>
                     </div>
                 </template>

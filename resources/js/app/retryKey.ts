@@ -1,6 +1,9 @@
 import { ref, type Ref } from 'vue';
-import { CapabilityError } from './call';
+import { unanswered } from './call';
 import { ulid } from './ulid';
+
+// What counts as no answer lives with the transport; screens import it from here too.
+export { unanswered };
 
 export interface RetryKey {
     /** The Idempotency-Key for the next attempt (CAP-014). */
@@ -35,20 +38,4 @@ export function useRetryKey(name: string): RetryKey {
     }
 
     return { key, unsure, settle, reset };
-}
-
-/**
- * Whether an attempt ended without the app's final answer, so it may have run or may
- * still be running: no response at all (status 0); a 5xx without the app's error
- * envelope, which a proxy sends when it gives up while the app carries on; or the app's
- * own "already processing" 409, which it marks retryable (CAP-014, D-005).
- */
-export function unanswered(error: unknown): boolean {
-    if (!(error instanceof CapabilityError)) return false;
-    if (error.status === 0) return true;
-    const envelope = (error.body as { error?: unknown } | null)?.error;
-    const app = typeof envelope === 'object' && envelope !== null ? (envelope as { retryable?: unknown }) : null;
-    if (error.status >= 500) return app === null;
-
-    return error.status === 409 && app?.retryable === true;
 }
