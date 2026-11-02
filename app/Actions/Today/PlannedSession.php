@@ -45,7 +45,7 @@ final readonly class PlannedSession
         $row = $train->sessions->first(fn (WorkoutSession $session) => $session->mesocycle_id === $mesocycle->id
             && $session->week === $week && $session->day === $day);
         // A row holds its day as the plan week reads it (SessionRow): the start, else where it was moved; otherwise the plan does.
-        $at = $row?->actual_start_at ?? $row?->planned_start_at;
+        $at = $row->actual_start_at ?? $row?->planned_start_at;
         $date = $at !== null ? DayPlans::day($at) : WorkoutSnapshot::dateOf($train, $mesocycle, $week, $day);
         $snapshot = $date === null ? null : TodaySnapshot::load($user, $date->format('Y-m-d'));
         $item = $snapshot?->workout($date);

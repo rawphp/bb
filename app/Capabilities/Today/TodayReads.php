@@ -14,6 +14,21 @@ use Illuminate\Support\Carbon;
  */
 final class TodayReads
 {
+    /** The sheets that read a day's meals and session, by their date-only key. */
+    public const SHEETS = ['day_optimize_show', 'day_redistribute_show', 'day_adjust_show'];
+
+    /**
+     * A re-target of these days: each one's Today and sheets, and the week strip of their plan week.
+     *
+     * @param  list<string>  $dates  Y-m-d
+     * @param  list<string>  $weekDates  Y-m-d
+     * @return list<string>
+     */
+    public static function forDays(array $dates, array $weekDates): array
+    {
+        return [...self::keys($dates, self::SHEETS), ...self::weekKeys($weekDates)];
+    }
+
     /**
      * @param  list<string>  $dates  Y-m-d
      * @param  list<string>  $sheets  the sheet reads, such as day_redistribute_show, by their date-only key

@@ -4,8 +4,8 @@ namespace App\Actions\Today;
 
 use App\Capabilities\Today\Data\WorkoutMoveInput;
 use App\Domain\Retarget\Retargeting;
-use App\Domain\Retarget\RetargetRefused;
 use App\Domain\Retarget\RetargetRefusal;
+use App\Domain\Retarget\RetargetRefused;
 use App\Models\User;
 use App\Support\Today\DayPlans;
 use DomainException;
