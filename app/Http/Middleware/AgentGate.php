@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Agent\AgentStatus;
+use App\Models\PersonalAccessToken;
+use App\Models\User;
 use Closure;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +14,8 @@ use Rawphp\Capabilities\Support\CapabilityResult;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * In front of the package's chat routes: a new message, which starts a turn, is
+ * In front of the package's chat routes. No route takes a personal access token.
+ * A new message, which starts a turn, is
  * refused while the agent is off (AGT-002), the user is at a cap (AGT-005), or,
  * under a token cap, one of the user's turns is still queued or running.
  * Under a cap, the checks and the store run under one lock per user. Nothing is stored or queued then. Every other chat route and every screen keep working.
@@ -32,6 +35,13 @@ final class AgentGate
 
     public function handle(Request $request, Closure $next): Response
     {
+        // The Coach runs as the signed-in user with the app's powers (CAP-023, AGT-004), and its
+        // turns carry no token to scope. So no route of it takes a personal access token.
+        $user = $request->user();
+        if ($user instanceof User && $user->currentAccessToken() instanceof PersonalAccessToken) {
+            return self::refuse(CapabilityResult::failure('forbidden', 'An access token cannot use the Coach. Sign in to the app to talk to it.'));
+        }
+
         if (! $request->routeIs('capabilities-ai.messages.store') || $request->user() === null) {
             return $next($request);
         }

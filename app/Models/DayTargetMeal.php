@@ -25,6 +25,22 @@ class DayTargetMeal extends Model
 
     public $timestamps = false;
 
+    /**
+     * The relations of every table whose foreign key points at a meal. A meal's plan goes with
+     * it through these models, before the foreign keys would cascade, so a reversible write's undo
+     * sees every row removed (CAP-013). A freeze test holds this list to the schema.
+     */
+    public const DEPENDENTS = ['plannedFoods', 'plannedRecipes', 'checkIn', 'planningState'];
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $meal) {
+            foreach (self::DEPENDENTS as $relation) {
+                $meal->{$relation}()->get()->each->delete();
+            }
+        });
+    }
+
     /** @return BelongsTo<DayTarget, $this> */
     public function dayTarget(): BelongsTo
     {
