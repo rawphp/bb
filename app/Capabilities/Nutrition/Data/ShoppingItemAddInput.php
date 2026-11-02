@@ -2,6 +2,8 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
+use Closure;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -19,6 +21,18 @@ final class ShoppingItemAddInput extends CapabilityData
     {
         return [
             'id' => ['ulid'],
+            // Implicit: Laravel skips a plain rule for a value that is only spaces.
+            'text' => [new class implements ValidationRule
+            {
+                public bool $implicit = true;
+
+                public function validate(string $attribute, mixed $value, Closure $fail): void
+                {
+                    if (is_string($value) && trim($value) === '') {
+                        $fail('Enter the item.');
+                    }
+                }
+            }],
         ];
     }
 }
