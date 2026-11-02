@@ -23,7 +23,7 @@ final class ShoppingItemCheckInput extends CapabilityData
     public static function rules(): array
     {
         return [
-            'to' => ['after_or_equal:from'],
+            ...ShoppingRange::rules(),
             // Implicit, so an empty key is refused too.
             'key' => [new class implements ValidationRule
             {

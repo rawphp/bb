@@ -25,8 +25,7 @@ final class ShoppingItemAddInput extends CapabilityData
     {
         return [
             'id' => ['ulid'],
-            'from' => ['nullable', 'required_with:to'],
-            'to' => ['nullable', 'required_with:from', 'after_or_equal:from'],
+            ...ShoppingRange::rules(),
             // Implicit: Laravel skips a plain rule for a value that is only spaces.
             'text' => [new class implements ValidationRule
             {

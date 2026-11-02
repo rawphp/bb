@@ -18,9 +18,6 @@ final class ShoppingItemDeleteInput extends CapabilityData
 
     public static function rules(): array
     {
-        return [
-            'from' => ['nullable', 'required_with:to'],
-            'to' => ['nullable', 'required_with:from', 'after_or_equal:from'],
-        ];
+        return ShoppingRange::rules();
     }
 }
