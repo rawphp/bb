@@ -33,6 +33,7 @@ async function save(): Promise<void> {
         title="Add meal"
         :save-disabled="!data?.add_meal_time || !time || busy"
         :cancel-disabled="busy"
+        :dismissible="!busy"
         :error="error"
         :pending="pending"
         :heights="['half']"

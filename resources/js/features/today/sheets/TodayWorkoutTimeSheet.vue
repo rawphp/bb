@@ -32,6 +32,7 @@ async function save(): Promise<void> {
         title="Change time"
         :save-disabled="!workout || !time || busy"
         :cancel-disabled="busy"
+        :dismissible="!busy"
         :error="error"
         :pending="pending"
         :heights="['half']"

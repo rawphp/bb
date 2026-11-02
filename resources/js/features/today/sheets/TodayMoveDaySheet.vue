@@ -36,6 +36,7 @@ async function move(date: string): Promise<void> {
         title="Move to another day"
         :save-title="null"
         :cancel-disabled="busy"
+        :dismissible="!busy"
         :pending="pending"
         :heights="['half', 'full']"
         @cancel="emit('close', false)"

@@ -75,6 +75,7 @@ async function save(): Promise<void> {
         :title="adding?.activity ? 'Edit activity' : 'Add workout'"
         :save-disabled="!canSave"
         :cancel-disabled="busy"
+        :dismissible="!busy"
         :error="error"
         :pending="pending"
         @cancel="emit('close', false)"
