@@ -43,8 +43,11 @@ function chooseStart(event: Event): void {
             </label>
             <label class="flex min-h-tap items-center gap-3">
                 <span class="grow text-primary-text">Start</span>
-                <span class="text-sm text-secondary-text">{{ build.start_text }}</span>
-                <input type="date" aria-label="Start" :value="build.start_date" :disabled="disabled" class="rounded-lg bg-transparent py-2 text-accent disabled:opacity-50" @change="chooseStart" />
+                <!-- The server's words for the start show; the native date picker sits over them, unseen. -->
+                <span class="relative rounded-lg py-2 text-accent" :class="{ 'opacity-50': disabled }">
+                    {{ build.start_text }}
+                    <input type="date" aria-label="Start" :value="build.start_date" :disabled="disabled" class="absolute inset-0 size-full opacity-0" @change="chooseStart" />
+                </span>
             </label>
             <div class="space-y-1.5 pt-1 text-sm text-secondary-text">
                 <p>The last week is the deload. A mesocycle starts on the first day of a plan week.</p>
@@ -64,9 +67,9 @@ function chooseStart(event: Event): void {
                     <dt class="text-primary-text">Phase</dt>
                     <dd class="text-secondary-text">{{ build.phase_title ?? 'None on this date' }}</dd>
                 </div>
-                <div class="flex min-h-tap items-center justify-between gap-3">
+                <div class="flex min-h-tap flex-col justify-center gap-0.5 py-2">
                     <dt class="text-primary-text">Rep ranges</dt>
-                    <dd class="text-right text-secondary-text">{{ build.rep_range_text ?? '–' }}</dd>
+                    <dd class="text-secondary-text">{{ build.rep_range_text ?? '–' }}</dd>
                 </div>
             </dl>
         </section>

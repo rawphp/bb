@@ -50,13 +50,14 @@ function exercisesFor(slot: BuildSlot): BuildMuscle['exercises'] {
             <span v-else />
             <button
                 type="button"
-                class="flex min-h-tap min-w-tap items-center justify-center rounded-full text-accent disabled:opacity-50"
+                class="flex min-h-tap shrink-0 items-center gap-1.5 rounded-full px-2 text-accent disabled:opacity-50"
                 aria-label="Pick for me"
                 title="Fills every empty exercise"
                 :disabled="disabled || !build.can_pick_for_me"
                 @click="emit('pick')"
             >
                 <svg viewBox="0 0 24 24" class="size-5" aria-hidden="true" fill="currentColor"><path d="M13 2L4 14h6l-1 8 9-12h-6z" /></svg>
+                <span aria-hidden="true">Pick for me</span>
             </button>
         </div>
 
