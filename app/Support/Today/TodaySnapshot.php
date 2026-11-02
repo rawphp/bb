@@ -238,15 +238,15 @@ final class TodaySnapshot
     }
 
     /**
-     * SCH-020: the same weekday `$days` later or earlier, kept inside the days the plan can show; null when that week
-     * is outside them.
+     * SCH-020: the same weekday `$days` later or earlier, kept inside the plan (rp-clone weekShifted); null when that
+     * week is outside it.
      */
     public function weekShifted(DateTimeImmutable $day, int $days): ?DateTimeImmutable
     {
         $target = $day->modify(sprintf('%+d days', $days));
         $start = $this->weekStart($target);
         $lower = $this->firstDay();
-        $upper = $this->browseEnd();
+        $upper = $this->lastDay();
         if (($lower !== null && $start < $this->weekStart($lower)) || ($upper !== null && $start > $upper)) {
             return null;
         }
