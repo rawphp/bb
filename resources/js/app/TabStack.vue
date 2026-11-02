@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { EDGE_ZONE_PX, SETTLE_MS, startsSwipeBack, swipeGoesBack, swipeIntent } from './edgeSwipe';
 import { useNavigation } from './navigation';
+import ScreenFrame from './ScreenFrame.vue';
 import type { TabId } from './tabs';
 
 // One tab's stack (PWA-020). Every screen in it stays mounted, so each keeps
@@ -121,7 +122,9 @@ onBeforeUnmount(() => {
                 :inert="index < screens.length - 1"
                 :aria-hidden="index < screens.length - 1 ? 'true' : undefined"
             >
-                <RouterView :route="screen.route" />
+                <ScreenFrame :top="active && index === screens.length - 1">
+                    <RouterView :route="screen.route" />
+                </ScreenFrame>
             </section>
         </TransitionGroup>
     </div>

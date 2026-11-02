@@ -12,6 +12,14 @@ describe('Train routes', () => {
         expect(name('/train/mesocycles')).toBe('mesocycles');
         expect(name('/train/mesocycles/01JB6Q3V8T2K9WZ4M5N7P1R3S5')).toBe('mesocycle');
         expect(name('/train/mesocycles/01JB6Q3V8T2K9WZ4M5N7P1R3S5/rates')).toBe('progression-rates');
-        expect(router.resolve('/train/mesocycles/x').meta.tab).toBe('train');
+        expect(router.resolve('/train/mesocycles/01JB6Q3V8T2K9WZ4M5N7P1R3S5').meta.tab).toBe('train');
+    });
+
+    it('MESO-002 never reads the build flow\'s path as a mesocycle id', () => {
+        const router = makeRouter(false, createMemoryHistory());
+
+        for (const path of ['/train/mesocycles/build', '/train/mesocycles/build/rates', '/train/mesocycles/x']) {
+            expect(router.resolve(path).matched[0]?.path).toBe('/:pathMatch(.*)*');
+        }
     });
 });

@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import ReadState from '@/app/ReadState.vue';
+import { useRead } from '@/app/useRead';
 import type { TrainShowOutput } from '@/contracts/train_show';
-import ReadState from './ReadState.vue';
-import { useScreenRead } from './useScreenRead';
+import BottomSheet from '@/design/BottomSheet.vue';
+import ActionMenu, { type ActionMenuItem } from './ActionMenu.vue';
 
 // Train → Mesocycles: the unfinished draft (MESO-007), every mesocycle grouped current,
 // planned and past (MESO-001), and the + menu with the four ways to build one (MESO-002).
@@ -16,18 +18,35 @@ type CreateRoute = TrainShowOutput['create_routes'][number];
 const BUILD_PATH = '/train/mesocycles/build';
 
 const router = useRouter();
-const { data, failure, load } = useScreenRead<TrainShowOutput>('train_show', () => ({}), props.payload);
+const { data, failure, load } = useRead<TrainShowOutput>('train_show', props.payload);
 
-const menuOpen = ref(false);
 const replacing = ref<CreateRoute | null>(null);
+const checking = ref(false);
+
+const menuItems = computed<ActionMenuItem[]>(() =>
+    (data.value?.create_routes ?? []).map((route) => ({
+        key: route.route,
+        title: route.title,
+        detail: route.priority_notice,
+        disabled: !route.available,
+    })),
+);
 
 function build(route: CreateRoute): void {
     void router.push({ path: BUILD_PATH, query: { route: route.route, ...(route.copy_source_id ? { copy: route.copy_source_id } : {}) } });
 }
 
-// Starting another build replaces the draft, so it asks first (MESO-007).
-function choose(route: CreateRoute): void {
-    menuOpen.value = false;
+// Starting another build replaces the draft, so it asks first (MESO-007). It reads
+// train_show again before deciding, so a draft made since this screen last read
+// (another screen, another device) still gets the question.
+async function choose(key: string): Promise<void> {
+    if (props.payload === undefined) {
+        checking.value = true;
+        await load();
+        checking.value = false;
+    }
+    const route = data.value?.create_routes.find((r) => r.route === key);
+    if (!route?.available) return;
     if (data.value?.draft) replacing.value = route;
     else build(route);
 }
@@ -44,34 +63,11 @@ function confirmReplace(): void {
         <header class="mb-4 flex items-center gap-2">
             <span class="min-w-tap" aria-hidden="true" />
             <h1 class="flex-1 text-center text-base font-semibold">Mesocycles</h1>
-            <div class="relative">
-                <button
-                    type="button"
-                    class="flex min-h-tap min-w-tap items-center justify-center rounded-full text-2xl text-primary-text disabled:opacity-50"
-                    aria-label="New mesocycle"
-                    :aria-expanded="menuOpen"
-                    :disabled="!data"
-                    data-test="new"
-                    @click="menuOpen = !menuOpen"
-                >
-                    +
-                </button>
-                <div v-if="menuOpen && data" role="menu" class="absolute right-0 z-10 mt-1 w-64 overflow-hidden rounded-xl bg-surface shadow-lg">
-                    <button
-                        v-for="route in data.create_routes"
-                        :key="route.route"
-                        type="button"
-                        role="menuitem"
-                        class="flex min-h-tap w-full flex-col justify-center px-4 py-2 text-left text-primary-text disabled:text-secondary-text"
-                        :disabled="!route.available"
-                        :data-test="`route-${route.route}`"
-                        @click="choose(route)"
-                    >
-                        <span>{{ route.title }}</span>
-                        <span v-if="route.priority_notice" class="text-sm text-secondary-text">{{ route.priority_notice }}</span>
-                    </button>
-                </div>
-            </div>
+            <ActionMenu label="New mesocycle" :items="menuItems" :disabled="!data || checking" @select="choose">
+                <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14" />
+                </svg>
+            </ActionMenu>
         </header>
 
         <template v-if="data">
@@ -120,13 +116,15 @@ function confirmReplace(): void {
         </template>
         <ReadState v-else :failure="failure" what="Your mesocycles" @retry="load" />
 
-        <div v-if="replacing && data?.draft" class="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-8">
-            <div role="alertdialog" aria-modal="true" aria-labelledby="replace-title" class="w-full space-y-3 rounded-2xl bg-surface p-4 text-center">
-                <h2 id="replace-title" class="font-semibold">Replace your draft?</h2>
-                <p class="text-sm">{{ data.draft.replace_warning }}</p>
-                <button type="button" class="min-h-tap w-full text-tone-warning" data-test="replace" @click="confirmReplace">Replace draft</button>
-                <button type="button" class="min-h-tap w-full font-semibold text-accent" data-test="cancel" @click="replacing = null">Cancel</button>
-            </div>
-        </div>
+        <BottomSheet
+            :open="!!replacing && !!data?.draft"
+            title="Replace your draft?"
+            save-title="Replace draft"
+            :heights="['half']"
+            @cancel="replacing = null"
+            @save="confirmReplace"
+        >
+            <p v-if="data?.draft" class="p-4 text-center text-sm">{{ data.draft.replace_warning }}</p>
+        </BottomSheet>
     </main>
 </template>

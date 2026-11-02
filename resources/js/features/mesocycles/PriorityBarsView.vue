@@ -7,7 +7,7 @@ defineProps<{ bars: number }>();
 </script>
 
 <template>
-    <span class="flex items-center gap-[3px]" role="img" :aria-label="`${bars} of ${TOTAL} bars`">
+    <span class="flex items-center gap-0.5" role="img" :aria-label="`${bars} of ${TOTAL} bars`">
         <span
             v-for="index in TOTAL"
             :key="index"

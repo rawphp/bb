@@ -10,12 +10,21 @@ import { trackHistory } from './history';
 import { SHEET_HOST, TOAST_HOST } from './hosts';
 import { KEYPAD } from './keypad';
 import { attachNavigation, type Navigation } from './navigation';
+import { onScreenReturn } from './screenTop';
 import { TABS } from './tabs';
 
 const css = readFileSync(join(import.meta.dirname, 'shell.css'), 'utf8');
 const shellHtml = readFileSync(join(import.meta.dirname, '../../views/app.blade.php'), 'utf8');
 
-const Page = defineComponent({ props: { name: String }, setup: (props) => () => h('p', props.name) });
+// The screens that came back on show, by name (screenTop.ts).
+const returns: (string | undefined)[] = [];
+const Page = defineComponent({
+    props: { name: String },
+    setup: (props) => {
+        onScreenReturn(() => returns.push(props.name));
+        return () => h('p', props.name);
+    },
+});
 
 let wrapper: VueWrapper | undefined;
 
@@ -131,6 +140,30 @@ describe('AppShell', () => {
         expect(top!.classes()).toContain('bb-slide-enter-active');
         expect(below!.attributes('aria-hidden')).toBe('true');
         expect(top!.attributes('aria-hidden')).toBeUndefined();
+    });
+
+    it('PWA-020 tells a screen when it is back on show, after a pop or a tab switch', async () => {
+        returns.length = 0;
+        const { wrapper, router, nav } = await mountShell();
+        await router.push('/meals/1');
+        await nextTick();
+        expect(returns).toEqual([]);
+
+        const popped = new Promise<void>((resolve) => {
+            const off = router.afterEach(() => (off(), resolve()));
+        });
+        nav.back();
+        await popped;
+        await nav.idle();
+        await nextTick();
+        expect(returns).toEqual(['Today']);
+
+        await wrapper.get('button[data-tab="progress"]').trigger('click');
+        await nav.idle();
+        await wrapper.get('button[data-tab="today"]').trigger('click');
+        await nav.idle();
+        await nextTick();
+        expect(returns).toEqual(['Today', 'Today']);
     });
 
     it('PWA-021 slides with transforms and cross-fades with reduced motion', () => {

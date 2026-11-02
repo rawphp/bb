@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { TrainShowOutput } from '@/contracts/train_show';
-import ReadState from '@/features/mesocycles/ReadState.vue';
-import { useScreenRead } from '@/features/mesocycles/useScreenRead';
+import ReadState from '@/app/ReadState.vue';
+import { useRead } from '@/app/useRead';
 
 // The Train tab (NAV-001): the plan on top, today's session when there is one (NAV-002),
 // then the current mesocycle, Mesocycles, Templates and Exercises. Ported from rp-clone's
 // TrainView. The plan timeline itself is the plan screens' (#106); this links to it.
 const props = defineProps<{ payload?: TrainShowOutput }>();
 
-const { data, failure, load } = useScreenRead<TrainShowOutput>('train_show', () => ({}), props.payload);
+const { data, failure, load } = useRead<TrainShowOutput>('train_show', props.payload);
 
 // SF Symbols in the Swift list: calendar.day.timeline.left, calendar, doc.on.doc, figure.strengthtraining.traditional.
 const LINKS = [

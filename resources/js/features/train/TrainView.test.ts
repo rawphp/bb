@@ -59,4 +59,12 @@ describe('TrainView', () => {
 
         expect(wrapper.text()).toContain("Today's session could not be loaded.");
     });
+
+    it('CAP-004 says when the user is signed out', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('train_show', 401, null));
+        const wrapper = mount(TrainView, { global });
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('You are signed out.');
+    });
 });

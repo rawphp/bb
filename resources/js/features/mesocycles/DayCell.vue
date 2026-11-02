@@ -33,7 +33,7 @@ const stateText = computed(() => STATE_TEXT[props.day.state]);
     <component
         :is="day.can_open ? 'RouterLink' : 'div'"
         :to="day.can_open ? to : undefined"
-        class="flex min-h-tap w-full flex-col gap-1 rounded-[10px] bg-background p-2.5 text-left"
+        class="flex min-h-tap w-full flex-col gap-1 rounded-xl bg-background p-2.5 text-left"
         :class="{ 'opacity-50': day.state === 'not_planned' }"
         :aria-disabled="day.can_open ? undefined : 'true'"
         :title="day.can_open ? 'Opens this workout' : 'Not planned'"

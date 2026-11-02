@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CapabilityError } from './call';
-import { failureMessage } from './errors';
+import { failureMessage, isTimeout } from './errors';
 
 describe('failureMessage', () => {
     it('CAP-012 shows the message the server wrote', () => {
@@ -21,5 +21,14 @@ describe('failureMessage', () => {
         const error = new CapabilityError('token_create', 0, { reason: 'network' });
 
         expect(failureMessage(error, 'Could not save.')).toBe('No connection. Try again when you are online.');
+    });
+
+    it('OFF-003 says a call past its deadline may have worked, rather than that the device is offline', () => {
+        const error = new CapabilityError('mesocycle_day_add', 0, { reason: 'timeout' });
+
+        expect(failureMessage(error, 'Could not save.')).toBe('The server did not answer in time, so this may have worked. Check, then try again.');
+        expect(isTimeout(error)).toBe(true);
+        expect(isTimeout(new CapabilityError('mesocycle_day_add', 0, { reason: 'network' }))).toBe(false);
+        expect(isTimeout(new CapabilityError('mesocycle_day_add', 504, { reason: 'timeout' }))).toBe(false);
     });
 });

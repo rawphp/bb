@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue';
-import { write } from '@/app/call';
-import { failureMessage } from '@/app/errors';
+import { computed, nextTick, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { CapabilityError, write } from '@/app/call';
+import { failureMessage, isTimeout } from '@/app/errors';
+import ReadState from '@/app/ReadState.vue';
 import { ulid } from '@/app/ulid';
+import { useRead } from '@/app/useRead';
 import type { MesocycleDayAddInput } from '@/contracts/mesocycle_day_add';
 import type { MesocycleEndInput } from '@/contracts/mesocycle_end';
 import type { MesocycleLengthSetInput } from '@/contracts/mesocycle_length_set';
 import type { MesocycleShowOutput } from '@/contracts/mesocycle_show';
-import ReadState from './ReadState.vue';
-import { useScreenRead } from './useScreenRead';
+import BottomSheet from '@/design/BottomSheet.vue';
+import ActionMenu, { type ActionMenuItem } from './ActionMenu.vue';
 import WeekColumn from './WeekColumn.vue';
 
 // A mesocycle (MESO-040 to MESO-045): a column per week with each day's exercises, the
@@ -17,42 +20,63 @@ import WeekColumn from './WeekColumn.vue';
 // `pending` dims the server's numbers while a write waits to sync (OFF-008).
 const props = withDefaults(defineProps<{ payload?: MesocycleShowOutput; mesocycleId?: string; pending?: boolean }>(), { pending: false });
 
-const { data, failure, load } = useScreenRead<MesocycleShowOutput>(
-    'mesocycle_show',
-    () => ({ mesocycle_id: props.mesocycleId ?? props.payload?.id }),
-    props.payload,
-);
+const router = useRouter();
+const { data, failure, load } = useRead<MesocycleShowOutput>('mesocycle_show', props.payload, () => ({
+    mesocycle_id: props.mesocycleId ?? props.payload?.id,
+}));
 
-const menuOpen = ref(false);
 const endOpen = ref(false);
 const busy = ref(false);
 const errorMessage = ref<string | null>(null);
 const weeks = ref<HTMLElement>();
 
-async function send(name: string, input: Record<string, unknown>, fallback: string): Promise<void> {
-    menuOpen.value = false;
+// The new day's id (CAP-019), kept until the server has answered, so a retry after a call
+// that got no answer sends the same id and cannot add a second day.
+let dayId: string | null = null;
+
+const menuItems = computed<ActionMenuItem[]>(() => [
+    { key: 'add-day', title: 'Add day', disabled: !data.value?.saved?.can_add_day },
+    { key: 'rates', title: 'Progression rates' },
+    { key: 'end', title: 'End meso', disabled: !data.value?.saved?.end, destructive: true },
+]);
+
+/** Sends a write and reads the mesocycle again. Resolves true once the server took it, false once it answered no. */
+async function send(name: string, input: Record<string, unknown>, fallback: string): Promise<boolean | null> {
     endOpen.value = false;
     busy.value = true;
+    errorMessage.value = null;
     try {
         await write(name, input);
         await load();
+        return true;
     } catch (error) {
         errorMessage.value = failureMessage(error, fallback);
+        // Past the deadline the server may have done it: show what it holds now.
+        if (isTimeout(error)) await load();
+        return error instanceof CapabilityError && error.status === 0 ? null : false;
     } finally {
         busy.value = false;
     }
 }
 
-function setLength(weeksCount: number): Promise<void> {
+function setLength(weeksCount: number): Promise<boolean | null> {
     return send('mesocycle_length_set', { mesocycle_id: data.value!.id, weeks: weeksCount } satisfies MesocycleLengthSetInput, 'The length could not be changed.');
 }
 
-function addDay(): Promise<void> {
-    return send('mesocycle_day_add', { mesocycle_id: data.value!.id, day_id: ulid() } satisfies MesocycleDayAddInput, 'The day could not be added.');
+async function addDay(): Promise<void> {
+    dayId ??= ulid();
+    const answered = await send('mesocycle_day_add', { mesocycle_id: data.value!.id, day_id: dayId } satisfies MesocycleDayAddInput, 'The day could not be added.');
+    if (answered !== null) dayId = null;
 }
 
-function end(dietBreak: boolean): Promise<void> {
+function end(dietBreak: boolean): Promise<boolean | null> {
     return send('mesocycle_end', { mesocycle_id: data.value!.id, diet_break: dietBreak } satisfies MesocycleEndInput, 'The mesocycle could not be ended.');
+}
+
+function onMenu(key: string): void {
+    if (key === 'add-day') void addDay();
+    else if (key === 'rates') void router.push(`/train/mesocycles/${data.value!.id}/rates`);
+    else if (key === 'end') endOpen.value = true;
 }
 
 // The current week comes into view first.
@@ -72,55 +96,20 @@ watch(
         <header class="flex items-center gap-2 px-4 pb-3">
             <span class="min-w-tap" aria-hidden="true" />
             <h1 class="flex-1 truncate text-center text-base font-semibold">{{ data?.name || 'Mesocycle' }}</h1>
-            <div class="relative">
-                <button
-                    type="button"
-                    class="flex min-h-tap min-w-tap items-center justify-center rounded-full text-primary-text disabled:opacity-50"
-                    aria-label="Mesocycle menu"
-                    :aria-expanded="menuOpen"
-                    :disabled="!data?.saved || busy"
-                    data-test="menu"
-                    @click="menuOpen = !menuOpen"
-                >
-                    <svg viewBox="0 0 24 24" class="size-7" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-                        <circle cx="12" cy="12" r="10" />
-                        <circle cx="7.5" cy="12" r="1" fill="currentColor" />
-                        <circle cx="12" cy="12" r="1" fill="currentColor" />
-                        <circle cx="16.5" cy="12" r="1" fill="currentColor" />
-                    </svg>
-                </button>
-                <div v-if="menuOpen && data?.saved" role="menu" class="absolute right-0 z-10 mt-1 w-60 overflow-hidden rounded-xl bg-surface shadow-lg">
-                    <button
-                        type="button"
-                        role="menuitem"
-                        class="flex min-h-tap w-full items-center px-4 text-left text-primary-text disabled:text-secondary-text"
-                        :disabled="!data.saved.can_add_day"
-                        data-test="add-day"
-                        @click="addDay"
-                    >
-                        Add day
-                    </button>
-                    <RouterLink
-                        role="menuitem"
-                        class="flex min-h-tap w-full items-center px-4 text-primary-text"
-                        :to="`/train/mesocycles/${data.id}/rates`"
-                        data-test="rates"
-                    >
-                        Progression rates
-                    </RouterLink>
-                    <button
-                        type="button"
-                        role="menuitem"
-                        class="flex min-h-tap w-full items-center px-4 text-left text-tone-warning disabled:text-secondary-text"
-                        :disabled="!data.saved.end"
-                        data-test="end"
-                        @click="(menuOpen = false), (endOpen = true)"
-                    >
-                        End meso
-                    </button>
-                </div>
-            </div>
+            <ActionMenu label="Mesocycle menu" :items="menuItems" :disabled="!data?.saved || busy" @select="onMenu">
+                <svg viewBox="0 0 24 24" class="size-7" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="7.5" cy="12" r="1" fill="currentColor" />
+                    <circle cx="12" cy="12" r="1" fill="currentColor" />
+                    <circle cx="16.5" cy="12" r="1" fill="currentColor" />
+                </svg>
+            </ActionMenu>
         </header>
+
+        <div v-if="errorMessage" role="alert" class="mx-4 mb-3 flex items-start gap-2 rounded-2xl bg-tone-warning-bg p-3 text-tone-warning" data-test="error">
+            <p class="flex-1 text-sm"><span class="font-semibold">Something went wrong.</span> {{ errorMessage }}</p>
+            <button type="button" class="min-h-tap px-2 font-semibold" @click="errorMessage = null">OK</button>
+        </div>
 
         <template v-if="data?.saved">
             <section class="flex items-center gap-3 px-4" :aria-busy="busy || undefined">
@@ -165,34 +154,27 @@ watch(
         <p v-else-if="data" class="mx-4 rounded-2xl bg-surface p-4 text-secondary-text">This mesocycle is still being built.</p>
         <div v-else class="px-4"><ReadState :failure="failure" what="The mesocycle" @retry="load" /></div>
 
-        <div v-if="endOpen && data?.saved?.end" class="fixed inset-0 z-20 flex items-end bg-black/30 p-3" data-test="end-dialog">
-            <div role="alertdialog" aria-modal="true" aria-labelledby="end-title" class="w-full space-y-2">
-                <div class="space-y-3 rounded-2xl bg-surface p-4 text-center">
-                    <h2 id="end-title" class="text-sm font-semibold text-secondary-text">End this mesocycle?</h2>
-                    <p class="text-sm text-secondary-text">{{ data.saved.end.warning }}</p>
-                    <p v-if="data.saved.end.diet_break_offer" class="text-sm text-secondary-text">{{ data.saved.end.diet_break_offer }}</p>
-                    <template v-if="data.saved.end.diet_break_offer">
-                        <button type="button" class="min-h-tap w-full text-tone-warning" data-test="end-with-break" @click="end(true)">
-                            End and start a diet break next week
-                        </button>
-                        <button type="button" class="min-h-tap w-full text-tone-warning" data-test="end-without-break" @click="end(false)">
-                            End without a diet break
-                        </button>
-                    </template>
-                    <button v-else type="button" class="min-h-tap w-full text-tone-warning" data-test="end-confirm" @click="end(false)">End meso</button>
-                </div>
-                <button type="button" class="min-h-tap w-full rounded-2xl bg-surface font-semibold text-accent" data-test="keep-going" @click="endOpen = false">
-                    Keep going
-                </button>
+        <BottomSheet
+            :open="endOpen && !!data?.saved?.end"
+            title="End this mesocycle?"
+            cancel-title="Keep going"
+            :save-title="data?.saved?.end?.diet_break_offer ? null : 'End meso'"
+            :heights="['half']"
+            @cancel="endOpen = false"
+            @save="end(false)"
+        >
+            <div v-if="data?.saved?.end" class="space-y-3 p-4 text-center" data-test="end-dialog">
+                <p class="text-sm text-secondary-text">{{ data.saved.end.warning }}</p>
+                <template v-if="data.saved.end.diet_break_offer">
+                    <p class="text-sm text-secondary-text">{{ data.saved.end.diet_break_offer }}</p>
+                    <button type="button" class="min-h-tap w-full rounded-xl bg-tone-warning-bg text-tone-warning" data-test="end-with-break" @click="end(true)">
+                        End and start a diet break next week
+                    </button>
+                    <button type="button" class="min-h-tap w-full rounded-xl bg-tone-warning-bg text-tone-warning" data-test="end-without-break" @click="end(false)">
+                        End without a diet break
+                    </button>
+                </template>
             </div>
-        </div>
-
-        <div v-if="errorMessage" class="fixed inset-0 z-20 flex items-center justify-center bg-black/30 p-8">
-            <div role="alertdialog" aria-modal="true" aria-labelledby="error-title" class="w-full space-y-3 rounded-2xl bg-surface p-4 text-center">
-                <h2 id="error-title" class="font-semibold">Something went wrong</h2>
-                <p class="text-sm">{{ errorMessage }}</p>
-                <button type="button" class="min-h-tap w-full font-semibold text-accent" @click="errorMessage = null">OK</button>
-            </div>
-        </div>
+        </BottomSheet>
     </main>
 </template>

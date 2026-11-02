@@ -89,6 +89,14 @@ describe('ProgressionRatesView', () => {
         expect(wrapper.findAllComponents(PriorityRowView)).toHaveLength(14);
     });
 
+    it('CAP-004 says when the user is signed out', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('mesocycle_show', 401, null));
+        const wrapper = mount(ProgressionRatesView, { props: { mesocycleId: meso.id } });
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('You are signed out.');
+    });
+
     it('MESO-007 has nothing to change on a draft (mesocycle_show.empty)', () => {
         const wrapper = mount(ProgressionRatesView, { props: { payload: screenFixture<MesocycleShowOutput>('mesocycle_show.empty') } });
 

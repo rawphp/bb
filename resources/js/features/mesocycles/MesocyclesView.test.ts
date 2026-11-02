@@ -14,7 +14,7 @@ vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('v
 const readMock = vi.mocked(read);
 const train = screenFixture<TrainShowOutput>('train_show');
 const empty = screenFixture<TrainShowOutput>('train_show.empty');
-const global = { stubs: { RouterLink: RouterLinkStub } };
+const global = { stubs: { RouterLink: RouterLinkStub, teleport: true } };
 
 describe('MesocyclesView', () => {
     beforeEach(() => {
@@ -36,23 +36,25 @@ describe('MesocyclesView', () => {
 
     it('MESO-002 offers the four ways to build one, Copy turned off with nothing to copy', async () => {
         const wrapper = mount(MesocyclesView, { props: { payload: empty }, global });
-        await wrapper.find('[data-test="new"]').trigger('click');
+        await wrapper.find('[data-test="menu"]').trigger('click');
 
         const items = wrapper.findAll('[role="menuitem"]');
         expect(items.map((i) => i.text())).toEqual(['Template', 'Copy previous mesocycle', 'Meso Builder', 'Build from scratch']);
-        expect(wrapper.find('[data-test="route-copy_previous"]').attributes('disabled')).toBeDefined();
+        expect(wrapper.find('[data-test="item-copy_previous"]').attributes('disabled')).toBeDefined();
 
-        await wrapper.find('[data-test="route-builder"]').trigger('click');
+        await wrapper.find('[data-test="item-builder"]').trigger('click');
+        await flushPromises();
         expect(push).toHaveBeenCalledWith({ path: '/train/mesocycles/build', query: { route: 'builder' } });
     });
 
     it('MESO-065 shows the priority reset notice on Copy and passes the mesocycle to copy', async () => {
         const warning = screenFixture<TrainShowOutput>('train_show.warning');
         const wrapper = mount(MesocyclesView, { props: { payload: warning }, global });
-        await wrapper.find('[data-test="new"]').trigger('click');
+        await wrapper.find('[data-test="menu"]').trigger('click');
 
-        expect(wrapper.find('[data-test="route-copy_previous"]').text()).toContain('Priorities reset for Fat loss. Your old priorities can be kept.');
-        await wrapper.find('[data-test="route-copy_previous"]').trigger('click');
+        expect(wrapper.find('[data-test="item-copy_previous"]').text()).toContain('Priorities reset for Fat loss. Your old priorities can be kept.');
+        await wrapper.find('[data-test="item-copy_previous"]').trigger('click');
+        await flushPromises();
         expect(push).toHaveBeenCalledWith({ path: '/train/mesocycles/build', query: { route: 'copy_previous', copy: '01JB6Q3V8T2K9WZ4M5N7P1R3S5' } });
     });
 
@@ -62,19 +64,59 @@ describe('MesocyclesView', () => {
         expect(wrapper.find('[data-test="draft"]').text()).toContain('Saved as a draft. Tap to continue building.');
         expect(wrapper.findComponent(RouterLinkStub).props('to')).toEqual({ path: '/train/mesocycles/build', query: { draft: '01JBA7X1Y3Z5A7B9C1D3E5F7G9' } });
 
-        await wrapper.find('[data-test="new"]').trigger('click');
-        await wrapper.find('[data-test="route-template"]').trigger('click');
+        await wrapper.find('[data-test="menu"]').trigger('click');
+        await wrapper.find('[data-test="item-template"]').trigger('click');
+        await flushPromises();
         expect(wrapper.text()).toContain('Replace your draft?');
         expect(wrapper.text()).toContain('You have an unfinished mesocycle. Starting a new one replaces it.');
         expect(push).not.toHaveBeenCalled();
 
-        await wrapper.find('[data-test="cancel"]').trigger('click');
+        await wrapper.find('[data-cancel]').trigger('click');
         expect(wrapper.text()).not.toContain('Replace your draft?');
 
-        await wrapper.find('[data-test="new"]').trigger('click');
-        await wrapper.find('[data-test="route-template"]').trigger('click');
-        await wrapper.find('[data-test="replace"]').trigger('click');
+        await wrapper.find('[data-test="menu"]').trigger('click');
+        await wrapper.find('[data-test="item-template"]').trigger('click');
+        await flushPromises();
+        expect(wrapper.find('[data-save]').text()).toBe('Replace draft');
+        await wrapper.find('[data-save]').trigger('click');
         expect(push).toHaveBeenCalledWith({ path: '/train/mesocycles/build', query: { route: 'template' } });
+    });
+
+    it('MESO-007 reads train_show again before choosing, so a draft made since still gets the question', async () => {
+        readMock.mockResolvedValueOnce(empty).mockResolvedValueOnce({ ...empty, draft: train.draft });
+        const wrapper = mount(MesocyclesView, { global });
+        await flushPromises();
+        expect(wrapper.find('[data-test="draft"]').exists()).toBe(false);
+
+        await wrapper.find('[data-test="menu"]').trigger('click');
+        await wrapper.find('[data-test="item-template"]').trigger('click');
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledTimes(2);
+        expect(wrapper.text()).toContain('Replace your draft?');
+        expect(push).not.toHaveBeenCalled();
+    });
+
+    it('OFF-003 shows the fresh train_show over the cached copy, and stops showing the copy when the refresh says signed out', async () => {
+        let refresh: (data: TrainShowOutput) => void = () => {};
+        let failRefresh: (error: CapabilityError) => void = () => {};
+        readMock.mockImplementationOnce(async (_name, _input, onUpdate, onError) => {
+            refresh = onUpdate as typeof refresh;
+            failRefresh = onError as typeof failRefresh;
+            return empty;
+        });
+        const wrapper = mount(MesocyclesView, { global });
+        await flushPromises();
+        expect(wrapper.text()).toContain('No mesocycles yet.');
+
+        refresh(train);
+        await flushPromises();
+        expect(wrapper.findAll('[data-test="row"]')).toHaveLength(3);
+
+        failRefresh(new CapabilityError('train_show', 401, null));
+        await flushPromises();
+        expect(wrapper.findAll('[data-test="row"]')).toHaveLength(0);
+        expect(wrapper.text()).toContain('You are signed out.');
     });
 
     it('MESO-001 says how to start when there are no mesocycles (train_show.empty)', () => {
@@ -131,5 +173,13 @@ describe('CurrentMesocycleView', () => {
         await flushPromises();
 
         expect(wrapper.text()).toContain('Your mesocycles could not be loaded.');
+    });
+
+    it('CAP-004 says when the user is signed out', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('train_show', 401, null));
+        const wrapper = mount(CurrentMesocycleView, { global });
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('You are signed out.');
     });
 });

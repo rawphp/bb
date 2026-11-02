@@ -6,13 +6,20 @@ import { inputViolations, screenFixture } from '@/testing/schemas';
 import MesocycleView from './MesocycleView.vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+const push = vi.fn();
+vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ push }) }));
 
 const readMock = vi.mocked(read);
 const writeMock = vi.mocked(write);
 const meso = screenFixture<MesocycleShowOutput>('mesocycle_show');
 
 function show(props: Record<string, unknown> = { payload: meso }) {
-    return mount(MesocycleView, { props, global: { stubs: { RouterLink: RouterLinkStub } } });
+    return mount(MesocycleView, { props, global: { stubs: { RouterLink: RouterLinkStub, teleport: true } } });
+}
+
+async function openMenu(wrapper: ReturnType<typeof show>, item: string): Promise<void> {
+    await wrapper.find('[data-test="menu"]').trigger('click');
+    await wrapper.find(`[data-test="item-${item}"]`).trigger('click');
 }
 
 function lastWrite(): [string, Record<string, unknown>] {
@@ -23,6 +30,7 @@ describe('MesocycleView', () => {
     beforeEach(() => {
         readMock.mockReset().mockResolvedValue(meso);
         writeMock.mockReset().mockResolvedValue({});
+        push.mockReset();
     });
 
     it('MESO-040 shows a column per week with sets per muscle and each day\'s exercises', () => {
@@ -87,8 +95,7 @@ describe('MesocycleView', () => {
 
     it('MESO-043 MESO-044 ends early after the deload warning, offering a diet break in fat loss', async () => {
         const wrapper = show();
-        await wrapper.find('[data-test="menu"]').trigger('click');
-        await wrapper.find('[data-test="end"]').trigger('click');
+        await openMenu(wrapper, 'end');
 
         const dialog = wrapper.find('[data-test="end-dialog"]');
         expect(dialog.text()).toContain('Skipping the deload is not recommended for intermediate and advanced lifters.');
@@ -100,28 +107,39 @@ describe('MesocycleView', () => {
         expect(inputViolations(...lastWrite())).toEqual([]);
     });
 
+    it('MESO-044 ends without a diet break when the user declines the offer', async () => {
+        const wrapper = show();
+        await openMenu(wrapper, 'end');
+
+        await wrapper.find('[data-test="end-without-break"]').trigger('click');
+        await flushPromises();
+
+        expect(writeMock).toHaveBeenCalledTimes(1);
+        expect(lastWrite()).toEqual(['mesocycle_end', { mesocycle_id: meso.id, diet_break: false }]);
+        expect(inputViolations(...lastWrite())).toEqual([]);
+    });
+
     it('MESO-043 ends without a diet break outside fat loss, and Keep going changes nothing', async () => {
         const gain = structuredClone(meso);
         gain.saved!.end = { warning: 'Skipping the deload is not recommended for intermediate and advanced lifters.', diet_break_offer: null };
         const wrapper = show({ payload: gain });
-        await wrapper.find('[data-test="menu"]').trigger('click');
-        await wrapper.find('[data-test="end"]').trigger('click');
+        await openMenu(wrapper, 'end');
 
         expect(wrapper.find('[data-test="end-with-break"]').exists()).toBe(false);
-        await wrapper.find('[data-test="keep-going"]').trigger('click');
+        await wrapper.find('[data-cancel]').trigger('click');
+        expect(wrapper.find('[data-test="end-dialog"]').exists()).toBe(false);
         expect(writeMock).not.toHaveBeenCalled();
 
-        await wrapper.find('[data-test="menu"]').trigger('click');
-        await wrapper.find('[data-test="end"]').trigger('click');
-        await wrapper.find('[data-test="end-confirm"]').trigger('click');
+        await openMenu(wrapper, 'end');
+        expect(wrapper.find('[data-save]').text()).toBe('End meso');
+        await wrapper.find('[data-save]').trigger('click');
         await flushPromises();
         expect(lastWrite()).toEqual(['mesocycle_end', { mesocycle_id: meso.id, diet_break: false }]);
     });
 
     it('MESO-045 adds a day with a client ULID, sending a valid mesocycle_day_add', async () => {
         const wrapper = show();
-        await wrapper.find('[data-test="menu"]').trigger('click');
-        await wrapper.find('[data-test="add-day"]').trigger('click');
+        await openMenu(wrapper, 'add-day');
         await flushPromises();
 
         const [name, input] = lastWrite();
@@ -130,11 +148,67 @@ describe('MesocycleView', () => {
         expect(inputViolations(name, input)).toEqual([]);
     });
 
-    it('MESO-032 links the menu to Progression rates', async () => {
+    it('CAP-019 sends the same day_id again after Add day got no answer, and a new one once the server answered', async () => {
+        writeMock
+            .mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', 0, { reason: 'network' }))
+            .mockResolvedValueOnce({})
+            .mockResolvedValueOnce({});
         const wrapper = show();
+
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+
+        const ids = writeMock.mock.calls.map(([, input]) => (input as { day_id: string }).day_id);
+        expect(ids[1]).toBe(ids[0]);
+        expect(ids[2]).not.toBe(ids[1]);
+    });
+
+    it('CAP-019 starts a new day_id after the server refused one', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', 422, { error: { message: 'No room for another day.' } }));
+        const wrapper = show();
+
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+
+        const ids = writeMock.mock.calls.map(([, input]) => (input as { day_id: string }).day_id);
+        expect(ids[1]).not.toBe(ids[0]);
+    });
+
+    it('OFF-003 reads the mesocycle again after a write timed out, and says it may have worked', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', 0, { reason: 'timeout' }));
+        const wrapper = show();
+
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id }, expect.any(Function), expect.any(Function));
+        expect(wrapper.find('[data-test="error"]').text()).toContain('may have worked');
+    });
+
+    it('MESO-045 MESO-043 turns off Add day and End meso when the server says they cannot happen', async () => {
+        const locked = structuredClone(meso);
+        locked.saved = { ...locked.saved!, can_add_day: false, end: null };
+        const wrapper = show({ payload: locked });
         await wrapper.find('[data-test="menu"]').trigger('click');
 
-        expect(wrapper.find('[data-test="rates"]').findComponent(RouterLinkStub).props('to')).toBe(`/train/mesocycles/${meso.id}/rates`);
+        expect(wrapper.find('[data-test="item-add-day"]').attributes('disabled')).toBeDefined();
+        expect(wrapper.find('[data-test="item-end"]').attributes('disabled')).toBeDefined();
+        await wrapper.find('[data-test="item-end"]').trigger('click');
+        expect(wrapper.find('[data-test="end-dialog"]').exists()).toBe(false);
+        expect(writeMock).not.toHaveBeenCalled();
+    });
+
+    it('MESO-032 opens Progression rates from the menu', async () => {
+        const wrapper = show();
+        await openMenu(wrapper, 'rates');
+
+        expect(push).toHaveBeenCalledWith(`/train/mesocycles/${meso.id}/rates`);
     });
 
     it('CAP-012 shows the server\'s words when a write fails', async () => {
@@ -144,8 +218,12 @@ describe('MesocycleView', () => {
         await wrapper.find('[data-test="lengthen"]').trigger('click');
         await flushPromises();
 
-        expect(wrapper.text()).toContain('Something went wrong');
-        expect(wrapper.text()).toContain('A mesocycle runs at most 8 weeks.');
+        const alert = wrapper.find('[data-test="error"]');
+        expect(alert.attributes('role')).toBe('alert');
+        expect(alert.text()).toContain('Something went wrong.');
+        expect(alert.text()).toContain('A mesocycle runs at most 8 weeks.');
+        await alert.find('button').trigger('click');
+        expect(wrapper.find('[data-test="error"]').exists()).toBe(false);
     });
 
     it('OFF-008 dims the server\'s numbers and says they are waiting to sync', () => {
@@ -174,6 +252,14 @@ describe('MesocycleView', () => {
         await wrapper.find('[data-test="retry"]').trigger('click');
         await flushPromises();
         expect(wrapper.text()).toContain('Week 4');
+    });
+
+    it('CAP-004 says when the user is signed out', async () => {
+        readMock.mockRejectedValueOnce(new CapabilityError('mesocycle_show', 401, null));
+        const wrapper = show({ mesocycleId: meso.id });
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('You are signed out.');
     });
 
     it('MESO-007 says a draft is still being built (mesocycle_show.empty)', () => {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import DayCell from './DayCell.vue';
-import { TONE_CLASS, type MesocycleWeek } from './types';
+import StatusPill from '@/design/StatusPill.vue';
+import type { MesocycleWeek } from './types';
 
 // One week of the mesocycle (MESO-040, MESO-041): the Now and Diet break pills, the
 // calorie target, sets per muscle and the days. While a write is waiting to sync,
@@ -10,7 +11,7 @@ withDefaults(defineProps<{ week: MesocycleWeek; mesocycleId: string; pending?: b
 
 <template>
     <section
-        class="flex w-[190px] shrink-0 snap-center flex-col gap-2.5 self-start rounded-[14px] bg-surface p-3"
+        class="flex w-48 shrink-0 snap-center flex-col gap-2.5 self-start rounded-2xl bg-surface p-3"
         :class="{ 'outline-2 -outline-offset-2 outline-accent': week.now }"
         :aria-label="week.title"
         :data-now="week.now ? 'true' : undefined"
@@ -20,9 +21,7 @@ withDefaults(defineProps<{ week: MesocycleWeek; mesocycleId: string; pending?: b
                 {{ week.title }}
                 <span v-if="week.now" class="rounded-full bg-accent px-1.5 py-0.5 text-xs font-bold text-on-accent">{{ week.now.text }}</span>
             </h3>
-            <span v-if="week.diet_break" class="self-start rounded-full px-2.5 py-0.5 text-sm font-medium" :class="TONE_CLASS[week.diet_break.tone]">
-                {{ week.diet_break.text }}
-            </span>
+            <StatusPill v-if="week.diet_break" class="self-start" :text="week.diet_break.text" :tone="week.diet_break.tone" />
             <p class="text-sm text-secondary-text" :class="{ 'opacity-50': pending }">{{ week.calories_text ?? 'No calorie target yet' }}</p>
             <p v-if="pending" class="text-sm text-secondary-text">Waiting to sync</p>
         </div>
