@@ -1,0 +1,442 @@
+{
+    "notice": null,
+    "profile": {
+        "name": "Sam",
+        "sex": {
+            "value": "male",
+            "choices": [
+                {
+                    "value": "male",
+                    "label": "Male"
+                },
+                {
+                    "value": "female",
+                    "label": "Female"
+                }
+            ]
+        },
+        "birth_date": "1990-03-14",
+        "birth_date_text": "14 March 1990",
+        "height": {
+            "unit": "cm",
+            "text": "178 cm",
+            "cm": 178,
+            "feet": null,
+            "inches": null
+        },
+        "body_fat": {
+            "value": "low",
+            "text": "15-22%",
+            "choices": {
+                "male": [
+                    {
+                        "value": "lowest",
+                        "label": "under 15%"
+                    },
+                    {
+                        "value": "low",
+                        "label": "15-22%"
+                    },
+                    {
+                        "value": "high",
+                        "label": "22-30%"
+                    },
+                    {
+                        "value": "highest",
+                        "label": "over 30%"
+                    }
+                ],
+                "female": [
+                    {
+                        "value": "lowest",
+                        "label": "under 20%"
+                    },
+                    {
+                        "value": "low",
+                        "label": "20-27%"
+                    },
+                    {
+                        "value": "high",
+                        "label": "27-35%"
+                    },
+                    {
+                        "value": "highest",
+                        "label": "over 35%"
+                    }
+                ]
+            }
+        },
+        "uses_glp1": false,
+        "experience": {
+            "value": "intermediate",
+            "choices": [
+                {
+                    "value": "beginner",
+                    "label": "Beginner"
+                },
+                {
+                    "value": "intermediate",
+                    "label": "Intermediate"
+                },
+                {
+                    "value": "advanced",
+                    "label": "Advanced"
+                }
+            ]
+        }
+    },
+    "eligibility": {
+        "text": "Training and nutrition",
+        "tone": "good"
+    },
+    "units": {
+        "weight": {
+            "value": "kg",
+            "choices": [
+                {
+                    "value": "kg",
+                    "label": "kg"
+                },
+                {
+                    "value": "lb",
+                    "label": "lb"
+                }
+            ]
+        },
+        "height": {
+            "value": "cm",
+            "choices": [
+                {
+                    "value": "cm",
+                    "label": "cm"
+                },
+                {
+                    "value": "feetInches",
+                    "label": "ft and in"
+                }
+            ]
+        }
+    },
+    "appearance": {
+        "value": "system",
+        "choices": [
+            {
+                "value": "system",
+                "label": "System"
+            },
+            {
+                "value": "light",
+                "label": "Light"
+            },
+            {
+                "value": "dark",
+                "label": "Dark"
+            }
+        ]
+    },
+    "consumed_totals": {
+        "value": "planned",
+        "choices": [
+            {
+                "value": "planned",
+                "label": "Include planned meals"
+            },
+            {
+                "value": "checked_in",
+                "label": "Checked-in meals only"
+            }
+        ]
+    },
+    "diet_filters": {
+        "summary": "Dairy free",
+        "choices": [
+            {
+                "value": "dairy_free",
+                "label": "Dairy free",
+                "selected": true
+            },
+            {
+                "value": "gluten_free",
+                "label": "Gluten free",
+                "selected": false
+            },
+            {
+                "value": "grain_free",
+                "label": "Grain free",
+                "selected": false
+            },
+            {
+                "value": "low_fodmap",
+                "label": "Low FODMAP",
+                "selected": false
+            },
+            {
+                "value": "vegetarian",
+                "label": "Ovo-lacto vegetarian",
+                "selected": false
+            },
+            {
+                "value": "paleo",
+                "label": "Paleo",
+                "selected": false
+            },
+            {
+                "value": "vegan",
+                "label": "Vegan",
+                "selected": false
+            }
+        ]
+    },
+    "micro_plates": false,
+    "schedule": {
+        "eating_window_start": "07:00",
+        "eating_window_end": "21:00",
+        "meal_count": 4,
+        "meal_count_min": 2,
+        "meal_count_max": 6,
+        "weekdays": [
+            {
+                "weekday": 1,
+                "label": "Monday",
+                "short_label": "Mon"
+            },
+            {
+                "weekday": 2,
+                "label": "Tuesday",
+                "short_label": "Tue"
+            },
+            {
+                "weekday": 3,
+                "label": "Wednesday",
+                "short_label": "Wed"
+            },
+            {
+                "weekday": 4,
+                "label": "Thursday",
+                "short_label": "Thu"
+            },
+            {
+                "weekday": 5,
+                "label": "Friday",
+                "short_label": "Fri"
+            },
+            {
+                "weekday": 6,
+                "label": "Saturday",
+                "short_label": "Sat"
+            },
+            {
+                "weekday": 7,
+                "label": "Sunday",
+                "short_label": "Sun"
+            }
+        ],
+        "training_days": [
+            {
+                "weekday": 1,
+                "label": "Monday",
+                "start": "17:30",
+                "minutes": 60
+            },
+            {
+                "weekday": 3,
+                "label": "Wednesday",
+                "start": "17:30",
+                "minutes": 60
+            },
+            {
+                "weekday": 5,
+                "label": "Friday",
+                "start": "07:00",
+                "minutes": 75
+            }
+        ],
+        "new_training_day_start": "17:30",
+        "new_training_day_minutes": 60,
+        "session_minutes_min": 15,
+        "session_minutes_max": 240,
+        "session_minutes_step": 5,
+        "busy_periods": [
+            {
+                "label": "Work meeting",
+                "start": "09:00",
+                "end": "10:30",
+                "days": [
+                    {
+                        "weekday": 1,
+                        "label": "Mon",
+                        "on": true
+                    },
+                    {
+                        "weekday": 2,
+                        "label": "Tue",
+                        "on": true
+                    },
+                    {
+                        "weekday": 3,
+                        "label": "Wed",
+                        "on": true
+                    },
+                    {
+                        "weekday": 4,
+                        "label": "Thu",
+                        "on": true
+                    },
+                    {
+                        "weekday": 5,
+                        "label": "Fri",
+                        "on": true
+                    },
+                    {
+                        "weekday": 6,
+                        "label": "Sat",
+                        "on": false
+                    },
+                    {
+                        "weekday": 7,
+                        "label": "Sun",
+                        "on": false
+                    }
+                ]
+            }
+        ],
+        "new_busy_period": {
+            "label": "Busy",
+            "start": "09:00",
+            "end": "10:00",
+            "days": [
+                {
+                    "weekday": 1,
+                    "label": "Mon",
+                    "on": true
+                },
+                {
+                    "weekday": 2,
+                    "label": "Tue",
+                    "on": true
+                },
+                {
+                    "weekday": 3,
+                    "label": "Wed",
+                    "on": true
+                },
+                {
+                    "weekday": 4,
+                    "label": "Thu",
+                    "on": true
+                },
+                {
+                    "weekday": 5,
+                    "label": "Fri",
+                    "on": true
+                },
+                {
+                    "weekday": 6,
+                    "label": "Sat",
+                    "on": false
+                },
+                {
+                    "weekday": 7,
+                    "label": "Sun",
+                    "on": false
+                }
+            ]
+        },
+        "step_plan": [
+            {
+                "weekday": 1,
+                "label": "Monday",
+                "min": 7000,
+                "max": 9000
+            },
+            {
+                "weekday": 2,
+                "label": "Tuesday",
+                "min": 7000,
+                "max": 9000
+            },
+            {
+                "weekday": 3,
+                "label": "Wednesday",
+                "min": 7000,
+                "max": 9000
+            },
+            {
+                "weekday": 4,
+                "label": "Thursday",
+                "min": 7000,
+                "max": 9000
+            },
+            {
+                "weekday": 5,
+                "label": "Friday",
+                "min": 7000,
+                "max": 9000
+            },
+            {
+                "weekday": 6,
+                "label": "Saturday",
+                "min": 7000,
+                "max": 9000
+            },
+            {
+                "weekday": 7,
+                "label": "Sunday",
+                "min": 7000,
+                "max": 9000
+            }
+        ],
+        "review_weekday": 1
+    },
+    "notifications": [
+        {
+            "kind": "weigh_in",
+            "label": "Weigh-ins",
+            "on": true
+        },
+        {
+            "kind": "meal",
+            "label": "Meals",
+            "on": false
+        },
+        {
+            "kind": "workout",
+            "label": "Workouts",
+            "on": true
+        },
+        {
+            "kind": "weekly_review",
+            "label": "Weekly review",
+            "on": true
+        },
+        {
+            "kind": "next_mesocycle",
+            "label": "Next mesocycle",
+            "on": true
+        },
+        {
+            "kind": "retarget",
+            "label": "Meal target changes",
+            "on": true
+        }
+    ],
+    "health_bridge": {
+        "text": "Last post today, 06:02",
+        "tone": "good"
+    },
+    "tokens": {
+        "text": "2 active",
+        "tone": "neutral"
+    },
+    "coach": {
+        "text": "On",
+        "tone": "good"
+    },
+    "subscription": {
+        "text": "Yearly, renews 3 March 2027",
+        "tone": "good"
+    },
+    "support_email": "support@example.com",
+    "account_email": "sam@example.com",
+    "developer": true
+}
