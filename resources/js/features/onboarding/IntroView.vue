@@ -10,7 +10,7 @@ const cards = [
         title: 'Meals planned first',
         body: 'Your plan sets calories and macros for each day. Pick your foods and the app fits them to your targets.',
         // fork.knife
-        icon: 'M7 2v7a2 2 0 0 1-1.5 1.94V22h-2V10.94A2 2 0 0 1 2 9V2h1.5v6h1V2h1.5v6h1V2zm10 0c2.2 0 4 2.24 4 5v5.5h-2.5V22h-2V2z',
+        icon: 'M4 2h1.5v6h1.25V2h1.5v6H9.5V2H11v6.5a2.75 2.75 0 0 1-2 2.65V21a1.25 1.25 0 0 1-2.5 0v-9.85A2.75 2.75 0 0 1 4 8.5zm14 0c-2 1-3.5 3.5-3.5 7.5v3.5h2V21a1.25 1.25 0 0 0 2.5 0V3a1 1 0 0 0-1-1z',
     },
     {
         title: 'Training that adjusts to you',
@@ -49,8 +49,8 @@ function swiped(event: PointerEvent): void {
 
 <template>
     <main class="mx-auto flex min-h-dvh w-full max-w-[560px] flex-col gap-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)]">
-        <div class="flex-1 overflow-hidden" @pointerdown="swipeFrom = $event.clientX" @pointerup="swiped" @pointercancel="swipeFrom = null">
-            <div class="flex h-full transition-transform duration-300 motion-reduce:transition-none" :style="{ transform: `translateX(-${page * 100}%)` }">
+        <div class="flex flex-1 overflow-hidden" @pointerdown="swipeFrom = $event.clientX" @pointerup="swiped" @pointercancel="swipeFrom = null">
+            <div class="flex w-full shrink-0 transition-transform duration-300 motion-reduce:transition-none" :style="{ transform: `translateX(-${page * 100}%)` }">
                 <section
                     v-for="(card, index) in cards"
                     :key="card.title"
