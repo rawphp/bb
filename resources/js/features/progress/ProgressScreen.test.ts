@@ -220,11 +220,58 @@ describe('ProgressScreen', () => {
 
         // No await between the tap and the share call.
         (wrapper.get('[data-share]').element as HTMLButtonElement).click();
-        expect(sharePng).toHaveBeenCalledWith(png, full.share);
+        expect(vi.mocked(sharePng).mock.calls[0]).toEqual([png, full.share]);
+        expect(vi.mocked(sharePng).mock.calls[0]![0]).toBe(png);
         expect(toPng).toHaveBeenCalledOnce();
     });
 
-    it('PWA-034 draws the picture on the tap when it was not ready yet', async () => {
+    it('PWA-034 a new payload replaces the picture, so Share never sends the old scope\'s chart', async () => {
+        const phase = new Blob(['phase']);
+        const plan = new Blob(['plan']);
+        let finishPlan: (png: Blob) => void = () => {};
+        vi.mocked(toPng)
+            .mockResolvedValueOnce(phase)
+            .mockImplementationOnce(() => new Promise((resolve) => (finishPlan = resolve)));
+        vi.mocked(sharePng).mockResolvedValue('shared');
+        const wrapper = render();
+        await flushPromises();
+
+        const next = { ...structuredClone(full), share: { title: 'My progress', message: 'Whole plan' } };
+        await wrapper.setProps({ payload: next });
+        // Tapped while the new picture is still being drawn: the old one must not go out.
+        (wrapper.get('[data-share]').element as HTMLButtonElement).click();
+        await flushPromises();
+        expect(sharePng).not.toHaveBeenCalled();
+
+        finishPlan(plan);
+        await flushPromises();
+        expect(vi.mocked(sharePng).mock.calls).toHaveLength(1);
+        expect(vi.mocked(sharePng).mock.calls[0]![0]).toBe(plan);
+        expect(vi.mocked(sharePng).mock.calls[0]![1]).toEqual(next.share);
+    });
+
+    it('PWA-034 a slow picture of the old payload never replaces the new one', async () => {
+        const phase = new Blob(['phase']);
+        const plan = new Blob(['plan']);
+        let finishPhase: (png: Blob) => void = () => {};
+        vi.mocked(toPng)
+            .mockImplementationOnce(() => new Promise((resolve) => (finishPhase = resolve)))
+            .mockResolvedValueOnce(plan);
+        vi.mocked(sharePng).mockResolvedValue('shared');
+        const wrapper = render();
+        await flushPromises();
+
+        const next = { ...structuredClone(full), share: { title: 'My progress', message: 'Whole plan' } };
+        await wrapper.setProps({ payload: next });
+        await flushPromises();
+        finishPhase(phase);
+        await flushPromises();
+        (wrapper.get('[data-share]').element as HTMLButtonElement).click();
+
+        expect(vi.mocked(sharePng).mock.calls[0]![0]).toBe(plan);
+    });
+
+        it('PWA-034 draws the picture on the tap when it was not ready yet', async () => {
         const png = new Blob(['png'], { type: 'image/png' });
         vi.mocked(toPng).mockRejectedValueOnce(new Error('not yet')).mockResolvedValue(png);
         vi.mocked(sharePng).mockResolvedValue('shared');
@@ -234,7 +281,8 @@ describe('ProgressScreen', () => {
         await wrapper.get('[data-share]').trigger('click');
         await flushPromises();
 
-        expect(sharePng).toHaveBeenCalledWith(png, full.share);
+        expect(vi.mocked(sharePng).mock.calls[0]).toEqual([png, full.share]);
+        expect(vi.mocked(sharePng).mock.calls[0]![0]).toBe(png);
     });
 
     it('PWA-034 draws the progress card as the shared picture', async () => {
