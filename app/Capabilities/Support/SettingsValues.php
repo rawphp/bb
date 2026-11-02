@@ -15,7 +15,4 @@ final class SettingsValues
 
     /** NOTIF-007: the reminder types settings_show lists and notification_prefs_set switches. */
     public const NOTIFICATION_KINDS = ['weigh_in', 'meal', 'workout', 'weekly_review', 'next_mesocycle', 'retarget'];
-
-    /** CAP-021: the scopes token_list offers and token_create takes. */
-    public const TOKEN_SCOPES = ['everything', 'read_only', 'health_bridge', 'custom'];
 }

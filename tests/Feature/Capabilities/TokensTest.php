@@ -1,10 +1,16 @@
 <?php
 
+use App\Domain\Tokens\TokenScope;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Rawphp\Capabilities\Adapters\Mcp\McpCredential;
+use Rawphp\Capabilities\Adapters\Mcp\McpToolAdapter;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
+use Rawphp\CapabilitiesAi\Models\Turn;
 
 const TOKEN_ID = '01JBX8Z6Q7M0V2K3N4P5R6S7T8';
 
@@ -175,4 +181,77 @@ it('ACC-005 deletes a user\'s tokens with the account', function () {
     $user->delete();
 
     expect(PersonalAccessToken::query()->count())->toBe(0);
+});
+
+it('CAP-021 answers a second create under the same token ULID with 409', function () {
+    $user = User::factory()->create();
+    createToken($user, 'read_only');
+
+    $this->actingAs($user)->postJson('/capabilities/token_create', [
+        'id' => TOKEN_ID,
+        'name' => 'Laptop again',
+        'expires_in_days' => 30,
+        'scope' => 'everything',
+        'capabilities' => [],
+    ], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertStatus(409)
+        ->assertJsonPath('error.code', 'conflict');
+
+    expect(PersonalAccessToken::query()->findOrFail(TOKEN_ID))
+        ->name->toBe('Laptop MCP')
+        ->scope->toBe(TokenScope::ReadOnly);
+});
+
+it('CAP-014 replays a token create without its secret, and stores no secret', function () {
+    $user = User::factory()->create();
+    $body = ['id' => TOKEN_ID, 'name' => 'Laptop MCP', 'expires_in_days' => 30, 'scope' => 'everything', 'capabilities' => []];
+    $key = ['Idempotency-Key' => (string) Str::ulid()];
+
+    $first = $this->actingAs($user)->postJson('/capabilities/token_create', $body, $key)->assertOk();
+    $secret = Str::after($first->json('data.token.plain_text'), '|');
+
+    $this->actingAs($user)->postJson('/capabilities/token_create', $body, $key)
+        ->assertOk()
+        ->assertJsonPath('meta.idempotent_replay', true)
+        ->assertJsonPath('data.token.id', TOKEN_ID)
+        ->assertJsonPath('data.token.plain_text', null)
+        ->assertJsonPath('data.invalidates', ['token_list{}']);
+
+    expect($secret)->not->toBe('')
+        ->and(json_encode(DB::table('capabilities_idempotency')->get()))->not->toContain($secret)
+        ->and(json_encode(DB::table('capabilities_audit_outbox')->get()))->not->toContain($secret)
+        ->and(PersonalAccessToken::query()->count())->toBe(1);
+});
+
+it('CAP-023 keeps every token out of the Coach, whose turns no scope limits', function () {
+    $user = User::factory()->create();
+    $secret = createToken($user, 'everything');
+
+    withToken($secret)->postJson('/capabilities-ai/chat/messages', ['content' => 'Delete my plan'])
+        ->assertForbidden()
+        ->assertJsonPath('error.code', 'forbidden');
+    withToken($secret)->getJson('/capabilities-ai/chat/conversations/'.TOKEN_ID)->assertForbidden();
+
+    expect(Turn::query()->count())->toBe(0);
+});
+
+it('CAP-023 holds a token to its scope on the MCP surface', function () {
+    $user = User::factory()->create(['name' => 'Sam Lifter']);
+    $secret = createToken($user, 'custom', ['token_list']);
+
+    // The user as auth:sanctum resolves it for an MCP request with this bearer.
+    $request = Request::create('/mcp/bodybuilder', 'POST', server: ['HTTP_AUTHORIZATION' => "Bearer {$secret}"]);
+    $bearer = Auth::guard('sanctum')->setRequest($request)->user();
+    $mcp = fn (string $name, array $input = []) => app(McpToolAdapter::class)->handle(
+        $name,
+        $input,
+        McpCredential::userPat($bearer),
+        ['profile' => ['token_list', 'account_show', 'token_create'], 'idempotency_key' => (string) Str::ulid()],
+    );
+
+    expect($bearer)->toBeInstanceOf(User::class)
+        ->and($mcp('token_list')->isOk())->toBeTrue()
+        ->and($mcp('account_show')->errorCode())->toBe('forbidden')
+        ->and($mcp('token_create', ['id' => (string) Str::ulid(), 'name' => 'Minted', 'expires_in_days' => 30, 'scope' => 'everything', 'capabilities' => []])->errorCode())->toBe('forbidden')
+        ->and(PersonalAccessToken::query()->count())->toBe(1);
 });

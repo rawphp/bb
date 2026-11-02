@@ -15,12 +15,14 @@ use App\Capabilities\Support\NoBilling;
 use App\Capabilities\Support\Ownership;
 use App\Capabilities\Support\OwnsInput;
 use App\Capabilities\Support\PrefetchesKeys;
+use App\Capabilities\Support\ShownOnceIdempotencyStore;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
 use LogicException;
 use Rawphp\Capabilities\Adapters\Artisan\IntegrationHealthCommand;
 use Rawphp\Capabilities\Contracts\Authorizer;
 use Rawphp\Capabilities\Contracts\CapabilityBus;
+use Rawphp\Capabilities\Contracts\IdempotencyStore;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\CapabilitiesAi\Contracts\ConversationContextProvider;
 use Rawphp\CapabilitiesAi\Contracts\ToolCatalog;
@@ -49,6 +51,9 @@ final class CapabilitiesHostProvider extends ServiceProvider
 
         // Replaces the package's alias of CapabilityBus to the registry (CAP-012, CAP-014).
         $this->app->singleton(CapabilityBus::class, fn (Container $app): HostBus => new HostBus($app->make(CapabilityRegistry::class), $app->make(Ownership::class)));
+
+        // A replay never shows a secret again, so the store never keeps one (CAP-014, CAP-021).
+        $this->app->extend(IdempotencyStore::class, fn (IdempotencyStore $store, Container $app): ShownOnceIdempotencyStore => new ShownOnceIdempotencyStore($store, fn (): CapabilityRegistry => $app->make(CapabilityRegistry::class)));
 
         // The agent's seams in capabilities-ai (AGT-003, AGT-011).
         $this->app->singleton(ToolCatalog::class, RegistryToolCatalog::class);

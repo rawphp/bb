@@ -9,6 +9,7 @@ use App\Capabilities\Tokens\Data\TokenExpiry;
 use App\Capabilities\Tokens\Data\TokenListInput;
 use App\Capabilities\Tokens\Data\TokenListOutput;
 use App\Capabilities\Tokens\Data\TokenScope as TokenScopeRow;
+use App\Domain\Tokens\TokenLifetime;
 use App\Domain\Tokens\TokenScope;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
@@ -18,9 +19,6 @@ use Rawphp\Capabilities\Support\CapabilityContext;
 
 final class TokenListCapability implements HostCapability
 {
-    /** @var array<int, string> days => label (CAP-021) */
-    private const EXPIRIES = [30 => '30 days', 90 => '90 days', 365 => '1 year'];
-
     public function __construct(private readonly TokenCatalog $catalog) {}
 
     public function definition(): CapabilityDefinitionBuilder
@@ -50,9 +48,8 @@ final class TokenListCapability implements HostCapability
                 TokenScope::cases(),
             ),
             expiries: array_map(
-                fn (int $days, string $label): TokenExpiry => new TokenExpiry($days, $label),
-                array_keys(self::EXPIRIES),
-                self::EXPIRIES,
+                fn (TokenLifetime $lifetime): TokenExpiry => new TokenExpiry($lifetime->value, $lifetime->label()),
+                TokenLifetime::cases(),
             ),
             capabilities: array_values(array_map(
                 fn (CapabilityDefinition $definition): TokenCapabilityRow => new TokenCapabilityRow($definition->name, $definition->description),

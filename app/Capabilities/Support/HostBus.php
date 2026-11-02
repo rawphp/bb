@@ -21,10 +21,9 @@ final class HostBus implements CapabilityBus
 
     public function invoke(string $nameOrAlias, array $input = [], array $options = []): CapabilityResult
     {
-        $this->ownership->pullDenied();
-        $result = $this->registry->invoke($nameOrAlias, $input, $options);
+        [$result, $denied] = $this->ownership->watch(fn (): CapabilityResult => $this->registry->invoke($nameOrAlias, $input, $options));
 
-        if ($this->ownership->pullDenied() && $result->errorCode() === 'forbidden') {
+        if ($denied && $result->errorCode() === 'forbidden') {
             $result = CapabilityResult::failure(code: 'not_found', message: 'Not found.', meta: $result->meta);
         }
 

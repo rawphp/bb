@@ -88,7 +88,7 @@ it('CAP-020 the bus refuses account_show on every surface when the actor is not 
         ->and($result->toArray()['meta']['stages'])->toContain('authorize');
 })->with(['http', 'job', 'mcp', 'cli']);
 
-it('CAP-020 refuses a row ID the actor does not own, and remembers why', function () {
+it('CAP-020 refuses a row ID the actor does not own, and reports it to the watch it runs in', function () {
     $ownership = new Ownership;
     $ownership->declare('account_show', new class implements OwnsInput
     {
@@ -100,12 +100,9 @@ it('CAP-020 refuses a row ID the actor does not own, and remembers why', functio
 
     $authorizer = hostAuthorizer($ownership);
 
-    expect(authorizeAs('account_show', authorizerUser(), ['row_id' => 'mine'], $authorizer))->toBeTrue()
-        ->and($ownership->pullDenied())->toBeFalse()
-        ->and(authorizeAs('account_show', authorizerUser(), ['row_id' => 'theirs'], $authorizer))->toBeFalse()
-        ->and($ownership->pullDenied())->toBeTrue()
-        ->and($ownership->pullDenied())->toBeFalse()
-        ->and(authorizeAs('account_show', authorizerUser(), [], $authorizer))->toBeTrue();
+    expect($ownership->watch(fn () => authorizeAs('account_show', authorizerUser(), ['row_id' => 'mine'], $authorizer)))->toBe([true, false])
+        ->and($ownership->watch(fn () => authorizeAs('account_show', authorizerUser(), ['row_id' => 'theirs'], $authorizer)))->toBe([false, true])
+        ->and($ownership->watch(fn () => authorizeAs('account_show', authorizerUser(), [], $authorizer)))->toBe([true, false]);
 });
 
 it('CAP-020 checks ownership before the token scope', function () {
@@ -118,8 +115,7 @@ it('CAP-020 checks ownership before the token scope', function () {
         }
     });
 
-    expect(authorizeAs('account_show', authorizerUser(['today_show']), ['row_id' => 'theirs'], hostAuthorizer($ownership)))->toBeFalse()
-        ->and($ownership->pullDenied())->toBeTrue();
+    expect($ownership->watch(fn () => authorizeAs('account_show', authorizerUser(['today_show']), ['row_id' => 'theirs'], hostAuthorizer($ownership))))->toBe([false, true]);
 });
 
 it('CAP-023 allows a token only the capabilities in its abilities', function (array $abilities, bool $allowed) {
