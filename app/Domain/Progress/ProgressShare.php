@@ -19,6 +19,7 @@ final class ProgressShare
 
         return sprintf(
             '%s: %s to %s (%s) over %d %s',
+            // The phase running today names the text in either scope, as in rp-clone; the weights are the scope's.
             $summary->phaseType?->title() ?? 'Progress',
             self::weight('%.1f', $summary->startKg, $unit),
             self::weight('%.1f', $summary->currentKg, $unit),

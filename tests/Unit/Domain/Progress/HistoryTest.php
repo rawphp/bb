@@ -182,3 +182,9 @@ it('ANA-007 a mesocycle with no logged sets has no muscle rows', function () {
     expect($entry->weeklySets)->toBe([])
         ->and($entry->weeksWithSets)->toBe(0);
 });
+
+it('ANA-006 a phase that ends the day it starts has no change and no rate', function () {
+    $entry = phaseHistory([F::phase('a', PhaseType::FatLoss, '2026-09-01', '2026-09-01', -0.5)])[0];
+    expect($entry->weightChangeKg)->toBeNull()
+        ->and($entry->averageRatePercentPerWeek)->toBeNull();
+});

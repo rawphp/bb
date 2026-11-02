@@ -1,14 +1,20 @@
 <?php
 
+use App\Domain\Model\Phase;
 use App\Domain\Model\PhaseType;
+use App\Domain\Model\WeighIn;
 use App\Domain\Model\WeightUnit;
 use App\Domain\Progress\Adherence;
 use App\Domain\Progress\DayAdherence;
 use App\Domain\Progress\Days;
 use App\Domain\Progress\DayTotals;
+use App\Domain\Progress\MesocycleHistory;
 use App\Domain\Progress\PlanWeekDays;
+use App\Domain\Progress\ProgressMesocycle;
+use App\Domain\Progress\ProgressScope;
 use App\Domain\Progress\ProgressShare;
 use App\Domain\Progress\ProgressSummary;
+use App\Domain\Weight\TrendWeight;
 
 // The days these rules count are calendar days in the user's zone, not UTC days, and survive daylight saving.
 
@@ -80,4 +86,37 @@ it('ANA-010 the share text counts a span with a 23-hour day as whole weeks', fun
         startDay: at('2026-03-02', 'America/New_York'), currentDay: at('2026-03-16', 'America/New_York'),
     );
     expect(ProgressShare::text($summary, WeightUnit::Kg))->toBe('Fat loss: 82.0 kg to 81.0 kg (-1.0 kg) over 2 weeks');
+});
+
+it('ANA-007 a mesocycle across the autumn daylight saving change ends at local midnight 28 days on', function () {
+    // New York falls back on 1 November 2026, so 12 October plus 28 days is 28 x 24 + 1 hours later.
+    $newYork = new DateTimeZone('America/New_York');
+    $meso = new ProgressMesocycle(id: 'm1', phaseId: null, name: 'Meso m1', start: at('2026-10-12', 'America/New_York'), weeks: 4);
+
+    expect($meso->end($newYork))->toEqual(at('2026-11-09', 'America/New_York'))
+        // On 8 November it is still running; on 9 November it has ended.
+        ->and(MesocycleHistory::entries([$meso], [], [], at('2026-11-08 23:59', 'America/New_York'), $newYork))->toBe([])
+        ->and(MesocycleHistory::entries([$meso], [], [], at('2026-11-09 00:00', 'America/New_York'), $newYork))->toHaveCount(1);
+});
+
+it('ANA-002 the current phase is the one running on the user\'s day, not UTC\'s', function () {
+    // 23:30 UTC on 10 October is 11 October in Sydney, the day a muscle gain phase follows the cut.
+    $sydney = new DateTimeZone('Australia/Sydney');
+    $today = at('2026-10-10 23:30', 'UTC');
+    $phases = [
+        new Phase('cut', PhaseType::FatLoss, at('2026-09-01', 'Australia/Sydney'), at('2026-10-11', 'Australia/Sydney'), -0.5),
+        new Phase('bulk', PhaseType::MuscleGain, at('2026-10-11', 'Australia/Sydney'), null, 0.25),
+    ];
+    $weighIns = array_map(
+        fn (int $i) => new WeighIn("w{$i}", at('2026-10-01 07:00', 'Australia/Sydney')->modify("+{$i} days"), 80),
+        range(0, 10),
+    );
+    $trend = new TrendWeight($weighIns, $sydney);
+    $summary = ProgressSummary::make(ProgressScope::CurrentPhase, $trend, $phases, at('2026-09-01', 'Australia/Sydney'), $today, $sydney);
+
+    expect(ProgressScope::CurrentPhase->start($phases, at('2026-09-01', 'Australia/Sydney'), $today, $sydney))
+        ->toEqual(at('2026-10-11', 'Australia/Sydney'))
+        ->and($summary?->phaseType)->toBe(PhaseType::MuscleGain)
+        ->and($summary?->startDay)->toEqual(at('2026-10-11', 'Australia/Sydney'))
+        ->and($summary?->currentDay)->toEqual(at('2026-10-11', 'Australia/Sydney'));
 });

@@ -132,3 +132,9 @@ it('ANA-005 hidden without step data or a range for today', function () {
         ->and(StepProgress::make(5000, stepPlan(), 3))->toBeNull()
         ->and(StepProgress::make(5000, [], 6))->toBeNull();
 });
+
+it('ANA-005 a range with no top counts as full rather than dividing by zero', function () {
+    $steps = StepProgress::make(0, [new StepPlanDay(weekday: 6, min: 0, max: 0)], 6);
+    expect($steps?->fraction())->toBe(1.0)
+        ->and($steps?->state())->toBe(StepProgressState::WithinRange);
+});
