@@ -5,6 +5,7 @@ use App\Models\PushSubscription;
 use App\Models\User;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Minishlink\WebPush\MessageSentReport;
@@ -107,3 +108,14 @@ it('ACC-005 drops a queued push whose user deleted their account', function () {
 
     Queue::connection('sync')->push($job);
 })->throwsNoExceptions();
+
+it('ACC-005 queues the user by id, not their row, so a push for a deleted account finds no one', function () {
+    $user = User::factory()->create();
+    $payload = serialize(new SendPushNotification($user, 'Weigh-in', 'Time to weigh in.', '/today/weigh-in'));
+
+    expect($payload)->not->toContain($user->email)->not->toContain($user->getAuthPassword());
+
+    $user->delete();
+
+    expect(fn () => unserialize($payload))->toThrow(ModelNotFoundException::class);
+});
