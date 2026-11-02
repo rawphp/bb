@@ -56,7 +56,7 @@ final class TodaySeed
 
     /**
      * Another user whose rows differ from TodaySeed::user()'s in everything Today shows: a plan from Monday 2026-09-07
-     * with Monday reviews, other training days, busy periods, steps and weigh-ins, an away week, a phase, targets
+     * with Monday reviews, other training days, busy periods, steps and weigh-ins, away weeks, a phase, targets
      * of 3000 kcal to 2026-11-30, and a logged Wednesday. Made first, so an unscoped `first()` would find it.
      */
     public static function stranger(): User
@@ -73,6 +73,8 @@ final class TodaySeed
             'step_plan' => [['weekday' => 3, 'min' => 10000, 'max' => 12000]],
         ]);
         PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-21', 'is_deload' => true, 'is_diet_break' => false, 'is_away' => true, 'away_training' => 'deload']);
+        // On the Saturday grid of TodaySeed::user(): leaked, it would pause that user's week 2.
+        PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-19', 'is_deload' => false, 'is_diet_break' => false, 'is_away' => true, 'away_training' => 'pause']);
         WeighInScheduleEntry::factory()->for($user)->create(['weekdays' => [3], 'time' => '06:15']);
         TrainSeed::phase($user, 'fatLoss', '2026-09-07');
         self::targets($user, last: '2026-11-30', kcal: 3000);

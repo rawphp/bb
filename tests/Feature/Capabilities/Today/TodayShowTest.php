@@ -160,3 +160,17 @@ it('SCH-020 SCH-023 after the plan\'s last target, today opens the same whether 
     expect($explicit['date'])->toBe('2026-10-15')
         ->and($explicit)->toBe($implicit);
 });
+
+it('SCH-020 a day of a week the plan can show opens as given, even past the last target or before the start', function () {
+    Carbon::setTestNow('2026-10-15 10:00:00');
+    $user = TodaySeed::user();
+    TodaySeed::targets($user);
+
+    $friday = $this->actingAs($user)->postJson('/capabilities/today_show', ['date' => '2026-10-16'])->assertOk()->json('data');
+
+    Carbon::setTestNow('2026-09-10 10:00:00');
+    $tuesday = $this->actingAs($user)->postJson('/capabilities/today_show', ['date' => '2026-09-08'])->assertOk()->json('data');
+
+    expect($friday['date'])->toBe('2026-10-16')
+        ->and($tuesday['date'])->toBe('2026-09-08');
+});

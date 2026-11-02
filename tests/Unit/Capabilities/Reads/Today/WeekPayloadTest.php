@@ -112,10 +112,11 @@ it('SCH-023 a date picked in the month view opens its week', function () {
         ->and(array_column(array_filter($payload['days'], fn ($day) => $day['is_selected']), 'date'))->toBe(['2026-10-06']);
 });
 
-it('SCH-020 after the plan\'s last target, today\'s week can still be opened and left', function () {
+it('SCH-020 after the plan\'s last target, today\'s week opens but swipes stay inside the plan', function () {
     $payload = weekPayload(W::snapshot(today: '2026-10-25'));
 
     expect($payload['week_start'])->toBe('2026-10-24')
-        ->and($payload['previous_week'])->toBe('2026-10-18')
-        ->and($payload['next_week'])->toBeNull();
+        ->and($payload['previous_week'])->toBeNull()
+        ->and($payload['next_week'])->toBeNull()
+        ->and(weekPayload(W::snapshot(today: '2026-10-25', date: '2026-10-02'))['next_week'])->toBe('2026-10-09');
 });

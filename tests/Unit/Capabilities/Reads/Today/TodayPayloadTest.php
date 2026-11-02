@@ -326,6 +326,18 @@ it('SCH-030 NUT-024 a past day offers neither Add meal nor Optimize', function (
         ->and($past['add_workout'])->toBeNull();
 });
 
+it('SCH-030 on a day still to come, Add meal and Add workout show only when their sheets have what they open with', function () {
+    $before = todayPayload(W::snapshot(today: '2026-09-10'));
+    $noTarget = todayPayload(W::snapshot(today: '2026-10-12'));
+
+    expect($before['add_meal_time'])->toBeNull()
+        ->and($before['add_workout'])->toBeNull()
+        ->and(array_column($before['schedule_menu'], 'action'))->toBe(['add_busy_period', 'copy_day', 'copy_week', 'optimize_schedule', 'edit_schedule'])
+        ->and($noTarget['add_meal_time'])->toBeNull()
+        ->and($noTarget['add_workout'])->not->toBeNull()
+        ->and(array_column($noTarget['schedule_menu'], 'action'))->not->toContain('add_meal')->toContain('add_workout');
+});
+
 it('SCH-032 Add workout offers the next session of the week to move here, or says why not', function () {
     $rest = todayPayload(W::snapshot(date: '2026-09-24'))['add_workout'];
     $training = todayPayload(W::snapshot(activities: [W::activity('act')]))['add_workout'];
