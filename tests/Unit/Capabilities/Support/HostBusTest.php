@@ -2,6 +2,7 @@
 
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\Support\HostBus;
+use App\Capabilities\Support\IdempotencyKeys;
 use App\Capabilities\Support\NoAgentPolicy;
 use App\Capabilities\Support\NoBilling;
 use App\Capabilities\Support\Ownership;
@@ -25,7 +26,7 @@ it('CAP-012 words failures from the bus in plain words', function () {
     $registry = new CapabilityRegistry;
     (new TallyAddCapability)->definition()->register($registry);
 
-    $result = (new HostBus($registry, new Ownership))->invoke('tally_add', [], ['actor' => tap(new User, fn (User $u) => $u->id = 1)]);
+    $result = (new HostBus($registry, new Ownership, app(IdempotencyKeys::class)))->invoke('tally_add', [], ['actor' => tap(new User, fn (User $u) => $u->id = 1)]);
 
     expect($result->error['message'])->toBe('Some details need fixing.')
         ->and($result->error['violations'])->toBe([['field' => 'amount', 'message' => 'This field is required.']]);
@@ -34,7 +35,7 @@ it('CAP-012 words failures from the bus in plain words', function () {
 it('CAP-012 shows the registry\'s catalog through the host bus', function () {
     $registry = app(CapabilityRegistry::class);
 
-    expect((new HostBus($registry, new Ownership))->catalog()->listEnvelope())->toBe($registry->catalog()->listEnvelope());
+    expect((new HostBus($registry, new Ownership, app(IdempotencyKeys::class)))->catalog()->listEnvelope())->toBe($registry->catalog()->listEnvelope());
 });
 
 it('CAP-014 keeps idempotency keys in the database', function () {
@@ -61,7 +62,7 @@ it('CAP-020 answers another user\'s row ID with 404, not 403', function () {
     $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, $ownership, new NoBilling, new NoAgentPolicy));
     $user = tap(new User, fn (User $u) => $u->id = 1);
 
-    $foreign = (new HostBus($registry, $ownership))->invoke('token_revoke', ['id' => 'theirs'], ['actor' => $user]);
+    $foreign = (new HostBus($registry, $ownership, app(IdempotencyKeys::class)))->invoke('token_revoke', ['id' => 'theirs'], ['actor' => $user]);
 
     expect($foreign->errorCode())->toBe('not_found')
         ->and($foreign->error['message'])->toBe('We couldn\'t find that.');
@@ -77,7 +78,7 @@ it('CAP-020 keeps a refusal outside the bus from turning a later invoke\'s 403 i
     // The job and MCP surfaces call the registry, not the bus.
     expect($registry->invoke('token_revoke', ['id' => 'theirs'], ['actor' => $user])->errorCode())->toBe('forbidden');
 
-    $refused = (new HostBus($registry, $ownership))->invoke('token_revoke', ['id' => 'theirs'], ['actor' => SystemActor::named('scheduler'), 'caller' => 'job', 'job' => ['tenant_id' => 't']]);
+    $refused = (new HostBus($registry, $ownership, app(IdempotencyKeys::class)))->invoke('token_revoke', ['id' => 'theirs'], ['actor' => SystemActor::named('scheduler'), 'caller' => 'job', 'job' => ['tenant_id' => 't']]);
 
     expect($refused->errorCode())->toBe('forbidden');
 });
@@ -117,7 +118,7 @@ function foreignRows(): Ownership
 
 it('CAP-020 leaves a refusal for another reason a 403', function () {
     $ownership = new Ownership;
-    $result = (new HostBus(app(CapabilityRegistry::class), $ownership))->invoke('account_show', [], ['actor' => SystemActor::named('scheduler'), 'caller' => 'job', 'job' => ['tenant_id' => 't']]);
+    $result = (new HostBus(app(CapabilityRegistry::class), $ownership, app(IdempotencyKeys::class)))->invoke('account_show', [], ['actor' => SystemActor::named('scheduler'), 'caller' => 'job', 'job' => ['tenant_id' => 't']]);
 
     expect($result->errorCode())->toBe('forbidden');
 });

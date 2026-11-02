@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue';
-import { unanswered } from './call';
+import { limitedBeforeRun, unanswered } from './call';
 import { ulid } from './ulid';
 
 // What counts as no answer lives with the transport; screens import it from here too.
@@ -20,7 +20,8 @@ export interface RetryKey {
  * One write's idempotency key across retries. The server keeps every answer under its
  * key, refusals included, so a key is reused only while the last attempt got no final
  * answer (unanswered()): the retry then replays whatever that attempt did. Any answer
- * from the app ends the key.
+ * from the app ends the key, except a limit that refused the write before it ran
+ * (limitedBeforeRun()), which leaves it as good as it was.
  */
 export function useRetryKey(name: string): RetryKey {
     const fresh = () => `${name}:${ulid()}`;
@@ -34,7 +35,8 @@ export function useRetryKey(name: string): RetryKey {
 
     function settle(error?: unknown): void {
         if (unanswered(error)) unsure.value = true;
-        else reset();
+        // A limit that refused it before it ran leaves the key as good as it was.
+        else if (!limitedBeforeRun(error)) reset();
     }
 
     return { key, unsure, settle, reset };

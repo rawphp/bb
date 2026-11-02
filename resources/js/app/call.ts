@@ -390,14 +390,22 @@ async function deliver(entry: OutboxEntry, invalidated: string[]): Promise<Capab
 }
 
 // No answer to this entry yet: no response, a gateway's 5xx, the app still running it,
-// or a limit that refused it before it ran (the throttle in front of the app, or the
-// app's own, which marks that retryable and gives the key back). Anything else the
-// app keeps under the key.
+// or a limit that refused it before it ran. Anything else the app keeps under the key.
 function retryable(error: CapabilityError): boolean {
-    if (unanswered(error)) return true;
+    return unanswered(error) || limitedBeforeRun(error);
+}
+
+/**
+ * A 429 from a limit that refused the write before it ran: the throttle in front of the
+ * app, or the app's own limit, which marks that retryable and gives the key back. Its
+ * key is still good: sent again, it runs once the limit allows, or replays what an
+ * earlier attempt under it stored (CAP-014).
+ */
+export function limitedBeforeRun(error: unknown): boolean {
+    if (!(error instanceof CapabilityError) || error.status !== 429) return false;
     const app = appError(error);
 
-    return error.status === 429 && (app === null || app.retryable === true);
+    return app === null || app.retryable === true;
 }
 
 /** How long a limit asked the app to wait, if it said (`retry_after` seconds). */

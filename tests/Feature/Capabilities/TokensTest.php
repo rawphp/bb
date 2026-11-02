@@ -4,6 +4,7 @@ use App\Agent\Exclusions;
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\Support\HostBus;
 use App\Capabilities\Support\HostDefinition;
+use App\Capabilities\Support\IdempotencyKeys;
 use App\Capabilities\Support\NoAgentPolicy;
 use App\Capabilities\Support\NoBilling;
 use App\Capabilities\Support\Ownership;
@@ -410,7 +411,7 @@ it('INT-001 lets a Health bridge token post a weigh-in and steps, and nothing el
             ->register($registry);
     }
     $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, new Ownership, new NoBilling, new NoAgentPolicy));
-    $bus = new HostBus($registry, new Ownership);
+    $bus = new HostBus($registry, new Ownership, app(IdempotencyKeys::class));
     $invoke = fn (string $name) => $bus->invoke($name, ['amount' => 1], ['actor' => $bearer, 'caller' => 'http']);
 
     foreach (TokenScope::HEALTH_BRIDGE as $name) {

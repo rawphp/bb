@@ -22,7 +22,7 @@ final class HostBus implements CapabilityBus
     public function __construct(
         private readonly CapabilityRegistry $registry,
         private readonly Ownership $ownership,
-        private readonly ?IdempotencyKeys $keys = null,
+        private readonly IdempotencyKeys $keys,
     ) {}
 
     public function invoke(string $nameOrAlias, array $input = [], array $options = []): CapabilityResult
@@ -42,7 +42,7 @@ final class HostBus implements CapabilityBus
         $key = $options['idempotency_key'] ?? null;
         $actor = $options['actor'] ?? null;
         if ($result->errorCode() === 'rate_limited' && is_string($key) && $key !== '' && is_object($actor)) {
-            $this->keys?->releaseRateLimited($actor, $this->registry->get($nameOrAlias)->name, $key);
+            $this->keys->releaseRateLimited($actor, $this->registry->get($nameOrAlias)->name, $key);
         }
 
         return ErrorWording::apply($result);
