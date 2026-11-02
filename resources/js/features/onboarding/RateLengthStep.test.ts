@@ -71,7 +71,7 @@ describe('step 6, rate and length', () => {
         expect(answers()).toEqual([{ rate_option: 'Slow & steady' }]);
     });
 
-    it('ONB-008 sends the custom rate and the length when a slider is let go, and the server works out the rest', async () => {
+    it('ONB-008 sends the custom rate and the length when a slider is let go, not while it is dragged, and the server works out the rest', async () => {
         vi.mocked(read).mockResolvedValue(custom());
         wrapper = view(custom());
 
@@ -86,17 +86,9 @@ describe('step 6, rate and length', () => {
             expect(write, `${label} is sent while it is dragged`).not.toHaveBeenCalled();
             await slider.trigger('change');
             await flushPromises();
+            expect(answers()).toEqual([label === 'Custom rate' ? { custom_rate: 0.5 } : { weeks: 10 }]);
             vi.mocked(write).mockClear();
         }
-
-        wrapper.unmount();
-        wrapper = view(custom());
-        await commit(wrapper.get('input[aria-label="Custom rate"]'), '0.5');
-        await flushPromises();
-        await commit(wrapper.get('input[aria-label="Length in weeks"]'), '10');
-        await flushPromises();
-
-        expect(answers()).toEqual([{ custom_rate: 0.5 }, { weeks: 10 }]);
     });
 
     it('ONB-008 sends a start date and a last day picked, and a cleared one sends nothing and shows the saved date', async () => {

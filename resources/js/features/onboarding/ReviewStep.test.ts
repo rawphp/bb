@@ -177,6 +177,25 @@ describe('the review', () => {
             expect(writes().map(([name]) => name)).toEqual(['onboarding_complete']);
         });
 
+        it('CAP-012 a retry refused after a start that got no answer opens the answers again, with the server\'s reason', async () => {
+            vi.mocked(write)
+                .mockRejectedValueOnce(new CapabilityError('onboarding_complete', 0, { reason: 'timeout' }))
+                .mockRejectedValueOnce(new CapabilityError('onboarding_complete', 422, { ok: false, error: { message: 'Answer every step first.' } }));
+            vi.mocked(read).mockResolvedValue(goal);
+            wrapper = view(review);
+
+            await next(wrapper).trigger('click');
+            await flushPromises();
+            await next(wrapper).trigger('click');
+            await flushPromises();
+
+            expect(wrapper.get('[role="alert"]').text()).toBe('Answer every step first.');
+            expect(back(wrapper).attributes('disabled')).toBeUndefined();
+            await wrapper.get('button[aria-label="Edit Goal"]').trigger('click');
+            await flushPromises();
+            expect(wrapper.get('h2').text()).toBe(goal.step.title);
+        });
+
         it('CAP-012 a refused start stays on the review with the server\'s reason', async () => {
             const router = testRouter();
             await router.push('/onboarding');
