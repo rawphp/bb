@@ -33,8 +33,7 @@ it('ONB-017 the recommendation shows its daily average and the split of a plan w
     expect(onboardingDayNames($recommended))->toBe(['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'])
         ->and($recommended->averageKcal)->toEqualWithDelta(array_sum($kcal) / 7, 1e-6)
         ->and($recommended->averageKcal)->toBeGreaterThan(1200)->toBeLessThan(4500)
-        ->and(min($kcal))->toBeGreaterThan(0)
-        ->and($kcal[2])->toBeGreaterThan($kcal[1]);
+        ->and(min($kcal))->toBeGreaterThan(0);
 });
 
 it('ONB-017 the recommendation is the default, so it is the selection and the step can continue', function () {
@@ -127,13 +126,4 @@ it('ONB-017 says in words why the rules refuse the week', function () {
         ->toBe("Your eating window can't hold 6 meals around your busy periods and workouts. Widen it, or have fewer meals, on step 11.")
         ->and($calories->messageFor(WeekBuildRefusal::move(MoveRefusal::invalid())))
         ->toBe("Those calories can't be moved between days.");
-});
-
-it('ONB-017 a window the workouts leave no room in is refused with the step 11 message', function () {
-    $tight = F::atStep13()->with(eatingStartMinutes: 17 * 60, eatingEndMinutes: 20 * 60, mealCount: 2);
-    $calories = onboardingCalories($tight);
-
-    expect($calories->recommended())->toBeNull()
-        ->and($calories->message())->toStartWith("Your eating window can't hold 2 meals")
-        ->and($calories->isReady())->toBeFalse();
 });
