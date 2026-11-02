@@ -30,6 +30,7 @@ final class PhasePayload
     {
         $changes = new PhaseChanges($plan);
         $detail = $changes->detail($phase);
+        $weights = $changes->weights($phase);
         $unit = $plan->weightUnit();
         $domain = PlanSnapshot::domainPhase($phase);
         $days = PhaseWarnings::daysToEvent($domain, $plan->today);
@@ -44,10 +45,10 @@ final class PhasePayload
             progress_text: $detail->progressText,
             length_text: $detail->weeks === null ? 'No end' : PlanWords::weeks($detail->weeks),
             rate_text: $plan->trainingOnly() ? null : PlanWords::rate((float) $phase->target_rate_percent_per_week),
-            start_weight_text: $detail->startKg === null ? null : PlanWords::weight($detail->startKg, $unit),
-            target_weight_text: $detail->targetKg === null ? null : PlanWords::weight($detail->targetKg, $unit),
-            current_weight_text: $detail->currentKg === null ? null : PlanWords::weight($detail->currentKg, $unit),
-            change_text: $detail->startKg === null || $detail->currentKg === null ? null : PlanWords::weightChange($detail->currentKg - $detail->startKg, $unit),
+            start_weight_text: $weights->startKg === null ? null : PlanWords::weight($weights->startKg, $unit),
+            target_weight_text: $weights->targetKg === null ? null : PlanWords::weight($weights->targetKg, $unit),
+            current_weight_text: $weights->currentKg === null ? null : PlanWords::weight($weights->currentKg, $unit),
+            change_text: $weights->startKg === null || $weights->currentKg === null ? null : PlanWords::weightChange($weights->currentKg - $weights->startKg, $unit),
             event_date: $phase->event_date === null ? null : PlanSnapshot::day($phase->event_date)->format('Y-m-d'),
             event_text: $days === null ? null : PlanWords::eventCountdown($days),
             warnings: PhaseWarnings::runsPastEvent($domain) === null ? [] : [self::pastEvent($phase)],

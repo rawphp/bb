@@ -32,6 +32,12 @@ final class PhaseChanges
     /** PH-001, PH-002: the order Add a phase lists the types in. */
     public const TYPES = [PhaseType::FatLoss, PhaseType::MuscleGain, PhaseType::Maintenance, PhaseType::MiniCut];
 
+    /**
+     * Days of weigh-ins read before a phase starts, so its start trend has settled: at WT-010's 0.1 a day, a reading
+     * 60 days earlier weighs under 0.2% in it.
+     */
+    public const TREND_LEAD_DAYS = 60;
+
     /** The longest phase weighed (52 weeks). */
     private const LONGEST = 52;
 
@@ -71,41 +77,50 @@ final class PhaseChanges
             $progressText = 'Starts '.PlanWords::day(PlanSnapshot::day($phase->start_date));
         }
 
-        // The trend where the phase started and where it stands, then where the rate takes it.
-        $startKg = null;
-        $currentKg = null;
-        if ($started) {
-            $trend = new TrendWeight(
-                $this->plan->weighIns->map(fn (WeighIn $w) => new DomainWeighIn((string) $w->id, TrainSnapshot::day($w->weighed_at), (float) $w->weight_kg))->values()->all(),
-                new DateTimeZone('UTC'),
-            );
-            $start = PlanSnapshot::day($phase->start_date);
-            $last = $phase->end_date === null ? $this->plan->today : min(PlanSnapshot::day($phase->end_date), $this->plan->today);
-            foreach ($trend->points as $point) {
-                if ($startKg === null && $point->day >= $start) {
-                    $startKg = $point->trendKg;
-                }
-                if ($point->day <= $last) {
-                    $currentKg = $point->trendKg;
-                }
-            }
-        }
-        $targetKg = null;
-        if (! $this->plan->trainingOnly() && $startKg !== null && $weeks !== null) {
-            $counted = $weeks - $this->plan->dietBreakWeeks($range->lower, $range->upper, $phase->type);
-            $targetKg = $startKg * (1 + (float) $phase->target_rate_percent_per_week / 100 * max(0, $counted));
-        }
-
         return new PhaseDetail(
             weeks: $weeks,
             progress: $weeks === null ? null : $weeksDone / max(1, $weeks),
             progressText: $progressText,
-            startKg: $startKg,
-            targetKg: $targetKg,
-            currentKg: $currentKg,
             isCurrent: $today !== null && $range->contains($today),
             isOver: $finished,
         );
+    }
+
+    /**
+     * PLAN-004: the trend weight where the phase started and where it stands now (or when it ended), then where the
+     * rate takes the start by its end, diet-break weeks not counting (PLAN-025). All null until it has started and
+     * there are weigh-ins. Only weigh-ins from TREND_LEAD_DAYS before its start are read.
+     */
+    public function weights(Phase $phase): PhaseWeights
+    {
+        $range = $this->plan->weeksOf($phase);
+        $start = PlanSnapshot::day($phase->start_date);
+        if ($this->plan->todayWeek === null || $this->plan->todayWeek < $range->lower) {
+            return new PhaseWeights(null, null, null);
+        }
+        $trend = new TrendWeight(
+            $this->plan->weighInsSince($start->modify('-'.self::TREND_LEAD_DAYS.' days'))
+                ->map(fn (WeighIn $w) => new DomainWeighIn((string) $w->id, TrainSnapshot::day($w->weighed_at), (float) $w->weight_kg))->values()->all(),
+            new DateTimeZone('UTC'),
+        );
+        $last = $phase->end_date === null ? $this->plan->today : min(PlanSnapshot::day($phase->end_date), $this->plan->today);
+        $startKg = null;
+        $currentKg = null;
+        foreach ($trend->points as $point) {
+            if ($startKg === null && $point->day >= $start) {
+                $startKg = $point->trendKg;
+            }
+            if ($point->day <= $last) {
+                $currentKg = $point->trendKg;
+            }
+        }
+        $targetKg = null;
+        if (! $this->plan->trainingOnly() && $startKg !== null && $range->upper !== PlanSnapshot::OPEN) {
+            $counted = $range->count() - $this->plan->dietBreakWeeks($range->lower, $range->upper, $phase->type);
+            $targetKg = $startKg * (1 + (float) $phase->target_rate_percent_per_week / 100 * max(0, $counted));
+        }
+
+        return new PhaseWeights($startKg, $targetKg, $currentKg);
     }
 
     // MARK: PH-006, PLAN-021, PLAN-025

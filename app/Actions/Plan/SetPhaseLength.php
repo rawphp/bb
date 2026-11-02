@@ -20,31 +20,29 @@ final class SetPhaseLength
     /** @return array{changed: list<string>, weeks: ?int} the ids of the phases whose dates changed, and the length written */
     public function __invoke(User $user, string $phaseId, ?int $weeks, string $fix): array
     {
-        $plan = PlanSnapshot::load($user) ?? throw new DomainException('There is no plan yet.');
-        $phase = $plan->findPhase($phaseId) ?? throw new DomainException('That phase is not on your plan.');
-        $changes = new PhaseChanges($plan);
+        // The plan is read and checked under its row lock, so a write running at the same time cannot move it meanwhile.
+        return DB::transaction(function () use ($user, $phaseId, $weeks, $fix): array {
+            $plan = PlanSnapshot::load($user, lock: true) ?? throw new DomainException('There is no plan yet.');
+            $phase = $plan->findPhase($phaseId) ?? throw new DomainException('That phase is not on your plan.');
+            $changes = new PhaseChanges($plan);
 
-        $refusal = $changes->lengthRefusal($phase, $weeks);
-        if ($refusal !== null) {
-            throw new DomainException($refusal);
-        }
-        $proposal = $changes->proposeLength($phase, $weeks);
-        $end = $proposal->end;
-        $mesocycle = null;
-        if ($fix === 'move_end_to_deload') {
-            $end = $proposal->moveEnd ?? throw new DomainException('No deload falls within 2 weeks of that end, so it cannot move there.');
-        } elseif ($fix === 'change_mesocycle_length') {
-            $mesocycle = $proposal->mesocycleChange ?? throw new DomainException('No mesocycle length puts a deload on that last week.');
-        }
-
-        $written = $end === null ? null : $plan->grid->weekIndexContaining($end) - $plan->weeksOf($phase)->lower;
-
-        return DB::transaction(function () use ($plan, $phase, $end, $mesocycle, $written): array {
-            if ($mesocycle !== null) {
-                $mesocycle[0]->mesocycle->update(['weeks' => $mesocycle[1]]);
+            $refusal = $changes->lengthRefusal($phase, $weeks);
+            if ($refusal !== null) {
+                throw new DomainException($refusal);
+            }
+            $proposal = $changes->proposeLength($phase, $weeks);
+            $end = $proposal->end;
+            if ($fix === 'move_end_to_deload') {
+                $end = $proposal->moveEnd ?? throw new DomainException('No deload falls within 2 weeks of that end, so it cannot move there.');
+            } elseif ($fix === 'change_mesocycle_length') {
+                [$placed, $mesocycleWeeks] = $proposal->mesocycleChange ?? throw new DomainException('No mesocycle length puts a deload on that last week.');
+                $placed->mesocycle->update(['weeks' => $mesocycleWeeks]);
             }
 
-            return ['changed' => self::moveEnd($plan, $phase, $end), 'weeks' => $written];
+            return [
+                'changed' => self::moveEnd($plan, $phase, $end),
+                'weeks' => $end === null ? null : $plan->grid->weekIndexContaining($end) - $plan->weeksOf($phase)->lower,
+            ];
         });
     }
 

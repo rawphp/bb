@@ -20,7 +20,7 @@ final class PhaseEndCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('phase_end', affects: PlanReads::AFFECTS, destructive: true)
-            ->description('End the phase running now early: it ends at the next plan-week boundary, the phases after it move up, and the phase transition follows. Use it only when the user asks to stop the current phase; only the running phase can be ended. It cannot be undone, so confirm with the user first.')
+            ->description('End the phase running now early: it ends at the next plan-week boundary and the phases after it move up; choosing what comes next is not available yet. Use it only when the user asks to stop the current phase; only the running phase can be ended. It cannot be undone, so confirm with the user first.')
             ->cli('phase', 'end')
             ->input(PhaseEndInput::class)
             ->run(function (PhaseEndInput $input, CapabilityContext $context): WriteResult {

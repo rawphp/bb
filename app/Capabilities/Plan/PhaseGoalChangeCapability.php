@@ -12,8 +12,6 @@ use App\Capabilities\Support\WriteResult;
 use App\Domain\Model\PhaseType;
 use App\Models\Phase;
 use App\Models\User;
-use App\Support\Plan\PlanSnapshot;
-use DomainException;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -33,35 +31,12 @@ final class PhaseGoalChangeCapability implements HostCapability, OwnsInput
                 /** @var User $user */
                 $user = $context->user();
                 $type = PhaseType::from($input->type);
+                // CAP-019: another user's id is not found; the user's own is checked as a replay.
                 $existing = $this->ownedOrNew(Phase::class, $input->new_phase_id, $user);
-                $changed = $existing === null
-                    ? ($this->changeGoal)($user, $input->phase_id, $type, $input->new_phase_id)
-                    : $this->replayed($user, $existing, $input->phase_id, $type);
+                $changed = ($this->changeGoal)($user, $input->phase_id, $type, $input->new_phase_id, $existing);
 
                 return new WriteResult(invalidates: PlanReads::keys($user, ...$changed), toast: "Goal is now {$type->title()}");
             });
-    }
-
-    /**
-     * CAP-019: a replayed change finds the phase it split off already written: another phase, of the new type,
-     * starting where the changed phase now ends, no later than next plan week (a split always starts on the plan week
-     * after the change). Any other phase under that id is not this change's.
-     *
-     * @return list<string>
-     */
-    private function replayed(User $user, Phase $existing, string $phaseId, PhaseType $type): array
-    {
-        $plan = PlanSnapshot::load($user);
-        $changed = $plan?->findPhase($phaseId);
-        $start = PlanSnapshot::day($existing->start_date);
-        $isSplit = $plan !== null && $changed !== null && $changed->end_date !== null
-            && strcasecmp((string) $existing->id, $phaseId) !== 0 && $existing->type === $type
-            && PlanSnapshot::day($changed->end_date) == $start && $start <= $plan->dayOfWeek($plan->nextWeek());
-        if (! $isSplit) {
-            throw new DomainException('That new phase id is already used.');
-        }
-
-        return [$phaseId, (string) $existing->id];
     }
 
     public function owned(User $user): array

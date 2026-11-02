@@ -23,6 +23,7 @@ use App\Models\User;
 use App\Models\WeighIn;
 use App\Support\Mesocycles\TrainSnapshot;
 use Carbon\CarbonImmutable;
+use Closure;
 use DateTimeImmutable;
 use Illuminate\Support\Collection;
 
@@ -62,7 +63,7 @@ final class PlanSnapshot
      * @param  Collection<int, Phase>  $phases  sorted by start
      * @param  Collection<int, Mesocycle>  $mesocycles  saved ones
      * @param  Collection<int, PlanWeek>  $planWeeks
-     * @param  Collection<int, WeighIn>  $weighIns
+     * @param  Collection<int, WeighIn>|Closure(DateTimeImmutable): Collection<int, WeighIn>  $weighIns  all of them, or a loader given the first day wanted
      */
     public function __construct(
         public readonly DateTimeImmutable $today,
@@ -71,7 +72,7 @@ final class PlanSnapshot
         public readonly Collection $phases,
         public readonly Collection $mesocycles,
         public readonly Collection $planWeeks,
-        public readonly Collection $weighIns,
+        private readonly Collection|Closure $weighIns,
     ) {
         $this->domain = new DomainPlan(
             id: (string) $plan->id,
@@ -113,10 +114,13 @@ final class PlanSnapshot
         $this->placed = $placed;
     }
 
-    /** Everything for one user; null when the user has no plan yet. */
-    public static function load(User $user): ?self
+    /**
+     * Everything for one user; null when the user has no plan yet. A write passes `$lock` inside its transaction: the
+     * plan row is locked first, so two writes to one plan run one after the other and each reads what the other wrote.
+     */
+    public static function load(User $user, bool $lock = false): ?self
     {
-        $plan = Plan::query()->where('user_id', $user->id)->first();
+        $plan = Plan::query()->where('user_id', $user->id)->when($lock, fn ($query) => $query->lockForUpdate())->first();
         if ($plan === null) {
             return null;
         }
@@ -128,8 +132,23 @@ final class PlanSnapshot
             phases: Phase::query()->where('user_id', $user->id)->orderBy('start_date')->get(),
             mesocycles: Mesocycle::savedBy($user)->get(),
             planWeeks: PlanWeek::query()->where('user_id', $user->id)->get(),
-            weighIns: WeighIn::query()->where('user_id', $user->id)->orderBy('weighed_at')->get(),
+            weighIns: fn (DateTimeImmutable $from): Collection => WeighIn::query()->where('user_id', $user->id)
+                ->where('weighed_at', '>=', $from->format('Y-m-d H:i:s'))->orderBy('weighed_at')->get(),
         );
+    }
+
+    /**
+     * The weigh-ins from a day on, read only when a phase's weights are shown (PLAN-004).
+     *
+     * @return Collection<int, WeighIn>
+     */
+    public function weighInsSince(DateTimeImmutable $from): Collection
+    {
+        if ($this->weighIns instanceof Closure) {
+            return ($this->weighIns)($from);
+        }
+
+        return $this->weighIns->filter(fn (WeighIn $w) => self::day($w->weighed_at) >= $from)->values();
     }
 
     public static function day(\DateTimeInterface|string $date): DateTimeImmutable

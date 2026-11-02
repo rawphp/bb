@@ -19,26 +19,34 @@ use Illuminate\Support\Facades\DB;
  */
 final class ChangePhaseGoal
 {
-    /** @return list<string> the ids of the phases written */
-    public function __invoke(User $user, string $phaseId, PhaseType $type, string $newPhaseId): array
+    /**
+     * `$replay` is the user's phase already saved under `$newPhaseId`, if any (CAP-019): the change ran before when
+     * that is the phase it split off, and nothing is written again.
+     *
+     * @return list<string> the ids of the phases written
+     */
+    public function __invoke(User $user, string $phaseId, PhaseType $type, string $newPhaseId, ?Phase $replay = null): array
     {
-        $plan = PlanSnapshot::load($user) ?? throw new DomainException('There is no plan yet.');
-        $phase = $plan->findPhase($phaseId) ?? throw new DomainException('That phase is not on your plan.');
-        $changes = new PhaseChanges($plan);
-        if (! in_array($type, $changes->goalTypes($phase), true)) {
-            throw new DomainException($phase->type === $type
-                ? "This phase is already {$type->title()}."
-                : 'This phase is over, so its goal can no longer change.');
-        }
-        $goal = $changes->goal($phase, $type);
-        if ($goal->refusal !== null) {
-            throw new DomainException($goal->refusal);
-        }
+        // The plan is read and checked under its row lock, so a write running at the same time cannot move it meanwhile.
+        return DB::transaction(function () use ($user, $phaseId, $type, $newPhaseId, $replay): array {
+            $plan = PlanSnapshot::load($user, lock: true) ?? throw new DomainException('There is no plan yet.');
+            $phase = $plan->findPhase($phaseId) ?? throw new DomainException('That phase is not on your plan.');
+            if ($replay !== null) {
+                return self::replayed($plan, $phase, $plan->findPhase((string) $replay->id), $type);
+            }
+            $changes = new PhaseChanges($plan);
+            if (! in_array($type, $changes->goalTypes($phase), true)) {
+                throw new DomainException($phase->type === $type
+                    ? "This phase is already {$type->title()}."
+                    : 'This phase is over, so its goal can no longer change.');
+            }
+            $goal = $changes->goal($phase, $type);
+            if ($goal->refusal !== null) {
+                throw new DomainException($goal->refusal);
+            }
 
-        $from = $plan->dayOfWeek($goal->startWeek);
-        $end = $goal->weeks === null ? null : $plan->dayOfWeek($goal->startWeek + $goal->weeks)->format('Y-m-d');
-
-        return DB::transaction(function () use ($user, $phase, $goal, $from, $end, $newPhaseId): array {
+            $from = $plan->dayOfWeek($goal->startWeek);
+            $end = $goal->weeks === null ? null : $plan->dayOfWeek($goal->startWeek + $goal->weeks)->format('Y-m-d');
             if ($goal->replacesInPlace) {
                 $phase->update(['type' => $goal->type, 'end_date' => $end, 'target_rate_percent_per_week' => $goal->ratePercentPerWeek]);
 
@@ -60,5 +68,23 @@ final class ChangePhaseGoal
 
             return [(string) $phase->id, $newPhaseId];
         });
+    }
+
+    /**
+     * CAP-019: the saved phase is this change's split: another phase, of the new type, starting where the changed
+     * phase now ends, no later than next plan week (a split always starts on the plan week after the change).
+     *
+     * @return list<string>
+     */
+    private static function replayed(PlanSnapshot $plan, Phase $changed, ?Phase $split, PhaseType $type): array
+    {
+        $start = $split === null ? null : PlanSnapshot::day($split->start_date);
+        $isSplit = $split !== null && ! $split->is($changed) && $split->type === $type && $changed->end_date !== null
+            && PlanSnapshot::day($changed->end_date) == $start && $start <= $plan->dayOfWeek($plan->nextWeek());
+        if (! $isSplit) {
+            throw new DomainException('That new phase id is already used.');
+        }
+
+        return [(string) $changed->id, (string) $split->id];
     }
 }
