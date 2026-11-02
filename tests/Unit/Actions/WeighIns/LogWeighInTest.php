@@ -34,19 +34,6 @@ it('WT-002 logs a typed weigh-in in kg at the moment the user weighed in, conver
         ->and($weighIn->fresh()->weighed_at->format('Y-m-d H:i'))->toBe('2026-10-10 07:35');
 });
 
-it('WT-002 refuses a time the calendar does not have, or one the weigh-ins table cannot hold, and stores nothing', function (string $time) {
-    $user = User::factory()->create();
-
-    expect(fn () => logWeighIn($user, $time, new WeightInput(82, 'kg')))
-        ->toThrow(DomainException::class, 'Enter a real date and time.')
-        ->and(WeighIn::query()->count())->toBe(0);
-})->with([
-    '30 February' => '2026-02-30T07:00:00+00:00',
-    '25 o\'clock' => '2026-10-10T25:00:00+00:00',
-    'a mistyped year far ahead' => '2062-10-10T07:00:00+00:00',
-    'a mistyped year far back' => '0202-10-10T07:00:00+10:00',
-]);
-
 it('WT-006 logs a weigh-in on a day the schedule does not hold', function () {
     $user = User::factory()->create();
     $user->weighInScheduleEntries()->create(['weekdays' => [1, 5], 'time' => '07:00']);

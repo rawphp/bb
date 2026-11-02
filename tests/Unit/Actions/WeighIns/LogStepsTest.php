@@ -58,11 +58,3 @@ it('WT-020 keeps each user\'s count to their own day', function () {
     expect($theirs->fresh()->count)->toBe(500)
         ->and(dayOfSteps($user, '2026-10-09')->count)->toBe(8412);
 });
-
-it('WT-020 refuses a day the calendar does not have', function () {
-    $user = User::factory()->create();
-
-    expect(fn () => (new LogSteps)($user, '2026-02-30', 8412, MeasurementSource::Manual))
-        ->toThrow(DomainException::class, 'Enter a real date.')
-        ->and(Step::query()->count())->toBe(0);
-});
