@@ -15,6 +15,9 @@ use Illuminate\Support\Carbon;
  * The reads a change to one meal invalidates (CAP-010, CAP-011): its meal screen, the Nutrition tab of its day, and
  * Today and the week strip, which show its planned foods and check-in. A day that is today also drops the reads
  * without a date. The day and the plan are read through the meal's dayTarget and user->plan relations.
+ *
+ * Only the changed meal's screen is named. A write that changes the day's other meals, such as a delete that moves the
+ * pre- or post-workout tag (MEAL-010) or a "Meal n" title, names their meal_show keys too.
  */
 final class MealReads
 {

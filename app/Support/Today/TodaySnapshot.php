@@ -583,21 +583,12 @@ final class TodaySnapshot
     /** RCP-002: servings of a recipe, at its ingredients' macros per serving. */
     private static function recipe(PlannedRecipe $planned): TodayPlannedEntry
     {
-        $recipe = $planned->sourceRecipe;
-        $perServing = $recipe === null ? new MealTarget(0, 0, 0, 0) : RecipeMacros::perServing(
-            $recipe->ingredients->map(fn (RecipeIngredient $i) => new MealFood(
-                id: (string) $i->id,
-                food: self::mealFitFood($i->food),
-                grams: (float) $i->grams,
-                weighing: $i->is_cooked ? Weighing::Cooked : Weighing::Raw,
-            ))->values()->all(),
-            (float) $recipe->servings,
-        );
+        $perServing = self::perServing($planned);
         $servings = $planned->servings;
 
         return new TodayPlannedEntry(
-            (string) (self::json($planned->recipe)['name'] ?? $recipe->name ?? 'Recipe'),
-            self::number($servings).($servings == 1.0 ? ' serving' : ' servings'),
+            self::recipeName($planned),
+            self::servingsText($servings),
             new MealTarget(
                 kcal: $perServing->kcal * $servings,
                 proteinG: $perServing->proteinG * $servings,
@@ -606,6 +597,34 @@ final class TodaySnapshot
             ),
             $planned->position,
         );
+    }
+
+    /** RCP-021: the meal's copy of the recipe names it. */
+    public static function recipeName(PlannedRecipe $planned): string
+    {
+        return (string) (self::json($planned->recipe)['name'] ?? $planned->sourceRecipe->name ?? 'Recipe');
+    }
+
+    /** RCP-002: one serving's calories and macros, from the recipe's ingredients. */
+    public static function perServing(PlannedRecipe $planned): MealTarget
+    {
+        $recipe = $planned->sourceRecipe;
+
+        return $recipe === null ? new MealTarget(0, 0, 0, 0) : RecipeMacros::perServing(
+            $recipe->ingredients->map(fn (RecipeIngredient $i) => new MealFood(
+                id: (string) $i->id,
+                food: self::mealFitFood($i->food),
+                grams: (float) $i->grams,
+                weighing: $i->is_cooked ? Weighing::Cooked : Weighing::Raw,
+            ))->values()->all(),
+            (float) $recipe->servings,
+        );
+    }
+
+    /** "1 serving", "1.5 servings". */
+    public static function servingsText(float $servings): string
+    {
+        return self::number($servings).($servings == 1.0 ? ' serving' : ' servings');
     }
 
     private static function mealFitFood(Food $food): MealFitFood

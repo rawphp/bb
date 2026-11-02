@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Reads\Nutrition;
 
+use App\Actions\Foods\MealFitFoods;
 use App\Capabilities\Nutrition\Data\MacroBar;
 use App\Capabilities\Nutrition\Data\Macros;
 use App\Capabilities\Nutrition\Data\MealEmpty;
@@ -15,24 +16,19 @@ use App\Capabilities\Reads\Today\MealMenu;
 use App\Capabilities\Reads\Today\TodayPayload;
 use App\Capabilities\Reads\Today\TodayWords;
 use App\Capabilities\Support\Tone;
-use App\Domain\MealFit\Food as FitFood;
 use App\Domain\MealFit\MealFit;
 use App\Domain\MealFit\MealFood;
-use App\Domain\MealFit\Serving;
 use App\Domain\MealFit\Shortfall;
 use App\Domain\MealFit\Weighing;
 use App\Domain\Model\MealTarget;
 use App\Domain\Pantry\FoodUnit;
 use App\Domain\Pantry\Pantry;
+use App\Domain\Placement\MealPlacement;
 use App\Domain\Progress\Adherence;
-use App\Domain\Recipe\RecipeMacros;
 use App\Domain\Recipe\RecipeServing;
 use App\Models\DayTargetMeal;
-use App\Models\Food;
-use App\Models\FoodServing;
 use App\Models\PlannedFood;
 use App\Models\PlannedRecipe;
-use App\Models\RecipeIngredient;
 use App\Support\Today\TodayMealItem;
 use App\Support\Today\TodaySnapshot;
 use DateTimeImmutable;
@@ -56,12 +52,6 @@ final class MealPayload
 
     /** MEAL-010. */
     public const PERI_WORKOUT_HELP = "These meals carry most of the day's carbs.";
-
-    /** MEAL-010: the pre-workout meal starts at most this long before the workout. */
-    private const PRE_MINUTES = 180;
-
-    /** MEAL-010: the post-workout meal starts at most this long after the workout ends. */
-    private const POST_MINUTES = 60;
 
     /**
      * @throws ModelNotFoundException when the meal is not one of `$day`'s meals
@@ -168,10 +158,10 @@ final class MealPayload
             if ($minute === null) {
                 continue;
             }
-            if ($minute < $start && $start - $minute <= self::PRE_MINUTES && ($pre === null || $minute > $pre[1])) {
+            if ($minute < $start && $start - $minute <= MealPlacement::PRE_WORKOUT_MINUTES_BEFORE_MAX && ($pre === null || $minute > $pre[1])) {
                 $pre = [$candidate->id, $minute];
             }
-            if ($minute >= $end && $minute - $end <= self::POST_MINUTES && ($post === null || $minute < $post[1])) {
+            if ($minute >= $end && $minute - $end <= MealPlacement::POST_WORKOUT_MINUTES_AFTER_MAX && ($post === null || $minute < $post[1])) {
                 $post = [$candidate->id, $minute];
             }
         }
@@ -211,7 +201,7 @@ final class MealPayload
         $fit = new MealFood(
             // Planned foods and recipe servings number their rows apart, so the fit tells them apart by kind.
             id: 'food-'.$planned->getKey(),
-            food: self::fitFood($food),
+            food: MealFitFoods::of($food),
             grams: $planned->grams,
             weighing: $planned->is_cooked ? Weighing::Cooked : Weighing::Raw,
             isLocked: $planned->is_locked,
@@ -226,7 +216,7 @@ final class MealPayload
         return ['fit' => $fit, 'row' => new MealEntry(
             id: (string) $planned->getKey(),
             kind: 'food',
-            name: $food->name ?? 'Food',
+            name: $food->name,
             amount_text: $amount,
             amount: $ounces ? round($planned->grams / FoodUnit::GRAMS_PER_OUNCE, 1) : $planned->grams,
             amount_unit: $ounces ? FoodUnit::Ounces->value : FoodUnit::Grams->value,
@@ -240,24 +230,14 @@ final class MealPayload
     /** @return array{row: MealEntry, fit: MealFood} */
     private static function recipe(PlannedRecipe $planned): array
     {
-        $recipe = $planned->sourceRecipe;
-        $name = (string) (TodaySnapshot::json($planned->recipe)['name'] ?? $recipe->name ?? 'Recipe');
-        $perServing = $recipe === null ? new MealTarget(0, 0, 0, 0) : RecipeMacros::perServing(
-            $recipe->ingredients->map(fn (RecipeIngredient $i) => new MealFood(
-                id: (string) $i->getKey(),
-                food: self::fitFood($i->food),
-                grams: (float) $i->grams,
-                weighing: $i->is_cooked ? Weighing::Cooked : Weighing::Raw,
-            ))->values()->all(),
-            (float) $recipe->servings,
-        );
-        $fit = RecipeServing::food('recipe-'.$planned->getKey(), $name, $perServing, $planned->servings, $planned->is_locked);
+        $name = TodaySnapshot::recipeName($planned);
+        $fit = RecipeServing::food('recipe-'.$planned->getKey(), $name, TodaySnapshot::perServing($planned), $planned->servings, $planned->is_locked);
 
         return ['fit' => $fit, 'row' => new MealEntry(
             id: (string) $planned->getKey(),
             kind: 'recipe',
             name: $name,
-            amount_text: TodaySnapshot::number($planned->servings).($planned->servings == 1.0 ? ' serving' : ' servings'),
+            amount_text: TodaySnapshot::servingsText($planned->servings),
             amount: $planned->servings,
             amount_unit: 'servings',
             household_unit: null,
@@ -265,23 +245,6 @@ final class MealPayload
             macros: self::macros($fit->macros()),
             is_locked: $planned->is_locked,
         )];
-    }
-
-    /** FOOD-004, FOOD-005: the food as the fit reads it, with its first household unit when its servings are loaded. */
-    private static function fitFood(?Food $food): FitFood
-    {
-        $servings = $food?->relationLoaded('servings') ? $food->servings->sortBy('id')->values() : collect();
-
-        return new FitFood(
-            id: (string) $food?->getKey(),
-            name: $food->name ?? 'Food',
-            kcal: (float) ($food->kcal ?? 0),
-            proteinG: (float) ($food->protein ?? 0),
-            fatG: (float) ($food->fat ?? 0),
-            carbsG: (float) ($food->carbs ?? 0),
-            cookedRatio: $food?->cooked_ratio,
-            servings: $servings->map(fn (FoodServing $s) => new Serving((string) $s->label, (float) $s->grams))->all(),
-        );
     }
 
     /** "355 kcal", "P 68": whole kcal and grams. */
