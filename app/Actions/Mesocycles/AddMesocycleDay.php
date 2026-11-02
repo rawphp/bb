@@ -12,7 +12,8 @@ use DomainException;
  * MESO-045: adds an empty day after a running mesocycle's days, so the days before it, and the sessions stored against
  * them, keep their numbers. It runs in the remaining weeks, from the current one on; the weeks before keep the days
  * they had (SCH-039). It is labelled in the mesocycle's style: the next free training weekday in a weekday split, else
- * "Day n". A day id already there changes nothing, so the outbox can retry.
+ * "Day n" with no weekday, as rp-clone does when every training weekday is taken. A day id already there changes
+ * nothing, so the outbox can retry.
  */
 final class AddMesocycleDay
 {
@@ -28,9 +29,6 @@ final class AddMesocycleDay
         $calendar = $snapshot->calendar($mesocycle);
         if (! $calendar->canAddDay()) {
             throw new DomainException('Days can be added only while the mesocycle runs.');
-        }
-        if (! $snapshot->canAddDay($mesocycle)) {
-            throw new DomainException('Every training day already has a session. Add a training day in your schedule first.');
         }
 
         $weekday = $snapshot->newDayWeekday($mesocycle);

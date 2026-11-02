@@ -162,7 +162,8 @@ final readonly class MesocycleCalendar
 
     /**
      * MESO-005, SCH-040: the date of each day of a plan week. A day with a weekday (ISO) falls on it; the floating
-     * days take the training weekdays in plan-week order, in turn. A floating day with none left has no date.
+     * days take, in turn, the training weekdays in plan-week order that no day with a weekday takes (MESO-045: a
+     * "Day n" added to a full weekday split). A floating day with none left has no date.
      *
      * @param  list<?int>  $weekdays  each day's ISO weekday, null for a floating day
      * @param  list<int>  $trainingWeekdays  the profile's training days, ISO
@@ -174,7 +175,11 @@ final readonly class MesocycleCalendar
         foreach ($week->days() as $date) {
             $byWeekday[(int) $date->format('N')] ??= $date;
         }
-        $floating = PlanWeekDays::inPlanWeekOrder(array_values(array_unique($trainingWeekdays)), $reviewIsoWeekday);
+        $taken = array_filter($weekdays, fn (?int $weekday) => $weekday !== null);
+        $floating = array_values(array_diff(
+            PlanWeekDays::inPlanWeekOrder(array_values(array_unique($trainingWeekdays)), $reviewIsoWeekday),
+            $taken,
+        ));
 
         $dates = [];
         $next = 0;
