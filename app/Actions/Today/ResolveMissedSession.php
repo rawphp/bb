@@ -1,0 +1,122 @@
+<?php
+
+namespace App\Actions\Today;
+
+use App\Capabilities\Today\Data\MissedSessionResolveInput;
+use App\Domain\Placement\ScheduledSession;
+use App\Domain\Retarget\MissedDayOption;
+use App\Domain\Retarget\MissedDayOption\Kind;
+use App\Domain\Retarget\RetargetRefusal;
+use App\Domain\Retarget\RetargetRefused;
+use App\Domain\Retarget\Retargeting;
+use App\Models\User;
+use App\Models\WorkoutSession;
+use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\Today\DayPlans;
+use App\Support\Today\RetargetDays;
+use App\Support\Today\SessionWeek;
+use DateTimeImmutable;
+use DomainException;
+use Illuminate\Support\Str;
+
+/**
+ * SCH-057: the answer to the missed-day prompt for a session of this plan week whose day has passed with nothing
+ * logged. "Do it today" and "Do it on the next rest day" move the session there at its clock time and re-target that
+ * day (SCH-050, SCH-055, SCH-056); the missed day is past, so its targets stay. "Skip it" saves the session skipped and
+ * changes no targets. The server offers the choices itself, so a choice it would not offer is refused.
+ */
+final class ResolveMissedSession
+{
+    public const NOT_MISSED = 'That session isn\'t waiting for an answer: it is done, skipped, not yet due, or not in this plan week.';
+
+    /** @return array{toast: string, dates: list<string>} the toast, and the days Today shows differently (Y-m-d) */
+    public function __invoke(User $user, MissedSessionResolveInput $input): array
+    {
+        $snapshot = TrainSnapshot::load($user, $input->mesocycle_id);
+        $mesocycle = $snapshot->mesocycle($input->mesocycle_id);
+        $week = SessionWeek::load($snapshot, $mesocycle);
+        $session = $week->session($input->week, $input->day);
+        $stored = $snapshot->sessions->first(fn (WorkoutSession $row) => $row->mesocycle_id === $mesocycle->id
+            && $row->week === $input->week && $row->day === $input->day);
+        if ($session === null || $session->date >= $snapshot->today || ($stored !== null && SessionWeek::isLogged($stored))) {
+            throw new DomainException(self::NOT_MISSED);
+        }
+
+        $option = $this->offered($input, Retargeting::missedDayOptions($session->date, $snapshot->today, $week->planWeek, $week->trainingDates()));
+        if ($option->kind === Kind::Skip) {
+            $this->saveRow($user, $stored, $input, $session, $session->date, skipped: true);
+
+            return ['toast' => 'Session skipped', 'dates' => [$session->date->format('Y-m-d')]];
+        }
+
+        $destination = $option->date ?? $snapshot->today;
+        $date = $destination->format('Y-m-d');
+        $plans = DayPlans::load($user, [$date]);
+        $plan = $plans->plan($date) ?? throw new DomainException(RetargetDays::CANNOT);
+        $context = RetargetDays::context($user, $destination, $week->result->isDeload, $week->row);
+        $workout = $week->workout($session);
+        try {
+            $result = Retargeting::move(
+                RetargetDays::emptyDay($session->date, $workout),
+                RetargetDays::day($plan, null, RetargetDays::activity($user, $date), $context),
+                $session->time->start,
+                $week->planWeek,
+                $context,
+                fn (): string => (string) Str::uuid7(),
+            );
+        } catch (RetargetRefused $refused) {
+            throw new DomainException(self::refusal($refused->refusal));
+        }
+        RetargetDays::save($plans->row($date), $result->days[1]);
+        $this->saveRow($user, $stored, $input, $session, $destination, skipped: false);
+
+        return ['toast' => $result->message, 'dates' => [$session->date->format('Y-m-d'), $date]];
+    }
+
+    /** @param  list<MissedDayOption>  $options */
+    private function offered(MissedSessionResolveInput $input, array $options): MissedDayOption
+    {
+        $kind = match ($input->choice) {
+            'do_it_today' => Kind::DoItToday,
+            'next_rest_day' => Kind::NextRestDay,
+            default => Kind::Skip,
+        };
+        $option = array_find($options, fn (MissedDayOption $option) => $option->kind === $kind);
+        if ($option === null || ($option->date !== null && $input->date !== null && $option->date->format('Y-m-d') !== $input->date)) {
+            throw new DomainException(match (true) {
+                $option !== null => 'That rest day has changed. Open the prompt again.',
+                $kind === Kind::DoItToday => 'Today is a training day, so this session can\'t move to it.',
+                default => 'No rest day is left this plan week, so this session can only be skipped.',
+            });
+        }
+
+        return $option;
+    }
+
+    /** The session's row, placed on `$day` at its time until its estimated length; a stored row keeps its id. */
+    private function saveRow(User $user, ?WorkoutSession $stored, MissedSessionResolveInput $input, ScheduledSession $session, DateTimeImmutable $day, bool $skipped): void
+    {
+        $start = DayPlans::day($day->format('Y-m-d'))->modify("+{$session->time->start->minuteOfDay} minutes");
+        $row = $stored ?? new WorkoutSession;
+        $row->forceFill([
+            'user_id' => $user->id,
+            'mesocycle_id' => $input->mesocycle_id,
+            'week' => $input->week,
+            'day' => $input->day,
+            'planned_start_at' => $start,
+            'planned_end_at' => $start->modify("+{$session->time->lengthMinutes} minutes"),
+            'is_skipped' => $skipped,
+        ])->save();
+    }
+
+    /** The re-target rule's refusal, as the user reads it. Nothing is saved. */
+    public static function refusal(RetargetRefusal $refusal): string
+    {
+        return match ($refusal) {
+            RetargetRefusal::NoSession => 'There is no workout on that day to change. Nothing was changed.',
+            RetargetRefusal::DayHasSession => 'That day already has a workout. Pick another day.',
+            RetargetRefusal::OutsidePlanWeek => 'A workout can only move within its plan week. Pick another day.',
+            RetargetRefusal::MealsDoNotFit => 'Your meals can\'t fit around the workout at that time. Nothing was changed.',
+        };
+    }
+}
