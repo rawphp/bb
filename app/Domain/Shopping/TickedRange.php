@@ -58,11 +58,11 @@ final readonly class TickedRange
     /**
      * SHOP-005, OFF-030: tick a line off, or take the tick back. The tick names the state it leaves, so the
      * same tick twice changes nothing. A tick in another range clears the ticks of the old one; an untick
-     * there (a stale one replayed from the outbox) leaves them alone.
+     * there (a stale one replayed from the outbox) leaves them alone, and with nothing kept keeps nothing.
      */
-    public static function check(?self $saved, DateRange $range, string $key, bool $ticked): self
+    public static function check(?self $saved, DateRange $range, string $key, bool $ticked): ?self
     {
-        if (! $ticked && $saved !== null && ! $saved->isFor($range)) {
+        if (! $ticked && ($saved === null || ! $saved->isFor($range))) {
             return $saved;
         }
 

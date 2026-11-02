@@ -31,6 +31,9 @@ final class CheckShoppingItem
             $row = ShoppingTicks::query()->where('user_id', $user->id)->lockForUpdate()->first();
             $saved = $row?->ticked();
             $next = TickedRange::check($saved, $range, $key, $ticked);
+            if ($next === null) {
+                return null;
+            }
 
             ($row ?? new ShoppingTicks(['user_id' => $user->id]))->fill([
                 'starts_on' => $next->range->lower->format('Y-m-d'),
