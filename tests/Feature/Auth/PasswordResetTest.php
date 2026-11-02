@@ -85,6 +85,23 @@ it('ACC-004 answers an unknown email the same way and sends nothing', function (
     Notification::assertNothingSent();
 });
 
+it('ACC-004 refuses a new password that is too short or mistyped, and keeps the old one', function (string $password, string $confirmation) {
+    $user = User::factory()->create(['email' => 'pat@example.com', 'password' => 'old-password-123']);
+    $this->postJson('/forgot-password', ['email' => 'pat@example.com']);
+
+    $this->postJson('/reset-password', [
+        'token' => resetToken($user),
+        'email' => 'pat@example.com',
+        'password' => $password,
+        'password_confirmation' => $confirmation,
+    ])->assertUnprocessable()->assertJsonValidationErrors('password');
+
+    $this->postJson('/sign-in', ['email' => 'pat@example.com', 'password' => 'old-password-123'])->assertNoContent();
+})->with([
+    'too short' => ['short12', 'short12'],
+    'confirmation does not match' => ['new-password-123', 'new-password-124'],
+]);
+
 it('ACC-004 refuses a bad token and keeps the old password', function () {
     User::factory()->create(['email' => 'pat@example.com', 'password' => 'old-password-123']);
 
