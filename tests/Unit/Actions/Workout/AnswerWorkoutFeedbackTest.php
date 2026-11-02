@@ -196,6 +196,7 @@ it('FB-002 FB-009 each answer lands on its own muscle and exercise of this sessi
     $mesocycle->update(['days' => $days]);
     $lastWeek = WorkoutSeed::started($mesocycle->fresh(), 2, 1, '2026-09-14 17:30:00');
     ExerciseFeedback::factory()->create(['workout_session_id' => $lastWeek->id, 'exercise_id' => $bench, 'joint_pain' => 'low']);
+    $lastChest = MuscleFeedback::factory()->create(['workout_session_id' => $lastWeek->id, 'muscle_group' => 'chest', 'pump' => 'amazing', 'volume' => 'tooMuch']);
     $session = WorkoutSeed::started($mesocycle->fresh(), 3, 1, '2026-09-21 17:30:00');
     $chest = fn () => WorkoutFeedbackAnswerInput::from([
         'workout_id' => WorkoutSeed::id($session), 'muscle_group' => 'chest', 'soreness' => 'healedJustOnTime', 'pump' => 'low', 'volume' => 'notEnough',
@@ -207,7 +208,7 @@ it('FB-002 FB-009 each answer lands on its own muscle and exercise of this sessi
         'workout_id' => WorkoutSeed::id($session), 'muscle_group' => 'back', 'soreness' => 'healedJustOnTime', 'pump' => 'amazing', 'volume' => 'justRight',
         'joint_pain' => [['exercise_id' => (string) $row, 'answer' => 'moderate']],
     ]));
-    $ids = MuscleFeedback::query()->orderBy('id')->pluck('id')->all();
+    $ids = MuscleFeedback::query()->where('workout_session_id', $session->id)->orderBy('id')->pluck('id')->all();
     app(AnswerWorkoutFeedback::class)($user, $chest());
 
     $muscles = MuscleFeedback::query()->where('workout_session_id', $session->id)->get()
@@ -216,6 +217,7 @@ it('FB-002 FB-009 each answer lands on its own muscle and exercise of this sessi
         ->mapWithKeys(fn (ExerciseFeedback $f) => [($f->workout_session_id === $session->id ? 'this ' : 'last ').$f->exercise_id => $f->joint_pain])->all();
 
     expect($muscles)->toEqual(['chest' => ['low', 'notEnough'], 'back' => ['amazing', 'justRight']])
-        ->and(MuscleFeedback::query()->orderBy('id')->pluck('id')->all())->toBe($ids)
+        ->and(MuscleFeedback::query()->where('workout_session_id', $session->id)->orderBy('id')->pluck('id')->all())->toBe($ids)
+        ->and($lastChest->fresh()->only(['pump', 'volume']))->toBe(['pump' => 'amazing', 'volume' => 'tooMuch'])
         ->and($joints)->toEqual(["last {$bench}" => 'low', "this {$bench}" => 'none', "this {$incline}" => 'aLot', "this {$row}" => 'moderate']);
 });

@@ -2,6 +2,7 @@
 
 use App\Capabilities\Support\HostDefinition;
 use App\Models\DayTarget;
+use App\Models\MuscleFeedback;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -86,4 +87,29 @@ it('WO-010 SCH-054 OFF-023 UI-010 finishes the workout, re-targets today, and un
 
     expect($session->fresh()->actual_end_at)->toBeNull()
         ->and([DayTarget::query()->find($day->id)->only(['kcal', 'carbs_g', 'meals']), $mesocycle->fresh()->days])->toEqual($before);
+});
+
+it('CAP-013 FB-009 an answer the finish relied on can no longer be undone on its own, and the finish still can', function () {
+    Carbon::setTestNow('2026-09-21 18:30:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => TrainSeed::phase($user, 'muscleGain', '2026-08-31')->id]);
+    $session = WorkoutSeed::started($mesocycle, 3, 1, '2026-09-21 17:30:00');
+    $answer = test()->actingAs($user)->postJson('/capabilities/workout_feedback_answer', [
+        'workout_id' => WorkoutSeed::id($session), 'muscle_group' => 'chest', 'pump' => 'low', 'volume' => 'notEnough',
+        'joint_pain' => [['exercise_id' => (string) WorkoutSeed::exerciseId($mesocycle, 1), 'answer' => 'none']],
+    ], ['Idempotency-Key' => (string) Str::ulid()])->assertOk()->json('data.undo');
+    $finish = finishOver($user, ['workout_id' => WorkoutSeed::id($session)])->assertOk()->json('data.undo');
+    $undo = fn (string $token) => test()->actingAs($user)->postJson('/capabilities/undo_apply', ['token' => $token], ['Idempotency-Key' => (string) Str::ulid()]);
+
+    $undo($answer)->assertStatus(409);
+
+    expect(MuscleFeedback::query()->count())->toBe(1)
+        ->and($mesocycle->fresh()->dayRows()[0]['slots'][0]['sets'])->toBe(5);
+
+    $undo($finish)->assertOk();
+    $undo($answer)->assertOk();
+
+    expect(MuscleFeedback::query()->count())->toBe(0)
+        ->and($session->fresh()->actual_end_at)->toBeNull()
+        ->and($mesocycle->fresh()->dayRows()[0]['slots'][0]['sets'])->toBe(3);
 });
