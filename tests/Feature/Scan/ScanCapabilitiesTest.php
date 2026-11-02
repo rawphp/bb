@@ -12,8 +12,9 @@ const SCAN_JPEG = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBg
 beforeEach(function () {
     Http::preventStrayRequests();
     $this->user = User::factory()->create();
+    // Curated, so the search finds them by LIKE: MySQL's full-text index does not see a test's uncommitted rows.
     $this->rice = Food::factory()->create(['name' => 'White rice', 'curated' => true, 'kcal' => 130, 'protein' => 2.7, 'fat' => 0.3, 'carbs' => 28]);
-    $this->bowl = Food::factory()->create(['name' => 'Burrito bowl', 'brand' => 'Chipotle', 'kind' => 'restaurant', 'kcal' => 150, 'protein' => 9, 'fat' => 5, 'carbs' => 17]);
+    $this->bowl = Food::factory()->create(['name' => 'Burrito bowl', 'curated' => true, 'brand' => 'Chipotle', 'kind' => 'restaurant', 'kcal' => 150, 'protein' => 9, 'fat' => 5, 'carbs' => 17]);
 });
 
 /** The plate the AI sees: rice, a burrito bowl, and a sauce no food matches. */

@@ -3,6 +3,8 @@
 use App\Models\Food;
 use App\Models\FoodFavorite;
 use App\Models\User;
+use Rawphp\Capabilities\Schema\JsonSchemaValidator;
+use Tests\Support\ScreenFixture;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -62,7 +64,9 @@ it('FOOD-041 a found food that changes weight when cooked carries its cooked val
 it('FOOD-041 an unknown barcode offers the label scan or a custom food with the barcode filled in', function () {
     $data = lookUpBarcode('0123456789012');
 
-    assertMatchesScreenFixture('food_barcode_lookup.not-found', $data);
+    // The not-found state of the same screen: its own fixture, the capability's schema.
+    expect(ScreenFixture::differences(ScreenFixture::load('food_barcode_lookup.not-found'), $data))->toBe([])
+        ->and((new JsonSchemaValidator)->validate(ScreenFixture::outputSchema('food_barcode_lookup'), $data))->toBe([]);
     expect($data)->toBe([
         'barcode' => '0123456789012',
         'status' => 'not_found',
