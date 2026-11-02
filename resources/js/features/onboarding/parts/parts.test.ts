@@ -158,6 +158,21 @@ describe('NumberField', () => {
         wrapper.unmount();
     });
 
+    it('ONB-004 sends a number put back to the parent\'s value when it last sent another', async () => {
+        const wrapper = mount(NumberField, { props: { label: 'Weight', unit: 'kg', modelValue: 75, commitsWhileTyping: false }, attachTo: document.body });
+        const input = wrapper.get('input');
+
+        await input.setValue('80');
+        await input.trigger('blur');
+        await input.setValue('75');
+        await input.trigger('blur');
+        await input.setValue('75');
+        await input.trigger('blur');
+
+        expect(wrapper.emitted('update:modelValue')).toEqual([[80], [75]]);
+        wrapper.unmount();
+    });
+
     it('UI-030 dims and locks a disabled field', () => {
         const wrapper = field({ disabled: true });
 
