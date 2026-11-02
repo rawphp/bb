@@ -7,7 +7,8 @@ const openSheets: symbol[] = [];
 </script>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, useId, watch } from 'vue';
+import { useModalFocus } from './useModalFocus';
 
 // Bottom sheet frame: Cancel left, title middle, Save right (UI-005), ported from rp-clone's SheetScaffold.swift.
 // It springs open over a dimmed screen and drags down to close (PWA-023), unless `dismissible` is off (UI-022).
@@ -56,7 +57,7 @@ let startY: number | null = null;
 const offset = ref(0);
 const dragging = ref(false);
 
-let opener: HTMLElement | null = null;
+const focus = useModalFocus(panel);
 const token = Symbol('sheet');
 
 watch(
@@ -64,11 +65,9 @@ watch(
     async (open) => {
         if (open) {
             level.value = 0;
-            opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
             openSheets.push(token);
             document.addEventListener('keydown', onKeydown);
-            await nextTick();
-            panel.value?.focus();
+            await focus.opened();
         } else {
             close();
         }
@@ -84,8 +83,7 @@ function close(): void {
         openSheets.splice(index, 1);
     }
     document.removeEventListener('keydown', onKeydown);
-    opener?.focus();
-    opener = null;
+    focus.closed();
 }
 
 // Listened for on the document, so Escape and Tab still work after focus falls to <body>
@@ -102,35 +100,7 @@ function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
         dismiss();
     } else if (event.key === 'Tab') {
-        keepFocus(event);
-    }
-}
-
-const FOCUSABLE =
-    'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-// The sheet is modal: Tab and Shift+Tab cycle through its own controls and never reach the page behind it.
-function keepFocus(event: KeyboardEvent): void {
-    const sheet = panel.value;
-    if (!sheet) {
-        return;
-    }
-    const controls = Array.from(sheet.querySelectorAll<HTMLElement>(FOCUSABLE));
-    const first = controls[0];
-    const last = controls[controls.length - 1];
-    const active = document.activeElement;
-    if (!first || !last) {
-        event.preventDefault();
-        sheet.focus();
-    } else if (!(active instanceof Node) || !sheet.contains(active) || active === sheet) {
-        event.preventDefault();
-        (event.shiftKey ? last : first).focus();
-    } else if (event.shiftKey && active === first) {
-        event.preventDefault();
-        last.focus();
-    } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
+        focus.keepFocus(event);
     }
 }
 
