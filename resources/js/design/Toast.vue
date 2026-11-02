@@ -2,6 +2,11 @@
 /**
  * The two fields of a write's answer the toast shows, as the server sends them
  * (CAP-010), so a host passes any write's output straight in: `<Toast :result="output">`.
+ *
+ * Placement belongs to whoever shows the toast, not to the toast: the shell's toast host
+ * (19-views.md) draws it in TOAST_HOST, the live region that announces it, and it alone knows
+ * which screen is on top. A Toast drawn anywhere else passes `inline` and carries its own
+ * status region. In development a Toast that is neither warns.
  */
 export interface ToastResult {
     /** The toast the server wrote. Null or empty draws nothing. */
@@ -14,6 +19,7 @@ export interface ToastResult {
 <script setup lang="ts">
 import { computed, ref, useId, watch } from 'vue';
 import { CapabilityError, write } from '@/app/call';
+import type { UndoApplyInput } from '@/contracts/undo_apply';
 
 // A message with Undo, for every automatic change (UI-010), ported from rp-clone's Toast.swift.
 // VIEW-004 states take the same props as ItemCard and ProgressBar.
@@ -25,16 +31,33 @@ const props = withDefaults(
         /** The change is waiting in the outbox (OFF-008). */
         pending?: boolean;
         disabled?: boolean;
+        /** Drawn in place rather than in TOAST_HOST (the gallery), so it carries its own live region. */
+        inline?: boolean;
+        /** `@undone`: undo_apply's answer, with the token it was for. */
+        onUndone?: (result: unknown, token: string) => void;
+        /** `@undo-failed`: the message for a refused or unanswered undo, with the token it was for. */
+        onUndoFailed?: (message: string, token: string) => void;
     }>(),
-    { loading: false, error: null, pending: false, disabled: false },
+    { loading: false, error: null, pending: false, disabled: false, inline: false },
 );
 
-const emit = defineEmits<{ undone: [result: unknown] }>();
+// The host hears every answer, named by its token, even one that lands after it has shown the
+// next toast or removed this one, so it can refresh or report it. That is why these are
+// listener props held from the tap, not emits: Vue drops an emit once the component unmounts.
 
 const uid = useId();
 // The token whose undo_apply is running. Only the toast it belongs to is busy.
 const undoing = ref<string | null>(null);
 const failure = ref<string | null>(null);
+
+const rootEl = ref<HTMLElement | null>(null);
+
+// Outside a live region a toast is never announced (UI-030); say so while building, not in production.
+watch(rootEl, (el) => {
+    if (import.meta.env.DEV && el && !props.inline && !el.parentElement?.closest('[aria-live], [role="status"]')) {
+        console.warn('Toast is outside a live region: draw it in TOAST_HOST, or pass inline.');
+    }
+});
 
 const message = computed(() => props.result.toast ?? '');
 const token = computed(() => props.result.undo ?? null);
@@ -57,23 +80,39 @@ async function undo(): Promise<void> {
     if (sent === null || busy.value || props.disabled) {
         return;
     }
+    const { onUndone, onUndoFailed } = props;
     undoing.value = sent;
     failure.value = null;
+    let answer: unknown;
+    let refusal: string | null = null;
     try {
-        const answer = await write('undo_apply', { token: sent });
-        // The host may have shown another toast meanwhile; this answer is not about it.
-        if (token.value === sent) emit('undone', answer);
+        answer = await write('undo_apply', { token: sent } satisfies UndoApplyInput);
     } catch (error) {
-        if (token.value === sent) failure.value = messageOf(error);
-    } finally {
-        if (undoing.value === sent) undoing.value = null;
+        refusal = messageOf(error);
     }
+
+    // The toast's own state settles before either listener runs, and the listeners run outside
+    // the try: an error in one is the host's (it reaches Vue's error handler), never a failed undo.
+    if (undoing.value === sent) undoing.value = null;
+    if (refusal === null) {
+        onUndone?.(answer, sent);
+        return;
+    }
+    // The host may have shown another toast meanwhile; the refusal is not shown on it.
+    if (token.value === sent) failure.value = refusal;
+    onUndoFailed?.(refusal, sent);
 }
 </script>
 
 <template>
-    <!-- The status region stays in the page so a toast that appears in it is announced. -->
-    <div role="status" :aria-busy="message && busy ? 'true' : undefined">
+    <!-- Inline, this status region stays in the page so a toast that appears in it is announced. -->
+    <div
+        v-if="message || inline"
+        ref="rootEl"
+        :role="inline ? 'status' : undefined"
+        :aria-busy="message && busy ? 'true' : undefined"
+        data-toast
+    >
         <template v-if="message">
             <div class="flex items-center gap-3 rounded-xl border border-secondary-text/25 bg-surface pr-2 pl-4">
                 <span class="flex min-w-0 grow flex-col gap-0.5 py-2">
@@ -92,7 +131,8 @@ async function undo(): Promise<void> {
                 </button>
                 <span v-if="token !== null" :id="`${uid}-hint`" class="sr-only">Reverts this change</span>
             </div>
-            <p v-if="shownError" role="alert" class="mt-2 text-sm text-tone-warning">{{ shownError }}</p>
+            <!-- Always inside a live region (TOAST_HOST or the one above), so no role="alert" of its own. -->
+            <p v-if="shownError" data-toast-error class="mt-2 text-sm text-tone-warning">{{ shownError }}</p>
         </template>
     </div>
 </template>
