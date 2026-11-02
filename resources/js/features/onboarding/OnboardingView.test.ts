@@ -218,9 +218,9 @@ describe('OnboardingView', () => {
             expect(radio(wrapper, 'Sex', 'Female').attributes('aria-checked')).toBe('true');
             expect(wrapper.get('[data-test="set-birth-date"]').text()).toBe('Set date of birth');
             expect(radio(wrapper, 'Height unit', 'cm').attributes('aria-checked')).toBe('true');
-            expect(wrapper.get('input[aria-label="Height in cm"]').exists()).toBe(true);
+            expect(wrapper.find('input[aria-label="Height in cm"]').exists()).toBe(true);
             expect(radio(wrapper, 'Weight unit', 'kg').attributes('aria-checked')).toBe('true');
-            expect(wrapper.get('input[aria-label="Weight in kg"]').exists()).toBe(true);
+            expect(wrapper.find('input[aria-label="Weight in kg"]').exists()).toBe(true);
         });
 
         it('ONB-004 shows feet and inches when that is the unit', () => {
@@ -362,6 +362,7 @@ describe('OnboardingView', () => {
         });
 
         it('ONB-005 ticks or unticks one item at a time', async () => {
+            readMock.mockResolvedValue(screening);
             wrapper = view(screening);
             const rows = wrapper.findAllComponents(ScreeningRowView);
             const diabetes = screening.screening.rows.findIndex((r) => r.item === 'diabetes');
