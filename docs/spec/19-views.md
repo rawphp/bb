@@ -79,7 +79,7 @@ resources/js/
 | Onboarding/AboutYouStep.swift | AboutYouStep | `onboarding/` | |
 | Onboarding/BodyFatStep.swift | BodyFatStep, BucketCard | `onboarding/` | |
 | Onboarding/LifestyleSteps.swift | DailyStepsStep, MealsStep, WeighInsStep, CaloriesStep | `onboarding/` | |
-| Onboarding/OnboardingParts.swift | OnboardingCallout, YesNoQuestion, ContinueHint, NumberField, WeekdayPicker, TimeOfDayPicker, StepHeading, StepNote | `onboarding/parts/` | WeekdayPicker and TimeOfDayPicker are reused by Settings |
+| Onboarding/OnboardingParts.swift | OnboardingCallout, YesNoQuestion, ContinueHint, NumberField, WeekdayPicker, TimeOfDayPicker, StepHeading, StepPanel, StepNote | `onboarding/parts/` | WeekdayPicker and TimeOfDayPicker are reused by Settings |
 | Onboarding/RateLengthStep.swift | RateLengthStep | `onboarding/` | |
 | Onboarding/ReviewStep.swift | ReviewStep, StartingPlanView | `onboarding/` | Also rendered as a chat card (AGT-032) |
 | Onboarding/ScreeningStep.swift | ScreeningStep, ScreeningRowView | `onboarding/` | Also opened as a sheet from chat (AGT-031) |
