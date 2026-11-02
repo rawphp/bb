@@ -1,0 +1,19 @@
+{
+    "rows": [
+        {
+            "recipe_id": "01JBX5R0000000000000000001",
+            "name": "Overnight oats",
+            "meal_type_title": "Breakfast",
+            "macros_text": "330 kcal · P 28 · F 3 · C 47",
+            "is_library": true
+        },
+        {
+            "recipe_id": "01JBX5R0000000000000000002",
+            "name": "Turkey chili",
+            "meal_type_title": "Dinner",
+            "macros_text": "410 kcal · P 38 · F 9 · C 42",
+            "is_library": true
+        }
+    ],
+    "empty_text": null
+}

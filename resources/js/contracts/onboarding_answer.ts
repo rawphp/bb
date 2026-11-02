@@ -71,14 +71,7 @@ export interface OnboardingAnswerInput {
            * @minItems 1
            * @maxItems 7
            */
-          weekdays:
-            | [unknown]
-            | [unknown, unknown]
-            | [unknown, unknown, unknown]
-            | [unknown, unknown, unknown, unknown]
-            | [unknown, unknown, unknown, unknown, unknown]
-            | [unknown, unknown, unknown, unknown, unknown, unknown]
-            | [unknown, unknown, unknown, unknown, unknown, unknown, unknown];
+          weekdays: [unknown, ...unknown[]];
           id?: string | null;
         }[]
       | null;

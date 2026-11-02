@@ -1,0 +1,83 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "date_text": {
+            "type": "string"
+        },
+        "meals": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "meal_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "time_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "kcal_text": {
+                        "type": "string",
+                        "description": "550 / 1040 kcal"
+                    },
+                    "check_in": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "state": {
+                                "type": "string",
+                                "enum": [
+                                    "notCheckedIn",
+                                    "onTrack",
+                                    "under",
+                                    "over"
+                                ]
+                            },
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "state",
+                            "text",
+                            "tone"
+                        ]
+                    }
+                },
+                "required": [
+                    "meal_id",
+                    "name",
+                    "kcal_text",
+                    "check_in"
+                ]
+            }
+        },
+        "empty_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "date_text",
+        "meals"
+    ]
+}

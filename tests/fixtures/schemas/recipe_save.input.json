@@ -1,0 +1,67 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "string",
+            "description": "The recipe's ULID: new for a create (CAP-019)"
+        },
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+        },
+        "servings": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 100
+        },
+        "meal_type": {
+            "type": "string",
+            "enum": [
+                "breakfast",
+                "lunch",
+                "dinner",
+                "snack"
+            ]
+        },
+        "ingredients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "food_id": {
+                        "type": "string"
+                    },
+                    "grams": {
+                        "type": "number",
+                        "minimum": 0.01
+                    },
+                    "is_cooked": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "food_id",
+                    "grams",
+                    "is_cooked"
+                ]
+            },
+            "minItems": 1,
+            "maxItems": 100
+        },
+        "steps": {
+            "type": "array",
+            "maxItems": 50
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "servings",
+        "meal_type",
+        "ingredients"
+    ]
+}
