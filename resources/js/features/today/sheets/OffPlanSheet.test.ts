@@ -117,24 +117,28 @@ describe('OffPlanSheet', () => {
         expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
     });
 
-    it('CAP-019 opened again, the sheet starts a new, empty entry', async () => {
+    it('CAP-019 each opening is a new entry: the screen mounts the sheet afresh', async () => {
         writeMock.mockResolvedValue({ invalidates: [] });
-        const { wrapper } = await mountSheet(OffPlanSheet, { date: '2026-09-23', time: '12:00', onSaved: vi.fn() });
-        await fill(wrapper, { name: 'Office cake', kcal: '320' });
-        await wrapper.get('[data-save]').trigger('click');
+        const first = await mountSheet(OffPlanSheet, { date: '2026-09-23', time: '12:00', onSaved: vi.fn() });
+        await fill(first.wrapper, { kcal: '320' });
+        await first.wrapper.get('[data-save]').trigger('click');
         await flushPromises();
-        const first = sent();
+        const firstId = sent().id;
 
-        await wrapper.setProps({ open: false });
-        await wrapper.setProps({ open: true });
-        expect((wrapper.get('input[name="name"]').element as HTMLInputElement).value).toBe('');
-        expect((wrapper.get('input[name="kcal"]').element as HTMLInputElement).value).toBe('');
-        expect((wrapper.get('input[name="time"]').element as HTMLInputElement).value).toBe('12:00');
-        await fill(wrapper, { kcal: '150' });
-        await wrapper.get('[data-save]').trigger('click');
+        const second = await mountSheet(OffPlanSheet, { date: '2026-09-23', time: '12:00', onSaved: vi.fn() });
+        await fill(second.wrapper, { kcal: '150' });
+        await second.wrapper.get('[data-save]').trigger('click');
         await flushPromises();
 
-        expect(sent().id).not.toBe(first.id);
+        expect(sent().id).not.toBe(firstId);
+    });
+
+    it.each(['1,200', '2,500'])('DAY-001 keeps Save off for %s, which could be a thousand or a decimal', async (typed) => {
+        const { wrapper } = await mountSheet(OffPlanSheet, { date: '2026-09-23', time: '12:00' });
+
+        await fill(wrapper, { kcal: typed });
+
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
     });
 
     it('CAP-014 the entry cannot change while a save that got no answer may have worked', async () => {

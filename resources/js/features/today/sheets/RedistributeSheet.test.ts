@@ -137,6 +137,23 @@ describe('RedistributeSheet', () => {
         expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
     });
 
+    it('CAP-014 a Confirm that got no answer locks the rows, and the retry is the same write', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('meal_redistribute', 0, { reason: 'timeout' })).mockResolvedValueOnce({ invalidates: [] });
+        const { wrapper } = await mountSheet(RedistributeSheet, { payload: content, onSaved: vi.fn() });
+
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+        expect(wrapper.findAll('[data-test="redistribute-row"]').every((row) => row.element.matches(':disabled'))).toBe(true);
+        await wrapper.findAll('[data-test="redistribute-row"]')[0]!.trigger('click');
+        expect(freshMock).not.toHaveBeenCalled();
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        const [first, second] = writeMock.mock.calls;
+        expect(second![1]).toEqual(first![1]);
+        expect(second![2]?.idempotencyKey).toBe(first![2]?.idempotencyKey);
+    });
+
     it('CAP-012 shows the server\'s words when it refuses, and stays open', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('meal_redistribute', 422, { ok: false, error: { message: 'Lunch is checked in.' } }));
         const onSaved = vi.fn();

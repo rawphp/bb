@@ -211,6 +211,40 @@ describe('AdjustSheet', () => {
         expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
     });
 
+    it('DAY-020 an older answer neither turns Save on nor leaves its error behind', async () => {
+        const { wrapper } = await mountSheet(AdjustSheet, { payload: content });
+        const answers: { resolve: (data: DayAdjustShowOutput) => void; reject: (error: unknown) => void }[] = [];
+        freshMock.mockImplementation(() => new Promise((resolve, reject) => answers.push({ resolve: resolve as never, reject })));
+
+        await typeKcal(wrapper, '2');
+        await typeKcal(wrapper, '20');
+        answers[0]!.resolve(content);
+        await flushPromises();
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
+        answers[1]!.resolve(content);
+        await flushPromises();
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeUndefined();
+
+        await typeKcal(wrapper, '200');
+        await typeKcal(wrapper, '2000');
+        answers[3]!.resolve(content);
+        await flushPromises();
+        answers[2]!.reject(new CapabilityError('day_adjust_show', 0, { reason: 'network' }));
+        await flushPromises();
+        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeUndefined();
+    });
+
+    it('OFF-003 a read that ends the session takes the numbers away and says so', async () => {
+        freshMock.mockRejectedValueOnce(new CapabilityError('day_adjust_show', 401, null));
+        const { wrapper } = await mountSheet(AdjustSheet, { payload: content });
+
+        await typeKcal(wrapper, '200');
+
+        expect(wrapper.find('[data-test="projected"]').exists()).toBe(false);
+        expect(wrapper.text()).toContain('You are signed out.');
+    });
+
     it('OFF-004 asks again when the device comes back online', async () => {
         freshMock.mockRejectedValueOnce(new CapabilityError('day_adjust_show', 0, { reason: 'network' }));
         const { wrapper } = await mountSheet(AdjustSheet, { payload: content });
