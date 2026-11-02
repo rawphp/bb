@@ -387,6 +387,55 @@ describe('Toast', () => {
         expect(heard(undoFailed)).toEqual([['A later change depends on this.', 'tok-1']]);
     });
 
+    it("UI-010 an error in the host's undone listener is not reported as a failed undo", async () => {
+        writeMock.mockResolvedValueOnce({ toast: 'Undone.' });
+        const broken = new Error('refresh failed');
+        const errorHandler = vi.fn();
+        const wrapper = mount(Toast, {
+            props: {
+                result: { toast: message, undo: 'tok-1' },
+                inline: true,
+                onUndone: () => {
+                    throw broken;
+                },
+                onUndoFailed: undoFailed,
+            },
+            global: { config: { errorHandler } },
+        });
+
+        await undoButton(wrapper).trigger('click');
+        await flushPromises();
+
+        expect(errorHandler).toHaveBeenCalledOnce();
+        expect(errorHandler.mock.calls[0]![0]).toBe(broken);
+        expect(heard(undoFailed)).toBeUndefined();
+        expect(wrapper.find('[data-toast-error]').exists()).toBe(false);
+        expect(root(wrapper).attributes('aria-busy')).toBeUndefined();
+        expect(undoButton(wrapper).attributes('disabled')).toBeUndefined();
+    });
+
+    it("CAP-012 an error in the host's undo-failed listener still leaves the refusal shown and Undo usable", async () => {
+        writeMock.mockRejectedValueOnce(refusal());
+        const errorHandler = vi.fn();
+        const wrapper = mount(Toast, {
+            props: {
+                result: { toast: message, undo: 'tok-1' },
+                inline: true,
+                onUndoFailed: () => {
+                    throw new Error('report failed');
+                },
+            },
+            global: { config: { errorHandler } },
+        });
+
+        await undoButton(wrapper).trigger('click');
+        await flushPromises();
+
+        expect(errorHandler).toHaveBeenCalledOnce();
+        expect(wrapper.get('[data-toast-error]').text()).toBe('A later change depends on this.');
+        expect(undoButton(wrapper).attributes('disabled')).toBeUndefined();
+    });
+
     it('UI-010 @undone and @undo-failed bind as listeners from a parent template', async () => {
         writeMock.mockResolvedValueOnce({ toast: 'Undone.' });
         const onDone = vi.fn();

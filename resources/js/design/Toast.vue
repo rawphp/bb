@@ -83,16 +83,24 @@ async function undo(): Promise<void> {
     const { onUndone, onUndoFailed } = props;
     undoing.value = sent;
     failure.value = null;
+    let answer: unknown;
+    let refusal: string | null = null;
     try {
-        onUndone?.(await write('undo_apply', { token: sent } satisfies UndoApplyInput), sent);
+        answer = await write('undo_apply', { token: sent } satisfies UndoApplyInput);
     } catch (error) {
-        const text = messageOf(error);
-        onUndoFailed?.(text, sent);
-        // The host may have shown another toast meanwhile; the refusal is not shown on it.
-        if (token.value === sent) failure.value = text;
-    } finally {
-        if (undoing.value === sent) undoing.value = null;
+        refusal = messageOf(error);
     }
+
+    // The toast's own state settles before either listener runs, and the listeners run outside
+    // the try: an error in one is the host's (it reaches Vue's error handler), never a failed undo.
+    if (undoing.value === sent) undoing.value = null;
+    if (refusal === null) {
+        onUndone?.(answer, sent);
+        return;
+    }
+    // The host may have shown another toast meanwhile; the refusal is not shown on it.
+    if (token.value === sent) failure.value = refusal;
+    onUndoFailed?.(refusal, sent);
 }
 </script>
 
