@@ -1,6 +1,8 @@
 <?php
 
 use App\Actions\Notifications\SendDueReminders;
+use App\Domain\Notifications\PlannedReminder;
+use App\Domain\Notifications\ReminderPlanner;
 use App\Jobs\SendUserReminders;
 use App\Models\DayTarget;
 use App\Models\Mesocycle;
@@ -13,10 +15,12 @@ use App\Models\User;
 use App\Models\WeighInScheduleEntry;
 use App\Models\WorkoutSession;
 use App\Notifications\PushNotification;
+use App\Support\Notifications\ReminderDays;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -410,4 +414,40 @@ it('NOTIF-001 the sent log keeps two days', function () {
     expect((new SentReminder)->prunable()->count())->toBe(0);
     Carbon::setTestNow('2026-09-28 07:01:00');
     expect((new SentReminder)->prunable()->count())->toBe(1);
+});
+
+it('NOTIF-001 the cheap check finds every reminder the full plan makes, across a month of the fixture', function () {
+    $user = remindedUser();
+    NotificationPref::query()->create(['user_id' => $user->id, 'kind' => 'meal', 'on' => true]);
+    // A session moved to another time, so its row's start is a source of its own.
+    WorkoutSession::factory()->for($user)->create([
+        'mesocycle_id' => Mesocycle::query()->where('user_id', $user->id)->value('id'), 'week' => 3, 'day' => 1,
+        'planned_start_at' => '2026-09-28 06:15:00',
+    ]);
+    Carbon::setTestNow('2026-09-12 00:00:00');
+    $days = ReminderDays::between($user, new DateTimeImmutable('2026-09-12'), new DateTimeImmutable('2026-10-09'));
+    $planned = ReminderPlanner::plan($days, NotificationPref::switches($user));
+
+    expect(collect($planned)->pluck('kind')->map->value->unique()->sort()->values()->all())
+        ->toBe(['meal', 'next_mesocycle', 'weekly_review', 'weigh_in', 'workout'])
+        ->and(collect($planned)->contains(fn (PlannedReminder $r) => $r->fireAt->format('Y-m-d H:i') === '2026-09-28 05:15'))->toBeTrue();
+    foreach ($planned as $reminder) {
+        expect(ReminderDays::mayHaveDue($user, $reminder->fireAt->modify('-10 minutes'), $reminder->fireAt))->toBeTrue($reminder->id);
+    }
+});
+
+it('NOTIF-001 a minute with nothing due skips the full read of the plan', function () {
+    $user = remindedUser();
+
+    Carbon::setTestNow('2026-09-26 03:00:00');
+    expect(ReminderDays::mayHaveDue($user, CarbonImmutable::now()->subMinutes(10)->toDateTimeImmutable(), CarbonImmutable::now()->toDateTimeImmutable()))->toBeFalse();
+
+    DB::enableQueryLog();
+    app(SendDueReminders::class)($user, CarbonImmutable::now());
+    $queries = count(DB::getQueryLog());
+    DB::disableQueryLog();
+    DB::flushQueryLog();
+
+    expect($queries)->toBeLessThanOrEqual(6);
+    Notification::assertNothingSent();
 });

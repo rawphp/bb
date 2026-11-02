@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Notifications\NotifyRetarget;
 use App\Domain\Model\Day;
 use App\Domain\Model\DayType;
 use App\Domain\Model\Meal;
@@ -16,6 +17,7 @@ use App\Notifications\PushNotification;
 use App\Support\Today\RetargetDays;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Notification;
 use Tests\Support\TodaySeed;
 
@@ -111,4 +113,21 @@ it('NOTIF-006 a re-target that rolls back sends nothing', function () {
 
     Notification::assertNothingSent();
     expect(DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-23')->sole()->meals[0]['kcal'])->toEqual(780);
+});
+
+it('NOTIF-006 a notice that fails is reported and never fails the re-target it follows', function () {
+    $user = retargetUser();
+    Exceptions::fake();
+    app()->instance(NotifyRetarget::class, new class
+    {
+        public function __invoke(): void
+        {
+            throw new RuntimeException('push store down');
+        }
+    });
+
+    retargetWednesday($user, ['Breakfast' => 120]);
+
+    Exceptions::assertReported(fn (RuntimeException $e) => $e->getMessage() === 'push store down');
+    expect(DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-23')->sole()->meals[0]['kcal'])->toEqual(900);
 });
