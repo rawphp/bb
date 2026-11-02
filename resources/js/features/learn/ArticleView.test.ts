@@ -34,6 +34,23 @@ describe('ArticleView', () => {
         expect(wrapper.findAll('em').map((s) => s.text())).toEqual(['No more clean reps.']);
     });
 
+    it('LRN-001 a span that is both bold and italic renders as italic strong text', () => {
+        const blocks = [{ kind: 'paragraph' as const, spans: [{ text: 'Both.', bold: true, italic: true }] }];
+        const wrapper = mount(ArticleView, { props: { payload: { ...payload, blocks } } });
+
+        expect(wrapper.find('strong').text()).toBe('Both.');
+        expect(wrapper.find('strong').classes()).toContain('italic');
+        expect(wrapper.find('em').exists()).toBe(false);
+    });
+
+    it('LRN-001 consecutive bullets share one list, and a paragraph between them starts a new one', () => {
+        const bullet = (text: string) => ({ kind: 'bullet' as const, spans: [{ text, bold: false, italic: false }] });
+        const blocks = [bullet('One'), bullet('Two'), { kind: 'paragraph' as const, spans: [{ text: 'Between.', bold: false, italic: false }] }, bullet('Three')];
+        const wrapper = mount(ArticleView, { props: { payload: { ...payload, blocks } } });
+
+        expect(wrapper.findAll('ul').map((ul) => ul.findAll('li').map((li) => li.find('span:not([aria-hidden])').text()))).toEqual([['One', 'Two'], ['Three']]);
+    });
+
     it('LRN-001 an article with no blocks shows just its title', () => {
         const wrapper = mount(ArticleView, { props: { payload: { ...payload, blocks: [] } } });
 
@@ -62,6 +79,21 @@ describe('ArticleView', () => {
         await flushPromises();
 
         expect(wrapper.find('[role="alert"]').text()).toBe(message);
+    });
+
+    it('OFF-003 shows the cached article at once, then the refreshed one', async () => {
+        let refresh: (data: ArticleShowOutput) => void = () => {};
+        readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {
+            refresh = onUpdate as typeof refresh;
+            return payload;
+        });
+        const wrapper = mount(ArticleView, { props: { slug: 'rir' } });
+        await flushPromises();
+        expect(wrapper.find('h1').text()).toBe('Reps in reserve (RIR)');
+
+        refresh({ ...payload, title: 'RIR, revised' });
+        await flushPromises();
+        expect(wrapper.find('h1').text()).toBe('RIR, revised');
     });
 
     it('OFF-003 shows the cached article at once and drops it when the refresh answers 404', async () => {

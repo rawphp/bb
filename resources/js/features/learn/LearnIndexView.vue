@@ -1,31 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { CapabilityError, read } from '@/app/call';
+import { useScreenRead } from '@/app/useScreenRead';
 import type { LearnShowOutput } from '@/contracts/learn_show';
 
 // The Learn index, grouped by section (LRN-001, LRN-002, LRN-005). Ported from
 // rp-clone's LearnIndexView. /dev/screens/learn_show hands it a fixture as payload.
 const props = defineProps<{ payload?: LearnShowOutput }>();
 
-const learn = ref<LearnShowOutput | undefined>(props.payload);
-const failure = ref<'signed-out' | 'error' | null>(null);
-
-function fail(error: unknown): void {
-    learn.value = undefined;
-    failure.value = error instanceof CapabilityError && error.status === 401 ? 'signed-out' : 'error';
-}
-
-onMounted(async () => {
-    if (learn.value) return;
-    try {
-        // A cached copy shows at once; the refresh replaces it, or takes it away when it is refused (OFF-003).
-        const data = await read<LearnShowOutput>('learn_show', {}, (fresh) => (learn.value = fresh), fail);
-        if (failure.value === null) learn.value ??= data;
-    } catch (error) {
-        fail(error);
-    }
-});
+const { data: learn, failure } = useScreenRead<LearnShowOutput>('learn_show', {}, props.payload);
 </script>
 
 <template>
