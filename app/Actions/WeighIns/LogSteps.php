@@ -6,7 +6,6 @@ use App\Domain\WeighIns\StepCounts;
 use App\Enums\MeasurementSource;
 use App\Models\Step;
 use App\Models\User;
-use App\Support\WeighIns\ReadingTime;
 
 /**
  * WT-020: set a day's step count. One count per day; whether a new one replaces the day's is StepCounts::replaces:
@@ -17,7 +16,6 @@ final class LogSteps
     /** @return bool whether the day's count is now this one */
     public function __invoke(User $user, string $date, int $steps, MeasurementSource $source): bool
     {
-        $date = ReadingTime::day($date);
         $day = Step::query()->where('user_id', $user->id)->whereDate('date', $date)->first();
         if ($day !== null && ! StepCounts::replaces($day->source, $source)) {
             return false;
