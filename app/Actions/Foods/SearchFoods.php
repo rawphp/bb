@@ -111,8 +111,8 @@ final class SearchFoods
     {
         $query = Food::query()->with('servings');
 
-        if (in_array($filters->kind, ['generic', 'packaged', 'restaurant'], true)) {
-            $query->where('kind', $filters->kind);
+        if ($filters->kind !== null) {
+            $query->where('kind', $filters->kind->value);
         }
         foreach ($filters->diets as $diet) {
             $query->where($diet->value, true);

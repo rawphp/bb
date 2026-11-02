@@ -56,7 +56,7 @@ final class DumpRow
             $food = [
                 'brand' => $this->clean($item['brandName'] ?? null, 255) ?? $this->clean($item['brandOwner'] ?? null, 255),
                 'barcode' => Barcode::normalize($this->text($item['gtinUpc'] ?? null)),
-                'kind' => stripos($category, 'restaurant') !== false ? 'restaurant' : 'packaged',
+                'kind' => (stripos($category, 'restaurant') !== false ? FoodKind::Restaurant : FoodKind::Packaged)->value,
                 'diets' => $this->diets->classify($name, $category, $this->clean($item['ingredients'] ?? null, 65535)),
                 'servings' => $this->brandedServing($item),
             ];
@@ -65,7 +65,7 @@ final class DumpRow
             $food = [
                 'brand' => null,
                 'barcode' => null,
-                'kind' => 'generic',
+                'kind' => FoodKind::Generic->value,
                 'diets' => $this->diets->classify($name, $category, null, [], generic: true),
                 'servings' => $this->portions($this->list($item['foodPortions'] ?? null)),
             ];
@@ -116,7 +116,7 @@ final class DumpRow
         $food = [
             'brand' => $this->clean(explode(',', $this->text($p['brands'] ?? null))[0], 255),
             'barcode' => Barcode::normalize($code),
-            'kind' => $restaurant ? 'restaurant' : 'packaged',
+            'kind' => ($restaurant ? FoodKind::Restaurant : FoodKind::Packaged)->value,
             'diets' => $this->diets->classify($name, $categoryText, $ingredients, $tags),
             'servings' => $serving,
         ];

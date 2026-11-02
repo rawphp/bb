@@ -113,6 +113,10 @@ final class ImportFoods extends Command
         }
 
         $this->info("Imported {$this->imported} foods, skipped {$this->skipped}.");
+        if ($source === FoodSource::OpenFoodFacts) {
+            // ODbL needs the credit in the app, and no screen shows it yet (docs/self-hosting.md, "Food data").
+            $this->warn('Open Food Facts data is under the ODbL. Show this credit wherever your instance shows food data, until the food detail and Settings → About screens do: '.$source->attribution());
+        }
 
         return self::SUCCESS;
     }

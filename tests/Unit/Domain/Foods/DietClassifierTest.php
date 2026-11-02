@@ -128,6 +128,10 @@ it('FOOD-027 keeps USDA prepared dishes and branded products out of every diet, 
     'branded supplement drink' => ['Beverages, ABBOTT, ENSURE PLUS, ready-to-drink', 'Beverages'],
     'drink mix' => ['Beverages, Orange-flavor drink, breakfast type, powder', 'Beverages'],
     'vegetarian patties' => ['Vegetarian meatloaf or patties', 'Legumes and Legume Products'],
+    'veggie burgers' => ['Veggie burgers or soyburgers, unprepared', 'Legumes and Legume Products'],
+    'vegetarian fillets' => ['Vegetarian fillets', 'Legumes and Legume Products'],
+    'meatless' => ['Meatless bacon', 'Legumes and Legume Products'],
+    'luncheon slices' => ['Luncheon slices, meatless', 'Legumes and Legume Products'],
     'meatballs' => ['Meatballs, frozen, Italian style', 'Beef Products'],
 ]);
 

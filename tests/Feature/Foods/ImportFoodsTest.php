@@ -42,6 +42,15 @@ it('FOOD-001 gives every imported Open Food Facts food the ODbL credit, and ever
         ->and($credits['usda'])->toBe([FoodSource::Usda->attribution()]);
 });
 
+it('FOOD-001 reminds the operator after an Open Food Facts import to show the ODbL credit, and not after USDA', function () {
+    $this->artisan('foods:import', ['source' => 'off', 'path' => foodsFixture('off.jsonl')])
+        ->expectsOutputToContain(FoodSource::OpenFoodFacts->attribution())
+        ->assertSuccessful();
+    $this->artisan('foods:import', ['source' => 'usda', 'path' => foodsFixture('usda_foundation.json')])
+        ->doesntExpectOutputToContain('ODbL')
+        ->assertSuccessful();
+});
+
 it('FOOD-008 imports SR Legacy and Branded USDA dumps', function () {
     $this->artisan('foods:import', ['source' => 'usda', 'path' => foodsFixture('usda_sr_legacy.json')])->assertSuccessful();
     $this->artisan('foods:import', ['source' => 'usda', 'path' => foodsFixture('usda_branded.json')])->assertSuccessful();

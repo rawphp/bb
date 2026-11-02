@@ -179,9 +179,9 @@ php artisan foods:import off openfoodfacts-products.jsonl.gz
 ```
 
 - USDA FoodData Central (public domain): the Foundation and Branded JSON downloads from <https://fdc.nal.usda.gov/download-datasets>.
-- Open Food Facts (ODbL): the JSONL export from <https://world.openfoodfacts.org/data>. ODbL requires the credit "Food data from Open Food Facts (openfoodfacts.org), available under the Open Database License (ODbL)." in the app. The app does not show it yet: the food detail and Settings → About screens that will are not built. Until they ship, show that text yourself wherever your instance shows food data. Any dump you publish that is derived from it stays under ODbL.
+- Open Food Facts (ODbL): the JSONL export from <https://world.openfoodfacts.org/data>. ODbL requires the credit "Food data from Open Food Facts (openfoodfacts.org), available under the Open Database License (ODbL)." in the app. The app does not show it yet: the food detail and Settings → About screens that will are not built. Until they ship, show that text yourself wherever your instance shows food data; `foods:import off` prints this reminder after every import. Any dump you publish that is derived from it stays under ODbL.
 
-Imports stream the file and upsert in batches, so re-running one leaves the same rows. An import that finds the file cut off or corrupt exits with an error after saving what it read: download the file again and re-run it. Import the Open Food Facts `.jsonl.gz` as downloaded rather than unpacking it, since a plain `.jsonl` cut exactly at a line break looks complete. Re-run them to refresh the data.
+Imports stream the file and upsert in batches, so re-running one leaves the same rows. An import that finds the file cut off or corrupt exits with an error, keeping the foods it saved before the bad part (a cut-off USDA file loses the batch it was reading): download the file again and re-run it. Import the Open Food Facts `.jsonl.gz` as downloaded rather than unpacking it, since a plain `.jsonl` cut exactly at a line break looks complete. Re-run them to refresh the data.
 
 ## Updating
 

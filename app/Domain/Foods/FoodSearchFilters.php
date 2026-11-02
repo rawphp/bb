@@ -9,11 +9,13 @@ use App\Domain\Model\DietFilter;
 final readonly class FoodSearchFilters
 {
     /**
-     * @param  'curated'|'generic'|'packaged'|'restaurant'|null  $kind  curated, or one food kind
+     * @param  FoodKind|null  $kind  one food kind
+     * @param  bool  $curated  curated foods only
      * @param  list<DietFilter>  $diets  every one must be true
      */
     public function __construct(
-        public ?string $kind = null,
+        public ?FoodKind $kind = null,
+        public bool $curated = false,
         public ?CuratedGroup $group = null,
         public array $diets = [],
         public int $limit = 25,
@@ -22,6 +24,6 @@ final readonly class FoodSearchFilters
     /** Only curated foods match: the curated filter or a curated group. */
     public function curatedOnly(): bool
     {
-        return $this->kind === 'curated' || $this->group !== null;
+        return $this->curated || $this->group !== null;
     }
 }

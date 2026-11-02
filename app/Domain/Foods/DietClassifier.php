@@ -183,6 +183,8 @@ final class DietClassifier
         'nugget', 'babyfood', 'entree',
         // Plurals other than -s and -es, and compounds, are listed: has() matches whole words.
         'patties', 'meatloaf', 'meatball',
+        // Meat substitutes are processed products, often with wheat gluten, egg white or milk.
+        'burger', 'soyburger', 'fillet', 'meatless', 'vegetarian', 'veggie', 'luncheon', 'analog', 'analogue',
         // Cooked egg dishes are made with milk and fat; an egg substitute is not egg.
         'scrambled', 'omelet', 'omelette', 'fried', 'substitute'];
 

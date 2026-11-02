@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Foods\SearchFoods;
+use App\Domain\Foods\FoodKind;
 use App\Domain\Foods\FoodSearchFilters;
 use App\Domain\MealFit\CuratedGroup;
 use App\Domain\Model\DietFilter;
@@ -28,7 +29,9 @@ function foodsCurated(string $name, string $group = 'carbs_recommended', array $
  */
 function foodsSearch(User $user, string $query, ?string $kind = null, ?CuratedGroup $group = null, array $diets = [], int $limit = 25): array
 {
-    return (new SearchFoods)($user, $query, new FoodSearchFilters($kind, $group, $diets, $limit))->pluck('name')->all();
+    $filters = new FoodSearchFilters($kind === 'curated' ? null : ($kind === null ? null : FoodKind::from($kind)), $kind === 'curated', $group, $diets, $limit);
+
+    return (new SearchFoods)($user, $query, $filters)->pluck('name')->all();
 }
 
 // InnoDB indexes full-text only on commit, so a search inside the test's transaction would never see the
