@@ -1,0 +1,140 @@
+<script setup lang="ts">
+import { nextTick, ref, useId } from 'vue';
+import { RouterLink, type RouteLocationRaw } from 'vue-router';
+
+// A "?" icon that opens a short sheet with a Read more link (UI-009). On a
+// feature screen, `to` is the screen's Learn article (LRN-003). Ported from
+// rp-clone's HelpButton.swift.
+defineOptions({ inheritAttrs: false });
+
+const props = withDefaults(
+    defineProps<{
+        title: string;
+        message: string;
+        // Read more goes to a URL (`href`), an in-app route (`to`), or, with neither, emits read-more.
+        href?: string;
+        to?: RouteLocationRaw;
+        /** The message is still loading: a busy placeholder shows in its place. */
+        loading?: boolean;
+        /** Why the message could not load; shown in its place. */
+        error?: string | null;
+        /** The message is server-derived and waiting on the outbox (OFF-008). */
+        pending?: boolean;
+        disabled?: boolean;
+    }>(),
+    { loading: false, error: null, pending: false, disabled: false },
+);
+
+const emit = defineEmits<{ 'read-more': [] }>();
+
+const isShowing = ref(false);
+const trigger = ref<HTMLButtonElement>();
+const sheet = ref<HTMLElement>();
+const titleId = useId();
+
+async function show(): Promise<void> {
+    isShowing.value = true;
+    await nextTick();
+    sheet.value?.focus();
+}
+
+async function hide(): Promise<void> {
+    isShowing.value = false;
+    await nextTick();
+    trigger.value?.focus();
+}
+
+function readMore(): void {
+    void hide();
+    emit('read-more');
+}
+
+// The sheet is modal: Tab and Shift+Tab cycle through its own controls and never reach the page behind it.
+function keepFocus(event: KeyboardEvent): void {
+    const controls = Array.from(sheet.value?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? []);
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    if (!first || !last) {
+        return;
+    }
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || active === sheet.value)) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
+const readMoreClass = 'inline-flex min-h-tap items-center text-accent';
+</script>
+
+<template>
+    <button
+        v-bind="$attrs"
+        ref="trigger"
+        type="button"
+        aria-label="Help"
+        :aria-description="props.title"
+        aria-haspopup="dialog"
+        :aria-expanded="isShowing"
+        :disabled="props.disabled"
+        class="inline-flex min-h-tap min-w-tap items-center justify-center text-accent disabled:text-secondary-text"
+        @click="show"
+    >
+        <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+            <circle cx="12" cy="12" r="9.25" />
+            <path d="M9.5 9.25a2.5 2.5 0 1 1 3.5 2.3c-.6.27-1 .87-1 1.53v.67" stroke-linecap="round" />
+            <circle cx="12" cy="16.75" r=".6" fill="currentColor" stroke="none" />
+        </svg>
+    </button>
+
+    <!-- On <body>, so a parent's overflow, transform or z-index cannot clip or bury the sheet. -->
+    <Teleport to="body">
+        <div
+            v-if="isShowing"
+            data-help-overlay
+            class="fixed inset-0 z-50 flex flex-col justify-end"
+            @keydown.esc="hide"
+            @keydown.tab="keepFocus"
+        >
+            <div data-scrim aria-hidden="true" class="absolute inset-0 bg-background/80" @click="hide" />
+            <div
+                ref="sheet"
+                role="dialog"
+                aria-modal="true"
+                :aria-labelledby="titleId"
+                tabindex="-1"
+                class="relative flex max-h-[90dvh] min-h-[50dvh] flex-col gap-3 overflow-y-auto rounded-t-2xl bg-surface p-5 text-primary-text outline-none"
+            >
+                <div class="flex items-start justify-between gap-2">
+                    <h2 :id="titleId" class="pt-2 text-xl font-bold">{{ props.title }}</h2>
+                    <button
+                        type="button"
+                        aria-label="Close help"
+                        class="-mr-3 -mt-3 inline-flex min-h-tap min-w-tap items-center justify-center text-secondary-text"
+                        @click="hide"
+                    >
+                        <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div v-if="props.loading" aria-busy="true" class="flex flex-col gap-2">
+                    <span class="sr-only">Loading</span>
+                    <span class="h-4 w-full animate-pulse rounded bg-background" />
+                    <span class="h-4 w-2/3 animate-pulse rounded bg-background" />
+                </div>
+                <p v-else-if="props.error" role="alert" class="text-tone-warning">{{ props.error }}</p>
+                <p v-else-if="props.message" :class="{ 'opacity-50': props.pending }">{{ props.message }}</p>
+                <span v-if="props.pending && !props.loading && !props.error" class="text-sm text-secondary-text">Waiting to sync</span>
+
+                <a v-if="props.href" :href="props.href" :class="readMoreClass">Read more</a>
+                <RouterLink v-else-if="props.to" :to="props.to" :class="readMoreClass" @click="hide">Read more</RouterLink>
+                <button v-else type="button" :class="readMoreClass" @click="readMore">Read more</button>
+            </div>
+        </div>
+    </Teleport>
+</template>
