@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { now } from '@/app/clock';
 import { ulid } from '@/app/ulid';
 import type { OffPlanLogInput } from '@/contracts/off_plan_log';
@@ -16,45 +16,33 @@ const props = withDefaults(
             date?: string;
             /** 24-hour "HH:MM" the time starts at. Opened on its own, the clock's time. */
             time?: string;
-            open?: boolean;
         } & SheetListeners
     >(),
-    { open: true },
+    {},
 );
 
 const two = (n: number) => String(n).padStart(2, '0');
 const clock = now();
 const day = props.date ?? `${clock.getFullYear()}-${two(clock.getMonth() + 1)}-${two(clock.getDate())}`;
-const startTime = () => props.time ?? `${two(now().getHours())}:${two(now().getMinutes())}`;
 
-// One id per opening, so a retry after no answer logs the same entry (CAP-019) and the next opening a new one.
-let id = ulid();
+// One id for the entry while the sheet is open, so a retry after no answer logs the same one (CAP-019).
+const id = ulid();
 const name = ref('');
-const time = ref(startTime());
+const time = ref(props.time ?? `${two(clock.getHours())}:${two(clock.getMinutes())}`);
 const kcal = ref('');
 const protein = ref('');
 const fat = ref('');
 const carbs = ref('');
 
-const { busy, error, locked, close, save, reset } = useSheet(props);
-
-// Opened again while mounted (the Today screen keeps it and flips `open`): a new, empty entry.
-watch(
-    () => props.open,
-    (open) => {
-        if (!open) return;
-        id = ulid();
-        name.value = kcal.value = protein.value = fat.value = carbs.value = '';
-        time.value = startTime();
-        reset();
-    },
-);
+const { busy, error, locked, close, save } = useSheet(props);
 
 /**
  * A typed amount as a number of zero or more; an empty field is 0, and anything else is none.
  * A comma is the decimal point too: it is the only one on a comma-decimal region's keypad.
+ * Followed by three digits it could be a thousands separator ("1,200"), so that is none.
  */
 function amount(text: string): number | null {
+    if (/,\d{3}$/.test(text.trim())) return null;
     const trimmed = text.trim().replace(',', '.');
     if (trimmed === '') return 0;
     return /^(\d+\.?\d*|\.\d+)$/.test(trimmed) ? Number(trimmed) : null;
@@ -75,7 +63,7 @@ const divider = 'border-t border-secondary-text/20';
 
 <template>
     <BottomSheet
-        :open="open"
+        :open="true"
         title="Save food macros"
         :heights="['half', 'full']"
         :save-disabled="!valid || busy"

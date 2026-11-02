@@ -17,6 +17,10 @@ import type { ToastResult } from '@/design/Toast.vue';
  * props, not emits, so the sheet knows when nobody listens: opened at its own route
  * (/today/<date>/adjust, /dev/screens) it goes back down the Today stack instead, and the
  * toast goes with it.
+ *
+ * A sheet is open while it is mounted. The screen mounts one per opening (v-if, keyed by
+ * the day) and unmounts it on @close and @saved, so each opening reads afresh and starts
+ * a new entry; a sheet never resets itself.
  */
 export interface SheetListeners {
     onClose?: () => void;
@@ -69,14 +73,7 @@ export function useSheet(listeners: SheetListeners) {
         }
     }
 
-    /** A new entry: forget the last save, its key and its message. */
-    function reset(): void {
-        last = null;
-        unsure.value = false;
-        error.value = null;
-    }
-
-    return { busy, error, locked: computed(() => busy.value || unsure.value), close, save, reset };
+    return { busy, error, locked: computed(() => busy.value || unsure.value), close, save };
 }
 
 /**

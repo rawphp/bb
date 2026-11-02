@@ -16,12 +16,11 @@ const props = withDefaults(
             /** The day, from the screen or the route; a /dev/screens fixture carries its own. */
             date?: string;
             payload?: DayOptimizeShowOutput;
-            open?: boolean;
             /** A change is waiting to sync, so the proposed times are not final (OFF-008). */
             pending?: boolean;
         } & SheetListeners
     >(),
-    { open: true, pending: false },
+    { pending: false },
 );
 
 const date = props.date ?? props.payload?.date ?? '';
@@ -37,7 +36,7 @@ function submit(): void {
 
 <template>
     <BottomSheet
-        :open="open"
+        :open="true"
         title="Optimize schedule"
         :heights="['half']"
         :save-disabled="!data?.can_save || busy"

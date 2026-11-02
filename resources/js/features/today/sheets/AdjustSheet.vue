@@ -18,12 +18,11 @@ const props = withDefaults(
             /** The day, from the screen or the route; a /dev/screens fixture carries its own. */
             date?: string;
             payload?: DayAdjustShowOutput;
-            open?: boolean;
             /** A change is waiting to sync, so the projection is not final (OFF-008). */
             pending?: boolean;
         } & SheetListeners
     >(),
-    { open: true, pending: false },
+    { pending: false },
 );
 
 type Mode = DayAdjustShowOutput['mode'];
@@ -94,7 +93,7 @@ const picker = 'max-w-[60%] truncate rounded-lg bg-transparent py-2 pl-2 text-ri
 
 <template>
     <BottomSheet
-        :open="open"
+        :open="true"
         title="Adjust day"
         :save-disabled="!canSave"
         :cancel-disabled="busy"

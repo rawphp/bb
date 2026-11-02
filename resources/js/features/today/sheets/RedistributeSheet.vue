@@ -17,12 +17,11 @@ const props = withDefaults(
             /** The day, from the screen or the route; a /dev/screens fixture carries its own. */
             date?: string;
             payload?: DayRedistributeShowOutput;
-            open?: boolean;
             /** A change is waiting to sync, so what each meal would hold is not final (OFF-008). */
             pending?: boolean;
         } & SheetListeners
     >(),
-    { open: true, pending: false },
+    { pending: false },
 );
 
 const date = props.date ?? props.payload?.date ?? '';
@@ -58,7 +57,7 @@ function confirm(): void {
 
 <template>
     <BottomSheet
-        :open="open"
+        :open="true"
         title="Redistribute"
         save-title="Confirm"
         :heights="['half', 'full']"
