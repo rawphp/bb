@@ -172,9 +172,9 @@ function showMore(group: PantryGroup): void {
     if (!expandedGroups.value.includes(group)) expandedGroups.value = [...expandedGroups.value, group];
 }
 
-// Add finishes only while the Pantry is the screen on show. A swipe back, another tab or
-// a pushed screen means the user left: it neither goes back nor sends what is left, which
-// stays in the basket.
+// Add sends every pick the user confirmed, even after a swipe back, another tab or a
+// pushed screen took the Pantry off screen (FOOD-028). It goes back only while the
+// Pantry is still the screen on show.
 let gone = false;
 onUnmounted(() => (gone = true));
 
@@ -195,7 +195,6 @@ async function confirm(): Promise<void> {
         basket.value = basket.value.filter((pick) => !sent.some((done) => done.key === pick.key));
     }
     for (const pick of basket.value.filter((pick) => pick.kind === 'saved_meal')) {
-        if (!shown()) return;
         const input = { meal_id: props.mealId, saved_meal_id: pick.id } satisfies MealSavedMealLoadInput;
         if ((await adding.send('meal_saved_meal_load', input, "Couldn't add the saved meal. Try again.")) !== 'done') return;
         remove(pick.key);
