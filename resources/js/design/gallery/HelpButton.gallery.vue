@@ -9,9 +9,9 @@ const message =
 const states = [
     { name: 'default', props: { title, message } },
     { name: 'empty', props: { title, message: '' } },
-    { name: 'loading', props: { title, message, state: 'loading' } },
-    { name: 'error', props: { title, message, state: 'error' } },
-    { name: 'pending', props: { title, message, state: 'pending' } },
+    { name: 'loading', props: { title, message, loading: true } },
+    { name: 'error', props: { title, message, error: "Couldn't load this help." } },
+    { name: 'pending', props: { title, message, pending: true } },
     { name: 'disabled', props: { title, message, disabled: true } },
 ] as const;
 </script>
