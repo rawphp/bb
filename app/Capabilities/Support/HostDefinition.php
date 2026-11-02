@@ -22,7 +22,7 @@ use Rawphp\Capabilities\Registry\CapabilityRegistry;
  */
 final class HostDefinition
 {
-    public const SURFACES = ['http', 'job', 'mcp', 'cli'];
+    public const SURFACES = ['http', 'job', 'mcp', 'cli', 'agent'];
 
     /**
      * An affects entry for a write that can change any read, such as undo_apply.
