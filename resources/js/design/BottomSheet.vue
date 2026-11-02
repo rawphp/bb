@@ -90,8 +90,13 @@ function close(): void {
 
 // Listened for on the document, so Escape and Tab still work after focus falls to <body>
 // (a tap on the dim, or a focused control that the parent disables or removes).
+// A key pressed in another modal over the sheet, such as a HelpButton's, belongs to that modal.
 function onKeydown(event: KeyboardEvent): void {
     if (openSheets[openSheets.length - 1] !== token || event.defaultPrevented) {
+        return;
+    }
+    const modal = event.target instanceof Element ? event.target.closest('[aria-modal="true"]') : null;
+    if (modal && modal !== panel.value) {
         return;
     }
     if (event.key === 'Escape') {

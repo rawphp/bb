@@ -1,10 +1,11 @@
 import { DOMWrapper, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { nextTick } from 'vue';
+import { h, nextTick } from 'vue';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import BottomSheet from './BottomSheet.vue';
+import HelpButton from './HelpButton.vue';
 
 let mounted: VueWrapper | null = null;
 
@@ -274,6 +275,29 @@ describe('BottomSheet', () => {
         } finally {
             below.unmount();
         }
+    });
+
+    it('UI-030 Escape and Tab in a HelpButton opened over the sheet stay with the HelpButton', async () => {
+        const wrapper = mount(BottomSheet, {
+            props: { open: true, title: 'Copy foods' },
+            slots: { default: () => h(HelpButton, { title: 'Copy foods', message: 'Copies a meal to another day.' }) },
+            attachTo: document.body,
+        });
+        mounted = wrapper;
+        await nextTick();
+        await get('button[aria-label="Help"]').trigger('click');
+        await nextTick();
+        const help = document.body.querySelectorAll<HTMLElement>('[role="dialog"]')[1]!;
+        const close = help.querySelector<HTMLElement>('button[aria-label="Close help"]')!;
+
+        close.focus();
+        press('Tab');
+        expect(help.contains(document.activeElement)).toBe(true);
+
+        press('Escape');
+        await nextTick();
+        expect(wrapper.emitted('cancel')).toBeUndefined();
+        expect(document.body.querySelectorAll('[role="dialog"]')).toHaveLength(1);
     });
 
     it('PWA-023 a tap that drifts a few pixels still reaches Cancel and Save; only a drag captures the pointer', async () => {
