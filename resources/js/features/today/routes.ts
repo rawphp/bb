@@ -9,13 +9,16 @@ import type { RouteRecordRaw } from 'vue-router';
 const sheet = (path: string, name: string, component: RouteRecordRaw['component'], screen = 'today_show', fixture = true): RouteRecordRaw =>
     ({ path: `/dev/today/${path}`, name, component, meta: { dev: true, shell: false, screen, fixture } }) as RouteRecordRaw;
 
-export default [
-    sheet('calendar', 'today-calendar', () => import('./sheets/TodayCalendarSheet.vue'), 'week_show'),
-    sheet('workout-time', 'today-workout-time', () => import('./sheets/TodayWorkoutTimeSheet.vue')),
-    sheet('add-meal', 'today-add-meal', () => import('./sheets/TodayAddMealSheet.vue')),
-    sheet('move-day', 'today-move-day', () => import('./sheets/TodayMoveDaySheet.vue')),
-    sheet('add-workout', 'add-workout', () => import('./sheets/AddWorkoutSheet.vue')),
-    sheet('busy-period', 'busy-period', () => import('./sheets/BusyPeriodSheet.vue')),
-    sheet('edit-schedule', 'edit-schedule', () => import('./sheets/EditScheduleSheet.vue')),
-    sheet('weekday-change', 'weekday-change', () => import('./sheets/WeekdayChangeSheet.vue'), 'training_weekdays_change', false),
-] satisfies RouteRecordRaw[];
+// Dev routes stay out of a production build (CAP-004), as features/dev's do.
+export default (import.meta.env.DEV
+    ? [
+          sheet('calendar', 'today-calendar', () => import('./sheets/TodayCalendarSheet.vue'), 'week_show'),
+          sheet('workout-time', 'today-workout-time', () => import('./sheets/TodayWorkoutTimeSheet.vue')),
+          sheet('add-meal', 'today-add-meal', () => import('./sheets/TodayAddMealSheet.vue')),
+          sheet('move-day', 'today-move-day', () => import('./sheets/TodayMoveDaySheet.vue')),
+          sheet('add-workout', 'add-workout', () => import('./sheets/AddWorkoutSheet.vue')),
+          sheet('busy-period', 'busy-period', () => import('./sheets/BusyPeriodSheet.vue')),
+          sheet('edit-schedule', 'edit-schedule', () => import('./sheets/EditScheduleSheet.vue')),
+          sheet('weekday-change', 'weekday-change', () => import('./sheets/WeekdayChangeSheet.vue'), 'training_weekdays_change', false),
+      ]
+    : []) satisfies RouteRecordRaw[];
