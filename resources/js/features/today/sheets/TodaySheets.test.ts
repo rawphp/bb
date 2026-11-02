@@ -156,7 +156,7 @@ describe('TodayAddMealSheet', () => {
         await wrapper.find('[data-save]').trigger('click');
         await flushPromises();
 
-        const [[name, input]] = sent();
+        const [name, input] = sent()[0]!;
         expect(name).toBe('meal_add');
         expect(input).toEqual({ id: expect.stringMatching(/^[0-9A-HJKMNP-TV-Z]{26}$/), date: '2026-09-23', time: '15:30' });
         expect(wrapper.emitted('close')).toEqual([[true]]);
@@ -171,8 +171,9 @@ describe('TodayAddMealSheet', () => {
         await wrapper.find('[data-save]').trigger('click');
         await flushPromises();
 
-        const [[, first], [, second]] = sent();
-        expect(second!.id).toBe(first!.id);
+        const ids = sent().map(([, input]) => input.id);
+        expect(ids).toHaveLength(2);
+        expect(ids[1]).toBe(ids[0]);
     });
 
     it('SCH-031 offers no time on a past day', () => {
