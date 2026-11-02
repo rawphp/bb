@@ -194,3 +194,24 @@ it('MESO-063 light dumbbells keep the weight and chase reps', function () {
     $start = LoadProgression::copiedStart(new SetLoad(8, 10), ExperienceLevel::Intermediate, isFatLoss: false, rules: loadRules(LoadType::Dumbbell));
     expect($start)->toEqual(new SetLoad(8, 11));
 });
+
+it('EX-012 a step override of 0 means reps only, like a bodyweight exercise', function () {
+    $zero = loadRules(stepOverride: 0);
+    expect($zero->step(isFatLoss: false))->toBeNull()
+        ->and(loadRules(stepOverride: -2.5)->step(isFatLoss: true))->toBeNull();
+
+    // PROG-022: the weight cannot move, so it stays and each set adds a rep.
+    $result = LoadProgression::targets(loadSets(100, 10, 8), rir: 2, isFatLoss: false, rules: $zero);
+    expect(loadPluck($result, 'weight'))->toBe([100.0, 100.0])
+        ->and(loadPluck($result, 'reps'))->toBe([11, 9]);
+
+    // PROG-027: with no step to move up, reps are capped at the top.
+    $top = LoadProgression::targets(loadSets(100, 12), rir: 2, isFatLoss: false, rules: loadRules(stepOverride: 0, repRange: new ClosedRange(8, 12)));
+    expect($top[0]->weight)->toBe(100.0)
+        ->and($top[0]->reps)->toBe(12);
+
+    // MESO-061: a copied start keeps the weight and chases reps.
+    $copied = LoadProgression::copiedStart(new SetLoad(100, 10), ExperienceLevel::Intermediate, isFatLoss: false, rules: $zero);
+    expect($copied->weight)->toBe(100.0)
+        ->and($copied->reps)->toBe(11);
+});

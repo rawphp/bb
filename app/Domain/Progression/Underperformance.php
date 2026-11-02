@@ -71,7 +71,7 @@ final class Underperformance
     {
         return new UnderperformanceAdvice(
             $muscle, $sets, $lastWeight,
-            $muscle->title().' missed its rep targets 2 sessions running. Hold sets and repeat the weight to recover.',
+            $muscle->title().' missed its rep targets '.self::SESSIONS_RUNNING.' sessions running. Hold sets and repeat the weight to recover.',
         );
     }
 

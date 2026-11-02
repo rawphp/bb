@@ -26,15 +26,19 @@ final readonly class LoadRules
 
     /**
      * Weight step, or null for reps only. Fat loss takes the smallest increment the equipment allows (PROG-023);
-     * micro plates do the same when turned on (TBL-040).
+     * micro plates do the same when turned on (TBL-040). An override of 0 or less has no weight to step to, so it
+     * means reps only too, and no caller divides by it.
      */
     public function step(bool $isFatLoss): ?float
     {
         if ($this->loadType === LoadType::Bodyweight) {
             return null;
         }
+        if ($this->stepOverride !== null) {
+            return $this->stepOverride > 0 ? $this->stepOverride : null;
+        }
 
-        return $this->stepOverride ?? TBL040LoadSteps::step($this->loadType)->value($this->unit, $this->microPlates || $isFatLoss);
+        return TBL040LoadSteps::step($this->loadType)->value($this->unit, $this->microPlates || $isFatLoss);
     }
 
     /** EX-006: the body counts as load for bodyweight exercises. */

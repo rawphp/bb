@@ -266,3 +266,22 @@ it('PROG-051 no rule leaves the targets alone', function () {
     expect($result->targets)->toEqual(recoveryPlanned())
         ->and($result->note)->toBeNull();
 });
+
+it('PROG-024 a set with no rep target keeps none at the new weight', function () {
+    $planned = [new PlannedLoad(102.5, 10), new PlannedLoad(102.5, null)];
+    $result = recoveryApply(planned: $planned, flagged: MuscleGroup::Chest);
+    expect(recoveryWeights($result))->toBe([100.0, 100.0])
+        ->and(recoveryReps($result))->toBe([11, null]);
+});
+
+it('PROG-053 a weight that lands on 0 has no rep target', function () {
+    // Planned at one step, two sessions below the range take it down to nothing: PROG-024 has no load to work from.
+    $low = recoverySession([6, 7, 6]);
+    $result = recoveryApply(
+        planned: [new PlannedLoad(2.5, 10), new PlannedLoad(2.5, 9)],
+        lastWeek: [new SetLoad(2.5, 10), new SetLoad(2.5, 9)],
+        history: [$low, $low],
+    );
+    expect(recoveryWeights($result))->toBe([0.0, 0.0])
+        ->and(recoveryReps($result))->toBe([null, null]);
+});

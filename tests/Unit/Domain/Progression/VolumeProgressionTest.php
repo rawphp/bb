@@ -625,6 +625,31 @@ it('PROG-019 add and remove sets by hand', function () {
         ->and(VolumeProgression::adjustSets($mesocycle, $first->id, 'unknown', 1))->toEqual($mesocycle);
 });
 
+it('PROG-019 a set edit keeps the rest of the mesocycle', function () {
+    $press = vpSlot(3, MuscleGroup::Chest, 'Press');
+    $row = vpSlot(2, MuscleGroup::Back, 'Row');
+    $session = vpSession('Upper', [$press, $row]);
+    $earlier = vpSession('Old upper', [vpSlot(4)]);
+    $before = new Mesocycle(
+        'meso-kept', PhaseType::Maintenance, 7, [$session], [MuscleGroup::Chest->value => Priority::Emphasize], true,
+        [[$earlier]], [[$session->id]], new DateTimeImmutable('2026-03-01'),
+    );
+
+    $after = VolumeProgression::adjustSets($before, $session->id, $row->id, 1);
+
+    // Only the one slot's count moves; every other field, the slot's name and muscle included, is carried over.
+    $edited = new Session($session->id, 'Upper', [$press, new ExerciseSlot($row->id, 'Row', MuscleGroup::Back, 3)]);
+    expect($after)->toEqual(new Mesocycle(
+        'meso-kept', PhaseType::Maintenance, 7, [$edited], [MuscleGroup::Chest->value => Priority::Emphasize], true,
+        [[$earlier]], [[$session->id]], new DateTimeImmutable('2026-03-01'),
+    ));
+    foreach (get_object_vars($before) as $property => $value) {
+        if ($property !== 'sessions') {
+            expect($after->{$property})->toEqual($value, $property);
+        }
+    }
+});
+
 it('PROG-019 added sets carry forward and removed sets do not come back', function () {
     $original = vpSession('S', [vpSlot(3), vpSlot(1, MuscleGroup::Chest, 'B')]);
     $base = vpMeso(PhaseType::MuscleGain, sessions: [$original]);
