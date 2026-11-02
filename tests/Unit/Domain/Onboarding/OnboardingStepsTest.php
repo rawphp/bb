@@ -269,10 +269,10 @@ it('ONB-017 step 13 needs calories the rules accept', function () {
     expectOnboardingContinue(F::atStep13(), true, null);
     expectOnboardingContinue(F::atStep13()->with(choosesOwnCalories: true), false, 'Enter your average daily calories to continue.');
     expectOnboardingContinue(
-        F::atStep13()->with(choosesOwnCalories: true, ownDailyKcal: 600.0), false,
+        F::atStep13()->with(choosesOwnCalories: true, ownDailyKcal: 600), false,
         'That is too few calories to fit your protein, fat and carbs. Choose a higher average.',
     );
-    expectOnboardingContinue(F::atStep13()->with(choosesOwnCalories: true, ownDailyKcal: 1900.0), true, null);
+    expectOnboardingContinue(F::atStep13()->with(choosesOwnCalories: true, ownDailyKcal: 1900), true, null);
 });
 
 it('ONB-002 any step can be checked, not only the current one', function () {

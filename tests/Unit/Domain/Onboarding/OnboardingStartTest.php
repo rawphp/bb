@@ -222,10 +222,11 @@ it('ONB-020 each day target carries its meals, which add up to the day', functio
 it('ONB-017 a chosen average moves week one by its difference from the recommendation', function () {
     $plain = startPlan(F::atReview());
     $recommended = (new OnboardingCalories(F::atReview(), F::today(), startCatalogue()))->recommended()->averageKcal;
-    $chosen = startPlan(F::atReview()->with(choosesOwnCalories: true, ownDailyKcal: $recommended + 150));
+    $own = (int) round($recommended) + 150;
+    $chosen = startPlan(F::atReview()->with(choosesOwnCalories: true, ownDailyKcal: $own));
 
     foreach ($chosen->dayTargets as $index => $day) {
-        expect($day['kcal'])->toEqualWithDelta($plain->dayTargets[$index]['kcal'] + 150, 1e-6)
+        expect($day['kcal'])->toEqualWithDelta($plain->dayTargets[$index]['kcal'] + $own - $recommended, 1e-6)
             ->and($day['protein_g'])->toEqualWithDelta($plain->dayTargets[$index]['protein_g'], 1e-6)
             ->and(array_sum(array_column($day['meals'], 'kcal')))->toEqualWithDelta($day['kcal'], 1e-6);
     }
@@ -268,7 +269,7 @@ it('ONB-020 refuses with the first step\'s hint while a step\'s answers cannot c
 
 it('ONB-017 refuses with step 13\'s message when the chosen calories cannot be planned', function () {
     expect(startRefusal(F::atReview()->with(choosesOwnCalories: true, ownDailyKcal: null)))->toBe(OnboardingCalories::OWN_CALORIES_MESSAGE)
-        ->and(startRefusal(F::atReview()->with(choosesOwnCalories: true, ownDailyKcal: 600.0)))
+        ->and(startRefusal(F::atReview()->with(choosesOwnCalories: true, ownDailyKcal: 600)))
         ->toBe('That is too few calories to fit your protein, fat and carbs. Choose a higher average.');
 });
 

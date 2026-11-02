@@ -123,7 +123,7 @@ it('ONB-018 marks the recommendation as Recommended and Selected when it is the 
 });
 
 it('ONB-018 shows the calorie target marked Selected next to the Recommended one when the user chose their own', function () {
-    $rows = onboardingBlocks(F::atReview()->with(choosesOwnCalories: true, ownDailyKcal: 2000.0))['Calories']->rows;
+    $rows = onboardingBlocks(F::atReview()->with(choosesOwnCalories: true, ownDailyKcal: 2000))['Calories']->rows;
 
     expect($rows)->toHaveCount(2)
         ->and($rows[0]->badges)->toBe(['Recommended'])

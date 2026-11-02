@@ -31,60 +31,9 @@ use Tests\Unit\Domain\Onboarding\OnboardingFixtures as F;
 uses(RefreshDatabase::class);
 
 /** Every answer of steps 1 to 13 set, none of them a default. */
-function fullOnboardingDraft(User $user): OnboardingDraft
+function fullDraft(int $templateId): Draft
 {
-    $template = Template::factory()->create(['days_per_week' => 2, 'split' => Split::UpperLower]);
-    $draft = OnboardingDraft::for($user);
-    $draft->fill([
-        'step' => 13,
-        'goal' => PhaseType::FatLoss,
-        'finished_diet_recently' => false,
-        'name' => 'Sam',
-        'sex' => Sex::Female,
-        'birth_date' => '1990-04-09',
-        'height_cm' => 170.5,
-        'weight_kg' => 72.25,
-        'weight_unit' => WeightUnit::Lb,
-        'height_unit' => HeightUnit::FeetInches,
-        'screening' => ['diabetes', 'tryingToConceive'],
-        'uses_glp1' => true,
-        'body_fat_bucket' => BodyFatBucket::High,
-        'rate_percent_per_week' => -0.75,
-        'custom_rate' => true,
-        'start_date' => '2026-10-11',
-        'weeks' => 12,
-        'experience' => ExperienceLevel::Advanced,
-        'training_days' => [
-            ['weekday' => 1, 'start_minutes' => 390, 'length_minutes' => 75],
-            ['weekday' => 4, 'start_minutes' => 1080, 'length_minutes' => 60],
-        ],
-        'training_plan' => TrainingPlanKind::Template,
-        'template_id' => $template->id,
-        'step_ranges' => [['weekday' => 1, 'min' => 0, 'max' => 8000], ['weekday' => 6, 'min' => 8000, 'max' => 13000]],
-        'eating_start_minutes' => 390,
-        'eating_end_minutes' => 1260,
-        'meal_count' => 4,
-        'busy_periods' => [[
-            'id' => '01JBX0Q5ZK3J7Y8T6V2N4M1C9D', 'label' => 'Commute',
-            'start_minutes' => 480, 'end_minutes' => 540, 'weekdays' => [1, 2, 3, 4, 5],
-        ]],
-        'weigh_ins' => [['weekday' => 2, 'minutes' => 420], ['weekday' => 5, 'minutes' => 450]],
-        'review_weekday' => 6,
-        'chooses_own_calories' => true,
-        'own_daily_kcal' => 2150,
-    ]);
-
-    return $draft;
-}
-
-it('ONB-002 a saved draft reads back the same step and answers', function () {
-    $user = User::factory()->create();
-    $saved = fullOnboardingDraft($user);
-    $saved->save();
-
-    $read = OnboardingDraft::for($user->fresh())->toDraft();
-
-    expect($read)->toEqual(new Draft(
+    return new Draft(
         step: 13,
         goal: PhaseType::FatLoss,
         finishedDietRecently: false,
@@ -105,7 +54,7 @@ it('ONB-002 a saved draft reads back the same step and answers', function () {
         experience: ExperienceLevel::Advanced,
         trainingDays: [new TrainingDayChoice(1, 390, 75), new TrainingDayChoice(4, 1080, 60)],
         trainingPlan: TrainingPlanKind::Template,
-        templateId: $saved->template_id,
+        templateId: $templateId,
         stepRanges: [new StepRangeChoice(1, 0, 8000), new StepRangeChoice(6, 8000, 13000)],
         eatingStartMinutes: 390,
         eatingEndMinutes: 1260,
@@ -114,8 +63,23 @@ it('ONB-002 a saved draft reads back the same step and answers', function () {
         weighIns: [new WeighInChoice(2, 420), new WeighInChoice(5, 450)],
         reviewWeekday: 6,
         choosesOwnCalories: true,
-        ownDailyKcal: 2150.0,
-    ));
+        ownDailyKcal: 2150,
+    );
+}
+
+it('ONB-002 a saved draft reads back the same step and answers', function () {
+    $user = User::factory()->create();
+    $answers = fullDraft(Template::factory()->create(['days_per_week' => 2, 'split' => Split::UpperLower])->id);
+    OnboardingDraft::for($user)->fillFrom($answers)->save();
+
+    expect(OnboardingDraft::for($user->fresh())->toDraft())->toEqual($answers);
+});
+
+it('ONB-002 SAFE-001 reads the ticked screening items in the spec\'s order, whatever order they were stored in', function () {
+    $user = User::factory()->create();
+    OnboardingDraft::for($user)->fill(['screening' => ['diabetes', 'tryingToConceive']])->save();
+
+    expect(OnboardingDraft::for($user)->toDraft()->screening)->toBe([ScreeningItem::TryingToConceive, ScreeningItem::Diabetes]);
 });
 
 it('ONB-002 keeps one draft per user and saving again updates it', function () {

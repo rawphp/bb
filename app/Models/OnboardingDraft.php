@@ -30,7 +30,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Setup progress (ONB-002), ported from rp-clone's OnboardingDraft and OnboardingDraftStore: the step and every answer
  * so far, one row per user. `for()` is the store's load and never writes; the first answer saves the row and
- * onboarding_complete deletes it. `toDraft()` hands the answers to the rules in `App\Domain\Onboarding`.
+ * onboarding_complete deletes it. `toDraft()` hands the answers to the rules in `App\Domain\Onboarding`, and
+ * `fillFrom()` writes a changed `Draft` back.
  *
  * @property int $user_id
  * @property int $step
@@ -149,8 +150,54 @@ class OnboardingDraft extends Model
             weighIns: array_map(fn (array $weighIn) => new WeighInChoice($weighIn['weekday'], $weighIn['minutes']), $this->weigh_ins),
             reviewWeekday: $this->review_weekday,
             choosesOwnCalories: $this->chooses_own_calories,
-            ownDailyKcal: $this->own_daily_kcal === null ? null : (float) $this->own_daily_kcal,
+            ownDailyKcal: $this->own_daily_kcal,
         );
+    }
+
+    /** The answers written back onto the row, the inverse of `toDraft()`. Save it to store them. */
+    public function fillFrom(Draft $draft): self
+    {
+        return $this->fill([
+            'step' => $draft->step,
+            'goal' => $draft->goal,
+            'finished_diet_recently' => $draft->finishedDietRecently,
+            'name' => $draft->name,
+            'sex' => $draft->sex,
+            'birth_date' => $draft->birthDate?->format('Y-m-d'),
+            'height_cm' => $draft->heightCm,
+            'weight_kg' => $draft->weightKg,
+            'weight_unit' => $draft->weightUnit,
+            'height_unit' => $draft->heightUnit,
+            'screening' => array_map(fn (ScreeningItem $item) => $item->value, $draft->screening),
+            'uses_glp1' => $draft->usesGLP1,
+            'body_fat_bucket' => $draft->bodyFatBucket,
+            'rate_percent_per_week' => $draft->ratePercentPerWeek,
+            'custom_rate' => $draft->customRate,
+            'start_date' => $draft->startDate?->format('Y-m-d'),
+            'weeks' => $draft->weeks,
+            'experience' => $draft->experience,
+            'training_days' => array_map(fn (TrainingDayChoice $day) => [
+                'weekday' => $day->weekday, 'start_minutes' => $day->startMinutes, 'length_minutes' => $day->lengthMinutes,
+            ], $draft->trainingDays),
+            'training_plan' => $draft->trainingPlan,
+            'template_id' => $draft->templateId,
+            'step_ranges' => array_map(fn (StepRangeChoice $range) => [
+                'weekday' => $range->weekday, 'min' => $range->min, 'max' => $range->max,
+            ], $draft->stepRanges),
+            'eating_start_minutes' => $draft->eatingStartMinutes,
+            'eating_end_minutes' => $draft->eatingEndMinutes,
+            'meal_count' => $draft->mealCount,
+            'busy_periods' => array_map(fn (BusyPeriodChoice $period) => [
+                'id' => $period->id, 'label' => $period->label, 'start_minutes' => $period->startMinutes,
+                'end_minutes' => $period->endMinutes, 'weekdays' => $period->weekdays,
+            ], $draft->busyPeriods),
+            'weigh_ins' => array_map(fn (WeighInChoice $weighIn) => [
+                'weekday' => $weighIn->weekday, 'minutes' => $weighIn->minutes,
+            ], $draft->weighIns),
+            'review_weekday' => $draft->reviewWeekday,
+            'chooses_own_calories' => $draft->choosesOwnCalories,
+            'own_daily_kcal' => $draft->ownDailyKcal,
+        ]);
     }
 
     /**

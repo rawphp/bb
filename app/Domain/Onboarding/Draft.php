@@ -75,7 +75,7 @@ final readonly class Draft
         public ?int $reviewWeekday = null,
         // Step 13 (ONB-017)
         public bool $choosesOwnCalories = false,
-        public ?float $ownDailyKcal = null,
+        public ?int $ownDailyKcal = null,
     ) {}
 
     /** The same draft with the named fields changed, as `with(step: 2, name: 'Sam')`. */

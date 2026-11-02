@@ -118,7 +118,7 @@ final class OnboardingLifestylePayload
                 ),
                 OnboardingParts::choice('own', self::OWN_CALORIES, $own),
             ],
-            own_kcal: $draft->ownDailyKcal === null ? null : (int) round($draft->ownDailyKcal),
+            own_kcal: $draft->ownDailyKcal,
             own_kcal_max: OnboardingCalories::MAXIMUM_OWN_DAILY_KCAL,
             own_unit: self::OWN_UNIT,
             week_note: self::WEEK_NOTE,

@@ -46,7 +46,7 @@ it('ONB-017 the recommendation is the default, so it is the selection and the st
 
 it('ONB-017 my own average starting from the recommended one selects about the same week', function () {
     $recommended = onboardingCalories(F::atStep13())->recommended();
-    $own = onboardingCalories(F::atStep13()->with(choosesOwnCalories: true, ownDailyKcal: round($recommended->averageKcal)));
+    $own = onboardingCalories(F::atStep13()->with(choosesOwnCalories: true, ownDailyKcal: (int) round($recommended->averageKcal)));
 
     expect($own->selected()->averageKcal)->toEqualWithDelta($recommended->averageKcal, 1.0)
         ->and($own->isReady())->toBeTrue();
@@ -54,21 +54,23 @@ it('ONB-017 my own average starting from the recommended one selects about the s
 
 it('ONB-017 a chosen average moves every day by the same calories and leaves the recommendation', function () {
     $recommended = onboardingCalories(F::atStep13())->recommended();
-    $calories = onboardingCalories(F::atStep13()->with(choosesOwnCalories: true, ownDailyKcal: $recommended->averageKcal + 200));
+    $own = (int) round($recommended->averageKcal) + 200;
+    $change = $own - $recommended->averageKcal;
+    $calories = onboardingCalories(F::atStep13()->with(choosesOwnCalories: true, ownDailyKcal: $own));
     $selected = $calories->selected();
 
-    expect($selected->averageKcal)->toEqualWithDelta($recommended->averageKcal + 200, 1e-6)
+    expect($selected->averageKcal)->toEqualWithDelta($own, 1e-6)
         ->and(onboardingDayNames($selected))->toBe(onboardingDayNames($recommended))
         ->and($calories->recommended())->toEqual($recommended)
         ->and($calories->message())->toBeNull()
         ->and($calories->isReady())->toBeTrue();
     foreach ($recommended->days as $index => $day) {
-        expect($selected->days[$index]->kcal)->toEqualWithDelta($day->kcal + 200, 1e-6);
+        expect($selected->days[$index]->kcal)->toEqualWithDelta($day->kcal + $change, 1e-6);
     }
 });
 
 it('ONB-017 an average the carb minimum cannot hold is refused and blocks continuing', function () {
-    $calories = onboardingCalories(F::atStep13()->with(choosesOwnCalories: true, ownDailyKcal: 600.0));
+    $calories = onboardingCalories(F::atStep13()->with(choosesOwnCalories: true, ownDailyKcal: 600));
 
     expect($calories->selected())->toBeNull()
         ->and($calories->message())->toBe('That is too few calories to fit your protein, fat and carbs. Choose a higher average.')
@@ -78,7 +80,7 @@ it('ONB-017 an average the carb minimum cannot hold is refused and blocks contin
 
 it('ONB-017 an empty or zero chosen average asks for one', function () {
     $empty = onboardingCalories(F::atStep13()->with(choosesOwnCalories: true));
-    $zero = onboardingCalories(F::atStep13()->with(choosesOwnCalories: true, ownDailyKcal: 0.0));
+    $zero = onboardingCalories(F::atStep13()->with(choosesOwnCalories: true, ownDailyKcal: 0));
 
     expect($empty->message())->toBe('Enter your average daily calories to continue.')
         ->and($empty->isReady())->toBeFalse()
