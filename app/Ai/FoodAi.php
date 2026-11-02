@@ -12,6 +12,9 @@ use App\Models\User;
  *
  * With no key every call throws AiUnavailable before it does anything else; a capability that
  * makes the call refuses with its message.
+ *
+ * The schemas are the only check on the model's answer (AiJson), so they carry the floors a draft
+ * needs: no negative amount, and a recipe of at least one serving.
  */
 final class FoodAi
 {
@@ -151,7 +154,7 @@ final class FoodAi
     /** @return array<string, mixed> */
     private static function labelSchema(): array
     {
-        $grams = ['type' => 'number'];
+        $grams = ['type' => 'number', 'minimum' => 0];
 
         return [
             'type' => 'object',
@@ -194,7 +197,7 @@ final class FoodAi
             'type' => 'object',
             'properties' => [
                 'name' => ['type' => 'string'],
-                'servings' => ['type' => 'integer'],
+                'servings' => ['type' => 'integer', 'minimum' => 1],
                 'instructions' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'items' => self::itemList(),
             ],
@@ -218,7 +221,7 @@ final class FoodAi
                 'properties' => [
                     'name' => ['type' => 'string'],
                     'search' => ['type' => 'string'],
-                    'grams' => ['type' => 'number'],
+                    'grams' => ['type' => 'number', 'minimum' => 0],
                 ],
                 'required' => ['name', 'search', 'grams'],
                 'additionalProperties' => false,
