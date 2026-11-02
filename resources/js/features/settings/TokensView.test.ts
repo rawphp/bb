@@ -101,6 +101,16 @@ describe('TokensView', () => {
         expect(sent('token_create')).toMatchObject({ scope: 'custom', expires_in_days: 30, capabilities: [{ name: 'weigh_in_log' }, { name: 'steps_log' }] });
     });
 
+    it('CAP-021 heads the expiry and scope choices on screen, as it does the name', async () => {
+        const wrapper = mount(TokensView, { global, props: { payload: content } });
+
+        await wrapper.get('[data-test="new"]').trigger('click');
+
+        const form = wrapper.get('form').text();
+        expect(form).toContain('Expires after');
+        expect(form).toContain('Scope');
+    });
+
     it('CAP-021 picks no expiry or scope for the user, so Create waits for both', async () => {
         const wrapper = mount(TokensView, { global, props: { payload: content } });
         const create = () => wrapper.get<HTMLButtonElement>('[data-test="create"]').element;
