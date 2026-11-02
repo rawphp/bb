@@ -13,6 +13,8 @@ final class ScanRow extends CapabilityData
         public readonly string $name,
         #[Field(description: 'At the current portion; sent back unchanged to scan_adjust')]
         public readonly float $grams,
+        #[Field(description: 'The grams at 1×, unrounded; sent back unchanged to scan_adjust so a portion step rounds once (FOOD-045)')]
+        public readonly float $base_grams,
         public readonly string $grams_text,
         public readonly ?string $food_id,
         #[Field(description: 'The matched food, or No match')]
