@@ -38,6 +38,7 @@ use App\Models\UndoToken;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WeighInScheduleEntry;
+use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use Illuminate\Database\Eloquent\Model;
@@ -88,7 +89,8 @@ function fillAccount(User $user): void
     FoodRecent::factory()->for($user)->create(['food_id' => $food->id]);
 
     $session = WorkoutSession::factory()->for($user)->create();
-    WorkoutSet::factory()->for($session, 'session')->create(['exercise_id' => $exercise->id]);
+    $block = WorkoutExercise::factory()->for($session, 'session')->create(['exercise_id' => $exercise->id]);
+    WorkoutSet::factory()->for($session, 'session')->create(['exercise_id' => $exercise->id, 'workout_exercise_id' => $block->id]);
     MuscleFeedback::factory()->for($session, 'session')->create();
     ExerciseFeedback::factory()->for($session, 'session')->create(['exercise_id' => $exercise->id]);
     ExerciseNote::factory()->for($user)->create(['exercise_id' => $exercise->id]);
