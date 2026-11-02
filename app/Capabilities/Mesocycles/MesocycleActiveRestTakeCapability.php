@@ -20,15 +20,15 @@ final class MesocycleActiveRestTakeCapability implements HostCapability, OwnsInp
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('mesocycle_active_rest_take', affects: ['train_show', 'mesocycle_show'])
-            ->description('Take the active rest recommended after flat training weeks: the deload week plus a week off. Use it only when train_show\'s next-mesocycle prompt recommends it for this mesocycle. It moves the next mesocycle\'s start one week later.')
+            ->description('Take the active rest recommended after flat training weeks: the deload week plus a week off. Use it only when train_show\'s next-mesocycle prompt recommends it for this mesocycle. It moves the next mesocycle\'s start one week later, and a copy already made to start then with it.')
             ->cli('mesocycle', 'active-rest-take')
             ->input(MesocycleActiveRestTakeInput::class)
             ->run(function (MesocycleActiveRestTakeInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */
                 $user = $context->user();
-                ($this->take)($user, $input->mesocycle_id);
+                $moved = ($this->take)($user, $input->mesocycle_id);
 
-                return new WriteResult(invalidates: MesocycleReads::keys($input->mesocycle_id), toast: 'Active rest planned');
+                return new WriteResult(invalidates: MesocycleReads::keys($input->mesocycle_id, ...$moved), toast: 'Active rest planned');
             });
     }
 

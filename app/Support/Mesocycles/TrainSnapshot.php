@@ -183,10 +183,16 @@ final class TrainSnapshot
 
         return new NextMesocycle(
             mesocycle: $current,
-            start: $calendar->nextMesocycleStart($current->active_rest),
+            start: $this->nextMesocycleStart($current, $current->active_rest),
             recommendsActiveRest: $this->recommendsActiveRest($current),
             tookActiveRest: $current->active_rest,
         );
+    }
+
+    /** MESO-060: when the mesocycle after `$current` starts; MESO-064: a week later with an active rest. */
+    public function nextMesocycleStart(Mesocycle $current, bool $activeRest): DateTimeImmutable
+    {
+        return MesocycleRules::nextMesocycleStart($this->calendar($current)->nextMesocycleStart($activeRest), $this->defaultStart());
     }
 
     /** MESO-002, MESO-060: the mesocycle Copy copies: the latest that has started, else the latest planned. */

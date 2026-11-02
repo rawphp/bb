@@ -37,6 +37,15 @@ final class MesocycleRules
     }
 
     /**
+     * MESO-060: the next mesocycle starts the plan week after the one ending (`$planned`), but never before the default
+     * start (MESO-004), so the prompt of a mesocycle finished weeks ago does not point into the past.
+     */
+    public static function nextMesocycleStart(DateTimeImmutable $planned, DateTimeImmutable $defaultStart): DateTimeImmutable
+    {
+        return max($planned, $defaultStart);
+    }
+
+    /**
      * MESO-060: a copy's start when none is given: the next mesocycle's start when it copies the one ending (`$next`),
      * else the default start.
      */
