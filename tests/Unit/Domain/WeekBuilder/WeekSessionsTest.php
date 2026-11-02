@@ -302,4 +302,22 @@ it('SCH-051 a row\'s start is read in the time zone of the plan', function () {
         ->and($plan(15)?->session?->time->start)->toEqual(ClockTime::at(7))
         ->and($plan(14)?->session?->session->name)->toBe('A')
         ->and($plan(16)?->session)->toBeNull();
+
+    // The date asked about is read in the plan's zone too: 21:00 UTC on Monday 14 is Brisbane's Tuesday 15.
+    $atUtc = WeekSessions::plan(
+        on: PlanFixtures::date(2026, 9, 14, 21), grid: $grid, mesocycle: weekSessionsMesocycle(), mesocycleStartWeek: 0,
+        trainingDays: weekSessionsTrainingDays(), rows: $rows,
+    );
+    expect(weekSessionsName($atUtc))->toBe('B');
+});
+
+it('SCH-039 a session placed by its row alone takes the first training day\'s length', function () {
+    $days = array_map(fn (int $weekday) => new TrainingDay($weekday, new WorkoutTime(ClockTime::at(17, 30), 45)), [2, 4, 6]);
+    $result = WeekSessions::build(
+        planWeek: weekSessionsGrid()->planWeek(1), week: 1, mesocycle: weekSessionsMesocycle(['A', 'B', 'C', 'D']),
+        mesocycleStartWeek: 0, trainingDays: $days,
+        rows: [new SessionRow(week: 2, day: 4, start: weekSessionsSept(20, 9, 30), isSkipped: false)],
+    );
+
+    expect($result->scheduled[3]->time->lengthMinutes)->toBe(45);
 });

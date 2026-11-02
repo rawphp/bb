@@ -6,6 +6,7 @@ use App\Domain\Model\DayType;
 use App\Domain\Model\ExerciseSlot;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\PhaseType;
+use App\Domain\Model\Profile;
 use App\Domain\Placement\ClockRange;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Placement\TrainingDay;
@@ -630,10 +631,13 @@ it('SCH-053 a skipped session trains nothing and its day is a rest day', functio
 
 it('NUT-021 a calorie move shifts one day to another and the meals follow', function () {
     $plain = F::build();
-    $moved = F::build(moves: [new CalorieMove(from: 1, to: 5, kcal: 100)]);
+    // Two moves, applied in turn: 100 kcal from Tuesday to Saturday, then 50 from Wednesday to Sunday.
+    $moved = F::build(moves: [new CalorieMove(from: 1, to: 5, kcal: 100), new CalorieMove(from: 2, to: 6, kcal: 50)]);
 
     expect($moved->days[1]->target->kcal)->toEqualWithDelta($plain->days[1]->target->kcal - 100, F::ACC)
         ->and($moved->days[5]->target->kcal)->toEqualWithDelta($plain->days[5]->target->kcal + 100, F::ACC)
+        ->and($moved->days[2]->target->kcal)->toEqualWithDelta($plain->days[2]->target->kcal - 50, F::ACC)
+        ->and($moved->days[6]->target->kcal)->toEqualWithDelta($plain->days[6]->target->kcal + 50, F::ACC)
         ->and(array_sum(F::kcal($moved)))->toEqualWithDelta(array_sum(F::kcal($plain)), F::ACC);
     F::assertMealsSumToDay($moved->days[1]);
     F::assertMealsSumToDay($moved->days[5]);
@@ -644,4 +648,66 @@ it('NUT-022 a move past the band is refused as a move', function () {
 
     expect($refusal->reason)->toBe(WeekBuildRefusalReason::Move)
         ->and($refusal->move?->reason)->toBe(MoveRefusalReason::OutsideBand);
+});
+
+it('PLAN-022 a week flagged a deload builds as one', function () {
+    $built = F::build(week: 1, flaggedDeload: true);
+
+    expect($built->week->isDeload)->toBeTrue()
+        ->and($built->week->isDietBreak)->toBeTrue()
+        ->and($built->days[0]->workouts[0]->workingSets)->toBe(3)
+        ->and($built->days[1]->target->kcal)->toEqualWithDelta(F::restExpenditure($built->days[1]->day->date), F::ACC);
+});
+
+it('SCH-060 a paused week does not count toward the mesocycle the week builds', function () {
+    // Plan week 1 was paused, so plan week 5 is the 5-week mesocycle's fifth week: its deload.
+    $built = F::build(week: 5, pausedWeeks: [1]);
+
+    expect($built->week->isDeload)->toBeTrue()
+        ->and(array_filter($built->days, fn (WeekDay $day) => $day->workouts !== []))->toHaveCount(3);
+});
+
+it('SCH-060 rest days calories plan a training day as a rest day', function () {
+    // A deload away week on rest-day calories still trains, but Monday is planned as the rest day it eats like,
+    // so its carb check matches Tuesday's (same steps, same calories).
+    $built = F::build(week: 1, away: new AwayWeek(Training::Deload, Calories::RestDays));
+
+    expect($built->days[0]->workouts)->toHaveCount(1)
+        ->and($built->days[0]->target->carbsG)->toEqualWithDelta($built->days[1]->target->carbsG, F::ACC)
+        ->and($built->days[0]->carbBoundsWarning)->toBe($built->days[1]->carbBoundsWarning);
+});
+
+it('SCH-041 the busy list applies to every day unless busy periods are set by weekday', function () {
+    $lunch = new ClockRange(ClockTime::at(9), ClockTime::at(12));
+    $times = fn (NutritionSchedule $nutrition) => array_map(
+        fn (WeekDay $day) => array_map(fn (WeekMeal $meal) => $meal->time, $day->meals),
+        F::build(schedule: F::schedule($nutrition))->days,
+    );
+    $plain = $times(F::nutrition());
+    $everyDay = $times(new NutritionSchedule(steps: F::steps(), eatingWindow: F::window(), mealsPerDay: 6, busy: [$lunch]));
+    // Friday only (ISO 5): the other weekdays have no entry, so no busy periods, whatever the busy list says.
+    $fridayOnly = $times(new NutritionSchedule(
+        steps: F::steps(), eatingWindow: F::window(), mealsPerDay: 6, busy: [$lunch], busyByWeekday: [5 => [$lunch]],
+    ));
+
+    expect($everyDay[0])->not->toEqual($plain[0])
+        ->and($everyDay[4])->not->toEqual($plain[4])
+        ->and($fridayOnly[0])->toEqual($plain[0])
+        ->and($fridayOnly[4])->not->toEqual($plain[4]);
+});
+
+it('NUT-003 a plan outside UTC reads each day\'s age in its own time zone', function () {
+    // Born on 6 January: in Brisbane the plan's Tuesday 6 January is the birthday, though it starts on Monday 5 in UTC.
+    $grid = new PlanWeekGrid(PlanFixtures::date(2026, 1, 5, zone: 'Australia/Brisbane'), PlanFixtures::MONDAY);
+    $plan = PlanFixtures::plan([PlanFixtures::phase(PhaseType::FatLoss, 0, 8, -0.75, $grid)], $grid);
+    $base = F::profile();
+    $profile = new Profile(
+        name: $base->name, sex: $base->sex, birthDate: PlanFixtures::date(1990, 1, 6), heightCm: $base->heightCm,
+        weightKg: $base->weightKg, weightUnit: $base->weightUnit, heightUnit: $base->heightUnit,
+        bodyFatBucket: $base->bodyFatBucket, usesGLP1: $base->usesGLP1, experience: $base->experience,
+    );
+    $built = F::build(plan: $plan, profile: $profile);
+
+    // Tuesday and Thursday are rest days on the same steps, both after the birthday.
+    expect($built->days[1]->target->kcal)->toEqualWithDelta($built->days[3]->target->kcal, F::ACC);
 });

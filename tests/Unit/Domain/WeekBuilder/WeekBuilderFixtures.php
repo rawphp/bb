@@ -160,6 +160,7 @@ final class WeekBuilderFixtures
      * @param  array<string, OtherActivity>  $otherActivities
      * @param  list<CalorieMove>  $moves
      * @param  list<SessionRow>  $sessionRows
+     * @param  list<int>  $pausedWeeks
      */
     public static function build(
         ?Plan $plan = null,
@@ -176,6 +177,8 @@ final class WeekBuilderFixtures
         array $moves = [],
         array $sessionRows = [],
         ?Closure $newId = null,
+        bool $flaggedDeload = false,
+        array $pausedWeeks = [],
     ): BuiltWeek {
         $plan ??= self::fatLossPlan();
 
@@ -183,8 +186,8 @@ final class WeekBuilderFixtures
             plan: $plan, profile: $profile ?? self::profile(),
             mesocycle: $mesocycle ?? self::mesocycle($plan->phases[0]->type), mesocycleStartWeek: $mesocycleStartWeek,
             week: $week, schedule: $schedule ?? self::schedule(), newId: $newId ?? self::newId(), away: $away,
-            isDietBreak: $isDietBreak, dietBreakTurnedOff: $dietBreakTurnedOff,
-            calorieChangePerDay: $calorieChangePerDay, moves: $moves, sessionRows: $sessionRows,
+            isDietBreak: $isDietBreak, flaggedDeload: $flaggedDeload, dietBreakTurnedOff: $dietBreakTurnedOff,
+            calorieChangePerDay: $calorieChangePerDay, moves: $moves, pausedWeeks: $pausedWeeks, sessionRows: $sessionRows,
             otherActivities: $otherActivities,
         );
     }
