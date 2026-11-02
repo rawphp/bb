@@ -1,8 +1,11 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from 'vitest';
 import { CapabilityError, write } from '@/app/call';
+import type { BillingCheckoutStartOutput } from '@/contracts/billing_checkout_start';
+import type { EligibilityRecheckOutput } from '@/contracts/eligibility_recheck';
+import type { TokenCreateOutput } from '@/contracts/token_create';
 import GalleryView from '@/features/dev/GalleryView.vue';
-import Toast from './Toast.vue';
+import Toast, { type ToastResult } from './Toast.vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), write: vi.fn() }));
 
@@ -10,8 +13,8 @@ const writeMock = vi.mocked(write);
 
 const message = 'Meals 3 and 4 re-targeted';
 
-function toast(props: Record<string, unknown> = {}) {
-    return mount(Toast, { props: { message, token: 'tok-1', ...props } });
+function toast(props: Record<string, unknown> = {}, result: ToastResult = { toast: message, undo: 'tok-1' }) {
+    return mount(Toast, { props: { result, ...props } });
 }
 
 function undoButton(wrapper: ReturnType<typeof toast>) {
@@ -20,6 +23,17 @@ function undoButton(wrapper: ReturnType<typeof toast>) {
 
 describe('Toast', () => {
     beforeEach(() => writeMock.mockReset());
+
+    it("CAP-010 takes a write's answer as the server sends it", () => {
+        expectTypeOf<TokenCreateOutput>().toExtend<ToastResult>();
+        expectTypeOf<EligibilityRecheckOutput>().toExtend<ToastResult>();
+        expectTypeOf<BillingCheckoutStartOutput>().toExtend<ToastResult>();
+
+        const wrapper = toast({}, { invalidates: [], toast: message, undo: 'tok-1' } as ToastResult);
+
+        expect(wrapper.get('[role="status"]').text()).toContain(message);
+        expect(undoButton(wrapper).text()).toBe('Undo');
+    });
 
     it('UI-010 shows the message and an Undo button inside a status region', () => {
         const wrapper = toast();
@@ -41,7 +55,8 @@ describe('Toast', () => {
     });
 
     it('UI-010 without a token there is no Undo button', () => {
-        expect(toast({ token: null }).find('button').exists()).toBe(false);
+        expect(toast({}, { toast: message, undo: null }).find('button').exists()).toBe(false);
+        expect(toast({}, { toast: message }).find('button').exists()).toBe(false);
     });
 
     it('UI-030 Undo says what it does to screen readers', () => {
@@ -110,8 +125,44 @@ describe('Toast', () => {
         expect(toast().find('[role="alert"]').exists()).toBe(false);
     });
 
-    it('VIEW-004 empty: with no message nothing is drawn', () => {
-        expect(toast({ message: '' }).find('[role="status"]').exists()).toBe(false);
+    it('VIEW-004 empty: with no toast nothing is drawn, and the status region stays for the next one', async () => {
+        for (const empty of [{ toast: '', undo: 'tok-1' }, { toast: null, undo: 'tok-1' }, { undo: 'tok-1' }]) {
+            const wrapper = toast({ error: 'Nope' }, empty);
+
+            expect(wrapper.get('[role="status"]').text()).toBe('');
+            expect(wrapper.find('button').exists()).toBe(false);
+        }
+
+        const wrapper = toast({}, { toast: '', undo: null });
+        await wrapper.setProps({ result: { toast: message, undo: 'tok-1' } });
+        expect(wrapper.get('[role="status"]').text()).toContain(message);
+    });
+
+    it('CAP-012 a refusal does not carry over to the next toast', async () => {
+        writeMock.mockRejectedValueOnce(
+            new CapabilityError('undo_apply', 409, { ok: false, error: { code: 'conflict', message: 'A later change depends on this.' } }),
+        );
+        const wrapper = toast();
+        await undoButton(wrapper).trigger('click');
+        await flushPromises();
+        expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+
+        await wrapper.setProps({ result: { toast: 'Set added', undo: 'tok-2' } });
+
+        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    });
+
+    it('CAP-012 a refusal that lands after the next toast is shown is not shown on it', async () => {
+        let reject: (error: unknown) => void = () => {};
+        writeMock.mockReturnValueOnce(new Promise((_, fail) => (reject = fail)));
+        const wrapper = toast();
+        await undoButton(wrapper).trigger('click');
+
+        await wrapper.setProps({ result: { toast: 'Set added', undo: 'tok-2' } });
+        reject(new CapabilityError('undo_apply', 409, { ok: false, error: { code: 'conflict', message: 'A later change depends on this.' } }));
+        await flushPromises();
+
+        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
     });
 
     it('OFF-008 pending: the toast says "Waiting to sync" in text and Undo is described by it', () => {
