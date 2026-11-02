@@ -41,6 +41,15 @@ describe('Plan routes', () => {
         }
     });
 
+    it('PH-045 hands Add a phase the type and weeks a suggestion links with', () => {
+        const router = makeRouter(false, createMemoryHistory());
+        const route = router.resolve('/train/plan/add-phase?type=maintenance&weeks=4');
+        const props = route.matched[0]!.props.default as (r: typeof route) => Record<string, unknown>;
+
+        expect(props(route)).toEqual({ type: 'maintenance', weeks: '4' });
+        expect(props(router.resolve('/train/plan/add-phase'))).toEqual({ type: undefined, weeks: undefined });
+    });
+
     it.each(['add-phase', 'prebuilt-plans', 'phase-transition'])('VIEW-001 /dev/screens/plan_show?view=%s finds its screen', (view) => {
         expect(findScreen('plan_show', featureRoutes, view)).not.toBeNull();
     });

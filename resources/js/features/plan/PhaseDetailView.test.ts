@@ -5,6 +5,7 @@ import type { PhaseShowOutput } from '@/contracts/phase_show';
 import type { PlanShowOutput } from '@/contracts/plan_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import CurrentPhaseView from './CurrentPhaseView.vue';
+import ProgressBar from '@/design/ProgressBar.vue';
 import PhaseDetailView from './PhaseDetailView.vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
@@ -52,7 +53,8 @@ describe('PhaseDetailView', () => {
 
         expect(wrapper.find('h1').text()).toBe('Fat loss');
         expect(wrapper.find('[data-test="dates"]').text()).toBe('31 Aug – 22 Nov');
-        expect(wrapper.find('[role="progressbar"]').attributes('aria-valuenow')).toBe('50');
+        const bar = wrapper.findComponent(ProgressBar);
+        expect(bar.props()).toMatchObject({ title: 'Phase progress', valueText: 'Week 7 of 12', fraction: 0.5, tint: 'fat', pending: false });
         expect(wrapper.find('[data-test="progress"]').text()).toBe('Week 7 of 12');
         expect(rows(wrapper)).toEqual([
             'Type Fat loss',
@@ -326,9 +328,17 @@ describe('PhaseDetailView', () => {
     it('OFF-008 marks the phase\'s server numbers waiting to sync and dims them', () => {
         const wrapper = show({ payload: phase, pending: true });
 
-        expect(wrapper.findAll('[data-mark]')).toHaveLength(1);
-        expect(wrapper.find('[data-value]').text()).toBe('Week 7 of 12');
+        expect(wrapper.findComponent(ProgressBar).props('pending')).toBe(true);
+        expect(wrapper.find('[role="progressbar"]').attributes('aria-valuetext')).toBe('Week 7 of 12, waiting to sync');
         expect(wrapper.find('[data-test="rows"]').classes()).toContain('opacity-60');
+    });
+
+    it('OFF-008 marks the progress text waiting to sync when the phase has no progress bar', () => {
+        const wrapper = show({ payload: { ...phase, progress: null }, pending: true });
+
+        expect(wrapper.findComponent(ProgressBar).exists()).toBe(false);
+        expect(wrapper.find('[data-value]').text()).toBe('Week 7 of 12');
+        expect(wrapper.findAll('[data-mark]')).toHaveLength(1);
     });
 
     it('OFF-008 shows no mark when nothing waits to sync', () => {

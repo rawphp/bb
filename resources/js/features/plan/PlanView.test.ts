@@ -112,7 +112,10 @@ describe('PlanView', () => {
         const wrapper = show({ ...plan, maintenance_suggestion: { text: 'No Maintenance in 5 months. Add 4 weeks?', weeks: 4 } });
 
         expect(wrapper.find('[data-test="suggestion"]').text()).toBe('No Maintenance in 5 months. Add 4 weeks?');
-        expect(wrapper.findComponent<typeof RouterLinkStub>('[data-test="suggestion"]').props('to')).toBe('/train/plan/add-phase');
+        expect(wrapper.findComponent<typeof RouterLinkStub>('[data-test="suggestion"]').props('to')).toEqual({
+            path: '/train/plan/add-phase',
+            query: { type: 'maintenance', weeks: '4' },
+        });
     });
 
     it('PLAN-022 opens a deload week with its calories and no switch when it cannot change', async () => {
