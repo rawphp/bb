@@ -11,14 +11,15 @@ export default defineConfig({
         laravel({ input: ['resources/js/app/main.ts'], refresh: true }),
         vue({ template: { transformAssetUrls: { base: null, includeAbsolute: false } } }),
         tailwindcss(),
-        // The service worker is ours (injectManifest). CACHE (#18) and SHELL_PWA
-        // add caching, registration and the manifest.
+        // The service worker is ours (injectManifest) and precaches the shell (OFF-002).
+        // SHELL_PWA adds registration and the manifest.
         VitePWA({
             strategies: 'injectManifest',
             srcDir: 'resources/js/app',
             filename: 'sw.ts',
             injectRegister: false,
             manifest: false,
+            injectManifest: { globPatterns: ['**/*.{js,css,html,woff,woff2,svg,png,ico,webp}'] },
         }),
     ],
 });

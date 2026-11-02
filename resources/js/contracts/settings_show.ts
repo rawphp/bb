@@ -247,3 +247,5 @@ export interface SettingsShowOutput {
    */
   developer: boolean;
 }
+
+export const outputVersion = 'd86be102843e';

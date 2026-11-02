@@ -34,3 +34,5 @@ export interface BillingShowOutput {
    */
   can_manage: boolean;
 }
+
+export const outputVersion = 'e3f079b6a6af';

@@ -1,0 +1,59 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "query": {
+            "type": "string",
+            "maxLength": 100
+        },
+        "tab": {
+            "type": "string",
+            "enum": [
+                "curated",
+                "recents",
+                "favorites",
+                "custom"
+            ]
+        },
+        "collection": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "One of: recipes, saved_meals; or null"
+        },
+        "source": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "One of: recents, favorites, curated, custom, restaurants, packaged; or null"
+        },
+        "group": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "One of: protein_recommended, protein_sparingly, protein_before_bed, veggies, carbs_recommended, carbs_sparingly, fat_recommended, fat_sparingly; or null"
+        },
+        "unit": {
+            "type": "string",
+            "enum": [
+                "g",
+                "oz"
+            ]
+        },
+        "meal_id": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The meal being added to, so its foods are marked"
+        },
+        "expanded_groups": {
+            "type": "array",
+            "description": "Curated groups opened with Show 25 more"
+        }
+    }
+}

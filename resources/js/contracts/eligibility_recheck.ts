@@ -34,3 +34,5 @@ export interface EligibilityRecheckOutput {
    */
   next: "done" | "onboarding";
 }
+
+export const outputVersion = 'd5d639efd6f7';

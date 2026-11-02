@@ -1,0 +1,640 @@
+{
+    "date": "2026-09-23",
+    "title": "Wednesday, Sep 23",
+    "banners": [],
+    "review_available": true,
+    "next_mesocycle": null,
+    "totals": {
+        "day_type": {
+            "text": "Hard",
+            "tone": "neutral"
+        },
+        "status": {
+            "text": "1820 under",
+            "tone": "warning"
+        },
+        "calories": {
+            "label": "Cal",
+            "value_text": "780/2600",
+            "fraction": 0.3,
+            "tone": "neutral"
+        },
+        "protein": {
+            "label": "P",
+            "value_text": "51/170",
+            "fraction": 0.3,
+            "tone": "neutral"
+        },
+        "warnings": [
+            {
+                "text": "Fat is below 20% of calories today. Add a little oil, nuts or avocado.",
+                "tone": "warning"
+            }
+        ],
+        "can_redistribute": true
+    },
+    "steps": {
+        "target_text": "Step count target 6-8k",
+        "actual_text": "5,432 steps"
+    },
+    "timeline": [
+        {
+            "kind": "weigh_in",
+            "id": "weigh-in"
+        },
+        {
+            "kind": "meal",
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X0"
+        },
+        {
+            "kind": "busy",
+            "id": "busy-team-meeting-0900"
+        },
+        {
+            "kind": "meal",
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X1"
+        },
+        {
+            "kind": "meal",
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X2"
+        },
+        {
+            "kind": "workout",
+            "id": "workout"
+        },
+        {
+            "kind": "other_activity",
+            "id": "01JBX0A1B2C3D4E5F6G7H8J9K0"
+        },
+        {
+            "kind": "meal",
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X3"
+        }
+    ],
+    "meals": [
+        {
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X0",
+            "name": "Breakfast",
+            "time": "08:00",
+            "time_text": "8:00 AM",
+            "condensed_time_text": "8:00 AM · 780 kcal",
+            "macros": {
+                "kcal": "780 kcal",
+                "protein": "P 51",
+                "fat": "F 21",
+                "carbs": "C 96",
+                "label": "780 kcal, 51 grams protein, 21 grams fat, 96 grams carbs"
+            },
+            "planned_text": "Oats 80 g · Whey protein 30 g",
+            "eaten_text": "Eaten: 780 kcal, 51 g protein",
+            "plan_banner": null,
+            "badges": [],
+            "check_in": {
+                "state": "on_track",
+                "label": "Checked in, on track",
+                "blocked_message": null,
+                "manual": {
+                    "time": "08:00",
+                    "kcal": 780,
+                    "protein_g": 51,
+                    "fat_g": 21,
+                    "carbs_g": 96
+                }
+            },
+            "menu": [
+                {
+                    "action": "edit_macros_time",
+                    "label": "Edit macros/time",
+                    "enabled": true
+                },
+                {
+                    "action": "load_saved_meal",
+                    "label": "Load saved meal",
+                    "enabled": true
+                },
+                {
+                    "action": "save_as_saved_meal",
+                    "label": "Save as saved meal",
+                    "enabled": true
+                },
+                {
+                    "action": "copy_foods",
+                    "label": "Copy foods",
+                    "enabled": true
+                },
+                {
+                    "action": "remove_foods",
+                    "label": "Remove foods",
+                    "enabled": true
+                },
+                {
+                    "action": "check_in_meal",
+                    "label": "Check in meal",
+                    "enabled": false
+                },
+                {
+                    "action": "check_in_manual",
+                    "label": "Check in at manual macros",
+                    "enabled": true
+                },
+                {
+                    "action": "remove_check_in",
+                    "label": "Remove check-in",
+                    "enabled": true
+                },
+                {
+                    "action": "still_planning",
+                    "label": "Still planning foods",
+                    "enabled": true
+                },
+                {
+                    "action": "delete_meal",
+                    "label": "Delete meal",
+                    "enabled": true
+                }
+            ]
+        },
+        {
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X1",
+            "name": "Lunch",
+            "time": "12:30",
+            "time_text": "12:30 PM",
+            "condensed_time_text": "12:30 PM · 620 kcal",
+            "macros": {
+                "kcal": "620 kcal",
+                "protein": "P 42",
+                "fat": "F 18",
+                "carbs": "C 70",
+                "label": "620 kcal, 42 grams protein, 18 grams fat, 70 grams carbs"
+            },
+            "planned_text": "Chicken breast 150 g · Rice 1.5 servings",
+            "eaten_text": null,
+            "plan_banner": null,
+            "badges": [
+                {
+                    "text": "Adjust foods",
+                    "tone": "warning"
+                }
+            ],
+            "check_in": {
+                "state": "not_checked_in",
+                "label": "Not checked in",
+                "blocked_message": "Fix this meal's foods or mark it done planning before you check it in.",
+                "manual": {
+                    "time": "12:30",
+                    "kcal": 620,
+                    "protein_g": 42,
+                    "fat_g": 18,
+                    "carbs_g": 70
+                }
+            },
+            "menu": [
+                {
+                    "action": "edit_macros_time",
+                    "label": "Edit macros/time",
+                    "enabled": true
+                },
+                {
+                    "action": "load_saved_meal",
+                    "label": "Load saved meal",
+                    "enabled": true
+                },
+                {
+                    "action": "save_as_saved_meal",
+                    "label": "Save as saved meal",
+                    "enabled": true
+                },
+                {
+                    "action": "copy_foods",
+                    "label": "Copy foods",
+                    "enabled": true
+                },
+                {
+                    "action": "remove_foods",
+                    "label": "Remove foods",
+                    "enabled": true
+                },
+                {
+                    "action": "check_in_meal",
+                    "label": "Check in meal",
+                    "enabled": false
+                },
+                {
+                    "action": "check_in_manual",
+                    "label": "Check in at manual macros",
+                    "enabled": true
+                },
+                {
+                    "action": "remove_check_in",
+                    "label": "Remove check-in",
+                    "enabled": true
+                },
+                {
+                    "action": "still_planning",
+                    "label": "Still planning foods",
+                    "enabled": false
+                },
+                {
+                    "action": "delete_meal",
+                    "label": "Delete meal",
+                    "enabled": true
+                }
+            ]
+        },
+        {
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X2",
+            "name": "Pre-workout",
+            "time": "16:00",
+            "time_text": "4:00 PM",
+            "condensed_time_text": "4:00 PM · 450 kcal",
+            "macros": {
+                "kcal": "450 kcal",
+                "protein": "P 35",
+                "fat": "F 8",
+                "carbs": "C 60",
+                "label": "450 kcal, 35 grams protein, 8 grams fat, 60 grams carbs"
+            },
+            "planned_text": null,
+            "eaten_text": null,
+            "plan_banner": "Plan this meal before you eat it",
+            "badges": [],
+            "check_in": {
+                "state": "not_checked_in",
+                "label": "Not checked in",
+                "blocked_message": null,
+                "manual": {
+                    "time": "16:00",
+                    "kcal": 450,
+                    "protein_g": 35,
+                    "fat_g": 8,
+                    "carbs_g": 60
+                }
+            },
+            "menu": [
+                {
+                    "action": "edit_macros_time",
+                    "label": "Edit macros/time",
+                    "enabled": true
+                },
+                {
+                    "action": "load_saved_meal",
+                    "label": "Load saved meal",
+                    "enabled": true
+                },
+                {
+                    "action": "save_as_saved_meal",
+                    "label": "Save as saved meal",
+                    "enabled": true
+                },
+                {
+                    "action": "copy_foods",
+                    "label": "Copy foods",
+                    "enabled": true
+                },
+                {
+                    "action": "remove_foods",
+                    "label": "Remove foods",
+                    "enabled": true
+                },
+                {
+                    "action": "check_in_meal",
+                    "label": "Check in meal",
+                    "enabled": false
+                },
+                {
+                    "action": "check_in_manual",
+                    "label": "Check in at manual macros",
+                    "enabled": true
+                },
+                {
+                    "action": "remove_check_in",
+                    "label": "Remove check-in",
+                    "enabled": true
+                },
+                {
+                    "action": "still_planning",
+                    "label": "Still planning foods",
+                    "enabled": true
+                },
+                {
+                    "action": "delete_meal",
+                    "label": "Delete meal",
+                    "enabled": true
+                }
+            ]
+        },
+        {
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X3",
+            "name": "Post-workout",
+            "time": "19:30",
+            "time_text": "7:30 PM",
+            "condensed_time_text": "7:30 PM · 750 kcal",
+            "macros": {
+                "kcal": "750 kcal",
+                "protein": "P 42",
+                "fat": "F 15",
+                "carbs": "C 110",
+                "label": "750 kcal, 42 grams protein, 15 grams fat, 110 grams carbs"
+            },
+            "planned_text": null,
+            "eaten_text": null,
+            "plan_banner": "Plan this meal before you eat it",
+            "badges": [],
+            "check_in": {
+                "state": "not_checked_in",
+                "label": "Not checked in",
+                "blocked_message": null,
+                "manual": {
+                    "time": "19:30",
+                    "kcal": 750,
+                    "protein_g": 42,
+                    "fat_g": 15,
+                    "carbs_g": 110
+                }
+            },
+            "menu": [
+                {
+                    "action": "edit_macros_time",
+                    "label": "Edit macros/time",
+                    "enabled": true
+                },
+                {
+                    "action": "load_saved_meal",
+                    "label": "Load saved meal",
+                    "enabled": true
+                },
+                {
+                    "action": "save_as_saved_meal",
+                    "label": "Save as saved meal",
+                    "enabled": true
+                },
+                {
+                    "action": "copy_foods",
+                    "label": "Copy foods",
+                    "enabled": true
+                },
+                {
+                    "action": "remove_foods",
+                    "label": "Remove foods",
+                    "enabled": true
+                },
+                {
+                    "action": "check_in_meal",
+                    "label": "Check in meal",
+                    "enabled": false
+                },
+                {
+                    "action": "check_in_manual",
+                    "label": "Check in at manual macros",
+                    "enabled": true
+                },
+                {
+                    "action": "remove_check_in",
+                    "label": "Remove check-in",
+                    "enabled": true
+                },
+                {
+                    "action": "still_planning",
+                    "label": "Still planning foods",
+                    "enabled": true
+                },
+                {
+                    "action": "delete_meal",
+                    "label": "Delete meal",
+                    "enabled": true
+                }
+            ]
+        }
+    ],
+    "workouts": [
+        {
+            "id": "workout",
+            "mesocycle_id": "01JBWZK7Q8R9S0T1V2W3X4Y5Z6",
+            "week": 2,
+            "day": 2,
+            "title": "Week 2 · Day 2 · Upper A",
+            "name": "Upper A",
+            "time": "17:30",
+            "time_text": "5:30 PM",
+            "condensed_time_text": "5:30 PM · 55 min",
+            "summary_text": "55 min · 5 exercises · 18 sets",
+            "exercises": [
+                {
+                    "name": "Bench press",
+                    "sets_text": "4 sets"
+                },
+                {
+                    "name": "Chest-supported row",
+                    "sets_text": "4 sets"
+                },
+                {
+                    "name": "Overhead press",
+                    "sets_text": "3 sets"
+                },
+                {
+                    "name": "Lat pulldown",
+                    "sets_text": "4 sets"
+                },
+                {
+                    "name": "Cable curl",
+                    "sets_text": "3 sets"
+                }
+            ],
+            "state": "done",
+            "status_text": "Done",
+            "completed": {
+                "text": "16 of 18 sets completed",
+                "tone": "good"
+            },
+            "menu": [
+                {
+                    "action": "change_time",
+                    "label": "Change time"
+                },
+                {
+                    "action": "move_day",
+                    "label": "Move to another day"
+                }
+            ],
+            "move_days": [
+                {
+                    "date": "2026-09-24",
+                    "label": "Thu, Sep 24",
+                    "enabled": true,
+                    "note": null
+                },
+                {
+                    "date": "2026-09-25",
+                    "label": "Fri, Sep 25",
+                    "enabled": false,
+                    "note": "This day already has a workout. Pick a different day."
+                }
+            ]
+        }
+    ],
+    "weigh_ins": [
+        {
+            "id": "weigh-in",
+            "time_text": "7:00 AM",
+            "weight_text": "82.4 kg"
+        }
+    ],
+    "other_activities": [
+        {
+            "id": "01JBX0A1B2C3D4E5F6G7H8J9K0",
+            "name": "Tennis",
+            "time_text": "6:45 PM · 45 min",
+            "intensity_text": "Moderate",
+            "menu": [
+                {
+                    "action": "edit",
+                    "label": "Edit"
+                },
+                {
+                    "action": "delete",
+                    "label": "Delete"
+                }
+            ]
+        }
+    ],
+    "busy_periods": [
+        {
+            "id": "busy-team-meeting-0900",
+            "label": "Team meeting",
+            "time_text": "9:00 AM – 10:30 AM"
+        }
+    ],
+    "off_plan": [
+        {
+            "id": "01JBX0F1G2H3J4K5M6N7P8Q9R0",
+            "name": "Office cake",
+            "time_text": "3:00 PM",
+            "macros": {
+                "kcal": "320 kcal",
+                "protein": "P 4",
+                "fat": "F 16",
+                "carbs": "C 40",
+                "label": "320 kcal, 4 grams protein, 16 grams fat, 40 grams carbs"
+            }
+        }
+    ],
+    "schedule_menu": [
+        {
+            "action": "add_meal",
+            "label": "Add meal"
+        },
+        {
+            "action": "add_workout",
+            "label": "Add workout"
+        },
+        {
+            "action": "add_busy_period",
+            "label": "Add busy period"
+        },
+        {
+            "action": "copy_day",
+            "label": "Copy day"
+        },
+        {
+            "action": "copy_week",
+            "label": "Copy week"
+        },
+        {
+            "action": "optimize_schedule",
+            "label": "Optimize schedule"
+        },
+        {
+            "action": "edit_schedule",
+            "label": "Edit schedule"
+        }
+    ],
+    "add_meal_time": "14:00",
+    "add_workout": {
+        "session": null,
+        "session_message": "This day already has a workout. Pick a different day.",
+        "activity": {
+            "id": "01JBX0A1B2C3D4E5F6G7H8J9K0",
+            "name": "Tennis",
+            "start": "18:45",
+            "minutes": 45,
+            "intensity": "moderate"
+        }
+    },
+    "schedule": {
+        "apply_to": [
+            {
+                "value": "this_day",
+                "label": "This day"
+            },
+            {
+                "value": "all_future_days",
+                "label": "All future days"
+            }
+        ],
+        "this_day": {
+            "window_start": "08:00",
+            "window_end": "20:00",
+            "meal_count": 4,
+            "busy_periods": [
+                {
+                    "label": "Team meeting",
+                    "start": "09:00",
+                    "end": "10:30"
+                }
+            ],
+            "training_start": "17:30"
+        },
+        "all_future_days": {
+            "window_start": "08:00",
+            "window_end": "20:00",
+            "meal_count": 4,
+            "busy_periods": [
+                {
+                    "label": "Team meeting",
+                    "start": "09:00",
+                    "end": "10:30"
+                }
+            ],
+            "training_start": "17:30"
+        },
+        "training_weekdays": [
+            {
+                "iso": 1,
+                "label": "Mon",
+                "selected": true
+            },
+            {
+                "iso": 2,
+                "label": "Tue",
+                "selected": false
+            },
+            {
+                "iso": 3,
+                "label": "Wed",
+                "selected": true
+            },
+            {
+                "iso": 4,
+                "label": "Thu",
+                "selected": false
+            },
+            {
+                "iso": 5,
+                "label": "Fri",
+                "selected": true
+            },
+            {
+                "iso": 6,
+                "label": "Sat",
+                "selected": false
+            },
+            {
+                "iso": 7,
+                "label": "Sun",
+                "selected": false
+            }
+        ]
+    },
+    "missed_session": null,
+    "missed_weeks": null
+}

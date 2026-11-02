@@ -28,3 +28,5 @@ export interface AgentStatusShowOutput {
   note: string;
   has_conversation: boolean;
 }
+
+export const outputVersion = '572b4ae1d444';

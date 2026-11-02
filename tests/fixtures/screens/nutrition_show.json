@@ -1,0 +1,50 @@
+{
+    "date_text": "Today",
+    "meals": [
+        {
+            "meal_id": "01JBX5M0000000000000000001",
+            "name": "Breakfast",
+            "time_text": "7:30 AM",
+            "kcal_text": "520 / 520 kcal",
+            "check_in": {
+                "state": "onTrack",
+                "text": "Checked in",
+                "tone": "good"
+            }
+        },
+        {
+            "meal_id": "01JBX5M0000000000000000002",
+            "name": "Lunch",
+            "time_text": "12:30 PM",
+            "kcal_text": "610 / 700 kcal",
+            "check_in": {
+                "state": "under",
+                "text": "Checked in under target",
+                "tone": "warning"
+            }
+        },
+        {
+            "meal_id": "01JBX5M0000000000000000003",
+            "name": "Dinner",
+            "time_text": "6:30 PM",
+            "kcal_text": "550 / 1040 kcal",
+            "check_in": {
+                "state": "notCheckedIn",
+                "text": "Not checked in",
+                "tone": "neutral"
+            }
+        },
+        {
+            "meal_id": "01JBX5M0000000000000000004",
+            "name": "Meal 4",
+            "time_text": null,
+            "kcal_text": "0 / 380 kcal",
+            "check_in": {
+                "state": "notCheckedIn",
+                "text": "Not checked in",
+                "tone": "neutral"
+            }
+        }
+    ],
+    "empty_text": null
+}

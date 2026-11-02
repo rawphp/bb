@@ -16,3 +16,5 @@ export interface ArticleShowOutput {
     }[];
   }[];
 }
+
+export const outputVersion = '9a2ce11dd51c';

@@ -36,3 +36,5 @@ export interface EligibilityRecheckShowOutput {
     measured: boolean;
   }[];
 }
+
+export const outputVersion = 'bca04e12e639';

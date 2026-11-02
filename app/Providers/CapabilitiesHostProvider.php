@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Support\HostBus;
+use App\Capabilities\Support\PrefetchesKeys;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
 use LogicException;
@@ -16,7 +17,8 @@ use Rawphp\Capabilities\Registry\CapabilityRegistry;
  * The host side of rawphp/laravel-capabilities. Registered last.
  *
  * Registration has one path: every app/Capabilities/<Module>/<StudlyName>Capability.php,
- * loaded in sorted order. A duplicate name fails boot.
+ * loaded in sorted order. A duplicate name fails boot. A class that implements
+ * PrefetchesKeys is also tagged with it, for sync_manifest (OFF-004).
  */
 final class CapabilitiesHostProvider extends ServiceProvider
 {
@@ -53,6 +55,10 @@ final class CapabilitiesHostProvider extends ServiceProvider
             }
 
             $names[] = $capability->definition()->register($registry)->name;
+
+            if ($capability instanceof PrefetchesKeys) {
+                $container->tag([$class], PrefetchesKeys::class);
+            }
         }
 
         return $names;

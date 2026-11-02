@@ -12,3 +12,5 @@ export interface LearnShowOutput {
     }[];
   }[];
 }
+
+export const outputVersion = 'ad17a06f58d7';

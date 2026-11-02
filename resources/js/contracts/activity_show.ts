@@ -19,3 +19,5 @@ export interface ActivityShowOutput {
     };
   }[];
 }
+
+export const outputVersion = '1aa63b131e05';
