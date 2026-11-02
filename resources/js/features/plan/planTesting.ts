@@ -1,5 +1,5 @@
 import { expect, vi } from 'vitest';
-import { write } from '@/app/call';
+import { writeNow } from '@/app/call';
 import type { PlanShowOutput } from '@/contracts/plan_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 
@@ -10,7 +10,7 @@ export const plan = (state?: string) => screenFixture<PlanShowOutput>(state ? `p
 
 /** Each write sent, as [name, input], checked against that write's schema snapshot. */
 export function sent(): [string, Record<string, unknown>][] {
-    return vi.mocked(write).mock.calls.map(([name, input]) => {
+    return vi.mocked(writeNow).mock.calls.map(([name, input]) => {
         expect(inputViolations(name, input), name).toEqual([]);
         return [name, input as Record<string, unknown>];
     });

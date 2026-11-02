@@ -1,13 +1,13 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, write } from '@/app/call';
+import { CapabilityError, writeNow } from '@/app/call';
 import type { CustomFoodsShowOutput } from '@/contracts/custom_foods_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import CustomFoodSheet from './CustomFoodSheet.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), writeNow: vi.fn() }));
 
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const foods = screenFixture<CustomFoodsShowOutput>('custom_foods_show').foods;
 const granola = foods[0]!;
 const pancakes = foods[1]!;

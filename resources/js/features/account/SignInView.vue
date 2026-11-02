@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { postHost, warm } from '@/app/call';
+import { postHost, sync } from '@/app/call';
+import { loadOutbox, othersWaiting, removeOthers } from '@/app/outbox';
 import { hostFailure } from '@/app/hostFailure';
 import { toneClasses } from '@/design/tones';
 
@@ -34,6 +35,8 @@ const signedIn = ref(false);
 // A friendly answer, such as where the reset link went.
 const info = ref<string | null>(null);
 const resendIn = ref(0);
+// Signed in on a device holding another account's unsynced changes (OFF-012).
+const switching = ref(false);
 let ticker: ReturnType<typeof setInterval> | undefined;
 
 const canSubmit = computed(() => {
@@ -90,12 +93,38 @@ async function submit(): Promise<void> {
     });
 }
 
-// Signed in: fill the offline cache as the new user (OFF-004), then open the app.
+// Signed in. When the device holds changes another account made and never synced, the
+// user is told they will be deleted, and they go only when the user says so (OFF-012).
+// Otherwise the app opens.
 async function enter(): Promise<void> {
-    warm().catch(() => {
-        // Offline or refused: the next reconnect warms again.
+    await loadOutbox();
+    if (othersWaiting.value > 0) switching.value = true;
+    else await openApp();
+}
+
+// Replay the user's own outbox and fill the offline cache as them (OFF-004), then open the app.
+async function openApp(): Promise<void> {
+    sync().catch(() => {
+        // Offline or refused: the next reconnect syncs again.
     });
     await router.replace('/');
+}
+
+async function deleteOthers(): Promise<void> {
+    await run(async () => {
+        await removeOthers();
+        switching.value = false;
+        await openApp();
+    });
+}
+
+// The other account can then sign in on this device and sync its changes.
+async function signOutInstead(): Promise<void> {
+    await run(async () => {
+        await postHost('/sign-out', {});
+        await loadOutbox();
+        switching.value = false;
+    });
 }
 
 async function sendCode(): Promise<void> {
@@ -159,6 +188,28 @@ const linkClass = 'min-h-tap px-2 text-accent active:opacity-70 disabled:opacity
                 <p class="text-[15px] text-secondary-text">{{ subtitle }}</p>
             </header>
 
+            <section v-if="switching" class="flex flex-col gap-4" role="alertdialog" aria-labelledby="switch-title" aria-describedby="switch-words">
+                <h2 id="switch-title" class="text-[17px] font-semibold">Unsynced changes from another account</h2>
+                <p id="switch-words" class="rounded-xl p-3 text-[15px]" :class="toneClasses.warning">
+                    {{ othersWaiting }} {{ othersWaiting === 1 ? 'change' : 'changes' }} made on this device by another account
+                    {{ othersWaiting === 1 ? "hasn't" : "haven't" }} synced. If you continue, {{ othersWaiting === 1 ? 'it is' : 'they are' }} deleted.
+                </p>
+                <p v-if="generalError" class="rounded-xl p-3 text-[13px]" :class="toneClasses.warning" role="alert">{{ generalError }}</p>
+                <button
+                    type="button"
+                    class="min-h-tap w-full rounded-xl bg-accent text-[17px] font-semibold text-on-accent active:opacity-80 disabled:opacity-40"
+                    data-test="discard-others"
+                    :disabled="busy"
+                    @click="deleteOthers"
+                >
+                    Delete them and continue
+                </button>
+                <button type="button" :class="linkClass" data-test="sign-out-instead" :disabled="busy" @click="signOutInstead">
+                    Sign out, so that account can sign in and sync them
+                </button>
+            </section>
+
+            <template v-else>
             <form class="flex flex-col gap-6" novalidate @submit.prevent="submit">
                 <fieldset class="flex flex-col gap-4" :disabled="busy">
                     <template v-if="mode === 'code'">
@@ -290,6 +341,7 @@ const linkClass = 'min-h-tap px-2 text-accent active:opacity-70 disabled:opacity
                     {{ mode === 'signIn' ? 'New here? Create an account' : 'Have an account? Sign in' }}
                 </button>
             </div>
+            </template>
         </div>
     </main>
 </template>

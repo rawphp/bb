@@ -1,10 +1,10 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import { plan, sent } from './planTesting';
 import PrebuiltPlansView from './PrebuiltPlansView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 const replace = vi.fn();
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ replace }) }));
 
@@ -20,7 +20,7 @@ describe('PrebuiltPlansView', () => {
     beforeEach(() => {
         vi.mocked(read).mockReset().mockResolvedValue(current);
         vi.mocked(readFresh).mockReset().mockResolvedValue(current);
-        vi.mocked(write).mockReset().mockResolvedValue({});
+        vi.mocked(writeNow).mockReset().mockResolvedValue({});
         replace.mockReset();
     });
 
@@ -62,7 +62,7 @@ describe('PrebuiltPlansView', () => {
     });
 
     it('CAP-019 sends the same first_phase_id again after prebuilt_plan_apply got no answer', async () => {
-        vi.mocked(write).mockRejectedValueOnce(new CapabilityError('prebuilt_plan_apply', 0, { reason: 'network' }));
+        vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('prebuilt_plan_apply', 0, { reason: 'network' }));
         const wrapper = show();
         for (let tap = 0; tap < 2; tap++) {
             await plans(wrapper)[0]!.find('[data-test="apply"]').trigger('click');
@@ -117,7 +117,7 @@ describe('PrebuiltPlansView', () => {
     });
 
     it('CAP-012 shows the server\'s words when a plan is refused, and stays', async () => {
-        vi.mocked(write).mockRejectedValueOnce(new CapabilityError('prebuilt_plan_apply', 422, { error: { message: 'Your plan already runs past 24 weeks.' } }));
+        vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('prebuilt_plan_apply', 422, { error: { message: 'Your plan already runs past 24 weeks.' } }));
         const wrapper = show();
         await plans(wrapper)[0]!.find('[data-test="apply"]').trigger('click');
         await flushPromises();

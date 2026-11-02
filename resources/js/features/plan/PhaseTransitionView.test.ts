@@ -1,12 +1,12 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import type { PlanShowOutput } from '@/contracts/plan_show';
 import { screenFixture } from '@/testing/schemas';
 import PhaseTransitionView from './PhaseTransitionView.vue';
 import { plan, sent } from './planTesting';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 const replace = vi.fn();
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ replace }) }));
 
@@ -32,7 +32,7 @@ describe('PhaseTransitionView', () => {
     beforeEach(() => {
         vi.mocked(read).mockReset().mockResolvedValue(ending);
         vi.mocked(readFresh).mockReset().mockResolvedValue(ending);
-        vi.mocked(write).mockReset().mockResolvedValue({});
+        vi.mocked(writeNow).mockReset().mockResolvedValue({});
         replace.mockReset();
     });
 
@@ -209,7 +209,7 @@ describe('PhaseTransitionView', () => {
     });
 
     it('CAP-019 sends the same next_phase_id again after phase_transition_complete got no answer', async () => {
-        vi.mocked(write).mockRejectedValueOnce(new CapabilityError('phase_transition_complete', 0, { reason: 'network' }));
+        vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('phase_transition_complete', 0, { reason: 'network' }));
         const wrapper = show();
         await confirm(wrapper);
         await confirm(wrapper);
@@ -220,7 +220,7 @@ describe('PhaseTransitionView', () => {
     });
 
     it('PH-046 nothing on the sheet changes the choice while Confirm is sending', async () => {
-        vi.mocked(write).mockReturnValue(new Promise(() => {}));
+        vi.mocked(writeNow).mockReturnValue(new Promise(() => {}));
         const wrapper = show();
         await pick(wrapper, 'options', 2);
         await wrapper.findAll('[data-test="readiness"] [role="radiogroup"]')[0]!.findAll('[role="radio"]')[1]!.trigger('click');
@@ -238,7 +238,7 @@ describe('PhaseTransitionView', () => {
         expect(wrapper.find('[data-test="refusal"]').text()).toBe('This phase cannot end before its first week.');
         expect(wrapper.find('[data-save]').attributes('disabled')).toBeDefined();
         await confirm(wrapper);
-        expect(write).not.toHaveBeenCalled();
+        expect(writeNow).not.toHaveBeenCalled();
     });
 
     it.each(['plan_show', 'plan_show.empty'])('PH-030 has nothing to confirm when no phase is ending (%s)', (fixture) => {
@@ -252,7 +252,7 @@ describe('PhaseTransitionView', () => {
         const wrapper = show();
         await wrapper.find('[data-cancel]').trigger('click');
 
-        expect(write).not.toHaveBeenCalled();
+        expect(writeNow).not.toHaveBeenCalled();
         expect(replace).toHaveBeenCalledWith('/train');
     });
 
@@ -277,7 +277,7 @@ describe('PhaseTransitionView', () => {
     });
 
     it('CAP-012 shows the server\'s words when the transition is refused, and stays open', async () => {
-        vi.mocked(write).mockRejectedValueOnce(new CapabilityError('phase_transition_complete', 422, { error: { message: 'The next phase overlaps a planned one.' } }));
+        vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('phase_transition_complete', 422, { error: { message: 'The next phase overlaps a planned one.' } }));
         const wrapper = show();
         await confirm(wrapper);
 
