@@ -21,10 +21,14 @@ it('WO-020 a skipped set cannot be logged', function () {
         ->and(SetLog::refusal(false, true, 10, 80.0, ExerciseLoadType::Barbell))->toBeNull();
 });
 
-it('WO-023 CAP-015 a weight is stored in kg from the unit it was typed in, and none for pure bodyweight', function () {
-    expect(SetLog::kg(100.0, WeightUnit::Lb, ExerciseLoadType::Barbell))->toEqualWithDelta(45.359237, 1e-9)
-        ->and(SetLog::kg(22.5, WeightUnit::Kg, ExerciseLoadType::Dumbbell))->toBe(22.5)
-        ->and(SetLog::kg(10.0, WeightUnit::Kg, ExerciseLoadType::Bodyweight))->toBeNull()
-        ->and(SetLog::kg(10.0, WeightUnit::Kg, ExerciseLoadType::BodyweightPlusLoad))->toBe(10.0)
-        ->and(SetLog::kg(null, null, ExerciseLoadType::Barbell))->toBeNull();
+it('WO-023 CAP-015 a weight is stored in kg from the unit it was typed in, whatever the load type', function () {
+    // rp-clone setWeight stores what was typed for every load type; only the load maths leaves bodyweight out.
+    expect(SetLog::kg(100.0, WeightUnit::Lb, isLogged: false))->toEqualWithDelta(45.359237, 1e-9)
+        ->and(SetLog::kg(22.5, WeightUnit::Kg, isLogged: true))->toBe(22.5)
+        ->and(SetLog::kg(null, null, isLogged: false))->toBeNull();
+});
+
+it('WO-003 a logged set with no weight stores no added load as 0', function () {
+    // rp-clone draft(of:): a logged set's weight is `weight ?? 0`, so it never reads back as its target.
+    expect(SetLog::kg(null, null, isLogged: true))->toBe(0.0);
 });

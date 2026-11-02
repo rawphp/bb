@@ -7,6 +7,7 @@ use App\Actions\Workout\SetWorkoutExerciseNote;
 use App\Actions\Workout\SetWorkoutSetType;
 use App\Actions\Workout\SkipWorkoutSet;
 use App\Actions\Workout\StartWorkout;
+use App\Capabilities\Reads\Workout\WorkoutPayload;
 use App\Domain\Model\Equipment;
 use App\Domain\Model\ExerciseLoadType;
 use App\Domain\Model\MuscleGroup;
@@ -19,6 +20,7 @@ use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Workout\WorkoutIds;
+use App\Support\Workout\WorkoutSnapshot;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -109,13 +111,26 @@ it('WO-003 a set needs its weight and reps before it can be logged, and a bodywe
         ->and(WorkoutSet::query()->find($ids[0])->is_logged)->toBeFalse();
 });
 
-it('WO-003 a bodyweight set logs with no added load', function () {
+it('WO-003 WO-023 a bodyweight set keeps the added weight the user typed', function () {
     [$user, , $ids] = setsSeed('bodyweight');
 
     app(LogWorkoutSet::class)($user, $ids[0], 10.0, WeightUnit::Kg, 12, true);
 
     $set = WorkoutSet::query()->find($ids[0]);
-    expect([$set->actual_weight_kg, $set->actual_reps, $set->is_logged])->toBe([null, 12, true]);
+    expect([$set->actual_weight_kg, $set->actual_reps, $set->is_logged])->toBe([10.0, 12, true]);
+});
+
+it('WO-003 a logged set with no added load comes back with an empty weight, not its target', function () {
+    // Week 2's weighted bench was logged at 81 and 82 kg, so week 3's set 1 has a target load.
+    [$user, , $ids] = setsSeed('bodyweightPlusLoad');
+    $mesocycle = WorkoutSession::query()->where('week', 3)->sole()->mesocycle_id;
+    expect(WorkoutSet::query()->find($ids[0])->target_weight_kg)->toBeGreaterThan(0.0);
+
+    app(LogWorkoutSet::class)($user, $ids[0], null, null, 8, true);
+
+    $set = WorkoutPayload::build(WorkoutSnapshot::load($user, $mesocycle, 3, 1))->toArray()['exercises'][0]['sets'][0];
+    expect(WorkoutSet::query()->find($ids[0])->actual_weight_kg)->toBe(0.0)
+        ->and([$set['is_logged'], $set['weight'], $set['reps']])->toBe([true, null, 8]);
 });
 
 it('WO-020 a skipped set cannot be logged', function () {

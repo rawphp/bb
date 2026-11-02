@@ -250,6 +250,17 @@ it('OFF-022 a set logged at another weight changes no other set\'s target or rep
         ->and($second['id'])->toBe($planned[1]['id']);
 });
 
+it('WO-003 a logged set with no added load comes back with an empty weight, not its target', function () {
+    // rp-clone test_WO_003_aLoggedSetWithNoAddedLoadComesBackWithAnEmptyWeight, in a week with a target load.
+    $set = woExercise(woShow(...woStarted(
+        [woRow('slot-12', 0, W::BENCH, ['target_weight_kg' => 10, 'target_reps' => 8, 'actual_weight_kg' => 0, 'actual_reps' => 8, 'is_logged' => true])],
+        ['exercises' => [W::BENCH => ['load_type' => 'bodyweightPlusLoad', 'equipment' => 'bodyweight']]],
+    )), 'Bench Press')['sets'][0];
+
+    expect([$set['is_logged'], $set['weight'], $set['reps']])->toBe([true, null, 8])
+        ->and($set['target_weight']['value'])->toBe(10.0);
+});
+
 it('WO-004 WO-020 an added set shows the load it holds with no target and no rep table', function () {
     $added = W::set('added-bench', 'm2w3d1', W::BENCH, 2, [
         'workout_exercise_id' => WorkoutIds::block(WorkoutIds::workout(W::MESO, 3, 1), 'slot-12'), 'actual_weight_kg' => 85, 'actual_reps' => 9,
