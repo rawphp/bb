@@ -49,7 +49,7 @@ it('CAP-019 answers 422 naming workout_id when it is not a ULID', function () {
         ->assertJsonPath('error.violations.0.field', 'workout_id');
 });
 
-it('WO-040 answers 422 with the banner\'s words while feedback is unanswered', function () {
+it('WO-040 answers 422 with the banner\'s words and the muscle while feedback is unanswered', function () {
     Carbon::setTestNow('2026-09-21 18:30:00');
     $user = TrainSeed::user();
     $session = WorkoutSeed::started(TrainSeed::mesocycle($user), 3, 1, '2026-09-21 17:30:00');

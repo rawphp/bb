@@ -118,6 +118,11 @@ it('FB-001 refuses a session that has not started or was skipped', function () {
     $session->forceFill(['is_skipped' => true])->save();
 
     expect(answerRefusal($user, chestAnswer($session, $mesocycle)))->toBe(AnswerWorkoutFeedback::NOT_STARTED);
+
+    $session->forceFill(['is_skipped' => false, 'actual_start_at' => null])->save();
+
+    expect(answerRefusal($user, chestAnswer($session, $mesocycle)))->toBe(AnswerWorkoutFeedback::NOT_STARTED)
+        ->and(MuscleFeedback::query()->count())->toBe(0);
 });
 
 it('FB-009 saving again updates the rows that changed and keeps their ids', function () {

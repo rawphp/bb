@@ -11,6 +11,7 @@ use App\Models\ExerciseFeedback;
 use App\Models\Mesocycle;
 use App\Models\User;
 use App\Models\WorkoutSession;
+use App\Models\WorkoutSet;
 use App\Support\Workouts\SessionRecovery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\TrainSeed;
@@ -74,9 +75,12 @@ it('PROG-018 a lot of joint pain last week cuts the weight 10%, rounded down to 
     expect(recoveryOf($user, $session, $bench))->toBe([[70.0, 70.0, 70.0], RecoveryLoad::JOINT_PAIN_NOTE]);
 });
 
-it('PROG-018 moderate pain, or pain in a session of another day, does not cut', function () {
+it('PROG-018 moderate pain, or pain in a session of another day or week, does not cut', function () {
     [$user, $mesocycle, $bench] = recoverySeed();
     painAfter(WorkoutSeed::started($mesocycle, 1, 1, '2026-09-07 17:30:00'), $bench, 'aLot');
+    $otherDay = WorkoutSeed::started($mesocycle, 2, 2, '2026-09-17 17:30:00');
+    WorkoutSet::query()->where('workout_session_id', $otherDay->id)->update(['exercise_id' => $bench->id]);
+    painAfter($otherDay, $bench, 'aLot');
     painAfter(WorkoutSeed::started($mesocycle, 2, 1, '2026-09-14 17:30:00'), $bench, 'moderate');
     $session = WorkoutSeed::started($mesocycle, 3, 1, '2026-09-21 17:30:00', reps: null);
 
@@ -117,4 +121,31 @@ it('EX-009 the start time orders the answers before week and day, so an older an
     painAfter($session, $bench, 'aLot');
 
     expect(SessionRecovery::load($user, $session, WeightUnit::Kg)->swapSuggestion($bench))->not->toBeNull();
+});
+
+it('PROG-053 reps below the range two sessions running take the target down one step', function () {
+    [$user, $mesocycle, $bench] = recoverySeed();
+    $bench->forceFill(['rep_range_min' => 12, 'rep_range_max' => 20])->save();
+    WorkoutSeed::started($mesocycle, 1, 1, '2026-09-07 17:30:00', reps: 9);
+    WorkoutSeed::started($mesocycle, 2, 1, '2026-09-14 17:30:00', reps: 9);
+    $session = WorkoutSeed::started($mesocycle, 3, 1, '2026-09-21 17:30:00', reps: null);
+    $planned = array_fill(0, 3, new PlannedLoad(82.5, 10));
+    $rules = new LoadRules(LoadType::BarbellOrSmithMachine, WeightUnit::Kg, false, null, new ClosedRange(12, 20));
+    $result = SessionRecovery::load($user, $session, WeightUnit::Kg)->recovery($bench->fresh(), $planned, 1, false, false, $rules);
+
+    expect(array_map(fn (PlannedLoad $load) => $load->weight, $result->targets))->toBe([80.0, 80.0, 80.0])
+        ->and($result->note)->not->toBeNull();
+});
+
+it('PROG-051 the held weight is last week\'s, in the pounds the user sees', function () {
+    [$user, $mesocycle, $bench] = recoverySeed();
+    WorkoutSeed::started($mesocycle, 1, 1, '2026-09-07 17:30:00', reps: 7);
+    WorkoutSeed::started($mesocycle, 2, 1, '2026-09-14 17:30:00', reps: 7);
+    $session = WorkoutSeed::started($mesocycle, 3, 1, '2026-09-21 17:30:00', reps: null);
+    $planned = array_fill(0, 3, new PlannedLoad(180.0, 10));
+    $rules = new LoadRules(LoadType::BarbellOrSmithMachine, WeightUnit::Lb, false, null, new ClosedRange(5, 30));
+    $result = SessionRecovery::load($user, $session, WeightUnit::Lb)->recovery($bench, $planned, 1, false, false, $rules);
+
+    // 80 kg is 176.4 lb, held on the 5 lb plates; read as kilograms it would stay 80.
+    expect($result->targets[0]->weight)->toBe(175.0);
 });

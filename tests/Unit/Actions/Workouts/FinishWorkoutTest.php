@@ -161,3 +161,23 @@ it('SCH-054 a session within 20 minutes of plan, or with no targets for the day,
 
     expect(finishAt($user, $session, '2026-09-21 19:30:00'))->toMatchArray(['toast' => null, 'dates' => []]);
 });
+
+it('PROG-019 finishing an older session late leaves the counts a later session of the day already set', function () {
+    [$user, $mesocycle, $session] = finishSession();
+    $later = WorkoutSeed::started($mesocycle, 4, 1, '2026-09-28 17:30:00');
+    $later->forceFill(['actual_end_at' => '2026-09-28 18:30:00'])->save();
+
+    expect(finishAt($user, $session, '2026-09-21 18:30:00')['toast'])->toBeNull()
+        ->and(benchSets($mesocycle))->toBe(3);
+});
+
+it('SCH-054 a session of an earlier day finished today leaves both days\' meals alone', function () {
+    [$user, , $session] = finishSession(answers: ['pump' => 'moderate', 'volume' => 'justRight']);
+    $monday = SheetSeed::day($user, '2026-09-21');
+    $tuesday = SheetSeed::day($user, '2026-09-22');
+    $before = [$monday->fresh()->meals, $tuesday->fresh()->meals];
+    Carbon::setTestNow('2026-09-22 09:00:00');
+
+    expect(finishAt($user, $session, '2026-09-22 09:00:00')['dates'])->toBe([])
+        ->and([$monday->fresh()->meals, $tuesday->fresh()->meals])->toEqual($before);
+});
