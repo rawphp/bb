@@ -145,3 +145,15 @@ it('PH-006 refuses a length past 52 weeks, and one that ends the running phase t
         ->assertStatus(422)
         ->assertJsonPath('error.message', 'That ends the phase this week. Use End phase, which asks first.');
 });
+
+it('PLAN-021 changing the mesocycle length is refused when no length puts its deload on the last week, and nothing changes', function (int $weeks) {
+    [$user] = PlanSeed::world();
+
+    phaseLengthSet($user, ['phase_id' => W::CUT, 'weeks' => $weeks, 'fix' => 'change_mesocycle_length'])
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'No mesocycle length puts a deload on that last week.');
+
+    expect(phaseDates(W::CUT))->toBe(['2026-08-31', '2026-11-23'])
+        ->and(phaseDates(W::HOLD))->toBe(['2026-11-23', '2026-12-21'])
+        ->and(Mesocycle::query()->findOrFail(W::MESO2)->weeks)->toBe(6);
+})->with([9, 14]);
