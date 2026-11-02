@@ -250,7 +250,7 @@ final class WeekBuilder
         $entries = array_map(fn (PlacedMeal $meal) => DayEntry::meal($meal->id), $placed);
         $meals = array_map(
             fn (PlacedMeal $meal, int $index) => new WeekMeal(
-                new Meal($meal->id, 'Meal '.($index + 1), $empty), $meal->time, self::kind($meal->role),
+                new Meal($meal->id, 'Meal '.($index + 1), $empty), $meal->time, WeekMealKind::of($meal->role),
             ),
             $placed,
             array_keys($placed),
@@ -259,19 +259,7 @@ final class WeekBuilder
             return [$entries, $meals];
         }
 
-        // The workout sits between the pre- and post-workout meals; with neither, by the clock, on whichever day puts
-        // it nearer the window, as the meal placement does.
-        $post = array_find_key($placed, fn (PlacedMeal $meal) => $meal->role === MealRole::PostWorkout);
-        $pre = array_find_key($placed, fn (PlacedMeal $meal) => $meal->role === MealRole::PreWorkout);
-        if ($post !== null) {
-            $position = $post;
-        } elseif ($pre !== null) {
-            $position = $pre + 1;
-        } else {
-            $offset = $window->offset($workout->start);
-            $position = array_find_key($placed, fn (PlacedMeal $meal) => $window->start->minutesUntil($meal->time) > $offset)
-                ?? count($placed);
-        }
+        $position = self::workoutPosition($placement, $workout, $window);
         array_splice($entries, $position, 0, [DayEntry::workout()]);
         if ($placement->shake !== null) {
             $id = $newId();
@@ -284,12 +272,23 @@ final class WeekBuilder
         return [$entries, $meals];
     }
 
-    private static function kind(MealRole $role): WeekMealKind
+    /**
+     * Where the workout sits among a day's placed meals: between the pre- and post-workout meals; with neither, by the
+     * clock, on whichever day puts it nearer the window, as the meal placement does.
+     */
+    public static function workoutPosition(DayPlacement $placement, WorkoutTime $workout, ClockRange $window): int
     {
-        return match ($role) {
-            MealRole::Regular => WeekMealKind::Regular,
-            MealRole::PreWorkout => WeekMealKind::PreWorkout,
-            MealRole::PostWorkout => WeekMealKind::PostWorkout,
-        };
+        $placed = $placement->meals;
+        $post = array_find_key($placed, fn (PlacedMeal $meal) => $meal->role === MealRole::PostWorkout);
+        if ($post !== null) {
+            return $post;
+        }
+        $pre = array_find_key($placed, fn (PlacedMeal $meal) => $meal->role === MealRole::PreWorkout);
+        if ($pre !== null) {
+            return $pre + 1;
+        }
+        $offset = $window->offset($workout->start);
+
+        return array_find_key($placed, fn (PlacedMeal $meal) => $window->offset($meal->time) > $offset) ?? count($placed);
     }
 }

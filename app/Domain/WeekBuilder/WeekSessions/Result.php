@@ -9,7 +9,8 @@ final readonly class Result
 {
     /**
      * @param  ?int  $mesocycleWeek  The week of the mesocycle, from 0; null outside it.
-     * @param  list<ScheduledSession>  $scheduled  In week order; empty in a paused or non-mesocycle week.
+     * @param  list<ScheduledSession>  $scheduled  In session order, so an item's place is its session number; empty in a
+     *                                             paused or non-mesocycle week.
      */
     public function __construct(
         public bool $isDeload,
