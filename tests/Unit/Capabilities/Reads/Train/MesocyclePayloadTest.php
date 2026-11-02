@@ -1,8 +1,8 @@
 <?php
 
 use App\Capabilities\Reads\Train\MesocyclePayload;
-use App\Capabilities\Reads\Train\TrainSnapshot;
 use App\Models\Mesocycle;
+use App\Support\Mesocycles\TrainSnapshot;
 use Tests\Unit\Capabilities\Reads\Train\TrainWorld as W;
 
 // One mesocycle (rp-clone MesocycleViewModel, +Days, +End, ProgressionRatesModel and MesocycleBuildModel), from

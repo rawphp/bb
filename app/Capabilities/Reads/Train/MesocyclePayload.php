@@ -26,17 +26,21 @@ use App\Domain\Defaults\TBL020MesocycleLength;
 use App\Domain\Mesocycle\MesoBuilder;
 use App\Domain\Mesocycle\MesoBuilder\Warning;
 use App\Domain\Mesocycle\MesocycleCalendar;
+use App\Domain\Mesocycle\MesocycleRules;
 use App\Domain\Model\ClosedRange;
 use App\Domain\Model\ExperienceLevel;
+use App\Domain\Model\Mesocycle as DomainMesocycle;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\PhaseType;
 use App\Domain\Model\Priority;
 use App\Domain\Model\Session;
 use App\Domain\Progression\Deload;
+use App\Enums\MesocycleRoute;
 use App\Models\DayTarget;
 use App\Models\Exercise;
 use App\Models\Mesocycle;
 use App\Models\WorkoutSet;
+use App\Support\Mesocycles\TrainSnapshot;
 use DateTimeImmutable;
 
 /**
@@ -58,8 +62,6 @@ final class MesocyclePayload
     /** MESO-014: sets of a slot. */
     public const SETS = [1, 20];
 
-    private const WEEKDAYS = [1 => 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
     public static function build(TrainSnapshot $snapshot, Mesocycle $mesocycle): MesocycleShowOutput
     {
         return new MesocycleShowOutput(
@@ -72,12 +74,6 @@ final class MesocyclePayload
         );
     }
 
-    /** MESO-005: an ISO weekday's name. */
-    public static function weekdayName(int $weekday): string
-    {
-        return self::WEEKDAYS[$weekday] ?? 'Day';
-    }
-
     // MARK: a saved mesocycle
 
     private static function saved(TrainSnapshot $snapshot, Mesocycle $mesocycle): MesocycleDetail
@@ -86,10 +82,12 @@ final class MesocyclePayload
         $current = $calendar->currentWeek();
         $now = $calendar->isRunning() && $calendar->hasStarted();
         $laterWeeksStored = $mesocycle->laterWeekIds() !== [];
+        $domain = $snapshot->domain($mesocycle);
+        $weekdays = $snapshot->weekdays($mesocycle);
 
         $weeks = [];
         for ($index = 0; $index < $calendar->weeks; $index++) {
-            $weeks[] = self::week($snapshot, $mesocycle, $calendar, $index, $now && $index + 1 === $current);
+            $weeks[] = self::week($snapshot, $mesocycle, $domain, $weekdays, $calendar, $index, $now && $index + 1 === $current);
         }
 
         $phaseType = $snapshot->phaseType($mesocycle);
@@ -113,9 +111,12 @@ final class MesocyclePayload
     /**
      * MESO-040, MESO-041: one week's column. A day logged counts its working sets by the exercise's muscle; a day
      * still ahead counts its plan, halved in a deload (PROG-041, PROG-042).
+     *
+     * @param  array<string, ?int>  $weekdays  each stored day's weekday by its id
      */
-    private static function week(TrainSnapshot $snapshot, Mesocycle $mesocycle, MesocycleCalendar $calendar, int $index, bool $isNow): MesocycleWeek
-    {
+    private static function week(
+        TrainSnapshot $snapshot, Mesocycle $mesocycle, DomainMesocycle $domain, array $weekdays, MesocycleCalendar $calendar, int $index, bool $isNow,
+    ): MesocycleWeek {
         $number = $index + 1;
         $planWeek = $calendar->planWeek($index);
         $isLast = $number === $calendar->weeks;
@@ -124,8 +125,7 @@ final class MesocyclePayload
         $lastDay = $calendar->lastDay();
         $ended = $calendar->endedOn !== null;
 
-        $sessions = $snapshot->domain($mesocycle)->sessionsInWeek($index);
-        $weekdays = $snapshot->weekdays($mesocycle);
+        $sessions = $domain->sessionsInWeek($index);
         $dates = MesocycleCalendar::dayDates(
             $planWeek,
             array_map(fn (Session $session) => $weekdays[$session->id] ?? null, $sessions),
@@ -202,7 +202,7 @@ final class MesocyclePayload
      */
     private static function calories(TrainSnapshot $snapshot, array $days): ?string
     {
-        $kcal = $snapshot->dayTargets
+        $kcal = $snapshot->dayTargets()
             ->filter(fn (DayTarget $target) => in_array(TrainSnapshot::day($target->date), $days))
             ->pluck('kcal');
 
@@ -214,7 +214,7 @@ final class MesocyclePayload
     /** The create flow's state (MESO-003 to MESO-007, MESO-013, MESO-014, MESO-020, MESO-021, MESO-065). */
     private static function draft(TrainSnapshot $snapshot, Mesocycle $mesocycle): MesocycleBuild
     {
-        $route = $mesocycle->route ?? 'scratch';
+        $route = $mesocycle->route ?? MesocycleRoute::Scratch;
         $days = $mesocycle->dayRows();
         $experience = ExperienceLevel::tryFrom((string) $snapshot->profile?->experience) ?? ExperienceLevel::Intermediate;
         $lengths = TBL020MesocycleLength::row($experience);
@@ -230,8 +230,8 @@ final class MesocyclePayload
         $weekdayLabels = array_all($days, fn (array $day) => $day['weekday'] !== null);
 
         return new MesocycleBuild(
-            route: $route,
-            resume_step: $days !== [] ? 'slots' : ($route === 'builder' ? 'builder' : 'scratch'),
+            route: $route->value,
+            resume_step: $days !== [] ? 'slots' : ($route === MesocycleRoute::Builder ? 'builder' : 'scratch'),
             weeks: $weeks,
             weeks_options: self::options($weeksRange, 'week'),
             start_date: $start->format('Y-m-d'),
@@ -254,7 +254,7 @@ final class MesocyclePayload
             priority_notice: self::draftPriorityNotice($snapshot, $mesocycle, $start, $priorities),
             days: array_map(fn (array $day, int $index) => new MesocycleBuildDayRow(
                 id: $day['id'],
-                label: $weekdayLabels ? self::weekdayName((int) $day['weekday']) : 'Day '.($index + 1),
+                label: $weekdayLabels ? MesocycleRules::weekdayName((int) $day['weekday']) : 'Day '.($index + 1),
                 slots: array_map(fn (array $slot) => new MesocycleBuildSlotRow(
                     id: $slot['id'],
                     muscle: $slot['muscle_group'],
@@ -269,7 +269,7 @@ final class MesocyclePayload
             exercise_options: array_map(fn (MuscleGroup $muscle) => new MesocycleMuscleExercises(
                 muscle: $muscle->value,
                 muscle_title: $muscle->title(),
-                exercises: $snapshot->exercises
+                exercises: $snapshot->exercises()
                     ->filter(fn (Exercise $exercise) => $exercise->muscle_group === $muscle)
                     ->sortBy('name')
                     ->map(fn (Exercise $exercise) => new MesocycleExerciseOption((string) $exercise->id, $exercise->name))
@@ -288,7 +288,7 @@ final class MesocyclePayload
     private static function draftPriorityNotice(TrainSnapshot $snapshot, Mesocycle $draft, DateTimeImmutable $start, array $priorities): ?Pill
     {
         $source = $snapshot->copySource();
-        if ($draft->route !== 'copy_previous' || $source === null) {
+        if ($draft->route !== MesocycleRoute::CopyPrevious || $source === null) {
             return null;
         }
         $phase = $snapshot->priorityReset($source, $start);

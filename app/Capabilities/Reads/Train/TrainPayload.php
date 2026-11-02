@@ -14,7 +14,9 @@ use App\Capabilities\Support\Tone;
 use App\Capabilities\Train\Data\Pill;
 use App\Domain\Mesocycle\MesocycleCalendar;
 use App\Domain\Model\PhaseType;
+use App\Enums\MesocycleRoute;
 use App\Models\Mesocycle;
+use App\Support\Mesocycles\TrainSnapshot;
 
 /**
  * The Train tab (NAV-002, MESO-001, MESO-002, MESO-007, MESO-060, MESO-064, MESO-065), from a {@see TrainSnapshot}.
@@ -28,14 +30,6 @@ final class TrainPayload
     public const ACTIVE_REST = 'Training has gone flat. An active rest, the deload week plus a week off, is recommended.';
 
     public const ACTIVE_REST_TAKEN = 'Active rest taken: the deload week plus a week off before the next mesocycle.';
-
-    /** MESO-002: the + menu, in order. */
-    public const ROUTES = [
-        'template' => 'Template',
-        'copy_previous' => 'Copy previous mesocycle',
-        'builder' => 'Meso Builder',
-        'scratch' => 'Build from scratch',
-    ];
 
     private const SECTIONS = ['current' => 'Current', 'planned' => 'Planned', 'past' => 'Past'];
 
@@ -172,7 +166,8 @@ final class TrainPayload
     }
 
     /**
-     * MESO-002: the four routes. Copy needs a saved mesocycle; it names the one it copies and the MESO-065 notice.
+     * MESO-002: the four routes, in the + menu's order. Copy needs a saved mesocycle; it names the one it copies and
+     * the MESO-065 notice.
      *
      * @return list<TrainCreateRoute>
      */
@@ -180,12 +175,12 @@ final class TrainPayload
     {
         $source = $snapshot->copySource();
         $routes = [];
-        foreach (self::ROUTES as $route => $title) {
-            $copy = $route === 'copy_previous' ? $source : null;
+        foreach (MesocycleRoute::cases() as $route) {
+            $copy = $route === MesocycleRoute::CopyPrevious ? $source : null;
             $routes[] = new TrainCreateRoute(
-                route: $route,
-                title: $title,
-                available: $route !== 'copy_previous' || $source !== null,
+                route: $route->value,
+                title: $route->title(),
+                available: $route !== MesocycleRoute::CopyPrevious || $source !== null,
                 copy_source_id: $copy?->id,
                 priority_notice: $copy === null ? null : self::priorityNotice($snapshot, $copy, $snapshot->copyStart($copy)),
             );

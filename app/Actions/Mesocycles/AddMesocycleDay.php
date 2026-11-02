@@ -2,11 +2,11 @@
 
 namespace App\Actions\Mesocycles;
 
-use App\Capabilities\Reads\Train\MesocyclePayload;
-use App\Capabilities\Reads\Train\TrainSnapshot;
+use App\Domain\Mesocycle\MesocycleRules;
 use App\Domain\Progress\PlanWeekDays;
 use App\Models\Mesocycle;
 use App\Models\User;
+use App\Support\Mesocycles\TrainSnapshot;
 use DomainException;
 
 /**
@@ -34,7 +34,7 @@ final class AddMesocycleDay
         $weekday = $this->freeWeekday($snapshot, $mesocycle, $days);
         $days[] = [
             'id' => $dayId,
-            'label' => $weekday === null ? 'Day '.(count($days) + 1) : MesocyclePayload::weekdayName($weekday),
+            'label' => $weekday === null ? 'Day '.(count($days) + 1) : MesocycleRules::weekdayName($weekday),
             'weekday' => $weekday,
             'slots' => [],
         ];

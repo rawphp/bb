@@ -6,11 +6,11 @@ use App\Capabilities\HostCapability;
 use App\Capabilities\Mesocycles\Data\MesocycleShowInput;
 use App\Capabilities\Mesocycles\Data\MesocycleShowOutput;
 use App\Capabilities\Reads\Train\MesocyclePayload;
-use App\Capabilities\Reads\Train\TrainSnapshot;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\OwnsInput;
 use App\Models\Mesocycle;
 use App\Models\User;
+use App\Support\Mesocycles\TrainSnapshot;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 

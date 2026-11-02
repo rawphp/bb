@@ -1,7 +1,7 @@
 <?php
 
 use App\Capabilities\Reads\Train\TrainPayload;
-use App\Capabilities\Reads\Train\TrainSnapshot;
+use App\Support\Mesocycles\TrainSnapshot;
 use Tests\Unit\Capabilities\Reads\Train\TrainWorld as W;
 
 // The Train tab (rp-clone TrainModel, MesocycleListModel and TodayModel+NextMesocycle), from in-memory rows.

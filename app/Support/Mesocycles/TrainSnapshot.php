@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Capabilities\Reads\Train;
+namespace App\Support\Mesocycles;
 
 use App\Domain\Mesocycle\MesocycleCalendar;
+use App\Domain\Mesocycle\MesocycleRules;
 use App\Domain\Model\ExerciseSlot;
 use App\Domain\Model\FeedbackAnswers;
 use App\Domain\Model\Mesocycle as DomainMesocycle;
@@ -14,7 +15,6 @@ use App\Domain\Model\Session;
 use App\Domain\Model\Soreness;
 use App\Domain\Model\VolumeFeedback;
 use App\Domain\Model\Workout;
-use App\Domain\Plan\DeloadCalories;
 use App\Domain\Plan\PlanWeekGrid;
 use App\Domain\Progress\PlanWeekDays;
 use App\Domain\Progression\ActiveRest;
@@ -30,6 +30,7 @@ use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use Carbon\CarbonImmutable;
+use Closure;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
@@ -38,13 +39,25 @@ use Illuminate\Support\Collection;
 /**
  * What the Train reads and the mesocycle writes look at, read once per invoke, and the answers they share: which
  * mesocycle is current, when the next one starts, which phase covers a date (MESO-001, MESO-003, MESO-060, MESO-064,
- * MESO-065). A write refuses exactly what a read does not offer, because both ask here and {@see MesocycleCalendar}.
+ * MESO-065). A write refuses exactly what a read does not offer, because both ask here, {@see MesocycleCalendar} and
+ * {@see MesocycleRules}.
+ *
+ * The exercises and the day targets are read only when asked for: the writes never need them.
  *
  * Dates are whole days at midnight UTC, read from their Y-m-d.
  */
-final readonly class TrainSnapshot
+final class TrainSnapshot
 {
     public const NOT_CHOSEN = 'Exercise not chosen yet';
+
+    /** @var ?Collection<int, DayTarget> */
+    private ?Collection $dayTargetRows = null;
+
+    /** @var ?Collection<int, Exercise> the library, keyed by id */
+    private ?Collection $library = null;
+
+    /** @var ?Collection<int, Exercise> the exercises the mesocycles and sets name, keyed by id */
+    private ?Collection $named = null;
 
     /**
      * @param  Collection<int, Mesocycle>  $mesocycles  saved and drafts
@@ -53,26 +66,26 @@ final readonly class TrainSnapshot
      * @param  Collection<int, WorkoutSet>  $sets  of those sessions
      * @param  Collection<int, MuscleFeedback>  $feedback  of those sessions
      * @param  Collection<int, PlanWeek>  $planWeeks
-     * @param  Collection<int, DayTarget>  $dayTargets
-     * @param  Collection<int, Exercise>  $exercises  the ones the user can see
+     * @param  Collection<int, DayTarget>|Closure(): Collection<int, DayTarget>  $dayTargets  over the weeks of the mesocycle the invoke is about
+     * @param  Collection<int, Exercise>|Closure(?list<int>): Collection<int, Exercise>  $exercises  the ones the user can see; the loader is given the ids wanted, or null for all
      */
     public function __construct(
-        public DateTimeImmutable $today,
-        public ?Plan $plan,
-        public ?Profile $profile,
-        public Collection $mesocycles,
-        public Collection $phases,
-        public Collection $sessions,
-        public Collection $sets,
-        public Collection $feedback,
-        public Collection $planWeeks,
-        public Collection $dayTargets,
-        public Collection $exercises,
+        public readonly DateTimeImmutable $today,
+        public readonly ?Plan $plan,
+        public readonly ?Profile $profile,
+        public readonly Collection $mesocycles,
+        public readonly Collection $phases,
+        public readonly Collection $sessions,
+        public readonly Collection $sets,
+        public readonly Collection $feedback,
+        public readonly Collection $planWeeks,
+        private readonly Collection|Closure $dayTargets,
+        private readonly Collection|Closure $exercises,
     ) {}
 
     /**
      * Everything for one user. The sessions, sets and feedback are those of `$mesocycleId` and of the current
-     * mesocycle; day targets and exercises come only with `$mesocycleId`.
+     * mesocycle; day targets come only with `$mesocycleId`.
      */
     public static function load(User $user, ?string $mesocycleId = null): self
     {
@@ -105,8 +118,10 @@ final readonly class TrainSnapshot
             sets: WorkoutSet::query()->whereIn('workout_session_id', $sessionIds)->orderBy('position')->get(),
             feedback: MuscleFeedback::query()->whereIn('workout_session_id', $sessionIds)->get(),
             planWeeks: $base->planWeeks,
-            dayTargets: $focus === null ? new Collection : $base->dayTargetsFor($user, $focus),
-            exercises: $focus === null ? new Collection : Exercise::query()->visibleTo($user)->orderBy('name')->get(),
+            dayTargets: fn (): Collection => $focus === null ? new Collection : $base->dayTargetsFor($user, $focus),
+            exercises: fn (?array $ids): Collection => Exercise::query()->visibleTo($user)
+                ->when($ids !== null, fn ($query) => $query->whereIn('id', $ids))
+                ->orderBy('name')->get(),
         );
     }
 
@@ -188,7 +203,7 @@ final readonly class TrainSnapshot
     {
         $next = $this->nextMesocycle();
 
-        return $next !== null && $next->mesocycle->is($source) ? $next->start : $this->defaultStart();
+        return MesocycleRules::copyStart($next !== null && $next->mesocycle->is($source) ? $next->start : null, $this->defaultStart());
     }
 
     /**
@@ -197,10 +212,9 @@ final readonly class TrainSnapshot
      */
     public function priorityReset(Mesocycle $source, DateTimeImmutable $start): ?Phase
     {
-        $old = $this->phase($source->phase_id);
         $new = $this->phaseCovering($start);
 
-        return $old !== null && $new !== null && $old->type !== $new->type ? $new : null;
+        return MesocycleRules::priorityReset($this->phaseType($source), $new?->type) === null ? null : $new;
     }
 
     /** MESO-064, PROG-054: the mesocycle so far had two flat weeks running. */
@@ -231,18 +245,18 @@ final readonly class TrainSnapshot
         return $index + 1 === $calendar->weeks || ($this->planWeekRow($calendar->planWeek($index)->start)->is_deload ?? false);
     }
 
-    /**
-     * MESO-041, PLAN-022: a week is a diet break when its plan week is flagged one, or it is a fat loss deload not
-     * turned off (PLAN-023). PLAN-002: that follows the phase covering the week, not the mesocycle's phase.
-     */
+    /** MESO-041, PLAN-022: whether a week is a diet break. PLAN-002: it follows the phase covering the week. */
     public function isDietBreakWeek(MesocycleCalendar $calendar, int $index): bool
     {
         $start = $calendar->planWeek($index)->start;
         $row = $this->planWeekRow($start);
-        $type = $this->phaseCovering($start)?->type;
 
-        return ($row->is_diet_break ?? false)
-            || ($type !== null && DeloadCalories::isDietBreak($type, $this->isDeloadWeek($calendar, $index), $row->diet_break_off ?? false));
+        return MesocycleRules::isDietBreakWeek(
+            flagged: $row->is_diet_break ?? false,
+            phase: $this->phaseCovering($start)?->type,
+            isDeload: $this->isDeloadWeek($calendar, $index),
+            turnedOff: $row->diet_break_off ?? false,
+        );
     }
 
     /** MESO-044: ending a fat loss mesocycle early offers a diet break next week, unless this week is one. */
@@ -250,8 +264,7 @@ final readonly class TrainSnapshot
     {
         $calendar = $this->calendar($mesocycle);
 
-        return ($this->phaseType($mesocycle)?->isFatLoss() ?? false)
-            && ! $this->isDietBreakWeek($calendar, $calendar->currentWeek() - 1);
+        return MesocycleRules::endOffersDietBreak($this->phaseType($mesocycle), $this->isDietBreakWeek($calendar, $calendar->currentWeek() - 1));
     }
 
     /** The plan week row starting on a day, if the plan keeps one. */
@@ -278,24 +291,13 @@ final readonly class TrainSnapshot
     /** MESO-004: today when it begins a plan week, otherwise the next plan week's first day. */
     public function defaultStart(): DateTimeImmutable
     {
-        $grid = $this->grid();
-        if ($grid === null) {
-            return $this->today;
-        }
-        $index = $grid->weekIndexContaining($this->today);
-        if ($index === null) {
-            return $grid->start(0);
-        }
-
-        return $grid->isBoundary($this->today) ? $this->today : $grid->start($index + 1);
+        return MesocycleRules::defaultStart($this->grid(), $this->today);
     }
 
     /** MESO-004: a start moves to the first day of its plan week. */
     public function snapped(DateTimeImmutable $date): DateTimeImmutable
     {
-        $grid = $this->grid();
-
-        return $grid === null ? $date : $grid->start($grid->weekIndexContaining($date) ?? 0);
+        return MesocycleRules::snapped($this->grid(), $date);
     }
 
     // MARK: phases
@@ -391,9 +393,29 @@ final readonly class TrainSnapshot
             && $set->is_logged && ! $set->is_skipped)->values();
     }
 
+    /** @return Collection<int, DayTarget> the day targets over the weeks of the mesocycle the invoke is about */
+    public function dayTargets(): Collection
+    {
+        return $this->dayTargetRows ??= $this->dayTargets instanceof Closure ? ($this->dayTargets)() : $this->dayTargets;
+    }
+
+    /** @return Collection<int, Exercise> every exercise the user can see, by name, keyed by id */
+    public function exercises(): Collection
+    {
+        return $this->library ??= ($this->exercises instanceof Closure ? ($this->exercises)(null) : $this->exercises)->keyBy('id');
+    }
+
+    /** An exercise a mesocycle or a set names; only those are read, unless the library already was. */
     public function exercise(?int $id): ?Exercise
     {
-        return $id === null ? null : $this->exercises->firstWhere('id', $id);
+        if ($id === null) {
+            return null;
+        }
+        if ($this->library !== null || ! $this->exercises instanceof Closure) {
+            return $this->exercises()->get($id);
+        }
+
+        return ($this->named ??= ($this->exercises)($this->namedExerciseIds())->keyBy('id'))->get($id);
     }
 
     /** @return array<string, Priority> the stored priorities that are not Off, keyed by muscle */
@@ -436,6 +458,21 @@ final readonly class TrainSnapshot
         }
 
         return $weeks;
+    }
+
+    /** @return list<int> the exercises the slots of the mesocycles and the sets name */
+    private function namedExerciseIds(): array
+    {
+        $ids = $this->sets->pluck('exercise_id')->all();
+        foreach ($this->mesocycles as $mesocycle) {
+            foreach ([$mesocycle->dayRows(), ...$mesocycle->earlierWeekRows()] as $days) {
+                foreach ($days as $day) {
+                    $ids = [...$ids, ...array_column($day['slots'], 'exercise_id')];
+                }
+            }
+        }
+
+        return array_values(array_unique(array_filter($ids, fn ($id) => $id !== null)));
     }
 
     /** @return Collection<int, DayTarget> the day targets over the mesocycle's weeks */

@@ -2,14 +2,15 @@
 
 namespace App\Actions\Mesocycles;
 
-use App\Capabilities\Reads\Train\TrainSnapshot;
 use App\Domain\Defaults\TBL012TrainingDefaults\Column;
 use App\Domain\Mesocycle\MesoBuilder;
 use App\Domain\Model\Priority;
+use App\Enums\MesocycleRoute;
 use App\Models\Mesocycle;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
+use App\Support\Mesocycles\TrainSnapshot;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -68,7 +69,7 @@ final class CopyMesocycle
                 'ended_on' => null,
                 'is_draft' => true,
                 'is_resensitization' => false,
-                'route' => 'copy_previous',
+                'route' => MesocycleRoute::CopyPrevious,
                 'active_rest' => false,
                 'days' => $days,
                 'muscle_priorities' => $reset === null

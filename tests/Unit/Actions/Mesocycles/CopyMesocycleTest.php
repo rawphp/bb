@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Mesocycles\CopyMesocycle;
+use App\Enums\MesocycleRoute;
 use App\Models\Mesocycle;
 use App\Models\Phase;
 use App\Models\User;
@@ -44,7 +45,7 @@ it('MESO-060 copies the structure into a new draft with new ids', function () {
     $old = $source->dayRows();
 
     expect($copy->is_draft)->toBeTrue()
-        ->and($copy->route)->toBe('copy_previous')
+        ->and($copy->route)->toBe(MesocycleRoute::CopyPrevious)
         ->and($copy->name)->toBeNull()
         ->and($copy->weeks)->toBe(5)
         ->and($copy->user_id)->toBe($user->id)

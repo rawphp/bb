@@ -2,10 +2,10 @@
 
 namespace App\Actions\Mesocycles;
 
-use App\Capabilities\Reads\Train\TrainSnapshot;
 use App\Models\Mesocycle;
 use App\Models\PlanWeek;
 use App\Models\User;
+use App\Support\Mesocycles\TrainSnapshot;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 

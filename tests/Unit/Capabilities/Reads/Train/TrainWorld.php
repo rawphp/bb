@@ -2,7 +2,6 @@
 
 namespace Tests\Unit\Capabilities\Reads\Train;
 
-use App\Capabilities\Reads\Train\TrainSnapshot;
 use App\Models\DayTarget;
 use App\Models\Exercise;
 use App\Models\Mesocycle;
@@ -13,6 +12,7 @@ use App\Models\PlanWeek;
 use App\Models\Profile;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
+use App\Support\Mesocycles\TrainSnapshot;
 use Illuminate\Support\Collection;
 
 /**

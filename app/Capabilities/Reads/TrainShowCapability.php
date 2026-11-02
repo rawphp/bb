@@ -6,9 +6,9 @@ use App\Capabilities\HostCapability;
 use App\Capabilities\Mesocycles\Data\TrainShowInput;
 use App\Capabilities\Mesocycles\Data\TrainShowOutput;
 use App\Capabilities\Reads\Train\TrainPayload;
-use App\Capabilities\Reads\Train\TrainSnapshot;
 use App\Capabilities\Support\HostDefinition;
 use App\Models\User;
+use App\Support\Mesocycles\TrainSnapshot;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 

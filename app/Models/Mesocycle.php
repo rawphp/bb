@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MesocycleRoute;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\MesocycleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -31,6 +32,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property list<list<array<string, mixed>>>|null $earlier_weeks
  * @property list<list<string>>|null $later_weeks
  * @property array<string, ?string>|null $muscle_priorities
+ * @property ?MesocycleRoute $route MESO-007: the route a draft came from
  */
 #[Fillable([
     'phase_id', 'name', 'weeks', 'start_date', 'ended_on', 'is_draft', 'is_resensitization',
@@ -108,6 +110,7 @@ class Mesocycle extends Model
             'ended_on' => 'date:Y-m-d',
             'is_draft' => 'boolean',
             'is_resensitization' => 'boolean',
+            'route' => MesocycleRoute::class,
             'active_rest' => 'boolean',
             'days' => 'array',
             'muscle_priorities' => 'array',

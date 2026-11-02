@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Capabilities\Reads\Train;
+namespace App\Support\Mesocycles;
 
 use App\Models\Mesocycle;
 use DateTimeImmutable;
