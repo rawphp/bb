@@ -1,0 +1,309 @@
+{
+    "filters": [
+        {
+            "key": "days",
+            "label": "Days: All",
+            "active": false,
+            "options": [
+                {
+                    "value": null,
+                    "label": "All",
+                    "selected": true
+                },
+                {
+                    "value": "2",
+                    "label": "2 days/week",
+                    "selected": false
+                },
+                {
+                    "value": "3",
+                    "label": "3 days/week",
+                    "selected": false
+                },
+                {
+                    "value": "4",
+                    "label": "4 days/week",
+                    "selected": false
+                },
+                {
+                    "value": "5",
+                    "label": "5 days/week",
+                    "selected": false
+                },
+                {
+                    "value": "6",
+                    "label": "6 days/week",
+                    "selected": false
+                }
+            ]
+        },
+        {
+            "key": "sex",
+            "label": "Sex: All",
+            "active": false,
+            "options": [
+                {
+                    "value": null,
+                    "label": "All",
+                    "selected": true
+                },
+                {
+                    "value": "female",
+                    "label": "Female",
+                    "selected": false
+                },
+                {
+                    "value": "male",
+                    "label": "Male",
+                    "selected": false
+                }
+            ]
+        },
+        {
+            "key": "focus",
+            "label": "Focus: All",
+            "active": false,
+            "options": [
+                {
+                    "value": null,
+                    "label": "All",
+                    "selected": true
+                },
+                {
+                    "value": "whole_body",
+                    "label": "Whole body",
+                    "selected": false
+                },
+                {
+                    "value": "emphasis",
+                    "label": "Emphasis",
+                    "selected": false
+                }
+            ]
+        },
+        {
+            "key": "phase",
+            "label": "Gain",
+            "active": true,
+            "options": [
+                {
+                    "value": "all",
+                    "label": "All",
+                    "selected": false
+                },
+                {
+                    "value": "cut",
+                    "label": "Cut",
+                    "selected": false
+                },
+                {
+                    "value": "gain",
+                    "label": "Gain",
+                    "selected": true
+                },
+                {
+                    "value": "maintain",
+                    "label": "Maintain",
+                    "selected": false
+                }
+            ]
+        }
+    ],
+    "has_active_filters": true,
+    "rows": [
+        {
+            "id": "01J9TPL0000000000000000000",
+            "name": "Full Body 2-Day Essentials",
+            "summary": "2 days/week · Full body"
+        },
+        {
+            "id": "01J9TPL0100000000000000000",
+            "name": "Arm Specialisation 3-Day",
+            "summary": "3 days/week · Specialisation"
+        },
+        {
+            "id": "01J9TPL0200000000000000000",
+            "name": "Calf Specialisation 3-Day",
+            "summary": "3 days/week · Specialisation"
+        },
+        {
+            "id": "01J9TPL0300000000000000000",
+            "name": "Chest Specialisation 3-Day",
+            "summary": "3 days/week · Specialisation"
+        },
+        {
+            "id": "01J9TPL0400000000000000000",
+            "name": "Full Body 3-Day Dumbbells",
+            "summary": "3 days/week · Full body"
+        },
+        {
+            "id": "01J9TPL0500000000000000000",
+            "name": "Full Body 3-Day Essentials",
+            "summary": "3 days/week · Full body"
+        },
+        {
+            "id": "01J9TPL0600000000000000000",
+            "name": "Upper/Lower 4-Day",
+            "summary": "4 days/week · Upper/lower"
+        },
+        {
+            "id": "01J9TPL0700000000000000000",
+            "name": "Push/Pull/Legs 6-Day",
+            "summary": "6 days/week · Push/pull/legs"
+        }
+    ],
+    "empty_text": null,
+    "detail": {
+        "id": "01J9TPL0000000000000000000",
+        "name": "Full Body 2-Day Essentials",
+        "summary": "2 days/week · Full body",
+        "days": [
+            {
+                "label": "Full Body A",
+                "slots": [
+                    {
+                        "exercise_name": "Barbell Back Squat",
+                        "muscle_title": "Quads",
+                        "sets_text": "3 sets"
+                    },
+                    {
+                        "exercise_name": "Barbell Bench Press",
+                        "muscle_title": "Chest",
+                        "sets_text": "4 sets"
+                    },
+                    {
+                        "exercise_name": "Barbell Row",
+                        "muscle_title": "Back",
+                        "sets_text": "4 sets"
+                    },
+                    {
+                        "exercise_name": "Romanian Deadlift",
+                        "muscle_title": "Hamstrings",
+                        "sets_text": "3 sets"
+                    },
+                    {
+                        "exercise_name": "Dumbbell Lateral Raise",
+                        "muscle_title": "Side delts",
+                        "sets_text": "3 sets"
+                    },
+                    {
+                        "exercise_name": "EZ-Bar Curl",
+                        "muscle_title": "Biceps",
+                        "sets_text": "3 sets"
+                    },
+                    {
+                        "exercise_name": "Overhead Cable Triceps Extension",
+                        "muscle_title": "Triceps",
+                        "sets_text": "3 sets"
+                    }
+                ]
+            },
+            {
+                "label": "Full Body B",
+                "slots": [
+                    {
+                        "exercise_name": "Leg Press",
+                        "muscle_title": "Quads",
+                        "sets_text": "3 sets"
+                    },
+                    {
+                        "exercise_name": "Incline Dumbbell Press",
+                        "muscle_title": "Chest",
+                        "sets_text": "3 sets"
+                    },
+                    {
+                        "exercise_name": "Lat Pulldown",
+                        "muscle_title": "Back",
+                        "sets_text": "4 sets"
+                    },
+                    {
+                        "exercise_name": "Lying Leg Curl",
+                        "muscle_title": "Hamstrings",
+                        "sets_text": "3 sets"
+                    },
+                    {
+                        "exercise_name": "Cable Lateral Raise",
+                        "muscle_title": "Side delts",
+                        "sets_text": "3 sets"
+                    },
+                    {
+                        "exercise_name": "Standing Calf Raise",
+                        "muscle_title": "Calves",
+                        "sets_text": "3 sets"
+                    }
+                ]
+            }
+        ],
+        "priorities": [
+            {
+                "muscle": "chest",
+                "muscle_title": "Chest",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "back",
+                "muscle_title": "Back",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "quads",
+                "muscle_title": "Quads",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            },
+            {
+                "muscle": "hamstrings",
+                "muscle_title": "Hamstrings",
+                "priority": "maintain",
+                "priority_title": "Maintain",
+                "bars": 1
+            },
+            {
+                "muscle": "sideDelts",
+                "muscle_title": "Side delts",
+                "priority": "grow",
+                "priority_title": "Grow",
+                "bars": 2
+            }
+        ],
+        "weekly_sets": [
+            {
+                "muscle_title": "Chest",
+                "sets_text": "7 sets"
+            },
+            {
+                "muscle_title": "Back",
+                "sets_text": "8 sets"
+            },
+            {
+                "muscle_title": "Quads",
+                "sets_text": "6 sets"
+            },
+            {
+                "muscle_title": "Hamstrings",
+                "sets_text": "6 sets"
+            },
+            {
+                "muscle_title": "Side delts",
+                "sets_text": "6 sets"
+            },
+            {
+                "muscle_title": "Biceps",
+                "sets_text": "3 sets"
+            },
+            {
+                "muscle_title": "Triceps",
+                "sets_text": "3 sets"
+            },
+            {
+                "muscle_title": "Calves",
+                "sets_text": "3 sets"
+            }
+        ]
+    }
+}

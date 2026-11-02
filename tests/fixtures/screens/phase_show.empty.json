@@ -1,0 +1,49 @@
+{
+    "id": "01JB8Q2V6N3XKZ4M5P7R9T1W2B",
+    "type": "maintenance",
+    "title": "Maintenance",
+    "dates_text": "23 Nov – 20 Dec",
+    "progress": 0.0,
+    "progress_text": "Starts in 6 weeks",
+    "length_text": "4 weeks",
+    "rate_text": "Hold weight",
+    "start_weight_text": null,
+    "target_weight_text": null,
+    "current_weight_text": null,
+    "change_text": null,
+    "event_date": null,
+    "event_text": null,
+    "warnings": [],
+    "event_offer": null,
+    "can_end": false,
+    "lengths": [
+        {
+            "weeks": 2,
+            "label": "2 weeks",
+            "ends_text": "Ends 6 Dec",
+            "is_selected": false,
+            "warnings": [],
+            "mesocycles": [],
+            "fixes": []
+        },
+        {
+            "weeks": 4,
+            "label": "4 weeks",
+            "ends_text": "Ends 20 Dec",
+            "is_selected": true,
+            "warnings": [],
+            "mesocycles": [],
+            "fixes": []
+        },
+        {
+            "weeks": null,
+            "label": "No end",
+            "ends_text": "No end date",
+            "is_selected": false,
+            "warnings": [],
+            "mesocycles": [],
+            "fixes": []
+        }
+    ],
+    "goals": []
+}
