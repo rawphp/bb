@@ -58,11 +58,6 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    /**
      * Not Sanctum's way: a token made here would have no scope and no client-made ULID.
      * Every token comes from CreateToken, through token_create (CAP-021). The host binds
      * no AuthTokenIssuer, so the package's auth/token and auth/device routes mint none.
@@ -74,6 +69,11 @@ class User extends Authenticatable
         throw new LogicException('Tokens are made by App\Actions\Tokens\CreateToken, with a scope (CAP-021).');
     }
 
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
