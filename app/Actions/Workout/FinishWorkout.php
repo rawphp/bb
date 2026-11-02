@@ -69,7 +69,7 @@ final class FinishWorkout
             // OFF-007: a start can be up to a few minutes ahead of the server clock; a session never ends before it began.
             $end = max($start, DateTimeImmutable::createFromInterface($at));
             $session->forceFill(['actual_end_at' => $end])->save();
-            $this->markAnswersRead($session);
+            $this->markAnswersRead($snapshot, $session);
             // Today's session is sized by the sets it ran, so the day is re-targeted before next week's counts change.
             $meals = $this->retarget($user, $snapshot, $session, $start, $end);
             $sets = NextWeekSets::save($snapshot);
@@ -132,17 +132,23 @@ final class FinishWorkout
     /**
      * CAP-013: the finish relies on the session's answers (WO-040, PROG-010), so it changes their rows: their
      * updated_at moves on, at least a second, as timestamps keep whole seconds. Undo of an earlier answer then finds
-     * its rows changed since and is refused, and undoing the finish puts the timestamps back. Each row is saved through
-     * its model, as UndoLog records only model writes; a session has one row per muscle and exercise.
+     * its rows changed since and is refused, and undoing the finish puts the timestamps back.
+     *
+     * Every row must change, or undo would not see the finish depend on it: a row saved before this second takes now,
+     * and one saved this second (or bumped ahead by an earlier finish) takes a second more. The rows are the ones
+     * lockFor() read, so a row another write committed while this one waited is marked too. Each is saved through its
+     * model, as UndoLog records only model writes; a session has one row per muscle and exercise.
      */
-    private function markAnswersRead(WorkoutSession $session): void
+    private function markAnswersRead(WorkoutSnapshot $snapshot, WorkoutSession $session): void
     {
         $now = CarbonImmutable::now();
-        foreach ([MuscleFeedback::class, ExerciseFeedback::class] as $model) {
-            foreach ($model::query()->where('workout_session_id', $session->id)->get() as $row) {
-                $last = CarbonImmutable::parse((string) $row->getRawOriginal('updated_at'));
-                $row->forceFill(['updated_at' => $now->greaterThan($last) ? $now : $last->addSecond()])->save();
-            }
+        $rows = [
+            ...$snapshot->train->feedback->filter(fn (MuscleFeedback $row) => $row->workout_session_id === $session->id),
+            ...$snapshot->exerciseFeedback->filter(fn (ExerciseFeedback $row) => $row->workout_session_id === $session->id),
+        ];
+        foreach ($rows as $row) {
+            $last = CarbonImmutable::parse((string) $row->getRawOriginal('updated_at'));
+            $row->forceFill(['updated_at' => $now->greaterThan($last) ? $now : $last->addSecond()])->save();
         }
     }
 

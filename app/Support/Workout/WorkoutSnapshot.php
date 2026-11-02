@@ -148,13 +148,6 @@ final class WorkoutSnapshot
     }
 
     /**
-     * The session a workout id names (OFF-021): one of the user's saved mesocycles, a week and a day, matched
-     * against the ids {@see WorkoutIds} gives them. There are only a few to try: each week has at most the days it
-     * stores, and {@see load()} refuses one the plan does not run.
-     *
-     * @throws ModelNotFoundException<WorkoutSession> when it names none of the user's sessions
-     */
-    /**
      * The session a workout id names, for a write: the mesocycle row is locked for update first, so workout writes
      * to one mesocycle run one at a time, and everything is then read with locks, so this write sees what the one
      * before it saved. Call it inside the write's transaction; the locks last until it ends.
@@ -172,6 +165,13 @@ final class WorkoutSnapshot
         return self::load($user, (string) $mesocycle->id, $week, $day, locked: true);
     }
 
+    /**
+     * The session a workout id names (OFF-021): one of the user's saved mesocycles, a week and a day, matched
+     * against the ids {@see WorkoutIds} gives them. There are only a few to try: each week has at most the days it
+     * stores, and {@see load()} refuses one the plan does not run.
+     *
+     * @throws ModelNotFoundException<WorkoutSession> when it names none of the user's sessions
+     */
     public static function forWorkout(User $user, string $workoutId): self
     {
         [$mesocycle, $week, $day] = self::locate($user, $workoutId);
