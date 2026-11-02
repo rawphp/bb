@@ -3,7 +3,6 @@
 namespace App\Ai;
 
 use Closure;
-use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Throwable;
 
@@ -33,7 +32,14 @@ final class RecipePage
     public function text(string $url): string
     {
         for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
-            $options = ['allow_redirects' => false, 'stream' => true];
+            // Not streamed: the pin is a curl option, and Guzzle sends a streamed request through its
+            // stream handler, which refuses curl options. The progress callback caps the download
+            // instead, on raw bytes: the body is not decoded, so a compressed page cannot grow past it.
+            $options = [
+                'allow_redirects' => false,
+                'decode_content' => false,
+                'progress' => fn (int $total, int $downloaded): bool => $total > self::MAX_BYTES || $downloaded > self::MAX_BYTES,
+            ];
             $pin = $this->check($url);
             if ($pin !== null) {
                 $options['curl'] = [CURLOPT_RESOLVE => [$pin]];
@@ -50,42 +56,14 @@ final class RecipePage
 
                 continue;
             }
-            if (! $response->successful()) {
+            if (! $response->successful() || strlen($response->body()) > self::MAX_BYTES) {
                 throw new PageUnavailable('Page could not be fetched.');
             }
 
-            return $this->extract($this->read($response));
+            return $this->extract($response->body());
         }
 
         throw new PageUnavailable('Too many redirects.');
-    }
-
-    /**
-     * Read the body in chunks and give up as soon as it passes MAX_BYTES, so a huge or
-     * compressed-bomb page is never fully buffered (decoded bytes count).
-     *
-     * @throws PageUnavailable
-     */
-    private function read(Response $response): string
-    {
-        $stream = $response->toPsrResponse()->getBody();
-        $body = '';
-        try {
-            while (! $stream->eof()) {
-                $body .= $stream->read(8192);
-                if (strlen($body) > self::MAX_BYTES) {
-                    throw new PageUnavailable('Page could not be fetched.');
-                }
-            }
-        } catch (PageUnavailable $e) {
-            throw $e;
-        } catch (Throwable) {
-            throw new PageUnavailable('Page could not be fetched.');
-        } finally {
-            $stream->close();
-        }
-
-        return $body;
     }
 
     /**
@@ -108,7 +86,7 @@ final class RecipePage
             throw new PageUnavailable('Host did not resolve.');
         }
         foreach ($ips as $ip) {
-            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            if (! self::isPublic($ip)) {
                 throw new PageUnavailable('Host is not public.');
             }
         }
@@ -134,7 +112,25 @@ final class RecipePage
             return $origin.$location;
         }
 
-        return $origin.rtrim(dirname($parts['path'] ?? '/'), '/').'/'.$location;
+        $path = $parts['path'] ?? '/';
+        $directory = str_ends_with($path, '/') ? $path : dirname($path);
+
+        return $origin.rtrim($directory, '/').'/'.$location;
+    }
+
+    /**
+     * Only globally reachable addresses (RFC 6890): no private, loopback, link-local, shared (CGNAT),
+     * benchmark or reserved range. NAT64 (64:ff9b::/96, 64:ff9b:1::/48) is refused too, since it
+     * reaches whatever IPv4 address it embeds.
+     */
+    private static function isPublic(string $ip): bool
+    {
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_GLOBAL_RANGE) === false) {
+            return false;
+        }
+        $packed = inet_pton($ip);
+
+        return ! (strlen((string) $packed) === 16 && str_starts_with(bin2hex((string) $packed), '0064ff9b'));
     }
 
     /** The Recipe JSON-LD when the page has one, else its visible text. */

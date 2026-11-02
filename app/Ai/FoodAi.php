@@ -10,11 +10,13 @@ use App\Models\User;
  * (FOOD-043) or a description (FOOD-044), generate a recipe (RCP-010) and read one from a web page
  * (RCP-003). Each returns a draft for the user to confirm; none saves anything.
  *
- * With no key every call throws AiUnavailable before anything is sent; a capability that makes the
- * call refuses with its message.
+ * With no key every call throws AiUnavailable before it does anything else; a capability that
+ * makes the call refuses with its message.
  */
 final class FoodAi
 {
+    private const MAX_ITEMS = 50;
+
     public function __construct(
         private readonly AiJson $ai,
         private readonly FoodMatcher $matcher,
@@ -24,6 +26,7 @@ final class FoodAi
     /** FOOD-042: a draft only, nothing is saved. */
     public function label(string $image): LabelReading
     {
+        $this->ai->ensureAvailable();
         $label = $this->ai->ask('label', [
             self::image($image),
             ['type' => 'text', 'text' => 'Read this nutrition label.'],
@@ -53,6 +56,7 @@ final class FoodAi
      */
     public function photo(User $user, string $image): array
     {
+        $this->ai->ensureAvailable();
         $result = $this->ai->ask('photo', [
             self::image($image),
             ['type' => 'text', 'text' => 'List the ingredients on this plate with estimated grams.'],
@@ -103,6 +107,7 @@ final class FoodAi
      */
     public function recipeImport(User $user, string $url): AiRecipe
     {
+        $this->ai->ensureAvailable();
         try {
             $text = $this->page->text($url);
         } catch (PageUnavailable $e) {
@@ -146,7 +151,7 @@ final class FoodAi
     /** @return array<string, mixed> */
     private static function labelSchema(): array
     {
-        $grams = ['type' => 'number', 'minimum' => 0];
+        $grams = ['type' => 'number'];
 
         return [
             'type' => 'object',
@@ -189,7 +194,7 @@ final class FoodAi
             'type' => 'object',
             'properties' => [
                 'name' => ['type' => 'string'],
-                'servings' => ['type' => 'integer', 'minimum' => 1],
+                'servings' => ['type' => 'integer'],
                 'instructions' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'items' => self::itemList(),
             ],
@@ -198,17 +203,22 @@ final class FoodAi
         ];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Each item is one food search, so the list is bounded: a plate or a recipe has far fewer.
+     *
+     * @return array<string, mixed>
+     */
     private static function itemList(): array
     {
         return [
             'type' => 'array',
+            'maxItems' => self::MAX_ITEMS,
             'items' => [
                 'type' => 'object',
                 'properties' => [
                     'name' => ['type' => 'string'],
                     'search' => ['type' => 'string'],
-                    'grams' => ['type' => 'number', 'minimum' => 0],
+                    'grams' => ['type' => 'number'],
                 ],
                 'required' => ['name', 'search', 'grams'],
                 'additionalProperties' => false,

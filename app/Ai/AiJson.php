@@ -5,6 +5,7 @@ namespace App\Ai;
 use App\Agent\AgentStatus;
 use Illuminate\Support\Facades\Log;
 use Rawphp\Capabilities\Schema\JsonSchemaValidator;
+use Rawphp\CapabilitiesAi\Contracts\DeadlineAwareLlmClient;
 use Rawphp\CapabilitiesAi\Contracts\LlmClient;
 use Throwable;
 
@@ -15,10 +16,15 @@ use Throwable;
  *
  * The LlmClient has no structured-output option, so the schema is the input schema of a single
  * `answer` tool and the answer is that tool call's arguments, checked against the schema.
+ *
+ * The caller waits for the answer in its own request, so the call gets DEADLINE_SECONDS, 429 retries
+ * included, rather than the client's default, which is a queued Coach turn's claim_ttl.
  */
 final class AiJson
 {
     public const TOOL = 'answer';
+
+    public const DEADLINE_SECONDS = 60;
 
     private const ANSWER_BY_TOOL = 'Give your answer by calling the `answer` tool once. Do not answer in text.';
 
@@ -38,13 +44,15 @@ final class AiJson
      */
     public function ask(string $prompt, array $content, array $schema): array
     {
-        if (! $this->status->enabled()) {
-            throw new AiUnavailable;
-        }
+        $this->ensureAvailable();
 
         try {
             // Resolved per call: capabilities that use this are built at boot, the binding and its config can change after.
-            $reply = app(LlmClient::class)->complete([
+            $client = app(LlmClient::class);
+            if ($client instanceof DeadlineAwareLlmClient) {
+                $client = $client->withDeadline(hrtime(true) + self::DEADLINE_SECONDS * 1_000_000_000);
+            }
+            $reply = $client->complete([
                 ['role' => 'system', 'content' => (string) file_get_contents(resource_path("prompts/{$prompt}.md"))],
                 ['role' => 'system', 'content' => self::ANSWER_BY_TOOL],
                 ['role' => 'user', 'content' => $content],
@@ -73,5 +81,17 @@ final class AiJson
 
         Log::warning('The AI did not answer through its schema.', ['prompt' => $prompt]);
         throw new AiFailed;
+    }
+
+    /**
+     * For a call that has work to do before it asks, so it does none of it without a key.
+     *
+     * @throws AiUnavailable when the server has no key
+     */
+    public function ensureAvailable(): void
+    {
+        if (! $this->status->enabled()) {
+            throw new AiUnavailable;
+        }
     }
 }
