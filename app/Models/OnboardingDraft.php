@@ -172,7 +172,7 @@ class OnboardingDraft extends Model
                 $template->slots
                     ->filter(fn (TemplateSlot $slot) => $slot->day === $day)
                     ->sortBy('position')
-                    ->map(fn (TemplateSlot $slot) => new OnboardingTemplateSlot($slot->exercise->name, $slot->muscle_group, $slot->sets))
+                    ->map(fn (TemplateSlot $slot) => new OnboardingTemplateSlot($slot->exercise->name, $slot->muscle_group, $slot->sets, $slot->exercise_id))
                     ->values()->all(),
             ), range(1, max(1, $template->days_per_week))),
         );

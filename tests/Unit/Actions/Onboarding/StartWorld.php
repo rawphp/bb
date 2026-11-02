@@ -19,9 +19,13 @@ use App\Models\User;
  */
 final class StartWorld
 {
-    /** A three-day full-body template: each day a chest and a side-delts exercise. */
+    /** A three-day full-body template: each day a chest and a side-delts exercise. Made once. */
     public static function template(): Template
     {
+        $saved = Template::query()->where('name', 'Full body three')->first();
+        if ($saved !== null) {
+            return $saved;
+        }
         $template = Template::factory()->create([
             'name' => 'Full body three', 'split' => Split::FullBody, 'sex' => SexFit::Any,
             'phase_fit' => [PhaseFit::Cut, PhaseFit::Maintain], 'priorities' => ['chest' => 'grow', 'sideDelts' => 'emphasize'],

@@ -44,7 +44,7 @@ it('ONB-020 saves the plan, its first week and the schedule, and deletes the dra
     $template = Template::query()->with('slots')->sole();
     expect(OnboardingDraft::query()->where('user_id', $user->id)->exists())->toBeFalse()
         ->and($profile->name)->toBe('Sam')
-        ->and($profile->eating_window)->toBe(['start' => '07:00', 'end' => '20:00'])
+        ->and($profile->eating_window)->toEqual(['start' => '07:00', 'end' => '20:00'])
         ->and($plan->start_date->format('Y-m-d'))->toBe('2026-10-11')
         ->and($plan->review_weekday)->toBe(6)
         ->and($phase->end_date->format('Y-m-d'))->toBe('2027-01-02')

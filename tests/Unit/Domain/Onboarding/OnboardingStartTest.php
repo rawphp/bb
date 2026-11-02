@@ -21,7 +21,11 @@ use Tests\Unit\Domain\Onboarding\OnboardingFixtures as F;
 // have nothing to port. The fixture plan starts on Sunday 11 October 2026 and reviews on Saturdays, so its first week
 // runs Sunday to Friday (PLAN-008).
 
-/** The review templates with exercise ids: day d's slots are exercises 100 + d and 200 + d. */
+/**
+ * The review templates with exercise ids: day d's slots are exercises 100 + d and 200 + d.
+ *
+ * @return list<OnboardingTemplate>
+ */
 function startCatalogue(): array
 {
     $template = fn (int $id, string $name, Split $split, array $phaseFit) => new OnboardingTemplate(
