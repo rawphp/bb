@@ -1,0 +1,729 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "priority_options": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "priority": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "enum": [
+                            "emphasize",
+                            "grow",
+                            "maintain",
+                            null
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "title",
+                    "priority"
+                ]
+            }
+        },
+        "saved": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "phase_title": {
+                    "type": "string"
+                },
+                "length_text": {
+                    "type": "string"
+                },
+                "weeks_count": {
+                    "type": "integer"
+                },
+                "can_shorten": {
+                    "type": "boolean"
+                },
+                "can_lengthen": {
+                    "type": "boolean"
+                },
+                "can_add_day": {
+                    "type": "boolean"
+                },
+                "end": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "warning": {
+                            "type": "string"
+                        },
+                        "diet_break_offer": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "warning"
+                    ]
+                },
+                "weeks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "number": {
+                                "type": "integer"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "now": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "text": {
+                                        "type": "string"
+                                    },
+                                    "tone": {
+                                        "type": "string",
+                                        "enum": [
+                                            "good",
+                                            "neutral",
+                                            "warning",
+                                            "info"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "text",
+                                    "tone"
+                                ]
+                            },
+                            "diet_break": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "text": {
+                                        "type": "string"
+                                    },
+                                    "tone": {
+                                        "type": "string",
+                                        "enum": [
+                                            "good",
+                                            "neutral",
+                                            "warning",
+                                            "info"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "text",
+                                    "tone"
+                                ]
+                            },
+                            "calories_text": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "muscle_sets": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "muscle_title": {
+                                            "type": "string"
+                                        },
+                                        "sets": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "muscle_title",
+                                        "sets"
+                                    ]
+                                }
+                            },
+                            "days": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "day": {
+                                            "type": "integer"
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "label": {
+                                            "type": "string"
+                                        },
+                                        "state": {
+                                            "type": "string",
+                                            "enum": [
+                                                "upcoming",
+                                                "started",
+                                                "done",
+                                                "skipped",
+                                                "missed",
+                                                "not_planned"
+                                            ]
+                                        },
+                                        "can_open": {
+                                            "type": "boolean"
+                                        },
+                                        "exercises": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "slot_id": {
+                                                        "type": "string"
+                                                    },
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "sets": {
+                                                        "type": "integer"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "slot_id",
+                                                    "name",
+                                                    "sets"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "day",
+                                        "title",
+                                        "label",
+                                        "state",
+                                        "can_open",
+                                        "exercises"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "number",
+                            "title",
+                            "muscle_sets",
+                            "days"
+                        ]
+                    }
+                },
+                "priorities": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "muscle": {
+                                "type": "string",
+                                "enum": [
+                                    "chest",
+                                    "back",
+                                    "quads",
+                                    "hamstrings",
+                                    "glutes",
+                                    "sideDelts",
+                                    "rearDelts",
+                                    "frontDelts",
+                                    "biceps",
+                                    "triceps",
+                                    "calves",
+                                    "abs",
+                                    "traps",
+                                    "forearms"
+                                ]
+                            },
+                            "muscle_title": {
+                                "type": "string"
+                            },
+                            "priority": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "emphasize",
+                                    "grow",
+                                    "maintain",
+                                    null
+                                ]
+                            },
+                            "priority_title": {
+                                "type": "string"
+                            },
+                            "bars": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "muscle",
+                            "muscle_title",
+                            "priority_title",
+                            "bars",
+                            "priority"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "phase_title",
+                "length_text",
+                "weeks_count",
+                "can_shorten",
+                "can_lengthen",
+                "can_add_day",
+                "weeks",
+                "priorities"
+            ]
+        },
+        "build": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "route": {
+                    "type": "string",
+                    "enum": [
+                        "template",
+                        "copy_previous",
+                        "builder",
+                        "scratch"
+                    ]
+                },
+                "resume_step": {
+                    "type": "string",
+                    "enum": [
+                        "builder",
+                        "scratch",
+                        "slots",
+                        "details"
+                    ]
+                },
+                "weeks": {
+                    "type": "integer"
+                },
+                "weeks_options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "integer"
+                            },
+                            "text": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "text"
+                        ]
+                    }
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "start_text": {
+                    "type": "string"
+                },
+                "label_style": {
+                    "type": "string",
+                    "enum": [
+                        "weekdays",
+                        "floating"
+                    ]
+                },
+                "weekdays_available": {
+                    "type": "boolean"
+                },
+                "phase_title": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "rep_range_text": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "phase_warning": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        },
+                        "tone": {
+                            "type": "string",
+                            "enum": [
+                                "good",
+                                "neutral",
+                                "warning",
+                                "info"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "tone"
+                    ]
+                },
+                "days_per_week": {
+                    "type": "integer"
+                },
+                "days_per_week_options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "integer"
+                            },
+                            "text": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "text"
+                        ]
+                    }
+                },
+                "priorities": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "muscle": {
+                                "type": "string",
+                                "enum": [
+                                    "chest",
+                                    "back",
+                                    "quads",
+                                    "hamstrings",
+                                    "glutes",
+                                    "sideDelts",
+                                    "rearDelts",
+                                    "frontDelts",
+                                    "biceps",
+                                    "triceps",
+                                    "calves",
+                                    "abs",
+                                    "traps",
+                                    "forearms"
+                                ]
+                            },
+                            "muscle_title": {
+                                "type": "string"
+                            },
+                            "priority": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "enum": [
+                                    "emphasize",
+                                    "grow",
+                                    "maintain",
+                                    null
+                                ]
+                            },
+                            "priority_title": {
+                                "type": "string"
+                            },
+                            "bars": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "muscle",
+                            "muscle_title",
+                            "priority_title",
+                            "bars",
+                            "priority"
+                        ]
+                    }
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ]
+                    }
+                },
+                "priority_notice": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        },
+                        "tone": {
+                            "type": "string",
+                            "enum": [
+                                "good",
+                                "neutral",
+                                "warning",
+                                "info"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "tone"
+                    ]
+                },
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "slots": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "muscle": {
+                                            "type": "string",
+                                            "enum": [
+                                                "chest",
+                                                "back",
+                                                "quads",
+                                                "hamstrings",
+                                                "glutes",
+                                                "sideDelts",
+                                                "rearDelts",
+                                                "frontDelts",
+                                                "biceps",
+                                                "triceps",
+                                                "calves",
+                                                "abs",
+                                                "traps",
+                                                "forearms"
+                                            ]
+                                        },
+                                        "muscle_title": {
+                                            "type": "string"
+                                        },
+                                        "sets": {
+                                            "type": "integer"
+                                        },
+                                        "sets_text": {
+                                            "type": "string"
+                                        },
+                                        "exercise_id": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "exercise_name": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "muscle",
+                                        "muscle_title",
+                                        "sets",
+                                        "sets_text"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "label",
+                            "slots"
+                        ]
+                    }
+                },
+                "sets_options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "value": {
+                                "type": "integer"
+                            },
+                            "text": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "text"
+                        ]
+                    }
+                },
+                "exercise_options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "muscle": {
+                                "type": "string",
+                                "enum": [
+                                    "chest",
+                                    "back",
+                                    "quads",
+                                    "hamstrings",
+                                    "glutes",
+                                    "sideDelts",
+                                    "rearDelts",
+                                    "frontDelts",
+                                    "biceps",
+                                    "triceps",
+                                    "calves",
+                                    "abs",
+                                    "traps",
+                                    "forearms"
+                                ]
+                            },
+                            "muscle_title": {
+                                "type": "string"
+                            },
+                            "exercises": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "id": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "name"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "muscle",
+                            "muscle_title",
+                            "exercises"
+                        ]
+                    }
+                },
+                "can_pick_for_me": {
+                    "type": "boolean"
+                },
+                "can_finish": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "route",
+                "resume_step",
+                "weeks",
+                "weeks_options",
+                "start_date",
+                "start_text",
+                "label_style",
+                "weekdays_available",
+                "days_per_week",
+                "days_per_week_options",
+                "priorities",
+                "warnings",
+                "days",
+                "sets_options",
+                "exercise_options",
+                "can_pick_for_me",
+                "can_finish"
+            ]
+        }
+    },
+    "required": [
+        "id",
+        "priority_options"
+    ]
+}

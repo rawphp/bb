@@ -1,0 +1,760 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "state": {
+            "type": "string",
+            "enum": [
+                "ready",
+                "unavailable"
+            ]
+        },
+        "message": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Why there is nothing to review; null when ready."
+        },
+        "week_start": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The reviewed week; review_answer and review_complete send it back.",
+            "format": "date"
+        },
+        "week_label": {
+            "type": "string",
+            "description": "\"5 Oct to 11 Oct\"."
+        },
+        "steps": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "enum": [
+                            "weigh_ins",
+                            "meals",
+                            "training",
+                            "progress",
+                            "goal",
+                            "calories",
+                            "preview"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "key",
+                    "title"
+                ]
+            }
+        },
+        "weigh_ins": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "date": {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            "date_label": {
+                                "type": "string"
+                            },
+                            "value_label": {
+                                "type": "string",
+                                "description": "\"82.5 kg\"; empty when the weigh-in is missing."
+                            },
+                            "is_missing": {
+                                "type": "boolean",
+                                "description": "A missed scheduled weigh-in: shown in orange with the section's `missing` pill."
+                            },
+                            "add_at": {
+                                "type": "string",
+                                "description": "When a late weigh-in for this day starts in the entry sheet.",
+                                "format": "date-time"
+                            }
+                        },
+                        "required": [
+                            "date",
+                            "date_label",
+                            "value_label",
+                            "is_missing",
+                            "add_at"
+                        ]
+                    }
+                },
+                "empty_message": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Shown when nothing was scheduled or logged; null otherwise."
+                },
+                "missing": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        },
+                        "tone": {
+                            "type": "string",
+                            "enum": [
+                                "good",
+                                "neutral",
+                                "warning",
+                                "info"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "tone"
+                    ],
+                    "description": "\"Missing · Add\", on each row marked is_missing."
+                },
+                "add_title": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "rows",
+                "missing",
+                "add_title"
+            ]
+        },
+        "meals": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "message": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        },
+                        "tone": {
+                            "type": "string",
+                            "enum": [
+                                "good",
+                                "neutral",
+                                "warning",
+                                "info"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "tone"
+                    ]
+                },
+                "unchecked": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "meal_id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "date_label": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "meal_id",
+                            "name",
+                            "date_label"
+                        ]
+                    }
+                },
+                "check_in_title": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "message",
+                "unchecked",
+                "check_in_title"
+            ]
+        },
+        "training": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "lines": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "label": {
+                                "type": "string"
+                            },
+                            "value": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "description": "The value's colour; neutral for plain text.",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "label",
+                            "value",
+                            "tone"
+                        ]
+                    }
+                },
+                "notes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ]
+                    }
+                },
+                "next_week_label": {
+                    "type": "string"
+                },
+                "next_week": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "text": {
+                            "type": "string"
+                        },
+                        "tone": {
+                            "type": "string",
+                            "enum": [
+                                "good",
+                                "neutral",
+                                "warning",
+                                "info"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "text",
+                        "tone"
+                    ],
+                    "description": "Normal, last hard week or deload."
+                }
+            },
+            "required": [
+                "lines",
+                "notes",
+                "next_week_label",
+                "next_week"
+            ]
+        },
+        "progress": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "lines": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "label": {
+                                "type": "string"
+                            },
+                            "value": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "description": "The value's colour; neutral for plain text.",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "label",
+                            "value",
+                            "tone"
+                        ]
+                    }
+                },
+                "pills": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ]
+                    }
+                },
+                "empty_message": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Shown when the phase has too little trend weight; null otherwise."
+                }
+            },
+            "required": [
+                "lines",
+                "pills"
+            ]
+        },
+        "goal": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "notes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ]
+                    }
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string",
+                                "description": "REV-013: next week's calories and macros, then the option's own words or why it is refused. Lines split on \"\\n\"."
+                            },
+                            "is_recommended": {
+                                "type": "boolean"
+                            },
+                            "is_selected": {
+                                "type": "boolean"
+                            },
+                            "is_enabled": {
+                                "type": "boolean",
+                                "description": "False when safety refuses it (SAFE-008 to SAFE-012); detail says why."
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "title",
+                            "detail",
+                            "is_recommended",
+                            "is_selected",
+                            "is_enabled"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "notes",
+                "options"
+            ]
+        },
+        "calories": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "lines": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "label": {
+                                "type": "string"
+                            },
+                            "value": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "description": "The value's colour; neutral for plain text.",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "label",
+                            "value",
+                            "tone"
+                        ]
+                    }
+                },
+                "notes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ]
+                    }
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string",
+                                "description": "REV-013: next week's calories and macros, then the option's own words or why it is refused. Lines split on \"\\n\"."
+                            },
+                            "is_recommended": {
+                                "type": "boolean"
+                            },
+                            "is_selected": {
+                                "type": "boolean"
+                            },
+                            "is_enabled": {
+                                "type": "boolean",
+                                "description": "False when safety refuses it (SAFE-008 to SAFE-012); detail says why."
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "title",
+                            "detail",
+                            "is_recommended",
+                            "is_selected",
+                            "is_enabled"
+                        ]
+                    }
+                },
+                "own": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "label": {
+                            "type": "string"
+                        },
+                        "unit_label": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "label",
+                        "unit_label"
+                    ],
+                    "description": "Shown while choose_own is selected; null otherwise."
+                },
+                "deload": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "description": "`deload_now` when the deload is 1 or 2 weeks away; otherwise `ask`.",
+                            "enum": [
+                                "deload_now",
+                                "ask"
+                            ]
+                        },
+                        "question": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "description": "\"Make this your deload week too?\"; null for deload_now."
+                        },
+                        "answer": {
+                            "type": [
+                                "boolean",
+                                "null"
+                            ],
+                            "description": "The answer that applies: the user's, or the default."
+                        },
+                        "note": {
+                            "type": [
+                                "string",
+                                "null"
+                            ]
+                        },
+                        "rir_label": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "description": "\"Target RIR by week: 3, 2, 1, 0\" for the shortened mesocycle; null when the deload does not move."
+                        }
+                    },
+                    "required": [
+                        "kind"
+                    ],
+                    "description": "Shown while drop_fatigue is selected; null otherwise."
+                },
+                "step_offer": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "label": {
+                            "type": "string"
+                        },
+                        "accepted": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "label",
+                        "accepted"
+                    ]
+                }
+            },
+            "required": [
+                "lines",
+                "notes",
+                "options"
+            ]
+        },
+        "preview": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "index": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 6
+                            },
+                            "date": {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            "date_label": {
+                                "type": "string"
+                            },
+                            "detail": {
+                                "type": "string",
+                                "description": "\"Training · Push A\"."
+                            },
+                            "kcal_label": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "\"2650 kcal\"; null when the day has no target."
+                            },
+                            "can_move": {
+                                "type": "boolean",
+                                "description": "REV-004: calories can move to or from this day."
+                            },
+                            "is_locked": {
+                                "type": "boolean",
+                                "description": "The day is past, so it can't change."
+                            }
+                        },
+                        "required": [
+                            "index",
+                            "date",
+                            "date_label",
+                            "detail",
+                            "can_move",
+                            "is_locked"
+                        ]
+                    }
+                },
+                "hint": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Why the week or the last move was refused; null when it builds."
+                },
+                "move": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "title": {
+                            "type": "string"
+                        },
+                        "min_kcal": {
+                            "type": "integer"
+                        },
+                        "max_kcal": {
+                            "type": "integer"
+                        },
+                        "step_kcal": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "title",
+                        "min_kcal",
+                        "max_kcal",
+                        "step_kcal"
+                    ]
+                }
+            },
+            "required": [
+                "days",
+                "hint",
+                "move"
+            ]
+        },
+        "can_save": {
+            "type": "boolean"
+        },
+        "save_title": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "state",
+        "week_label",
+        "steps",
+        "can_save",
+        "save_title"
+    ]
+}

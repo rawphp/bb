@@ -1,0 +1,34 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "filters": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "filter": {
+                        "type": "string",
+                        "enum": [
+                            "dairy_free",
+                            "gluten_free",
+                            "grain_free",
+                            "low_fodmap",
+                            "vegetarian",
+                            "paleo",
+                            "vegan"
+                        ]
+                    }
+                },
+                "required": [
+                    "filter"
+                ]
+            }
+        }
+    },
+    "required": [
+        "filters"
+    ]
+}
