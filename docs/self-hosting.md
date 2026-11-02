@@ -162,7 +162,7 @@ Copy it for `agent` with `queue:work agent --queue=agent --tries=1`. Restart bot
 
 ## Scheduler
 
-The scheduler sends due Web Push notifications, reaps the agent's stale turns, prunes the audit log (`audit_records`, kept 90 days) and prunes expired undo tokens. Run it every minute from cron, as the web server user:
+The scheduler reaps the agent's stale turns, prunes the audit log (`audit_records`, kept 90 days) and prunes expired undo tokens. Sending due Web Push notifications is not scheduled yet. Run it every minute from cron, as the web server user:
 
 ```cron
 * * * * * cd /var/www/bodybuilder && php artisan schedule:run >> /dev/null 2>&1

@@ -70,7 +70,7 @@ Parallel issues rely on these names.
 - Laravel 13, PHP 8.4 (raise to 8.5 once the gate host has it), MySQL 8, Redis (cache, queues, the AI progress store).
 - Auth: Sanctum. The PWA uses SPA cookie auth on the same domain. Tokens (CAP-021) are Sanctum personal access tokens whose abilities are capability names.
 - Queues: `default` and `agent` (AGT setup defaults), each with its own worker.
-- Scheduler: the Web Push sender (NOTIF), the package's stale-turn reaper, pruning of `audit_records` (daily) and of expired undo tokens (hourly, CAP-013). Pruning of the idempotency table is planned but not scheduled yet.
+- Scheduler: the package's stale-turn reaper, pruning of `audit_records` (daily) and of expired undo tokens (hourly, CAP-013). The Web Push sender (NOTIF) and pruning of the idempotency table are planned but not scheduled yet.
 - Web Push: VAPID keys in env, sent with `laravel-notification-channels/webpush`. The server decides when each notification is due.
 - Mail: one-time sign-in codes, password reset.
 - Every table holding user data has `user_id` as `foreignId()->constrained()->cascadeOnDelete()`, so `account_delete` removes everything (ACC-005), as in rp-clone.
