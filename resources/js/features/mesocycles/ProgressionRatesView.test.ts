@@ -68,6 +68,43 @@ describe('ProgressionRatesView', () => {
         expect(writeMock).not.toHaveBeenCalled();
     });
 
+    it('CAP-010 turns off every picker while a priority is saving, and back on once it is saved', async () => {
+        let answer: (value: unknown) => void = () => {};
+        writeMock.mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+        const wrapper = mount(ProgressionRatesView, { props: { payload: meso } });
+
+        await pick(wrapper, 'Chest', 'Grow');
+        expect(wrapper.findAll('select').every((s) => s.attributes('disabled') !== undefined)).toBe(true);
+        await pick(wrapper, 'Back', 'Off');
+        expect(writeMock).toHaveBeenCalledTimes(1);
+
+        answer({});
+        await flushPromises();
+        expect(wrapper.findAll('select').every((s) => s.attributes('disabled') === undefined)).toBe(true);
+    });
+
+    it('OFF-003 reads the priorities again when the save timed out', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('priority_set', 0, { reason: 'timeout' }));
+        const wrapper = mount(ProgressionRatesView, { props: { payload: meso } });
+
+        await pick(wrapper, 'Chest', 'Grow');
+
+        expect(readMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id }, expect.any(Function), expect.any(Function));
+        expect(wrapper.find('[role="alert"]').text()).toContain('may have worked');
+    });
+
+    it('MESO-032 keeps showing the saved priority after a failed save, so the same pick sends again', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('priority_set', 422, { error: { message: 'Try again.' } })).mockResolvedValueOnce({});
+        const wrapper = mount(ProgressionRatesView, { props: { payload: meso } });
+
+        await pick(wrapper, 'Chest', 'Grow');
+        const chest = wrapper.find('select[aria-label="Chest priority"]').element as HTMLSelectElement;
+        expect(chest.options[chest.selectedIndex]!.text).toBe('Emphasize');
+
+        await pick(wrapper, 'Chest', 'Grow');
+        expect(writeMock).toHaveBeenCalledTimes(2);
+    });
+
     it('CAP-012 shows why a priority was not saved', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('priority_set', 422, { error: { message: 'This mesocycle has ended.' } }));
         const wrapper = mount(ProgressionRatesView, { props: { payload: meso } });

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cached, clearReads, MAX_AGE_MS, store } from './cache';
-import { CapabilityError, keepWarm, read, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, write } from './call';
+import { CapabilityError, keepWarm, read, readFresh, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, write } from './call';
 import { clearWalk, walkDays } from './clock';
 
 function json(body: unknown, status = 200): Response {
@@ -188,6 +188,22 @@ describe('call', () => {
 
             expect(onUpdate).not.toHaveBeenCalled();
             expect(await cached('today_show{}')).toMatchObject({ key: 'today_show{}', data: { title: 'cached' }, fetchedAt: 5 });
+        });
+
+        it('MESO-007 readFresh waits for the server over a cached copy, and caches its answer', async () => {
+            await store('train_show{}', { draft: null }, 5);
+            serve({ train_show: { draft: 'd1' } });
+
+            expect(await readFresh('train_show')).toEqual({ draft: 'd1' });
+            expect((await cached('train_show{}'))?.data).toEqual({ draft: 'd1' });
+        });
+
+        it('MESO-007 readFresh fails offline and leaves the cached copy', async () => {
+            await store('train_show{}', { draft: null }, 5);
+            serve({});
+
+            await expect(readFresh('train_show')).rejects.toMatchObject({ status: 0 });
+            expect(await cached('train_show{}')).toMatchObject({ data: { draft: null }, fetchedAt: 5 });
         });
 
         it('OFF-003 fails with status 0 when nothing is cached and there is no network', async () => {

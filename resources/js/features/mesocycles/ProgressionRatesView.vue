@@ -1,37 +1,25 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { write } from '@/app/call';
-import { failureMessage } from '@/app/errors';
 import type { MesocycleShowOutput } from '@/contracts/mesocycle_show';
 import type { PrioritySetInput } from '@/contracts/priority_set';
 import PriorityRowView from './PriorityRowView.vue';
 import ReadState from '@/app/ReadState.vue';
 import type { Priority, PriorityRow } from './types';
-import { useRead } from '@/app/useRead';
+import { useScreenRead } from '@/app/useScreenRead';
+import { useWrite } from '@/app/useWrite';
 
 // Progression rates: change a muscle's priority on a saved mesocycle, from the next
 // session (MESO-032), or set it Off (MESO-034). Ported from rp-clone's ProgressionRatesView.
 const props = defineProps<{ payload?: MesocycleShowOutput; mesocycleId?: string }>();
 
-const { data, failure, load } = useRead<MesocycleShowOutput>('mesocycle_show', props.payload, () => ({
+const { data, failure, load } = useScreenRead<MesocycleShowOutput>('mesocycle_show', props.payload, () => ({
     mesocycle_id: props.mesocycleId ?? props.payload?.id,
 }));
 
-const saving = ref(false);
-const saveError = ref<string | null>(null);
+const { send, busy: saving, error: saveError } = useWrite(load);
 
-async function setPriority(row: PriorityRow, priority: Priority): Promise<void> {
+function setPriority(row: PriorityRow, priority: Priority): void {
     if (!data.value) return;
-    saving.value = true;
-    saveError.value = null;
-    try {
-        await write('priority_set', { mesocycle_id: data.value.id, muscle: row.muscle, priority } satisfies PrioritySetInput);
-        await load();
-    } catch (error) {
-        saveError.value = failureMessage(error, 'The priority could not be saved.');
-    } finally {
-        saving.value = false;
-    }
+    void send('priority_set', { mesocycle_id: data.value.id, muscle: row.muscle, priority } satisfies PrioritySetInput, 'The priority could not be saved.');
 }
 </script>
 

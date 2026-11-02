@@ -61,6 +61,15 @@ export async function read<T = unknown>(
     return hit.data as T;
 }
 
+/**
+ * The server's answer only, never the cached copy, for a decision that must not rest on
+ * an old one (MESO-007: whether a draft would be replaced). The answer is cached as
+ * read() caches it. Offline it fails with status 0 and the cached copy stays.
+ */
+export function readFresh<T = unknown>(name: string, input: CapabilityInput = {}): Promise<T> {
+    return fetchRead<T>(name, input, readKey(name, input));
+}
+
 // The statuses after which a cached copy may not be shown. A gone session clears
 // every read (forget()); a refused or missing read drops that one (fetchRead()).
 const SESSION_GONE = [401, 419];

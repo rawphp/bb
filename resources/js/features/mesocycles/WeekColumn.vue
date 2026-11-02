@@ -19,7 +19,7 @@ withDefaults(defineProps<{ week: MesocycleWeek; mesocycleId: string; pending?: b
         <div class="flex flex-col gap-1">
             <h3 class="flex items-center gap-2 text-lg font-semibold text-primary-text">
                 {{ week.title }}
-                <span v-if="week.now" class="rounded-full bg-accent px-1.5 py-0.5 text-xs font-bold text-on-accent">{{ week.now.text }}</span>
+                <StatusPill v-if="week.now" :text="week.now.text" :tone="week.now.tone" />
             </h3>
             <StatusPill v-if="week.diet_break" class="self-start" :text="week.diet_break.text" :tone="week.diet_break.tone" />
             <p class="text-sm text-secondary-text" :class="{ 'opacity-50': pending }">{{ week.calories_text ?? 'No calorie target yet' }}</p>

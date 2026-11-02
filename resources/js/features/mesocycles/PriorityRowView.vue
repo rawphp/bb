@@ -19,9 +19,13 @@ const props = withDefaults(
 const emit = defineEmits<{ change: [priority: Priority] }>();
 const id = useId();
 
+// The select always shows the server's priority: it goes back to it at once, and moves
+// only when the saved priority comes back. A failed save so leaves nothing picked that
+// was never saved, and picking the same priority again sends it again.
 function choose(event: Event): void {
-    const index = (event.target as HTMLSelectElement).selectedIndex;
-    const option = props.options[index];
+    const select = event.target as HTMLSelectElement;
+    const option = props.options[select.selectedIndex];
+    select.selectedIndex = props.options.findIndex((o) => o.priority === props.priority);
     if (option && option.priority !== props.priority) emit('change', option.priority);
 }
 </script>

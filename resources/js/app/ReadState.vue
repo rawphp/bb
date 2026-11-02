@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Skeleton from '@/design/Skeleton.vue';
-import type { ReadFailure } from './useRead';
+import type { ReadFailure } from './useScreenRead';
 
 // What a screen shows while its read has no data: a skeleton, or why it failed (CAP-004).
 defineProps<{ failure: ReadFailure | null; what: string }>();

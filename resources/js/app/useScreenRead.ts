@@ -5,13 +5,13 @@ import { onScreenReturn } from './screenTop';
 export type ReadFailure = 'signed-out' | 'error';
 
 /**
- * A screen's one read (CAP-002), with the input it takes (none by default). Given a
+ * A screen's read (CAP-002), with the input it takes (none by default). Given a
  * payload (a /dev/screens fixture) it shows that and calls nothing; otherwise it reads
  * on mount, cached copy first (OFF-003), and again each time the screen comes back on
  * show, so a screen under a pushed one never acts on what it read before.
  * load() reads again, for Try again and after a write.
  */
-export function useRead<T>(
+export function useScreenRead<T>(
     name: string,
     payload?: T,
     input: () => CapabilityInput = () => ({}),

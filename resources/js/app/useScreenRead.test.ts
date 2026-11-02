@@ -3,24 +3,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { CapabilityError, read } from './call';
 import ScreenFrame from './ScreenFrame.vue';
-import { useRead } from './useRead';
+import { useScreenRead } from './useScreenRead';
 
 vi.mock('./call', async (original) => ({ ...(await original<typeof import('./call')>()), read: vi.fn() }));
 
 const readMock = vi.mocked(read);
 
 function screen(payload?: { n: number }) {
-    let api!: ReturnType<typeof useRead<{ n: number }>>;
+    let api!: ReturnType<typeof useScreenRead<{ n: number }>>;
     const wrapper = mount(
         defineComponent(() => {
-            api = useRead('probe_show', payload);
+            api = useScreenRead('probe_show', payload);
             return () => h('p', api.failure.value ?? String(api.data.value?.n ?? 'loading'));
         }),
     );
     return { wrapper, api: () => api };
 }
 
-describe('useRead', () => {
+describe('useScreenRead', () => {
     beforeEach(() => readMock.mockReset());
 
     it('CAP-002 shows a given payload and reads nothing', () => {
@@ -92,7 +92,7 @@ describe('useRead', () => {
     it('CAP-002 reads with the input the screen gives', async () => {
         readMock.mockResolvedValueOnce({ n: 4 });
         mount(defineComponent(() => {
-            useRead('probe_show', undefined, () => ({ id: 'a' }));
+            useScreenRead('probe_show', undefined, () => ({ id: 'a' }));
             return () => h('p');
         }));
         await flushPromises();
@@ -104,7 +104,7 @@ describe('useRead', () => {
         readMock.mockResolvedValueOnce({ n: 1 }).mockResolvedValueOnce({ n: 2 });
         const top = ref(true);
         const Probe = defineComponent((props: { payload?: { n: number } }) => {
-            const api = useRead('probe_show', props.payload);
+            const api = useScreenRead('probe_show', props.payload);
             return () => h('p', String(api.data.value?.n ?? 'loading'));
         }, { props: ['payload'] });
         const wrapper = mount(defineComponent(() => () => h('div', [

@@ -1,17 +1,18 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read } from '@/app/call';
+import { CapabilityError, read, readFresh } from '@/app/call';
 import type { TrainShowOutput } from '@/contracts/train_show';
 import { screenFixture } from '@/testing/schemas';
 import CurrentMesocycleView from './CurrentMesocycleView.vue';
 import MesocyclesView from './MesocyclesView.vue';
 import MesocycleView from './MesocycleView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
 const push = vi.fn();
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ push }) }));
 
 const readMock = vi.mocked(read);
+const readFreshMock = vi.mocked(readFresh);
 const train = screenFixture<TrainShowOutput>('train_show');
 const empty = screenFixture<TrainShowOutput>('train_show.empty');
 const global = { stubs: { RouterLink: RouterLinkStub, teleport: true } };
@@ -19,6 +20,7 @@ const global = { stubs: { RouterLink: RouterLinkStub, teleport: true } };
 describe('MesocyclesView', () => {
     beforeEach(() => {
         readMock.mockReset();
+        readFreshMock.mockReset();
         push.mockReset();
     });
 
@@ -82,8 +84,10 @@ describe('MesocyclesView', () => {
         expect(push).toHaveBeenCalledWith({ path: '/train/mesocycles/build', query: { route: 'template' } });
     });
 
-    it('MESO-007 reads train_show again before choosing, so a draft made since still gets the question', async () => {
-        readMock.mockResolvedValueOnce(empty).mockResolvedValueOnce({ ...empty, draft: train.draft });
+    it('MESO-007 asks about the draft the server has, even when the cached copy has none', async () => {
+        // The cached copy (no draft) comes back at once; only the server knows of the new draft.
+        readMock.mockResolvedValue(empty);
+        readFreshMock.mockResolvedValueOnce({ ...empty, draft: train.draft });
         const wrapper = mount(MesocyclesView, { global });
         await flushPromises();
         expect(wrapper.find('[data-test="draft"]').exists()).toBe(false);
@@ -92,9 +96,44 @@ describe('MesocyclesView', () => {
         await wrapper.find('[data-test="item-template"]').trigger('click');
         await flushPromises();
 
-        expect(readMock).toHaveBeenCalledTimes(2);
+        expect(readFreshMock).toHaveBeenCalledWith('train_show');
         expect(wrapper.text()).toContain('Replace your draft?');
         expect(push).not.toHaveBeenCalled();
+    });
+
+    it('MESO-007 starts nothing when the server cannot say whether there is a draft', async () => {
+        readMock.mockResolvedValue(empty);
+        readFreshMock.mockRejectedValueOnce(new CapabilityError('train_show', 0, { reason: 'network' }));
+        const wrapper = mount(MesocyclesView, { global });
+        await flushPromises();
+
+        await wrapper.find('[data-test="menu"]').trigger('click');
+        await wrapper.find('[data-test="item-builder"]').trigger('click');
+        await flushPromises();
+
+        expect(push).not.toHaveBeenCalled();
+        expect(wrapper.find('[data-test="error"]').text()).toBe('No connection. Try again when you are online.');
+        expect(wrapper.findAll('h2').map((h) => h.text())).toEqual([]);
+    });
+
+    it('MESO-007 turns off the + menu while it checks for a draft, so a second choice waits', async () => {
+        readMock.mockResolvedValue(empty);
+        let answer: (value: TrainShowOutput) => void = () => {};
+        readFreshMock.mockImplementationOnce(() => new Promise((resolve) => (answer = resolve as typeof answer)));
+        const wrapper = mount(MesocyclesView, { global });
+        await flushPromises();
+
+        await wrapper.find('[data-test="menu"]').trigger('click');
+        await wrapper.find('[data-test="item-builder"]').trigger('click');
+        expect(wrapper.find('[data-test="menu"]').attributes('disabled')).toBeDefined();
+        await wrapper.find('[data-test="menu"]').trigger('click');
+        expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+
+        answer(empty);
+        await flushPromises();
+        expect(readFreshMock).toHaveBeenCalledTimes(1);
+        expect(push).toHaveBeenCalledTimes(1);
+        expect(wrapper.find('[data-test="menu"]').attributes('disabled')).toBeUndefined();
     });
 
     it('OFF-003 shows the fresh train_show over the cached copy, and stops showing the copy when the refresh says signed out', async () => {

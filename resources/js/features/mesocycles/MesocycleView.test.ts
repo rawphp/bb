@@ -84,6 +84,26 @@ describe('MesocycleView', () => {
         expect(readMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id }, expect.any(Function), expect.any(Function));
     });
 
+    it('CAP-010 locks the stepper and the menu while a write is in flight, so a second tap sends nothing', async () => {
+        let answer: (value: unknown) => void = () => {};
+        writeMock.mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+        const wrapper = show();
+
+        await wrapper.find('[data-test="lengthen"]').trigger('click');
+        for (const control of ['lengthen', 'shorten', 'menu']) {
+            expect(wrapper.find(`[data-test="${control}"]`).attributes('disabled')).toBeDefined();
+        }
+        await wrapper.find('[data-test="lengthen"]').trigger('click');
+        await wrapper.find('[data-test="shorten"]').trigger('click');
+        expect(writeMock).toHaveBeenCalledTimes(1);
+
+        answer({});
+        await flushPromises();
+        for (const control of ['lengthen', 'shorten', 'menu']) {
+            expect(wrapper.find(`[data-test="${control}"]`).attributes('disabled')).toBeUndefined();
+        }
+    });
+
     it('MESO-042 turns off + and − when the server says the length cannot change', () => {
         const fixed = structuredClone(meso);
         fixed.saved = { ...fixed.saved!, can_shorten: false, can_lengthen: false };

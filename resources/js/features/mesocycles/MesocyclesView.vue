@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { readFresh } from '@/app/call';
+import { failureMessage } from '@/app/errors';
 import ReadState from '@/app/ReadState.vue';
-import { useRead } from '@/app/useRead';
+import { useScreenRead } from '@/app/useScreenRead';
 import type { TrainShowOutput } from '@/contracts/train_show';
 import BottomSheet from '@/design/BottomSheet.vue';
 import ActionMenu, { type ActionMenuItem } from './ActionMenu.vue';
@@ -18,10 +20,11 @@ type CreateRoute = TrainShowOutput['create_routes'][number];
 const BUILD_PATH = '/train/mesocycles/build';
 
 const router = useRouter();
-const { data, failure, load } = useRead<TrainShowOutput>('train_show', props.payload);
+const { data, failure, load } = useScreenRead<TrainShowOutput>('train_show', props.payload);
 
 const replacing = ref<CreateRoute | null>(null);
 const checking = ref(false);
+const checkError = ref<string | null>(null);
 
 const menuItems = computed<ActionMenuItem[]>(() =>
     (data.value?.create_routes ?? []).map((route) => ({
@@ -36,14 +39,21 @@ function build(route: CreateRoute): void {
     void router.push({ path: BUILD_PATH, query: { route: route.route, ...(route.copy_source_id ? { copy: route.copy_source_id } : {}) } });
 }
 
-// Starting another build replaces the draft, so it asks first (MESO-007). It reads
-// train_show again before deciding, so a draft made since this screen last read
-// (another screen, another device) still gets the question.
+// Starting another build replaces the draft, so it asks first (MESO-007). Whether there
+// is a draft comes from the server, never the cached copy, so a draft started since
+// (on another screen or device) still gets the question. With no answer, nothing starts.
 async function choose(key: string): Promise<void> {
+    checkError.value = null;
     if (props.payload === undefined) {
         checking.value = true;
-        await load();
-        checking.value = false;
+        try {
+            data.value = await readFresh<TrainShowOutput>('train_show');
+        } catch (error) {
+            checkError.value = failureMessage(error, 'Your mesocycles could not be checked for a draft.');
+            return;
+        } finally {
+            checking.value = false;
+        }
     }
     const route = data.value?.create_routes.find((r) => r.route === key);
     if (!route?.available) return;
@@ -69,6 +79,8 @@ function confirmReplace(): void {
                 </svg>
             </ActionMenu>
         </header>
+
+        <p v-if="checkError" role="alert" class="mb-4 rounded-2xl bg-tone-warning-bg p-3 text-sm text-tone-warning" data-test="error">{{ checkError }}</p>
 
         <template v-if="data">
             <section v-if="data.draft" class="mb-6">

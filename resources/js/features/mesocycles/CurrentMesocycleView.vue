@@ -2,13 +2,13 @@
 import type { TrainShowOutput } from '@/contracts/train_show';
 import MesocycleView from './MesocycleView.vue';
 import ReadState from '@/app/ReadState.vue';
-import { useRead } from '@/app/useRead';
+import { useScreenRead } from '@/app/useScreenRead';
 
 // Train → Current mesocycle: the mesocycle view of the one that is running (MESO-040).
 // Ported from rp-clone's CurrentMesocycleView.
 const props = defineProps<{ payload?: TrainShowOutput }>();
 
-const { data, failure, load } = useRead<TrainShowOutput>('train_show', props.payload);
+const { data, failure, load } = useScreenRead<TrainShowOutput>('train_show', props.payload);
 </script>
 
 <template>

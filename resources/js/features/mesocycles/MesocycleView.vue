@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { CapabilityError, write } from '@/app/call';
-import { failureMessage, isTimeout } from '@/app/errors';
 import ReadState from '@/app/ReadState.vue';
 import { ulid } from '@/app/ulid';
-import { useRead } from '@/app/useRead';
+import { useScreenRead } from '@/app/useScreenRead';
+import { useWrite } from '@/app/useWrite';
 import type { MesocycleDayAddInput } from '@/contracts/mesocycle_day_add';
 import type { MesocycleEndInput } from '@/contracts/mesocycle_end';
 import type { MesocycleLengthSetInput } from '@/contracts/mesocycle_length_set';
@@ -21,13 +20,12 @@ import WeekColumn from './WeekColumn.vue';
 const props = withDefaults(defineProps<{ payload?: MesocycleShowOutput; mesocycleId?: string; pending?: boolean }>(), { pending: false });
 
 const router = useRouter();
-const { data, failure, load } = useRead<MesocycleShowOutput>('mesocycle_show', props.payload, () => ({
+const { data, failure, load } = useScreenRead<MesocycleShowOutput>('mesocycle_show', props.payload, () => ({
     mesocycle_id: props.mesocycleId ?? props.payload?.id,
 }));
 
+const { send, busy, error: errorMessage } = useWrite(load);
 const endOpen = ref(false);
-const busy = ref(false);
-const errorMessage = ref<string | null>(null);
 const weeks = ref<HTMLElement>();
 
 // The new day's id (CAP-019), kept until the server has answered, so a retry after a call
@@ -40,36 +38,18 @@ const menuItems = computed<ActionMenuItem[]>(() => [
     { key: 'end', title: 'End meso', disabled: !data.value?.saved?.end, destructive: true },
 ]);
 
-/** Sends a write and reads the mesocycle again. Resolves true once the server took it, false once it answered no. */
-async function send(name: string, input: Record<string, unknown>, fallback: string): Promise<boolean | null> {
-    endOpen.value = false;
-    busy.value = true;
-    errorMessage.value = null;
-    try {
-        await write(name, input);
-        await load();
-        return true;
-    } catch (error) {
-        errorMessage.value = failureMessage(error, fallback);
-        // Past the deadline the server may have done it: show what it holds now.
-        if (isTimeout(error)) await load();
-        return error instanceof CapabilityError && error.status === 0 ? null : false;
-    } finally {
-        busy.value = false;
-    }
-}
-
-function setLength(weeksCount: number): Promise<boolean | null> {
+function setLength(weeksCount: number): Promise<unknown> {
     return send('mesocycle_length_set', { mesocycle_id: data.value!.id, weeks: weeksCount } satisfies MesocycleLengthSetInput, 'The length could not be changed.');
 }
 
 async function addDay(): Promise<void> {
     dayId ??= ulid();
-    const answered = await send('mesocycle_day_add', { mesocycle_id: data.value!.id, day_id: dayId } satisfies MesocycleDayAddInput, 'The day could not be added.');
-    if (answered !== null) dayId = null;
+    const outcome = await send('mesocycle_day_add', { mesocycle_id: data.value!.id, day_id: dayId } satisfies MesocycleDayAddInput, 'The day could not be added.');
+    if (outcome === 'done' || outcome === 'refused') dayId = null;
 }
 
-function end(dietBreak: boolean): Promise<boolean | null> {
+function end(dietBreak: boolean): Promise<unknown> {
+    endOpen.value = false;
     return send('mesocycle_end', { mesocycle_id: data.value!.id, diet_break: dietBreak } satisfies MesocycleEndInput, 'The mesocycle could not be ended.');
 }
 
