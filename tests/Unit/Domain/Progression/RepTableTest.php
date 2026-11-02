@@ -51,6 +51,21 @@ it('PROG-025 a weight more than 15% from last week\'s is no row, though it is wi
     expect(array_map(fn (RepTableRow $row) => $row->weight, $rows))->toBe([72.5, 75.0, 77.5, 80.0, 82.5, 85.0, 87.5, 90.0]);
 });
 
+it('PROG-025 PROG-027 a planned weight stepped up more than 15% from last week\'s is still a row with the planned reps', function () {
+    // Dumbbells in 2 kg steps: last week 10 kg, PROG-027 plans 12 kg x 12, 20% up. 12 is the only step within 15%
+    // of the plan, and rp-clone applyRetarget gives the planned weight its target reps without the last-week check.
+    $rows = RepTable::rows(12.0, 12, 1, repTableRules(LoadType::Dumbbell, step: 2.0), isFatLoss: false, lastWeekWeight: 10.0);
+
+    expect(repTableMap($rows))->toBe(['12' => 12]);
+});
+
+it('PROG-025 a set whose last-week weight was far below the plan keeps only the planned weight', function () {
+    // Planned 82.5 kg x 10 after last week's 60 kg: every step from 72.5 to 92.5 kg is more than 15% above 60.
+    $rows = RepTable::rows(82.5, 10, 1, repTableRules(), isFatLoss: false, lastWeekWeight: 60.0);
+
+    expect(repTableMap($rows))->toBe(['82.5' => 10]);
+});
+
 it('PROG-023 PROG-024 fat loss steps the table by the smallest increment the equipment allows', function () {
     $rows = RepTable::rows(80.0, 10, 2, repTableRules(), isFatLoss: true);
 
