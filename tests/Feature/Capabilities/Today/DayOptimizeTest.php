@@ -4,6 +4,7 @@ use App\Models\DayTarget;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Tests\Support\ScreenFixture;
 use Tests\Support\SheetSeed;
 use Tests\Support\TrainSeed;
 
@@ -67,8 +68,10 @@ it('SCH-036 SCH-056 CAP-013 saves what the preview showed with a toast, then sho
     expect($response->json('data.invalidates'))->toContain('today_show{"date":"2026-09-24"}', 'day_optimize_show{"date":"2026-09-24"}', 'week_show{"date":"2026-09-24"}');
 
     $empty = optimizeOver($user, 'day_optimize_show', ['date' => '2026-09-24'])->assertOk()->json('data');
-    assertMatchesScreenFixture('day_optimize_show.empty', $empty);
-    expect($empty['message'])->toBe('Your meals are already in the best places.')
+    // The empty state's shape, and the read's own output schema.
+    assertMatchesScreenFixture('day_optimize_show', $empty);
+    expect(ScreenFixture::differences(ScreenFixture::load('day_optimize_show.empty'), $empty))->toBe([])
+        ->and($empty['message'])->toBe('Your meals are already in the best places.')
         ->and($empty['can_save'])->toBeFalse();
 
     optimizeOver($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();

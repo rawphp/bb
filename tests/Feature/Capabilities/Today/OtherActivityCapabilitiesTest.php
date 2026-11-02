@@ -5,6 +5,7 @@ use App\Models\OtherActivity;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Tests\Support\SheetSeed;
 use Tests\Support\TrainSeed;
 
@@ -34,7 +35,7 @@ it('SCH-032 refuses other_activity_save and other_activity_delete when signed ou
 ]);
 
 it('SCH-032 CAP-019 answers 404 for another user\'s activity, saved again or deleted', function (string $name) {
-    $theirs = OtherActivity::factory()->for(User::factory()->create())->create(['date' => '2026-09-23', 'minutes' => 30]);
+    $theirs = OtherActivity::factory()->for(User::factory()->create())->create(['id' => (string) Str::ulid(), 'date' => '2026-09-23', 'minutes' => 30]);
     $user = TrainSeed::user();
     SheetSeed::day($user);
 
@@ -78,7 +79,7 @@ it('SCH-032 AGT-010 CAP-013 deleting is marked destructive, re-targets the day, 
     $response = activityOver($user, 'other_activity_delete', ['id' => $input['id']])->assertOk()->assertJsonPath('data.toast', 'Meals updated: Run removed');
     expect($response->json('data.invalidates'))->toContain('today_show{"date":"2026-09-23"}', 'week_show{"date":"2026-09-23"}')
         ->and(OtherActivity::query()->count())->toBe(0)
-        ->and(app(Rawphp\Capabilities\Registry\CapabilityRegistry::class)->get('other_activity_delete')->tags)->toContain('destructive', 'reversible');
+        ->and(app(CapabilityRegistry::class)->get('other_activity_delete')->tags)->toContain('destructive', 'reversible');
 
     activityOver($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
 
