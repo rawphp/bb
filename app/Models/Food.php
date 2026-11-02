@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Foods\FoodKind;
 use App\Domain\Foods\FoodSource;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\FoodFactory;
@@ -57,6 +58,17 @@ class Food extends Model
     protected function visibleTo(Builder $query, User $user): void
     {
         $query->where(fn (Builder $q) => $q->whereNull('user_id')->orWhere('user_id', $user->id));
+    }
+
+    /**
+     * FOOD-061: the user's own custom foods, the only foods the custom food capabilities read or change.
+     *
+     * @param  Builder<Food>  $query
+     */
+    #[Scope]
+    protected function customOf(Builder $query, User $user): void
+    {
+        $query->where('user_id', $user->id)->where('kind', FoodKind::Custom->value);
     }
 
     /** @return array<string, string> */

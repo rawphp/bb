@@ -2,7 +2,9 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
-use Illuminate\Validation\Rule;
+use App\Domain\Foods\Barcode;
+use Closure;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -38,7 +40,28 @@ final class CustomFoodSaveInput extends CapabilityData
     {
         return [
             'id' => ['ulid'],
-            'barcode' => ['nullable', Rule::regex('/^\d{1,14}$/')],
+            // Implicit: Laravel skips a plain rule for a value that is only spaces.
+            'name' => [new class implements ValidationRule
+            {
+                public bool $implicit = true;
+
+                public function validate(string $attribute, mixed $value, Closure $fail): void
+                {
+                    if (is_string($value) && trim($value) === '') {
+                        $fail('Enter a name.');
+                    }
+                }
+            }],
+            // Barcode::normalize is the lookup key FOOD-041 finds the food by, so a code it cannot key is refused.
+            'barcode' => ['nullable', function (string $attribute, mixed $value, Closure $fail): void {
+                if (Barcode::normalize(is_string($value) ? $value : null) === null) {
+                    $fail('A barcode is 1 to 14 digits.');
+                }
+            }],
+            'protein' => [new WithinServing('Protein')],
+            'fat' => [new WithinServing('Fat')],
+            'carbs' => [new WithinServing('Carbs')],
+            'fiber' => [new WithinServing('Fiber')],
         ];
     }
 }
