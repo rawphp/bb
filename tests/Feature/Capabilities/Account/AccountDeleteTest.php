@@ -28,7 +28,7 @@ it('ACC-005 refuses account_delete when signed out', function () {
     accountDelete(null, ['confirmation' => 'DELETE'])->assertUnauthorized();
 });
 
-it('ACC-005 answers 422 and deletes nothing unless DELETE is typed exactly', function (string $typed) {
+it('ACC-005 SET-009 answers 422 and deletes nothing unless DELETE is typed exactly', function (string $typed) {
     $user = User::factory()->create();
 
     accountDelete($user, ['confirmation' => $typed])
@@ -38,7 +38,7 @@ it('ACC-005 answers 422 and deletes nothing unless DELETE is typed exactly', fun
     expect(User::query()->whereKey($user->id)->exists())->toBeTrue();
 })->with(['delete', 'Delete', 'DELET', 'DELETE ', ' DELETE', 'DELETE!', '']);
 
-it('ACC-005 deletes the account and all its data, and no one else\'s', function () {
+it('ACC-005 SET-009 deletes the account and all its data, and no one else\'s', function () {
     $user = TrainSeed::user();
     TrainSeed::mesocycle($user);
     Phase::factory()->for($user)->create();
@@ -58,7 +58,7 @@ it('ACC-005 deletes the account and all its data, and no one else\'s', function 
         ->and(Profile::query()->where('user_id', $other->id)->exists())->toBeTrue();
 });
 
-it('ACC-005 deleting the account ends the session that deleted it', function () {
+it('ACC-005 SET-009 deleting the account ends the session that deleted it', function () {
     // Signed in as the PWA is: a session cookie on the app's own origin. Signing in sets a remember token, which a
     // plain logout would cycle by saving the user, and so put the deleted account back.
     $this->withHeader('Referer', config('app.url'));

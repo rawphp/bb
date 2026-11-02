@@ -123,19 +123,57 @@ it('SAFE-017 an event before the switch day stays with the phase it ended', func
     expect(array_column(switchRows($writes), 'event'))->toBe(['2026-10-01', null]);
 });
 
-it('SAFE-017 PLAN-007 moving to training only keeps the type, drops the rate and runs one default mesocycle', function () {
-    $phases = [switchPhase(SWITCH_CURRENT, PhaseType::FatLoss, '2026-09-07', '2026-12-07', -0.5)];
+it('SAFE-017 PH-043 an event on the switch day moves to the new phase', function () {
+    $phases = [switchPhase(SWITCH_CURRENT, PhaseType::FatLoss, '2026-09-07', '2026-12-07', -0.5, event: '2026-10-12')];
+
+    $writes = PhaseSwitch::writes($phases, switchDay('2026-10-12'), PhaseType::FatLoss, 0.0, switchDay('2026-12-07'), SWITCH_NEW);
+
+    expect(array_column(switchRows($writes), 'event'))->toBe([null, '2026-10-12']);
+});
+
+it('SAFE-017 a phase replaced in place keeps its event', function () {
+    $phases = [switchPhase(SWITCH_CURRENT, PhaseType::MuscleGain, '2026-10-12', '2027-01-04', 0.25, event: '2026-12-20')];
+
+    $writes = PhaseSwitch::writes($phases, switchDay('2026-10-12'), PhaseType::MuscleGain, 0.0, switchDay('2027-01-04'), SWITCH_NEW);
+
+    expect(array_column(switchRows($writes), 'event'))->toBe(['2026-12-20']);
+});
+
+it('SAFE-017 PLAN-007 moving to training only keeps the type, drops the rate and runs to the phase\'s end', function () {
+    $phases = [switchPhase(SWITCH_CURRENT, PhaseType::FatLoss, '2026-09-07', '2026-12-07', -0.5, event: '2026-11-20')];
 
     $writes = PhaseSwitch::toTrainingOnly($phases, switchGrid(), switchDay('2026-10-14'), ExperienceLevel::Intermediate, SWITCH_NEW);
 
-    // TBL-020: an intermediate's default mesocycle is 5 weeks.
     expect(switchRows($writes))->toBe([
         ['id' => SWITCH_CURRENT, 'exists' => true, 'type' => PhaseType::FatLoss, 'start' => '2026-09-07', 'end' => '2026-10-12', 'rate' => -0.5, 'event' => null],
-        ['id' => SWITCH_NEW, 'exists' => false, 'type' => PhaseType::FatLoss, 'start' => '2026-10-12', 'end' => '2026-11-16', 'rate' => 0.0, 'event' => null],
+        ['id' => SWITCH_NEW, 'exists' => false, 'type' => PhaseType::FatLoss, 'start' => '2026-10-12', 'end' => '2026-12-07', 'rate' => 0.0, 'event' => '2026-11-20'],
     ]);
 });
 
-it('SAFE-017 PLAN-007 with no phase covering the switch day, training only runs Maintenance', function () {
+it('SAFE-017 PLAN-002 the phases after the switched one keep their place: no overlap and no gap', function () {
+    $phases = [
+        switchPhase(SWITCH_CURRENT, PhaseType::FatLoss, '2026-09-07', '2026-10-19', -0.5),
+        switchPhase('33333333-3333-4333-8333-333333333333', PhaseType::MuscleGain, '2026-10-19', '2027-01-11', 0.25),
+    ];
+
+    $writes = PhaseSwitch::toTrainingOnly($phases, switchGrid(), switchDay('2026-10-14'), ExperienceLevel::Intermediate, SWITCH_NEW);
+
+    expect(array_map(fn (array $row) => [$row['start'], $row['end']], switchRows($writes)))->toBe([
+        ['2026-09-07', '2026-10-12'],
+        ['2026-10-12', '2026-10-19'],
+    ]);
+});
+
+it('SAFE-017 PLAN-007 an open-ended phase becomes one default mesocycle of training only', function () {
+    // TBL-020: an intermediate's default mesocycle is 5 weeks.
+    $phases = [switchPhase(SWITCH_CURRENT, PhaseType::Maintenance, '2026-09-07', null, 0.0)];
+
+    $writes = PhaseSwitch::toTrainingOnly($phases, switchGrid(), switchDay('2026-10-14'), ExperienceLevel::Intermediate, SWITCH_NEW);
+
+    expect($writes[1]->phase->end?->format('Y-m-d'))->toBe('2026-11-16');
+});
+
+it('SAFE-017 PLAN-007 with no phase covering the switch day, training only runs Maintenance for one default mesocycle', function () {
     $phases = [switchPhase(SWITCH_CURRENT, PhaseType::FatLoss, '2026-09-07', '2026-10-05', -0.5)];
 
     $writes = PhaseSwitch::toTrainingOnly($phases, switchGrid(), switchDay('2026-10-14'), ExperienceLevel::Intermediate, SWITCH_NEW);
@@ -145,12 +183,23 @@ it('SAFE-017 PLAN-007 with no phase covering the switch day, training only runs 
     ]);
 });
 
-it('SAFE-017 PLAN-007 before the plan starts, training only starts on its first day', function () {
+it('SAFE-017 PLAN-002 training only in a gap between phases ends where the next phase starts', function () {
+    $phases = [
+        switchPhase(SWITCH_CURRENT, PhaseType::FatLoss, '2026-09-07', '2026-10-05', -0.5),
+        switchPhase('33333333-3333-4333-8333-333333333333', PhaseType::MuscleGain, '2026-10-26', '2027-01-18', 0.25),
+    ];
+
+    $writes = PhaseSwitch::toTrainingOnly($phases, switchGrid(), switchDay('2026-10-14'), ExperienceLevel::Intermediate, SWITCH_NEW);
+
+    expect(array_map(fn (array $row) => [$row['start'], $row['end']], switchRows($writes)))->toBe([['2026-10-12', '2026-10-26']]);
+});
+
+it('SAFE-017 PLAN-007 before the plan starts, the first phase turns training only in place, to its own end', function () {
     $phases = [switchPhase(SWITCH_CURRENT, PhaseType::MuscleGain, '2026-10-19', '2027-01-11', 0.25)];
 
     $writes = PhaseSwitch::toTrainingOnly($phases, switchGrid('2026-10-19'), switchDay('2026-10-14'), ExperienceLevel::Intermediate, SWITCH_NEW);
 
     expect(switchRows($writes))->toBe([
-        ['id' => SWITCH_CURRENT, 'exists' => true, 'type' => PhaseType::MuscleGain, 'start' => '2026-10-19', 'end' => '2026-11-23', 'rate' => 0.0, 'event' => null],
+        ['id' => SWITCH_CURRENT, 'exists' => true, 'type' => PhaseType::MuscleGain, 'start' => '2026-10-19', 'end' => '2027-01-11', 'rate' => 0.0, 'event' => null],
     ]);
 });
