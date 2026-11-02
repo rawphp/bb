@@ -12,8 +12,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * WO-020, WO-022, CAP-019: adds a set under the client's ULID, below `$afterSetId` or at the end of the exercise.
- * It starts from the set above: that set's weight and reps, as typed or else as targeted, are its targets (rp-clone
- * addSet). The exercise's sets are numbered again. Added sets carry forward once the session is finished (PROG-019).
+ * It starts from the set above (rp-clone addSet): that set's weight and reps, as typed or else as targeted, fill the
+ * new set's fields, unlogged. Nothing was planned for it, so it has no target (WO-004). The exercise's sets are
+ * numbered again.
  */
 final class AddWorkoutSet
 {
@@ -44,8 +45,8 @@ final class AddWorkoutSet
                 'position' => $index + 1,
                 'type' => $type->type(),
                 'variant' => $type->variant(),
-                'target_weight_kg' => $above === null ? null : ($above->actual_weight_kg ?? $above->target_weight_kg),
-                'target_reps' => $above === null ? null : ($above->actual_reps ?? $above->target_reps),
+                'actual_weight_kg' => $above === null ? null : ($above->actual_weight_kg ?? $above->target_weight_kg),
+                'actual_reps' => $above === null ? null : ($above->actual_reps ?? $above->target_reps),
                 'is_logged' => false,
                 'is_skipped' => false,
             ]))->forceFill(['id' => strtolower($setId), 'user_id' => $user->id]);
