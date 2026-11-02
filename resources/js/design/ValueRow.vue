@@ -20,6 +20,7 @@ export interface RowAction {
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue';
+import { useSwipeReveal } from './useSwipeReveal';
 
 // Food rows and set rows share this layout: leading menu, label, right-aligned numeric fields,
 // swipe actions (UI-008), ported from rp-clone's ValueRow.swift.
@@ -118,92 +119,31 @@ function menuKey(event: KeyboardEvent, index: number): void {
 }
 
 // Swipe left reveals the swipe actions; it never runs one by itself (no full swipe).
-// How far a finger may drift before a touch becomes a swipe, so a tap still focuses a field.
-const SLOP = 10;
-// How far a swipe must travel to reveal or hide the swipe actions.
-const THRESHOLD = 40;
-const swipeOpen = ref(false);
-const drag = ref<number | null>(null);
 const tray = ref<HTMLElement | null>(null);
 const canSwipe = computed(() => !props.gym && !inactive.value && props.swipeActions.length > 0);
-let start: { x: number; y: number; id: number; swiping: boolean } | null = null;
-
-function trayWidth(): number {
-    return tray.value?.offsetWidth ?? 0;
-}
-
-const shift = computed(() => {
-    if (drag.value !== null) {
-        return drag.value;
-    }
-    return swipeOpen.value ? -trayWidth() : 0;
-});
-
-function pointerDown(event: PointerEvent): void {
-    if (canSwipe.value && event.pointerType !== 'mouse') {
-        start = { x: event.clientX, y: event.clientY, id: event.pointerId, swiping: false };
-    }
-}
-
-function pointerMove(event: PointerEvent): void {
-    if (!start || event.pointerId !== start.id) {
-        return;
-    }
-    const dx = event.clientX - start.x;
-    if (!start.swiping) {
-        if (Math.abs(dx) < SLOP || Math.abs(dx) <= Math.abs(event.clientY - start.y)) {
-            return;
-        }
-        start.swiping = true;
-        (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
-    }
-    const base = swipeOpen.value ? -trayWidth() : 0;
-    drag.value = Math.min(0, Math.max(-trayWidth(), base + dx));
-}
-
-function pointerUp(event: PointerEvent): void {
-    if (!start || event.pointerId !== start.id) {
-        return;
-    }
-    if (start.swiping) {
-        const dx = event.clientX - start.x;
-        swipeOpen.value = swipeOpen.value ? dx < THRESHOLD : dx < -THRESHOLD;
-    } else if (swipeOpen.value) {
-        swipeOpen.value = false;
-    }
-    start = null;
-    drag.value = null;
-}
-
-function pointerCancel(): void {
-    start = null;
-    drag.value = null;
-}
-
-// A tap anywhere else closes the open menu and the revealed swipe actions.
 const root = ref<HTMLElement | null>(null);
+const {
+    open: swipeOpen,
+    drag,
+    shift,
+    pointerDown,
+    pointerMove,
+    pointerUp,
+    pointerCancel,
+} = useSwipeReveal(root, () => tray.value?.offsetWidth ?? 0, () => canSwipe.value);
 
+// A tap anywhere else closes the open menu; useSwipeReveal does the same for the swipe actions.
 function outside(event: PointerEvent): void {
     if (!root.value?.contains(event.target as Node)) {
         menuOpen.value = false;
-        swipeOpen.value = false;
     }
 }
 
-watch(
-    () => menuOpen.value || swipeOpen.value,
-    (open) => {
-        if (open) {
-            document.addEventListener('pointerdown', outside);
-        } else {
-            document.removeEventListener('pointerdown', outside);
-        }
-    },
-);
-
-watch(canSwipe, (can) => {
-    if (!can) {
-        swipeOpen.value = false;
+watch(menuOpen, (open) => {
+    if (open) {
+        document.addEventListener('pointerdown', outside);
+    } else {
+        document.removeEventListener('pointerdown', outside);
     }
 });
 
@@ -275,7 +215,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside));
                     </div>
                     <div class="flex min-w-0 grow flex-col gap-0.5 py-1.5">
                         <span class="text-base text-primary-text">{{ label }}</span>
-                        <span v-if="detail" class="text-sm text-secondary-text">{{ detail }}</span>
+                        <span v-if="detail" class="text-sm whitespace-pre-line text-secondary-text">{{ detail }}</span>
                         <span v-if="pending" :id="`${uid}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
                     </div>
                     <label

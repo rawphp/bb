@@ -80,8 +80,8 @@ it('AGT-040 tells an MCP client which field of a tool call needs fixing', functi
 
 it('AGT-040 serves the whole agent profile over MCP past the package\'s default tool caps, without a boundary audit row', function () {
     $registry = app(CapabilityRegistry::class);
-    // Probes up to 70 tools, past the package's default hard cap of 64: a fixed count on top of a growing catalog
-    // would pass the host's own cap instead.
+    // Top the profile up to 70 tools: past the package's default caps of 64, and under this app's hard cap however
+    // many capabilities are registered.
     foreach (range(1, max(1, 70 - count(app(RegistryToolCatalog::class)->names()))) as $n) {
         HostDefinition::read("probe{$n}_show")->description("Show probe {$n}. It changes nothing.")->cli('probe', "show{$n}")
             ->input(TallyInput::class)->run(fn () => null)->register($registry);

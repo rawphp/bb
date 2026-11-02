@@ -9,7 +9,8 @@ use Rawphp\Capabilities\Support\CapabilityData;
 /**
  * Save a set's fields and tick or untick Log (WO-003, WO-025, OFF-021 "log a
  * set", "edit a set"). `weight` is one dumbbell's weight for dumbbells
- * (WO-023) and null for pure bodyweight.
+ * (WO-023); for bodyweight it is the added weight, or null for none. It is
+ * stored in kg for every load type (CAP-015).
  */
 final class WorkoutSetLogInput extends CapabilityData
 {

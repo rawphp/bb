@@ -138,8 +138,9 @@ it('SET-011 hands the clock back when walked work throws', function () {
     $this->postJson('/api/_throw_probe', [], ['X-BB-Now' => '2031-03-04T05:06:07.000Z'])->assertOk();
     dispatch(fn () => Cache::put('job_now', now()->toIso8601ZuluString()))->onConnection('database');
 
-    // One worker runs both jobs: the throwing one at 2031, then the plain one. Its memory limit is lifted: the test
-    // process can be past the default 128 MB after the suite before it, and the worker would stop after one job.
+    // One worker runs both jobs: the throwing one at 2031, then the plain one. The worker
+    // stops after any job once the process passes --memory (128 MB by default), and a warm
+    // test process can already be past that, so the limit is raised out of the way.
     Artisan::call('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--tries' => 1, '--memory' => 4096]);
 
     expect(DB::table('failed_jobs')->count())->toBe(1)
