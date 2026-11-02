@@ -41,7 +41,10 @@ describe('PlanView', () => {
 
         expect(wrapper.find('h1').text()).toBe('Plan and phases');
         const phases = wrapper.findAll('[data-test="phase"]');
-        expect(phases.map((p) => p.text())).toEqual(['Fat loss Lose 0.75% a week', 'Maintenance Hold weight']);
+        expect(phases.map((p) => p.findAll('span').map((s) => s.text()))).toEqual([
+            ['Fat loss', 'Lose 0.75% a week'],
+            ['Maintenance', 'Hold weight'],
+        ]);
         expect(phases[1]!.attributes('style')).toContain('left: 360px');
         expect(phases[1]!.attributes('style')).toContain('width: 118px');
         expect(wrapper.findAll('[data-test="mesocycle"]').map((m) => m.text())).toEqual(['Meso 1', 'Meso 2', 'Meso 3']);
