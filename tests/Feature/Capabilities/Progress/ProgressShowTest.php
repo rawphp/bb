@@ -215,3 +215,18 @@ it('ANA-001 ANA-007 EX-013 keeps a set out of the tab when it names the viewer b
         ->and($after['exercises'])->toBe($before['exercises'])
         ->and(array_column($after['exercises'], 'name'))->not->toContain('Squat');
 });
+
+it('ANA-001 ANA-007 EX-013 keeps a set out of the tab when it sits in the viewer\'s session but names another user', function () {
+    ['user' => $viewer, 'bench' => $bench] = ProgressSeed::world();
+    $cutA = $viewer->mesocycles()->where('name', 'Cut A')->firstOrFail();
+    $before = $this->actingAs($viewer)->postJson('/capabilities/progress_show')->assertOk()->json('data');
+    $squat = TrainSeed::exercise('Squat', MuscleGroup::Quads);
+    $session = ProgressSeed::session($viewer, $cutA, 1, '2026-10-20 09:00:00', [[$bench, 60, 8], [$bench, 60, 8], [$squat, 100, 5]]);
+    WorkoutSet::query()->where('workout_session_id', $session->id)->update(['user_id' => User::factory()->create()->id]);
+
+    $after = $this->actingAs($viewer)->postJson('/capabilities/progress_show')->assertOk()->json('data');
+
+    expect($after['mesocycle_history'])->toBe($before['mesocycle_history'])
+        ->and($after['exercises'])->toBe($before['exercises'])
+        ->and(array_column($after['exercises'], 'name'))->not->toContain('Squat');
+});

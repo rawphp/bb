@@ -40,7 +40,7 @@ final class ExerciseHistorySnapshot
                 ->where('user_id', $user->id)
                 ->where('exercise_id', $exercise->id)
                 ->where('is_logged', true)
-                ->whereHas('session')
+                ->whereHas('session', fn ($session) => $session->where('user_id', $user->id))
                 ->with('session')
                 ->orderBy('position')
                 ->orderBy('id')
