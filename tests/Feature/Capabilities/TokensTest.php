@@ -436,3 +436,17 @@ it('CAP-014 replays a token revoke retried under its key, though the token is go
 
     expect(PersonalAccessToken::query()->count())->toBe(0);
 });
+
+it('CAP-021 lists only the user\'s own tokens, newest first', function () {
+    [$user, $other] = User::factory()->count(2)->create();
+    $older = '01JBX8Z6Q7M0V2K3N4P5R6S7T1';
+    $newer = '01JBX8Z6Q7M0V2K3N4P5R6S7T2';
+    createToken($user, 'everything', id: $older);
+    $this->travel(1)->minutes();
+    createToken($user, 'read_only', id: $newer);
+    createToken($other, 'everything', id: '01JBX8Z6Q7M0V2K3N4P5R6S7T3');
+
+    $this->actingAs($user)->postJson('/capabilities/token_list')
+        ->assertOk()
+        ->assertJsonPath('data.tokens.*.id', [$newer, $older]);
+});
