@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Domain\Account\EmailAddress;
+use App\Models\PersonalAccessToken;
 use App\Queue\DatabaseConnector;
 use App\Queue\RedisConnector;
 use App\Support\RequestClock;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Queue\QueueManager;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -35,6 +37,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RequestClock::carryIntoQueue();
+
+        Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
 
         // The sign-in code and reset routes send mail: three per route, address and IP in ten minutes.
         // No count is shared across IPs, so a stranger cannot use up the owner's sends. The inbox is

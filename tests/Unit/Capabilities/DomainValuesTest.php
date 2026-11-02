@@ -20,6 +20,8 @@ use App\Domain\Model\VolumeFeedback;
 use App\Domain\Model\WeightUnit;
 use App\Domain\Safety\RecheckOutcomeKind;
 use App\Domain\Safety\ScreeningItem;
+use App\Domain\Tokens\TokenLifetime;
+use App\Domain\Tokens\TokenScope;
 
 it('CAP-002 lists every value of each domain enum a contract names, and nothing else', function (array $values, string $enum) {
     $cases = array_column($enum::cases(), 'value');
@@ -47,8 +49,10 @@ it('CAP-002 lists every value of each domain enum a contract names, and nothing 
     'diet filters' => [DomainValues::DIET_FILTERS, DietFilter::class],
     'screening items' => [DomainValues::SCREENING_ITEMS, ScreeningItem::class],
     'recheck outcome kinds' => [DomainValues::RECHECK_OUTCOME_KINDS, RecheckOutcomeKind::class],
+    'token scopes' => [DomainValues::TOKEN_SCOPES, TokenScope::class],
+    'token lifetimes' => [DomainValues::TOKEN_LIFETIMES, TokenLifetime::class],
 ]);
 
 it('CAP-002 has a test row for every list', function () {
-    expect(array_keys((new ReflectionClass(DomainValues::class))->getConstants()))->toHaveCount(19);
+    expect(array_keys((new ReflectionClass(DomainValues::class))->getConstants()))->toHaveCount(21);
 });
