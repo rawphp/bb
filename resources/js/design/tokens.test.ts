@@ -62,9 +62,14 @@ describe('design tokens', () => {
     });
 
     it('PLT-005 PWA-041 colours follow the system and the stored appearance override', () => {
-        expect(css).toMatch(/:root\s*\{[^}]*color-scheme:\s*light dark;/);
+        expect(css).toMatch(/:root(?:,\s*\.bb-light)?\s*\{[^}]*color-scheme:\s*light dark;/);
         expect(css).toMatch(/:root\[data-appearance='light'\]\s*\{\s*color-scheme:\s*light;\s*\}/);
         expect(css).toMatch(/:root\[data-appearance='dark'\]\s*\{\s*color-scheme:\s*dark;\s*\}/);
+    });
+
+    it('PWA-034 bb-light pins the light palette on one element, whatever the page appearance', () => {
+        expect(css).toMatch(/:root,\s*\.bb-light\s*\{/);
+        expect(css).toMatch(/\.bb-light\s*\{\s*color-scheme:\s*light;\s*\}/);
     });
 
     it('PWA-040 every token is a Tailwind utility through @theme inline', () => {
