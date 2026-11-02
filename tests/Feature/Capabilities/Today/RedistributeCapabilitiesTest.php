@@ -4,7 +4,7 @@ use App\Models\DayTarget;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
-use Tests\Support\TodaySeed;
+use Tests\Support\SheetSeed;
 
 // The HTTP seam of day_redistribute_show and meal_redistribute. The rules are RedistributionTest's and
 // RedistributeMealsTest's.
@@ -23,13 +23,13 @@ it('DAY-002 refuses day_redistribute_show and meal_redistribute when signed out'
     redistributeOver(null, $name, $input)->assertUnauthorized();
 })->with([
     'day_redistribute_show' => ['day_redistribute_show', ['date' => '2026-09-23']],
-    'meal_redistribute' => ['meal_redistribute', ['date' => '2026-09-23', 'meal_ids' => [TodaySeed::BREAKFAST]]],
+    'meal_redistribute' => ['meal_redistribute', ['date' => '2026-09-23', 'meal_ids' => [SheetSeed::BREAKFAST]]],
 ]);
 
 it('DAY-002 answers 404 for another user\'s meal', function (string $name, string $field) {
-    TodaySeed::day(User::factory()->create());
+    SheetSeed::day(User::factory()->create());
 
-    redistributeOver(User::factory()->create(), $name, ['date' => '2026-09-23', $field => [TodaySeed::BREAKFAST]])->assertNotFound();
+    redistributeOver(User::factory()->create(), $name, ['date' => '2026-09-23', $field => [SheetSeed::BREAKFAST]])->assertNotFound();
 })->with([
     'day_redistribute_show' => ['day_redistribute_show', 'excluded_meal_ids'],
     'meal_redistribute' => ['meal_redistribute', 'meal_ids'],
@@ -46,9 +46,9 @@ it('DAY-002 answers 422 naming the bad field', function (string $name, array $in
 
 it('DAY-002 DAY-021 SAFE-018 day_redistribute_show matches its screen fixture', function () {
     $user = User::factory()->create();
-    TodaySeed::day($user);
+    SheetSeed::day($user);
 
-    $response = redistributeOver($user, 'day_redistribute_show', ['date' => '2026-09-23', 'excluded_meal_ids' => [TodaySeed::LUNCH]])->assertOk();
+    $response = redistributeOver($user, 'day_redistribute_show', ['date' => '2026-09-23', 'excluded_meal_ids' => [SheetSeed::LUNCH]])->assertOk();
 
     assertMatchesScreenFixture('day_redistribute_show', $response->json('data'));
     expect($response->json('data.rows.*.selected'))->toBe([true, false, true])
@@ -60,11 +60,11 @@ it('DAY-002 DAY-021 SAFE-018 day_redistribute_show matches its screen fixture', 
 
 it('DAY-002 a meal left out in capitals is left out', function () {
     $user = User::factory()->create();
-    TodaySeed::day($user, '2026-09-23', ['meals' => [
-        ['id' => strtolower(TodaySeed::CLIENT_MEAL), 'name' => 'Dinner', 'time' => '19:00', 'kcal' => 900, 'protein_g' => 60, 'fat_g' => 25, 'carbs_g' => 100],
+    SheetSeed::day($user, '2026-09-23', ['meals' => [
+        ['id' => strtolower(SheetSeed::CLIENT_MEAL), 'name' => 'Dinner', 'time' => '19:00', 'kcal' => 900, 'protein_g' => 60, 'fat_g' => 25, 'carbs_g' => 100],
     ]]);
 
-    redistributeOver($user, 'day_redistribute_show', ['date' => '2026-09-23', 'excluded_meal_ids' => [TodaySeed::CLIENT_MEAL]])
+    redistributeOver($user, 'day_redistribute_show', ['date' => '2026-09-23', 'excluded_meal_ids' => [SheetSeed::CLIENT_MEAL]])
         ->assertOk()
         ->assertJsonPath('data.rows.0.selected', false)
         ->assertJsonPath('data.can_confirm', false);
@@ -79,22 +79,22 @@ it('DAY-002 day_redistribute_show lists nothing on a day with no targets', funct
 
 it('DAY-002 one meal re-targeted says which, and a meal id in capitals finds its meal', function () {
     $user = User::factory()->create();
-    TodaySeed::day($user, '2026-09-23', ['meals' => [
-        ['id' => strtolower(TodaySeed::CLIENT_MEAL), 'name' => 'Dinner', 'time' => '19:00', 'kcal' => 900, 'protein_g' => 60, 'fat_g' => 25, 'carbs_g' => 100],
+    SheetSeed::day($user, '2026-09-23', ['meals' => [
+        ['id' => strtolower(SheetSeed::CLIENT_MEAL), 'name' => 'Dinner', 'time' => '19:00', 'kcal' => 900, 'protein_g' => 60, 'fat_g' => 25, 'carbs_g' => 100],
     ]]);
 
-    redistributeOver($user, 'meal_redistribute', ['date' => '2026-09-23', 'meal_ids' => [TodaySeed::CLIENT_MEAL]])
+    redistributeOver($user, 'meal_redistribute', ['date' => '2026-09-23', 'meal_ids' => [SheetSeed::CLIENT_MEAL]])
         ->assertOk()
         ->assertJsonPath('data.toast', 'Dinner re-targeted');
 });
 
 it('DAY-002 CAP-013 meal_redistribute saves, says what changed, and its undo puts the day back', function () {
     $user = User::factory()->create();
-    $day = TodaySeed::day($user);
-    TodaySeed::checkIn(TodaySeed::LUNCH);
+    $day = SheetSeed::day($user);
+    SheetSeed::checkIn(SheetSeed::LUNCH);
     $before = $day->fresh()->meals;
 
-    $response = redistributeOver($user, 'meal_redistribute', ['date' => '2026-09-23', 'meal_ids' => [TodaySeed::BREAKFAST, TodaySeed::DINNER]])
+    $response = redistributeOver($user, 'meal_redistribute', ['date' => '2026-09-23', 'meal_ids' => [SheetSeed::BREAKFAST, SheetSeed::DINNER]])
         ->assertOk()
         ->assertJsonPath('data.toast', '2 meals re-targeted')
         ->assertJsonPath('data.invalidates', [
@@ -109,10 +109,10 @@ it('DAY-002 CAP-013 meal_redistribute saves, says what changed, and its undo put
 
 it('DAY-002 answers 422 in plain words for a meal that is checked in', function () {
     $user = User::factory()->create();
-    TodaySeed::day($user);
-    TodaySeed::checkIn(TodaySeed::LUNCH);
+    SheetSeed::day($user);
+    SheetSeed::checkIn(SheetSeed::LUNCH);
 
-    redistributeOver($user, 'meal_redistribute', ['date' => '2026-09-23', 'meal_ids' => [TodaySeed::LUNCH]])
+    redistributeOver($user, 'meal_redistribute', ['date' => '2026-09-23', 'meal_ids' => [SheetSeed::LUNCH]])
         ->assertStatus(422)
         ->assertJsonPath('error.message', 'Lunch can\'t take a share: it is checked in, past, or its foods are locked.');
 });

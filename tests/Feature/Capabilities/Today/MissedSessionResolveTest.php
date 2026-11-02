@@ -5,7 +5,7 @@ use App\Models\User;
 use App\Models\WorkoutSession;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
-use Tests\Support\TodaySeed;
+use Tests\Support\SheetSeed;
 use Tests\Support\TrainSeed;
 
 // The HTTP seam of missed_session_resolve. The rules are ResolveMissedSessionTest's. Monday 21 September's Upper A
@@ -42,7 +42,7 @@ it('SCH-057 answers 422 naming date when a move has none', function () {
 it('SCH-056 CAP-013 a move shows the re-target toast, and its undo puts the day and the session back', function () {
     $user = TrainSeed::user();
     $mesocycle = TrainSeed::mesocycle($user);
-    $day = TodaySeed::day($user, '2026-09-22', ['day_type' => 'rest']);
+    $day = SheetSeed::day($user, '2026-09-22', ['day_type' => 'rest']);
     $before = $day->fresh()->only(['day_type', 'kcal', 'carbs_g', 'meals']);
 
     $response = missedOver($user, ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1, 'choice' => 'do_it_today', 'date' => '2026-09-22'])

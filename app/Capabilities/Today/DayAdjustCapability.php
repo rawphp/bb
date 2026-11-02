@@ -19,7 +19,7 @@ final class DayAdjustCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('day_adjust', affects: ['day_adjust_show', 'day_redistribute_show'])
+        return HostDefinition::write('day_adjust', affects: ['today_show', 'week_show', 'day_adjust_show', 'day_redistribute_show'])
             ->description('Move calories between two meals of a day, or between the day and another day of its plan week, through carbs so protein and fat hold. Use it when the user wants to eat less on one day or meal and more on another; finished days, the 80% to 125% band and the fat and carb floors are refused in plain words. Check the move with day_adjust_show first.')
             ->cli('day', 'adjust')
             ->input(DayAdjustInput::class)

@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Models\WorkoutSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Tests\Support\TodaySeed;
+use Tests\Support\SheetSeed;
 use Tests\Support\TrainSeed;
 
 // What missed_session_resolve saves (SCH-055 to SCH-057). The options are RetargetTest's (missedDayOptions); the
@@ -34,7 +34,7 @@ function resolveMissed(User $user, Mesocycle $mesocycle, string $choice, ?string
 
 it('SCH-057 SCH-050 SCH-056 "Do it today" moves the session to today at its time and re-targets today around it', function () {
     [$user, $mesocycle] = missedWorld('2026-09-22');
-    $day = TodaySeed::day($user, '2026-09-22', ['day_type' => 'rest', 'kcal' => 2200.0, 'carbs_g' => 220.0]);
+    $day = SheetSeed::day($user, '2026-09-22', ['day_type' => 'rest', 'kcal' => 2200.0, 'carbs_g' => 220.0]);
 
     $resolved = resolveMissed($user, $mesocycle, 'do_it_today');
 
@@ -51,7 +51,7 @@ it('SCH-057 SCH-050 SCH-056 "Do it today" moves the session to today at its time
         ->and($day->fresh()->protein_g)->toBe(170.0)
         // The meals are placed again around 5:30 to 6:30 PM and split from the new total; ids, names and order hold.
         ->and($meals->pluck('id')->take(3)->all())->toBe([
-            TodaySeed::id(TodaySeed::BREAKFAST, '260922'), TodaySeed::id(TodaySeed::LUNCH, '260922'), TodaySeed::id(TodaySeed::DINNER, '260922'),
+            SheetSeed::id(SheetSeed::BREAKFAST, '260922'), SheetSeed::id(SheetSeed::LUNCH, '260922'), SheetSeed::id(SheetSeed::DINNER, '260922'),
         ])
         ->and($meals->pluck('name')->take(3)->all())->toBe(['Breakfast', 'Lunch', 'Dinner'])
         ->and($meals->pluck('time')->all())->not->toBe(['07:30', '12:30', '19:00'])
@@ -60,13 +60,13 @@ it('SCH-057 SCH-050 SCH-056 "Do it today" moves the session to today at its time
 
 it('SCH-055 a meal whose planned foods are all locked keeps its target when today is re-targeted', function () {
     [$user, $mesocycle] = missedWorld('2026-09-22');
-    $day = TodaySeed::day($user, '2026-09-22', ['day_type' => 'rest']);
-    $dinner = TodaySeed::id(TodaySeed::DINNER, '260922');
-    $lunch = TodaySeed::id(TodaySeed::LUNCH, '260922');
-    TodaySeed::food($dinner, locked: true);
+    $day = SheetSeed::day($user, '2026-09-22', ['day_type' => 'rest']);
+    $dinner = SheetSeed::id(SheetSeed::DINNER, '260922');
+    $lunch = SheetSeed::id(SheetSeed::LUNCH, '260922');
+    SheetSeed::food($dinner, locked: true);
     // Lunch has a locked food and an unlocked one, so it can still be re-fitted.
-    TodaySeed::food($lunch, locked: true);
-    TodaySeed::food($lunch);
+    SheetSeed::food($lunch, locked: true);
+    SheetSeed::food($lunch);
     $before = collect($day->meals)->keyBy('id');
 
     resolveMissed($user, $mesocycle, 'do_it_today', '2026-09-22');
@@ -89,7 +89,7 @@ it('SCH-057 a session moved earlier keeps its row when it is answered', function
 
 it('SCH-057 refuses "Do it today" sent for a day that is no longer today, and saves nothing', function () {
     [$user, $mesocycle] = missedWorld('2026-09-23');
-    TodaySeed::day($user, '2026-09-23', ['day_type' => 'rest']);
+    SheetSeed::day($user, '2026-09-23', ['day_type' => 'rest']);
 
     expect(fn () => resolveMissed($user, $mesocycle, 'do_it_today', '2026-09-22'))->toThrow(DomainException::class, 'That day has changed. Open the prompt again.')
         ->and(WorkoutSession::query()->count())->toBe(0);
@@ -104,9 +104,9 @@ it('SCH-057 a move to a day with no targets is refused in plain words and saves 
 
 it('SCH-055 a checked-in meal keeps its time and target when today is re-targeted', function () {
     [$user, $mesocycle] = missedWorld('2026-09-22');
-    $day = TodaySeed::day($user, '2026-09-22', ['day_type' => 'rest']);
-    $breakfast = TodaySeed::id(TodaySeed::BREAKFAST, '260922');
-    TodaySeed::checkIn($breakfast);
+    $day = SheetSeed::day($user, '2026-09-22', ['day_type' => 'rest']);
+    $breakfast = SheetSeed::id(SheetSeed::BREAKFAST, '260922');
+    SheetSeed::checkIn($breakfast);
     $before = collect($day->meals)->firstWhere('id', $breakfast);
 
     resolveMissed($user, $mesocycle, 'do_it_today');
@@ -116,7 +116,7 @@ it('SCH-055 a checked-in meal keeps its time and target when today is re-targete
 
 it('SCH-057 "Do it on the next rest day" moves the session to the next rest day of the plan week', function () {
     [$user, $mesocycle] = missedWorld('2026-09-24');
-    TodaySeed::day($user, '2026-09-25', ['day_type' => 'rest']);
+    SheetSeed::day($user, '2026-09-25', ['day_type' => 'rest']);
 
     resolveMissed($user, $mesocycle, 'next_rest_day', '2026-09-25');
 
@@ -125,7 +125,7 @@ it('SCH-057 "Do it on the next rest day" moves the session to the next rest day 
 
 it('SCH-057 "Skip it" saves the session skipped and leaves the past day\'s targets as they were', function () {
     [$user, $mesocycle] = missedWorld('2026-09-22');
-    $missed = TodaySeed::day($user, '2026-09-21');
+    $missed = SheetSeed::day($user, '2026-09-21');
     $before = $missed->fresh()->getAttributes();
 
     $resolved = resolveMissed($user, $mesocycle, 'skip');
@@ -140,7 +140,7 @@ it('SCH-057 "Skip it" saves the session skipped and leaves the past day\'s targe
 
 it('SCH-057 refuses a choice the prompt would not offer, and saves nothing', function (string $today, string $choice, ?string $date, string $message) {
     [$user, $mesocycle] = missedWorld($today);
-    TodaySeed::day($user, $today);
+    SheetSeed::day($user, $today);
 
     expect(fn () => resolveMissed($user, $mesocycle, $choice, $date))->toThrow(DomainException::class, $message)
         ->and(WorkoutSession::query()->count())->toBe(0)

@@ -7,7 +7,6 @@ use Illuminate\Support\Carbon;
 
 /**
  * The read keys a Today write invalidates (CAP-010, CAP-017): each changed day's Today and the sheets that read it.
- * today_show and week_show are named even before they register, so the client drops them as soon as it caches one.
  * A day that is today also drops the read without a date, which shows today.
  *
  * A sheet is named by its key as first opened, with only the date. The reads it makes as the user fills it in carry

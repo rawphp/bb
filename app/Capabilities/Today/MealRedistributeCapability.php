@@ -20,7 +20,7 @@ final class MealRedistributeCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         // UI-010, CAP-013: a redistribution shows a toast with Undo.
-        return HostDefinition::write('meal_redistribute', affects: ['day_redistribute_show', 'day_adjust_show'], reversible: true)
+        return HostDefinition::write('meal_redistribute', affects: ['today_show', 'day_redistribute_show', 'day_adjust_show'], reversible: true)
             ->description('Spread what is left of a day\'s calories and macros over the chosen later meals, after food eaten off-plan or a meal that went over. The day\'s totals stay; checked-in, past and fully locked meals cannot take a share (day_redistribute_show lists the ones that can). Chosen meals that already have foods are marked still planning until their foods are re-fitted.')
             ->cli('day', 'redistribute')
             ->input(MealRedistributeInput::class)

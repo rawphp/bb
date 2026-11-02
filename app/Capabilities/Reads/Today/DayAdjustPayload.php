@@ -17,7 +17,7 @@ use App\Support\Today\AdjustWeek;
 use App\Support\Today\DayMeal;
 use App\Support\Today\DayPlan;
 use App\Support\Today\Redistribution;
-use App\Support\Today\TodayWords;
+use App\Capabilities\Reads\Today\TodayWords;
 use DateTimeImmutable;
 use DomainException;
 
@@ -52,7 +52,7 @@ final class DayAdjustPayload
                 $day->openMeals(),
             ),
             day_options: array_map(
-                fn (DayPlan $option) => new AdjustDayOption($option->date->format('Y-m-d'), TodayWords::day($option->date), ! $option->isFinished($today)),
+                fn (DayPlan $option) => new AdjustDayOption($option->date->format('Y-m-d'), TodayWords::shortDate($option->date), ! $option->isFinished($today)),
                 Adjustment::otherDays($day, $week->week),
             ),
             day: self::totals($day->date, $selected['target'] ?? $day->target),
@@ -71,6 +71,6 @@ final class DayAdjustPayload
 
     private static function totals(DateTimeImmutable $date, MealTarget $target): AdjustDayTotals
     {
-        return new AdjustDayTotals(TodayWords::day($date), TodayWords::kcal($target->kcal), TodayWords::protein($target->proteinG));
+        return new AdjustDayTotals(TodayWords::shortDate($date), TodayWords::kcal($target->kcal), TodayWords::protein($target->proteinG));
     }
 }

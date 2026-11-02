@@ -145,7 +145,7 @@ final class Adjustment
     {
         return match ($refusal->reason) {
             MealMoveRefusalReason::Invalid => AdjustOutcome::incomplete('Enter the calories to move.'),
-            MealMoveRefusalReason::NoMeals => AdjustOutcome::refused(TodayWords::weekday($day->date).' has no meal to take the change.'),
+            MealMoveRefusalReason::NoMeals => AdjustOutcome::refused($day->date->format('l').' has no meal to take the change.'),
             MealMoveRefusalReason::BelowCarbMinimum => AdjustOutcome::refused(($day->meal((string) $refusal->id)->name ?? 'A meal').' would keep less than 5 g of carbs.'),
         };
     }
@@ -153,7 +153,7 @@ final class Adjustment
     /** @param  list<DayPlan>  $week */
     private static function moveRefusal(MoveRefusal $refusal, array $week): AdjustOutcome
     {
-        $name = isset($week[$refusal->dayIndex]) ? TodayWords::weekday($week[$refusal->dayIndex]->date) : 'That day';
+        $name = isset($week[$refusal->dayIndex]) ? $week[$refusal->dayIndex]->date->format('l') : 'That day';
 
         return match ($refusal->reason) {
             MoveRefusalReason::DayCompleted => AdjustOutcome::refused("{$name} is finished, so its calories can't move."),

@@ -10,7 +10,7 @@ use App\Domain\DayBalance\DayBalance;
 use App\Support\Today\DayMeal;
 use App\Support\Today\DayPlan;
 use App\Support\Today\Redistribution;
-use App\Support\Today\TodayWords;
+use App\Capabilities\Reads\Today\TodayWords;
 use DateTimeImmutable;
 
 /**

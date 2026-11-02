@@ -22,7 +22,7 @@ final class OffPlanDeleteCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         // AGT-010: a delete needs the user's say-so before the coach makes it.
-        return HostDefinition::write('off_plan_delete', affects: ['day_redistribute_show'], destructive: true)
+        return HostDefinition::write('off_plan_delete', affects: ['today_show', 'day_redistribute_show'], destructive: true)
             ->description('Delete an off-plan food entry from its day. Use it when the user logged off-plan food by mistake or twice. It changes no meal\'s targets.')
             ->cli('off-plan', 'delete')
             ->input(OffPlanDeleteInput::class)

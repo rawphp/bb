@@ -5,7 +5,7 @@ use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
-use Tests\Support\TodaySeed;
+use Tests\Support\SheetSeed;
 
 // The HTTP seam of day_adjust_show and day_adjust. The rules are AdjustmentTest's. Plan weeks start on Monday, so
 // Wednesday 23 September shares its week with Saturday 26th; Tuesday 22nd is past.
@@ -25,7 +25,7 @@ function adjustUser(): User
     $user = User::factory()->create();
     Plan::factory()->for($user)->create(['start_date' => '2026-08-31', 'review_weekday' => 1]);
     foreach (['2026-09-22', '2026-09-23', '2026-09-26'] as $date) {
-        TodaySeed::day($user, $date);
+        SheetSeed::day($user, $date);
     }
 
     return $user;
@@ -38,7 +38,7 @@ it('DAY-020 refuses day_adjust_show and day_adjust when signed out', function (s
 it('DAY-020 answers 404 for another user\'s meal', function (string $name) {
     adjustUser();
 
-    adjustOver(User::factory()->create(), $name, ['date' => '2026-09-23', 'mode' => 'meals', 'kcal' => 100, 'from_meal_id' => TodaySeed::LUNCH, 'to_meal_id' => TodaySeed::DINNER])
+    adjustOver(User::factory()->create(), $name, ['date' => '2026-09-23', 'mode' => 'meals', 'kcal' => 100, 'from_meal_id' => SheetSeed::LUNCH, 'to_meal_id' => SheetSeed::DINNER])
         ->assertNotFound();
 })->with(['day_adjust_show', 'day_adjust']);
 
@@ -105,7 +105,7 @@ it('NUT-021 day_adjust saves both days and says which reads changed', function (
 it('DAY-020 day_adjust between meals moves carbs from one meal to the other and keeps the day', function () {
     $user = adjustUser();
 
-    adjustOver($user, 'day_adjust', ['date' => '2026-09-23', 'mode' => 'meals', 'kcal' => 100, 'from_meal_id' => TodaySeed::LUNCH, 'to_meal_id' => TodaySeed::DINNER])
+    adjustOver($user, 'day_adjust', ['date' => '2026-09-23', 'mode' => 'meals', 'kcal' => 100, 'from_meal_id' => SheetSeed::LUNCH, 'to_meal_id' => SheetSeed::DINNER])
         ->assertOk()
         ->assertJsonPath('data.toast', 'Moved 100 kcal')
         ->assertJsonPath('data.invalidates', [
