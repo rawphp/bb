@@ -17,9 +17,10 @@ use Illuminate\Support\Carbon;
  *
  * @property int $user_id
  * @property string $reminder_id
+ * @property Carbon $due_at
  * @property Carbon $sent_at
  */
-#[Fillable(['user_id', 'reminder_id', 'sent_at'])]
+#[Fillable(['user_id', 'reminder_id', 'due_at', 'sent_at'])]
 class SentReminder extends Model
 {
     /** @use HasFactory<SentReminderFactory> */
@@ -38,6 +39,6 @@ class SentReminder extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['sent_at' => 'datetime'];
+        return ['due_at' => 'datetime', 'sent_at' => 'datetime'];
     }
 }

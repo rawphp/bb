@@ -19,14 +19,16 @@ return new class extends Migration
             $table->unique(['user_id', 'kind']);
         });
 
-        // NOTIF-001 to NOTIF-005: each reminder sent, so the next pass does not send it again. Kept two days.
+        // NOTIF-001 to NOTIF-005: each reminder sent and the time it was due, so the next pass does not send it
+        // again. The unique key claims it, so two passes at once still send it once. Kept two days.
         Schema::create('sent_reminders', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('reminder_id', 64);
+            $table->timestamp('due_at');
             $table->timestamp('sent_at');
 
-            $table->unique(['user_id', 'reminder_id']);
+            $table->unique(['user_id', 'reminder_id', 'due_at']);
             $table->index('sent_at');
         });
     }

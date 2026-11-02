@@ -10,8 +10,9 @@ use Illuminate\Foundation\Queue\Queueable;
 
 /**
  * One user's reminders for one pass of reminders:send (NOTIF-001 to NOTIF-005). A job per user, so one user's data
- * cannot stop or slow the others' reminders. The pass's time travels with it, so a job run late judges what was due
- * at that time; a retry sends nothing twice, as each reminder is claimed when it is sent.
+ * cannot stop or slow the others' reminders. A job run more than the catch-up window after its pass sends nothing:
+ * after a queue backlog the newest pass covers the last few minutes, and older reminders are dropped, not sent in a
+ * burst. A retry sends nothing twice, as each reminder is claimed when it is sent.
  */
 final class SendUserReminders implements ShouldQueue
 {
@@ -27,6 +28,10 @@ final class SendUserReminders implements ShouldQueue
 
     public function handle(SendDueReminders $send): void
     {
+        if ($this->now->addMinutes(SendDueReminders::WINDOW_MINUTES)->isBefore(CarbonImmutable::now())) {
+            return;
+        }
+
         $send($this->user, $this->now);
     }
 }

@@ -31,12 +31,16 @@ final class SendDueReminders
 
         $sent = [];
         foreach ($due as $reminder) {
-            // The unique key claims the reminder, so two passes at once still send it once. The due time is part of
-            // the key, so a meal or session moved later is reminded again at its new time. The claim commits with the
-            // queued push: a push that cannot be queued leaves it unclaimed for the next pass.
-            $claim = $reminder->id.'@'.$reminder->fireAt->format('H:i');
-            DB::transaction(function () use ($user, $reminder, $claim, $now, &$sent) {
-                if (SentReminder::query()->insertOrIgnore(['user_id' => $user->id, 'reminder_id' => $claim, 'sent_at' => $now]) === 1) {
+            DB::transaction(function () use ($user, $reminder, $now, &$sent) {
+                // Sent since it fell due: the same reminder again, or one moved earlier after it went out. One moved
+                // later is due again at its new time.
+                $already = SentReminder::query()->where('user_id', $user->id)->where('reminder_id', $reminder->id)
+                    ->where('sent_at', '>=', $reminder->fireAt)->exists();
+                // The unique key claims it, so two passes at once still send it once. The claim commits with the
+                // queued push: a push that cannot be queued leaves it unclaimed for the next pass.
+                if (! $already && SentReminder::query()->insertOrIgnore([
+                    'user_id' => $user->id, 'reminder_id' => $reminder->id, 'due_at' => $reminder->fireAt, 'sent_at' => $now,
+                ]) === 1) {
                     SendPushNotification::dispatch($user, $reminder->title, $reminder->body, $reminder->url);
                     $sent[] = $reminder->id;
                 }
