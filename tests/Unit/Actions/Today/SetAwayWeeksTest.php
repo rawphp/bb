@@ -326,9 +326,9 @@ it('SCH-060 the toast says what was done', function () {
     $many = setAway($user, ['2026-09-26', '2026-10-17'], calories: 'rest')['toast'];
     $edited = setAway($user, ['2026-09-26'], training: 'pause', calories: 'rest')['toast'];
     $cleared = setAway($user, ['2026-09-26'], away: false)['toast'];
-    $clearedMany = setAway($user, ['2026-10-17'], away: false)['toast'];
+    $clearedOther = setAway($user, ['2026-10-17', '2026-09-26'], away: false)['toast'];
 
-    expect([$many, $edited, $cleared, $clearedMany])->toBe(['Weeks marked away', 'Away week updated', 'Week no longer away', 'Week no longer away']);
+    expect([$many, $edited, $cleared, $clearedOther])->toBe(['Weeks marked away', 'Away week updated', 'Week no longer away', 'Weeks no longer away']);
 });
 
 it('SCH-060 the offered weeks come back from the phase as it ends after the move', function () {
