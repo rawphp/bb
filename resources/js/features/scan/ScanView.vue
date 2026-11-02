@@ -30,6 +30,7 @@ type Payload = FoodBarcodeLookupOutput | ScanPhotoOutput | ScanLabelOutput;
 type Row = ScanAdjustInput['rows'][number];
 
 const props = defineProps<{ mealId?: string; payload?: Payload }>();
+// close(true) when foods were added to the meal, or may have been (an add that got no answer), so the host reads it again.
 const emit = defineEmits<{ close: [added: boolean] }>();
 defineSlots<{
     /** FOOD-041, FOOD-042: the custom food form, with the barcode or the label's draft filled in. */
@@ -74,6 +75,8 @@ const NO_READER = "The barcode reader couldn't load. Type the code instead.";
 const lastIds = new Map<string, { sent: string; ids: string[] }>();
 // The draft the saved meal's name was filled in for, so a retry keeps what was typed.
 let namedFor: ScanPhotoOutput | null = null;
+// An add got no answer, so the meal may have changed whatever the scanner does next.
+let mayHaveAdded = false;
 
 if (props.payload && 'status' in props.payload) showLookup(props.payload);
 else if (props.payload && 'rows' in props.payload) showDraft(props.payload);
@@ -178,6 +181,7 @@ async function addToMeal(foods: { food_id: string; grams?: number }[]): Promise<
         entries: foods.map((food, index) => ({ id: ids[index]!, food_id: food.food_id, weighing: 'raw' as const, ...(food.grams === undefined ? {} : { grams: food.grams }) })) as MealFoodAddInput['entries'],
     };
     const outcome = await save('Adding to the meal', 'meal_food_add', { ...input }, 'The foods could not be added to the meal.');
+    if (outcome === 'no-answer') mayHaveAdded = true;
     if (outcome === 'done') emit('close', true);
 }
 
@@ -283,6 +287,11 @@ function beginSaving(): void {
     naming.value = true;
 }
 
+function cancelSaving(): void {
+    naming.value = false;
+    namedFor = null;
+}
+
 async function saveMeal(): Promise<void> {
     const sent = draft.value;
     const name = mealName.value.trim();
@@ -296,7 +305,7 @@ async function saveMeal(): Promise<void> {
 </script>
 
 <template>
-    <BottomSheet :open="true" title="Scan a food" :save-title="null" :dismissible="!busy" :cancel-disabled="busy" @cancel="emit('close', false)">
+    <BottomSheet :open="true" title="Scan a food" :save-title="null" :dismissible="!busy" :cancel-disabled="busy" @cancel="emit('close', mayHaveAdded)">
         <div class="min-h-full space-y-4 bg-background p-4">
             <SegmentedPicker v-model="mode" label="Mode" :options="MODES" :disabled="busy" class="bg-secondary-text/15!" />
 
@@ -448,7 +457,7 @@ async function saveMeal(): Promise<void> {
             </p>
         </div>
 
-        <BottomSheet :open="naming" title="Name the saved meal" :heights="['half']" :save-disabled="mealName.trim() === ''" @cancel="naming = false" @save="saveMeal">
+        <BottomSheet :open="naming" title="Name the saved meal" :heights="['half']" :save-disabled="mealName.trim() === ''" @cancel="cancelSaving" @save="saveMeal">
             <div class="min-h-full bg-background p-4">
                 <input
                     v-model="mealName"
