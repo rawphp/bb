@@ -40,7 +40,7 @@ final class TodaySeed
     /** The meal id of the seeded day: the constant on 2026-09-23, made unique for any other date. */
     public static function id(string $meal, string $suffix = '260923'): string
     {
-        return $suffix === '260923' ? $meal : substr($meal, 0, 30).$suffix;
+        return $suffix === '260923' ? $meal : substr($meal, 0, 24).$suffix.substr($meal, 30);
     }
 
     public static function checkIn(string $mealId, array $attributes = []): MealCheckIn
