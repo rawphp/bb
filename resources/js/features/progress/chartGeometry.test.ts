@@ -26,6 +26,13 @@ describe('chartGeometry', () => {
         expect(axis.y(84)).toBe(100);
     });
 
+    it('WT-021 pads a secondary scale, so the waist line sits in the middle of the chart', () => {
+        const axis = valueAxis([88, 87.5, 87], 300, 0, 1);
+
+        expect(axis.ticks).toEqual([86, 87, 88, 89]);
+        expect(axis.y(87.5)).toBe(150);
+    });
+
     it('ANA-001 draws one day or one flat value without dividing by zero', () => {
         const time = timeAxis(['2026-08-31'], 0, 100);
         const value = valueAxis([80, 80], 100, 0);
