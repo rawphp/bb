@@ -23,8 +23,8 @@ use Illuminate\Support\Facades\DB;
  * the week the user stopped in is this one, and moves the deload flags stored on its plan weeks as far (PLAN-022,
  * PLAN-023). It saves that resolution only: the day targets are left as they are. End is MESO-043 and MESO-044, which
  * {@see EndMesocycle} owns. Either answer is accepted only for the mesocycle the prompt is due for. Both change the
- * sessions, deload and menu of every later week, so the days returned run from this plan week through the last day
- * the client can show (SCH-023).
+ * sessions, deload and menu of every later week, so the days returned run from this plan week (a restart: from the plan
+ * week of the old start) through the last day of the strip week the client can show (SCH-023).
  */
 final class ResolveMissedWeek
 {
@@ -41,7 +41,7 @@ final class ResolveMissedWeek
             // The plan row is locked first, as the other writes to the plan's weeks do, so two answers (or an answer and
             // an away save) run one after the other and each reads what the other wrote.
             Plan::query()->where('user_id', $user->id)->lockForUpdate()->first();
-            $snapshot = TodaySnapshot::load($user);
+            $snapshot = TodaySnapshot::loadWeek($user);
             $prompt = MissedWeeksPrompt::from($snapshot);
             if ($prompt === null || strcasecmp((string) $prompt->mesocycle->id, $input->mesocycle_id) !== 0) {
                 throw new DomainException(self::NOT_DUE);
@@ -59,13 +59,15 @@ final class ResolveMissedWeek
                 throw new DomainException(self::NO_RESTART);
             }
 
+            $oldStart = TrainSnapshot::day($prompt->mesocycle->start_date);
             $prompt->mesocycle->update(['start_date' => $prompt->restartStart->format('Y-m-d')]);
             $moved = $this->moveDeloads($user, $snapshot, $prompt);
 
-            // Every later week's sessions and deload move with the start, so every day from this week on changes.
+            // The sessions leave every day from the old start (none show before the start), and every later week's
+            // sessions and deload move with it: the plan and its last day do not, so the snapshot read for the write serves.
             return [
                 'toast' => 'Week restarted',
-                'dates' => array_values(array_unique([...ChangedDays::fromCurrentWeek(TodaySnapshot::loadWeek($user)), ...$moved])),
+                'dates' => array_values(array_unique([...ChangedDays::fromCurrentWeek($snapshot, $oldStart), ...$moved])),
             ];
         });
     }
