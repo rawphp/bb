@@ -61,6 +61,19 @@ describe('PrebuiltPlansView', () => {
         expect(replace).toHaveBeenCalledWith('/train');
     });
 
+    it('CAP-019 sends the same first_phase_id again after prebuilt_plan_apply got no answer', async () => {
+        vi.mocked(write).mockRejectedValueOnce(new CapabilityError('prebuilt_plan_apply', 0, { reason: 'network' }));
+        const wrapper = show();
+        for (let tap = 0; tap < 2; tap++) {
+            await plans(wrapper)[0]!.find('[data-test="apply"]').trigger('click');
+            await flushPromises();
+        }
+
+        const ids = sent().map(([, input]) => input.first_phase_id);
+        expect(ids).toHaveLength(2);
+        expect(ids[1]).toBe(ids[0]);
+    });
+
     it('PLAN-030 says why a plan cannot be added, in place of its button', () => {
         const refused = structuredClone(current);
         refused.prebuilt_plans[0]!.refusal = 'A 24-week plan needs a plan with an end date.';

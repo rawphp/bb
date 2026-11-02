@@ -157,6 +157,79 @@ describe('PhaseTransitionView', () => {
         expect(wrapper.find('[data-test="readiness"]').exists()).toBe(false);
     });
 
+    it('PH-030 another next phase starts from the server\'s length, template, step and calories, not the last one\'s picks', async () => {
+        const wrapper = show();
+        await pick(wrapper, 'templates', 1);
+        await pick(wrapper, 'steps', 1);
+        await pick(wrapper, 'calorie-mode', 1);
+        await pick(wrapper, 'options', 2);
+        await pick(wrapper, 'lengths', 1);
+        await pick(wrapper, 'options', 0);
+
+        expect(radios(wrapper, 'lengths')[0]!.attributes('aria-checked')).toBe('true');
+        await confirm(wrapper);
+        expect(sent()[0]![1]).toMatchObject({ choice: 'maintenance', weeks: 5, template: 'resensitization', calorie_mode: 'step_up', step_kcal: 250 });
+    });
+
+    it('PH-046 Choose Maintenance first starts Maintenance from the server\'s picks', async () => {
+        const wrapper = show();
+        await pick(wrapper, 'options', 2);
+        await pick(wrapper, 'lengths', 1);
+        await wrapper.findAll('[data-test="readiness"] [role="radiogroup"]')[0]!.findAll('[role="radio"]')[1]!.trigger('click');
+        await wrapper.find('[data-test="maintenance-first"]').trigger('click');
+        await confirm(wrapper);
+
+        expect(sent()[0]![1]).toMatchObject({ choice: 'maintenance', gain_first: false, weeks: 5, template: 'resensitization' });
+    });
+
+    it('PH-030 starts from the next phase the server marks, wherever it is in the list', async () => {
+        const moved = structuredClone(ending);
+        moved.transition!.options[0]!.is_selected = false;
+        moved.transition!.options[2]!.is_selected = true;
+        const wrapper = show({ payload: moved });
+
+        expect(radios(wrapper, 'options')[2]!.attributes('aria-checked')).toBe('true');
+        await confirm(wrapper);
+        expect(sent()[0]![1]).toMatchObject({ choice: 'fatLoss', weeks: 6 });
+    });
+
+    it('PH-031 PH-036 PH-044 start from the length, template and step the server marks', async () => {
+        const moved = structuredClone(ending);
+        const maintenance = moved.transition!.options[0]!;
+        maintenance.lengths.forEach((l, index) => (l.is_selected = index === 1));
+        maintenance.templates.forEach((t, index) => (t.is_selected = index === 1));
+        maintenance.step_up!.steps.forEach((step, index) => (step.is_selected = index === 1));
+        const wrapper = show({ payload: moved });
+
+        expect(radios(wrapper, 'lengths')[1]!.attributes('aria-checked')).toBe('true');
+        expect(radios(wrapper, 'templates')[1]!.attributes('aria-checked')).toBe('true');
+        expect(radios(wrapper, 'steps')[1]!.attributes('aria-checked')).toBe('true');
+        await confirm(wrapper);
+        expect(sent()[0]![1]).toMatchObject({ weeks: 7, template: 'balanced', calorie_mode: 'step_up', step_kcal: 500 });
+    });
+
+    it('CAP-019 sends the same next_phase_id again after phase_transition_complete got no answer', async () => {
+        vi.mocked(write).mockRejectedValueOnce(new CapabilityError('phase_transition_complete', 0, { reason: 'network' }));
+        const wrapper = show();
+        await confirm(wrapper);
+        await confirm(wrapper);
+
+        const ids = sent().map(([, input]) => input.next_phase_id);
+        expect(ids).toHaveLength(2);
+        expect(ids[1]).toBe(ids[0]);
+    });
+
+    it('PH-046 nothing on the sheet changes the choice while Confirm is sending', async () => {
+        vi.mocked(write).mockReturnValue(new Promise(() => {}));
+        const wrapper = show();
+        await pick(wrapper, 'options', 2);
+        await wrapper.findAll('[data-test="readiness"] [role="radiogroup"]')[0]!.findAll('[role="radio"]')[1]!.trigger('click');
+        await wrapper.find('[data-save]').trigger('click');
+
+        expect(wrapper.find('[data-test="maintenance-first"]').attributes('disabled')).toBeDefined();
+        expect(radios(wrapper, 'options').every((option) => option.attributes('disabled') !== undefined)).toBe(true);
+    });
+
     it('PH-030 says why a next phase cannot be chosen, and Confirm is off', async () => {
         const refused = structuredClone(ending);
         refused.transition!.options[0]!.refusal = 'This phase cannot end before its first week.';
@@ -219,12 +292,14 @@ describe('PhaseTransitionView', () => {
         expect(wrapper.find('[data-test="summary"]').classes()).toContain('opacity-60');
         expect(wrapper.find('[data-test="lengths"]').classes()).toContain('opacity-60');
         expect(wrapper.find('[data-test="schedule"]').classes()).toContain('opacity-60');
+        expect(wrapper.find('[data-test="calories"]').classes()).toContain('opacity-60');
+        expect(wrapper.find('[data-test="corridor"]').classes()).toContain('opacity-60');
     });
 
     it('OFF-008 dims nothing when nothing waits to sync', () => {
         const wrapper = show();
 
         expect(wrapper.find('[data-mark]').exists()).toBe(false);
-        expect(wrapper.find('[data-test="summary"]').classes()).not.toContain('opacity-60');
+        expect(wrapper.find('.opacity-60').exists()).toBe(false);
     });
 });

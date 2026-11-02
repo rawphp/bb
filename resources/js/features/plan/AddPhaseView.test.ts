@@ -93,13 +93,38 @@ describe('AddPhaseView', () => {
         expect(replace).toHaveBeenCalledWith('/train');
     });
 
-    it('PLAN-006 a new type starts from the server\'s length and rate for it', async () => {
+    it('PLAN-006 a new type starts from the server\'s length and rate for it, not the last type\'s picks', async () => {
         const wrapper = show();
-        await radios(wrapper, 'lengths')[0]!.trigger('click');
+        await radios(wrapper, 'lengths')[2]!.trigger('click');
+        await radios(wrapper, 'rates')[1]!.trigger('click');
         await radios(wrapper, 'types')[1]!.trigger('click');
+
+        expect(radios(wrapper, 'lengths')[0]!.attributes('aria-checked')).toBe('true');
+        await add(wrapper);
+        expect(sent()[0]![1]).toMatchObject({ type: 'muscleGain', weeks: 10, rate_percent_per_week: 0.375 });
+    });
+
+    it('PLAN-006 starts from the rate the server marks, wherever it is in the list', async () => {
+        const moved = structuredClone(current);
+        const rates = moved.add_phase.types[0]!.rates;
+        rates[0]!.is_selected = false;
+        rates[1]!.is_selected = true;
+        const wrapper = show({ payload: moved });
+
+        expect(radios(wrapper, 'rates')[1]!.attributes('aria-checked')).toBe('true');
+        await add(wrapper);
+        expect(sent()[0]![1]).toMatchObject({ weeks: 10, rate_percent_per_week: -0.5 });
+    });
+
+    it('CAP-019 sends the same phase_id again after phase_add got no answer', async () => {
+        vi.mocked(write).mockRejectedValueOnce(new CapabilityError('phase_add', 0, { reason: 'network' }));
+        const wrapper = show();
+        await add(wrapper);
         await add(wrapper);
 
-        expect(sent()[0]![1]).toMatchObject({ type: 'muscleGain', weeks: 10, rate_percent_per_week: 0.375 });
+        const ids = sent().map(([, input]) => input.phase_id);
+        expect(ids).toHaveLength(2);
+        expect(ids[1]).toBe(ids[0]);
     });
 
     it('PLAN-006 says why no phase can be added, and Add phase is off', () => {
