@@ -1,0 +1,380 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "meal_id": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "time_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "bars": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "label": {
+                        "type": "string",
+                        "description": "Cal, P, F or C"
+                    },
+                    "value_text": {
+                        "type": "string",
+                        "description": "550/1040"
+                    },
+                    "fraction": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    },
+                    "tone": {
+                        "type": "string",
+                        "enum": [
+                            "good",
+                            "neutral",
+                            "warning",
+                            "info"
+                        ]
+                    }
+                },
+                "required": [
+                    "label",
+                    "value_text",
+                    "fraction",
+                    "tone"
+                ]
+            }
+        },
+        "pills": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "tone": {
+                        "type": "string",
+                        "enum": [
+                            "good",
+                            "neutral",
+                            "warning",
+                            "info"
+                        ]
+                    }
+                },
+                "required": [
+                    "text",
+                    "tone"
+                ]
+            },
+            "description": "MEAL-011: calories, then protein"
+        },
+        "targets_met": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ],
+            "description": "MEAL-003"
+        },
+        "adjust_badge": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ],
+            "description": "DAY-003"
+        },
+        "peri_workout": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "pre",
+                        "post"
+                    ]
+                },
+                "title": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": "string",
+                    "description": "Workout 5:30 PM"
+                },
+                "help": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "kind",
+                "title",
+                "detail",
+                "help"
+            ]
+        },
+        "check_in": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "state": {
+                    "type": "string",
+                    "enum": [
+                        "notCheckedIn",
+                        "onTrack",
+                        "under",
+                        "over"
+                    ]
+                },
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "state",
+                "text",
+                "tone"
+            ]
+        },
+        "hints": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "group": {
+                        "type": "string",
+                        "enum": [
+                            "protein_recommended",
+                            "protein_sparingly",
+                            "protein_before_bed",
+                            "veggies",
+                            "carbs_recommended",
+                            "carbs_sparingly",
+                            "fat_recommended",
+                            "fat_sparingly"
+                        ]
+                    }
+                },
+                "required": [
+                    "text",
+                    "group"
+                ]
+            }
+        },
+        "entries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "food",
+                            "recipe"
+                        ]
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "amount_text": {
+                        "type": "string",
+                        "description": "105 g (about 2.6 slices), or 1.5 servings"
+                    },
+                    "amount": {
+                        "type": "number",
+                        "description": "The amount the amount sheet opens with, in amount_unit"
+                    },
+                    "amount_unit": {
+                        "type": "string",
+                        "enum": [
+                            "g",
+                            "oz",
+                            "servings"
+                        ]
+                    },
+                    "household_unit": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The food's first household unit (\"slice\"), the other unit the amount sheet takes"
+                    },
+                    "weighing": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "One of: raw, cooked; or null"
+                    },
+                    "macros": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "kcal": {
+                                "type": "string"
+                            },
+                            "protein": {
+                                "type": "string"
+                            },
+                            "fat": {
+                                "type": "string"
+                            },
+                            "carbs": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "kcal",
+                            "protein",
+                            "fat",
+                            "carbs"
+                        ]
+                    },
+                    "is_locked": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "id",
+                    "kind",
+                    "name",
+                    "amount_text",
+                    "amount",
+                    "amount_unit",
+                    "macros",
+                    "is_locked"
+                ]
+            }
+        },
+        "empty": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "title",
+                "note"
+            ]
+        },
+        "menu": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "item": {
+                        "type": "string",
+                        "enum": [
+                            "edit_macros_time",
+                            "load_saved_meal",
+                            "save_as_saved_meal",
+                            "copy_foods",
+                            "remove_foods",
+                            "check_in_meal",
+                            "check_in_manual",
+                            "remove_check_in",
+                            "still_planning",
+                            "delete_meal"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "is_enabled": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "item",
+                    "title",
+                    "is_enabled"
+                ]
+            }
+        }
+    },
+    "required": [
+        "meal_id",
+        "title",
+        "bars",
+        "pills",
+        "check_in",
+        "hints",
+        "entries",
+        "menu"
+    ]
+}

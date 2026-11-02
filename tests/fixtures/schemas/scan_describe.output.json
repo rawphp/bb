@@ -1,0 +1,144 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "rows": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "What the AI called the food"
+                    },
+                    "grams": {
+                        "type": "number",
+                        "description": "At the current portion; sent back unchanged to scan_adjust"
+                    },
+                    "grams_text": {
+                        "type": "string"
+                    },
+                    "food_id": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "match_text": {
+                        "type": "string",
+                        "description": "The matched food, or No match"
+                    },
+                    "detail": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "kcal_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "grams",
+                    "grams_text",
+                    "match_text"
+                ]
+            }
+        },
+        "portion": {
+            "type": "number"
+        },
+        "portion_text": {
+            "type": "string",
+            "description": "1.25×"
+        },
+        "portion_down": {
+            "type": [
+                "number",
+                "null"
+            ],
+            "description": "The next smaller portion, or null at the smallest"
+        },
+        "portion_up": {
+            "type": [
+                "number",
+                "null"
+            ],
+            "description": "The next larger portion, or null at the largest"
+        },
+        "totals": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "kcal": {
+                    "type": "string"
+                },
+                "protein": {
+                    "type": "string"
+                },
+                "fat": {
+                    "type": "string"
+                },
+                "carbs": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "kcal",
+                "protein",
+                "fat",
+                "carbs"
+            ]
+        },
+        "unmatched_note": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "matched": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "food_id": {
+                        "type": "string"
+                    },
+                    "grams": {
+                        "type": "number",
+                        "minimum": 0.1
+                    }
+                },
+                "required": [
+                    "food_id",
+                    "grams"
+                ]
+            },
+            "description": "The matched foods, merged per food: what Add to meal and Save as saved meal send"
+        },
+        "saved_meal_name": {
+            "type": "string"
+        },
+        "empty_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        }
+    },
+    "required": [
+        "rows",
+        "portion",
+        "portion_text",
+        "totals",
+        "matched",
+        "saved_meal_name"
+    ]
+}

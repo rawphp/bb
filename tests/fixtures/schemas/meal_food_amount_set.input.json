@@ -1,0 +1,32 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "meal_id": {
+            "type": "string"
+        },
+        "entry_id": {
+            "type": "string"
+        },
+        "value": {
+            "type": "number",
+            "minimum": 0
+        },
+        "unit": {
+            "type": "string",
+            "enum": [
+                "g",
+                "oz",
+                "household",
+                "servings"
+            ]
+        }
+    },
+    "required": [
+        "meal_id",
+        "entry_id",
+        "value",
+        "unit"
+    ]
+}
