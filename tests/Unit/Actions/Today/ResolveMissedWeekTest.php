@@ -227,7 +227,7 @@ it('SCH-058 SCH-060 a restart counts a paused away week inside the mesocycle, so
     expect($mesocycle->fresh()->start_date->format('Y-m-d'))->toBe('2026-09-14');
 });
 
-it('SCH-058 two restarts run one after the other: the second finds nothing due', function () {
+it('SCH-058 a second restart after the first finds nothing due', function () {
     [$user, $mesocycle] = missedWeekWorld();
 
     resolveWeek($user, $mesocycle);
