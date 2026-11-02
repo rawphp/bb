@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Exercise;
+use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -16,6 +17,11 @@ class WorkoutSetFactory extends Factory
             'workout_session_id' => WorkoutSession::factory(),
             'user_id' => fn (array $attributes) => WorkoutSession::findOrFail($attributes['workout_session_id'])->user_id,
             'exercise_id' => Exercise::factory(),
+            // A block of the set's own session and exercise; pass one to put several sets under it.
+            'workout_exercise_id' => fn (array $attributes) => WorkoutExercise::factory()->create([
+                'workout_session_id' => $attributes['workout_session_id'],
+                'exercise_id' => $attributes['exercise_id'],
+            ])->getKey(),
             'position' => 1,
             'type' => 'regular',
             'variant' => 'straight',
