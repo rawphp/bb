@@ -8,5 +8,8 @@ export interface AwayWeekSetInput {
   away: boolean;
   training?: "pause" | "deload";
   calories?: "rest" | "maintenance";
-  keep_phase_end?: boolean;
+  /**
+   * Leave the phase end date where it is (PLAN-025). Left out, each week keeps what it was saved with.
+   */
+  keep_phase_end?: boolean | null;
 }

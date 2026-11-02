@@ -25,7 +25,11 @@
             ]
         },
         "keep_phase_end": {
-            "type": "boolean"
+            "type": [
+                "boolean",
+                "null"
+            ],
+            "description": "Leave the phase end date where it is (PLAN-025). Left out, each week keeps what it was saved with."
         }
     },
     "required": [

@@ -17,7 +17,7 @@ final class AwayWeekSetInput extends CapabilityData
         public readonly bool $away,
         #[Field(enum: ['pause', 'deload'])] public readonly string $training = 'pause',
         #[Field(enum: ['rest', 'maintenance'])] public readonly string $calories = 'rest',
-        public readonly bool $keep_phase_end = false,
+        #[Field(description: 'Leave the phase end date where it is (PLAN-025). Left out, each week keeps what it was saved with.')] public readonly ?bool $keep_phase_end = null,
     ) {}
 
     public static function rules(): array

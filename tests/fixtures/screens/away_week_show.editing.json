@@ -49,5 +49,6 @@
     "training": "pause",
     "calories": "rest",
     "notes": [],
-    "shows_keep_phase_end": false
+    "shows_keep_phase_end": false,
+    "keep_phase_end": true
 }
