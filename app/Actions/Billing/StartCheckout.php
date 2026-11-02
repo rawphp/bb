@@ -23,6 +23,12 @@ final class StartCheckout
 {
     public const SUBSCRIBED = 'You already have a subscription. Switch plans in Manage subscription.';
 
+    /** Cache lock name prefix, per user: one Checkout opens at a time. */
+    public const LOCK = 'billing-checkout:';
+
+    /** Longer than every Stripe call one Checkout makes at its timeouts, so the lock cannot lapse mid-way. */
+    private const LOCK_SECONDS = 120;
+
     public function __construct(private readonly StripeGateway $stripe) {}
 
     public function __invoke(User $user, string $plan): string
@@ -34,7 +40,12 @@ final class StartCheckout
         }
 
         // One Checkout at a time per account, so two taps cannot leave two pages open.
-        return Cache::lock("billing-checkout:{$user->getKey()}", 30)->block(10, fn (): string => $this->open($user, $price));
+        $url = Cache::lock(self::LOCK.$user->getKey(), self::LOCK_SECONDS)->get(fn (): string => $this->open($user, $price));
+        if (! is_string($url)) {
+            throw CapabilityFailure::conflict('Your Checkout is still opening. Try again in a moment.');
+        }
+
+        return $url;
     }
 
     private function open(User $user, string $price): string
@@ -47,7 +58,13 @@ final class StartCheckout
             $subscription->refresh();
 
             if ($subscription->checkout_session_id !== null && $this->stripe->closeCheckout($subscription->checkout_session_id)) {
-                throw CapabilityFailure::conflict(self::SUBSCRIBED);
+                // The page opened last was paid. Its subscription decides: read Stripe again in
+                // case it was paid since the read above, and refuse while Stripe lists nothing yet.
+                (new SyncStripeSubscription($this->stripe))($subscription->stripe_customer_id);
+                $subscription->refresh();
+                if ($subscription->status === null) {
+                    throw CapabilityFailure::conflict(self::SUBSCRIBED);
+                }
             }
         }
 
