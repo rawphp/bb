@@ -124,8 +124,7 @@ final class ProgressWorld
             week: $week,
             weighIns: new Collection($weighIns ?? self::weighIns()),
             steps: $steps,
-            sessions: new Collection($sessions ?? self::sessions()),
-            sets: new Collection($sets ?? self::sets()),
+            sets: self::rows($sessions ?? self::sessions(), $sets ?? self::sets()),
             exercises: new Collection(self::exercises()),
             lastUsed: $lastUsed ?? [12 => '2026-10-08 07:30:00', 20 => '2026-10-05 07:30:00', 25 => '2026-10-09 07:30:00'],
         );
@@ -198,6 +197,30 @@ final class ProgressWorld
             'id' => "pw-{$start}", 'user_id' => 1, 'start_date' => $start, 'is_deload' => false, 'is_diet_break' => false,
             'diet_break_off' => false, 'is_away' => $away, 'away_training' => $awayTraining, 'reviewed_at' => $reviewedAt,
         ]);
+    }
+
+    /**
+     * The rows the loader reads: each set joined to its session, as the loader does, so a set of a session that is gone
+     * or in no mesocycle, or with no exercise, is not in them.
+     *
+     * @param  list<WorkoutSession>  $sessions
+     * @param  list<WorkoutSet>  $sets
+     */
+    private static function rows(array $sessions, array $sets): Collection
+    {
+        $byId = collect($sessions)->keyBy(fn (WorkoutSession $session) => (string) $session->id);
+
+        return collect($sets)->map(function (WorkoutSet $set) use ($byId) {
+            $session = $byId->get((string) $set->workout_session_id);
+            if ($session === null || $session->mesocycle_id === null || $set->exercise_id === null) {
+                return null;
+            }
+
+            return (object) [
+                'mesocycle_id' => $session->mesocycle_id, 'week' => $session->week, 'exercise_id' => $set->exercise_id,
+                'is_logged' => (bool) $set->is_logged, 'is_skipped' => (bool) $set->is_skipped,
+            ];
+        })->filter()->values();
     }
 
     /** @return list<WorkoutSession> */

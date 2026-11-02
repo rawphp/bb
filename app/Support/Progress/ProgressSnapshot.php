@@ -9,6 +9,7 @@ use App\Domain\Model\WeighIn as DomainWeighIn;
 use App\Domain\Model\WeightUnit;
 use App\Domain\Progress\LoggedWorkingSet;
 use App\Domain\Progress\ProgressMesocycle;
+use App\Domain\Progression\WorkingSet;
 use App\Domain\Weight\TrendWeight;
 use App\Models\Exercise;
 use App\Models\Mesocycle;
@@ -18,7 +19,6 @@ use App\Models\Profile;
 use App\Models\Step;
 use App\Models\User;
 use App\Models\WeighIn;
-use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Plan\PlanSnapshot;
@@ -29,8 +29,7 @@ use Illuminate\Support\Collection;
 
 /**
  * What the Progress tab looks at, read once per invoke (ANA-001 to ANA-011): the plan, phases, mesocycles and week
- * as {@see TodaySnapshot} reads them, every weigh-in, today's steps, the logged sets of saved mesocycles with their
- * sessions, and when each exercise was last used.
+ * as {@see TodaySnapshot} reads them, every weigh-in, today's steps, the sets of live mesocycle sessions, and when each exercise was last used.
  *
  * Dates are whole days at midnight UTC, read from their Y-m-d.
  */
@@ -42,8 +41,7 @@ final class ProgressSnapshot
      * @param  TodaySnapshot  $week  the plan, profile, phases, mesocycles and plan weeks, and the week around today
      * @param  Collection<int, WeighIn>  $weighIns  all of them
      * @param  ?int  $steps  today's step count; null when none is stored
-     * @param  Collection<int, WorkoutSession>  $sessions  those in a mesocycle
-     * @param  Collection<int, WorkoutSet>  $sets  the logged sets of those sessions
+     * @param  Collection<int, object{mesocycle_id: string, week: int, exercise_id: int, is_logged: bool|int, is_skipped: bool|int}>  $sets  one row per set of a live session in a mesocycle that names an exercise
      * @param  Collection<int, Exercise>  $exercises  the ones the user can see
      * @param  array<int, string>  $lastUsed  exercise id => start of the latest session with a logged set of it
      */
@@ -51,7 +49,6 @@ final class ProgressSnapshot
         public readonly TodaySnapshot $week,
         public readonly Collection $weighIns,
         public readonly ?int $steps,
-        public readonly Collection $sessions,
         public readonly Collection $sets,
         public readonly Collection $exercises,
         public readonly array $lastUsed,
@@ -60,19 +57,39 @@ final class ProgressSnapshot
     public static function load(User $user): self
     {
         $week = TodaySnapshot::loadWeek($user);
+        $sets = self::sets($user);
+        $lastUsed = self::lastUsed($user);
         $steps = Step::query()->where('user_id', $user->id)->whereDate('date', $week->today()->format('Y-m-d'))->value('count');
 
         return new self(
             week: $week,
             weighIns: WeighIn::query()->where('user_id', $user->id)->orderBy('weighed_at')->get(['id', 'weight_kg', 'waist_cm', 'weighed_at']),
             steps: $steps === null ? null : (int) $steps,
-            sessions: WorkoutSession::query()->where('user_id', $user->id)->whereNotNull('mesocycle_id')->get(['id', 'mesocycle_id', 'week']),
-            sets: WorkoutSet::query()->where('user_id', $user->id)->where('is_logged', true)->whereNotNull('exercise_id')
-                ->whereHas('session', fn ($sessions) => $sessions->whereNotNull('mesocycle_id'))
-                ->get(['id', 'workout_session_id', 'exercise_id', 'is_logged']),
-            exercises: Exercise::query()->visibleTo($user)->get(['id', 'name', 'muscle_group']),
-            lastUsed: self::lastUsed($user),
+            sets: $sets,
+            exercises: Exercise::query()->visibleTo($user)
+                ->whereIn('id', $sets->pluck('exercise_id')->merge(array_keys($lastUsed))->unique()->values()->all())
+                ->get(['id', 'name', 'muscle_group']),
+            lastUsed: $lastUsed,
         );
+    }
+
+    /**
+     * ANA-007: the user's sets of live sessions in a mesocycle that name an exercise, one joined read and no models.
+     * Which of them are working sets is {@see workingSets()}'s to say.
+     *
+     * @return Collection<int, object>
+     */
+    private static function sets(User $user): Collection
+    {
+        return WorkoutSet::query()
+            ->join('workout_sessions as s', 's.id', '=', 'workout_sets.workout_session_id')
+            ->where('workout_sets.user_id', $user->id)
+            ->whereNotNull('workout_sets.exercise_id')
+            ->where('s.user_id', $user->id)
+            ->whereNotNull('s.mesocycle_id')
+            ->whereNull('s.deleted_at')
+            ->toBase()
+            ->get(['s.mesocycle_id', 's.week', 'workout_sets.exercise_id', 'workout_sets.is_logged', 'workout_sets.is_skipped']);
     }
 
     /**
@@ -187,23 +204,21 @@ final class ProgressSnapshot
     }
 
     /**
-     * ANA-007, WO-025: the logged sets of sessions that belong to a mesocycle, whose exercise still exists, with the
-     * muscle of the exercise.
+     * ANA-007, WO-025: the working sets (logged, not skipped) of sessions that belong to a mesocycle, whose exercise
+     * still exists, with the muscle of the exercise.
      *
      * @return list<LoggedWorkingSet>
      */
     public function workingSets(): array
     {
-        $sessions = $this->sessions->keyBy(fn (WorkoutSession $session) => (string) $session->id);
         $muscles = $this->exercises->mapWithKeys(fn (Exercise $exercise) => [(int) $exercise->id => $exercise->muscle_group]);
         $working = [];
         foreach ($this->sets as $set) {
-            $session = $sessions->get((string) $set->workout_session_id);
-            $muscle = $set->exercise_id === null ? null : $muscles->get((int) $set->exercise_id);
-            if (! $set->is_logged || $session === null || $session->mesocycle_id === null || $muscle === null) {
+            $muscle = $muscles->get((int) $set->exercise_id);
+            if (! WorkingSet::counts((bool) $set->is_logged, (bool) $set->is_skipped) || $muscle === null) {
                 continue;
             }
-            $working[] = new LoggedWorkingSet((string) $session->mesocycle_id, (int) $session->week, $muscle);
+            $working[] = new LoggedWorkingSet((string) $set->mesocycle_id, (int) $set->week, $muscle);
         }
 
         return $working;
