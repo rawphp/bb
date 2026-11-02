@@ -6,11 +6,11 @@ const protein = { title: 'Protein', label: 'P', valueText: '51/170', fraction: 0
 
 const states = [
     { name: 'default', props: protein },
-    { name: 'over target', props: { title: 'Sets', label: 'Sets', valueText: '5/4', fraction: 1, overTarget: true } },
+    { name: 'over target', props: { title: 'Sets', label: 'Sets', valueText: '5/4', fraction: 1, tone: 'warning' } },
     { name: 'empty', props: { title: 'Calories', label: 'Cal', valueText: '0/2600', fraction: 0, tint: 'calories' } },
-    { name: 'loading', props: { ...protein, state: 'loading' } },
-    { name: 'error', props: { ...protein, state: 'error' } },
-    { name: 'pending', props: { ...protein, state: 'pending' } },
+    { name: 'loading', props: { ...protein, loading: true } },
+    { name: 'error', props: { ...protein, error: "Couldn't load" } },
+    { name: 'pending', props: { ...protein, pending: true } },
     { name: 'disabled', props: { ...protein, disabled: true } },
 ] as const;
 </script>

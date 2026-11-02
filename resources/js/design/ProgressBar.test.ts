@@ -47,12 +47,20 @@ describe('ProgressBar', () => {
         }
     });
 
-    it('UI-030 over target shows a warning icon and says so, not by colour alone', () => {
-        const wrapper = bar({ overTarget: true });
+    it('UI-030 a warning tone shows a warning icon and says over target, not by colour alone', () => {
+        const wrapper = bar({ tone: 'warning' });
 
         expect(wrapper.find('svg').exists()).toBe(true);
         expect(wrapper.get('[role="progressbar"]').attributes('aria-valuetext')).toBe('45 of 40, over target');
-        expect(bar().find('svg').exists()).toBe(false);
+    });
+
+    it('CAP-018 only the warning tone means over target', () => {
+        for (const tone of [undefined, 'good', 'neutral', 'info']) {
+            const wrapper = bar({ tone });
+
+            expect(wrapper.find('svg').exists()).toBe(false);
+            expect(wrapper.get('[role="progressbar"]').attributes('aria-valuetext')).toBe('45 of 40');
+        }
     });
 
     it('VIEW-004 empty: an empty track with the zero value', () => {
@@ -63,31 +71,47 @@ describe('ProgressBar', () => {
     });
 
     it('VIEW-004 loading: a pulsing empty track announced as loading', () => {
-        const wrapper = bar({ state: 'loading', overTarget: true });
+        const wrapper = bar({ loading: true, tone: 'warning', pending: true });
         const root = wrapper.get('[role="progressbar"]');
 
         expect(root.attributes('aria-busy')).toBe('true');
         expect(root.attributes('aria-valuetext')).toBe('Loading');
         expect(wrapper.find('.animate-pulse').exists()).toBe(true);
         expect(fill(wrapper).attributes('style')).toContain('width: 0%');
-        expect(wrapper.text()).not.toContain('45/40');
+        expect(wrapper.text()).toBe('PLoading');
         expect(wrapper.find('svg').exists()).toBe(false);
     });
 
-    it('VIEW-004 error: the value is replaced by an error in words', () => {
-        const wrapper = bar({ state: 'error' });
+    it("VIEW-004 error: the value is replaced by the error's words in the warning tone", () => {
+        const wrapper = bar({ error: 'No connection', tone: 'warning', pending: true });
+        const root = wrapper.get('[role="progressbar"]');
 
-        expect(wrapper.text()).toBe("PCouldn't load");
-        expect(wrapper.get('[role="progressbar"]').attributes('aria-valuetext')).toBe("Couldn't load");
+        expect(wrapper.text()).toBe('PNo connection');
+        expect(root.attributes('aria-valuetext')).toBe('No connection');
+        expect(root.attributes('aria-busy')).toBeUndefined();
+        expect(wrapper.get('.text-tone-warning').text()).toBe('No connection');
         expect(fill(wrapper).attributes('style')).toContain('width: 0%');
+        expect(wrapper.find('svg').exists()).toBe(false);
     });
 
-    it('VIEW-004 pending: the bar is dimmed and says Waiting to sync (OFF-008)', () => {
-        const root = bar({ state: 'pending' }).get('[role="progressbar"]');
+    it('VIEW-004 loading wins over an error, as in HelpButton', () => {
+        const wrapper = bar({ loading: true, error: 'No connection' });
 
-        expect(root.classes()).toContain('opacity-50');
-        expect(root.text()).toContain('Waiting to sync');
-        expect(root.attributes('aria-valuetext')).toBe('45 of 40, waiting to sync');
+        expect(wrapper.text()).toBe('PLoading');
+        expect(wrapper.get('[role="progressbar"]').attributes('aria-valuetext')).toBe('Loading');
+    });
+
+    it('VIEW-004 pending: the value is dimmed and Waiting to sync stays readable (OFF-008)', () => {
+        const wrapper = bar({ pending: true, tone: 'warning' });
+        const root = wrapper.get('[role="progressbar"]');
+        const note = wrapper.findAll('span').find((s) => s.text() === 'Waiting to sync');
+
+        expect(root.classes()).not.toContain('opacity-50');
+        expect(note?.classes()).not.toContain('opacity-50');
+        for (const part of [...root.element.children].filter((c) => c !== note?.element)) {
+            expect(part.classList.contains('opacity-50')).toBe(true);
+        }
+        expect(root.attributes('aria-valuetext')).toBe('45 of 40, over target, waiting to sync');
     });
 
     it('VIEW-004 disabled: the bar is greyed out and marked disabled', () => {
@@ -97,6 +121,7 @@ describe('ProgressBar', () => {
         expect(root.attributes('aria-disabled')).toBe('true');
         expect(root.classes()).toContain('opacity-50');
         expect(fill(wrapper).classes()).toContain('bg-secondary-text');
+        expect(bar().get('[role="progressbar"]').attributes('aria-disabled')).toBeUndefined();
     });
 
     it('VIEW-004 the gallery lists ProgressBar with each state', () => {
