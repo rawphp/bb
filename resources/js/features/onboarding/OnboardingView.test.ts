@@ -127,17 +127,50 @@ describe('OnboardingView', () => {
             expect(wrapper.get('h2').text()).toBe('Weight-loss drugs');
         });
 
-        it('CAP-010 Back and Next wait while an answer is being saved', async () => {
-            writeMock.mockReturnValueOnce(new Promise(() => {}));
-            wrapper = view(glp1);
+        it('CAP-010 a Next pressed while an answer saves is sent after it', async () => {
+            const ready = { ...glp1, step: { ...glp1.step, can_continue: true } };
+            readMock.mockResolvedValue(ready);
+            let finish: (value: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+            wrapper = view(ready);
 
             await radio(wrapper, glp1.glp1.question, 'Yes').trigger('click');
+            await next(wrapper).trigger('click');
+            await next(wrapper).trigger('click');
+            expect(writeMock).toHaveBeenCalledOnce();
+            finish({});
+            await flushPromises();
 
-            expect(next(wrapper).attributes('disabled')).toBeDefined();
-            expect(back(wrapper).attributes('disabled')).toBeDefined();
+            expect(sent()).toEqual([
+                { answers: { uses_glp1: true }, move: 'stay' },
+                { answers: {}, move: 'next' },
+            ]);
         });
 
-        it('CAP-010 an answer made while another saves is sent after it, in order', async () => {
+        it('CAP-010 while Back or Next is out the step is locked, and nothing tapped then is sent later', async () => {
+            readMock.mockResolvedValue(glp1);
+            let finish: (value: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+            wrapper = view(screening);
+            const row = wrapper.findAllComponents(ScreeningRowView)[5]!.get('[role="checkbox"]');
+
+            await next(wrapper).trigger('click');
+            expect(row.element.matches(':disabled')).toBe(true);
+            expect(next(wrapper).attributes('disabled')).toBeDefined();
+            expect(back(wrapper).attributes('disabled')).toBeDefined();
+            await row.trigger('click');
+            finish({});
+            await flushPromises();
+            await radio(wrapper, glp1.glp1.question, 'Yes').trigger('click');
+            await flushPromises();
+
+            expect(sent()).toEqual([
+                { answers: {}, move: 'next' },
+                { answers: { uses_glp1: true }, move: 'stay' },
+            ]);
+        });
+
+        it('CAP-010 answers made while one saves are sent after it, in the order made', async () => {
             readMock.mockResolvedValue(screening);
             let finish: (value: unknown) => void = () => {};
             writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
@@ -147,6 +180,8 @@ describe('OnboardingView', () => {
 
             await rows[at('diabetes')]!.get('[role="checkbox"]').trigger('click');
             await rows[at('autoimmuneDisease')]!.get('[role="checkbox"]').trigger('click');
+            await rows[at('gallbladderDisease')]!.get('[role="checkbox"]').trigger('click');
+            await rows[at('weightLossSurgery')]!.get('[role="checkbox"]').trigger('click');
             expect(writeMock).toHaveBeenCalledOnce();
             finish({});
             await flushPromises();
@@ -154,25 +189,32 @@ describe('OnboardingView', () => {
             expect(sent().map((input) => input.answers)).toEqual([
                 { screening: [{ item: 'diabetes', is_on: true }] },
                 { screening: [{ item: 'autoimmuneDisease', is_on: true }] },
+                { screening: [{ item: 'gallbladderDisease', is_on: false }] },
+                { screening: [{ item: 'weightLossSurgery', is_on: true }] },
             ]);
             expect(next(wrapper).attributes('disabled')).toBeUndefined();
         });
 
-        it('CAP-012 a refused answer drops the answers made behind it', async () => {
-            readMock.mockResolvedValue(screening);
-            let refuse: (error: unknown) => void = () => {};
-            writeMock.mockReturnValueOnce(new Promise((_resolve, reject) => (refuse = reject)));
-            wrapper = view(screening);
+        it.each([
+            ['refused', new CapabilityError('onboarding_answer', 422, { ok: false, error: { message: 'Answer step 2 first.' } }), 'Answer step 2 first.'],
+            ['unanswered', new CapabilityError('onboarding_answer', 0, { reason: 'timeout' }), 'may have worked'],
+        ])('CAP-012 an answer %s drops the answers and the Next made behind it', async (_label, failure, message) => {
+            const ready = { ...screening, step: { ...screening.step, can_continue: true } };
+            readMock.mockResolvedValue(ready);
+            let fail: (error: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((_resolve, reject) => (fail = reject)));
+            wrapper = view(ready);
             const rows = wrapper.findAllComponents(ScreeningRowView);
             const at = (item: string) => screening.screening.rows.findIndex((r) => r.item === item);
 
             await rows[at('diabetes')]!.get('[role="checkbox"]').trigger('click');
             await rows[at('autoimmuneDisease')]!.get('[role="checkbox"]').trigger('click');
-            refuse(new CapabilityError('onboarding_answer', 422, { ok: false, error: { message: 'Answer step 2 first.' } }));
+            await next(wrapper).trigger('click');
+            fail(failure);
             await flushPromises();
 
             expect(writeMock).toHaveBeenCalledOnce();
-            expect(wrapper.get('[role="alert"]').text()).toBe('Answer step 2 first.');
+            expect(wrapper.get('[role="alert"]').text()).toContain(message);
         });
 
         it('PWA-024 shows a skeleton while the step loads', () => {
@@ -395,7 +437,7 @@ describe('OnboardingView', () => {
             expect(sent()).toEqual([{ answers: { height: { unit: 'feetInches' } }, move: 'stay' }]);
         });
 
-        it('ONB-004 a background refresh does not wipe a number being typed', async () => {
+        it('ONB-004 a background refresh does not wipe a name or a number being typed', async () => {
             let refresh: (data: OnboardingShowOutput) => void = () => {};
             readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {
                 refresh = onUpdate as typeof refresh;
@@ -403,14 +445,57 @@ describe('OnboardingView', () => {
             });
             wrapper = view();
             await flushPromises();
+            const changed = structuredClone(aboutYou);
+            changed.about_you.name = 'Samantha';
+            changed.about_you.weight = { ...changed.about_you.weight, value: 82, text: '82 kg' };
+
+            const name = wrapper.get<HTMLInputElement>('input[autocomplete="given-name"]');
+            name.element.focus();
+            name.element.value = 'Al';
+            await name.trigger('input');
+            refresh(structuredClone(changed));
+            await flushPromises();
+            expect(name.element.value).toBe('Al');
 
             const weight = wrapper.get<HTMLInputElement>('input[aria-label="Weight in kg"]');
             weight.element.focus();
             await weight.setValue('7');
-            refresh(structuredClone(aboutYou));
+            refresh(structuredClone(changed));
+            await flushPromises();
+            expect(weight.element.value).toBe('7');
+        });
+
+        it('ONB-004 feet and inches left while the first save is out save the feet as typed', async () => {
+            const feetInches = { ...aboutYou, about_you: review.about_you };
+            readMock.mockResolvedValue(feetInches);
+            let finish: (value: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+            wrapper = view(feetInches);
+
+            await wrapper.get('input[aria-label="Feet in ft"]').setValue('6');
+            await wrapper.get('input[aria-label="Feet in ft"]').trigger('blur');
+            await wrapper.get('input[aria-label="Inches in in"]').setValue('2');
+            await wrapper.get('input[aria-label="Inches in in"]').trigger('blur');
+            finish({});
             await flushPromises();
 
-            expect(weight.element.value).toBe('7');
+            expect(sent().map((input) => input.answers)).toEqual([
+                { height: { unit: 'feetInches', feet: 6, inches: 7 } },
+                { height: { unit: 'feetInches', feet: 6, inches: 2 } },
+            ]);
+        });
+
+        it('CAP-012 a typed value the server refuses gives way to the saved one, beside the server\'s reason', async () => {
+            writeMock.mockRejectedValueOnce(new CapabilityError('onboarding_answer', 422, { ok: false, error: { message: 'Enter a weight under 400 kg.' } }));
+            const saved = { ...aboutYou, about_you: { ...aboutYou.about_you, weight: { ...aboutYou.about_you.weight, value: 75, text: '75 kg' } } };
+            wrapper = view(saved);
+
+            await wrapper.get('input[aria-label="Weight in kg"]').setValue('900');
+            await wrapper.get('input[aria-label="Weight in kg"]').trigger('blur');
+            await flushPromises();
+
+            expect(wrapper.get('[role="alert"]').text()).toBe('Enter a weight under 400 kg.');
+            expect(wrapper.get<HTMLInputElement>('input[aria-label="Weight in kg"]').element.value).toBe('75');
         });
     });
 
