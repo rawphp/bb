@@ -180,6 +180,20 @@ describe('ProgressScreen', () => {
         expect(wrapper.get('[data-this-week]').text()).toContain('Waiting to sync');
         expect(wrapper.get('[data-steps]').text()).toContain('Waiting to sync');
         expect(wrapper.get('[data-phase-history]').text()).toContain('Waiting to sync');
+        expect(wrapper.get('[data-mesocycle-history]').text()).toContain('Waiting to sync');
+    });
+
+    it('CAP-018 colours each history and summary value by the tone the server sends', () => {
+        const payload = structuredClone(full);
+        payload.summary[1]!.tone = 'good';
+        payload.phase_history[0]!.lines[0]!.tone = 'warning';
+        payload.mesocycle_history[0]!.sets[0]!.tone = 'info';
+        const wrapper = render({ payload });
+
+        expect(wrapper.get('[data-summary] div:nth-child(2) dd').classes()).toContain('text-tone-good');
+        expect(wrapper.get('[data-summary] div:nth-child(1) dd').classes()).not.toContain('text-tone-neutral');
+        expect(wrapper.get('[data-phase-history] dd').classes()).toContain('text-tone-warning');
+        expect(wrapper.get('[data-mesocycle-history] dd').classes()).toContain('text-tone-info');
     });
 
     it('PWA-034 shares the progress card as an image', async () => {
@@ -198,5 +212,31 @@ describe('ProgressScreen', () => {
         expect(card.querySelector('svg[role="img"]')).not.toBeNull();
         expect(sharePng).toHaveBeenCalledWith(png, full.share);
         expect(wrapper.find('[data-share-card]').exists()).toBe(false);
+    });
+
+    it('PWA-034 draws the shared card in the light palette', async () => {
+        let card: SVGSVGElement | undefined;
+        vi.mocked(toPng).mockImplementation(async (svg) => {
+            card = svg;
+            return new Blob();
+        });
+        const wrapper = render();
+
+        await wrapper.get('[data-share]').trigger('click');
+        await flushPromises();
+
+        expect(card?.classList).toContain('bb-light');
+    });
+
+    it('PWA-034 says when the picture could not be shared, and lets the user try again', async () => {
+        vi.mocked(toPng).mockResolvedValue(new Blob());
+        vi.mocked(sharePng).mockRejectedValue(Object.assign(new Error('no'), { name: 'NotAllowedError' }));
+        const wrapper = render();
+
+        await wrapper.get('[data-share]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[role="alert"]').text()).toBe('The progress picture could not be shared.');
+        expect(wrapper.get('[data-share]').attributes('disabled')).toBeUndefined();
     });
 });

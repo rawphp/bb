@@ -7,7 +7,8 @@ type Schema = { properties: Record<string, Property>; required?: string[]; addit
 
 export function expectMatchesInputSchema(schema: Schema, input: Record<string, unknown>): void {
     for (const [key, value] of Object.entries(input)) {
-        expect(schema.properties, `${key} is not in the schema`).toHaveProperty(key);
+        if (schema.additionalProperties === false) expect(schema.properties, `${key} is not in the schema`).toHaveProperty(key);
+        if (!(key in schema.properties)) continue;
         const property = schema.properties[key]!;
         if (property.type) expect(typeof value).toBe(property.type);
         if (property.enum) expect(property.enum).toContain(value);

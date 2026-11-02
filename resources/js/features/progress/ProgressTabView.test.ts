@@ -64,6 +64,25 @@ describe('ProgressTabView', () => {
         expect(wrapper.text()).toContain('No weigh-ins in this phase yet');
     });
 
+    it('ANA-001 a late refresh of the old scope does not replace the picked one', async () => {
+        let refreshPhase: (data: ProgressShowOutput) => void = () => {};
+        readMock
+            .mockImplementationOnce(async (_name, _input, onUpdate) => {
+                refreshPhase = onUpdate as typeof refreshPhase;
+                return full;
+            })
+            .mockResolvedValueOnce(scopeEmpty);
+        const wrapper = render();
+        await flushPromises();
+        await wrapper.findAll('[data-scope]')[1]!.trigger('click');
+        await flushPromises();
+
+        refreshPhase(full);
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('No weigh-ins in this phase yet');
+    });
+
     it.each([
         [new CapabilityError('progress_show', 0, null), 'Progress needs a connection.'],
         [new CapabilityError('progress_show', 401, null), 'You are signed out.'],

@@ -17,6 +17,14 @@ describe('chartGeometry', () => {
         expect(timeAxis(dates, 0, 100).ticks).toEqual(['2026-08-31', '2026-09-14', '2026-09-28']);
     });
 
+    it('ANA-001 marks a short span about three times, a whole number of days apart', () => {
+        expect(timeAxis(['2026-08-31', '2026-09-09'], 0, 90).ticks).toEqual(['2026-08-31', '2026-09-03', '2026-09-06', '2026-09-09']);
+    });
+
+    it('ANA-001 keeps a wide value range to about five ticks', () => {
+        expect(valueAxis([80, 95], 100, 0).ticks).toEqual([80, 83, 86, 89, 92, 95]);
+    });
+
     it('ANA-001 spreads the value axis over whole numbers around the series', () => {
         const axis = valueAxis([83.26, 84.8, 83.2, 84.78], 200, 0);
 

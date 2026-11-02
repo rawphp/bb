@@ -27,4 +27,12 @@ describe('built design tokens', () => {
         expect(css).toMatch(/:root\[data-appearance=light\]\{--lightningcss-light:initial;--lightningcss-dark: ;/);
         expect(css).toMatch(/:root\[data-appearance=dark\]\{--lightningcss-light: ;--lightningcss-dark:initial;/);
     });
+
+    it('PWA-034 an element with bb-light keeps the light palette in a dark page, so the shared progress picture is light', async () => {
+        const css = await builtCss();
+
+        // The tokens are declared again on .bb-light, so they resolve against its own switch, not :root's.
+        expect(css).toMatch(/:root,\.bb-light\{[^}]*--bb-surface:var\(--lightningcss-light,#fff\)var\(--lightningcss-dark,#1c1c1e\)/);
+        expect(css).toMatch(/\.bb-light\{--lightningcss-light:initial;--lightningcss-dark: ;/);
+    });
 });

@@ -47,6 +47,15 @@ describe('sharePng', () => {
         expect(anchor.click).toHaveBeenCalledOnce();
     });
 
+    it('PWA-034 passes on a refused share rather than downloading behind the user\'s back', async () => {
+        const refused = Object.assign(new Error('not allowed'), { name: 'NotAllowedError' });
+        const nav = { canShare: () => true, share: vi.fn().mockRejectedValue(refused) } as unknown as Navigator;
+        const { doc, anchor } = fakeDocument();
+
+        await expect(sharePng(png, content, nav, doc)).rejects.toBe(refused);
+        expect(anchor.click).not.toHaveBeenCalled();
+    });
+
     it('PWA-034 treats closing the share sheet as a cancel, not a failure', async () => {
         const abort = Object.assign(new Error('closed'), { name: 'AbortError' });
         const nav = { canShare: () => true, share: vi.fn().mockRejectedValue(abort) } as unknown as Navigator;
