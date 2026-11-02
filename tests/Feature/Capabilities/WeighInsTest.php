@@ -3,6 +3,7 @@
 use App\Capabilities\Support\HostDefinition;
 use App\Enums\MeasurementSource;
 use App\Models\PersonalAccessToken;
+use App\Models\Phase;
 use App\Models\Profile;
 use App\Models\Step;
 use App\Models\User;
@@ -74,9 +75,13 @@ it('CAP-011 CAP-013 AGT-010 registers the weigh-in capabilities on every surface
             ->and(HostDefinition::isReversible($definition))->toBeFalse($name)
                         // weigh_in_schedule_set deletes every entry it is not sent (WT-007's Delete schedule).
             ->and(HostDefinition::isDestructive($definition))->toBe(in_array($name, ['weigh_in_delete', 'weigh_in_schedule_set'], true), $name);
-        if ($name !== 'weigh_ins_show') {
-            expect(HostDefinition::affects($definition))->toBe(['weigh_ins_show', 'today_show'], $name);
-        }
+    }
+    // A weigh-in also moves the trend each phase's weights are shown from (PLAN-004).
+    foreach (['weigh_in_log', 'weigh_in_update', 'weigh_in_delete'] as $name) {
+        expect(HostDefinition::affects($registry->get($name)))->toBe(['weigh_ins_show', 'today_show', 'phase_show'], $name);
+    }
+    foreach (['weigh_in_schedule_set', 'steps_log'] as $name) {
+        expect(HostDefinition::affects($registry->get($name)))->toBe(['weigh_ins_show', 'today_show'], $name);
     }
     expect($registry->get('weigh_ins_show')->readOnly)->toBeTrue();
 });
@@ -144,11 +149,13 @@ it('WT-021 shows weight in pounds and waist in inches for a user who sees height
 it('WT-002 logs a weigh-in as typed and names the reads it changed', function () {
     Carbon::setTestNow('2026-10-10 12:00:00');
     $user = User::factory()->create();
+    $phase = Phase::factory()->for($user)->create();
+    Phase::factory()->create();
     $input = weighInInput(['waist' => ['value' => 86, 'unit' => 'cm']]);
 
     weighInCall($user, 'weigh_in_log', $input)
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['weigh_ins_show{}', 'today_show{"date":"2026-10-10"}', 'today_show{}']);
+        ->assertJsonPath('data.invalidates', ['weigh_ins_show{}', 'today_show{"date":"2026-10-10"}', 'today_show{}', 'phase_show{"phase_id":"'.$phase->id.'"}']);
 
     expect(WeighIn::query()->findOrFail($input['id']))
         ->user_id->toBe($user->id)
