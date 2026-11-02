@@ -189,7 +189,7 @@ final class OnboardingReview
         $weeks = $this->training->mesocycleWeeks() ?? 0;
 
         return new ReviewBlock('First mesocycle', 9, true, [
-            new ReviewRow('Name', $this->training->selectedTemplate()?->name ?? self::BUILT_LATER),
+            new ReviewRow('Name', $this->training->selectedTemplate()->name ?? self::BUILT_LATER),
             new ReviewRow('Length', "{$weeks} weeks"),
             new ReviewRow('Days', OnboardingText::weekdaysText(array_map(fn (TrainingDayChoice $day) => $day->weekday, $this->draft->trainingDays))),
             new ReviewRow('Deload week', "Week {$weeks}"),

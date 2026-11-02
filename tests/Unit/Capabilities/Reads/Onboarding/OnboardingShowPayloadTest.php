@@ -5,6 +5,7 @@ use App\Models\OnboardingDraft;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Tests\Support\ScreenFixture;
 use Tests\Unit\Capabilities\Reads\Onboarding\OnboardingShowWorld as W;
 
 // onboarding_show: what setup shows on each step, from a draft saved through App\Models\OnboardingDraft (ONB-002). The
@@ -19,6 +20,18 @@ afterEach(fn () => Carbon::setTestNow());
 function onboardingShown(User $user): array
 {
     return OnboardingShowPayload::for($user)->toArray();
+}
+
+/**
+ * The payload has the shape of the named screen fixture, and the output schema (one for every variant, as the schema
+ * is onboarding_show.output.json).
+ *
+ * @param  array<mixed>  $shown
+ */
+function onboardingMatchesFixture(string $variant, array $shown): void
+{
+    assertMatchesScreenFixture('onboarding_show', $shown);
+    expect(ScreenFixture::differences(ScreenFixture::load("onboarding_show.{$variant}"), $shown))->toBe([]);
 }
 
 /** @return list<string> */
@@ -44,7 +57,7 @@ it('ONB-004 shows step 2, about you, in the units the user chose, and what it st
     $world = W::sam(2, ['name' => '']);
     $shown = onboardingShown($world['user']);
 
-    assertMatchesScreenFixture('onboarding_show.about_you', $shown);
+    onboardingMatchesFixture('about_you', $shown);
     expect($shown['step'])->toMatchArray(['number' => 2, 'key' => 'about_you', 'counter' => 'Step 2 of 13', 'can_continue' => false, 'continue_hint' => 'Fill in every field to continue.'])
         ->and(onboardingChosen($shown['about_you']['sex_options']))->toBe(['female'])
         ->and($shown['about_you']['birth_date'])->toBe(['date' => '1990-04-09', 'text' => 'Apr 9, 1990', 'initial' => '1990-04-09', 'min' => null, 'max' => '2026-10-09', 'is_locked' => false])
@@ -57,7 +70,7 @@ it('SAFE-001 shows step 3, the screening, with the measured rows locked and tick
     $world = W::sam(3);
     $shown = onboardingShown($world['user']);
 
-    assertMatchesScreenFixture('onboarding_show.screening', $shown);
+    onboardingMatchesFixture('screening', $shown);
     $rows = $shown['screening']['rows'];
     expect($shown['step']['counter'])->toBe('Step 3 of 13')
         ->and($shown['screening']['prompt'])->toBe('Tick anything that applies to you.')
@@ -80,7 +93,7 @@ it('SAFE-013 shows step 4, the weight-loss drug question, with its answer', func
     $world = W::sam(4);
     $shown = onboardingShown($world['user']);
 
-    assertMatchesScreenFixture('onboarding_show.glp1', $shown);
+    onboardingMatchesFixture('glp1', $shown);
     expect($shown['step']['key'])->toBe('glp1')
         ->and($shown['glp1'])->toBe(['question' => 'Do you take a GLP-1 or similar weight-loss drug?', 'detail' => 'For example semaglutide, tirzepatide or retatrutide.', 'answer' => false]);
 });
@@ -89,7 +102,7 @@ it('ONB-007 shows step 5, the body-fat photos for the user\'s sex, with the pick
     $world = W::sam(5);
     $shown = onboardingShown($world['user']);
 
-    assertMatchesScreenFixture('onboarding_show.body_fat', $shown);
+    onboardingMatchesFixture('body_fat', $shown);
     expect($shown['body_fat']['sex'])->toBe('female')
         ->and(array_column($shown['body_fat']['options'], 'title'))->toBe(['under 20%', '20-27%', '27-35%', 'over 35%'])
         ->and(onboardingChosen($shown['body_fat']['options']))->toBe(['low'])
@@ -101,7 +114,7 @@ it('ONB-008 ONB-009 shows step 6, the rate and length, with the dates and target
     $shown = onboardingShown($world['user']);
     $rate = $shown['rate_length'];
 
-    assertMatchesScreenFixture('onboarding_show.rate_length', $shown);
+    onboardingMatchesFixture('rate_length', $shown);
     expect($shown['step'])->toMatchArray(['number' => 6, 'counter' => 'Step 6 of 13', 'next_title' => 'Continue'])
         ->and(onboardingChosen($rate['options']))->toBe(['Highest success'])
         ->and(array_column($rate['options'], 'detail'))->toBe(['Lose 0.75% of body weight per week', 'Lose 0.5% of body weight per week', ''])
@@ -119,7 +132,7 @@ it('ONB-009 SAFE-005 shows the fat-loss cautions of step 6 as its notices, and t
         'experience' => null, 'training_days' => [], 'training_plan' => null, 'template_id' => null]);
     $shown = onboardingShown($world['user']);
 
-    assertMatchesScreenFixture('onboarding_show.warning', $shown);
+    onboardingMatchesFixture('warning', $shown);
     expect($shown['notices'])->toBe([
         ['text' => 'Fat-loss phases over 12 weeks are hard to sustain.', 'tone' => 'warning'],
         ['text' => 'This plan loses more than 10% of your starting weight. Consider a slower rate or a shorter phase.', 'tone' => 'warning'],
@@ -134,7 +147,7 @@ it('ONB-010 shows step 7, the experience levels with their mesocycle lengths and
     $world = W::sam(7);
     $shown = onboardingShown($world['user']);
 
-    assertMatchesScreenFixture('onboarding_show.experience', $shown);
+    onboardingMatchesFixture('experience', $shown);
     expect(onboardingChosen($shown['experience']['options']))->toBe(['intermediate'])
         ->and(array_column($shown['experience']['options'], 'detail'))->toBe([
             'Under 1 year of consistent lifting. Mesocycles start at 6 weeks.',
@@ -147,7 +160,7 @@ it('ONB-011 shows step 8, all seven weekdays with the training days on and their
     $world = W::sam(8, ['training_days' => [['weekday' => 2, 'start_minutes' => 390, 'length_minutes' => 75]]]);
     $shown = onboardingShown($world['user']);
 
-    assertMatchesScreenFixture('onboarding_show.training_days', $shown);
+    onboardingMatchesFixture('training_days', $shown);
     $days = $shown['training_days']['days'];
     expect($shown['training_days']['help'])->toBe('2 to 4 days you can repeat every week beat 5 or 6 you will miss.')
         ->and(array_column($days, 'name'))->toBe(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
@@ -162,7 +175,7 @@ it('ONB-012 shows step 9, the templates that fit with the recommendation selecte
     $shown = onboardingShown($world['user']);
     $options = $shown['training_plan']['options'];
 
-    assertMatchesScreenFixture('onboarding_show.training_plan', $shown);
+    onboardingMatchesFixture('training_plan', $shown);
     expect(array_column($options, 'value'))->toBe(["template:{$world['full']}", "template:{$world['upper']}", 'meso_builder', 'later'])
         ->and(onboardingChosen($options))->toBe(["template:{$world['full']}"])
         ->and($options[0])->toMatchArray(['title' => 'Full Body 3-Day Dumbbells', 'detail' => '3 days a week · Full body', 'badges' => [['text' => 'Recommended', 'tone' => 'good']]])
@@ -195,7 +208,7 @@ it('ONB-013 shows step 10, the step ranges as weekday and weekend groups and a d
     $world = W::sam(10);
     $shown = onboardingShown($world['user']);
 
-    assertMatchesScreenFixture('onboarding_show.steps', $shown);
+    onboardingMatchesFixture('steps', $shown);
     $steps = $shown['steps'];
     expect($steps['groups'][0])->toBe(['key' => 'weekdays', 'title' => 'Weekdays', 'weekdays' => [1, 2, 3, 4, 5], 'is_mixed' => false, 'min' => 5000, 'max' => 8000, 'text' => '5,000 to 8,000 steps'])
         ->and($steps['groups'][1])->toMatchArray(['key' => 'weekends', 'min' => 8000, 'max' => 10000, 'text' => '8,000 to 10,000 steps'])
@@ -224,7 +237,7 @@ it('ONB-014 shows step 11, the eating window, the meal count and the busy period
     $world = W::sam(11);
     $shown = onboardingShown($world['user']);
 
-    assertMatchesScreenFixture('onboarding_show.meals', $shown);
+    onboardingMatchesFixture('meals', $shown);
     expect($shown['meals']['first_meal'])->toBe(['minutes' => 420, 'text' => '7:00 AM'])
         ->and($shown['meals']['last_meal'])->toBe(['minutes' => 1200, 'text' => '8:00 PM'])
         ->and($shown['meals']['window_note'])->toBe('This window applies to every day.')
@@ -248,7 +261,7 @@ it('ONB-015 ONB-016 shows step 12, the weigh-in days with their time and the rev
     $shown = onboardingShown($world['user']);
     $days = $shown['weigh_ins']['days'];
 
-    assertMatchesScreenFixture('onboarding_show.weigh_ins', $shown);
+    onboardingMatchesFixture('weigh_ins', $shown);
     expect(array_column($days, 'is_on'))->toBe([true, false, true, false, true, false, false])
         ->and($days[0]['time'])->toBe(['minutes' => 420, 'text' => '7:00 AM'])
         ->and($shown['weigh_ins']['hint'])->toBe('We recommend weighing in on 4 or more days a week for a clearer trend.')
@@ -270,7 +283,7 @@ it('ONB-017 shows step 13, the recommendation with its daily average and the wee
     $shown = onboardingShown($world['user']);
     $calories = $shown['calories'];
 
-    assertMatchesScreenFixture('onboarding_show.calories', $shown);
+    onboardingMatchesFixture('calories', $shown);
     expect($shown['step'])->toMatchArray(['number' => 13, 'counter' => 'Step 13 of 13', 'can_continue' => true])
         ->and(onboardingChosen($calories['options']))->toBe(['recommendation'])
         ->and($calories['options'][0]['detail'])->toMatch('/^[\d,]+ kcal a day$/')
@@ -295,7 +308,7 @@ it('ONB-002 ONB-003 shows a user with no saved setup the defaults on step 1, and
     $world = W::library();
     $shown = onboardingShown($world['user']);
 
-    assertMatchesScreenFixture('onboarding_show.empty', $shown);
+    onboardingMatchesFixture('empty', $shown);
     expect($shown['step'])->toMatchArray(['number' => 1, 'key' => 'goal', 'counter' => 'Step 1 of 13', 'can_continue' => false,
         'continue_hint' => 'Pick a goal and answer the question to continue.', 'can_go_back' => false])
         ->and(onboardingChosen($shown['goal']['options']))->toBe([])
