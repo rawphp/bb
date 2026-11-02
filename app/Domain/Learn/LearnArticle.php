@@ -93,12 +93,7 @@ final readonly class LearnArticle
                 continue;
             }
 
-            $last = array_key_last($spans);
-            if ($last !== null && $spans[$last]['bold'] === $bold && $spans[$last]['italic'] === $italic) {
-                $spans[$last]['text'] .= $part;
-            } else {
-                $spans[] = ['text' => $part, 'bold' => $bold, 'italic' => $italic];
-            }
+            $spans[] = ['text' => $part, 'bold' => $bold, 'italic' => $italic];
         }
 
         if ($bold || $italic) {
