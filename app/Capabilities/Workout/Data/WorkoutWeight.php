@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Workout\Data;
 
+use App\Domain\Model\WeightUnit;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -13,7 +14,7 @@ final class WorkoutWeight extends CapabilityData
 {
     public function __construct(
         public readonly float $value,
-        #[Field(enum: ['kg', 'lb'])]
+        #[Field(enum: [WeightUnit::Kg->value, WeightUnit::Lb->value])]
         public readonly string $unit,
     ) {}
 }

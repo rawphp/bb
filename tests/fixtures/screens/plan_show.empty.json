@@ -11,10 +11,10 @@
     "add_phase": {
         "starts_text": "Starts 2 Nov",
         "refusal": null,
-        "default_type": "fat_loss",
+        "default_type": "fatLoss",
         "types": [
             {
-                "type": "fat_loss",
+                "type": "fatLoss",
                 "title": "Fat loss",
                 "is_recommended": true,
                 "lengths": [
@@ -148,7 +148,7 @@
                 ]
             },
             {
-                "type": "muscle_gain",
+                "type": "muscleGain",
                 "title": "Muscle gain",
                 "is_recommended": true,
                 "lengths": [
@@ -325,7 +325,7 @@
                 ]
             },
             {
-                "type": "mini_cut",
+                "type": "miniCut",
                 "title": "Mini-cut",
                 "is_recommended": false,
                 "lengths": [

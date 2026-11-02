@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Mesocycles\Data;
 
+use App\Capabilities\Support\AcceptsNullEnums;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -9,11 +10,13 @@ use Rawphp\Capabilities\Support\CapabilityData;
  * Saves the create flow (MESO-003 to MESO-007, MESO-012 to MESO-014). A new
  * `mesocycle_id` starts a draft and replaces any other draft (MESO-007); after that the same ID
  * updates it. `template_id` fills the days, priorities and name from a template (MESO-012).
- * An omitted field leaves the stored value alone; `days` replaces every day and slot (MESO-014).
+ * A field left out or null leaves the stored value alone; `days` replaces every day and slot (MESO-014).
  * `finish` saves it as a mesocycle, which needs a name, a day and a phase on the start (MESO-003).
  */
 final class MesocycleBuildInput extends CapabilityData
 {
+    use AcceptsNullEnums;
+
     /**
      * @param  list<MesocycleBuildDay>|null  $days
      */

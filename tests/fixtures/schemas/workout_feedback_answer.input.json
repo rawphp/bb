@@ -40,7 +40,7 @@
                             "none",
                             "low",
                             "moderate",
-                            "a_lot"
+                            "aLot"
                         ]
                     }
                 },
@@ -61,10 +61,10 @@
         "volume": {
             "type": "string",
             "enum": [
-                "not_enough",
-                "just_right",
-                "pushed_limits",
-                "too_much"
+                "notEnough",
+                "justRight",
+                "pushedMyLimits",
+                "tooMuch"
             ]
         },
         "soreness": {
@@ -73,10 +73,11 @@
                 "null"
             ],
             "enum": [
-                "never_sore",
-                "healed_a_while_ago",
-                "healed_on_time",
-                "still_sore"
+                "neverGotSore",
+                "healedAWhileAgo",
+                "healedJustOnTime",
+                "stillSore",
+                null
             ]
         }
     },

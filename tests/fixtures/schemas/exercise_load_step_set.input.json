@@ -10,7 +10,8 @@
             "type": [
                 "number",
                 "null"
-            ]
+            ],
+            "minimum": 0.25
         },
         "unit": {
             "type": "string",

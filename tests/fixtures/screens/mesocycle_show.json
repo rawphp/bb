@@ -795,21 +795,21 @@
                 "bars": 1
             },
             {
-                "muscle": "side_delts",
+                "muscle": "sideDelts",
                 "muscle_title": "Side delts",
                 "priority": "emphasize",
                 "priority_title": "Emphasize",
                 "bars": 3
             },
             {
-                "muscle": "rear_delts",
+                "muscle": "rearDelts",
                 "muscle_title": "Rear delts",
                 "priority": "maintain",
                 "priority_title": "Maintain",
                 "bars": 1
             },
             {
-                "muscle": "front_delts",
+                "muscle": "frontDelts",
                 "muscle_title": "Front delts",
                 "priority": "maintain",
                 "priority_title": "Maintain",

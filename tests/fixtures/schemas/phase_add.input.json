@@ -9,10 +9,10 @@
         "type": {
             "type": "string",
             "enum": [
-                "fat_loss",
-                "muscle_gain",
+                "fatLoss",
+                "muscleGain",
                 "maintenance",
-                "mini_cut"
+                "miniCut"
             ]
         },
         "weeks": {

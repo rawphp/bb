@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Train\Data;
 
+use App\Capabilities\Support\Tone;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -13,7 +14,7 @@ final class Pill extends CapabilityData
 {
     public function __construct(
         public readonly string $text,
-        #[Field(enum: ['good', 'neutral', 'warning', 'info'])]
+        #[Field(enum: [Tone::Good->value, Tone::Neutral->value, Tone::Warning->value, Tone::Info->value])]
         public readonly string $tone,
     ) {}
 }

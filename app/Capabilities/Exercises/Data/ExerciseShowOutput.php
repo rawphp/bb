@@ -2,6 +2,9 @@
 
 namespace App\Capabilities\Exercises\Data;
 
+use App\Domain\Model\Equipment;
+use App\Domain\Model\ExerciseLoadType;
+use App\Domain\Model\MuscleGroup;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -25,13 +28,13 @@ final class ExerciseShowOutput extends CapabilityData
         public readonly string $name,
         public readonly bool $is_custom,
         public readonly ?string $video_url,
-        #[Field(enum: ['chest', 'back', 'quads', 'hamstrings', 'glutes', 'sideDelts', 'rearDelts', 'frontDelts', 'biceps', 'triceps', 'calves', 'abs', 'traps', 'forearms'])]
+        #[Field(enum: [MuscleGroup::Chest->value, MuscleGroup::Back->value, MuscleGroup::Quads->value, MuscleGroup::Hamstrings->value, MuscleGroup::Glutes->value, MuscleGroup::SideDelts->value, MuscleGroup::RearDelts->value, MuscleGroup::FrontDelts->value, MuscleGroup::Biceps->value, MuscleGroup::Triceps->value, MuscleGroup::Calves->value, MuscleGroup::Abs->value, MuscleGroup::Traps->value, MuscleGroup::Forearms->value])]
         public readonly string $muscle_group,
         public readonly string $muscle_group_text,
-        #[Field(enum: ['barbell', 'ezBar', 'trapBar', 'dumbbell', 'kettlebell', 'machine', 'cable', 'smithMachine', 'bodyweight'])]
+        #[Field(enum: [Equipment::Barbell->value, Equipment::EzBar->value, Equipment::TrapBar->value, Equipment::Dumbbell->value, Equipment::Kettlebell->value, Equipment::Machine->value, Equipment::Cable->value, Equipment::SmithMachine->value, Equipment::Bodyweight->value])]
         public readonly string $equipment,
         public readonly string $equipment_text,
-        #[Field(enum: ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight', 'bodyweightPlusLoad', 'smithMachine'])]
+        #[Field(enum: [ExerciseLoadType::Barbell->value, ExerciseLoadType::Dumbbell->value, ExerciseLoadType::Machine->value, ExerciseLoadType::Cable->value, ExerciseLoadType::Bodyweight->value, ExerciseLoadType::BodyweightPlusLoad->value, ExerciseLoadType::SmithMachine->value])]
         public readonly string $load_type,
         public readonly string $load_type_text,
         public readonly ?string $rep_range_text,

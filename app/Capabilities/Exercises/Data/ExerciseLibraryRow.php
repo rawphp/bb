@@ -2,6 +2,8 @@
 
 namespace App\Capabilities\Exercises\Data;
 
+use App\Domain\Model\Equipment;
+use App\Domain\Model\MuscleGroup;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -16,9 +18,9 @@ final class ExerciseLibraryRow extends CapabilityData
         public readonly string $id,
         public readonly string $name,
         public readonly string $detail,
-        #[Field(enum: ['chest', 'back', 'quads', 'hamstrings', 'glutes', 'sideDelts', 'rearDelts', 'frontDelts', 'biceps', 'triceps', 'calves', 'abs', 'traps', 'forearms'])]
+        #[Field(enum: [MuscleGroup::Chest->value, MuscleGroup::Back->value, MuscleGroup::Quads->value, MuscleGroup::Hamstrings->value, MuscleGroup::Glutes->value, MuscleGroup::SideDelts->value, MuscleGroup::RearDelts->value, MuscleGroup::FrontDelts->value, MuscleGroup::Biceps->value, MuscleGroup::Triceps->value, MuscleGroup::Calves->value, MuscleGroup::Abs->value, MuscleGroup::Traps->value, MuscleGroup::Forearms->value])]
         public readonly string $muscle_group,
-        #[Field(enum: ['barbell', 'ezBar', 'trapBar', 'dumbbell', 'kettlebell', 'machine', 'cable', 'smithMachine', 'bodyweight'])]
+        #[Field(enum: [Equipment::Barbell->value, Equipment::EzBar->value, Equipment::TrapBar->value, Equipment::Dumbbell->value, Equipment::Kettlebell->value, Equipment::Machine->value, Equipment::Cable->value, Equipment::SmithMachine->value, Equipment::Bodyweight->value])]
         public readonly string $equipment,
         public readonly string $last_used_text,
         public readonly bool $has_video,

@@ -105,21 +105,21 @@
                 "bars": 3
             },
             {
-                "muscle": "side_delts",
+                "muscle": "sideDelts",
                 "muscle_title": "Side delts",
                 "priority": "grow",
                 "priority_title": "Grow",
                 "bars": 2
             },
             {
-                "muscle": "rear_delts",
+                "muscle": "rearDelts",
                 "muscle_title": "Rear delts",
                 "priority": "grow",
                 "priority_title": "Grow",
                 "bars": 2
             },
             {
-                "muscle": "front_delts",
+                "muscle": "frontDelts",
                 "muscle_title": "Front delts",
                 "priority": "grow",
                 "priority_title": "Grow",
@@ -209,7 +209,7 @@
                     },
                     {
                         "id": "01JBA8S0300000000000000000",
-                        "muscle": "rear_delts",
+                        "muscle": "rearDelts",
                         "muscle_title": "Rear delts",
                         "sets": 2,
                         "sets_text": "2 sets",
@@ -218,7 +218,7 @@
                     },
                     {
                         "id": "01JBA8S0400000000000000000",
-                        "muscle": "front_delts",
+                        "muscle": "frontDelts",
                         "muscle_title": "Front delts",
                         "sets": 2,
                         "sets_text": "2 sets",
@@ -269,7 +269,7 @@
                     },
                     {
                         "id": "01JBA8S1300000000000000000",
-                        "muscle": "rear_delts",
+                        "muscle": "rearDelts",
                         "muscle_title": "Rear delts",
                         "sets": 2,
                         "sets_text": "2 sets",
@@ -278,7 +278,7 @@
                     },
                     {
                         "id": "01JBA8S1400000000000000000",
-                        "muscle": "front_delts",
+                        "muscle": "frontDelts",
                         "muscle_title": "Front delts",
                         "sets": 2,
                         "sets_text": "2 sets",
@@ -329,7 +329,7 @@
                     },
                     {
                         "id": "01JBA8S2300000000000000000",
-                        "muscle": "rear_delts",
+                        "muscle": "rearDelts",
                         "muscle_title": "Rear delts",
                         "sets": 2,
                         "sets_text": "2 sets",
@@ -338,7 +338,7 @@
                     },
                     {
                         "id": "01JBA8S2400000000000000000",
-                        "muscle": "front_delts",
+                        "muscle": "frontDelts",
                         "muscle_title": "Front delts",
                         "sets": 2,
                         "sets_text": "2 sets",
@@ -389,7 +389,7 @@
                     },
                     {
                         "id": "01JBA8S3300000000000000000",
-                        "muscle": "rear_delts",
+                        "muscle": "rearDelts",
                         "muscle_title": "Rear delts",
                         "sets": 2,
                         "sets_text": "2 sets",
@@ -398,7 +398,7 @@
                     },
                     {
                         "id": "01JBA8S3400000000000000000",
-                        "muscle": "front_delts",
+                        "muscle": "frontDelts",
                         "muscle_title": "Front delts",
                         "sets": 2,
                         "sets_text": "2 sets",
@@ -557,12 +557,12 @@
                 ]
             },
             {
-                "muscle": "side_delts",
+                "muscle": "sideDelts",
                 "muscle_title": "Side delts",
                 "exercises": []
             },
             {
-                "muscle": "rear_delts",
+                "muscle": "rearDelts",
                 "muscle_title": "Rear delts",
                 "exercises": [
                     {
@@ -576,7 +576,7 @@
                 ]
             },
             {
-                "muscle": "front_delts",
+                "muscle": "frontDelts",
                 "muscle_title": "Front delts",
                 "exercises": [
                     {

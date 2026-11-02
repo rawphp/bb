@@ -2,6 +2,8 @@
 
 namespace App\Capabilities\Mesocycles\Data;
 
+use App\Domain\Model\MuscleGroup;
+use App\Domain\Model\Priority;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -12,10 +14,10 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class MesocyclePriorityRow extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: ['chest', 'back', 'quads', 'hamstrings', 'glutes', 'side_delts', 'rear_delts', 'front_delts', 'biceps', 'triceps', 'calves', 'abs', 'traps', 'forearms'])]
+        #[Field(enum: [MuscleGroup::Chest->value, MuscleGroup::Back->value, MuscleGroup::Quads->value, MuscleGroup::Hamstrings->value, MuscleGroup::Glutes->value, MuscleGroup::SideDelts->value, MuscleGroup::RearDelts->value, MuscleGroup::FrontDelts->value, MuscleGroup::Biceps->value, MuscleGroup::Triceps->value, MuscleGroup::Calves->value, MuscleGroup::Abs->value, MuscleGroup::Traps->value, MuscleGroup::Forearms->value])]
         public readonly string $muscle,
         public readonly string $muscle_title,
-        #[Field(enum: ['emphasize', 'grow', 'maintain', 'off'])]
+        #[Field(enum: [Priority::Emphasize->value, Priority::Grow->value, Priority::Maintain->value, 'off'])]
         public readonly string $priority,
         public readonly string $priority_title,
         public readonly int $bars,

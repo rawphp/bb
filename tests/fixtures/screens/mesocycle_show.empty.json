@@ -105,21 +105,21 @@
                 "bars": 2
             },
             {
-                "muscle": "side_delts",
+                "muscle": "sideDelts",
                 "muscle_title": "Side delts",
                 "priority": "grow",
                 "priority_title": "Grow",
                 "bars": 2
             },
             {
-                "muscle": "rear_delts",
+                "muscle": "rearDelts",
                 "muscle_title": "Rear delts",
                 "priority": "grow",
                 "priority_title": "Grow",
                 "bars": 2
             },
             {
-                "muscle": "front_delts",
+                "muscle": "frontDelts",
                 "muscle_title": "Front delts",
                 "priority": "grow",
                 "priority_title": "Grow",
@@ -311,12 +311,12 @@
                 ]
             },
             {
-                "muscle": "side_delts",
+                "muscle": "sideDelts",
                 "muscle_title": "Side delts",
                 "exercises": []
             },
             {
-                "muscle": "rear_delts",
+                "muscle": "rearDelts",
                 "muscle_title": "Rear delts",
                 "exercises": [
                     {
@@ -330,7 +330,7 @@
                 ]
             },
             {
-                "muscle": "front_delts",
+                "muscle": "frontDelts",
                 "muscle_title": "Front delts",
                 "exercises": [
                     {

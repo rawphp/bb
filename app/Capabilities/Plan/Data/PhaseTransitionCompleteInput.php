@@ -2,6 +2,8 @@
 
 namespace App\Capabilities\Plan\Data;
 
+use App\Capabilities\Support\AcceptsNullEnums;
+use App\Domain\Model\PhaseType;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -11,15 +13,17 @@ use Rawphp\Capabilities\Support\CapabilityData;
  * phase (CAP-019); Gain first's later two phases get server IDs (PH-032).
  * `weeks` is one of the option's lengths, null for Gain first. `template` is
  * the PH-036 training choice. `calorie_mode` and `step_kcal` are PH-044 and
- * only sent for Maintenance after Fat loss with nutrition on;
- * otherwise leave them out (the schema's enum refuses an explicit null).
+ * only sent for Maintenance after Fat loss with nutrition on; otherwise
+ * they are null or left out.
  */
 final class PhaseTransitionCompleteInput extends CapabilityData
 {
+    use AcceptsNullEnums;
+
     public function __construct(
         public readonly string $phase_id,
         public readonly string $next_phase_id,
-        #[Field(enum: ['fat_loss', 'muscle_gain', 'maintenance', 'mini_cut', 'gain_first'])]
+        #[Field(enum: [PhaseType::FatLoss->value, PhaseType::MuscleGain->value, PhaseType::Maintenance->value, PhaseType::MiniCut->value, 'gain_first'])]
         public readonly string $choice,
         #[Field(minimum: 1)]
         public readonly ?int $weeks,

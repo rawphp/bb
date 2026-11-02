@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Plan\Data;
 
+use App\Domain\Model\PhaseType;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -16,7 +17,7 @@ final class PlanPhaseBand extends CapabilityData
 {
     public function __construct(
         public readonly string $id,
-        #[Field(enum: ['fat_loss', 'muscle_gain', 'maintenance', 'mini_cut'])]
+        #[Field(enum: [PhaseType::FatLoss->value, PhaseType::MuscleGain->value, PhaseType::Maintenance->value, PhaseType::MiniCut->value])]
         public readonly string $type,
         public readonly string $title,
         public readonly int $start_week,

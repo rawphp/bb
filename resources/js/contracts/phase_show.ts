@@ -6,7 +6,7 @@ export interface PhaseShowInput {
 
 export interface PhaseShowOutput {
   id: string;
-  type: "fat_loss" | "muscle_gain" | "maintenance" | "mini_cut";
+  type: "fatLoss" | "muscleGain" | "maintenance" | "miniCut";
   title: string;
   dates_text: string;
   progress?: number | null;
@@ -48,7 +48,7 @@ export interface PhaseShowOutput {
     }[];
   }[];
   goals: {
-    type: "fat_loss" | "muscle_gain" | "maintenance" | "mini_cut";
+    type: "fatLoss" | "muscleGain" | "maintenance" | "miniCut";
     title: string;
     from_text: string;
     length_text: string;
@@ -65,4 +65,4 @@ export interface PhaseShowOutput {
   }[];
 }
 
-export const outputVersion = '7248c7649244';
+export const outputVersion = 'a40a21dfab8f';

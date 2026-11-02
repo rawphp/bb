@@ -7,7 +7,7 @@ export interface PlanShowOutput {
   today_position?: number | null;
   phases: {
     id: string;
-    type: "fat_loss" | "muscle_gain" | "maintenance" | "mini_cut";
+    type: "fatLoss" | "muscleGain" | "maintenance" | "miniCut";
     title: string;
     start_week: number;
     weeks: number;
@@ -47,9 +47,9 @@ export interface PlanShowOutput {
   add_phase: {
     starts_text: string;
     refusal?: string | null;
-    default_type: "fat_loss" | "muscle_gain" | "maintenance" | "mini_cut";
+    default_type: "fatLoss" | "muscleGain" | "maintenance" | "miniCut";
     types: {
-      type: "fat_loss" | "muscle_gain" | "maintenance" | "mini_cut";
+      type: "fatLoss" | "muscleGain" | "maintenance" | "miniCut";
       title: string;
       is_recommended: boolean;
       lengths: {
@@ -96,13 +96,13 @@ export interface PlanShowOutput {
     }[];
   };
   prebuilt_plans: {
-    plan: "muscle_gain" | "fat_loss";
+    plan: "muscleGain" | "fatLoss";
     title: string;
     summary: string;
     starts_text: string;
     refusal?: string | null;
     phases: {
-      type: "fat_loss" | "muscle_gain" | "maintenance" | "mini_cut";
+      type: "fatLoss" | "muscleGain" | "maintenance" | "miniCut";
       title: string;
       weeks_text: string;
       dates_text: string;
@@ -125,7 +125,7 @@ export interface PlanShowOutput {
     mesocycles_text: string;
     next_from_text: string;
     options: {
-      choice: "fat_loss" | "muscle_gain" | "maintenance" | "mini_cut" | "gain_first";
+      choice: "fatLoss" | "muscleGain" | "maintenance" | "miniCut" | "gain_first";
       title: string;
       detail: string;
       is_recommended: boolean;
@@ -189,4 +189,4 @@ export interface PlanShowOutput {
   } | null;
 }
 
-export const outputVersion = 'c143197ae34a';
+export const outputVersion = '1339d4921a97';

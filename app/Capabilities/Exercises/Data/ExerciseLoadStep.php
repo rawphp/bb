@@ -3,6 +3,7 @@
 namespace App\Capabilities\Exercises\Data;
 
 use App\Capabilities\Train\Data\Measure;
+use App\Domain\Model\WeightUnit;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -16,7 +17,7 @@ final class ExerciseLoadStep extends CapabilityData
     public function __construct(
         public readonly ?Measure $step,
         public readonly string $default_text,
-        #[Field(enum: ['kg', 'lb'])]
+        #[Field(enum: [WeightUnit::Kg->value, WeightUnit::Lb->value])]
         public readonly string $unit,
     ) {}
 }

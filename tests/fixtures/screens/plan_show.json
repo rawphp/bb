@@ -4,7 +4,7 @@
     "phases": [
         {
             "id": "01JB8Q2V6N3XKZ4M5P7R9T1W2A",
-            "type": "fat_loss",
+            "type": "fatLoss",
             "title": "Fat loss",
             "start_week": 0,
             "weeks": 12,
@@ -87,10 +87,10 @@
     "add_phase": {
         "starts_text": "Starts 21 Dec",
         "refusal": null,
-        "default_type": "fat_loss",
+        "default_type": "fatLoss",
         "types": [
             {
-                "type": "fat_loss",
+                "type": "fatLoss",
                 "title": "Fat loss",
                 "is_recommended": true,
                 "lengths": [
@@ -224,7 +224,7 @@
                 ]
             },
             {
-                "type": "muscle_gain",
+                "type": "muscleGain",
                 "title": "Muscle gain",
                 "is_recommended": true,
                 "lengths": [
@@ -401,7 +401,7 @@
                 ]
             },
             {
-                "type": "mini_cut",
+                "type": "miniCut",
                 "title": "Mini-cut",
                 "is_recommended": false,
                 "lengths": [
@@ -462,14 +462,14 @@
     },
     "prebuilt_plans": [
         {
-            "plan": "muscle_gain",
+            "plan": "muscleGain",
             "title": "Muscle gain plan",
             "summary": "24 weeks from RP's 6-month guide",
             "starts_text": "Starts 21 Dec",
             "refusal": null,
             "phases": [
                 {
-                    "type": "muscle_gain",
+                    "type": "muscleGain",
                     "title": "Muscle gain",
                     "weeks_text": "17 weeks",
                     "dates_text": "21 Dec – 18 Apr",
@@ -483,7 +483,7 @@
                     "rate_text": "Hold weight"
                 },
                 {
-                    "type": "fat_loss",
+                    "type": "fatLoss",
                     "title": "Fat loss",
                     "weeks_text": "6 weeks",
                     "dates_text": "3 May – 13 Jun",
@@ -530,14 +530,14 @@
             ]
         },
         {
-            "plan": "fat_loss",
+            "plan": "fatLoss",
             "title": "Fat loss plan",
             "summary": "24 weeks from RP's 6-month guide",
             "starts_text": "Starts 21 Dec",
             "refusal": null,
             "phases": [
                 {
-                    "type": "fat_loss",
+                    "type": "fatLoss",
                     "title": "Fat loss",
                     "weeks_text": "15 weeks",
                     "dates_text": "21 Dec – 4 Apr",
@@ -551,7 +551,7 @@
                     "rate_text": "Hold weight"
                 },
                 {
-                    "type": "fat_loss",
+                    "type": "fatLoss",
                     "title": "Fat loss",
                     "weeks_text": "8 weeks",
                     "dates_text": "12 Apr – 6 Jun",

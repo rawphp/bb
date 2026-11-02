@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Workout\Data;
 
+use App\Domain\Model\MuscleGroup;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -17,7 +18,7 @@ final class WorkoutFeedback extends CapabilityData
      * @param  list<WorkoutFeedbackQuestion>  $questions
      */
     public function __construct(
-        #[Field(enum: ['chest', 'back', 'quads', 'hamstrings', 'glutes', 'sideDelts', 'rearDelts', 'frontDelts', 'biceps', 'triceps', 'calves', 'abs', 'traps', 'forearms'])]
+        #[Field(enum: [MuscleGroup::Chest->value, MuscleGroup::Back->value, MuscleGroup::Quads->value, MuscleGroup::Hamstrings->value, MuscleGroup::Glutes->value, MuscleGroup::SideDelts->value, MuscleGroup::RearDelts->value, MuscleGroup::FrontDelts->value, MuscleGroup::Biceps->value, MuscleGroup::Triceps->value, MuscleGroup::Calves->value, MuscleGroup::Abs->value, MuscleGroup::Traps->value, MuscleGroup::Forearms->value])]
         public readonly string $muscle_group,
         /** "Chest". */
         public readonly string $title,

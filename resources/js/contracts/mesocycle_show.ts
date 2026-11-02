@@ -58,9 +58,9 @@ export interface MesocycleShowOutput {
         | "quads"
         | "hamstrings"
         | "glutes"
-        | "side_delts"
-        | "rear_delts"
-        | "front_delts"
+        | "sideDelts"
+        | "rearDelts"
+        | "frontDelts"
         | "biceps"
         | "triceps"
         | "calves"
@@ -74,7 +74,7 @@ export interface MesocycleShowOutput {
     }[];
   } | null;
   build?: {
-    route: "template" | "copy" | "builder" | "scratch";
+    route: "template" | "copy_previous" | "builder" | "scratch";
     resume_step: "builder" | "scratch" | "slots" | "details";
     weeks: number;
     weeks_options: {
@@ -103,9 +103,9 @@ export interface MesocycleShowOutput {
         | "quads"
         | "hamstrings"
         | "glutes"
-        | "side_delts"
-        | "rear_delts"
-        | "front_delts"
+        | "sideDelts"
+        | "rearDelts"
+        | "frontDelts"
         | "biceps"
         | "triceps"
         | "calves"
@@ -136,9 +136,9 @@ export interface MesocycleShowOutput {
           | "quads"
           | "hamstrings"
           | "glutes"
-          | "side_delts"
-          | "rear_delts"
-          | "front_delts"
+          | "sideDelts"
+          | "rearDelts"
+          | "frontDelts"
           | "biceps"
           | "triceps"
           | "calves"
@@ -163,9 +163,9 @@ export interface MesocycleShowOutput {
         | "quads"
         | "hamstrings"
         | "glutes"
-        | "side_delts"
-        | "rear_delts"
-        | "front_delts"
+        | "sideDelts"
+        | "rearDelts"
+        | "frontDelts"
         | "biceps"
         | "triceps"
         | "calves"
@@ -183,4 +183,4 @@ export interface MesocycleShowOutput {
   } | null;
 }
 
-export const outputVersion = '7a6a1af93a87';
+export const outputVersion = '044cf034427d';

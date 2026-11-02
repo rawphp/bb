@@ -23,7 +23,7 @@ final class MesocycleBuild extends CapabilityData
      * @param  list<MesocycleMuscleExercises>  $exercise_options
      */
     public function __construct(
-        #[Field(enum: ['template', 'copy', 'builder', 'scratch'])]
+        #[Field(enum: ['template', 'copy_previous', 'builder', 'scratch'])]
         public readonly string $route,
         #[Field(enum: ['builder', 'scratch', 'slots', 'details'])]
         public readonly string $resume_step,

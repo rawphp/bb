@@ -19,9 +19,9 @@ export interface WorkoutFeedbackAnswerInput {
     | "forearms";
   joint_pain: {
     exercise_id: string;
-    answer: "none" | "low" | "moderate" | "a_lot";
+    answer: "none" | "low" | "moderate" | "aLot";
   }[];
   pump: "low" | "moderate" | "amazing";
-  volume: "not_enough" | "just_right" | "pushed_limits" | "too_much";
-  soreness?: ("never_sore" | "healed_a_while_ago" | "healed_on_time" | "still_sore") | null;
+  volume: "notEnough" | "justRight" | "pushedMyLimits" | "tooMuch";
+  soreness?: "neverGotSore" | "healedAWhileAgo" | "healedJustOnTime" | "stillSore" | null;
 }

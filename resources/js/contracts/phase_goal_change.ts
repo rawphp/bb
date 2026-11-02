@@ -2,6 +2,6 @@
 
 export interface PhaseGoalChangeInput {
   phase_id: string;
-  type: "fat_loss" | "muscle_gain" | "maintenance" | "mini_cut";
+  type: "fatLoss" | "muscleGain" | "maintenance" | "miniCut";
   new_phase_id: string;
 }

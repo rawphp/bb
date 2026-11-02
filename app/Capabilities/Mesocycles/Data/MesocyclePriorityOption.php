@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Mesocycles\Data;
 
+use App\Domain\Model\Priority;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -12,7 +13,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class MesocyclePriorityOption extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: ['emphasize', 'grow', 'maintain', 'off'])]
+        #[Field(enum: [Priority::Emphasize->value, Priority::Grow->value, Priority::Maintain->value, 'off'])]
         public readonly string $priority,
         public readonly string $title,
     ) {}

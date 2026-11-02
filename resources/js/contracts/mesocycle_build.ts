@@ -2,12 +2,12 @@
 
 export interface MesocycleBuildInput {
   mesocycle_id: string;
-  route?: ("template" | "builder" | "scratch") | null;
+  route?: "template" | "builder" | "scratch" | null;
   template_id?: string | null;
   name?: string | null;
   weeks?: number | null;
   start_date?: string | null;
-  label_style?: ("weekdays" | "floating") | null;
+  label_style?: "weekdays" | "floating" | null;
   days_per_week?: number | null;
   days?:
     | {
@@ -20,9 +20,9 @@ export interface MesocycleBuildInput {
             | "quads"
             | "hamstrings"
             | "glutes"
-            | "side_delts"
-            | "rear_delts"
-            | "front_delts"
+            | "sideDelts"
+            | "rearDelts"
+            | "frontDelts"
             | "biceps"
             | "triceps"
             | "calves"

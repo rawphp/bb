@@ -1,6 +1,6 @@
 {
     "id": "01JB8Q2V6N3XKZ4M5P7R9T1W2A",
-    "type": "fat_loss",
+    "type": "fatLoss",
     "title": "Fat loss",
     "dates_text": "31 Aug – 22 Nov",
     "progress": 0.5,
@@ -125,7 +125,7 @@
             "progression_text": "Meso 2 follows Maintenance progression from week 2."
         },
         {
-            "type": "muscle_gain",
+            "type": "muscleGain",
             "title": "Muscle gain",
             "from_text": "From 19 Oct",
             "length_text": "5 weeks",
@@ -163,7 +163,7 @@
             "progression_text": "Meso 2 follows Muscle gain progression from week 2."
         },
         {
-            "type": "mini_cut",
+            "type": "miniCut",
             "title": "Mini-cut",
             "from_text": "From 19 Oct",
             "length_text": "5 weeks",

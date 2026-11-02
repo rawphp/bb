@@ -24,10 +24,10 @@
                     "type": {
                         "type": "string",
                         "enum": [
-                            "fat_loss",
-                            "muscle_gain",
+                            "fatLoss",
+                            "muscleGain",
                             "maintenance",
-                            "mini_cut"
+                            "miniCut"
                         ]
                     },
                     "title": {
@@ -227,10 +227,10 @@
                 "default_type": {
                     "type": "string",
                     "enum": [
-                        "fat_loss",
-                        "muscle_gain",
+                        "fatLoss",
+                        "muscleGain",
                         "maintenance",
-                        "mini_cut"
+                        "miniCut"
                     ]
                 },
                 "types": {
@@ -242,10 +242,10 @@
                             "type": {
                                 "type": "string",
                                 "enum": [
-                                    "fat_loss",
-                                    "muscle_gain",
+                                    "fatLoss",
+                                    "muscleGain",
                                     "maintenance",
-                                    "mini_cut"
+                                    "miniCut"
                                 ]
                             },
                             "title": {
@@ -486,8 +486,8 @@
                     "plan": {
                         "type": "string",
                         "enum": [
-                            "muscle_gain",
-                            "fat_loss"
+                            "muscleGain",
+                            "fatLoss"
                         ]
                     },
                     "title": {
@@ -514,10 +514,10 @@
                                 "type": {
                                     "type": "string",
                                     "enum": [
-                                        "fat_loss",
-                                        "muscle_gain",
+                                        "fatLoss",
+                                        "muscleGain",
                                         "maintenance",
-                                        "mini_cut"
+                                        "miniCut"
                                     ]
                                 },
                                 "title": {
@@ -635,10 +635,10 @@
                             "choice": {
                                 "type": "string",
                                 "enum": [
-                                    "fat_loss",
-                                    "muscle_gain",
+                                    "fatLoss",
+                                    "muscleGain",
                                     "maintenance",
-                                    "mini_cut",
+                                    "miniCut",
                                     "gain_first"
                                 ]
                             },

@@ -2,10 +2,10 @@
 
 export interface TemplatesShowInput {
   template_id?: string | null;
-  days?: ("2" | "3" | "4" | "5" | "6") | null;
-  sex?: ("female" | "male") | null;
-  focus?: ("whole_body" | "emphasis") | null;
-  phase?: ("cut" | "gain" | "maintain" | "all") | null;
+  days?: "2" | "3" | "4" | "5" | "6" | null;
+  sex?: "female" | "male" | null;
+  focus?: "whole_body" | "emphasis" | null;
+  phase?: "cut" | "gain" | "maintain" | "all" | null;
 }
 
 export interface TemplatesShowOutput {
@@ -45,9 +45,9 @@ export interface TemplatesShowOutput {
         | "quads"
         | "hamstrings"
         | "glutes"
-        | "side_delts"
-        | "rear_delts"
-        | "front_delts"
+        | "sideDelts"
+        | "rearDelts"
+        | "frontDelts"
         | "biceps"
         | "triceps"
         | "calves"
@@ -66,4 +66,4 @@ export interface TemplatesShowOutput {
   } | null;
 }
 
-export const outputVersion = '77de567c3809';
+export const outputVersion = '1e375afe5a1a';

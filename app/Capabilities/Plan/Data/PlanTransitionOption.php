@@ -3,6 +3,7 @@
 namespace App\Capabilities\Plan\Data;
 
 use App\Capabilities\Train\Data\Pill;
+use App\Domain\Model\PhaseType;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -29,7 +30,7 @@ final class PlanTransitionOption extends CapabilityData
      * @param  list<PlanReadinessQuestion>  $readiness
      */
     public function __construct(
-        #[Field(enum: ['fat_loss', 'muscle_gain', 'maintenance', 'mini_cut', 'gain_first'])]
+        #[Field(enum: [PhaseType::FatLoss->value, PhaseType::MuscleGain->value, PhaseType::Maintenance->value, PhaseType::MiniCut->value, 'gain_first'])]
         public readonly string $choice,
         public readonly string $title,
         public readonly string $detail,

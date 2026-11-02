@@ -625,7 +625,7 @@
                             "note": null
                         },
                         {
-                            "value": "a_lot",
+                            "value": "aLot",
                             "label": "A lot of pain",
                             "note": "Stop this exercise if the pain is sharp, and see a professional if it persists."
                         }
@@ -643,27 +643,27 @@
                     },
                     "choices": [
                         {
-                            "value": "never_sore",
+                            "value": "neverGotSore",
                             "label": "Never got sore",
                             "note": null
                         },
                         {
-                            "value": "healed_a_while_ago",
+                            "value": "healedAWhileAgo",
                             "label": "Healed a while ago",
                             "note": null
                         },
                         {
-                            "value": "healed_on_time",
+                            "value": "healedJustOnTime",
                             "label": "Healed just on time",
                             "note": null
                         },
                         {
-                            "value": "still_sore",
+                            "value": "stillSore",
                             "label": "I'm still sore!",
                             "note": null
                         }
                     ],
-                    "answer": "healed_on_time"
+                    "answer": "healedJustOnTime"
                 },
                 {
                     "kind": "pump",
@@ -704,22 +704,22 @@
                     },
                     "choices": [
                         {
-                            "value": "not_enough",
+                            "value": "notEnough",
                             "label": "Not enough",
                             "note": null
                         },
                         {
-                            "value": "just_right",
+                            "value": "justRight",
                             "label": "Just right",
                             "note": null
                         },
                         {
-                            "value": "pushed_limits",
+                            "value": "pushedMyLimits",
                             "label": "Pushed my limits",
                             "note": null
                         },
                         {
-                            "value": "too_much",
+                            "value": "tooMuch",
                             "label": "Too much",
                             "note": null
                         }
@@ -762,7 +762,7 @@
                             "note": null
                         },
                         {
-                            "value": "a_lot",
+                            "value": "aLot",
                             "label": "A lot of pain",
                             "note": "Stop this exercise if the pain is sharp, and see a professional if it persists."
                         }
@@ -780,22 +780,22 @@
                     },
                     "choices": [
                         {
-                            "value": "never_sore",
+                            "value": "neverGotSore",
                             "label": "Never got sore",
                             "note": null
                         },
                         {
-                            "value": "healed_a_while_ago",
+                            "value": "healedAWhileAgo",
                             "label": "Healed a while ago",
                             "note": null
                         },
                         {
-                            "value": "healed_on_time",
+                            "value": "healedJustOnTime",
                             "label": "Healed just on time",
                             "note": null
                         },
                         {
-                            "value": "still_sore",
+                            "value": "stillSore",
                             "label": "I'm still sore!",
                             "note": null
                         }
@@ -841,22 +841,22 @@
                     },
                     "choices": [
                         {
-                            "value": "not_enough",
+                            "value": "notEnough",
                             "label": "Not enough",
                             "note": null
                         },
                         {
-                            "value": "just_right",
+                            "value": "justRight",
                             "label": "Just right",
                             "note": null
                         },
                         {
-                            "value": "pushed_limits",
+                            "value": "pushedMyLimits",
                             "label": "Pushed my limits",
                             "note": null
                         },
                         {
-                            "value": "too_much",
+                            "value": "tooMuch",
                             "label": "Too much",
                             "note": null
                         }

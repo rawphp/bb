@@ -2,6 +2,7 @@
 
 export interface ExerciseSwapInput {
   workout_exercise_id: string;
+  new_workout_exercise_id: string;
   exercise_id: string;
   scope: "this_session" | "rest_of_mesocycle";
 }

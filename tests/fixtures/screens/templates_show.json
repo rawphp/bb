@@ -264,7 +264,7 @@
                 "bars": 1
             },
             {
-                "muscle": "side_delts",
+                "muscle": "sideDelts",
                 "muscle_title": "Side delts",
                 "priority": "grow",
                 "priority_title": "Grow",

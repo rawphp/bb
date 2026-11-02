@@ -3,9 +3,9 @@
 export interface PhaseTransitionCompleteInput {
   phase_id: string;
   next_phase_id: string;
-  choice: "fat_loss" | "muscle_gain" | "maintenance" | "mini_cut" | "gain_first";
+  choice: "fatLoss" | "muscleGain" | "maintenance" | "miniCut" | "gain_first";
   weeks?: number | null;
   template: "standard" | "resensitization" | "balanced";
-  calorie_mode?: ("step_up" | "straight") | null;
+  calorie_mode?: "step_up" | "straight" | null;
   step_kcal?: number | null;
 }

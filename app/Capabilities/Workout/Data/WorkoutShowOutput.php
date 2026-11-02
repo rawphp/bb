@@ -3,6 +3,7 @@
 namespace App\Capabilities\Workout\Data;
 
 use App\Capabilities\Train\Data\Pill;
+use App\Domain\Model\WeightUnit;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -41,7 +42,7 @@ final class WorkoutShowOutput extends CapabilityData
         /** NAV-004 "Upper A · 1 of 2 exercises"; null unless in progress. */
         public readonly ?string $active_bar_text,
         /** The unit every weight is shown in and every write is tagged with (CAP-015). */
-        #[Field(enum: ['kg', 'lb'])]
+        #[Field(enum: [WeightUnit::Kg->value, WeightUnit::Lb->value])]
         public readonly string $weight_unit,
         /** PROG-043, deload weeks only. */
         public readonly ?Pill $deload_banner,

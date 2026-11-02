@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Plan\Data;
 
+use App\Domain\Model\PhaseType;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -13,7 +14,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class PrebuiltPlanApplyInput extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: ['muscle_gain', 'fat_loss'])]
+        #[Field(enum: [PhaseType::MuscleGain->value, PhaseType::FatLoss->value])]
         public readonly string $plan,
         public readonly string $first_phase_id,
     ) {}

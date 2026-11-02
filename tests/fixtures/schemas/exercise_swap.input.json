@@ -6,6 +6,9 @@
         "workout_exercise_id": {
             "type": "string"
         },
+        "new_workout_exercise_id": {
+            "type": "string"
+        },
         "exercise_id": {
             "type": "string"
         },
@@ -19,6 +22,7 @@
     },
     "required": [
         "workout_exercise_id",
+        "new_workout_exercise_id",
         "exercise_id",
         "scope"
     ]

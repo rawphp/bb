@@ -6,8 +6,8 @@
         "plan": {
             "type": "string",
             "enum": [
-                "muscle_gain",
-                "fat_loss"
+                "muscleGain",
+                "fatLoss"
             ]
         },
         "first_phase_id": {
