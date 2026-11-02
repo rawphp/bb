@@ -12,6 +12,8 @@ export interface Choice<T extends string | number> {
 
 <script setup lang="ts" generic="T extends string | number">
 import { computed, useId } from 'vue';
+import PendingMark from './PendingMark.vue';
+import Skeleton from './Skeleton.vue';
 
 // Single-choice list of full-width rows, one selected (UI-006), ported from rp-clone's ChoiceList.swift.
 const props = withDefaults(
@@ -88,15 +90,7 @@ function move(event: KeyboardEvent, from: number): void {
 <template>
     <div>
         <div role="radiogroup" :aria-label="label" :aria-busy="loading ? 'true' : undefined" class="flex flex-col gap-2">
-            <template v-if="loading && choices.length === 0">
-                <div
-                    v-for="n in 3"
-                    :key="n"
-                    data-placeholder
-                    aria-hidden="true"
-                    class="min-h-tap animate-pulse rounded-xl border border-secondary-text/25 bg-surface"
-                />
-            </template>
+            <Skeleton v-if="loading && choices.length === 0" shape="row" :count="3" />
             <button
                 v-for="(choice, index) in choices"
                 :key="choice.id"
@@ -140,7 +134,7 @@ function move(event: KeyboardEvent, from: number): void {
                     <span v-if="choice.detail" :id="`${uid}-${index}`" class="text-sm text-secondary-text">
                         {{ choice.detail }}
                     </span>
-                    <span v-if="pending && selected(choice)" :id="`${uid}-${index}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
+                    <PendingMark v-if="pending && selected(choice)" :id="`${uid}-${index}-pending`" />
                 </span>
                 <span
                     v-if="choice.isRecommended"

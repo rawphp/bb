@@ -2,6 +2,8 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import ChoiceList, { type Choice } from './ChoiceList.vue';
+import PendingMark from './PendingMark.vue';
+import Skeleton from './Skeleton.vue';
 
 const choices: Choice<string>[] = [
     { id: 'cut', title: 'Lose fat', detail: 'About 0.5% of body weight a week', isRecommended: true },
@@ -207,6 +209,11 @@ describe('ChoiceList', () => {
 
         const states = gallery.findAll('h3').map((h) => h.text());
         expect(states).toEqual(expect.arrayContaining(['Default', 'Empty', 'Loading', 'Error', 'Pending', 'Disabled']));
+    });
+
+    it('PWA-024 OFF-009 loading rows and the pending mark are the shared Skeleton and PendingMark', () => {
+        expect(list({ choices: [], loading: true }).findComponent(Skeleton).props('shape')).toBe('row');
+        expect(list({ modelValue: 'cut', pending: true }).findAllComponents(PendingMark)).toHaveLength(1);
     });
 
     it('UI-011 rows are painted with token utilities only', () => {
