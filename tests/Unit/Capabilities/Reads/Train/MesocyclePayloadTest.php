@@ -420,3 +420,8 @@ it('MESO-065 the notice follows the mesocycle the draft was copied from, and a d
         ->and($notice('meso-1'))->toBeNull()
         ->and($notice(null))->toBeNull();
 });
+
+it('MESO-020 a build shows the days per week the user picked', function () {
+    expect(draftOf(['days_per_week' => 5, 'days' => W::days()])['build']['days_per_week'])->toBe(5)
+        ->and(draftOf(['days_per_week' => 4])['build']['days_per_week'])->toBe(4);
+});

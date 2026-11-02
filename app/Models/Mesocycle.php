@@ -36,10 +36,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property array<string, ?string>|null $muscle_priorities
  * @property ?MesocycleRoute $route MESO-007: the route a draft came from
  * @property ?string $copied_from_id MESO-060, MESO-065: the saved mesocycle a copy was made from
+ * @property ?int $days_per_week MESO-020, MESO-022: the days per week a build lays out its days from
  */
 #[Fillable([
     'phase_id', 'name', 'weeks', 'start_date', 'ended_on', 'is_draft', 'is_resensitization',
-    'route', 'active_rest', 'copied_from_id', 'days', 'muscle_priorities', 'earlier_weeks', 'later_weeks',
+    'route', 'days_per_week', 'active_rest', 'copied_from_id', 'days', 'muscle_priorities', 'earlier_weeks', 'later_weeks',
 ])]
 class Mesocycle extends Model
 {
@@ -73,6 +74,17 @@ class Mesocycle extends Model
     {
         return self::query()->where('user_id', $user->id)->where('is_draft', false)
             ->whereNotNull('start_date')->whereNotNull('weeks');
+    }
+
+    /**
+     * MESO-007: the user's unfinished builds: drafts, and rows saved without dates.
+     *
+     * @return Builder<self>
+     */
+    public static function draftsOf(User $user): Builder
+    {
+        return self::query()->where('user_id', $user->id)
+            ->where(fn (Builder $q) => $q->where('is_draft', true)->orWhereNull('start_date')->orWhereNull('weeks'));
     }
 
     /** Not a draft, and dated: what MESO-001 lists and mesocycle_show shows as saved. */
@@ -120,6 +132,7 @@ class Mesocycle extends Model
             'is_draft' => 'boolean',
             'is_resensitization' => 'boolean',
             'route' => MesocycleRoute::class,
+            'days_per_week' => 'integer',
             'active_rest' => 'boolean',
             'days' => 'array',
             'muscle_priorities' => 'array',
