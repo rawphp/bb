@@ -192,6 +192,11 @@ it('CAP-020 asks billing, then the agent policy', function () {
 
             return $capability->name !== 'token_list';
         }
+
+        public function allowsCoach(User $user): bool
+        {
+            return true;
+        }
     };
     $agent = new class($asked) implements AgentPolicy
     {

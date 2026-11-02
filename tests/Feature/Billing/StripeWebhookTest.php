@@ -4,7 +4,10 @@ use App\Models\Subscription;
 use App\Models\User;
 use Tests\Support\BillingOn;
 
-uses(BillingOn::class);
+uses()->group('warp-isolated', BillingOn::GROUP);
+
+const EARLIER = 1_793_000_000; // 2026-10-26
+const LATER = 1_793_100_000;
 
 /** A Stripe subscription object as a webhook carries it. */
 function stripeSubscription(array $overrides = []): array
@@ -46,7 +49,7 @@ function customerRow(string $customer = 'cus_1'): Subscription
 it('SUB-021 learns a new subscription from a verified webhook', function () {
     $row = customerRow();
 
-    postStripeEvent('customer.subscription.created', stripeSubscription(['status' => 'trialing', 'trial_end' => strtotime('2026-11-10 09:00:00 UTC')]), created: 1_000)
+    postStripeEvent('customer.subscription.created', stripeSubscription(['status' => 'trialing', 'trial_end' => strtotime('2026-11-10 09:00:00 UTC')]), created: EARLIER)
         ->assertOk();
 
     $row->refresh();
@@ -60,7 +63,7 @@ it('SUB-021 learns a new subscription from a verified webhook', function () {
 
 it('SUB-021 refuses a webhook it cannot verify, and changes nothing', function (string $signature) {
     $row = customerRow();
-    $payload = json_encode(['type' => 'customer.subscription.deleted', 'created' => 1_000, 'data' => ['object' => stripeSubscription(['status' => 'canceled'])]]);
+    $payload = json_encode(['type' => 'customer.subscription.deleted', 'created' => EARLIER, 'data' => ['object' => stripeSubscription(['status' => 'canceled'])]]);
 
     $this->call('POST', '/stripe/webhook', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_STRIPE_SIGNATURE' => $signature], content: $payload)
         ->assertStatus(400);
@@ -71,7 +74,7 @@ it('SUB-021 refuses a webhook it cannot verify, and changes nothing', function (
 it('SUB-021 refuses a webhook signed with another secret', function () {
     $row = customerRow();
 
-    postStripeEvent('customer.subscription.deleted', stripeSubscription(['status' => 'canceled']), created: 1_000, secret: 'whsec_someone_else')
+    postStripeEvent('customer.subscription.deleted', stripeSubscription(['status' => 'canceled']), created: EARLIER, secret: 'whsec_someone_else')
         ->assertStatus(400);
 
     expect($row->refresh()->status)->toBeNull();
@@ -79,20 +82,20 @@ it('SUB-021 refuses a webhook signed with another secret', function () {
 
 it('SUB-010 a deleted subscription lapses the user', function () {
     $row = customerRow();
-    postStripeEvent('customer.subscription.created', stripeSubscription(), created: 1_000)->assertOk();
+    postStripeEvent('customer.subscription.created', stripeSubscription(), created: EARLIER)->assertOk();
 
-    postStripeEvent('customer.subscription.deleted', stripeSubscription(['status' => 'canceled']), created: 2_000)->assertOk();
+    postStripeEvent('customer.subscription.deleted', stripeSubscription(['status' => 'canceled']), created: LATER)->assertOk();
 
     expect($row->refresh()->status)->toBe('canceled');
 });
 
 it('SUB-007 a plan switched or cancelled in the portal reaches the account', function () {
     $row = customerRow();
-    postStripeEvent('customer.subscription.created', stripeSubscription(), created: 1_000)->assertOk();
+    postStripeEvent('customer.subscription.created', stripeSubscription(), created: EARLIER)->assertOk();
 
     $monthly = stripeSubscription(['cancel_at_period_end' => true]);
     $monthly['items']['data'][0]['price']['id'] = 'price_monthly';
-    postStripeEvent('customer.subscription.updated', $monthly, created: 2_000)->assertOk();
+    postStripeEvent('customer.subscription.updated', $monthly, created: LATER)->assertOk();
 
     expect($row->refresh()->plan)->toBe('monthly')
         ->and($row->cancel_at_period_end)->toBeTrue();
@@ -100,9 +103,9 @@ it('SUB-007 a plan switched or cancelled in the portal reaches the account', fun
 
 it('SUB-021 ignores an event older than the one it already applied', function () {
     $row = customerRow();
-    postStripeEvent('customer.subscription.updated', stripeSubscription(['status' => 'canceled']), created: 2_000)->assertOk();
+    postStripeEvent('customer.subscription.updated', stripeSubscription(['status' => 'canceled']), created: LATER)->assertOk();
 
-    postStripeEvent('customer.subscription.created', stripeSubscription(['status' => 'active']), created: 1_000)->assertOk();
+    postStripeEvent('customer.subscription.created', stripeSubscription(['status' => 'active']), created: EARLIER)->assertOk();
 
     expect($row->refresh()->status)->toBe('canceled');
 });
@@ -110,8 +113,8 @@ it('SUB-021 ignores an event older than the one it already applied', function ()
 it('SUB-021 answers Stripe and changes nothing for a customer or an event it does not know', function () {
     $row = customerRow();
 
-    postStripeEvent('customer.subscription.updated', stripeSubscription(['customer' => 'cus_unknown']), created: 1_000)->assertOk();
-    postStripeEvent('invoice.paid', ['id' => 'in_1', 'object' => 'invoice', 'customer' => 'cus_1'], created: 1_000)->assertOk();
+    postStripeEvent('customer.subscription.updated', stripeSubscription(['customer' => 'cus_unknown']), created: EARLIER)->assertOk();
+    postStripeEvent('invoice.paid', ['id' => 'in_1', 'object' => 'invoice', 'customer' => 'cus_1'], created: EARLIER)->assertOk();
 
     expect($row->refresh()->status)->toBeNull()
         ->and(Subscription::query()->count())->toBe(1);
@@ -120,7 +123,7 @@ it('SUB-021 answers Stripe and changes nothing for a customer or an event it doe
 it('SUB-021 takes no session or CSRF token on the webhook', function () {
     customerRow();
 
-    postStripeEvent('customer.subscription.created', stripeSubscription(), created: 1_000)
+    postStripeEvent('customer.subscription.created', stripeSubscription(), created: EARLIER)
         ->assertOk()
         ->assertCookieMissing(config('session.cookie'));
 });

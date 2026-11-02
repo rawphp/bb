@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Agent\AgentStatus;
+use App\Capabilities\Support\BillingGate;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
 use Closure;
@@ -16,7 +17,8 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * In front of the package's chat routes. No route takes a personal access token.
  * A new message, which starts a turn, is
- * refused while the agent is off (AGT-002), the user is at a cap (AGT-005), or,
+ * refused while the agent is off (AGT-002), the user's subscription has lapsed
+ * (SUB-024, billing on only), the user is at a cap (AGT-005), or,
  * under a token cap, one of the user's turns is still queued or running.
  * Under a cap, the checks and the store run under one lock per user. Nothing is stored or queued then. Every other chat route and every screen keep working.
  */
@@ -31,7 +33,7 @@ final class AgentGate
     /** Longest an overlapping post waits for the one before it. */
     public const WAIT_SECONDS = 3;
 
-    public function __construct(private readonly AgentStatus $status) {}
+    public function __construct(private readonly AgentStatus $status, private readonly BillingGate $billing) {}
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -48,6 +50,10 @@ final class AgentGate
 
         if (! $this->status->enabled()) {
             return self::refuse(CapabilityResult::failure('forbidden', 'The Coach is off on this instance.'));
+        }
+
+        if ($user instanceof User && ! $this->billing->allowsCoach($user)) {
+            return self::refuse(CapabilityResult::failure('forbidden', 'Your subscription has ended. Resubscribe to talk to the Coach.'));
         }
 
         if (! $this->status->capped()) {

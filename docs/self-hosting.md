@@ -118,16 +118,22 @@ The in-app Coach runs on Anthropic. It is on only when the driver is `anthropic`
 
 ### Billing (optional)
 
-Billing is off unless `BILLING_ENABLED=true` (SUB-020). A self-hosted instance leaves it off: every feature is free to every user and no screen mentions a subscription. The Stripe keys are read only when billing is on.
+Billing is off unless `BILLING_ENABLED=true` (SUB-020). A self-hosted instance leaves it off: every feature is free to every user, no screen mentions a subscription, and no billing capability or webhook route exists. The Stripe settings are read only when billing is on. With it on, a missing secret, or no price at all, stops the app from booting.
 
 | Key | Value |
 |---|---|
-| `BILLING_ENABLED` | `false` |
-| `STRIPE_KEY` | Stripe publishable key. |
+| `BILLING_ENABLED` | `false`, or `true` to sell subscriptions. Any other value stops the app from booting. |
+| `STRIPE_KEY` | Stripe publishable key. Not used yet: payments open on Stripe's own Checkout page. |
 | `STRIPE_SECRET` | Stripe secret key. |
 | `STRIPE_WEBHOOK_SECRET` | The signing secret of the Stripe webhook endpoint. The server trusts subscription state only from webhooks it can verify (SUB-021). |
+| `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_SIX_MONTHS`, `STRIPE_PRICE_YEARLY` | The Stripe price ID of each plan (SUB-002): a recurring price of 1 month, 6 months and 1 year. The paywall shows Stripe's amount and currency. Leave one empty to not sell that plan. |
 
-With billing on, add a webhook endpoint in Stripe pointing at the app's Stripe webhook route (`php artisan route:list` shows it).
+With billing on:
+
+- Add a webhook endpoint in Stripe at `https://<your domain>/stripe/webhook`, sending `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`.
+- Turn on the customer portal in Stripe's settings, with plan switching between the prices above and cancelling (SUB-007).
+- Sale, referral and gym prices are Stripe coupons with promotion codes; users type the code in Checkout (SUB-009).
+- A user who has never subscribed gets a 7-day free trial in Checkout (SUB-003). Until it starts, they can answer onboarding but not generate their plan. A user whose subscription has ended keeps every screen read-only (SUB-010), and cannot write or talk to the Coach until they resubscribe (SUB-022, SUB-024).
 
 ## Queue workers
 

@@ -12,7 +12,7 @@ use Tests\Support\BillingOn;
 use Tests\Support\FakeStripe;
 use Tests\Support\ScreenFixture;
 
-uses(BillingOn::class);
+uses()->group('warp-isolated', BillingOn::GROUP);
 
 beforeEach(function () {
     CarbonImmutable::setTestNow('2026-11-03 09:00:00');
@@ -36,7 +36,7 @@ it('SUB-004 billing_show offers the plans at Stripe\'s prices and the 7-day tria
         ->assertOk()
         ->json('data');
 
-    assertMatchesScreenFixture('billing_show.empty', $data);
+    assertMatchesScreenFixture('billing_show', $data);
     expect($data)->toBe(ScreenFixture::load('billing_show.empty'));
 });
 
@@ -60,7 +60,7 @@ it('SUB-010 billing_show shows the lapsed banner once the subscription has ended
 
     $data = $this->actingAs($user)->postJson('/capabilities/billing_show')->assertOk()->json('data');
 
-    assertMatchesScreenFixture('billing_show.warning', $data);
+    assertMatchesScreenFixture('billing_show', $data);
     expect($data)->toBe(ScreenFixture::load('billing_show.warning'));
 });
 
@@ -97,7 +97,7 @@ it('SUB-003 billing_checkout_start opens Checkout with the 7-day trial for a use
     $this->actingAs($user)->postJson('/capabilities/billing_checkout_start', ['plan' => 'six_months'])
         ->assertOk()
         ->assertJsonPath('data.url', 'https://checkout.stripe.com/c/pay/cs_test_1')
-        ->assertJsonPath('data.result.invalidates', []);
+        ->assertJsonPath('data.invalidates', ['billing_show{}']);
 
     expect($this->stripe->customers)->toBe([['email' => 'sam@example.com', 'name' => 'Sam Lifter', 'user_id' => $user->id]])
         ->and($this->stripe->checkouts)->toBe([['customer' => 'cus_test_1', 'price' => 'price_six_months', 'trial_days' => 7, 'return_url' => config('app.url')]])

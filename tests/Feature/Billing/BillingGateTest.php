@@ -1,6 +1,9 @@
 <?php
 
 use App\Billing\StripeGateway;
+use App\Capabilities\Account\Data\AccountDeleteInput;
+use App\Capabilities\Onboarding\Data\OnboardingAnswerInput;
+use App\Capabilities\Onboarding\Data\OnboardingCompleteInput;
 use App\Capabilities\Support\BillingGate;
 use App\Models\Subscription;
 use App\Models\User;
@@ -11,7 +14,7 @@ use Rawphp\CapabilitiesAi\Models\TableNames;
 use Tests\Support\BillingOn;
 use Tests\Support\FakeStripe;
 
-uses(BillingOn::class);
+uses()->group('warp-isolated', BillingOn::GROUP);
 
 function userWithStatus(?string $status): User
 {
@@ -55,16 +58,16 @@ it('SUB-001 lets a trial or a subscription write', function (string $status) {
 })->with(['trialing', 'active']);
 
 it('SUB-003 the bound gate holds the first plan back until the trial starts', function () {
-    $first = new CapabilityDefinition(name: 'onboarding_complete');
+    $first = new CapabilityDefinition(name: 'onboarding_complete', input: OnboardingCompleteInput::class);
     $gate = app(BillingGate::class);
 
     expect($gate->allows(userWithStatus(null), $first))->toBeFalse()
         ->and($gate->allows(userWithStatus('trialing'), $first))->toBeTrue()
-        ->and($gate->allows(userWithStatus(null), new CapabilityDefinition(name: 'onboarding_answer')))->toBeTrue();
+        ->and($gate->allows(userWithStatus(null), new CapabilityDefinition(name: 'onboarding_answer', input: OnboardingAnswerInput::class)))->toBeTrue();
 });
 
 it('SUB-022 the bound gate lets a lapsed user delete the account', function () {
-    expect(app(BillingGate::class)->allows(userWithStatus('canceled'), new CapabilityDefinition(name: 'account_delete')))->toBeTrue();
+    expect(app(BillingGate::class)->allows(userWithStatus('canceled'), new CapabilityDefinition(name: 'account_delete', input: AccountDeleteInput::class)))->toBeTrue();
 });
 
 it('SUB-024 refuses a lapsed user a new Coach message, and stores nothing', function () {

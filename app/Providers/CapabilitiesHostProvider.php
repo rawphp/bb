@@ -5,11 +5,14 @@ namespace App\Providers;
 use App\Agent\ConversationHistoryContext;
 use App\Agent\MeteredTurnClaim;
 use App\Agent\RegistryToolCatalog;
+use App\Billing\StripeClientGateway;
+use App\Billing\StripeGateway;
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Support\AgentPolicy;
 use App\Capabilities\Support\AuditRecordWriter;
 use App\Capabilities\Support\BillingGate;
+use App\Capabilities\Support\BillingOnly;
 use App\Capabilities\Support\HostBus;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\NoAgentPolicy;
@@ -18,6 +21,7 @@ use App\Capabilities\Support\Ownership;
 use App\Capabilities\Support\OwnsInput;
 use App\Capabilities\Support\PrefetchesKeys;
 use App\Capabilities\Support\ShownOnceIdempotencyStore;
+use App\Capabilities\Support\StripeBilling;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
 use LogicException;
@@ -31,6 +35,7 @@ use Rawphp\CapabilitiesAi\Contracts\ConversationContextProvider;
 use Rawphp\CapabilitiesAi\Contracts\ToolCatalog;
 use Rawphp\CapabilitiesAi\Contracts\TurnClaim;
 use Rawphp\CapabilitiesAi\Support\EloquentTurnClaim;
+use Stripe\StripeClient;
 
 /**
  * The host side of rawphp/laravel-capabilities. Registered last.
@@ -48,7 +53,8 @@ final class CapabilitiesHostProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(Ownership::class);
-        $this->app->singletonIf(BillingGate::class, NoBilling::class);
+        $this->app->singletonIf(BillingGate::class, config('billing.enabled') ? StripeBilling::class : NoBilling::class);
+        $this->app->singletonIf(StripeGateway::class, fn (): StripeClientGateway => new StripeClientGateway(new StripeClient((string) config('billing.stripe.secret'))));
         $this->app->singletonIf(AgentPolicy::class, NoAgentPolicy::class);
         $this->app->singleton(Authorizer::class, HostAuthorizer::class);
 
@@ -91,6 +97,11 @@ final class CapabilitiesHostProvider extends ServiceProvider
         $names = [];
         foreach ($files as $file) {
             $class = $namespace.'\\'.basename(dirname($file)).'\\'.basename($file, '.php');
+
+            if (is_subclass_of($class, BillingOnly::class) && ! $container->make('config')->get('billing.enabled')) {
+                continue;
+            }
+
             $capability = $container->make($class);
 
             if (! $capability instanceof HostCapability) {

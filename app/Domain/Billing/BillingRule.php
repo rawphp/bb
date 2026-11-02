@@ -13,6 +13,9 @@ namespace App\Domain\Billing;
  */
 final class BillingRule
 {
+    /** The free trial a user gets once, started from Checkout (SUB-003). */
+    public const TRIAL_DAYS = 7;
+
     /** Writes a lapsed user may still make (SUB-022). */
     public const LAPSED_EXEMPT = ['account_delete'];
 
