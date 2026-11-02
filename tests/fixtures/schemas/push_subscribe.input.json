@@ -1,0 +1,28 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "endpoint": {
+            "type": "string",
+            "description": "The push service URL for this browser.",
+            "maxLength": 1024,
+            "format": "uri"
+        },
+        "public_key": {
+            "type": "string",
+            "description": "The subscription's keys.p256dh.",
+            "maxLength": 255
+        },
+        "auth_token": {
+            "type": "string",
+            "description": "The subscription's keys.auth.",
+            "maxLength": 255
+        }
+    },
+    "required": [
+        "endpoint",
+        "public_key",
+        "auth_token"
+    ]
+}

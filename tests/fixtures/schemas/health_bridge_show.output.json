@@ -1,0 +1,122 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "status": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ]
+        },
+        "scope_text": {
+            "type": "string",
+            "description": "what the token can and cannot do"
+        },
+        "token": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "expires_text": {
+                    "type": "string"
+                },
+                "last_used_text": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "name",
+                "expires_text",
+                "last_used_text"
+            ],
+            "description": "null until the bridge is set up"
+        },
+        "last_post": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "when_text": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "label": {
+                                "type": "string"
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "label",
+                            "value"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "when_text",
+                "items"
+            ],
+            "description": "null until the bridge has posted"
+        },
+        "shortcut_url": {
+            "type": "string"
+        },
+        "steps": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "text"
+                ]
+            },
+            "description": "the Shortcut's steps, to build it by hand"
+        }
+    },
+    "required": [
+        "status",
+        "scope_text",
+        "shortcut_url",
+        "steps"
+    ]
+}

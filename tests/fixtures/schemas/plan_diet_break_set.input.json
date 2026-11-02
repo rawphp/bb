@@ -1,0 +1,18 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "week_start": {
+            "type": "string",
+            "format": "date"
+        },
+        "diet_break": {
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "week_start",
+        "diet_break"
+    ]
+}
