@@ -6,7 +6,6 @@ use App\Models\SavedMealFood;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Validation\ValidationException;
 
 // Ported from rp-clone ios/Tests/RPCoreTests/Features/SavedMeals/SavedMealsModelTests.swift (rename).
 uses(RefreshDatabase::class);
@@ -28,7 +27,7 @@ it('MEAL-071 a blank name keeps the old name', function () {
     $meal = SavedMeal::factory()->for($user)->create(['name' => 'Bulk dinner']);
 
     expect(fn () => (new RenameSavedMeal)($user, $meal->id, '   '))
-        ->toThrow(fn (ValidationException $e) => expect($e->errors())->toHaveKey('name'))
+        ->toThrow(DomainException::class, 'Give the saved meal a name.')
         ->and($meal->fresh()->name)->toBe('Bulk dinner');
 });
 

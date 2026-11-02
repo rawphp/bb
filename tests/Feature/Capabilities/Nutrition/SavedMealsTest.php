@@ -139,17 +139,17 @@ it('MEAL-070 answers 404 for saving another user\'s meal, a food the user cannot
         ->and($theirSaved->fresh()->name)->toBe('Theirs');
 });
 
-it('MEAL-070 answers 422 naming the field of a blank name or an empty meal', function () {
+it('MEAL-070 answers 422 saying why for a blank name or an empty meal', function () {
     $user = User::factory()->create();
     $meal = savedMealDayMeal($user);
 
     savedMealCall($user, 'saved_meal_save', ['id' => (string) Str::ulid(), 'name' => 'Dinner', 'meal_id' => $meal])
         ->assertStatus(422)
-        ->assertJsonPath('error.violations.0.field', 'meal_id');
+        ->assertJsonPath('error.message', 'That meal has no foods to save.');
     PlannedFood::factory()->create(['meal_id' => $meal]);
     savedMealCall($user, 'saved_meal_save', ['id' => (string) Str::ulid(), 'name' => '   ', 'meal_id' => $meal])
         ->assertStatus(422)
-        ->assertJsonPath('error.violations.0.field', 'name');
+        ->assertJsonPath('error.message', 'Give the saved meal a name.');
 
     expect(SavedMeal::query()->count())->toBe(0);
 });
@@ -175,13 +175,13 @@ it('MEAL-071 answers 404 for renaming or deleting another user\'s saved meal', f
     expect($theirs->fresh())->name->toBe('Theirs');
 });
 
-it('MEAL-071 answers 422 naming the field of a blank or missing name', function () {
+it('MEAL-071 answers 422 for a blank or missing name', function () {
     $user = User::factory()->create();
     $meal = savedMealOf($user, 'Bulk dinner', 1);
 
     savedMealCall($user, 'saved_meal_rename', ['saved_meal_id' => $meal->id, 'name' => '  '])
         ->assertStatus(422)
-        ->assertJsonPath('error.violations.0.field', 'name');
+        ->assertJsonPath('error.message', 'Give the saved meal a name.');
     savedMealCall($user, 'saved_meal_rename', ['saved_meal_id' => $meal->id])
         ->assertStatus(422)
         ->assertJsonPath('error.violations.0.field', 'name');

@@ -11,7 +11,6 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 // Ported from rp-clone ios/Tests/RPCoreTests/Features/Meal/SavedMealTests.swift (save). The action's job is the rows
 // it writes, so it runs on the database.
@@ -82,7 +81,7 @@ it('MEAL-070 the name is trimmed and a blank one saves nothing', function () {
     PlannedFood::factory()->create(['meal_id' => $meal]);
 
     expect(fn () => (new SaveSavedMeal)($user, null, (string) Str::ulid(), '   ', $meal, []))
-        ->toThrow(fn (ValidationException $e) => expect($e->errors())->toHaveKey('name'))
+        ->toThrow(DomainException::class, 'Give the saved meal a name.')
         ->and(SavedMeal::query()->count())->toBe(0);
 
     $saved = (new SaveSavedMeal)($user, null, (string) Str::ulid(), '  Oats and whey ', $meal, []);
@@ -95,7 +94,7 @@ it('MEAL-070 an empty meal cannot be saved', function () {
     PlannedRecipe::factory()->create(['meal_id' => $meal]);
 
     expect(fn () => (new SaveSavedMeal)($user, null, (string) Str::ulid(), 'Dinner', $meal, []))
-        ->toThrow(fn (ValidationException $e) => expect($e->errors())->toHaveKey('meal_id'))
+        ->toThrow(DomainException::class, 'That meal has no foods to save.')
         ->and(SavedMeal::query()->count())->toBe(0);
 });
 
@@ -130,7 +129,7 @@ it('FOOD-046 refuses more than 50 foods', function () {
     $foods = array_fill(0, 51, ['food_id' => $food->id, 'grams' => 10]);
 
     expect(fn () => (new SaveSavedMeal)($user, null, (string) Str::ulid(), 'Too much', null, $foods))
-        ->toThrow(fn (ValidationException $e) => expect($e->errors())->toHaveKey('foods'))
+        ->toThrow(DomainException::class, 'A saved meal holds at most 50 foods.')
         ->and(SavedMeal::query()->count())->toBe(0);
 });
 

@@ -5,6 +5,7 @@ use App\Domain\MealFit\Food as MealFitFood;
 use App\Domain\MealFit\MealFit;
 use App\Domain\MealFit\MealFood;
 use App\Domain\Model\MealTarget;
+use App\Domain\SavedMeals\SavedMealLoad;
 use App\Models\DayTarget;
 use App\Models\Food;
 use App\Models\PlannedFood;
@@ -71,7 +72,7 @@ it('MEAL-070 load plans the saved foods, the locked ones at their saved grams an
     $meal = loadSavedMealDinner($user);
     $saved = loadSavedMealBulkDinner($user, $chicken, $rice, $oil);
 
-    $loaded = (new LoadSavedMeal(new MealFit))($user, $meal, $saved->id);
+    $loaded = (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $meal, $saved->id);
 
     $fit = (new MealFit)->fit([
         new MealFood('c', loadSavedMealFitFood($chicken), 300, isLocked: true),
@@ -96,7 +97,7 @@ it('MEAL-070 load keeps the cooked state and unit of a saved food', function () 
     SavedMealFood::factory()->create(['saved_meal_id' => $saved->id, 'food_id' => $chicken->id, 'position' => 0, 'grams' => 200, 'is_cooked' => true, 'is_locked' => true, 'unit' => 'oz']);
     SavedMealFood::factory()->create(['saved_meal_id' => $saved->id, 'food_id' => $oil->id, 'position' => 1, 'grams' => 5]);
 
-    (new LoadSavedMeal(new MealFit))($user, $meal, $saved->id);
+    (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $meal, $saved->id);
 
     expect(loadSavedMealPlanned($meal)[0])->toBe(['food_id' => $chicken->id, 'position' => 0, 'grams' => 200.0, 'is_cooked' => true, 'is_locked' => true, 'unit' => 'oz'])
         ->and(loadSavedMealPlanned($meal))->toHaveCount(2);
@@ -115,7 +116,7 @@ it('MEAL-070 load adds to the meal, skips a food already in it and refits what i
     SavedMealFood::factory()->create(['saved_meal_id' => $saved->id, 'food_id' => $rice->id, 'position' => 0, 'grams' => 300, 'is_locked' => true]);
     SavedMealFood::factory()->create(['saved_meal_id' => $saved->id, 'food_id' => $oil->id, 'position' => 1, 'grams' => 5]);
 
-    $loaded = (new LoadSavedMeal(new MealFit))($user, $meal, $saved->id);
+    $loaded = (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $meal, $saved->id);
 
     // The rice was already there, so only the oil joins, after the chili; the locked chili serving stays.
     $planned = loadSavedMealPlanned($meal);
@@ -136,7 +137,7 @@ it('MEAL-070 load refits an unlocked recipe serving with the foods', function ()
     PlannedRecipe::factory()->create(['meal_id' => $meal, 'recipe_id' => $bowl->id, 'position' => 0, 'servings' => 3]);
     $saved = loadSavedMealBulkDinner($user, $chicken, $rice, $oil);
 
-    (new LoadSavedMeal(new MealFit))($user, $meal, $saved->id);
+    (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $meal, $saved->id);
 
     $servings = PlannedRecipe::query()->where('meal_id', $meal)->sole()->servings;
     expect($servings)->not->toBe(3.0)->and($servings)->toBeGreaterThanOrEqual(0.1);
@@ -151,7 +152,7 @@ it('MEAL-070 load writes nothing when every saved food is already in the meal', 
     }
     $saved = loadSavedMealBulkDinner($user, $chicken, $rice, $oil);
 
-    $loaded = (new LoadSavedMeal(new MealFit))($user, $meal, $saved->id);
+    $loaded = (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $meal, $saved->id);
 
     expect($loaded['added'])->toBe(0)
         ->and(array_column(loadSavedMealPlanned($meal), 'grams'))->toBe([50.0, 50.0, 50.0]);
@@ -165,8 +166,8 @@ it('MEAL-070 load never reads another user\'s meal or saved meal', function () {
     $theirSaved = loadSavedMealBulkDinner(User::factory()->create(), $chicken, $rice, $oil);
     $saved = loadSavedMealBulkDinner($user, $chicken, $rice, $oil);
 
-    expect(fn () => (new LoadSavedMeal(new MealFit))($user, $theirMeal, $saved->id))->toThrow(ModelNotFoundException::class)
-        ->and(fn () => (new LoadSavedMeal(new MealFit))($user, $mine, $theirSaved->id))->toThrow(ModelNotFoundException::class)
+    expect(fn () => (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $theirMeal, $saved->id))->toThrow(ModelNotFoundException::class)
+        ->and(fn () => (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $mine, $theirSaved->id))->toThrow(ModelNotFoundException::class)
         ->and(PlannedFood::query()->count())->toBe(0);
 });
 
@@ -177,6 +178,6 @@ it('MEAL-070 load never plans into a deleted day', function () {
     DayTarget::query()->where('user_id', $user->id)->sole()->delete();
     $saved = loadSavedMealBulkDinner($user, $chicken, $rice, $oil);
 
-    expect(fn () => (new LoadSavedMeal(new MealFit))($user, $meal, $saved->id))->toThrow(ModelNotFoundException::class)
+    expect(fn () => (new LoadSavedMeal(new SavedMealLoad(new MealFit)))($user, $meal, $saved->id))->toThrow(ModelNotFoundException::class)
         ->and(PlannedFood::query()->count())->toBe(0);
 });
