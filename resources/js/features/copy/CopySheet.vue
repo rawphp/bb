@@ -58,10 +58,15 @@ const meals = ref<string[]>([]);
 const days = ref<string[]>([]);
 const options = ref<CopyShowOutput['options'] | null>(null);
 
+// A read can say a picked meal no longer takes the copy (checked in since): that pick goes.
+// Picks on days not shown stay, as a copy can go to meals on several days (MEAL-060).
 watch(
     data,
     (shown) => {
-        if (shown && !options.value) options.value = { ...shown.options };
+        if (!shown) return;
+        if (!options.value) options.value = { ...shown.options };
+        const closed = shown.meals.filter((meal) => !meal.enabled).map((meal) => meal.id);
+        if (meals.value.some((id) => closed.includes(id))) meals.value = meals.value.filter((id) => !closed.includes(id));
     },
     { immediate: true },
 );
