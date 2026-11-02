@@ -114,3 +114,47 @@ it('PH-009 CAP-019 refuses a new_phase_id that names a phase this change did not
     expect(Phase::query()->findOrFail(W::CUT)->end_date->format('Y-m-d'))->toBe('2026-11-23')
         ->and(Phase::query()->findOrFail(W::HOLD)->type->value)->toBe('maintenance');
 });
+
+it('PH-005 PH-009 an open-ended Maintenance changed to Fat loss gets the shortest recommended length and the default rate', function () {
+    $user = TrainSeed::user();
+    $hold = TrainSeed::phase($user, 'maintenance', '2026-08-31');
+
+    phaseGoalChange($user, ['phase_id' => $hold->id, 'type' => 'fatLoss', 'new_phase_id' => NEW_PHASE])->assertOk();
+
+    $new = Phase::query()->findOrFail(NEW_PHASE);
+    expect($hold->fresh()->end_date->format('Y-m-d'))->toBe('2026-10-19')
+        ->and([$new->start_date->format('Y-m-d'), $new->end_date->format('Y-m-d')])->toBe(['2026-10-19', '2026-11-30'])
+        ->and($new->target_rate_percent_per_week)->toBe(PhaseRules::defaultRatePercentPerWeek(PhaseType::FatLoss, ExperienceLevel::Intermediate));
+});
+
+it('PLAN-007 PH-009 in training-only mode the new phase has no rate', function () {
+    [$user] = PlanSeed::world();
+    $user->profile()->update(['training_only' => true]);
+
+    phaseGoalChange($user, ['phase_id' => W::CUT, 'type' => 'muscleGain', 'new_phase_id' => NEW_PHASE])->assertOk();
+
+    $new = Phase::query()->findOrFail(NEW_PHASE);
+    expect($new->target_rate_percent_per_week)->toBe(0.0)
+        ->and($new->end_date->format('Y-m-d'))->toBe('2026-11-23')
+        ->and(Phase::query()->findOrFail(W::CUT)->target_rate_percent_per_week)->toBe(-0.75);
+});
+
+it('PH-043 an event on the switch day goes with the new phase', function () {
+    [$user] = PlanSeed::world(event: '2026-10-19');
+
+    phaseGoalChange($user, ['phase_id' => W::CUT, 'type' => 'maintenance', 'new_phase_id' => NEW_PHASE])->assertOk();
+
+    expect(Phase::query()->findOrFail(W::CUT)->event_date)->toBeNull()
+        ->and(Phase::query()->findOrFail(NEW_PHASE)->event_date->format('Y-m-d'))->toBe('2026-10-19');
+});
+
+it('CAP-019 CAP-020 a new_phase_id that is another user\'s phase is not found, and neither user\'s rows change', function () {
+    $other = TrainSeed::user();
+    $theirs = Phase::factory()->for($other)->create(['id' => '01JB9Z0000000000000000000B', 'type' => 'muscleGain', 'start_date' => '2026-08-31', 'end_date' => '2026-12-21']);
+    [$user] = PlanSeed::world();
+
+    phaseGoalChange($user, ['phase_id' => W::CUT, 'type' => 'maintenance', 'new_phase_id' => $theirs->id])->assertNotFound();
+
+    expect($theirs->fresh()->only(['user_id', 'type', 'start_date', 'end_date']))->toEqual($theirs->only(['user_id', 'type', 'start_date', 'end_date']))
+        ->and(Phase::query()->findOrFail(W::CUT)->end_date->format('Y-m-d'))->toBe('2026-11-23');
+});

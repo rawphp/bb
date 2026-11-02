@@ -1,9 +1,12 @@
 <?php
 
 use App\Capabilities\Reads\Plan\PhasePayload;
+use App\Capabilities\Reads\Plan\PlanPayload;
 use App\Domain\Model\PhaseType;
 use App\Models\PlanWeek;
 use App\Support\Plan\PhaseChanges;
+use App\Support\Plan\PlanSnapshot;
+use Illuminate\Support\Collection;
 use Tests\Unit\Capabilities\Reads\Plan\PlanWorld as W;
 
 // rp-clone's PhaseDetailModelTests (the read side), on PlanWorld.
@@ -255,4 +258,29 @@ it('PLAN-021 SCH-060 a shortened mesocycle leaves its paused weeks out of its le
     $fixes = lengthsByWeeks(phasePayload(weeks: [$paused]))[12]['fixes'];
 
     expect($fixes)->toContain(['fix' => 'change_mesocycle_length', 'text' => 'Shorten Meso 2 to 5 weeks so its deload is the last week']);
+});
+
+it('PLAN-004 weigh-ins are read only for a phase\'s weights, from 60 days before it starts', function () {
+    $asked = [];
+    $plan = new PlanSnapshot(
+        today: PlanSnapshot::day('2026-10-14'),
+        plan: W::snapshot()->plan,
+        profile: W::snapshot()->profile,
+        phases: new Collection(W::phases()),
+        mesocycles: new Collection(W::mesocycles()),
+        planWeeks: new Collection,
+        weighIns: function (DateTimeImmutable $from) use (&$asked) {
+            $asked[] = $from->format('Y-m-d');
+
+            return new Collection(W::weighIns());
+        },
+    );
+
+    PlanPayload::build($plan);
+    (new PhaseChanges($plan))->lengths($plan->findPhase(W::CUT));
+    expect($asked)->toBe([]);
+
+    $phase = PhasePayload::build($plan, $plan->findPhase(W::CUT))->toArray();
+    expect($asked)->toBe(['2026-07-02'])
+        ->and($phase['start_weight_text'])->toBe('90.0 kg');
 });

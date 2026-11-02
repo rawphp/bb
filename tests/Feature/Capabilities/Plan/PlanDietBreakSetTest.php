@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Phase;
 use App\Models\PlanWeek;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -99,4 +100,22 @@ it('PLAN-025 CAP-011 turning a diet break off names the phase reads and that wee
     expect($keys)->toContain('phase_show{"phase_id":"'.W::CUT.'"}')
         ->toContain('today_show{"date":"2026-11-16"}')
         ->toContain('week_show{"date":"2026-11-22"}');
+});
+
+it('PLAN-007 PLAN-023 training-only deloads have no diet break to turn off', function () {
+    [$user] = PlanSeed::world();
+    $user->profile()->update(['training_only' => true]);
+
+    dietBreakSet($user, ['week_start' => '2026-11-16', 'diet_break' => false])
+        ->assertStatus(422)->assertJsonPath('error.message', 'Only a Fat loss or Mini-cut deload has a diet break to turn off.');
+});
+
+it('PLAN-009 PLAN-023 a Mini-cut deload can be turned off, and one already on cannot be turned on again', function () {
+    [$user] = PlanSeed::world();
+    Phase::query()->findOrFail(W::CUT)->update(['type' => 'miniCut']);
+
+    dietBreakSet($user, ['week_start' => '2026-11-16', 'diet_break' => true])
+        ->assertStatus(422)->assertJsonPath('error.message', 'This deload already runs at maintenance calories.');
+    dietBreakSet($user, ['week_start' => '2026-11-16', 'diet_break' => false])->assertOk();
+    expect(PlanWeek::query()->where('user_id', $user->id)->sole()->diet_break_off)->toBeTrue();
 });
