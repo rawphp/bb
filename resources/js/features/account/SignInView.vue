@@ -175,7 +175,6 @@ const linkClass = 'min-h-tap px-2 text-accent active:opacity-70 disabled:opacity
 
             <form class="flex flex-col gap-6" novalidate @submit.prevent="submit">
                 <fieldset class="flex flex-col gap-4" :disabled="busy">
-                    <legend class="sr-only">{{ subtitle }}</legend>
                     <template v-if="mode === 'code'">
                         <p class="text-[15px] text-secondary-text">We emailed a 6-digit code to {{ codeSentTo }}.</p>
                         <div>
@@ -189,7 +188,7 @@ const linkClass = 'min-h-tap px-2 text-accent active:opacity-70 disabled:opacity
                                 autocomplete="one-time-code"
                                 maxlength="6"
                                 placeholder="6-digit code"
-                                :class="[fieldClass, 'tracking-[0.3em]']"
+                                :class="[fieldClass, 'tracking-[0.3em] placeholder:tracking-normal']"
                                 :aria-invalid="fieldErrors.code !== undefined"
                                 :aria-describedby="fieldErrors.code ? 'error-code' : undefined"
                             />
