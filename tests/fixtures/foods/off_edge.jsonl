@@ -1,0 +1,5 @@
+{"code":"1000000000001","product_name":"Huge serving","nutriments":{"energy-kcal_100g":100},"serving_quantity":1e9,"serving_size":"1 giant"}
+{"code":"1234567890123456789012345678901234567890","product_name":"Forty digit code","nutriments":{"energy-kcal_100g":100}}
+{"code":"1000000000002","product_name":"Overflow macro","nutriments":{"energy-kcal_100g":100,"fat_100g":"1e400"}}
+{"code":"1000000000003","product_name":"Empty ingredients","nutriments":{"energy-kcal_100g":100},"ingredients_text":"","ingredients_text_en":"Wheat flour, water"}
+{"code":"1000000000004","product_name":"Fine","nutriments":{"energy-kcal_100g":100},"serving_quantity":30,"serving_size":"30 g"}

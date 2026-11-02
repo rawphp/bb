@@ -1,0 +1,134 @@
+<?php
+
+use App\Domain\Foods\DietClassifier;
+
+const FOODS_ALL_DIETS_FALSE = [
+    'dairy_free' => false, 'gluten_free' => false, 'grain_free' => false, 'low_fodmap' => false,
+    'vegetarian' => false, 'paleo' => false, 'vegan' => false,
+];
+
+function foodsDiets(array $flags): array
+{
+    return array_merge(FOODS_ALL_DIETS_FALSE, $flags);
+}
+
+it('FOOD-027 classifies generic foods from name and category alone', function (string $name, ?string $category, array $true) {
+    $flags = (new DietClassifier)->classify($name, $category, null, [], generic: true);
+
+    expect($flags)->toBe(foodsDiets(array_fill_keys($true, true)));
+})->with([
+    'chicken breast' => ['Chicken, broilers or fryers, breast, raw', 'Poultry Products', ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'paleo']],
+    'whole milk' => ['Milk, whole', 'Dairy and Egg Products', ['gluten_free', 'grain_free', 'vegetarian']],
+    'white rice' => ['Rice, white, raw', 'Cereal Grains and Pasta', ['dairy_free', 'gluten_free', 'low_fodmap', 'vegetarian', 'vegan']],
+    'wheat bread' => ['Bread, wheat', 'Baked Products', []],
+    'eggs' => ['Egg, whole, raw', 'Dairy and Egg Products', ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'paleo']],
+    'honey' => ['Honey', 'Sweets', []],
+    'garlic' => ['Garlic, raw', 'Vegetables and Vegetable Products', ['dairy_free', 'gluten_free', 'grain_free', 'vegetarian', 'paleo', 'vegan']],
+    'banana' => ['Bananas, raw', 'Fruits and Fruit Juices', ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'paleo', 'vegan']],
+    'lentils' => ['Lentils, raw', 'Legumes and Legume Products', ['dairy_free', 'gluten_free', 'grain_free', 'vegetarian', 'vegan']],
+    'salmon' => ['Fish, salmon, Atlantic, raw', 'Finfish and Shellfish Products', ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'paleo']],
+    'almond milk' => ['Almond milk, unsweetened', 'Beverages', ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'paleo', 'vegan']],
+    'peanut butter' => ['Peanut butter, smooth', 'Legumes and Legume Products', ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'vegan']],
+    'butter' => ['Butter, salted', 'Dairy and Egg Products', ['gluten_free', 'grain_free', 'vegetarian']],
+    'bagels' => ['Bagels, plain', 'Baked Products', []],
+    'broccoli' => ['Broccoli, raw', 'Vegetables and Vegetable Products', ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'vegetarian', 'paleo', 'vegan']],
+    'chicken breast raw' => ['Chicken, broiler, breast, raw', 'Poultry Products', ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'paleo']],
+    'brie' => ['Cheese, brie', 'Dairy and Egg Products', ['gluten_free', 'grain_free', 'vegetarian']],
+    'oat bran' => ['Oat bran, raw', 'Cereal Grains and Pasta', ['dairy_free', 'vegetarian', 'vegan']],
+    'spaghetti' => ['Spaghetti, dry', 'Cereal Grains and Pasta', ['dairy_free', 'vegetarian', 'vegan']],
+    'quinoa' => ['Quinoa, uncooked', 'Cereal Grains and Pasta', ['dairy_free', 'gluten_free', 'low_fodmap', 'vegetarian', 'vegan']],
+    'sausage' => ['Sausage, pork, raw', 'Sausages and Luncheon Meats', []],
+    'beer' => ['Alcoholic beverage, beer, regular', 'Beverages', ['dairy_free', 'vegetarian', 'vegan']],
+    'snack' => ['Potato chips, plain', 'Snacks', []],
+    'no category' => ['Broccoli, raw', null, []],
+    'empty category' => ['Broccoli, raw', '', []],
+]);
+
+it('FOOD-027 classifies packaged foods from ingredients', function (string $ingredients, array $true) {
+    $flags = (new DietClassifier)->classify('Some product', null, $ingredients, []);
+
+    expect($flags)->toBe(foodsDiets(array_fill_keys($true, true)));
+})->with([
+    'rice flour is gluten free but a grain' => ['rice flour, water, salt', ['dairy_free', 'gluten_free', 'low_fodmap', 'vegetarian', 'vegan']],
+    'almond flour is grain free' => ['almond flour, eggs, honey', ['dairy_free', 'gluten_free', 'grain_free', 'vegetarian', 'paleo']],
+    'wheat flour' => ['wheat flour, water, yeast', ['dairy_free', 'vegetarian', 'vegan']],
+    'sugar and milk' => ['sugar, skimmed milk powder, cocoa', ['gluten_free', 'grain_free', 'vegetarian']],
+    'gelatin is not vegetarian' => ['water, gelatin, citric acid', ['dairy_free', 'gluten_free', 'grain_free', 'low_fodmap', 'paleo']],
+    'onion is high FODMAP' => ['tomato, onion, salt', ['dairy_free', 'gluten_free', 'grain_free', 'vegetarian', 'paleo', 'vegan']],
+    'sugar alcohol is high FODMAP' => ['water, xylitol, flavour', ['dairy_free', 'gluten_free', 'grain_free', 'vegetarian', 'vegan']],
+]);
+
+it('FOOD-027 sets every flag false for a packaged product with no ingredients and no tags', function () {
+    expect((new DietClassifier)->classify('Granola bar', 'Snacks', null, []))->toBe(FOODS_ALL_DIETS_FALSE)
+        ->and((new DietClassifier)->classify('Granola bar', 'Snacks', '  ', []))->toBe(FOODS_ALL_DIETS_FALSE);
+});
+
+it('FOOD-027 lets Open Food Facts tags override the keyword rules', function (array $tags, array $expected) {
+    $flags = (new DietClassifier)->classify('Spread', null, 'sugar, milk, hazelnuts', $tags);
+
+    expect($flags)->toMatchArray($expected);
+})->with([
+    'vegan tag' => [['en:vegan'], ['vegan' => true, 'vegetarian' => true]],
+    'non-vegan tag' => [['en:non-vegan'], ['vegan' => false]],
+    'vegetarian tag' => [['en:vegetarian'], ['vegetarian' => true]],
+    'non-vegetarian tag' => [['en:non-vegetarian'], ['vegetarian' => false, 'vegan' => false]],
+    'gluten allergen' => [['en:gluten'], ['gluten_free' => false]],
+    'milk allergen' => [['en:milk'], ['dairy_free' => false]],
+]);
+
+it('FOOD-027 uses tags alone when a packaged product has no ingredients text', function () {
+    $flags = (new DietClassifier)->classify('Mystery', null, null, ['en:vegan']);
+
+    expect($flags)->toBe(foodsDiets(['vegan' => true, 'vegetarian' => true]));
+});
+
+it('FOOD-027 keeps USDA dressings and spreads in Fats and Oils out of every diet', function (string $name) {
+    expect((new DietClassifier)->classify($name, 'Fats and Oils', null, [], generic: true))->toBe(FOODS_ALL_DIETS_FALSE);
+})->with([
+    'mayonnaise' => 'Salad dressing, mayonnaise, regular',
+    'ranch' => 'Salad dressing, ranch dressing, regular',
+    'caesar' => 'Salad dressing, caesar dressing, regular',
+]);
+
+it('FOOD-027 treats breaded and battered foods as gluten and grain', function (string $name, string $category) {
+    $flags = (new DietClassifier)->classify($name, $category, null, [], generic: true);
+
+    expect($flags['gluten_free'])->toBeFalse()->and($flags['grain_free'])->toBeFalse()->and($flags['paleo'])->toBeFalse();
+})->with([
+    'batter' => ['Chicken, broilers or fryers, drumstick, meat and skin, cooked, fried, batter', 'Poultry Products'],
+    'breaded' => ['Fish, catfish, channel, cooked, breaded and fried', 'Finfish and Shellfish Products'],
+    'onion rings' => ['Onion rings, breaded, par fried, frozen, unprepared', 'Vegetables and Vegetable Products'],
+]);
+
+it('FOOD-027 only lets egg foods be dairy free or paleo in Dairy and Egg Products', function (string $name, bool $dairyFree) {
+    $flags = (new DietClassifier)->classify($name, 'Dairy and Egg Products', null, [], generic: true);
+
+    expect($flags['dairy_free'])->toBe($dairyFree)->and($flags['paleo'])->toBe($dairyFree);
+})->with([
+    'eggnog' => ['Eggnog', false],
+    'dulce de leche' => ['Dulce de Leche', false],
+    'egg' => ['Egg, whole, raw, fresh', true],
+]);
+
+it('FOOD-027 treats whey as high FODMAP', function () {
+    expect((new DietClassifier)->classify('Whey, sweet, dried', 'Dairy and Egg Products', null, [], generic: true)['low_fodmap'])->toBeFalse()
+        ->and((new DietClassifier)->classify('Snack', null, 'whey, salt', [])['low_fodmap'])->toBeFalse();
+});
+
+it('FOOD-027 rules out paleo for sweetened foods and sodas', function (string $name, string $category, bool $paleo) {
+    expect((new DietClassifier)->classify($name, $category, null, [], generic: true)['paleo'])->toBe($paleo);
+})->with([
+    'cola' => ['Beverages, carbonated, cola, regular', 'Beverages', false],
+    'sweetened applesauce' => ['Applesauce, canned, sweetened, without salt', 'Fruits and Fruit Juices', false],
+    'unsweetened applesauce' => ['Applesauce, canned, unsweetened, without added ascorbic acid', 'Fruits and Fruit Juices', true],
+]);
+
+it('FOOD-027 makes fresh, egg and noodle pasta non-vegan', function (string $name, bool $vegan) {
+    $flags = (new DietClassifier)->classify($name, 'Cereal Grains and Pasta', null, [], generic: true);
+
+    expect($flags['vegan'])->toBe($vegan);
+})->with([
+    'fresh pasta' => ['Pasta, fresh-refrigerated, plain, as purchased', false],
+    'egg noodles' => ['Noodles, egg, dry, enriched', false],
+    'dry pasta' => ['Pasta, dry, enriched', true],
+]);

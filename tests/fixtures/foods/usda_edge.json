@@ -1,0 +1,18 @@
+{
+  "FoundationFoods": [
+    {
+      "fdcId": 3000001,
+      "description": "Broccoli, raw",
+      "foodCategory": {"description": "Vegetables and Vegetable Products"},
+      "foodNutrients": [
+        {"nutrient": {"number": "208"}, "amount": 34.0}
+      ],
+      "foodPortions": [
+        {"amount": 1.0, "gramWeight": 1000000000, "modifier": "huge", "measureUnit": {"name": "undetermined"}},
+        {"amount": 1.0, "gramWeight": 0, "modifier": "none", "measureUnit": {"name": "undetermined"}},
+        {"amount": 1.0, "gramWeight": 5001, "modifier": "too big", "measureUnit": {"name": "undetermined"}},
+        {"amount": 1.0, "gramWeight": 91.0, "modifier": "cup chopped", "measureUnit": {"name": "undetermined"}}
+      ]
+    }
+  ]
+}
