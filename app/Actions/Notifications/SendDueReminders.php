@@ -5,6 +5,7 @@ namespace App\Actions\Notifications;
 use App\Domain\Notifications\ReminderPlanner;
 use App\Jobs\SendPushNotification;
 use App\Models\NotificationPref;
+use App\Models\ReminderMorning;
 use App\Models\SentReminder;
 use App\Models\User;
 use App\Support\Notifications\ReminderDays;
@@ -54,10 +55,8 @@ final class SendDueReminders
         }
 
         // This pass judged the user's 09:00 reminders, sent or not: the minutes after need not queue the user again.
-        foreach (ReminderDays::mornings($after->toDateTimeImmutable(), $now->toDateTimeImmutable()) as $date => $at) {
-            SentReminder::query()->insertOrIgnore([
-                'user_id' => $user->id, 'reminder_id' => ReminderDays::MORNING_JUDGED.$date, 'due_at' => $at, 'sent_at' => $now,
-            ]);
+        foreach (array_keys(ReminderDays::mornings($after->toDateTimeImmutable(), $now->toDateTimeImmutable())) as $date) {
+            ReminderMorning::query()->insertOrIgnore(['user_id' => $user->id, 'date' => $date, 'judged_at' => $now]);
         }
 
         return $sent;

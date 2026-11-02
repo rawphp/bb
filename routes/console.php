@@ -5,6 +5,7 @@ use App\Billing\PlanPrices;
 use App\Jobs\SendUserReminders;
 use App\Models\AuditOutboxRow;
 use App\Models\AuditRecord;
+use App\Models\ReminderMorning;
 use App\Models\SentReminder;
 use App\Models\UndoToken;
 use App\Models\User;
@@ -62,5 +63,6 @@ Artisan::command('reminders:send', function (): int {
 
 Schedule::command('reminders:send')->everyMinute()->withoutOverlapping(10)->when(fn (): bool => PushNotification::available());
 
-// A reminder is sent within minutes of falling due, so its sent row is only needed for two days.
-Schedule::command('model:prune', ['--model' => [SentReminder::class]])->daily();
+// A reminder is sent within minutes of falling due, and a judged morning matters only that morning, so both logs
+// keep two days.
+Schedule::command('model:prune', ['--model' => [SentReminder::class, ReminderMorning::class]])->daily();

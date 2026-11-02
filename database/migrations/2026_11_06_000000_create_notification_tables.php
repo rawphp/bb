@@ -31,10 +31,23 @@ return new class extends Migration
             $table->unique(['user_id', 'reminder_id', 'due_at']);
             $table->index('sent_at');
         });
+
+        // NOTIF-004, NOTIF-005: a morning a pass judged a user's 09:00 reminders, sent or not, so the minutes after
+        // 09:00 do not queue that user again. Kept two days.
+        Schema::create('reminder_mornings', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->date('date');
+            $table->timestamp('judged_at');
+
+            $table->unique(['user_id', 'date']);
+            $table->index('judged_at');
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('reminder_mornings');
         Schema::dropIfExists('sent_reminders');
         Schema::dropIfExists('notification_prefs');
     }

@@ -13,6 +13,7 @@ use App\Models\DayTarget;
 use App\Models\NotificationPref;
 use App\Models\Plan;
 use App\Models\Profile;
+use App\Models\ReminderMorning;
 use App\Models\SentReminder;
 use App\Models\User;
 use App\Models\WeighInScheduleEntry;
@@ -29,9 +30,6 @@ use DateTimeImmutable;
  */
 final class ReminderDays
 {
-    /** The sent_reminders id that records a pass judged a user's 09:00 reminders that day, sent or not. */
-    public const MORNING_JUDGED = 'morning-judged-';
-
     /**
      * The days from `$first` to `$last`, both whole days, as Today shows them: a day before the plan or before the
      * profile exists is left out, and so is a day Today would show as another (outside the plan's weeks and not in
@@ -57,7 +55,7 @@ final class ReminderDays
      * fall at in ($after, $now]. It reads every source of a due time, so it may name a user with nothing due but
      * never leaves out one with something due: the 09:00 review and deload reminders on a plan-week start, the weigh-in schedule, the meal
      * times of the days' targets, and an hour before each session start, from the profile's training days and from
-     * the session rows a move or re-time wrote. Four queries, however many users, and three more in the minutes after
+     * the session rows a move or re-time wrote. Four queries, however many users, and four more in the minutes after
      * 09:00.
      *
      * @param  list<int>  $userIds
@@ -84,9 +82,11 @@ final class ReminderDays
         // or the review weekday (PLAN-008), and are judged together. A user is not due again once a pass judged that
         // morning (a marker, or a morning reminder sent), nor with both morning switches off (NOTIF-007).
         foreach (self::mornings($after, $now) as $date => $at) {
-            $done = SentReminder::query()->whereIn('user_id', $userIds)
-                ->whereIn('reminder_id', ["weekly-review-{$date}", "next-mesocycle-{$date}", self::MORNING_JUDGED.$date])
-                ->pluck('user_id')->all();
+            $done = [
+                ...SentReminder::query()->whereIn('user_id', $userIds)
+                    ->whereIn('reminder_id', ["weekly-review-{$date}", "next-mesocycle-{$date}"])->pluck('user_id')->all(),
+                ...ReminderMorning::query()->whereIn('user_id', $userIds)->whereDate('date', $date)->pluck('user_id')->all(),
+            ];
             $off = NotificationPref::query()->whereIn('user_id', $userIds)
                 ->whereIn('kind', [ReminderKind::WeeklyReview->value, ReminderKind::NextMesocycle->value])->where('on', false)
                 ->groupBy('user_id')->havingRaw('count(*) = 2')->pluck('user_id')->all();
