@@ -64,7 +64,8 @@ it('PROG-051 a muscle that missed its targets two sessions running repeats last 
     $note = 'Chest missed its rep targets 2 sessions running. Hold sets and repeat the weight to recover.';
 
     expect(recoveryOf($user, $mesocycle, $bench))->toBe([[80.0, 80.0, 80.0], $note])
-        ->and(WorkoutPayload::build(WorkoutSnapshot::load($user, $mesocycle->id, 3, 1))->exercises[0]->recovery_note?->text)->toBe($note);
+        ->and(WorkoutPayload::build(WorkoutSnapshot::load($user, $mesocycle->id, 3, 1))->exercises[0]->recovery_note?->toArray())
+        ->toBe(['text' => $note, 'tone' => 'neutral']);
 });
 
 it('PROG-051 a muscle that missed only once, or whose miss was in a skipped session, is not flagged', function () {
@@ -85,15 +86,25 @@ it('PROG-018 a lot of joint pain last week cuts the weight 10%, rounded down to 
     expect(recoveryOf($user, $mesocycle, $bench))->toBe([[70.0, 70.0, 70.0], RecoveryLoad::JOINT_PAIN_NOTE]);
 });
 
-it('PROG-018 moderate pain, or pain in a session of another day or week, does not cut', function () {
+it('PROG-018 moderate pain last week does not cut', function () {
     [$user, $mesocycle, $bench] = recoverySeed();
     painAfter(WorkoutSeed::started($mesocycle, 1, 1, '2026-09-07 17:30:00'), $bench, 'aLot');
-    $otherDay = TrainSeed::trained($mesocycle, 2, 2, '2026-09-17');
-    WorkoutSet::query()->where('workout_session_id', $otherDay->id)->update(['exercise_id' => $bench->id]);
-    painAfter($otherDay, $bench, 'aLot');
     painAfter(WorkoutSeed::started($mesocycle, 2, 1, '2026-09-14 17:30:00'), $bench, 'moderate');
 
-    expect(recoveryOf($user, $mesocycle, $bench)[1])->toBeNull();
+    expect(recoveryOf($user, $mesocycle, $bench))->toBe([[82.5, 82.5, 82.5], null]);
+});
+
+it('PROG-018 a lot of pain on another day of last week does not cut this day', function () {
+    [$user, $mesocycle] = recoverySeed();
+    $squat = Exercise::query()->findOrFail(WorkoutSeed::exerciseId($mesocycle, 2));
+    $squat->forceFill(['equipment' => Equipment::Barbell, 'load_type' => ExerciseLoadType::Barbell, 'rep_range_min' => 5, 'rep_range_max' => 30])->save();
+    // Week 2's Monday held squats too and hurt; its Thursday, the day this one follows, did not.
+    $monday = WorkoutSeed::started($mesocycle, 2, 1, '2026-09-14 17:30:00');
+    WorkoutSet::query()->where('workout_session_id', $monday->id)->update(['exercise_id' => $squat->id]);
+    painAfter($monday, $squat, 'aLot');
+    WorkoutSeed::started($mesocycle, 2, 2, '2026-09-17 17:30:00');
+
+    expect(WorkoutSnapshot::load($user, $mesocycle->id, 3, 2)->recoveryNote($squat, 3))->toBeNull();
 });
 
 it('PROG-053 reps below the range two sessions running take the target down one step', function () {
@@ -138,8 +149,8 @@ it('EX-009 the latest two answers across days and mesocycles suggest a swap when
     painAfter($session, $bench, 'aLot');
 
     expect($suggestion())->toBe('Bench Press hurt 2 sessions running. Consider swapping it.')
-        ->and(WorkoutPayload::build(WorkoutSnapshot::load($user, $mesocycle->id, 2, 1))->exercises[0]->swap_suggestion?->text)
-        ->toBe('Bench Press hurt 2 sessions running. Consider swapping it.');
+        ->and(WorkoutPayload::build(WorkoutSnapshot::load($user, $mesocycle->id, 2, 1))->exercises[0]->swap_suggestion?->toArray())
+        ->toBe(['text' => 'Bench Press hurt 2 sessions running. Consider swapping it.', 'tone' => 'warning']);
 });
 
 it('EX-009 the start time orders the answers before week and day, so an older answer ends no run', function () {

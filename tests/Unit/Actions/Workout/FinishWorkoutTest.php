@@ -110,6 +110,39 @@ it('WO-010 refuses a session that has not started, or that is finished already',
     expect(finishAt($user, $session, '2026-09-21 18:40:00'))->toBe(FinishWorkout::NOT_STARTED);
 });
 
+it('WO-050 refuses to finish a skipped session, and next week stays as it was', function () {
+    [$user, $mesocycle, $session] = finishSession();
+    $session->fresh()->forceFill(['is_skipped' => true])->save();
+
+    expect(finishAt($user, $session, '2026-09-21 18:30:00'))->toBe(FinishWorkout::NOT_STARTED)
+        ->and($session->fresh()->actual_end_at)->toBeNull()
+        ->and(finishBenchSets($mesocycle))->toBe(3);
+});
+
+it('WO-010 OFF-007 a finish timed before the start (a phone clock running fast) ends the session when it began', function () {
+    [$user, , $session] = finishSession();
+
+    finishAt($user, $session, '2026-09-21 17:28:00');
+
+    expect($session->fresh()->actual_end_at->format('Y-m-d H:i:s'))->toBe('2026-09-21 17:30:00');
+});
+
+it('SCH-039 PROG-019 finishing a day the rotation has since dropped leaves every day\'s counts alone', function () {
+    Carbon::setTestNow('2026-09-21 18:30:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => TrainSeed::phase($user, 'muscleGain', '2026-08-31')->id]);
+    $days = $mesocycle->days;
+    $dropped = ['id' => '01JB6Q420A2B3C4D5E6F7G8H9J', 'label' => 'Upper B', 'weekday' => null, 'slots' => [
+        ['id' => '01JB6Q421A2B3C4D5E6F7G8H9J', 'exercise_id' => $days[0]['slots'][0]['exercise_id'], 'muscle_group' => 'chest', 'sets' => 2],
+    ]];
+    $mesocycle->update(['earlier_weeks' => [[...$days, $dropped], [...$days, $dropped]]]);
+    $session = WorkoutSeed::started($mesocycle, 1, 3, '2026-09-21 17:30:00');
+    WorkoutSeed::answered($session, 'chest', WorkoutSeed::exerciseId($mesocycle, 1), ['pump' => 'low', 'volume' => 'notEnough']);
+
+    expect(finishAt($user, $session, '2026-09-21 18:30:00')['toast'])->toBeNull()
+        ->and($mesocycle->fresh()->days)->toEqual($days);
+});
+
 it('FB-008 PROG-040 a deload week finishes with no feedback and changes no sets', function () {
     [$user, $mesocycle, $session] = finishSession(answers: [], week: 5, date: '2026-10-05');
 
@@ -169,6 +202,14 @@ it('PROG-019 finishing an older session late leaves the counts a later session o
 
     expect(finishAt($user, $session, '2026-09-21 18:30:00')['toast'])->toBeNull()
         ->and(finishBenchSets($mesocycle))->toBe(3);
+});
+
+it('PROG-019 a later week of another day does not stop this day setting next week', function () {
+    [$user, $mesocycle, $session] = finishSession();
+    WorkoutSeed::started($mesocycle, 4, 2, '2026-10-01 17:30:00');
+
+    expect(finishAt($user, $session, '2026-09-21 18:30:00')['toast'])->toBe('Chest +2 sets next week')
+        ->and(finishBenchSets($mesocycle))->toBe(5);
 });
 
 it('SCH-054 a session of an earlier day finished today leaves both days\' meals alone', function () {

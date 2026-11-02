@@ -165,3 +165,19 @@ it('FB-009 refuses a change after finish once a later session has trained the mu
         ->and(MuscleFeedback::query()->where('workout_session_id', $session->id)->sole()->pump)->toBe('moderate')
         ->and($mesocycle->fresh()->dayRows()[0]['slots'][0]['sets'])->toBe(3);
 });
+
+it('FB-009 PROG-018 changing only joint pain after finish works next week out again', function () {
+    [$user, $mesocycle, $session] = feedbackSession();
+    app(AnswerWorkoutFeedback::class)($user, chestAnswer($session, $mesocycle));
+    app(FinishWorkout::class)($user, WorkoutSeed::id($session), Carbon::now());
+
+    expect($mesocycle->fresh()->dayRows()[0]['slots'][0]['sets'])->toBe(5);
+
+    $result = app(AnswerWorkoutFeedback::class)($user, chestAnswer($session, $mesocycle, [
+        'joint_pain' => [['exercise_id' => (string) WorkoutSeed::exerciseId($mesocycle, 1), 'answer' => 'moderate']],
+    ]));
+
+    // Moderate pain keeps added sets off the only chest exercise, so the two added sets come back off.
+    expect($result['toast'])->toBe('Chest −2 sets next week')
+        ->and($mesocycle->fresh()->dayRows()[0]['slots'][0]['sets'])->toBe(3);
+});

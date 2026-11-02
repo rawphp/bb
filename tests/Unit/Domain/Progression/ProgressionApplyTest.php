@@ -40,10 +40,10 @@ function applyDays(array $chest = [3, 3], int $fly = 3, int $row = 3, ?array $ex
     ];
 }
 
-/** The sets the session ran, by exercise: the stored counts unless the test says otherwise. */
+/** The sets the session ran in each slot of the day: the stored counts unless the test says otherwise. */
 function applyRan(?int $bench = 3, ?int $incline = 3, ?int $row = 3, ?int $curl = 2, array $others = []): array
 {
-    return array_replace(array_filter([12 => $bench, 13 => $incline, 25 => $row, 40 => $curl], fn ($n) => $n !== null), $others);
+    return array_replace(array_filter(['bench' => $bench, 'incline' => $incline, 'row' => $row, 'curl' => $curl], fn ($n) => $n !== null), $others);
 }
 
 function applyInput(array $days, array $sets, array $muscles = [], array $pain = [], array $held = []): ProgressionInput
@@ -51,7 +51,7 @@ function applyInput(array $days, array $sets, array $muscles = [], array $pain =
     return new ProgressionInput(
         days: $days, dayIndex: 0, phase: PhaseType::MuscleGain, isResensitization: false, weeks: 5,
         priorities: ['chest' => Priority::Emphasize, 'back' => Priority::Grow, 'biceps' => Priority::Maintain],
-        experience: ExperienceLevel::Intermediate, setCounts: $sets, muscleAnswers: $muscles, jointPain: $pain,
+        experience: ExperienceLevel::Intermediate, ranSets: $sets, muscleAnswers: $muscles, jointPain: $pain,
         held: $held, now: new DateTimeImmutable('2026-10-12 18:30:00'),
     );
 }
@@ -84,19 +84,30 @@ it('PROG-019 a slot whose exercise has no sets keeps its stored count', function
         ->and($result->slotSets['bench'])->toBe(5);
 });
 
-it('PROG-019 sets of exercises not in the day\'s slots are ignored', function () {
-    $result = ProgressionApply::apply(applyInput(applyDays(), applyRan(others: [99 => 6, 30 => 4])));
+it('PROG-019 sets ran outside the day\'s slots are ignored', function () {
+    $result = ProgressionApply::apply(applyInput(applyDays(), applyRan(others: ['fly' => 6, 'added-exercise' => 4])));
 
     expect($result->slotSets)->toBe($result->previous)
         ->and($result->changed())->toBeFalse()
         ->and($result->lines)->toBe([]);
 });
 
-it('PROG-019 one exercise in two slots gives its base to the first only', function () {
-    $result = ProgressionApply::apply(applyInput(applyDays(extra: applySlot('bench-again', 12, 'chest', 2)), applyRan(bench: 4)));
+it('PROG-019 one exercise in two slots: each slot takes the sets it ran, so a day run as planned stays as it is', function () {
+    $days = applyDays(extra: applySlot('bench-again', 12, 'chest', 2));
+    $result = ProgressionApply::apply(applyInput($days, applyRan(others: ['bench-again' => 2])));
 
-    expect($result->slotSets['bench'])->toBe(4)
-        ->and($result->slotSets['bench-again'])->toBe(2);
+    expect([$result->slotSets['bench'], $result->slotSets['bench-again']])->toBe([3, 2])
+        ->and($result->changed())->toBeFalse();
+});
+
+it('PROG-019 a slot the session did not run keeps its count however often the day is worked out again', function () {
+    $days = applyDays();
+    $one = ProgressionApply::apply(applyInput($days, applyRan(incline: null), ['chest' => applyTooMuch()]));
+    $two = ProgressionApply::apply(applyInput($one->applying($days), applyRan(incline: null), ['chest' => applyTooMuch()]));
+
+    expect([$one->slotSets['bench'], $one->slotSets['incline']])->toBe([2, 3])
+        ->and($two->slotSets)->toBe($one->slotSets)
+        ->and($two->changed())->toBeFalse();
 });
 
 it('PROG-019 only the session\'s own day changes', function () {
@@ -201,7 +212,7 @@ it('PROG-014 Dr. Mike\'s example: Grow, 3 sets, never sore with a low pump, give
     $days = [['id' => 'day-1', 'label' => 'Back', 'weekday' => 1, 'slots' => [applySlot('row', 25, 'back', 3)]]];
     $answers = ['back' => new FeedbackAnswers(soreness: Soreness::NeverGotSore, pump: Pump::Low, volume: VolumeFeedback::JustRight)];
 
-    $result = ProgressionApply::apply(applyInput($days, [25 => 3], $answers));
+    $result = ProgressionApply::apply(applyInput($days, ['row' => 3], $answers));
 
     expect($result->slotSets)->toBe(['row' => 4]);
 });

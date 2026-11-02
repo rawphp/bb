@@ -2,6 +2,7 @@
 
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Workout\WorkoutReads;
+use App\Models\ExerciseFeedback;
 use App\Models\MuscleFeedback;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -75,7 +76,8 @@ it('FB-001 FB-009 saves the sheet, names the screens it changed, and undo takes 
     test()->actingAs($user)->postJson('/capabilities/undo_apply', ['token' => $response->json('data.undo')], ['Idempotency-Key' => (string) Str::ulid()])
         ->assertOk();
 
-    expect(MuscleFeedback::query()->count())->toBe(0);
+    expect(MuscleFeedback::query()->count())->toBe(0)
+        ->and(ExerciseFeedback::query()->count())->toBe(0);
 });
 
 it('FB-008 answers a refusal in plain words', function () {
