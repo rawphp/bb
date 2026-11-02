@@ -1,0 +1,62 @@
+<?php
+
+use App\Agent\Allowance;
+use Carbon\CarbonImmutable;
+
+$now = fn () => CarbonImmutable::parse('2026-11-02 15:30:00', 'UTC');
+
+it('AGT-005 sets no cap when both limits are empty, the self-hosted default', function () use ($now) {
+    $allowance = Allowance::check(null, null, turnsToday: 500, tokensThisMonth: 9_000_000, now: $now());
+
+    expect($allowance->atCap)->toBeFalse()
+        ->and($allowance->turnsLeft)->toBeNull()
+        ->and($allowance->tokensLeft)->toBeNull()
+        ->and($allowance->resetsAt)->toBeNull()
+        ->and($allowance->notice)->toBeNull();
+});
+
+it('AGT-005 says nothing while the user is well under the caps', function () use ($now) {
+    $allowance = Allowance::check(50, 1_000_000, turnsToday: 10, tokensThisMonth: 100_000, now: $now());
+
+    expect($allowance->atCap)->toBeFalse()
+        ->and($allowance->turnsLeft)->toBe(40)
+        ->and($allowance->tokensLeft)->toBe(900_000)
+        ->and($allowance->notice)->toBeNull();
+});
+
+it('AGT-005 says how many turns are left near the daily cap', function () use ($now) {
+    $allowance = Allowance::check(50, null, turnsToday: 40, tokensThisMonth: 0, now: $now());
+
+    expect($allowance->atCap)->toBeFalse()
+        ->and($allowance->turnsLeft)->toBe(10)
+        ->and($allowance->notice)->toBe('10 Coach messages left today.');
+
+    expect(Allowance::check(50, null, turnsToday: 49, tokensThisMonth: 0, now: $now())->notice)
+        ->toBe('1 Coach message left today.');
+});
+
+it('AGT-005 says how much of the monthly allowance is left near the token cap', function () use ($now) {
+    $allowance = Allowance::check(null, 1_000_000, turnsToday: 0, tokensThisMonth: 850_000, now: $now());
+
+    expect($allowance->atCap)->toBeFalse()
+        ->and($allowance->tokensLeft)->toBe(150_000)
+        ->and($allowance->notice)->toBe('15% of this month\'s Coach allowance left.');
+});
+
+it('AGT-005 says when the daily cap resets once it is reached', function () use ($now) {
+    $allowance = Allowance::check(50, null, turnsToday: 50, tokensThisMonth: 0, now: $now());
+
+    expect($allowance->atCap)->toBeTrue()
+        ->and($allowance->turnsLeft)->toBe(0)
+        ->and($allowance->resetsAt->toIso8601String())->toBe('2026-11-03T00:00:00+00:00')
+        ->and($allowance->notice)->toBe('You\'ve reached today\'s Coach limit. It resets at 00:00 UTC on 3 Nov. Everything else still works.');
+});
+
+it('AGT-005 says when the monthly cap resets once it is reached, even past it', function () use ($now) {
+    $allowance = Allowance::check(50, 1_000_000, turnsToday: 50, tokensThisMonth: 1_020_000, now: $now());
+
+    expect($allowance->atCap)->toBeTrue()
+        ->and($allowance->tokensLeft)->toBe(0)
+        ->and($allowance->resetsAt->toIso8601String())->toBe('2026-12-01T00:00:00+00:00')
+        ->and($allowance->notice)->toBe('You\'ve reached this month\'s Coach limit. It resets at 00:00 UTC on 1 Dec. Everything else still works.');
+});

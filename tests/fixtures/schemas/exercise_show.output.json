@@ -1,0 +1,216 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "is_custom": {
+            "type": "boolean"
+        },
+        "video_url": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "muscle_group": {
+            "type": "string",
+            "enum": [
+                "chest",
+                "back",
+                "quads",
+                "hamstrings",
+                "glutes",
+                "sideDelts",
+                "rearDelts",
+                "frontDelts",
+                "biceps",
+                "triceps",
+                "calves",
+                "abs",
+                "traps",
+                "forearms"
+            ]
+        },
+        "muscle_group_text": {
+            "type": "string"
+        },
+        "equipment": {
+            "type": "string",
+            "enum": [
+                "barbell",
+                "ezBar",
+                "trapBar",
+                "dumbbell",
+                "kettlebell",
+                "machine",
+                "cable",
+                "smithMachine",
+                "bodyweight"
+            ]
+        },
+        "equipment_text": {
+            "type": "string"
+        },
+        "load_type": {
+            "type": "string",
+            "enum": [
+                "barbell",
+                "dumbbell",
+                "machine",
+                "cable",
+                "bodyweight",
+                "bodyweightPlusLoad",
+                "smithMachine"
+            ]
+        },
+        "load_type_text": {
+            "type": "string"
+        },
+        "rep_range_text": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "pinned_note": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "load_step": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "step": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "value": {
+                            "type": "number"
+                        },
+                        "unit": {
+                            "type": "string"
+                        },
+                        "text": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "value",
+                        "unit",
+                        "text"
+                    ]
+                },
+                "default_text": {
+                    "type": "string"
+                },
+                "unit": {
+                    "type": "string",
+                    "enum": [
+                        "kg",
+                        "lb"
+                    ]
+                }
+            },
+            "required": [
+                "default_text",
+                "unit"
+            ]
+        },
+        "history": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "workout_id": {
+                        "type": "string"
+                    },
+                    "date_text": {
+                        "type": "string"
+                    },
+                    "sets": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "text": {
+                                    "type": "string"
+                                },
+                                "badge": {
+                                    "type": [
+                                        "object",
+                                        "null"
+                                    ],
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        },
+                                        "tone": {
+                                            "type": "string",
+                                            "enum": [
+                                                "good",
+                                                "neutral",
+                                                "warning",
+                                                "info"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "text",
+                                        "tone"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "id",
+                                "text"
+                            ]
+                        }
+                    },
+                    "best_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "workout_id",
+                    "date_text",
+                    "sets"
+                ]
+            }
+        }
+    },
+    "required": [
+        "id",
+        "name",
+        "is_custom",
+        "muscle_group",
+        "muscle_group_text",
+        "equipment",
+        "equipment_text",
+        "load_type",
+        "load_type_text",
+        "history"
+    ]
+}

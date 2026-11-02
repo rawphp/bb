@@ -1,0 +1,49 @@
+{
+    "title": "Bench Press",
+    "subtitle": "Chest",
+    "best": {
+        "text": "Best e1RM",
+        "tone": "good"
+    },
+    "sessions": [
+        {
+            "id": "01JA0000000000000000SESS02",
+            "date_label": "Thu, 8 Oct 2026",
+            "best_label": "Best e1RM 81.3 kg",
+            "sets": [
+                {
+                    "id": "01JA00000000000000000SET04",
+                    "label": "65.0 kg × 8",
+                    "is_best": true
+                },
+                {
+                    "id": "01JA00000000000000000SET05",
+                    "label": "65.0 kg × 7",
+                    "is_best": false
+                },
+                {
+                    "id": "01JA00000000000000000SET06",
+                    "label": "62.5 kg × 8",
+                    "is_best": false
+                }
+            ]
+        },
+        {
+            "id": "01JA0000000000000000SESS01",
+            "date_label": "Mon, 5 Oct 2026",
+            "best_label": "Best e1RM 78.0 kg",
+            "sets": [
+                {
+                    "id": "01JA00000000000000000SET01",
+                    "label": "60.0 kg × 9",
+                    "is_best": false
+                },
+                {
+                    "id": "01JA00000000000000000SET02",
+                    "label": "62.5 kg × 8",
+                    "is_best": true
+                }
+            ]
+        }
+    ]
+}
