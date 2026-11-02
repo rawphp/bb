@@ -20,7 +20,6 @@ const text = [
     { name: 'primary-text', class: 'text-primary-text' },
     { name: 'secondary-text', class: 'text-secondary-text' },
     { name: 'accent', class: 'text-accent' },
-    { name: 'destructive', class: 'text-destructive' },
 ];
 const macros = [
     { name: 'calories', class: 'text-macro-calories' },

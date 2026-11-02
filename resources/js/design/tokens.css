@@ -35,10 +35,6 @@
     --bb-tone-info: light-dark(#0b4a8f, #9ccbff);
     --bb-tone-info-bg: light-dark(#d6e8ff, #0f2f55);
 
-    /* Destructive actions (delete, revoke, clear), as SwiftUI's role: .destructive.
-       iOS's system red, its accessible variant in light mode so it meets UI-031. */
-    --bb-destructive: light-dark(#d70015, #ff453a);
-
     /* Dims the screen behind a bottom sheet in both appearances, as iOS does (PWA-023). */
     --bb-scrim: rgb(0 0 0 / 0.4);
 
@@ -76,6 +72,5 @@
     --color-tone-warning-bg: var(--bb-tone-warning-bg);
     --color-tone-info: var(--bb-tone-info);
     --color-tone-info-bg: var(--bb-tone-info-bg);
-    --color-destructive: var(--bb-destructive);
     --color-scrim: var(--bb-scrim);
 }

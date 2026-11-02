@@ -87,4 +87,27 @@ describe('useRead', () => {
 
         expect(wrapper.text()).toBe('3');
     });
+
+    it('OFF-003 drops a refresh from an older load() that lands after a newer one', async () => {
+        let staleRefresh: (data: { n: number }) => void = () => {};
+        let staleFail: (error: CapabilityError) => void = () => {};
+        readMock
+            .mockImplementationOnce(async (_name, _input, onUpdate, onError) => {
+                staleRefresh = onUpdate as typeof staleRefresh;
+                staleFail = onError as typeof staleFail;
+                return { n: 1 };
+            })
+            .mockResolvedValueOnce({ n: 2 });
+        const { wrapper, api } = screen();
+        await flushPromises();
+
+        // A write happened; the screen reads again and gets the newer data.
+        await api().load();
+        await flushPromises();
+        staleRefresh({ n: 1 });
+        staleFail(new CapabilityError('probe_show', 404, null));
+        await flushPromises();
+
+        expect(wrapper.text()).toBe('2');
+    });
 });

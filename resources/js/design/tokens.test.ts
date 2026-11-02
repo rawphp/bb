@@ -30,12 +30,6 @@ const RP_CLONE: Record<string, Pair> = {
     'tone-info-bg': { light: '#d6e8ff', dark: '#0f2f55' },
 };
 
-// Tokens rp-clone takes from the system rather than ColorToken.swift.
-const SYSTEM: Record<string, Pair> = {
-    // SwiftUI's role: .destructive red, in its accessible light variant.
-    destructive: { light: '#d70015', dark: '#ff453a' },
-};
-
 const MODES = ['light', 'dark'] as const;
 
 function colours(): Record<string, Pair> {
@@ -64,7 +58,7 @@ describe('design tokens', () => {
     const tokens = colours();
 
     it('PWA-040 UI-011 every rp-clone colour token is a CSS variable with its light and dark value', () => {
-        expect(tokens).toEqual({ ...RP_CLONE, ...SYSTEM });
+        expect(tokens).toEqual(RP_CLONE);
     });
 
     it('PLT-005 PWA-041 colours follow the system and the stored appearance override', () => {
@@ -76,7 +70,7 @@ describe('design tokens', () => {
     it('PWA-040 every token is a Tailwind utility through @theme inline', () => {
         const theme = css.match(/@theme inline\s*\{([^}]*)\}/)?.[1] ?? '';
 
-        for (const key of Object.keys({ ...RP_CLONE, ...SYSTEM })) {
+        for (const key of Object.keys(RP_CLONE)) {
             expect(theme).toContain(`--color-${key}: var(--bb-${key});`);
         }
         expect(theme).toContain('--spacing-tap: var(--bb-min-tap);');
@@ -94,7 +88,7 @@ describe('design tokens', () => {
     });
 
     const grounds = ['background', 'surface'];
-    const onGround = ['primary-text', 'secondary-text', 'accent', 'destructive', 'macro-calories', 'macro-protein', 'macro-fat', 'macro-carbs'];
+    const onGround = ['primary-text', 'secondary-text', 'accent', 'macro-calories', 'macro-protein', 'macro-fat', 'macro-carbs'];
     const pairs: [string, string][] = [
         ...onGround.flatMap((text) => grounds.map((ground): [string, string] => [text, ground])),
         ['on-accent', 'accent'],

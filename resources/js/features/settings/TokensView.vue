@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { write } from '@/app/call';
+import { CapabilityError, write } from '@/app/call';
 import { failureMessage } from '@/app/errors';
 import { ulid } from '@/app/ulid';
 import { useRead } from '@/app/useRead';
@@ -8,6 +8,7 @@ import type { TokenCreateInput, TokenCreateOutput } from '@/contracts/token_crea
 import type { TokenListOutput } from '@/contracts/token_list';
 import type { TokenRevokeInput } from '@/contracts/token_revoke';
 import ChoiceList from '@/design/ChoiceList.vue';
+import StatusPill from '@/design/StatusPill.vue';
 import ReadState from './ReadState.vue';
 import { TONE_CLASS } from './tones';
 
@@ -30,9 +31,13 @@ const shown = ref<TokenCreateOutput['token'] | null>(null);
 const copied = ref(false);
 const confirming = ref<string | null>(null);
 const revokeError = ref<string | null>(null);
-// One id per create form (CAP-019): a retry after a lost answer sends the same id,
-// so the server never mints a second token whose secret nobody saw.
+const notice = ref<string | null>(null);
+// One id per create form (CAP-019), sent with its idempotency key (CAP-014): a retry
+// after a lost answer replays the first create instead of minting a second token.
 const tokenId = ref('');
+// The last create got no answer, so a token may exist that the list doesn't show yet.
+const unsure = ref(false);
+const SECRET_LOST = "This token was made, but its secret can't be shown again. Revoke it from the list and make a new one.";
 
 const expiryChoices = computed(() => (list.value?.expiries ?? []).map((e) => ({ id: e.days as Days, title: e.label })));
 const scopeChoices = computed(() => (list.value?.scopes ?? []).map((s) => ({ id: s.value, title: s.label, detail: s.description })));
@@ -42,6 +47,7 @@ const ready = computed(() => name.value.trim() !== '' && days.value !== null && 
 
 function startCreate(): void {
     creating.value = true;
+    notice.value = null;
     tokenId.value = ulid();
     name.value = '';
     days.value = null;
@@ -62,13 +68,35 @@ async function create(): Promise<void> {
         capabilities: scope.value === 'custom' ? picked.value.map((capability) => ({ name: capability })) : [],
     };
     try {
-        shown.value = (await write<TokenCreateOutput>('token_create', { ...input })).token;
+        shown.value = (await write<TokenCreateOutput>('token_create', { ...input }, { idempotencyKey: `token_create:${tokenId.value}` })).token;
         creating.value = false;
         copied.value = false;
+        unsure.value = false;
     } catch (failed) {
-        error.value = failureMessage(failed, 'The token could not be created. Try again.');
+        const status = failed instanceof CapabilityError ? failed.status : null;
+        unsure.value = status === 0;
+        if (status === 409) {
+            // This form's id is already a token of this user's: an earlier try ran, and its
+            // answer, with the secret, was lost. List it so it can be revoked.
+            creating.value = false;
+            unsure.value = false;
+            notice.value = SECRET_LOST;
+            await load();
+        } else {
+            error.value = failureMessage(failed, 'The token could not be created. Try again.');
+        }
     } finally {
         busy.value = false;
+    }
+}
+
+// Closing the form after a create with no answer reads the list again, so a token
+// that create made shows up for revoking.
+function cancelCreate(): void {
+    creating.value = false;
+    if (unsure.value) {
+        unsure.value = false;
+        void load();
     }
 }
 
@@ -87,11 +115,18 @@ async function revoke(id: string): Promise<void> {
     busy.value = true;
     revokeError.value = null;
     try {
-        await write('token_revoke', { id } satisfies TokenRevokeInput);
+        // The key makes a retry after a lost answer replay the first revoke (CAP-014).
+        await write('token_revoke', { id } satisfies TokenRevokeInput, { idempotencyKey: `token_revoke:${id}` });
         confirming.value = null;
         await load();
     } catch (failed) {
-        revokeError.value = failureMessage(failed, 'The token could not be revoked. Try again.');
+        if (failed instanceof CapabilityError && failed.status === 404) {
+            // The token is already gone, which is what the user asked for.
+            confirming.value = null;
+            await load();
+        } else {
+            revokeError.value = failureMessage(failed, 'The token could not be revoked. Try again.');
+        }
     } finally {
         busy.value = false;
     }
@@ -111,10 +146,10 @@ async function revoke(id: string): Promise<void> {
             </template>
             <!-- A retried create whose first answer was lost: the token exists, but its secret was shown to nobody. -->
             <p v-else class="rounded-xl p-3 text-sm" :class="TONE_CLASS.warning" data-test="secret-lost">
-                This token was made, but its secret can't be shown again. Revoke it and make a new one.
+                {{ SECRET_LOST }}
             </p>
             <div class="flex gap-2">
-                <button v-if="shown.plain_text" type="button" class="min-h-tap flex-1 rounded-xl border px-4 active:opacity-70" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</button>
+                <button v-if="shown.plain_text" type="button" class="min-h-tap flex-1 rounded-xl border border-secondary-text/25 px-4 disabled:opacity-50 active:opacity-70" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</button>
                 <button type="button" class="min-h-tap flex-1 rounded-xl bg-accent px-4 font-semibold text-on-accent active:opacity-70" data-test="done" @click="done">Done</button>
             </div>
         </section>
@@ -122,11 +157,12 @@ async function revoke(id: string): Promise<void> {
         <template v-else-if="list">
             <p class="px-1 text-sm text-secondary-text">A token lets an MCP client, the capabilities CLI or the health bridge act as you.</p>
 
+            <p v-if="notice" class="rounded-2xl p-4" :class="TONE_CLASS.warning" role="alert" data-test="notice">{{ notice }}</p>
             <ul v-if="list.tokens.length" class="divide-y divide-secondary-text/20 overflow-hidden rounded-2xl bg-surface">
                 <li v-for="token in list.tokens" :key="token.id" class="space-y-1 p-4">
                     <div class="flex items-center justify-between gap-2">
                         <span class="font-medium">{{ token.name }}</span>
-                        <span class="rounded-full px-2.5 py-0.5 text-sm" :class="TONE_CLASS[token.status.tone]">{{ token.status.text }}</span>
+                        <StatusPill :text="token.status.text" :tone="token.status.tone" />
                     </div>
                     <p class="text-sm text-secondary-text">{{ token.scope_text }} · {{ token.last_used_text }}</p>
                     <p class="text-sm text-secondary-text">{{ token.created_text }} · {{ token.expires_text }}</p>
@@ -134,10 +170,10 @@ async function revoke(id: string): Promise<void> {
                         <p class="text-sm">Revoke “{{ token.name }}”? Anything using it stops working.</p>
                         <p v-if="revokeError" class="text-sm text-tone-warning" role="alert">{{ revokeError }}</p>
                         <div class="flex gap-2">
-                            <button type="button" class="min-h-tap flex-1 rounded-xl border px-4 active:opacity-70" :disabled="busy" @click="confirming = null">Cancel</button>
+                            <button type="button" class="min-h-tap flex-1 rounded-xl border border-secondary-text/25 px-4 disabled:opacity-50 active:opacity-70" :disabled="busy" @click="confirming = null">Cancel</button>
                             <button
                                 type="button"
-                                class="min-h-tap flex-1 rounded-xl border px-4 font-medium text-destructive active:opacity-70"
+                                class="min-h-tap flex-1 rounded-xl border border-secondary-text/25 px-4 disabled:opacity-50 font-medium text-tone-warning active:opacity-70"
                                 :data-test="`confirm-revoke-${token.id}`"
                                 :disabled="busy"
                                 :aria-busy="busy"
@@ -150,7 +186,7 @@ async function revoke(id: string): Promise<void> {
                     <button
                         v-else
                         type="button"
-                        class="min-h-tap text-destructive active:opacity-70"
+                        class="min-h-tap text-tone-warning active:opacity-70"
                         :data-test="`revoke-${token.id}`"
                         @click="(confirming = token.id), (revokeError = null)"
                     >
@@ -188,7 +224,7 @@ async function revoke(id: string): Promise<void> {
                 </fieldset>
                 <p v-if="error" class="rounded-xl p-3 text-sm" :class="TONE_CLASS.warning" role="alert">{{ error }}</p>
                 <div class="flex gap-2">
-                    <button type="button" class="min-h-tap flex-1 rounded-xl border px-4 active:opacity-70" :disabled="busy" @click="creating = false">Cancel</button>
+                    <button type="button" class="min-h-tap flex-1 rounded-xl border border-secondary-text/25 px-4 disabled:opacity-50 active:opacity-70" :disabled="busy" @click="cancelCreate">Cancel</button>
                     <button
                         type="button"
                         class="min-h-tap flex-1 rounded-xl bg-accent px-4 font-semibold text-on-accent active:opacity-70 disabled:opacity-50"

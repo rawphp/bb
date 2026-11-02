@@ -9,9 +9,11 @@ vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@
 
 const readMock = vi.mocked(read);
 const writeMock = vi.mocked(write);
-const on = screenFixture<AgentStatusShowOutput>('agent_status_show');
-const off = screenFixture<AgentStatusShowOutput>('agent_status_show.empty');
+const fixture = screenFixture<AgentStatusShowOutput>('agent_status_show');
 const nearCap = screenFixture<AgentStatusShowOutput>('agent_status_show.warning');
+// The user's own setting, which #49 left for the coach_enabled_set API to add as `on`.
+const on = { ...fixture, on: true };
+const off = { ...fixture, on: false };
 
 function sent(capability: string): unknown {
     const call = writeMock.mock.calls.find(([name]) => name === capability)!;
@@ -23,6 +25,15 @@ describe('CoachSettingsView', () => {
     beforeEach(() => {
         readMock.mockReset();
         writeMock.mockReset();
+    });
+
+    it('AGT-020 shows no switch while the read does not carry the user\'s own setting', () => {
+        // enabled is the instance's flag, so it must not stand in for the user's choice.
+        const wrapper = mount(CoachSettingsView, { props: { payload: fixture } });
+
+        expect(wrapper.find('[role="switch"]').exists()).toBe(false);
+        expect(wrapper.get('[data-test="no-switch"]').text()).toContain("isn't available on this server yet");
+        expect(wrapper.text()).toContain('What the Coach can do');
     });
 
     it('AGT-020 shows the Coach on, with a note on what it can and cannot do', () => {
@@ -51,7 +62,7 @@ describe('CoachSettingsView', () => {
         [off, true],
     ])('AGT-020 turns the Coach on or off and reads the screen again', async (payload, turnsOn) => {
         writeMock.mockResolvedValueOnce({ invalidates: ['agent_status_show'] });
-        readMock.mockResolvedValueOnce({ ...payload, enabled: turnsOn });
+        readMock.mockResolvedValueOnce({ ...payload, on: turnsOn });
         const wrapper = mount(CoachSettingsView, { props: { payload } });
 
         await wrapper.get('[role="switch"]').setValue(turnsOn);
@@ -61,7 +72,7 @@ describe('CoachSettingsView', () => {
         expect(wrapper.get<HTMLInputElement>('[role="switch"]').element.checked).toBe(turnsOn);
     });
 
-    it('AGT-020 keeps the switch where the user put it when the read still reports the instance flag', async () => {
+    it('AGT-020 shows what the server holds after the change, not what was tapped', async () => {
         writeMock.mockResolvedValueOnce({ invalidates: ['agent_status_show'] });
         readMock.mockResolvedValueOnce(on);
         const wrapper = mount(CoachSettingsView, { props: { payload: on } });
@@ -69,8 +80,7 @@ describe('CoachSettingsView', () => {
         await wrapper.get('[role="switch"]').setValue(false);
         await flushPromises();
 
-        expect(sent('coach_enabled_set')).toEqual({ on: false });
-        expect(wrapper.get<HTMLInputElement>('[role="switch"]').element.checked).toBe(false);
+        expect(wrapper.get<HTMLInputElement>('[role="switch"]').element.checked).toBe(true);
     });
 
     it('CAP-012 puts the switch back and says why when the change is refused', async () => {
@@ -95,6 +105,19 @@ describe('CoachSettingsView', () => {
 
         expect(sent('coach_conversation_clear')).toEqual({});
         expect(wrapper.text()).toContain('Conversation cleared.');
+    });
+
+    it('CAP-012 keeps the confirmation open and says why when clearing fails', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('coach_conversation_clear', 0, { reason: 'network' }));
+        const wrapper = mount(CoachSettingsView, { props: { payload: on } });
+
+        await wrapper.get('[data-test="clear"]').trigger('click');
+        await wrapper.get('[data-test="confirm-clear"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[role="alert"]').text()).toContain('No connection');
+        expect(wrapper.find('[data-test="confirm-clear"]').exists()).toBe(true);
+        expect(wrapper.text()).not.toContain('Conversation cleared.');
     });
 
     it('PWA-024 shows a skeleton while it loads', () => {

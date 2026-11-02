@@ -129,6 +129,56 @@ describe('TokensView', () => {
         const [first, second] = writeMock.mock.calls.map(([, input]) => (input as { id: string }).id);
         expect(first).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);
         expect(second).toBe(first);
+        // CAP-014: the same key too, so the server replays the first create.
+        const keys = writeMock.mock.calls.map(([, , options]) => options?.idempotencyKey);
+        expect(keys).toEqual([`token_create:${first}`, `token_create:${first}`]);
+    });
+
+    it('CAP-019 lists the token and says its secret is lost when the id already exists', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('token_create', 409, { ok: false, error: { message: 'This token already exists.' } }));
+        readMock.mockResolvedValueOnce(content);
+        const wrapper = mount(TokensView, { props: { payload: empty } });
+        await wrapper.get('[data-test="new"]').trigger('click');
+        await fill(wrapper, 'A');
+
+        await wrapper.get('[data-test="create"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[data-test="notice"]').text()).toContain("secret can't be shown again");
+        expect(wrapper.find('[data-test="create"]').exists()).toBe(false);
+        expect(readMock).toHaveBeenCalledWith('token_list', {}, expect.any(Function), expect.any(Function));
+        expect(wrapper.text()).toContain(content.tokens[0]!.name);
+    });
+
+    it('CAP-019 reads the list again when the form closes after a create with no answer', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('token_create', 0, { reason: 'timeout' }));
+        readMock.mockResolvedValueOnce(content);
+        const wrapper = mount(TokensView, { props: { payload: empty } });
+        await wrapper.get('[data-test="new"]').trigger('click');
+        await fill(wrapper, 'A');
+        await wrapper.get('[data-test="create"]').trigger('click');
+        await flushPromises();
+
+        await wrapper.findAll('button').find((b) => b.text() === 'Cancel')!.trigger('click');
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledTimes(1);
+        expect(wrapper.text()).toContain(content.tokens[0]!.name);
+    });
+
+    it('CAP-021 sends no capabilities once the scope moves off Custom', async () => {
+        writeMock.mockResolvedValueOnce(created);
+        const wrapper = mount(TokensView, { props: { payload: content } });
+
+        await wrapper.get('[data-test="new"]').trigger('click');
+        await fill(wrapper, 'Scale', 1, 4);
+        await wrapper.get('input[value="weigh_in_log"]').setValue(true);
+        await wrapper.get('input[value="steps_log"]').setValue(true);
+        await wrapper.get(`${SCOPE}:nth-child(2)`).trigger('click');
+        await wrapper.get('[data-test="create"]').trigger('click');
+        await flushPromises();
+
+        expect(sent('token_create')).toMatchObject({ scope: 'read_only', capabilities: [] });
     });
 
     it('CAP-021 says a replayed create cannot show the secret again', async () => {
@@ -141,7 +191,7 @@ describe('TokensView', () => {
         await flushPromises();
 
         expect(wrapper.find('[data-test="plain-text"]').exists()).toBe(false);
-        expect(wrapper.get('[data-test="secret-lost"]').text()).toContain('Revoke it and make a new one.');
+        expect(wrapper.get('[data-test="secret-lost"]').text()).toContain('Revoke it from the list and make a new one.');
     });
 
     it('CAP-019 makes a new id for the next token', async () => {
@@ -186,6 +236,7 @@ describe('TokensView', () => {
         await flushPromises();
 
         expect(sent('token_revoke')).toEqual({ id: first.id });
+        expect(writeMock.mock.calls[0]![2]).toEqual({ idempotencyKey: `token_revoke:${first.id}` });
         expect(wrapper.text()).not.toContain(first.last_used_text);
     });
 
@@ -202,6 +253,26 @@ describe('TokensView', () => {
         expect(wrapper.find(`[data-test="confirm-revoke-${first.id}"]`).exists()).toBe(true);
         expect(wrapper.text()).toContain(first.last_used_text);
         expect(readMock).not.toHaveBeenCalled();
+    });
+
+    it('CAP-021 treats a revoke of a token that is already gone as done', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('token_revoke', 404, { ok: false, error: { message: 'Not found.' } }));
+        readMock.mockResolvedValueOnce({ ...content, tokens: content.tokens.slice(1) });
+        const wrapper = mount(TokensView, { props: { payload: content } });
+        const first = content.tokens[0]!;
+
+        await wrapper.get(`[data-test="revoke-${first.id}"]`).trigger('click');
+        await wrapper.get(`[data-test="confirm-revoke-${first.id}"]`).trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+        expect(wrapper.text()).not.toContain(first.last_used_text);
+    });
+
+    it('UI-030 shows each token status as a pill with its tone icon', () => {
+        const wrapper = mount(TokensView, { props: { payload: expiring } });
+
+        expect(wrapper.findAllComponents({ name: 'StatusPill' }).map((pill) => pill.props('tone'))).toEqual(['good', 'warning']);
     });
 
     it('PWA-024 shows a skeleton while the list loads', () => {

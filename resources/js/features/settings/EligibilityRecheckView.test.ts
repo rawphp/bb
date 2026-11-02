@@ -54,6 +54,12 @@ describe('EligibilityRecheckView', () => {
         expect(wrapper.text()).toContain(trainingOnly.reasons[0]!.text);
     });
 
+    it('UI-030 shows the mode as a pill with its tone icon', async () => {
+        const { wrapper } = await view(trainingOnly);
+
+        expect(wrapper.getComponent({ name: 'StatusPill' }).props()).toMatchObject({ text: 'Training only', tone: 'warning' });
+    });
+
     it('SAFE-017 locks the questions the profile answers', async () => {
         const { wrapper } = await view(content);
         const boxes = wrapper.findAll<HTMLInputElement>('input[type="checkbox"]');

@@ -11,6 +11,9 @@ export type ReadFailure = 'signed-out' | 'error';
 export function useRead<T>(name: string, payload?: T): { data: Ref<T | undefined>; failure: Ref<ReadFailure | null>; load: () => Promise<void> } {
     const data = ref(payload) as Ref<T | undefined>;
     const failure = ref<ReadFailure | null>(null);
+    // Each load() is a generation. A refresh or failure from an older one arrives late
+    // and would put back data a write has since changed, so it is dropped.
+    let generation = 0;
 
     function fail(error: unknown): void {
         data.value = undefined;
@@ -18,18 +21,24 @@ export function useRead<T>(name: string, payload?: T): { data: Ref<T | undefined
     }
 
     async function load(): Promise<void> {
+        const mine = ++generation;
+        const current = () => mine === generation;
         failure.value = null;
         let refreshed = false;
         const refresh = (fresh: T) => {
+            if (!current()) return;
             refreshed = true;
             data.value = fresh;
         };
+        const refused = (error: unknown) => {
+            if (current()) fail(error);
+        };
         try {
-            const copy = await read<T>(name, {}, refresh, fail);
+            const copy = await read<T>(name, {}, refresh, refused);
             // A refresh that already landed wins over the copy read() was handed.
-            if (failure.value === null && !refreshed) data.value = copy;
+            if (current() && failure.value === null && !refreshed) data.value = copy;
         } catch (error) {
-            fail(error);
+            refused(error);
         }
     }
 

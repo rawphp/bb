@@ -7,6 +7,7 @@ import { failureMessage } from '@/app/errors';
 import { useRead } from '@/app/useRead';
 import type { EligibilityRecheckInput, EligibilityRecheckOutput } from '@/contracts/eligibility_recheck';
 import type { EligibilityRecheckShowOutput } from '@/contracts/eligibility_recheck_show';
+import StatusPill from '@/design/StatusPill.vue';
 import ReadState from './ReadState.vue';
 import { TONE_CLASS } from './tones';
 
@@ -88,7 +89,7 @@ function shellNavigation(): Navigation | undefined {
         <template v-else-if="screening">
             <p class="flex items-center gap-2 text-sm">
                 <span class="text-secondary-text">Now:</span>
-                <span class="rounded-full px-2.5 py-0.5 font-medium" :class="TONE_CLASS[screening.mode.tone]">{{ screening.mode.text }}</span>
+                <StatusPill :text="screening.mode.text" :tone="screening.mode.tone" />
             </p>
             <ul v-if="screening.reasons.length" class="space-y-2 rounded-2xl p-4" :class="TONE_CLASS.warning">
                 <li v-for="reason in screening.reasons" :key="reason.text">{{ reason.text }}</li>
