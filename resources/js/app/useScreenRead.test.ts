@@ -123,4 +123,47 @@ describe('useScreenRead', () => {
         expect(readMock).toHaveBeenCalledTimes(2);
         expect(wrapper.text()).toBe('27');
     });
+
+    it('OFF-003 never lets an older read\'s late answer replace a newer read\'s', async () => {
+        let refreshA: (d: { n: number }) => void = () => {};
+        let failA: (e: CapabilityError) => void = () => {};
+        readMock
+            .mockImplementationOnce(async (_name, _input, onUpdate, onError) => {
+                refreshA = onUpdate as typeof refreshA;
+                failA = onError as typeof failA;
+                return { n: 0 };
+            })
+            .mockResolvedValueOnce({ n: 2 });
+        const { wrapper, api } = screen();
+        await flushPromises();
+        expect(wrapper.text()).toBe('0');
+
+        await api().load();
+        await flushPromises();
+        expect(wrapper.text()).toBe('2');
+
+        refreshA({ n: 1 });
+        await flushPromises();
+        expect(wrapper.text()).toBe('2');
+
+        failA(new CapabilityError('probe_show', 401, null));
+        await flushPromises();
+        expect(wrapper.text()).toBe('2');
+    });
+
+    it('OFF-003 drops an older read\'s cached copy that is handed back after a newer read answered', async () => {
+        let handBackA: (d: { n: number }) => void = () => {};
+        readMock
+            .mockImplementationOnce(() => new Promise((resolve) => (handBackA = resolve as typeof handBackA)))
+            .mockResolvedValueOnce({ n: 2 });
+        const { wrapper, api } = screen();
+
+        await api().load();
+        await flushPromises();
+        expect(wrapper.text()).toBe('2');
+
+        handBackA({ n: 1 });
+        await flushPromises();
+        expect(wrapper.text()).toBe('2');
+    });
 });

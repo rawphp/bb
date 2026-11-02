@@ -1,5 +1,5 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { CapabilityError, read, write } from '@/app/call';
 import type { MesocycleShowOutput } from '@/contracts/mesocycle_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
@@ -246,11 +246,72 @@ describe('MesocycleView', () => {
         expect(wrapper.find('[data-test="error"]').exists()).toBe(false);
     });
 
-    it('OFF-008 dims the server\'s numbers and says they are waiting to sync', () => {
+    it('OFF-008 marks the server\'s numbers waiting to sync with PendingMark, one mark per week, and dims them', () => {
         const wrapper = show({ payload: meso, pending: true });
 
-        expect(wrapper.text()).toContain('Waiting to sync');
-        expect(wrapper.findAll('.opacity-50').map((n) => n.text())).toEqual(expect.arrayContaining(['6 weeks · week 4 now', '2,350 kcal/day', '6']));
+        // The length line, then each week's calorie line.
+        expect(wrapper.findAll('[data-mark]')).toHaveLength(1 + meso.saved!.weeks.length);
+        expect(wrapper.findAll('[data-value]').map((n) => n.text())).toEqual(expect.arrayContaining(['6 weeks · week 4 now', '2,350 kcal/day']));
+        expect(wrapper.findAll('[data-value]').every((n) => n.classes('opacity-60'))).toBe(true);
+        // The numbers under each mark dim the same way: the week count, the set counts.
+        const dimmed = wrapper.findAll('.opacity-60:not([data-value])').map((n) => n.text());
+        expect(dimmed).toContain('6');
+        expect(dimmed.length).toBeGreaterThan(meso.saved!.weeks.length);
+    });
+
+    it('OFF-008 shows no mark and dims nothing when nothing waits to sync', () => {
+        const wrapper = show();
+
+        expect(wrapper.find('[data-mark]').exists()).toBe(false);
+        expect(wrapper.find('.opacity-60').exists()).toBe(false);
+        expect(wrapper.text()).not.toContain('Waiting to sync');
+    });
+
+    it('MESO-040 brings the current week into view once, not again after each read', async () => {
+        const scrolls = vi.fn();
+        const original = Element.prototype.scrollIntoView;
+        Element.prototype.scrollIntoView = scrolls;
+        onTestFinished(() => {
+            Element.prototype.scrollIntoView = original;
+        });
+        const wrapper = show({ mesocycleId: meso.id });
+        await flushPromises();
+        expect(scrolls).toHaveBeenCalledTimes(1);
+
+        await wrapper.find('[data-test="lengthen"]').trigger('click');
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledTimes(2);
+        expect(scrolls).toHaveBeenCalledTimes(1);
+    });
+
+    it('CAP-019 starts a new day_id when the read after a timed-out Add day shows the day', async () => {
+        const added = structuredClone(meso);
+        for (const week of added.saved!.weeks) week.days.push({ ...week.days[0]!, day: 4, title: 'Day 4 · New', label: 'New', exercises: [] });
+        writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', 0, { reason: 'timeout' })).mockResolvedValueOnce({});
+        readMock.mockResolvedValueOnce(added);
+        const wrapper = show();
+
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+
+        const ids = writeMock.mock.calls.map(([, input]) => (input as { day_id: string }).day_id);
+        expect(ids[1]).not.toBe(ids[0]);
+    });
+
+    it('CAP-019 keeps the day_id when the read after a timed-out Add day does not show the day yet', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_day_add', 0, { reason: 'timeout' })).mockResolvedValueOnce({});
+        const wrapper = show();
+
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+        await openMenu(wrapper, 'add-day');
+        await flushPromises();
+
+        const ids = writeMock.mock.calls.map(([, input]) => (input as { day_id: string }).day_id);
+        expect(ids[1]).toBe(ids[0]);
     });
 
     it('CAP-002 reads mesocycle_show for the id it is opened with, showing a skeleton meanwhile', async () => {

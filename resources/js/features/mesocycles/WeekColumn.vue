@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import DayCell from './DayCell.vue';
 import StatusPill from '@/design/StatusPill.vue';
-import type { MesocycleWeek } from './types';
+import PendingMark from '@/design/PendingMark.vue';
+import { PENDING_DIM, type MesocycleWeek } from './types';
 
 // One week of the mesocycle (MESO-040, MESO-041): the Now and Diet break pills, the
 // calorie target, sets per muscle and the days. While a write is waiting to sync,
@@ -22,14 +23,16 @@ withDefaults(defineProps<{ week: MesocycleWeek; mesocycleId: string; pending?: b
                 <StatusPill v-if="week.now" :text="week.now.text" :tone="week.now.tone" />
             </h3>
             <StatusPill v-if="week.diet_break" class="self-start" :text="week.diet_break.text" :tone="week.diet_break.tone" />
-            <p class="text-sm text-secondary-text" :class="{ 'opacity-50': pending }">{{ week.calories_text ?? 'No calorie target yet' }}</p>
-            <p v-if="pending" class="text-sm text-secondary-text">Waiting to sync</p>
+            <p class="text-sm text-secondary-text">
+                <PendingMark v-if="pending" derived>{{ week.calories_text ?? 'No calorie target yet' }}</PendingMark>
+                <template v-else>{{ week.calories_text ?? 'No calorie target yet' }}</template>
+            </p>
         </div>
         <div v-if="week.muscle_sets.length" class="flex flex-col gap-0.5 text-sm">
             <h4 class="text-xs font-semibold text-secondary-text">Sets per muscle</h4>
             <p v-for="entry in week.muscle_sets" :key="entry.muscle_title" class="flex justify-between gap-1">
                 <span class="text-primary-text">{{ entry.muscle_title }}</span>
-                <span class="font-semibold tabular-nums text-primary-text" :class="{ 'opacity-50': pending }">{{ entry.sets }}</span>
+                <span class="font-semibold tabular-nums text-primary-text" :class="{ [PENDING_DIM]: pending }">{{ entry.sets }}</span>
             </p>
         </div>
         <DayCell

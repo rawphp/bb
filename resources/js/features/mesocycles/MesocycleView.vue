@@ -10,13 +10,16 @@ import type { MesocycleEndInput } from '@/contracts/mesocycle_end';
 import type { MesocycleLengthSetInput } from '@/contracts/mesocycle_length_set';
 import type { MesocycleShowOutput } from '@/contracts/mesocycle_show';
 import BottomSheet from '@/design/BottomSheet.vue';
+import PendingMark from '@/design/PendingMark.vue';
+import { PENDING_DIM } from './types';
 import ActionMenu, { type ActionMenuItem } from './ActionMenu.vue';
 import WeekColumn from './WeekColumn.vue';
 
 // A mesocycle (MESO-040 to MESO-045): a column per week with each day's exercises, the
 // sets per muscle, the calorie target and diet breaks; + and − for the length, and a
 // menu to add a day, change progression rates or end it. Ported from rp-clone's MesocycleView.
-// `pending` dims the server's numbers while a write waits to sync (OFF-008).
+// `pending` dims the server's numbers while a write waits to sync (OFF-008): the length
+// text carries PendingMark, and the week count beside it dims the same way.
 const props = withDefaults(defineProps<{ payload?: MesocycleShowOutput; mesocycleId?: string; pending?: boolean }>(), { pending: false });
 
 const router = useRouter();
@@ -42,10 +45,16 @@ function setLength(weeksCount: number): Promise<unknown> {
     return send('mesocycle_length_set', { mesocycle_id: data.value!.id, weeks: weeksCount } satisfies MesocycleLengthSetInput, 'The length could not be changed.');
 }
 
+// How many days the mesocycle has, as the server last said.
+const dayCount = (): number => data.value?.saved?.weeks[0]?.days.length ?? 0;
+
 async function addDay(): Promise<void> {
     dayId ??= ulid();
+    const before = dayCount();
     const outcome = await send('mesocycle_day_add', { mesocycle_id: data.value!.id, day_id: dayId } satisfies MesocycleDayAddInput, 'The day could not be added.');
-    if (outcome === 'done' || outcome === 'refused') dayId = null;
+    // The server answered, or the read after a timeout already shows the new day:
+    // the id is used, and the next Add day is a new day.
+    if (outcome === 'done' || outcome === 'refused' || (outcome === 'no-answer' && failure.value === null && dayCount() > before)) dayId = null;
 }
 
 function end(dietBreak: boolean): Promise<unknown> {
@@ -59,11 +68,14 @@ function onMenu(key: string): void {
     else if (key === 'end') endOpen.value = true;
 }
 
-// The current week comes into view first.
+// The current week comes into view once, when the weeks first show. A read again
+// (after a write, or on coming back to the screen) leaves the user where they scrolled.
+let scrolled = false;
 watch(
     () => data.value?.saved,
     async (saved) => {
-        if (!saved) return;
+        if (!saved || scrolled) return;
+        scrolled = true;
         await nextTick();
         weeks.value?.querySelector<HTMLElement>('[data-now]')?.scrollIntoView?.({ inline: 'center', block: 'nearest' });
     },
@@ -95,7 +107,10 @@ watch(
             <section class="flex items-center gap-3 px-4" :aria-busy="busy || undefined">
                 <div class="min-w-0 flex-1">
                     <h2 class="text-lg font-semibold text-primary-text">{{ data.saved.phase_title }}</h2>
-                    <p class="text-sm text-secondary-text" :class="{ 'opacity-50': pending }">{{ data.saved.length_text }}</p>
+                    <p class="text-sm text-secondary-text">
+                        <PendingMark v-if="pending" derived>{{ data.saved.length_text }}</PendingMark>
+                        <template v-else>{{ data.saved.length_text }}</template>
+                    </p>
                 </div>
                 <svg viewBox="0 0 24 24" class="size-5 text-secondary-text" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                     <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
@@ -111,7 +126,7 @@ watch(
                 >
                     −
                 </button>
-                <span class="min-w-6 text-center text-lg font-semibold tabular-nums" :class="{ 'opacity-50': pending }" :aria-label="`${data.saved.weeks_count} weeks`">
+                <span class="min-w-6 text-center text-lg font-semibold tabular-nums" :class="{ [PENDING_DIM]: pending }" :aria-label="`${data.saved.weeks_count} weeks`">
                     {{ data.saved.weeks_count }}
                 </span>
                 <button
@@ -125,7 +140,6 @@ watch(
                     +
                 </button>
             </section>
-            <p v-if="pending" class="px-4 text-sm text-secondary-text">Waiting to sync</p>
 
             <div ref="weeks" class="mt-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
                 <WeekColumn v-for="week in data.saved.weeks" :key="week.number" :week="week" :mesocycle-id="data.id" :pending="pending" />

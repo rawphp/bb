@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { MesocycleDay } from './types';
+import { PENDING_DIM, type MesocycleDay } from './types';
 
 // One day in a week's column; tapping it opens that workout (MESO-040, NAV-002).
 // A day an early end dropped (MESO-043) can't open.
@@ -49,7 +49,7 @@ const stateText = computed(() => STATE_TEXT[props.day.state]);
         <span v-if="!day.exercises.length" class="text-sm text-secondary-text">No exercises yet</span>
         <span v-for="line in day.exercises" :key="line.slot_id" class="flex items-baseline gap-1 text-sm">
             <span class="min-w-0 flex-1 truncate text-primary-text">{{ line.name }}</span>
-            <span class="tabular-nums text-secondary-text" :class="{ 'opacity-50': pending }">{{ line.sets }}</span>
+            <span class="tabular-nums text-secondary-text" :class="{ [PENDING_DIM]: pending }">{{ line.sets }}</span>
         </span>
     </component>
 </template>

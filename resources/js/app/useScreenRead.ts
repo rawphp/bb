@@ -25,19 +25,30 @@ export function useScreenRead<T>(
         failure.value = error instanceof CapabilityError && error.status === 401 ? 'signed-out' : 'error';
     }
 
+    // Reads can overlap: a re-read on return to the screen is still refreshing when a
+    // write's re-read starts. Only the latest load may change the screen, so an answer
+    // fetched before a write never replaces one fetched after it.
+    let latest = 0;
+
     async function load(): Promise<void> {
+        const mine = ++latest;
+        const current = () => mine === latest;
         failure.value = null;
         let refreshed = false;
         const refresh = (fresh: T) => {
+            if (!current()) return;
             refreshed = true;
             data.value = fresh;
         };
+        const refused = (error: unknown) => {
+            if (current()) fail(error);
+        };
         try {
-            const copy = await read<T>(name, input(), refresh, fail);
+            const copy = await read<T>(name, input(), refresh, refused);
             // A refresh that already landed wins over the copy read() was handed.
-            if (failure.value === null && !refreshed) data.value = copy;
+            if (current() && failure.value === null && !refreshed) data.value = copy;
         } catch (error) {
-            fail(error);
+            refused(error);
         }
     }
 
