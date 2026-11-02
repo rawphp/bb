@@ -4,9 +4,10 @@ namespace App\Domain\Progression;
 
 /**
  * CAP-016, PROG-024: a set's rep table. Every weight the exercise's load steps allow within 15% of the set's planned
- * weight (and the planned weight itself, when a carried load is off the steps), each with the reps that keep the
- * planned effort. PROG-025: a weight more than 15% from last week's for the set is no row either. The view looks a
- * typed weight up here; a weight outside the table only shows the RIR. Weights are in the user's unit.
+ * weight, each with the reps that keep the planned effort. PROG-025: any other weight more than 15% from last week's
+ * for the set is no row either. The planned weight is always a row with the planned reps (rp-clone applyRetarget), so
+ * a set with a table never has an empty one. The view looks a typed weight up here; a weight outside the table only
+ * shows the RIR. Weights are in the user's unit.
  */
 final class RepTable
 {
@@ -29,7 +30,8 @@ final class RepTable
             return [];
         }
 
-        $weights = [round($targetWeight, 4)];
+        $planned = round($targetWeight, 4);
+        $weights = [$planned];
         $first = (int) ceil($targetWeight * (1 - self::SPAN) / $step - self::TOLERANCE);
         $last = (int) floor($targetWeight * (1 + self::SPAN) / $step + self::TOLERANCE);
         for ($k = max(1, $first); $k <= $last; $k++) {
@@ -41,6 +43,11 @@ final class RepTable
         $target = new SetTarget($targetWeight, $targetReps, $rir);
         $rows = [];
         foreach ($weights as $weight) {
+            if (abs($weight - $planned) < self::TOLERANCE) {
+                $rows[] = new RepTableRow($weight, $targetReps);
+
+                continue;
+            }
             $retarget = LoadProgression::retarget($target, $weight, $lastWeekWeight, $rules);
             if ($retarget->kind === RetargetKind::Reps && $retarget->value >= 1) {
                 $rows[] = new RepTableRow($weight, $retarget->value);
