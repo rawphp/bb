@@ -2,22 +2,23 @@
 
 namespace App\Capabilities\WeighIns;
 
-use App\Domain\Tokens\TokenScope;
+use App\Capabilities\Support\Channel;
 use App\Enums\MeasurementSource;
-use App\Models\PersonalAccessToken;
 use App\Models\User;
+use Rawphp\Capabilities\Support\CapabilityContext;
 
 /**
- * WT-003, WT-020: where a weigh-in or a step count came from. The Shortcuts bridge posts with the Health bridge
- * token (INT-001), so a call carrying that token is the bridge's; anything else is the user typing it in.
+ * WT-003, WT-020: where a weigh-in or a step count came from. The call came in on the Health bridge channel
+ * (INT-001, CAP-022), as Activity records it, or the user typed it in.
  */
 final class MeasuredBy
 {
-    public static function caller(User $user): MeasurementSource
+    public static function caller(CapabilityContext $context): MeasurementSource
     {
-        $token = $user->currentAccessToken();
+        $user = $context->user();
+        $token = $user instanceof User ? $user->currentAccessToken() : null;
 
-        return $token instanceof PersonalAccessToken && $token->scope === TokenScope::HealthBridge
+        return Channel::derive($context->caller(), $token) === Channel::Bridge
             ? MeasurementSource::Shortcut
             : MeasurementSource::Manual;
     }

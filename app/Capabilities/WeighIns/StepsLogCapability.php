@@ -24,7 +24,7 @@ final class StepsLogCapability implements HostCapability
             ->run(function (StepsLogInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */
                 $user = $context->user();
-                $changed = ($this->log)($user, $input->date, $input->steps, MeasuredBy::caller($user));
+                $changed = ($this->log)($user, $input->date, $input->steps, MeasuredBy::caller($context));
 
                 return new WriteResult(invalidates: $changed ? WeighInReads::keys([$input->date]) : []);
             });

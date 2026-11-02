@@ -18,7 +18,7 @@ final class SetWeighInSchedule
     public function __invoke(User $user, array $entries): void
     {
         if (count(WeighInSchedule::days(array_column($entries, 'weekdays'))) < WeighInSchedule::MINIMUM_DAYS) {
-            throw new DomainException('Weigh in on at least 2 days a week.');
+            throw new DomainException(WeighInSchedule::TOO_FEW_DAYS);
         }
 
         DB::transaction(function () use ($user, $entries): void {

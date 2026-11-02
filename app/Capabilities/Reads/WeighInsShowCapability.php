@@ -1,8 +1,9 @@
 <?php
 
-namespace App\Capabilities\WeighIns;
+namespace App\Capabilities\Reads;
 
 use App\Capabilities\HostCapability;
+use App\Capabilities\Reads\WeighIns\WeighInsPayload;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\WeighIns\Data\WeighInsShowInput;
 use App\Capabilities\WeighIns\Data\WeighInsShowOutput;

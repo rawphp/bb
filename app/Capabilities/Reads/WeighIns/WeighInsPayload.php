@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Capabilities\WeighIns;
+namespace App\Capabilities\Reads\WeighIns;
 
 use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Reads\Today\TodayWords;
@@ -30,8 +30,8 @@ use DateTimeImmutable;
 use DateTimeZone;
 
 /**
- * The Weigh-ins screen (WT-001 to WT-021), every value ready to show in the user's units (CAP-015). Times are the
- * wall-clock times the weigh-ins were stored at.
+ * The Weigh-ins screen (WT-001 to WT-021), every value ready to show in the user's units (CAP-015). Times and days
+ * are in the app's time zone, as Today shows them.
  */
 final class WeighInsPayload
 {

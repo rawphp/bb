@@ -8,12 +8,12 @@ use App\Domain\WeighIns\BodyMeasures;
 use App\Enums\MeasurementSource;
 use App\Models\User;
 use App\Models\WeighIn;
-use Carbon\CarbonImmutable;
+use App\Support\WeighIns\ReadingTime;
 
 /**
  * WT-002, WT-006: log a weigh-in on any day, in kg converted from the user's unit, with an optional waist (WT-021).
- * It is stored at the wall-clock time the user gave, never the server's clock, so a reading replayed from the
- * offline outbox lands on the day it was taken (OFF-030).
+ * It is stored at the moment the user gave, never the server's clock, so a reading replayed from the offline outbox
+ * lands when it was taken (OFF-030).
  *
  * A create under the ID of the user's existing weigh-in returns it unchanged, so a replay never adds a second one
  * (CAP-019). WT-003: the Shortcuts bridge posts the latest reading each time it runs; a bridge reading at a time the
@@ -28,7 +28,7 @@ final class LogWeighIn
             return $existing;
         }
 
-        $at = self::wallClock($weighedAt);
+        $at = ReadingTime::instant($weighedAt);
         $kg = BodyMeasures::kg($weight->value, $weight->unit);
 
         if ($source === MeasurementSource::Shortcut) {
@@ -52,11 +52,5 @@ final class LogWeighIn
         $weighIn->save();
 
         return $weighIn;
-    }
-
-    /** The time as the user's clock read it: "2026-10-10T08:35:00+01:00" is 08:35 on the 10th. */
-    public static function wallClock(string $time): string
-    {
-        return CarbonImmutable::parse($time)->format('Y-m-d H:i:s');
     }
 }

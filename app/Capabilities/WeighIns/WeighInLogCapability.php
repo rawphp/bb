@@ -22,7 +22,7 @@ final class WeighInLogCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('weigh_in_log', affects: WeighInReads::AFFECTS)
-            ->description('Log a body weight the user reported, at the time they weighed in, on any day, with an optional waist measurement. Give the weight and waist in the unit the user said, tagged with it; the trend weight and Today update from it. Never log a weigh-in the user did not report. A new weigh-in takes a new id; sending the id of one the user already has changes nothing (use weigh_in_update to change it).')
+            ->description('Log a body weight the user reported, never one they did not, at the time they weighed in on any day, with an optional waist measurement. Give the weight and waist in the unit the user said, tagged with it; the trend weight and Today update from it. A new weigh-in takes a new id, and sending the id of one the user already has changes nothing (use weigh_in_update to change it).')
             ->cli('weigh-in', 'log')
             ->input(WeighInLogInput::class)
             ->run(function (WeighInLogInput $input, CapabilityContext $context): WriteResult {
@@ -35,7 +35,7 @@ final class WeighInLogCapability implements HostCapability
                     $input->weighed_at,
                     $input->weight,
                     $input->waist,
-                    MeasuredBy::caller($user),
+                    MeasuredBy::caller($context),
                 );
 
                 return new WriteResult(invalidates: WeighInReads::keys([$weighIn->weighed_at->format('Y-m-d')]));

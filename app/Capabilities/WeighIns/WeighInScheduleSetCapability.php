@@ -19,7 +19,8 @@ final class WeighInScheduleSetCapability implements HostCapability
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('weigh_in_schedule_set', affects: WeighInReads::AFFECTS)
+        // AGT-010: entries left out are deleted (WT-007's Delete schedule), so the coach needs the user's say-so.
+        return HostDefinition::write('weigh_in_schedule_set', affects: WeighInReads::AFFECTS, destructive: true)
             ->description('Replace the user\'s whole weigh-in schedule: entries of weekdays, each with a reminder time, at least 2 different days a week and each day in one entry only. To delete an entry, send the others. The time only sets the reminder; the user can weigh in at any time.')
             ->cli('weigh-in', 'schedule-set')
             ->input(WeighInScheduleSetInput::class)
@@ -31,8 +32,14 @@ final class WeighInScheduleSetCapability implements HostCapability
                     $input->entries,
                 ));
 
-                // Today shows the weigh-in on every scheduled day; the one a client is most likely to hold is today's.
-                return new WriteResult(invalidates: WeighInReads::keys([CarbonImmutable::now()->format('Y-m-d')]));
+                // Today shows the weigh-in on each scheduled weekday, so each day of the week ahead can change; the client
+                // keeps today, tomorrow and the rest of the week warm (OFF-004).
+                $today = CarbonImmutable::now()->startOfDay();
+
+                return new WriteResult(invalidates: WeighInReads::keys(array_map(
+                    fn (int $offset) => $today->addDays($offset)->format('Y-m-d'),
+                    range(0, 6),
+                )));
             });
     }
 }

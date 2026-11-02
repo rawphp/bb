@@ -24,6 +24,9 @@ final class WeighInSchedule
         7 => ['Sun', 'Sunday'],
     ];
 
+    /** WT-001, as WeighInScheduleSetInput's rule says it. */
+    public const TOO_FEW_DAYS = 'Weigh in on at least 2 days a week.';
+
     /** WT-001: the time is not a deadline. */
     public const TIME_NOTE = 'The time only sets your reminder. You can weigh in at any time.';
 
