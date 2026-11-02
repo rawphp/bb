@@ -4,7 +4,7 @@ import ChoiceList, { type Choice } from '@/design/ChoiceList.vue';
 import type { Build, LabelStyle } from './types';
 
 // How the sessions are named (MESO-005): weekday names, or Day 1, Day 2. Whether weekday
-// names are open to the user comes from the server. Shared by the scratch and details steps.
+// names are open to the user comes from the server. Used on the details step.
 const props = defineProps<{ build: Build; disabled?: boolean }>();
 
 const emit = defineEmits<{ change: [style: LabelStyle] }>();

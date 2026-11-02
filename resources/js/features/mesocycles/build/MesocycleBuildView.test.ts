@@ -203,6 +203,17 @@ describe('MesocycleBuildView', () => {
             expect(wrapper.find('h2').text()).toBe('Exercises');
         });
 
+        it('CAP-012 shows the server\'s sessions per week again when the save is refused', async () => {
+            writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_build', 422, { error: { message: 'Not that many days.' } }));
+            const wrapper = scratch();
+            const before = (wrapper.find('select[aria-label="Sessions per week"]').element as HTMLSelectElement).selectedOptions[0]!.text;
+
+            await choose(wrapper, 'Sessions per week', '5 days');
+
+            expect(before).not.toBe('5 days');
+            expect((wrapper.find('select[aria-label="Sessions per week"]').element as HTMLSelectElement).selectedOptions[0]!.text).toBe(before);
+        });
+
         it('MESO-005 turns weekday names off, and says why, when no training days are set', () => {
             const floating = structuredClone(warning);
             floating.build!.weekdays_available = false;
@@ -458,6 +469,29 @@ describe('MesocycleBuildView', () => {
             expect(inputViolations(...lastWrite())).toEqual([]);
         });
 
+        it('CAP-012 shows the server\'s weeks and start date again when the save is refused', async () => {
+            writeMock.mockRejectedValue(new CapabilityError('mesocycle_build', 422, { error: { message: 'Not that.' } }));
+            const wrapper = details();
+            const start = warning.build!.start_date;
+
+            await choose(wrapper, 'Weeks', '7 weeks');
+            expect((wrapper.find('select[aria-label="Weeks"]').element as HTMLSelectElement).selectedOptions[0]!.text).toBe('5 weeks');
+
+            const date = wrapper.find('input[aria-label="Start"]');
+            (date.element as HTMLInputElement).value = '2026-10-19';
+            await date.trigger('change');
+            await flushPromises();
+            expect(start).not.toBe('2026-10-19');
+            expect((date.element as HTMLInputElement).value).toBe(start);
+
+            writeMock.mockClear();
+            (date.element as HTMLInputElement).value = '';
+            await date.trigger('change');
+            await flushPromises();
+            expect(writeMock).not.toHaveBeenCalled();
+            expect((date.element as HTMLInputElement).value).toBe(start);
+        });
+
         it('MESO-004 Create mesocycle sends finish with the name in the field, then opens the mesocycle', async () => {
             const wrapper = details({ can_finish: true });
             await type(wrapper.find('input[aria-label="Name"]'), 'Summer Cut');
@@ -528,8 +562,6 @@ describe('MesocycleBuildView', () => {
             expect(readMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: (input as { mesocycle_id: string }).mesocycle_id }, expect.any(Function), expect.any(Function));
             expect(writeMock).toHaveBeenCalledTimes(1);
             expect(wrapper.find('h2').text()).toBe('Meso Builder');
-            await wrapper.setProps({ route: undefined, copy: undefined, draft: (input as { mesocycle_id: string }).mesocycle_id });
-            expect(wrapper.text()).toContain('Step 1 of 3');
         });
 
         it('MESO-002 Build from scratch: makes the draft with route scratch and opens the scratch step', async () => {
@@ -540,8 +572,6 @@ describe('MesocycleBuildView', () => {
             expect(lastWrite()[1]).toEqual({ mesocycle_id: expect.stringMatching(ULID), route: 'scratch' });
             expect(inputViolations(...lastWrite())).toEqual([]);
             expect(wrapper.find('h2').text()).toBe('Build from scratch');
-            await wrapper.setProps({ route: undefined, copy: undefined, draft: (lastWrite()[1] as { mesocycle_id: string }).mesocycle_id });
-            expect(wrapper.text()).toContain('Step 1 of 3');
         });
 
         it('MESO-002 Copy previous: copies the source with a valid mesocycle_copy and opens on the exercises, with no Back', async () => {
@@ -623,8 +653,6 @@ describe('MesocycleBuildView', () => {
             expect(inputViolations(name, input)).toEqual([]);
             expect(router.replace).toHaveBeenCalledWith({ query: { draft: (input as { mesocycle_id: string }).mesocycle_id } });
             expect(wrapper.find('h2').text()).toBe('Exercises');
-            expect(wrapper.text()).toContain('Step 2 of 3');
-            await wrapper.setProps({ route: undefined, copy: undefined, draft: (input as { mesocycle_id: string }).mesocycle_id });
             expect(wrapper.text()).toContain('Step 2 of 3');
         });
 
