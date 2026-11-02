@@ -2,9 +2,7 @@
 
 namespace App\Capabilities\Settings\Data;
 
-use App\Domain\Model\ConsumedTotals;
-use App\Domain\Model\HeightUnit;
-use App\Domain\Model\WeightUnit;
+use App\Capabilities\Support\DomainEnumValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -12,13 +10,13 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class SettingsUpdateInput extends CapabilityData
 {
     public function __construct(
-        #[Field(enum: [WeightUnit::Kg->value, WeightUnit::Lb->value])]
+        #[Field(enum: DomainEnumValues::WEIGHT_UNIT)]
         public readonly string $weight_unit,
-        #[Field(enum: [HeightUnit::Cm->value, HeightUnit::FeetInches->value])]
+        #[Field(enum: DomainEnumValues::HEIGHT_UNIT)]
         public readonly string $height_unit,
         #[Field(enum: ['system', 'light', 'dark'])]
         public readonly string $appearance,
-        #[Field(enum: [ConsumedTotals::Planned->value, ConsumedTotals::CheckedIn->value])]
+        #[Field(enum: DomainEnumValues::CONSUMED_TOTALS)]
         public readonly string $consumed_totals,
         public readonly bool $micro_plates,
     ) {}

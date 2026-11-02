@@ -24,7 +24,7 @@ export interface EligibilityRecheckOutput {
   invalidates: unknown[];
   toast?: string | null;
   undo?: string | null;
-  outcome: "keep" | "switchToTrainingOnly" | "runNutritionSetup" | "leaveFatLoss";
+  outcome: "runNutritionSetup" | "switchToTrainingOnly" | "leaveFatLoss" | "keep";
   message: string;
   /**
    * onboarding: onboarding_show holds the steps this outcome needs
@@ -32,4 +32,4 @@ export interface EligibilityRecheckOutput {
   next: "done" | "onboarding";
 }
 
-export const outputVersion = '6b240d2df7cd';
+export const outputVersion = 'ee0cbda27bad';

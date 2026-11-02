@@ -21,10 +21,10 @@
         "outcome": {
             "type": "string",
             "enum": [
-                "keep",
-                "switchToTrainingOnly",
                 "runNutritionSetup",
-                "leaveFatLoss"
+                "switchToTrainingOnly",
+                "leaveFatLoss",
+                "keep"
             ]
         },
         "message": {
