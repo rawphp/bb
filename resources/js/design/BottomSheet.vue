@@ -8,6 +8,7 @@ const openSheets: symbol[] = [];
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, useId, watch } from 'vue';
+import { holdUpdates } from '../app/updates';
 import { useModalFocus } from './useModalFocus';
 
 // Bottom sheet frame: Cancel left, title middle, Save right (UI-005), ported from rp-clone's SheetScaffold.swift.
@@ -19,6 +20,8 @@ const props = withDefaults(
         /** null for a sheet that answers by its own choices: no Save. */
         saveTitle?: string | null;
         saveDisabled?: boolean;
+        /** The left button's label, for a sheet whose Cancel reads better as, say, Not now. */
+        cancelTitle?: string;
         cancelDisabled?: boolean;
         /** Resting heights, lowest first; the sheet opens at the first. */
         heights?: SheetHeight[];
@@ -32,6 +35,7 @@ const props = withDefaults(
     {
         saveTitle: 'Save',
         saveDisabled: false,
+        cancelTitle: 'Cancel',
         cancelDisabled: false,
         heights: () => ['full'],
         dismissible: true,
@@ -59,6 +63,8 @@ const dragging = ref(false);
 
 const focus = useModalFocus(panel);
 const token = Symbol('sheet');
+// An open sheet keeps the update banner away, so a tap on it cannot reload over the sheet (PWA-035).
+let releaseUpdates: (() => void) | null = null;
 
 watch(
     () => props.open,
@@ -66,6 +72,7 @@ watch(
         if (open) {
             level.value = 0;
             openSheets.push(token);
+            releaseUpdates ??= holdUpdates();
             document.addEventListener('keydown', onKeydown);
             await focus.opened();
         } else {
@@ -83,6 +90,8 @@ function close(): void {
         openSheets.splice(index, 1);
     }
     document.removeEventListener('keydown', onKeydown);
+    releaseUpdates?.();
+    releaseUpdates = null;
     focus.closed();
 }
 
@@ -225,7 +234,7 @@ function toggleHeight(): void {
                                 class="min-h-tap min-w-tap justify-self-start text-left disabled:opacity-40"
                                 @click="emit('cancel')"
                             >
-                                Cancel
+                                {{ cancelTitle }}
                             </button>
                             <div class="text-center">
                                 <h2 :id="titleId" class="font-semibold text-primary-text">{{ title }}</h2>

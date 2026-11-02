@@ -7,8 +7,10 @@ const workbox = vi.hoisted(() => {
         url: '',
         options: {} as unknown,
         listeners: {} as Record<string, Listener[]>,
-        register: vi.fn(async () => undefined),
-        update: vi.fn(async () => undefined),
+        // The registration register() resolves with; `waiting` is the version waiting to take over.
+        registration: { waiting: null as object | null },
+        register: vi.fn(async (): Promise<unknown> => state.registration),
+        update: vi.fn(async (): Promise<unknown> => undefined),
         messageSkipWaiting: vi.fn(),
         emit(type: string, event: { isExternal?: boolean } = {}) {
             for (const listener of state.listeners[type] ?? []) listener(event);
@@ -37,13 +39,23 @@ async function load() {
     vi.resetModules();
     const updates = await import('./updates');
     updates.registerServiceWorker();
+    await flushPromises();
 
     return updates;
+}
+
+const flushPromises = () => new Promise((resolve) => setTimeout(resolve));
+
+// A new version installed and is waiting, as workbox-window reports it.
+function newVersionWaits() {
+    workbox.state.registration.waiting = {};
+    workbox.state.emit('waiting');
 }
 
 describe('updates', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        workbox.state.registration.waiting = null;
         Object.defineProperty(navigator, 'serviceWorker', { value: {}, configurable: true });
         Object.defineProperty(window, 'location', { value: { reload }, configurable: true });
     });
@@ -60,7 +72,7 @@ describe('updates', () => {
         const { updateBanner } = await load();
         expect(updateBanner.value).toBe(false);
 
-        workbox.state.emit('waiting');
+        newVersionWaits();
         workbox.state.emit('controlling', { isExternal: true });
 
         expect(updateBanner.value).toBe(true);
@@ -78,7 +90,7 @@ describe('updates', () => {
 
     it('PWA-035 hides the banner while a workout or sheet holds updates', async () => {
         const { updateBanner, holdUpdates } = await load();
-        workbox.state.emit('waiting');
+        newVersionWaits();
 
         const releaseWorkout = holdUpdates();
         const releaseSheet = holdUpdates();
@@ -94,7 +106,7 @@ describe('updates', () => {
 
     it('PWA-035 does nothing on a tap while updates are held', async () => {
         const { applyUpdate, holdUpdates } = await load();
-        workbox.state.emit('waiting');
+        newVersionWaits();
         holdUpdates();
 
         applyUpdate();
@@ -104,7 +116,7 @@ describe('updates', () => {
 
     it('PWA-035 a tap activates the new version and reloads this tab once it takes control', async () => {
         const { applyUpdate } = await load();
-        workbox.state.emit('waiting');
+        newVersionWaits();
 
         applyUpdate();
         expect(workbox.state.messageSkipWaiting).toHaveBeenCalled();
@@ -116,13 +128,52 @@ describe('updates', () => {
 
     it('PWA-035 a tap reloads at once when another tab already activated the new version', async () => {
         const { applyUpdate } = await load();
-        workbox.state.emit('waiting');
+        newVersionWaits();
+        // Another tab's tap: the waiting version took over, and this tab still runs the old one.
+        workbox.state.registration.waiting = null;
         workbox.state.emit('controlling', { isExternal: true });
 
         applyUpdate();
 
         expect(reload).toHaveBeenCalledTimes(1);
         expect(workbox.state.messageSkipWaiting).not.toHaveBeenCalled();
+    });
+
+    it('PWA-035 a version that waits after another tab activated the last one is still activated by a tap', async () => {
+        const { applyUpdate } = await load();
+        newVersionWaits();
+        workbox.state.registration.waiting = null;
+        workbox.state.emit('controlling', { isExternal: true });
+        newVersionWaits();
+
+        applyUpdate();
+
+        expect(workbox.state.messageSkipWaiting).toHaveBeenCalledTimes(1);
+        expect(reload).not.toHaveBeenCalled();
+        workbox.state.emit('controlling');
+        expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('PWA-035 reports a failed registration, and lets an offline update check fail quietly', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            workbox.state.register.mockRejectedValueOnce(new Error('404'));
+            await load();
+            expect(error).toHaveBeenCalledWith('The service worker did not register', expect.any(Error));
+
+            const offline = Promise.reject(new TypeError('Failed to fetch'));
+            const handled = vi.spyOn(offline, 'catch');
+            workbox.state.update.mockReturnValue(offline);
+            Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+            document.dispatchEvent(new Event('visibilitychange'));
+            await flushPromises();
+
+            expect(handled).toHaveBeenCalled();
+            expect(error).toHaveBeenCalledTimes(1);
+        } finally {
+            workbox.state.update.mockImplementation(async () => undefined);
+            error.mockRestore();
+        }
     });
 
     it('PWA-035 skips registration where service workers are missing', async () => {

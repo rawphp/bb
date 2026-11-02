@@ -7,6 +7,13 @@ import GalleryView from '@/features/dev/GalleryView.vue';
 import BottomSheet from './BottomSheet.vue';
 import HelpButton from './HelpButton.vue';
 
+const updates = vi.hoisted(() => {
+    const release = vi.fn();
+    return { release, holdUpdates: vi.fn(() => release) };
+});
+
+vi.mock('../app/updates', () => ({ holdUpdates: updates.holdUpdates }));
+
 let mounted: VueWrapper | null = null;
 
 function sheet(props: Record<string, unknown> = {}, body = '<p>Body</p>') {
@@ -81,9 +88,37 @@ describe('BottomSheet', () => {
         expect(header.findAll(':scope > *')).toHaveLength(3);
     });
 
+    it('UI-005 the Cancel button can be renamed, and still cancels', async () => {
+        const wrapper = sheet({ cancelTitle: 'Not now' });
+
+        expect(get('button[data-cancel]').text()).toBe('Not now');
+        await get('button[data-cancel]').trigger('click');
+        expect(wrapper.emitted('cancel')).toHaveLength(1);
+    });
+
     it('UI-005 the Save button can be renamed', () => {
         sheet({ saveTitle: 'Add' });
         expect(get('button[data-save]').text()).toBe('Add');
+    });
+
+    it('PWA-035 an open sheet holds updates until it closes or unmounts', async () => {
+        updates.holdUpdates.mockClear();
+        updates.release.mockClear();
+        const wrapper = sheet({ open: false });
+        expect(updates.holdUpdates).not.toHaveBeenCalled();
+
+        await wrapper.setProps({ open: true });
+        expect(updates.holdUpdates).toHaveBeenCalledTimes(1);
+        expect(updates.release).not.toHaveBeenCalled();
+
+        await wrapper.setProps({ open: false });
+        expect(updates.release).toHaveBeenCalledTimes(1);
+
+        await wrapper.setProps({ open: true });
+        wrapper.unmount();
+        mounted = null;
+        expect(updates.holdUpdates).toHaveBeenCalledTimes(2);
+        expect(updates.release).toHaveBeenCalledTimes(2);
     });
 
     it('UI-005 a closed sheet renders nothing', () => {

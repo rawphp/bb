@@ -1,6 +1,6 @@
-import { mount } from '@vue/test-utils';
+import { mount, type VueWrapper } from '@vue/test-utils';
 import { computed, nextTick, ref, type Ref } from 'vue';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PwaOverlay from './PwaOverlay.vue';
 
 const state = vi.hoisted(() => ({}) as { banner: Ref<boolean>; sheet: Ref<boolean> });
@@ -11,7 +11,7 @@ vi.mock('./updates', () => {
     const banner = ref(false);
     state.banner = banner;
 
-    return { updateBanner: computed(() => banner.value), applyUpdate: () => applyUpdate() };
+    return { updateBanner: computed(() => banner.value), applyUpdate: () => applyUpdate(), holdUpdates: () => () => undefined };
 });
 vi.mock('./install', () => {
     const sheet = ref(false);
@@ -20,6 +20,20 @@ vi.mock('./install', () => {
     return { installSheet: sheet, dismissInstall: () => dismissInstall() };
 });
 
+let wrapper: VueWrapper | null = null;
+
+function overlay(): VueWrapper {
+    wrapper = mount(PwaOverlay, { attachTo: document.body });
+    return wrapper;
+}
+
+// The install sheet is a BottomSheet, teleported to <body>.
+function inPage(selector: string): HTMLElement {
+    const found = document.body.querySelector<HTMLElement>(selector);
+    expect(found, `${selector} is in the page`).not.toBeNull();
+    return found!;
+}
+
 describe('PwaOverlay', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -27,8 +41,13 @@ describe('PwaOverlay', () => {
         state.sheet.value = false;
     });
 
+    afterEach(() => {
+        wrapper?.unmount();
+        wrapper = null;
+    });
+
     it('PWA-035 shows nothing until an update waits', async () => {
-        const wrapper = mount(PwaOverlay);
+        const wrapper = overlay();
         expect(wrapper.text()).toBe('');
 
         state.banner.value = true;
@@ -38,7 +57,7 @@ describe('PwaOverlay', () => {
 
     it('PWA-035 reloads only on a tap of the banner', async () => {
         state.banner.value = true;
-        const wrapper = mount(PwaOverlay);
+        const wrapper = overlay();
 
         await wrapper.get('button').trigger('click');
 
@@ -47,20 +66,27 @@ describe('PwaOverlay', () => {
 
     it('PWA-003 the iPhone sheet shows Share then Add to Home Screen, and Not now dismisses it', async () => {
         state.sheet.value = true;
-        const wrapper = mount(PwaOverlay);
+        overlay();
+        await nextTick();
 
-        expect(wrapper.get('[role="dialog"]').text()).toContain('Share, then Add to Home Screen');
-        await wrapper.get('[role="dialog"] button').trigger('click');
+        const dialog = inPage('[role="dialog"]');
+        expect(dialog.textContent?.replace(/\s+/g, ' ')).toContain('Tap Share, then Add to Home Screen');
+        expect(dialog.querySelector('svg[aria-label="Share"]')).not.toBeNull();
+        const notNow = inPage('[role="dialog"] button[data-cancel]');
+        expect(notNow.textContent?.trim()).toBe('Not now');
+        notNow.click();
 
         expect(dismissInstall).toHaveBeenCalledTimes(1);
     });
 
-    it('PWA-003 a tap outside the sheet dismisses it too', async () => {
+    it('PWA-003 the iPhone sheet is the shared BottomSheet, so a tap outside or Escape dismisses it', async () => {
         state.sheet.value = true;
-        const wrapper = mount(PwaOverlay);
+        overlay();
+        await nextTick();
 
-        wrapper.get('[role="dialog"]').element.parentElement!.dispatchEvent(new Event('click'));
+        inPage('[data-scrim]').click();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
 
-        expect(dismissInstall).toHaveBeenCalledTimes(1);
+        expect(dismissInstall).toHaveBeenCalledTimes(2);
     });
 });
