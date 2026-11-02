@@ -139,7 +139,9 @@ it('EX-002 shows each user only their own sets of a shared exercise', function (
     $mine = historyOf($this, $user, $bench)->assertOk()->json('data.sessions');
     $theirs = historyOf($this, $stranger, $bench)->assertOk()->json('data.sessions');
 
+    // The stranger (lb) is made first, so the viewer's kg labels prove the unit is read from the viewer's profile.
     expect($mine)->toHaveCount(2)
+        ->and($mine[0]['sets'][0]['label'])->toEndWith(' kg × 8')
         ->and($theirs)->toHaveCount(1)
         ->and($theirs[0]['sets'][0]['label'])->toBe('220.5 lb × 10');
 });
