@@ -20,6 +20,9 @@ final class TodaySeed
 
     public const DINNER = '0199a3f0-0000-7000-8000-000000000003';
 
+    /** A meal a client added offline, under its ULID in capitals. */
+    public const CLIENT_MEAL = '01JBX0M1N2P3Q4R5S6T7V8W9X3';
+
     /** @param  array<string, mixed>  $attributes */
     public static function day(User $user, string $date = '2026-09-23', array $attributes = []): DayTarget
     {

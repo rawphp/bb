@@ -35,11 +35,14 @@ it('DAY-002 answers 404 for another user\'s meal', function (string $name, strin
     'meal_redistribute' => ['meal_redistribute', 'meal_ids'],
 ]);
 
-it('DAY-002 answers 422 naming a meal id that is neither a ULID nor a UUID', function () {
-    redistributeOver(User::factory()->create(), 'meal_redistribute', ['date' => '2026-09-23', 'meal_ids' => ['abc']])
+it('DAY-002 answers 422 naming the bad field', function (string $name, array $input, string $field) {
+    redistributeOver(User::factory()->create(), $name, $input)
         ->assertStatus(422)
-        ->assertJsonPath('error.violations.0.field', 'meal_ids.0');
-});
+        ->assertJsonPath('error.violations.0.field', $field);
+})->with([
+    'meal_redistribute with a meal id that is neither a ULID nor a UUID' => ['meal_redistribute', ['date' => '2026-09-23', 'meal_ids' => ['abc']], 'meal_ids.0'],
+    'day_redistribute_show with a date that is not one' => ['day_redistribute_show', ['date' => 'Wednesday'], 'date'],
+]);
 
 it('DAY-002 DAY-021 SAFE-018 day_redistribute_show matches its screen fixture', function () {
     $user = User::factory()->create();
@@ -51,7 +54,26 @@ it('DAY-002 DAY-021 SAFE-018 day_redistribute_show matches its screen fixture', 
     expect($response->json('data.rows.*.selected'))->toBe([true, false, true])
         ->and($response->json('data.rows.*.name'))->toBe(['Breakfast', 'Lunch', 'Dinner'])
         ->and($response->json('data.rows.1.kcal_text'))->toBe('780 kcal')
+        ->and($response->json('data.note'))->toBe('Small misses are fine. Within 10% on calories and protein each day is a success.')
         ->and($response->json('data.can_confirm'))->toBeTrue();
+});
+
+it('DAY-002 day_redistribute_show lists nothing on a day with no targets', function () {
+    redistributeOver(User::factory()->create(), 'day_redistribute_show', ['date' => '2026-09-23'])
+        ->assertOk()
+        ->assertJsonPath('data.rows', [])
+        ->assertJsonPath('data.can_confirm', false);
+});
+
+it('DAY-002 one meal re-targeted says which, and a meal id in capitals finds its meal', function () {
+    $user = User::factory()->create();
+    TodaySeed::day($user, '2026-09-23', ['meals' => [
+        ['id' => strtolower(TodaySeed::CLIENT_MEAL), 'name' => 'Dinner', 'time' => '19:00', 'kcal' => 900, 'protein_g' => 60, 'fat_g' => 25, 'carbs_g' => 100],
+    ]]);
+
+    redistributeOver($user, 'meal_redistribute', ['date' => '2026-09-23', 'meal_ids' => [TodaySeed::CLIENT_MEAL]])
+        ->assertOk()
+        ->assertJsonPath('data.toast', 'Dinner re-targeted');
 });
 
 it('DAY-002 CAP-013 meal_redistribute saves, says what changed, and its undo puts the day back', function () {

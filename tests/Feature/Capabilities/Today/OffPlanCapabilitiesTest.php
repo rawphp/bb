@@ -31,16 +31,31 @@ it('DAY-001 refuses off_plan_log and off_plan_delete when signed out', function 
 it('DAY-001 CAP-019 answers 404 for another user\'s entry, logged again or deleted', function (string $name) {
     $theirs = OffPlanEntry::factory()->for(User::factory()->create())->create();
 
-    offPlanOver(User::factory()->create(), $name, $name === 'off_plan_log' ? offPlanLog(['id' => $theirs->id]) : ['id' => $theirs->id])
+    offPlanOver(User::factory()->create(), $name, $name === 'off_plan_log' ? offPlanLog(['id' => $theirs->id, 'kcal' => 999]) : ['id' => $theirs->id])
         ->assertNotFound();
 
-    expect($theirs->fresh()->kcal)->toBe(350.0);
+    expect($theirs->fresh()?->kcal)->toBe(350.0);
 })->with(['off_plan_log', 'off_plan_delete']);
 
-it('DAY-001 answers 422 naming kcal when it is negative', function () {
-    offPlanOver(User::factory()->create(), 'off_plan_log', offPlanLog(['kcal' => -5]))
+it('DAY-001 answers 422 naming the bad field', function (string $name, array $input, string $field) {
+    offPlanOver(User::factory()->create(), $name, $input)
         ->assertStatus(422)
-        ->assertJsonPath('error.violations.0.field', 'kcal');
+        ->assertJsonPath('error.violations.0.field', $field);
+})->with([
+    'off_plan_log with negative kcal' => fn () => ['off_plan_log', offPlanLog(['kcal' => -5]), 'kcal'],
+    'off_plan_delete with no id' => ['off_plan_delete', [], 'id'],
+]);
+
+it('DAY-001 an entry edited onto another day changes both days\' reads', function () {
+    $user = User::factory()->create();
+    $entry = OffPlanEntry::factory()->for($user)->create(['date' => '2026-09-22']);
+
+    offPlanOver($user, 'off_plan_log', offPlanLog(['id' => $entry->id]))
+        ->assertOk()
+        ->assertJsonPath('data.invalidates', [
+            'today_show{"date":"2026-09-22"}', 'day_redistribute_show{"date":"2026-09-22"}',
+            'today_show{"date":"2026-09-23"}', 'day_redistribute_show{"date":"2026-09-23"}',
+        ]);
 });
 
 it('DAY-001 logs an entry and invalidates that day\'s Today', function () {

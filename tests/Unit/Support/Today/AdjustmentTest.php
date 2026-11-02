@@ -12,7 +12,7 @@ use App\Support\Today\DayPlan;
 // The plan week runs Monday 21 to Sunday 27 September; today is Wednesday 23rd. Each day is 2,400 kcal: 170 g
 // protein, 70 g fat, 272.5 g carbs over Breakfast, Lunch and Dinner.
 
-function adjustDay(string $date, array $eaten = []): DayPlan
+function adjustDay(string $date, array $eaten = [], float $dinnerCarbs = 102.5, ?MealTarget $target = null): DayPlan
 {
     $meal = fn (string $id, string $name, int $hour, float $carbs) => new DayMeal(
         "{$date}-{$id}", $name, ClockTime::at($hour), new MealTarget(4 * 55 + 9 * 23 + 4 * $carbs, 55, 23, $carbs),
@@ -22,8 +22,8 @@ function adjustDay(string $date, array $eaten = []): DayPlan
     return new DayPlan(
         new DateTimeImmutable($date, new DateTimeZone('UTC')),
         DayType::Moderate,
-        new MealTarget(2400, 170, 70, 272.5),
-        [$meal('b', 'Breakfast', 7, 80), $meal('l', 'Lunch', 12, 90), $meal('d', 'Dinner', 19, 102.5)],
+        $target ?? new MealTarget(2400, 170, 70, 272.5),
+        [$meal('b', 'Breakfast', 7, 80), $meal('l', 'Lunch', 12, 90), $meal('d', 'Dinner', 19, $dinnerCarbs)],
     );
 }
 
@@ -114,4 +114,28 @@ it('NUT-022 a day cannot leave the band around the week\'s daily average', funct
 it('DAY-020 a move between days needs another day of the week', function () {
     expect(adjusting('days', 100, ['other' => '2026-09-23'])->missing)->toBe('Choose another day of this plan week.')
         ->and(adjusting('days', 100, ['other' => '2026-10-01'])->missing)->toBe('Choose another day of this plan week.');
+});
+
+it('SAFE-009 SAFE-010 NUT-021 a move between days that takes a day under its carb minimum is refused in plain words', function () {
+    // Wednesday eats its calories as fat: 2,110 kcal with 20 g of carbs, inside the band, 5 g a meal short after 40 kcal.
+    $week = adjustWeek();
+    $week[2] = adjustDay('2026-09-23', target: new MealTarget(170 * 4 + 150 * 9 + 20 * 4, 170, 150, 20));
+    $outcome = Adjustment::outcome($week[2], $week, 'days', 40, null, null, '2026-09-26', 'give', new DateTimeImmutable('2026-09-23', new DateTimeZone('UTC')), 80.0);
+
+    expect($outcome->refusal)->toBe('That would take Wednesday under its fat or carb minimum.');
+});
+
+it('SAFE-010 NUT-021 a move between days that leaves the one open meal under 5 g of carbs is refused', function () {
+    $week = adjustWeek();
+    $week[2] = adjustDay('2026-09-23', eaten: ['b', 'l'], dinnerCarbs: 20);
+    $outcome = Adjustment::outcome($week[2], $week, 'days', 100, null, null, '2026-09-26', 'give', new DateTimeImmutable('2026-09-23', new DateTimeZone('UTC')), 80.0);
+
+    expect($outcome->refusal)->toBe('Dinner would keep less than 5 g of carbs.');
+});
+
+it('DAY-020 a meal id sent in capitals finds the meal stored in lower case', function () {
+    $week = adjustWeek();
+    $outcome = Adjustment::outcome($week[2], $week, 'meals', 100, '2026-09-23-L', '2026-09-23-D', null, 'give', new DateTimeImmutable('2026-09-23', new DateTimeZone('UTC')), 80.0);
+
+    expect($outcome->isPlan())->toBeTrue();
 });

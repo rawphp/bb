@@ -1,6 +1,5 @@
 <?php
 
-use App\Domain\DayBalance\DayBalance;
 use App\Domain\Model\DayType;
 use App\Domain\Model\MealTarget;
 use App\Domain\Placement\ClockTime;
@@ -105,8 +104,4 @@ it('SAFE-018 warns about a meal left under 5 g of carbs, but not about one alrea
 
     expect(Redistribution::warnings($day))->toBe([])
         ->and(Redistribution::warnings($day, ['dinner' => new MealTarget(300, 40, 10, 2)]))->toBe(['Dinner has under 5 g carbs. Add carbs to this meal.']);
-});
-
-it('DAY-021 the sheets say small misses are fine', function () {
-    expect(DayBalance::SMALL_MISSES_NOTE)->toBe('Small misses are fine. Within 10% on calories and protein each day is a success.');
 });

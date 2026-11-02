@@ -50,11 +50,14 @@ it('DAY-020 another user\'s day is not this user\'s: it has no targets to adjust
         ->assertJsonPath('error.message', 'This day has no targets to adjust yet.');
 });
 
-it('DAY-020 answers 422 naming other_date when a move between days has none', function () {
-    adjustOver(adjustUser(), 'day_adjust', ['date' => '2026-09-23', 'mode' => 'days', 'kcal' => 100])
+it('DAY-020 answers 422 naming the bad field', function (string $name, array $input, string $field) {
+    adjustOver(adjustUser(), $name, $input)
         ->assertStatus(422)
-        ->assertJsonPath('error.violations.0.field', 'other_date');
-});
+        ->assertJsonPath('error.violations.0.field', $field);
+})->with([
+    'day_adjust with no other_date between days' => ['day_adjust', ['date' => '2026-09-23', 'mode' => 'days', 'kcal' => 100], 'other_date'],
+    'day_adjust_show with a date that is not one' => ['day_adjust_show', ['date' => 'Wednesday'], 'date'],
+]);
 
 it('DAY-020 DAY-021 NUT-021 day_adjust_show matches its screen fixture', function () {
     $response = adjustOver(adjustUser(), 'day_adjust_show', ['date' => '2026-09-23', 'mode' => 'days', 'kcal' => 200, 'other_date' => '2026-09-26'])
@@ -67,6 +70,8 @@ it('DAY-020 DAY-021 NUT-021 day_adjust_show matches its screen fixture', functio
     ])
         ->and($response->json('data.day.kcal_text'))->toBe('2,400 kcal')
         ->and($response->json('data.other_day.kcal_text'))->toBe('2,800 kcal')
+        ->and($response->json('data.projected_meals.*.kcal_text'))->toBe(['638 kcal', '724 kcal', '1,039 kcal'])
+        ->and($response->json('data.note'))->toBe('Small misses are fine. Within 10% on calories and protein each day is a success.')
         ->and($response->json('data.can_save'))->toBeTrue();
 });
 
@@ -85,10 +90,29 @@ it('NUT-021 day_adjust saves both days and says which reads changed', function (
         ->assertJsonPath('data.invalidates', [
             'today_show{"date":"2026-09-23"}', 'today_show{}', 'day_adjust_show{"date":"2026-09-23"}', 'day_redistribute_show{"date":"2026-09-23"}',
             'today_show{"date":"2026-09-26"}', 'day_adjust_show{"date":"2026-09-26"}', 'day_redistribute_show{"date":"2026-09-26"}',
+            ...array_map(fn (int $day) => "week_show{\"date\":\"2026-09-{$day}\"}", range(21, 27)),
+            'week_show{}',
         ]);
 
-    $kcal = $user->hasMany(DayTarget::class)->orderBy('date')->pluck('kcal')->all();
-    expect($kcal)->toBe([2600.0, 2400.0, 2800.0]);
+    $days = DayTarget::query()->where('user_id', $user->id)->orderBy('date')->get();
+    expect($days->pluck('kcal')->all())->toBe([2600.0, 2400.0, 2800.0])
+        ->and($days->pluck('carbs_g')->all())->toBe([320.0, 270.0, 370.0])
+        ->and(array_sum(array_column($days[1]->meals, 'carbs_g')))->toEqualWithDelta(270, 0.001)
+        ->and(array_sum(array_column($days[2]->meals, 'carbs_g')))->toEqualWithDelta(370, 0.001)
+        ->and(array_column($days[1]->meals, 'protein_g'))->toBe([30, 50, 90]);
+});
+
+it('DAY-020 day_adjust between meals moves carbs from one meal to the other and keeps the day', function () {
+    $user = adjustUser();
+
+    adjustOver($user, 'day_adjust', ['date' => '2026-09-23', 'mode' => 'meals', 'kcal' => 100, 'from_meal_id' => TodaySeed::LUNCH, 'to_meal_id' => TodaySeed::DINNER])
+        ->assertOk()
+        ->assertJsonPath('data.toast', 'Moved 100 kcal');
+
+    $day = DayTarget::query()->whereDate('date', '2026-09-23')->sole();
+    expect([$day->kcal, $day->carbs_g])->toBe([2600.0, 320.0])
+        ->and(array_column($day->meals, 'carbs_g'))->toEqual([100, 65, 155])
+        ->and(array_column($day->meals, 'kcal'))->toEqual([700, 680, 1220]);
 });
 
 it('NUT-024 day_adjust refuses a move to a finished day in plain words and saves nothing', function () {
