@@ -12,7 +12,7 @@ final class ScanAdjustInput extends CapabilityData
         /** @var list<ScanAdjustRow> */
         #[Field(items: ScanAdjustRow::class)]
         public readonly array $rows,
-        #[Field(description: 'The portion the rows\' grams are at')]
+        #[Field(minimum: 0.25, maximum: 4, description: 'The portion the rows\' grams are at')]
         public readonly float $from_portion,
         #[Field(minimum: 0.25, maximum: 4)]
         public readonly float $portion,

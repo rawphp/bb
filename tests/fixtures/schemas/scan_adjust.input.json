@@ -31,7 +31,9 @@
         },
         "from_portion": {
             "type": "number",
-            "description": "The portion the rows' grams are at"
+            "description": "The portion the rows' grams are at",
+            "minimum": 0.25,
+            "maximum": 4
         },
         "portion": {
             "type": "number",

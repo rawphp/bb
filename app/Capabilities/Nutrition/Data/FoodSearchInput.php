@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
+use App\Domain\MealFit\CuratedGroup;
 use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
@@ -34,8 +35,8 @@ final class FoodSearchInput extends CapabilityData
         return [
             'collection' => ['nullable', Rule::in(['recipes', 'saved_meals'])],
             'source' => ['nullable', Rule::in(['recents', 'favorites', 'curated', 'custom', 'restaurants', 'packaged'])],
-            'group' => ['nullable', Rule::in(['protein_recommended', 'protein_sparingly', 'protein_before_bed', 'veggies', 'carbs_recommended', 'carbs_sparingly', 'fat_recommended', 'fat_sparingly'])],
-            'expanded_groups.*' => [Rule::in(['protein_recommended', 'protein_sparingly', 'protein_before_bed', 'veggies', 'carbs_recommended', 'carbs_sparingly', 'fat_recommended', 'fat_sparingly'])],
+            'group' => ['nullable', Rule::enum(CuratedGroup::class)],
+            'expanded_groups.*' => [Rule::enum(CuratedGroup::class)],
         ];
     }
 }

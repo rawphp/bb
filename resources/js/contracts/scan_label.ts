@@ -6,7 +6,7 @@ export interface ScanLabelInput {
    */
   image: string;
   /**
-   * The barcode that found nothing, carried into the draft (FOOD-041)
+   * The barcode that found nothing, carried into the draft (FOOD-041): 1 to 14 digits
    */
   barcode?: string | null;
 }

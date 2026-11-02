@@ -24,6 +24,8 @@ final class SavedMealSaveInput extends CapabilityData
     {
         return [
             'id' => ['ulid'],
+            'meal_id' => ['required_without:foods', 'prohibits:foods'],
+            'foods' => ['required_without:meal_id'],
         ];
     }
 }

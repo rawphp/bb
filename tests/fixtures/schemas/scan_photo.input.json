@@ -5,7 +5,8 @@
     "properties": {
         "image": {
             "type": "string",
-            "description": "A JPEG as a base64 data URL, downscaled on the device"
+            "description": "A JPEG as a base64 data URL, downscaled on the device",
+            "maxLength": 2000000
         }
     },
     "required": [

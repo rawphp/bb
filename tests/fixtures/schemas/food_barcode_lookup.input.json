@@ -5,7 +5,9 @@
     "properties": {
         "barcode": {
             "type": "string",
-            "description": "1 to 14 digits"
+            "description": "1 to 14 digits",
+            "minLength": 1,
+            "maxLength": 14
         }
     },
     "required": [

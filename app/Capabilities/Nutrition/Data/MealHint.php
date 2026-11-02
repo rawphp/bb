@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
+use App\Domain\MealFit\CuratedGroup;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -10,7 +11,7 @@ final class MealHint extends CapabilityData
 {
     public function __construct(
         public readonly string $text,
-        #[Field(enum: ['protein_recommended', 'protein_sparingly', 'protein_before_bed', 'veggies', 'carbs_recommended', 'carbs_sparingly', 'fat_recommended', 'fat_sparingly'])]
+        #[Field(enum: [CuratedGroup::ProteinRecommended->value, CuratedGroup::ProteinSparingly->value, CuratedGroup::ProteinBeforeBed->value, CuratedGroup::Veggies->value, CuratedGroup::CarbsRecommended->value, CuratedGroup::CarbsSparingly->value, CuratedGroup::FatRecommended->value, CuratedGroup::FatSparingly->value])]
         public readonly string $group,
     ) {}
 }

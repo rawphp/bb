@@ -5,14 +5,17 @@
     "properties": {
         "image": {
             "type": "string",
-            "description": "A JPEG as a base64 data URL, downscaled on the device"
+            "description": "A JPEG as a base64 data URL, downscaled on the device",
+            "maxLength": 2000000
         },
         "barcode": {
             "type": [
                 "string",
                 "null"
             ],
-            "description": "The barcode that found nothing, carried into the draft (FOOD-041)"
+            "description": "The barcode that found nothing, carried into the draft (FOOD-041): 1 to 14 digits",
+            "minLength": 1,
+            "maxLength": 14
         }
     },
     "required": [

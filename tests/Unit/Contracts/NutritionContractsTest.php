@@ -1,6 +1,8 @@
 <?php
 
 use App\Capabilities\Nutrition\Data;
+use App\Domain\MealFit\CuratedGroup;
+use App\Domain\MealFit\Weighing;
 use Rawphp\Capabilities\Schema\JsonSchemaValidator;
 use Rawphp\Capabilities\Support\SchemaSnapshot;
 
@@ -100,4 +102,19 @@ it('maps every nutrition capability to exactly one owning API issue', function (
     foreach ($owners as $name => $issue) {
         expect($issue)->toBeInt("{$name} has no issue number");
     }
+});
+
+// A schema enum or a "One of:" description cannot be built from an enum's cases,
+// so each copy is checked against the domain enum it names.
+it('FOOD-003 and FOOD-006 list the curated groups and weighings of their domain enums', function () {
+    $groups = array_column(CuratedGroup::cases(), 'value');
+    $weighings = array_column(Weighing::cases(), 'value');
+    $oneOf = fn (array $values) => 'One of: '.implode(', ', $values).'; or null';
+    $property = fn (string $class, string $name) => $class::jsonSchema()['properties'][$name];
+
+    expect($property(Data\MealHint::class, 'group')['enum'])->toBe($groups)
+        ->and($property(Data\FoodSection::class, 'group')['description'])->toBe($oneOf($groups))
+        ->and($property(Data\FoodSearchInput::class, 'group')['description'])->toBe($oneOf($groups))
+        ->and($property(Data\MealFoodAddEntry::class, 'weighing')['enum'])->toBe($weighings)
+        ->and($property(Data\MealEntry::class, 'weighing')['description'])->toBe($oneOf($weighings));
 });

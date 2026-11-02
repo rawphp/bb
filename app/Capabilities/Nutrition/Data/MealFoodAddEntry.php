@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
+use App\Domain\MealFit\Weighing;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -13,8 +14,8 @@ final class MealFoodAddEntry extends CapabilityData
         public readonly string $id,
         public readonly ?string $food_id = null,
         public readonly ?string $recipe_id = null,
-        #[Field(enum: ['raw', 'cooked'])]
-        public readonly string $weighing = 'raw',
+        #[Field(enum: [Weighing::Raw->value, Weighing::Cooked->value])]
+        public readonly string $weighing = Weighing::Raw->value,
         #[Field(minimum: 0.1)]
         public readonly ?float $grams = null,
     ) {}

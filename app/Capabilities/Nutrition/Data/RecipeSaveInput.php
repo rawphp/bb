@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -29,6 +30,7 @@ final class RecipeSaveInput extends CapabilityData
     {
         return [
             'id' => ['ulid'],
+            'steps.*' => ['filled', Rule::string()->max(1000)],
         ];
     }
 }

@@ -28,12 +28,12 @@ describe('npm run contracts', () => {
         const dir = mkdtempSync(join(tmpdir(), 'contracts-'));
         writeFileSync(
             join(dir, 'recipe_generate.input.json'),
-            JSON.stringify({ type: 'object', additionalProperties: false, properties: { ingredients: { type: 'array', items: { type: 'string' }, maxItems: 20 } }, required: ['ingredients'] }),
+            JSON.stringify({ type: 'object', additionalProperties: false, properties: { ingredients: { type: 'array', maxItems: 20 } }, required: ['ingredients'] }),
         );
 
         const source = (await generate(dir)).get('recipe_generate.ts')!;
 
-        expect(source).toMatch(/ingredients: string\[\];/);
+        expect(source).toMatch(/ingredients: unknown\[\];/);
     });
 
     it('OFF-003 versions each output schema, so the read cache can tell a changed output shape', async () => {

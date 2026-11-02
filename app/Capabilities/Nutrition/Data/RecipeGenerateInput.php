@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -27,4 +28,11 @@ final class RecipeGenerateInput extends CapabilityData
         #[Field(maxLength: 500)]
         public readonly ?string $preferences = null,
     ) {}
+
+    public static function rules(): array
+    {
+        return [
+            'ingredients.*' => ['filled', Rule::string()->max(100)],
+        ];
+    }
 }

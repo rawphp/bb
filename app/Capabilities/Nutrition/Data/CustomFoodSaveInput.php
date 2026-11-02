@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -29,7 +30,7 @@ final class CustomFoodSaveInput extends CapabilityData
         public readonly float $fiber,
         #[Field(maxLength: 255)]
         public readonly ?string $brand = null,
-        #[Field(description: '1 to 14 digits')]
+        #[Field(minLength: 1, maxLength: 14, description: '1 to 14 digits')]
         public readonly ?string $barcode = null,
     ) {}
 
@@ -37,6 +38,7 @@ final class CustomFoodSaveInput extends CapabilityData
     {
         return [
             'id' => ['ulid'],
+            'barcode' => ['nullable', Rule::regex('/^\d{1,14}$/')],
         ];
     }
 }
