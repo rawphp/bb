@@ -1,18 +1,18 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, writeNow } from '@/app/call';
 import type { FoodSearchInput, FoodSearchOutput } from '@/contracts/food_search';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import PantryView from './PantryView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 const back = vi.fn();
 // The route on screen; a test changes it to leave the Pantry (another tab, a pushed screen).
 const currentRoute = { value: { fullPath: '/nutrition/pantry' } };
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back, currentRoute }) }));
 
 const readMock = vi.mocked(read);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const search = screenFixture<FoodSearchOutput>('food_search');
 const curated = screenFixture<FoodSearchOutput>('food_search.curated');
 const didYouMean = screenFixture<FoodSearchOutput>('food_search.did-you-mean');

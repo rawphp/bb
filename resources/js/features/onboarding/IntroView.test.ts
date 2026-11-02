@@ -2,10 +2,10 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
-import { read, write } from '@/app/call';
+import { read, writeNow } from '@/app/call';
 import IntroView from './IntroView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), writeNow: vi.fn() }));
 
 async function intro() {
     const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:any(.*)*', component: { template: '<p />' } }] });
@@ -25,7 +25,7 @@ describe('IntroView', () => {
         expect(wrapper.text()).toContain('Your sets and loads change to match your feedback.');
         expect(wrapper.text()).toContain('One decision a week.');
         expect(read).not.toHaveBeenCalled();
-        expect(write).not.toHaveBeenCalled();
+        expect(writeNow).not.toHaveBeenCalled();
         wrapper.unmount();
     });
 

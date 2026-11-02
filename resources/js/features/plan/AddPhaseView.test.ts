@@ -1,10 +1,10 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import AddPhaseView from './AddPhaseView.vue';
 import { plan, sent } from './planTesting';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 const replace = vi.fn();
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ replace }) }));
 
@@ -26,7 +26,7 @@ describe('AddPhaseView', () => {
     beforeEach(() => {
         vi.mocked(read).mockReset().mockResolvedValue(current);
         vi.mocked(readFresh).mockReset().mockResolvedValue(current);
-        vi.mocked(write).mockReset().mockResolvedValue({});
+        vi.mocked(writeNow).mockReset().mockResolvedValue({});
         replace.mockReset();
     });
 
@@ -134,7 +134,7 @@ describe('AddPhaseView', () => {
     });
 
     it('CAP-019 sends the same phase_id again after phase_add got no answer', async () => {
-        vi.mocked(write).mockRejectedValueOnce(new CapabilityError('phase_add', 0, { reason: 'network' }));
+        vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('phase_add', 0, { reason: 'network' }));
         const wrapper = show();
         await add(wrapper);
         await add(wrapper);
@@ -197,7 +197,7 @@ describe('AddPhaseView', () => {
     });
 
     it('CAP-012 shows the server\'s words when the phase is refused, and stays', async () => {
-        vi.mocked(write).mockRejectedValueOnce(new CapabilityError('phase_add', 422, { error: { message: 'The plan already has a next phase.' } }));
+        vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('phase_add', 422, { error: { message: 'The plan already has a next phase.' } }));
         const wrapper = show();
         await add(wrapper);
 

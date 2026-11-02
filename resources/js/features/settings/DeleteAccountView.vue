@@ -2,8 +2,9 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { clearReads } from '@/app/cache';
-import { CapabilityError, SESSION_GONE, write } from '@/app/call';
+import { CapabilityError, SESSION_GONE, writeNow } from '@/app/call';
 import { failureMessage } from '@/app/errors';
+import { entries, removeEntries } from '@/app/outbox';
 import { useRetryKey } from '@/app/retryKey';
 import type { AccountDeleteInput } from '@/contracts/account_delete';
 import { toneClasses } from '@/design/tones';
@@ -23,7 +24,7 @@ async function remove(): Promise<void> {
     busy.value = true;
     error.value = null;
     try {
-        await write('account_delete', { confirmation: confirmation.value } satisfies AccountDeleteInput, { idempotencyKey: retry.key.value });
+        await writeNow('account_delete', { confirmation: confirmation.value } satisfies AccountDeleteInput, { idempotencyKey: retry.key.value });
         retry.settle();
         await leave();
     } catch (failed) {
@@ -63,11 +64,14 @@ async function failedDelete(failed: unknown, afterLostAnswer: boolean): Promise<
     error.value = failureMessage(failed, 'Your account could not be deleted. Try again.');
 }
 
-// The account is gone, so nothing of it may stay on this device. If the clear fails it
+// The account is gone, so nothing of it may stay on this device: no cached read and no outbox entry. If the clear fails it
 // still leaves: the session is gone too, so the next read answers 401 and call.ts clears
 // every cached read then (forget()).
 async function leave(): Promise<void> {
     await clearReads().catch(() => undefined);
+    // What is left in the outbox (changes that couldn't sync) has no account to go to. It
+    // leaves the screen at once; the stored copies follow.
+    void removeEntries(entries.value.map((entry) => entry.seq));
     await router.replace('/');
 }
 </script>

@@ -11,7 +11,7 @@ vi.mock('./updates', () => ({
 }));
 vi.mock('./App.vue', () => ({ default: { render: () => null } }));
 vi.mock('./router', () => ({ makeRouter: () => ({ install: () => undefined }) }));
-vi.mock('./call', () => ({ keepWarm: vi.fn() }));
+vi.mock('./call', () => ({ keepSynced: vi.fn() }));
 vi.mock('../design/appearance', () => ({ applyStoredAppearance: vi.fn() }));
 
 async function boot() {
