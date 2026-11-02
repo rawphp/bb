@@ -267,6 +267,93 @@ describe('EditScheduleSheet', () => {
         expect(sent()[0]).toEqual(['training_weekdays_change', { weekdays: [1, 3, 5, 6], fewer_days: null }]);
     });
 
+    it('SCH-037 keeps this day\'s and all future days\' edits apart, and saves the one shown', async () => {
+        const future = { ...schedule.all_future_days, window_start: '07:00', window_end: '22:00', meal_count: 3, busy_periods: [] };
+        const wrapper = sheet(EditScheduleSheet, { payload: { ...day, schedule: { ...schedule, all_future_days: future } } });
+
+        await wrapper.findAll('input[type="time"]')[1]!.setValue('21:00');
+        await allFuture(wrapper);
+        expect(wrapper.findAll<HTMLInputElement>('input[type="time"]').map((input) => input.element.value)).toEqual(['07:00', '22:00', '17:30']);
+        expect(wrapper.text()).toContain('Meals a day: 3');
+        await save(wrapper);
+
+        expect(sent()).toEqual([['schedule_update', { date: '2026-09-23', apply_to: 'all_future_days', window_start: '07:00', window_end: '22:00', meal_count: 3, busy_periods: [], training_start: '17:30' }]]);
+    });
+
+    it('SCH-039 asks for a start time when a rest weekday becomes a training day', async () => {
+        const rest = { ...schedule.all_future_days, training_start: null };
+        const weekdays = schedule.training_weekdays.map((weekday) => ({ ...weekday, selected: weekday.iso === 1 }));
+        const wrapper = sheet(EditScheduleSheet, { payload: { ...day, schedule: { ...schedule, all_future_days: rest, training_weekdays: weekdays } } });
+
+        await allFuture(wrapper);
+        await wrapper.find('[role="switch"]').trigger('click');
+        expect(wrapper.findAll<HTMLInputElement>('input[type="time"]')[2]!.element.value).toBe('');
+        expect(wrapper.find('[data-save]').attributes('disabled')).toBeDefined();
+
+        await wrapper.findAll('input[type="time"]')[2]!.setValue('06:30');
+        await save(wrapper);
+
+        expect(sent()).toEqual([
+            ['training_weekdays_change', { weekdays: [1, 3], fewer_days: null }],
+            ['schedule_update', { ...scheduleInput, apply_to: 'all_future_days', training_start: '06:30' }],
+        ]);
+    });
+
+    it('SCH-039 says the sheet saved when it closes after the weekdays changed but the schedule did not', async () => {
+        writeMock.mockResolvedValueOnce({}).mockRejectedValueOnce(new CapabilityError('schedule_update', 422, refusal('The eating window is too short.', 'window_end')));
+        const wrapper = sheet(EditScheduleSheet, { payload: day });
+
+        await allFuture(wrapper);
+        await wrapper.find('[role="switch"]').trigger('click');
+        await save(wrapper);
+        await wrapper.find('[data-cancel]').trigger('click');
+
+        expect(wrapper.emitted('close')).toEqual([[true]]);
+    });
+
+    it('SCH-039 keeps the chosen weekday change when the schedule save after it fails', async () => {
+        writeMock
+            .mockRejectedValueOnce(fewerDays())
+            .mockResolvedValueOnce({})
+            .mockRejectedValueOnce(new CapabilityError('schedule_update', 422, refusal('The eating window is too short.', 'window_end')));
+        const wrapper = sheet(EditScheduleSheet, { payload: day });
+
+        await allFuture(wrapper);
+        await wrapper.find('[role="switch"]').trigger('click');
+        await save(wrapper);
+        await wrapper.findAll('[role="radio"]').find((radio) => radio.text().includes('Keep all sessions'))!.trigger('click');
+        await flushPromises();
+        await save(wrapper);
+
+        expect(sent().map(([name]) => name)).toEqual(['training_weekdays_change', 'training_weekdays_change', 'schedule_update', 'schedule_update']);
+    });
+
+    it('CAP-012 shows the schedule\'s own refusal after an earlier training-days refusal', async () => {
+        writeMock
+            .mockRejectedValueOnce(new CapabilityError('training_weekdays_change', 422, refusal('Pick at least one training day.', 'weekdays')))
+            .mockRejectedValueOnce(new CapabilityError('schedule_update', 422, refusal('The eating window is too short.', 'window_end')));
+        const wrapper = sheet(EditScheduleSheet, { payload: day });
+
+        await allFuture(wrapper);
+        await wrapper.find('[role="switch"]').trigger('click');
+        await save(wrapper);
+        await wrapper.find('[role="switch"]').trigger('click');
+        await save(wrapper);
+
+        expect(wrapper.find('[role="alert"]').text()).toBe('The eating window is too short.');
+    });
+
+    it('SCH-039 shows what the server says the change does to the mesocycle', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('training_weekdays_change', 422, refusal('Your mesocycle runs 6 weeks instead of 4 if you keep all sessions.', 'fewer_days')));
+        const wrapper = sheet(EditScheduleSheet, { payload: day });
+
+        await allFuture(wrapper);
+        await wrapper.find('[role="switch"]').trigger('click');
+        await save(wrapper);
+
+        expect(wrapper.text()).toContain('Your mesocycle runs 6 weeks instead of 4 if you keep all sessions.');
+    });
+
     it('NUT-024 offers only all future days on a past day', () => {
         const past: TodayShowOutput = { ...day, schedule: { ...schedule, apply_to: [{ value: 'all_future_days', label: 'All future days' }] } };
         const wrapper = sheet(EditScheduleSheet, { payload: past });

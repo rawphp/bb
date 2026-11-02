@@ -25,6 +25,12 @@ describe('WeekdayChangeSheet', () => {
         expect(wrapper.find('[data-save]').exists()).toBe(false);
     });
 
+    it('SCH-039 shows the server\'s words on what the change does', async () => {
+        const wrapper = sheet(WeekdayChangeSheet, { question: 'Chest and back fall below the minimum on 2 days.' });
+
+        expect(wrapper.text()).toContain('Chest and back fall below the minimum on 2 days.');
+    });
+
     it('SCH-039 answers at once on a tap, and nothing stays picked', async () => {
         const wrapper = sheet(WeekdayChangeSheet);
 
@@ -60,6 +66,7 @@ describe('useWeekdayChange', () => {
 
         expect(await change.change([1, 5])).toBe(false);
         expect(change.asking.value).toEqual([1, 5]);
+        expect(change.question.value).toBe('Choose.');
         expect(change.error.value).toBeNull();
 
         expect(await change.choose('restructure')).toBe(true);
