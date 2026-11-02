@@ -28,6 +28,9 @@ final class SetMesocycleLength
                 ! $calendar->isRunning() => 'This mesocycle is over, so its weeks can\'t change.',
                 $calendar->isInDeloadWeek() => 'The deload week has started, so the weeks can\'t change.',
                 $laterWeeksStored => 'The weeks were rearranged when your training days changed, so their number can\'t change.',
+                $weeks > $range->upper && $range->upper < MesocycleCalendar::MAX_WEEKS && $calendar->nextStart !== null => sprintf(
+                    'The next mesocycle starts on %s, so this one can run at most %d weeks.', $calendar->nextStart->format('j M'), $range->upper,
+                ),
                 default => "This mesocycle is in week {$calendar->currentWeek()}, so it can run {$range->lower} to {$range->upper} weeks.",
             });
         }

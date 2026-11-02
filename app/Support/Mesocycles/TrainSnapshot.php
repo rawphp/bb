@@ -242,6 +242,10 @@ final class TrainSnapshot
             endedOn: $mesocycle->ended_on === null ? null : self::day($mesocycle->ended_on),
             grid: $this->grid() ?? MesocycleCalendar::gridWithoutPlan($start),
             today: $this->today,
+            nextStart: $this->saved()
+                ->map(fn (Mesocycle $m) => self::day($m->start_date))
+                ->filter(fn (DateTimeImmutable $other) => $other > $start)
+                ->min(),
         );
     }
 

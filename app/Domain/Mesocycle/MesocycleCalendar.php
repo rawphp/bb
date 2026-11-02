@@ -13,7 +13,7 @@ use DateTimeImmutable;
  * mesocycle writes both ask it, so a `can_*` flag and the write it offers cannot disagree.
  *
  * Its week n is the plan week n - 1 after the one holding its start (PLAN-008). Days are whole days in the zone of
- * the grid; `$today` is today's start.
+ * the grid; `$today` is today's start. `$nextStart` is the start of the next saved mesocycle, if there is one.
  */
 final readonly class MesocycleCalendar
 {
@@ -26,6 +26,7 @@ final readonly class MesocycleCalendar
         public ?DateTimeImmutable $endedOn,
         public PlanWeekGrid $grid,
         public DateTimeImmutable $today,
+        public ?DateTimeImmutable $nextStart = null,
     ) {}
 
     /** Without a plan, the weeks run 7 days from the mesocycle's start. */
@@ -77,12 +78,21 @@ final readonly class MesocycleCalendar
         return $this->isRunning() && $this->currentWeek() === $this->weeks;
     }
 
-    /** MESO-042: from the week after the current one up to 8 (MESO-004). */
+    /**
+     * MESO-042: from the week after the current one up to 8 (MESO-004), and no further than the plan week before the
+     * next saved mesocycle starts.
+     */
     public function lengthRange(): ClosedRange
     {
         $lower = $this->currentWeek() + 1;
 
-        return new ClosedRange($lower, max($lower, self::MAX_WEEKS));
+        return new ClosedRange($lower, max($lower, min(self::MAX_WEEKS, $this->weeksBeforeNext() ?? self::MAX_WEEKS)));
+    }
+
+    /** MESO-042: the most weeks it can run before the next saved mesocycle starts; null when none is saved after it. */
+    public function weeksBeforeNext(): ?int
+    {
+        return $this->nextStart === null ? null : $this->grid->weekIndexCountingBack($this->nextStart) - $this->startWeek();
     }
 
     /**
