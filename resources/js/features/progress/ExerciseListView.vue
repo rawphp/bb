@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue';
 import type { ProgressShowOutput } from '@/contracts/progress_show';
 import OfflineNotice from '@/design/OfflineNotice.vue';
 import Skeleton from '@/design/Skeleton.vue';
-import { screenRead, type ReadFailure } from './screenRead';
+import { screenRead, type ReadFailure } from '@/app/screenRead';
 
 // Exercises with a logged set, most recent first (ANA-009), from progress_show's list.
 const exercises = ref<ProgressShowOutput['exercises'] | undefined>();

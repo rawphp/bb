@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import type { ExerciseHistoryShowOutput } from '@/contracts/exercise_history_show';
 import ExerciseHistoryContent from './ExerciseHistoryContent.vue';
-import { screenRead, type ReadFailure } from './screenRead';
+import { screenRead, type ReadFailure } from '@/app/screenRead';
 
 // One exercise's history under its name (ANA-009). Reads exercise_history_show for
 // the exercise in the route; given a payload (/dev/screens/exercise_history_show), shows that.

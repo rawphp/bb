@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 import type { ProgressShowOutput } from '@/contracts/progress_show';
 import OfflineNotice from '@/design/OfflineNotice.vue';
 import Skeleton from '@/design/Skeleton.vue';
@@ -16,13 +16,15 @@ import ThisWeekCard from './ThisWeekCard.vue';
 
 // The Progress tab (ANA-001 to ANA-011): the weight chart, this week, the review
 // card, steps and history, as progress_show sends them. Display state only.
-defineProps<{
+const props = defineProps<{
     payload?: ProgressShowOutput;
     error?: string | null;
     /** No cached copy and no network (OFF-003). */
     offline?: boolean;
     /** An outbox entry that affects progress_show is waiting (OFF-008). */
     pending?: boolean;
+    /** The picked scope did not load; the progress shown is still the other scope's. */
+    scopeError?: string | null;
 }>();
 
 const emit = defineEmits<{ scope: [scope: ProgressShowOutput['scopes'][number]['value']] }>();
@@ -47,26 +49,48 @@ const sharing = ref(false);
 const drawing = ref(false);
 const shareError = ref<string | null>(null);
 const shareCard = ref<{ $el: SVGSVGElement } | null>(null);
+// The picture is drawn as soon as there is something to share, so a tap can hand it
+// to navigator.share at once: browsers refuse a share that comes long after the tap.
+const picture = ref<Blob | null>(null);
+let drawn = 0;
 
 function pickScope(scope: ProgressShowOutput['scopes'][number]): void {
     if (!scope.selected) emit('scope', scope.value);
 }
 
 // The card mounts off screen only while it is drawn into the picture (ANA-010, PWA-034).
-async function share(content: NonNullable<ProgressShowOutput['share']>): Promise<void> {
-    if (sharing.value) return;
-    sharing.value = true;
+async function draw(): Promise<Blob> {
+    const ticket = ++drawn;
     drawing.value = true;
-    shareError.value = null;
     try {
         await nextTick();
         const png = await toPng(shareCard.value!.$el);
-        drawing.value = false;
-        await sharePng(png, content);
+        if (ticket === drawn) picture.value = png;
+        return png;
+    } finally {
+        if (ticket === drawn) drawing.value = false;
+    }
+}
+
+watch(
+    () => [props.payload?.share, props.payload?.chart] as const,
+    ([share, chart]) => {
+        picture.value = null;
+        // Not drawn yet is fine: a tap draws it then.
+        if (share && chart) draw().catch(() => undefined);
+    },
+    { immediate: true },
+);
+
+async function share(content: NonNullable<ProgressShowOutput['share']>): Promise<void> {
+    if (sharing.value) return;
+    sharing.value = true;
+    shareError.value = null;
+    try {
+        await sharePng(picture.value ?? (await draw()), content);
     } catch {
         shareError.value = 'The progress picture could not be shared.';
     } finally {
-        drawing.value = false;
         sharing.value = false;
     }
 }
@@ -125,6 +149,7 @@ async function share(content: NonNullable<ProgressShowOutput['share']>): Promise
                         {{ scope.title }}
                     </button>
                 </div>
+                <p v-if="scopeError" role="alert" class="text-sm text-tone-warning">{{ scopeError }}</p>
                 <div :class="{ 'opacity-50': pending }">
                     <ProgressChartView v-if="payload.chart" :chart="payload.chart" />
                     <p v-else class="flex min-h-30 items-center justify-center text-secondary-text">{{ payload.scope_message }}</p>
