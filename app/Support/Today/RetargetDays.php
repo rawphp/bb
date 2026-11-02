@@ -2,6 +2,7 @@
 
 namespace App\Support\Today;
 
+use App\Actions\Notifications\NotifyRetarget;
 use App\Domain\Model\Day;
 use App\Domain\Model\DayType;
 use App\Domain\Model\Meal;
@@ -23,6 +24,7 @@ use App\Models\Profile;
 use App\Models\User;
 use DateTimeImmutable;
 use DomainException;
+use Throwable;
 
 /**
  * A stored day as the re-target rule reads it, and the rule's day written back (SCH-050 to SCH-057). Ported from
@@ -96,9 +98,11 @@ final class RetargetDays
     /**
      * Saves the rule's day onto its stored row: the day's type and totals, and its meals. Stored meals keep their ids,
      * names and order; a new meal (an intra-workout shake) goes last; a meal the rule removed goes with its plan.
+     * NOTIF-006: a meal with planned foods whose targets changed is then notified.
      */
     public static function save(DayTarget $row, RetargetDay $day): void
     {
+        $before = $row->meals ?? [];
         $byId = [];
         foreach ($day->meals as $meal) {
             $byId[$meal->id()] = $meal;
@@ -131,6 +135,13 @@ final class RetargetDays
             'carbs_g' => $day->target->carbsG,
             'meals' => $meals,
         ])->save();
+
+        // The notice is best effort: a failure is reported, never allowed to fail the re-target it follows.
+        try {
+            app(NotifyRetarget::class)($row, $before);
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     /** A day with no stored target, for a session's source day that is past and is not saved. */
