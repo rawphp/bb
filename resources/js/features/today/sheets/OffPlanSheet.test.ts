@@ -133,7 +133,7 @@ describe('OffPlanSheet', () => {
         expect(sent().id).not.toBe(firstId);
     });
 
-    it.each(['1,200', '2,500'])('DAY-001 keeps Save off for %s, which could be a thousand or a decimal', async (typed) => {
+    it.each(['1,200', '2,500', '1.200'])('DAY-001 keeps Save off for %s, which could be a thousand or a decimal', async (typed) => {
         const { wrapper } = await mountSheet(OffPlanSheet, { date: '2026-09-23', time: '12:00' });
 
         await fill(wrapper, { kcal: typed });
