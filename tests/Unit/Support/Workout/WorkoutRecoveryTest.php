@@ -163,3 +163,49 @@ it('EX-009 the start time orders the answers before week and day, so an older an
 
     expect(WorkoutSnapshot::load($user, $mesocycle->id, 3, 1)->swapSuggestion($bench))->not->toBeNull();
 });
+
+/** Upper A with Incline Press for chest in a second slot, beside Bench Press. */
+function withIncline(Mesocycle $mesocycle): Exercise
+{
+    $incline = Exercise::factory()->create([
+        'name' => 'Incline Press', 'muscle_group' => MuscleGroup::Chest, 'equipment' => Equipment::Barbell,
+        'load_type' => ExerciseLoadType::Barbell, 'rep_range_min' => 5, 'rep_range_max' => 30,
+    ]);
+    $days = $mesocycle->days;
+    $days[0]['slots'][] = ['id' => '01JB6Q402A2B3C4D5E6F7G8H9J', 'exercise_id' => $incline->id, 'muscle_group' => 'chest', 'sets' => 3];
+    $mesocycle->update(['days' => $days]);
+
+    return $incline;
+}
+
+it('PROG-018 a lot of pain on one exercise last week cuts that exercise only', function () {
+    [$user, $mesocycle, $bench] = recoverySeed();
+    $incline = withIncline($mesocycle);
+    $lastWeek = WorkoutSeed::started($mesocycle->fresh(), 2, 1, '2026-09-14 17:30:00');
+    painAfter($lastWeek, $bench, 'aLot');
+    painAfter($lastWeek, $incline, 'none');
+    $snapshot = WorkoutSnapshot::load($user, $mesocycle->id, 3, 1);
+    $blocks = $snapshot->plannedBlocks();
+
+    expect(array_map(fn (WorkoutSetRow $set) => $set->targetKg, $blocks[0]->sets))->toBe([70.0, 70.0, 70.0])
+        ->and($snapshot->recoveryNote($bench, 3))->toBe(RecoveryLoad::JOINT_PAIN_NOTE)
+        ->and(array_map(fn (WorkoutSetRow $set) => $set->targetKg, $blocks[1]->sets))->toBe([82.5, 82.5, 82.5])
+        ->and($snapshot->recoveryNote($incline, 3))->toBeNull();
+});
+
+it('EX-009 the swap suggestion goes on the exercise that hurt, not the others of the session', function () {
+    [$user, $mesocycle, $bench] = recoverySeed();
+    $incline = withIncline($mesocycle);
+    $week1 = WorkoutSeed::started($mesocycle->fresh(), 1, 1, '2026-09-07 17:30:00');
+    $week2 = WorkoutSeed::started($mesocycle->fresh(), 2, 1, '2026-09-14 17:30:00');
+    foreach ([$week1, $week2] as $session) {
+        painAfter($session, $bench, 'moderate');
+        painAfter($session, $incline, 'none');
+    }
+    $exercises = WorkoutPayload::build(WorkoutSnapshot::load($user, $mesocycle->id, 3, 1))->exercises;
+
+    expect(array_map(fn ($exercise) => [$exercise->name, $exercise->swap_suggestion?->text], $exercises))->toBe([
+        ['Bench Press', 'Bench Press hurt 2 sessions running. Consider swapping it.'],
+        ['Incline Press', null],
+    ]);
+});

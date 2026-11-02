@@ -216,3 +216,12 @@ it('PROG-014 Dr. Mike\'s example: Grow, 3 sets, never sore with a low pump, give
 
     expect($result->slotSets)->toBe(['row' => 4]);
 });
+
+it('PROG-015 a slot the session did not run still counts toward the weekly ceiling', function () {
+    // Chest is 3 + 3 + 17 = 23 sets a week against a ceiling of 24, though incline did not run: one set fits.
+    $result = ProgressionApply::apply(applyInput(applyDays(fly: 17), applyRan(incline: null), ['chest' => applyWantsMore()]));
+
+    expect($result->changes)->toBe(['chest' => 1])
+        ->and([$result->slotSets['bench'], $result->slotSets['incline']])->toBe([4, 3])
+        ->and($result->lines)->toBe(['Chest +1 set next week', 'At your recovery limit for Chest']);
+});

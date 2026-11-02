@@ -1,13 +1,17 @@
 <?php
 
+use App\Actions\Workout\AddWorkoutSet;
 use App\Actions\Workout\FinishWorkout;
+use App\Domain\Progression\WorkoutSetType;
 use App\Models\DayTarget;
 use App\Models\Mesocycle;
 use App\Models\User;
+use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Tests\Support\SheetSeed;
 use Tests\Support\TrainSeed;
 use Tests\Support\WorkoutSeed;
@@ -76,7 +80,7 @@ it('PROG-010 finishing with no change writes no plan and shows no toast', functi
         ->and($mesocycle->fresh()->updated_at)->toEqual($updated);
 });
 
-it('PROG-019 sets added or deleted in the session carry forward', function () {
+it('PROG-019 a set deleted in the session carries forward', function () {
     [$user, $mesocycle, $session] = finishSession(answers: ['pump' => 'moderate', 'volume' => 'justRight']);
     WorkoutSet::query()->orderByDesc('position')->first()->delete();
 
@@ -221,4 +225,37 @@ it('SCH-054 a session of an earlier day finished today leaves both days\' meals 
 
     expect(finishAt($user, $session, '2026-09-22 09:00:00')['dates'])->toBe([])
         ->and([$monday->fresh()->meals, $tuesday->fresh()->meals])->toEqual($before);
+});
+
+/** Upper A with Bench Press in two slots, 3 sets and 2, started and logged as planned. */
+function twoBenchSlots(): array
+{
+    Carbon::setTestNow('2026-09-21 18:30:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => TrainSeed::phase($user, 'muscleGain', '2026-08-31')->id]);
+    $days = $mesocycle->days;
+    $days[0]['slots'][] = ['id' => '01JB6Q402A2B3C4D5E6F7G8H9J', 'exercise_id' => $days[0]['slots'][0]['exercise_id'], 'muscle_group' => 'chest', 'sets' => 2];
+    $mesocycle->update(['days' => $days]);
+    $session = WorkoutSeed::started($mesocycle->fresh(), 3, 1, '2026-09-21 17:30:00');
+    WorkoutSeed::answered($session, 'chest', WorkoutSeed::exerciseId($mesocycle, 1));
+
+    return [$user, $mesocycle, $session];
+}
+
+it('PROG-019 one exercise in two slots, run as planned, keeps each slot\'s count', function () {
+    [$user, $mesocycle, $session] = twoBenchSlots();
+
+    expect(finishAt($user, $session, '2026-09-21 18:30:00')['toast'])->toBeNull()
+        ->and(array_column($mesocycle->fresh()->dayRows()[0]['slots'], 'sets'))->toBe([3, 2]);
+});
+
+it('PROG-019 a set added to one of two slots of an exercise carries forward on that slot only', function () {
+    [$user, $mesocycle, $session] = twoBenchSlots();
+    $block = WorkoutExercise::query()->where('workout_session_id', $session->id)->orderBy('position')->firstOrFail();
+    $added = (string) Str::ulid();
+    app(AddWorkoutSet::class)($user, $added, $block->id, null, WorkoutSetType::RegularStraight);
+    WorkoutSet::query()->whereKey($added)->update(['target_reps' => 10, 'actual_weight_kg' => 80, 'actual_reps' => 10, 'is_logged' => true]);
+
+    expect(finishAt($user, $session, '2026-09-21 18:30:00')['toast'])->toBe('Chest +1 set next week')
+        ->and(array_column($mesocycle->fresh()->dayRows()[0]['slots'], 'sets'))->toBe([4, 2]);
 });
