@@ -5,11 +5,13 @@ use App\Models\DayTarget;
 use App\Models\Food;
 use App\Models\ManualShoppingItem;
 use App\Models\PlannedFood;
+use App\Models\ShoppingTicks;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
+use Tests\Support\ScreenFixture;
 
 // The HTTP seam of shopping_show, shopping_item_check, shopping_item_add and shopping_item_delete.
 // The rules are unit tests (ShoppingScreenTest, TickedRangeTest, PlannedShoppingTest,
@@ -57,7 +59,8 @@ it('SHOP-001 SHOP-005 shows the next 7 days of planned foods by store category, 
     foreach (range(2, 8) as $day) {
         shoppingPlan($user, sprintf('2026-11-%02d', $day), $chicken, 300);
     }
-    shoppingPlan($user, '2026-11-03', Food::factory()->create(['name' => 'Egg whites']), 1000);
+    $eggWhites = Food::factory()->create(['name' => 'Egg whites']);
+    shoppingPlan($user, '2026-11-03', $eggWhites, 1000);
     $rice = Food::factory()->create(['name' => 'White rice']);
     shoppingPlan($user, '2026-11-04', $rice, 1050);
     shoppingPlan($user, '2026-11-09', $rice, 500);
@@ -82,7 +85,7 @@ it('SHOP-001 SHOP-005 shows the next 7 days of planned foods by store category, 
         ->and(array_column($response->json('data.sections'), 'category'))->toBe(['protein', 'grains_and_bread', 'other'])
         ->and($response->json('data.sections.0'))->toBe(['category' => 'protein', 'title' => 'Protein', 'rows' => [
             ['key' => "food:{$chicken->id}", 'name' => 'Chicken breast', 'amount_text' => '2100 g', 'is_ticked' => true, 'is_manual' => false],
-            ['key' => $response->json('data.sections.0.rows.1.key'), 'name' => 'Egg whites', 'amount_text' => '1000 g', 'is_ticked' => false, 'is_manual' => false],
+            ['key' => "food:{$eggWhites->id}", 'name' => 'Egg whites', 'amount_text' => '1000 g', 'is_ticked' => false, 'is_manual' => false],
         ]])
         ->and($response->json('data.sections.2.rows'))->toBe([
             ['key' => "manual:{$towels}", 'name' => 'Paper towels', 'amount_text' => null, 'is_ticked' => false, 'is_manual' => true],
@@ -93,7 +96,8 @@ it('SHOP-001 SHOP-005 shows the next 7 days of planned foods by store category, 
     $later = shoppingCall($user, 'shopping_show', ['from' => '2026-11-04', 'to' => '2026-11-09'])->assertOk();
     expect($later->json('data.range_text'))->toBe('Nov 4 – Nov 9')
         ->and($later->json('data.sections.0.rows.0.is_ticked'))->toBeFalse()
-        ->and($later->json('data.sections.1.rows.0.amount_text'))->toBe('1600 g');
+        ->and($later->json('data.sections.1.rows.0.amount_text'))->toBe('1600 g')
+        ->and($later->json('data.sections.2.rows.0.key'))->toBe("manual:{$towels}");
 });
 
 it('SHOP-001 says nothing is planned for an empty range', function () {
@@ -105,7 +109,63 @@ it('SHOP-001 says nothing is planned for an empty range', function () {
         'from' => '2026-11-02', 'to' => '2026-11-08', 'range_text' => 'Nov 2 – Nov 8',
         'sections' => [], 'share_text' => '', 'empty_text' => 'No foods planned for these days.',
     ]);
+    expect(ScreenFixture::differences(ScreenFixture::load('shopping_show.empty'), $response->json('data')))->toBe([]);
     assertMatchesScreenFixture('shopping_show', $response->json('data'));
+});
+
+it('SHOP-005 brings back the range ticked in while it runs, then the next 7 days, with the manual items on both', function () {
+    Carbon::setTestNow('2026-11-04 09:00:00');
+    $user = User::factory()->create();
+    $broccoli = Food::factory()->create(['name' => 'Broccoli']);
+    shoppingPlan($user, '2026-11-05', $broccoli, 200);
+    $soap = ManualShoppingItem::factory()->for($user)->create(['text' => 'Soap']);
+    shoppingCall($user, 'shopping_item_check', ['from' => '2026-11-04', 'to' => '2026-11-06', 'key' => "food:{$broccoli->id}", 'ticked' => true])->assertOk();
+
+    $saved = shoppingCall($user, 'shopping_show')->assertOk();
+    Carbon::setTestNow('2026-11-07 09:00:00');
+    $ended = shoppingCall($user, 'shopping_show')->assertOk();
+
+    expect([$saved->json('data.from'), $saved->json('data.to')])->toBe(['2026-11-04', '2026-11-06'])
+        ->and($saved->json('data.sections.0.rows.0.is_ticked'))->toBeTrue()
+        ->and([$ended->json('data.from'), $ended->json('data.to')])->toBe(['2026-11-07', '2026-11-13'])
+        ->and($ended->json('data.sections'))->toBe([['category' => 'other', 'title' => 'Other', 'rows' => [
+            ['key' => "manual:{$soap->id}", 'name' => 'Soap', 'amount_text' => null, 'is_ticked' => false, 'is_manual' => true],
+        ]]]);
+});
+
+it('SHOP-001 SHOP-005 shows only the user\'s own manual items and ticks', function () {
+    Carbon::setTestNow('2026-11-02 09:00:00');
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    $broccoli = Food::factory()->create(['name' => 'Broccoli']);
+    shoppingPlan($user, '2026-11-03', $broccoli, 200);
+    ManualShoppingItem::factory()->for($other)->create(['text' => 'Their soap']);
+    ShoppingTicks::factory()->for($other)->create(['starts_on' => '2026-11-02', 'ends_on' => '2026-11-08', 'keys' => ["food:{$broccoli->id}"]]);
+
+    $response = shoppingCall($user, 'shopping_show')->assertOk();
+
+    expect($response->json('data.sections'))->toBe([['category' => 'produce', 'title' => 'Produce', 'rows' => [
+        ['key' => "food:{$broccoli->id}", 'name' => 'Broccoli', 'amount_text' => '200 g', 'is_ticked' => false, 'is_manual' => false],
+    ]]]);
+});
+
+it('CAP-010 refreshes the list shown, the list with no range and the range the ticks are in', function () {
+    $user = User::factory()->create();
+    $item = ManualShoppingItem::factory()->for($user)->create();
+    ShoppingTicks::factory()->for($user)->create(['starts_on' => '2026-11-02', 'ends_on' => '2026-11-08', 'keys' => []]);
+    $shown = ['from' => '2026-11-09', 'to' => '2026-11-15'];
+    $keys = ['shopping_show{}', 'shopping_show{"from":"2026-11-02","to":"2026-11-08"}', 'shopping_show{"from":"2026-11-09","to":"2026-11-15"}'];
+
+    shoppingCall($user, 'shopping_item_add', ['id' => (string) Str::ulid(), 'text' => 'Candles', ...$shown])
+        ->assertOk()
+        ->assertJsonPath('data.invalidates', $keys);
+    shoppingCall($user, 'shopping_item_delete', ['id' => $item->id, ...$shown])
+        ->assertOk()
+        ->assertJsonPath('data.invalidates', $keys);
+    // A tick in another range clears the old one's ticks, so that list changes too.
+    shoppingCall($user, 'shopping_item_check', [...$shown, 'key' => 'food:01JBX5F0000000000000000002', 'ticked' => true])
+        ->assertOk()
+        ->assertJsonPath('data.invalidates', ['shopping_show{}', 'shopping_show{"from":"2026-11-09","to":"2026-11-15"}', 'shopping_show{"from":"2026-11-02","to":"2026-11-08"}']);
 });
 
 it('SHOP-005 deletes the user\'s manual item and says the list changed', function () {

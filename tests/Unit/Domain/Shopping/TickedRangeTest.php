@@ -73,12 +73,18 @@ it('SHOP-005 a tick in another range clears the ticks of the old one', function 
     $saved = new TickedRange(tickRange(10, 16), ['food:broccoli', 'manual:01JBX5H0000000000000000001']);
 
     $ticked = TickedRange::check($saved, tickRange(10, 12), 'food:spinach', true);
-    $unticked = TickedRange::check($saved, tickRange(10, 12), 'food:spinach', false);
 
     expect(tickDays($ticked->range))->toBe(['2026-10-10 00:00', '2026-10-12 00:00'])
-        ->and($ticked->keys)->toBe(['food:spinach'])
-        ->and(tickDays($unticked->range))->toBe(['2026-10-10 00:00', '2026-10-12 00:00'])
-        ->and($unticked->keys)->toBe([]);
+        ->and($ticked->keys)->toBe(['food:spinach']);
+});
+
+it('OFF-030 an untick sent from another range, such as a stale one replayed from the outbox, leaves the ticks alone', function () {
+    $saved = new TickedRange(tickRange(10, 16), ['food:broccoli']);
+
+    $after = TickedRange::check($saved, tickRange(17, 23), 'food:spinach', false);
+
+    expect(tickDays($after->range))->toBe(['2026-10-10 00:00', '2026-10-16 00:00'])
+        ->and($after->keys)->toBe(['food:broccoli']);
 });
 
 it('SHOP-005 a tick in the range already shown keeps the other ticks', function () {
@@ -93,6 +99,11 @@ it('SHOP-005 a deleted manual item takes its tick with it', function () {
 
     expect($saved->without('manual:01JBX5H0000000000000000001')->keys)->toBe(['food:broccoli'])
         ->and(tickDays($saved->without('manual:01JBX5H0000000000000000001')->range))->toBe(['2026-10-10 00:00', '2026-10-16 00:00']);
+});
+
+it('SHOP-005 reads the manual item a key names', function () {
+    expect(TickedRange::manualId('manual:01JBX5H0000000000000000001'))->toBe('01JBX5H0000000000000000001')
+        ->and(TickedRange::manualId('food:01JBX5H0000000000000000001'))->toBeNull();
 });
 
 it('SHOP-005 knows a line key: a food or a manual item, by its id', function (string $key, bool $valid) {

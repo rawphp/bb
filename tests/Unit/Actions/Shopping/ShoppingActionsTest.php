@@ -8,6 +8,7 @@ use App\Models\ManualShoppingItem;
 use App\Models\ShoppingTicks;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 
@@ -69,9 +70,11 @@ it('SHOP-005 a tick in another range clears the old range\'s ticks and says whic
     $check($user, shopActionRange('2026-10-10', '2026-10-16'), 'food:01jbx5f0000000000000000002', true);
 
     $same = $check($user, shopActionRange('2026-10-10', '2026-10-16'), 'food:01jbx5f0000000000000000007', true);
+    $untick = $check($user, shopActionRange('2026-10-20', '2026-10-26'), 'food:01jbx5f0000000000000000007', false);
     $old = $check($user, shopActionRange('2026-10-12', '2026-10-14'), 'food:01jbx5f0000000000000000011', true);
 
     expect($same)->toBeNull()
+        ->and($untick)->toBeNull()
         ->and([$old?->lower->format('Y-m-d'), $old?->upper->format('Y-m-d')])->toBe(['2026-10-10', '2026-10-16'])
         ->and(shopActionTicks($user))->toBe(['2026-10-12', '2026-10-14', ['food:01jbx5f0000000000000000011']]);
 });
@@ -103,9 +106,29 @@ it('SHOP-005 adding the same item again changes nothing but its text', function 
     $id = (string) Str::ulid();
     $item = (new AddShoppingItem)($user, null, $id, 'Dish soap');
 
-    (new AddShoppingItem)($user, $item, $id, 'Dish soap');
+    (new AddShoppingItem)($user, $item, $id, 'Washing-up liquid');
 
-    expect(ManualShoppingItem::query()->count())->toBe(1);
+    expect(ManualShoppingItem::query()->pluck('text', 'id')->all())->toBe([$id => 'Washing-up liquid']);
+});
+
+it('SHOP-005 keeps one ticks row per user', function () {
+    $user = User::factory()->create();
+    ShoppingTicks::factory()->for($user)->create();
+
+    expect(fn () => ShoppingTicks::factory()->for($user)->create())->toThrow(UniqueConstraintViolationException::class);
+});
+
+it('SHOP-005 ticking and deleting change only the caller\'s ticks', function () {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    ShoppingTicks::factory()->for($other)->create(['starts_on' => '2026-10-10', 'ends_on' => '2026-10-16', 'keys' => ['food:01jbx5f0000000000000000002']]);
+    $mine = ManualShoppingItem::factory()->for($user)->create();
+
+    (new CheckShoppingItem)($user, shopActionRange('2026-10-12', '2026-10-14'), "manual:{$mine->id}", true);
+    (new DeleteShoppingItem)($user, $mine->id);
+
+    expect(shopActionTicks($other))->toBe(['2026-10-10', '2026-10-16', ['food:01jbx5f0000000000000000002']])
+        ->and(shopActionTicks($user))->toBe(['2026-10-12', '2026-10-14', []]);
 });
 
 it('SHOP-005 a manual item stays until the user deletes it, and its tick goes with it', function () {

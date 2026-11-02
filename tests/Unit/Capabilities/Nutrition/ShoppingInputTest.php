@@ -2,6 +2,7 @@
 
 use App\Capabilities\Nutrition\Data\ShoppingItemAddInput;
 use App\Capabilities\Nutrition\Data\ShoppingItemCheckInput;
+use App\Capabilities\Nutrition\Data\ShoppingItemDeleteInput;
 use App\Capabilities\Nutrition\Data\ShoppingShowInput;
 use Rawphp\Capabilities\Registry\CapabilityDefinition;
 use Rawphp\Capabilities\Schema\IlluminateServerRuleChecker;
@@ -69,4 +70,14 @@ it('SHOP-005 refuses a manual item with no words, or with an id that is not a UL
 })->with([
     'blank text' => [['text' => "  \n "], 'text'],
     'not a ULID' => [['id' => 'soap'], 'id'],
+]);
+
+it('SHOP-005 adds or deletes a manual item with the range of the list shown, or none', function (string $name, string $input, array $data) {
+    expect(shoppingViolations($name, $input, $data))->toBe([])
+        ->and(shoppingViolations($name, $input, [...$data, 'from' => '2026-11-02', 'to' => '2026-11-08']))->toBe([])
+        ->and(shoppingViolations($name, $input, [...$data, 'from' => '2026-11-08', 'to' => '2026-11-02']))->toHaveKey('to')
+        ->and(shoppingViolations($name, $input, [...$data, 'from' => '2026-11-02']))->toHaveKey('to');
+})->with([
+    'shopping_item_add' => ['shopping_item_add', ShoppingItemAddInput::class, ['id' => '01JBX5H0000000000000000001', 'text' => 'Soap']],
+    'shopping_item_delete' => ['shopping_item_delete', ShoppingItemDeleteInput::class, ['id' => '01JBX5H0000000000000000001']],
 ]);
