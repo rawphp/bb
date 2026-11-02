@@ -57,13 +57,13 @@ final class CapabilitiesHostProvider extends ServiceProvider
         $this->app->singleton(Ownership::class);
         $this->app->singletonIf(BillingGate::class, config('billing.enabled') ? StripeBilling::class : NoBilling::class);
         $this->app->singletonIf(StripeGateway::class, function (): StripeClientGateway {
-            // Short timeouts: a slow Stripe fails the call rather than hold a request for 80 seconds.
+            // Short timeouts and no retry: a slow Stripe fails the call rather than hold a request for 80 seconds.
             $http = CurlClient::instance();
             $http->setConnectTimeout(5);
             $http->setTimeout(15);
             ApiRequestor::setHttpClient($http);
 
-            return new StripeClientGateway(new StripeClient(['api_key' => (string) config('billing.stripe.secret'), 'max_network_retries' => 1]));
+            return new StripeClientGateway(new StripeClient(['api_key' => (string) config('billing.stripe.secret'), 'max_network_retries' => 0]));
         });
         $this->app->singletonIf(AgentPolicy::class, NoAgentPolicy::class);
         $this->app->singleton(Authorizer::class, HostAuthorizer::class);

@@ -3,8 +3,9 @@
 namespace App\Domain\Billing;
 
 /**
- * What a user's subscription gives them, from the status Stripe last sent in a
- * verified webhook (SUB-021). The server never learns it from the browser.
+ * What a user's subscription gives them, from its Stripe status, which the
+ * server reads back from Stripe after a verified webhook (SUB-021), never from
+ * the browser.
  */
 enum Access: string
 {
@@ -20,14 +21,18 @@ enum Access: string
     /** Ended: every screen shows, read-only (SUB-010). */
     case Lapsed = 'lapsed';
 
-    /** How strongly this access decides an account with several subscriptions: paid, then trial, then a first payment, then ended. */
+    /**
+     * How strongly this access decides an account with several subscriptions:
+     * paid, then trial, then ended. A first payment not yet taken ranks last,
+     * so it never lifts a lapsed account out of read-only before it is paid.
+     */
     public function rank(): int
     {
         return match ($this) {
             self::Active => 3,
             self::Trial => 2,
-            self::None => 1,
-            self::Lapsed => 0,
+            self::Lapsed => 1,
+            self::None => 0,
         };
     }
 

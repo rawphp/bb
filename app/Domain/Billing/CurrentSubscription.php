@@ -5,8 +5,9 @@ namespace App\Domain\Billing;
 /**
  * Which of a Stripe customer's subscriptions decides the account (SUB-021).
  * A customer can hold more than one: an old one that ended, or a second one
- * bought by mistake. A live one decides over an ended one, paid over trial,
- * and among alike the newest.
+ * bought by mistake. Paid decides over trial, a live one over an ended one,
+ * an ended one over one whose first payment has not gone through, and among
+ * alike the newest.
  */
 final class CurrentSubscription
 {

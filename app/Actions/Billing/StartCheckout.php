@@ -15,7 +15,9 @@ use Rawphp\Capabilities\Support\CapabilityFailure;
  * account gets one Stripe customer, made on its first Checkout, and the free
  * trial if Stripe has never billed it (SUB-003). An account with a live
  * subscription switches plans in the portal instead (SUB-007), so Checkout
- * never sells it a second one.
+ * does not sell it a second one. Two Checkout pages opened before either is
+ * paid can still both go through; each closes within the hour, and Stripe's
+ * "Limit customers to one subscription" setting closes the gap.
  */
 final class StartCheckout
 {
@@ -30,6 +32,13 @@ final class StartCheckout
         }
 
         $subscription = Subscription::of($user);
+        if ($subscription !== null) {
+            // The row learns of a subscription only from its webhook, which can lag the
+            // payment; read Stripe back first, so a fresh subscription counts at once.
+            (new SyncStripeSubscription($this->stripe))($subscription->stripe_customer_id);
+            $subscription->refresh();
+        }
+
         if (in_array(Access::fromStripeStatus($subscription?->status), [Access::Trial, Access::Active], true)) {
             throw CapabilityFailure::conflict('You already have a subscription. Switch plans in Manage subscription.');
         }

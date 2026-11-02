@@ -134,7 +134,7 @@ With billing on:
 - In Stripe's Checkout settings, turn on "Limit customers to one subscription". The app refuses a second Checkout to a user with a live subscription, but two Checkout pages opened before the first payment would otherwise both go through.
 - Turn on the customer portal in Stripe's settings, with plan switching between the prices above and cancelling (SUB-007).
 - Sale, referral and gym prices are Stripe coupons with promotion codes; users type the code in Checkout (SUB-009).
-- A user who has never subscribed gets a 7-day free trial in Checkout (SUB-003). Until it starts, they can answer onboarding but not generate their plan. A user whose subscription has ended keeps every screen read-only (SUB-010), and cannot write or talk to the Coach until they resubscribe (SUB-022, SUB-024).
+- A user who has never subscribed gets a 7-day free trial in Checkout (SUB-003). Until it starts, they can answer onboarding but not generate their plan. A user whose subscription has ended keeps every screen read-only (SUB-010) and cannot talk to the Coach until they resubscribe (SUB-024). They can still delete the account, revoke an access token and turn off push (SUB-022).
 
 ## Queue workers
 
