@@ -242,6 +242,28 @@ it('FOOD-023 bounds the user\'s own tier in the database, whatever the length of
         ->and($queries->max(fn (array $q) => count($q['bindings'])))->toBeLessThan(20);
 });
 
+it('FOOD-023 never lists a soft-deleted shared food, curated or not, even freshly re-imported', function () {
+    foreach (['Rice deleted curated' => true, 'Rice deleted other' => false] as $name => $curated) {
+        $food = $curated ? foodsCurated($name) : foodsMake($name);
+        $food->delete();
+        Food::withTrashed()->whereKey($food->id)->update(['updated_at' => now()->addDay()]);
+    }
+    foodsCurated('Rice live curated');
+    foodsMake('Rice live other');
+
+    expect(foodsSearch($this->user, 'rice'))->toEqualCanonicalizing(['Rice live curated', 'Rice live other'])
+        ->and(foodsSearch($this->user, 'rice', 'curated'))->toBe(['Rice live curated']);
+});
+
+it('FOOD-023 fills the limit from the user\'s own foods alone when they are enough, ahead of curated ones', function () {
+    foreach (range(1, 3) as $i) {
+        Food::factory()->custom($this->user)->create(['name' => "Oat mix {$i}"]);
+    }
+    foodsCurated('Oat bran');
+
+    expect(foodsSearch($this->user, 'oat', limit: 3))->toBe(['Oat mix 1', 'Oat mix 2', 'Oat mix 3']);
+});
+
 it('FOOD-060 never shows another user\'s custom food marked curated, in any tier', function () {
     Food::factory()->custom(User::factory()->create())->create(['name' => 'Secret bar', 'curated' => true, 'curated_group' => 'fat_sparingly']);
 

@@ -64,6 +64,15 @@ it('FOOD-041 returns the most recently imported row when two rows of the same ra
     expect((new LookUpFoodBarcode)($this->user, '557')?->name)->toBe('Refreshed branded');
 });
 
+it('FOOD-041 never returns a soft-deleted shared row, even when it was refreshed last', function () {
+    foodsWithBarcode('Live branded', '558', ['source' => 'usda']);
+    $deleted = foodsWithBarcode('Deleted branded', '558', ['source' => 'usda']);
+    $deleted->delete();
+    Food::withTrashed()->whereKey($deleted->id)->update(['updated_at' => now()->addDay()]);
+
+    expect((new LookUpFoodBarcode)($this->user, '558')?->name)->toBe('Live branded');
+});
+
 it('FOOD-060 never finds another user\'s custom food by barcode, nor the user\'s deleted one', function () {
     Food::factory()->custom(User::factory()->create())->create(['name' => 'Theirs', 'barcode' => '777']);
     Food::factory()->custom($this->user)->create(['name' => 'Deleted', 'barcode' => '888'])->delete();

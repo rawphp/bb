@@ -56,19 +56,25 @@ final class SaveImportedFoods
                 foreach (Food::withTrashed()->where('source', $source)->whereIn('source_id', $sourceIds)->pluck('id', 'source_id') as $sourceId => $id) {
                     $ids[self::key((string) $sourceId)] = $id;
                 }
-                FoodServing::query()->whereIn('food_id', array_values($ids))->delete();
 
                 $servings = [];
+                $matched = [];
                 foreach ($batch as $r) {
                     $id = $ids[self::key((string) $r['food']['source_id'])] ?? null;
                     if ($id === null) {
                         $unmatched++;
                         Log::warning('foods:import found no saved food for a row, so its servings were skipped', ['source' => $source, 'source_id' => $r['food']['source_id']]);
+
+                        continue;
                     }
-                    foreach ($id === null ? [] : $r['servings'] as $serving) {
+                    $matched[] = $id;
+                    foreach ($r['servings'] as $serving) {
                         $servings[] = $serving + ['food_id' => $id];
                     }
                 }
+                // Only the foods a row matched get new servings, so only theirs are replaced: a food the database
+                // folded an unmatched row into keeps the servings it had.
+                FoodServing::query()->whereIn('food_id', $matched)->delete();
                 foreach (array_chunk($servings, 1000) as $chunk) {
                     FoodServing::query()->insert($chunk);
                 }

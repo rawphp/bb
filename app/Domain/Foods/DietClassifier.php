@@ -60,6 +60,9 @@ use App\Domain\Model\DietFilter;
  */
 final class DietClassifier
 {
+    /** @var array<string, string> pattern() cache: one regex per word list */
+    private static array $patterns = [];
+
     private const FLESH = ['beef', 'pork', 'chicken', 'turkey', 'lamb', 'veal', 'ham', 'bacon', 'sausage', 'salami',
         'pepperoni', 'duck', 'goose', 'venison', 'bison', 'meat', 'steak', 'liver', 'lard', 'tallow', 'suet', 'poultry',
         'fish', 'salmon', 'tuna', 'cod', 'tilapia', 'trout', 'sardine', 'anchovy', 'anchovies', 'mackerel', 'herring',
@@ -257,7 +260,7 @@ final class DietClassifier
      */
     private function fromKeywords(string $name, ?string $category, string $ingredients): array
     {
-        $category = (string) preg_replace('/\b(?:'.implode('|', array_map(fn (string $c) => preg_quote($c, '/'), self::UMBRELLA_CATEGORIES)).')\b/', '', mb_strtolower((string) $category));
+        $category = (string) preg_replace(self::pattern(self::UMBRELLA_CATEGORIES), '', mb_strtolower((string) $category));
         // A category that names a substitute ("Plant Based Milk", "Vegetarian Frozen Meats", OFF's "meat analogues")
         // says what the food replaces, not what is in it, so its words must not rule a diet out.
         $category = implode(', ', array_filter(explode(',', $category), fn (string $part) => ! preg_match(self::SUBSTITUTE_CATEGORY, $part)));
@@ -267,7 +270,7 @@ final class DietClassifier
         // The FODMAP check drops only the dairy word of a plant milk or butter: "cashew butter" keeps "cashew", "butter bean" keeps "bean".
         $fodmapText = $this->withoutPlantDairy($text, keepPlant: true);
         $glutenText = (string) preg_replace($this->flourPattern([...self::NON_GRAIN_FLOURS, ...self::GLUTEN_FREE_FLOURS]), '', $text);
-        $glutenText = (string) preg_replace('/\b(?:'.implode('|', array_map(fn (string $c) => str_replace(' ', '\s+', preg_quote($c, '/')), self::GLUTEN_FREE_COMPOUNDS)).')(?:e?s)?\b/', '', $glutenText);
+        $glutenText = (string) preg_replace(self::pattern(self::GLUTEN_FREE_COMPOUNDS), '', $glutenText);
         $grainText = (string) preg_replace($this->flourPattern(self::NON_GRAIN_FLOURS), '', $text);
 
         $signals = array_keys(array_filter([
@@ -355,10 +358,8 @@ final class DietClassifier
      */
     private function withoutPlantDairy(string $text, bool $keepPlant = false): string
     {
-        $phrases = implode('|', array_map(fn (string $p) => str_replace(' ', '\s+', preg_quote($p, '/')), self::NOT_DAIRY));
-
         return (string) preg_replace_callback(
-            '/\b(?:'.$phrases.')s?\b/',
+            self::pattern(self::NOT_DAIRY),
             fn (array $m) => $keepPlant ? (string) preg_replace('/\b(?:butter|milk|cream)\b/', '', $m[0]) : '',
             $text,
         );
@@ -367,17 +368,26 @@ final class DietClassifier
     /** @param  list<string>  $words */
     private function has(array $words, string $text): bool
     {
-        $alternatives = array_map(
+        return (bool) preg_match(self::pattern($words), $text);
+    }
+
+    /**
+     * The one word-to-regex step: whole words or phrases (any run of spaces between their words), with an
+     * -s or -es plural. Built once per list and kept, since an import classifies millions of rows.
+     *
+     * @param  list<string>  $words
+     */
+    private static function pattern(array $words, string $after = '(?:e?s)?'): string
+    {
+        return self::$patterns[implode("\x1f", $words)."\x1e".$after] ??= '/\b(?:'.implode('|', array_map(
             fn (string $w) => str_replace(' ', '\s+', preg_quote($w, '/')),
             $words,
-        );
-
-        return (bool) preg_match('/\b(?:'.implode('|', $alternatives).')(?:e?s)?\b/', $text);
+        )).')'.$after.'\b/';
     }
 
     /** @param  list<string>  $prefixes */
     private function flourPattern(array $prefixes): string
     {
-        return '/\b(?:'.implode('|', $prefixes).')s?\s+flour\b/';
+        return self::pattern($prefixes, 's?\s+flour');
     }
 }
