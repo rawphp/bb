@@ -82,6 +82,29 @@ it('AGT-010 only deleting a set is destructive; no workout write is reversible, 
     }
 });
 
+it('CAP-019 workout_set_add answers 404 for another user\'s set id under the caller\'s own exercise, and changes nothing', function () {
+    [, $theirs] = startedOver();
+    [$me, $mine] = startedOver();
+    $before = [WorkoutSet::query()->orderBy('id')->get()->toArray(), WorkoutExercise::query()->orderBy('id')->get()->toArray()];
+
+    writeOver($me, 'workout_set_add', [
+        'set_id' => $theirs['exercises'][0]['sets'][0]['id'], 'workout_exercise_id' => $mine['exercises'][0]['id'], 'after_set_id' => null, 'set_type' => 'regular_straight',
+    ])->assertNotFound();
+
+    expect([WorkoutSet::query()->orderBy('id')->get()->toArray(), WorkoutExercise::query()->orderBy('id')->get()->toArray()])->toBe($before);
+});
+
+it('CAP-019 workout_set_add answers 404 for the id of a set since deleted, not a server error', function () {
+    [$user, $shown] = startedOver();
+    $add = ['set_id' => strtolower((string) Str::ulid()), 'workout_exercise_id' => $shown['exercises'][0]['id'], 'after_set_id' => null, 'set_type' => 'regular_straight'];
+    writeOver($user, 'workout_set_add', $add)->assertOk();
+    writeOver($user, 'workout_set_delete', ['set_id' => $add['set_id']])->assertOk();
+
+    writeOver($user, 'workout_set_add', $add)->assertNotFound();
+
+    expect(WorkoutSet::query()->where('workout_exercise_id', $shown['exercises'][0]['id'])->count())->toBe(3);
+});
+
 it('WO-003 refuses a rep count no set can hold with a plain message, not a server error', function () {
     [$user, $shown] = startedOver();
     $set = $shown['exercises'][0]['sets'][0]['id'];
