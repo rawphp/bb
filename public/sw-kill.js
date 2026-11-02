@@ -3,8 +3,9 @@
 // /sw.js: docs/service-worker.md has the steps. Browsers check /sw.js for a new version on
 // a navigation (a cold launch, a reload); only while updates.ts is deployed do they also
 // check when the app returns to the foreground. This one installs at once, deletes every
-// cache the worker made, unregisters itself, and reloads the tabs it controlled from the
-// network. A reloaded page is not controlled, so it is not reloaded again. Unregistering
+// cache the worker made and unregisters itself. It reloads nothing: an open tab (mid-workout,
+// with a sheet open) keeps what is on screen, and is now under this worker, which has no
+// fetch handler, so everything it loads comes from the network. Its next load is plain. Unregistering
 // also ends the device's Web Push subscription; the docs say what that means.
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -13,7 +14,6 @@ self.addEventListener('activate', (event) => {
         (async () => {
             for (const name of await caches.keys()) await caches.delete(name);
             await self.registration.unregister();
-            for (const client of await self.clients.matchAll({ type: 'window' })) await client.navigate(client.url);
         })(),
     );
 });

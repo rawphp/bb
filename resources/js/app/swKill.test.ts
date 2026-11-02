@@ -35,15 +35,17 @@ describe('sw-kill', () => {
         expect(self.skipWaiting).toHaveBeenCalled();
     });
 
-    it('PWA-035 on activate deletes every cache, unregisters, and reloads only the tabs it controlled', async () => {
+    it('PWA-035 on activate deletes every cache and unregisters, and reloads no tab, so a workout or open sheet is never cut off', async () => {
         const { self, client, names, dispatch } = run();
 
         await dispatch('activate');
 
         expect(names).toEqual([]);
         expect(self.registration.unregister).toHaveBeenCalled();
-        // Not includeUncontrolled: a page it reloaded is uncontrolled, so it is never reloaded twice.
-        expect(self.clients.matchAll).toHaveBeenCalledWith({ type: 'window' });
-        expect(client.navigate).toHaveBeenCalledWith('https://bb.test/today');
+        expect(client.navigate).not.toHaveBeenCalled();
+    });
+
+    it('PWA-035 has no fetch handler, so a tab it is left controlling loads from the network', () => {
+        expect(source).not.toMatch(/addEventListener\(\s*['"]fetch['"]/);
     });
 });
