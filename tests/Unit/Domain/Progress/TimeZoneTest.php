@@ -120,3 +120,12 @@ it('ANA-002 the current phase is the one running on the user\'s day, not UTC\'s'
         ->and($summary?->startDay)->toEqual(at('2026-10-11', 'Australia/Sydney'))
         ->and($summary?->currentDay)->toEqual(at('2026-10-11', 'Australia/Sydney'));
 });
+
+it('ANA-010 the share text counts a span with a 25-hour day as whole weeks', function () {
+    // 25 October to 8 November 2026 in New York is 14 days but 337 hours (1 November has 25).
+    $summary = new ProgressSummary(
+        startKg: 70, currentKg: 70.5, goalKg: null, phaseType: PhaseType::MuscleGain,
+        startDay: at('2026-10-25', 'America/New_York'), currentDay: at('2026-11-08', 'America/New_York'),
+    );
+    expect(ProgressShare::text($summary, WeightUnit::Kg))->toBe('Muscle gain: 70.0 kg to 70.5 kg (+0.5 kg) over 2 weeks');
+});

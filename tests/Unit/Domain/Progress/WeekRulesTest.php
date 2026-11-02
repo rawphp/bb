@@ -138,3 +138,11 @@ it('ANA-005 a range with no top counts as full rather than dividing by zero', fu
     expect($steps?->fraction())->toBe(1.0)
         ->and($steps?->state())->toBe(StepProgressState::WithinRange);
 });
+
+it('ANA-005 both ends of the range are within it', function () {
+    expect(StepProgress::make(6000, stepPlan(), 6)?->state())->toBe(StepProgressState::WithinRange)
+        ->and(StepProgress::make(8000, stepPlan(), 6)?->state())->toBe(StepProgressState::WithinRange)
+        ->and(StepProgress::make(8000, stepPlan(), 6)?->fraction())->toBe(1.0)
+        ->and(StepProgress::make(5999, stepPlan(), 6)?->state())->toBe(StepProgressState::BelowRange)
+        ->and(StepProgress::make(8001, stepPlan(), 6)?->state())->toBe(StepProgressState::AboveRange);
+});

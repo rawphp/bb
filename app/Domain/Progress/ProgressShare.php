@@ -13,8 +13,8 @@ final class ProgressShare
     /** "Fat loss: 82.0 kg to 80.4 kg (-1.6 kg) over 3 weeks": the phase, start to current trend, change, weeks. */
     public static function text(ProgressSummary $summary, WeightUnit $unit): string
     {
-        // Rounded, so a day of 23 or 25 hours around daylight saving still counts as one day.
-        $days = (int) round(($summary->currentDay->getTimestamp() - $summary->startDay->getTimestamp()) / 86400);
+        // Calendar days in the summary's own zone, so a day of 23 or 25 hours around daylight saving is one day.
+        $days = Days::whole($summary->startDay, $summary->currentDay, $summary->startDay->getTimezone());
         $weeks = max(1, intdiv($days, 7));
 
         return sprintf(
