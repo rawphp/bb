@@ -1,13 +1,17 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
-import { CapabilityError, read, readFresh } from './call';
+import { cached } from './cache';
+import { CapabilityError, read, readFresh, WARM_FRESH_MS } from './call';
 import ScreenFrame from './ScreenFrame.vue';
-import type { ReadFailure } from './screenRead';
+import { SupersededRead, type ReadFailure } from './screenRead';
 import { useRead } from './useRead';
 
 vi.mock('./call', async (original) => ({ ...(await original<typeof import('./call')>()), read: vi.fn(), readFresh: vi.fn() }));
 
+vi.mock('./cache', async (original) => ({ ...(await original<typeof import('./cache')>()), cached: vi.fn() }));
+
+const cachedMock = vi.mocked(cached);
 const readMock = vi.mocked(read);
 const readFreshMock = vi.mocked(readFresh);
 
@@ -34,6 +38,7 @@ describe('useRead', () => {
     beforeEach(() => {
         readMock.mockReset();
         readFreshMock.mockReset();
+        cachedMock.mockReset().mockResolvedValue(undefined);
     });
 
     it('CAP-002 shows a given payload and reads nothing', () => {
@@ -181,7 +186,7 @@ describe('useRead', () => {
         expect(wrapper.text()).toBe('2');
     });
 
-    it('PWA-020 reads again when its screen comes back on top of the stack, but not a fixture', async () => {
+    it('CAP-010 reads again when its screen comes back on top with no cached copy, but not a fixture', async () => {
         readMock.mockResolvedValueOnce({ n: 1 }).mockResolvedValueOnce({ n: 2 });
         const top = ref(true);
         const Probe = defineComponent(
@@ -283,5 +288,56 @@ describe('useRead', () => {
         await flushPromises();
 
         await expect(api().load()).resolves.toBeUndefined();
+    });
+
+    it.each([
+        ['younger than a warm keeps', WARM_FRESH_MS - 5_000, 1],
+        ['older than a warm keeps', WARM_FRESH_MS + 5_000, 2],
+    ])('OFF-004 on coming back on top, a cached copy %s decides whether it reads again', async (_label, age, reads) => {
+        readMock.mockResolvedValue({ n: 1 });
+        const top = ref(true);
+        const Probe = defineComponent(() => {
+            const api = useRead<{ n: number }>('probe_show', {}, 'No.');
+            return () => h('p', String(api.data.value?.n ?? 'loading'));
+        });
+        mount(defineComponent(() => () => h(ScreenFrame, { top: top.value }, () => h(Probe))));
+        await flushPromises();
+        cachedMock.mockResolvedValue({ key: 'probe_show', data: { n: 1 }, fetchedAt: Date.now() - age });
+
+        top.value = false;
+        await flushPromises();
+        top.value = true;
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledTimes(reads);
+    });
+
+    it('OFF-003 a fresh read that a newer load overtakes rejects, and the newer load\'s answer stays', async () => {
+        let answerFresh: (d: { n: number }) => void = () => {};
+        readMock.mockResolvedValueOnce({ n: 1 }).mockResolvedValueOnce({ n: 2 });
+        readFreshMock.mockImplementationOnce(() => new Promise((resolve) => (answerFresh = resolve as typeof answerFresh)));
+        const { wrapper, api } = screen();
+        await flushPromises();
+
+        const fresh = api().load({ fresh: true });
+        await api().load();
+        answerFresh({ n: 5 });
+
+        await expect(fresh).rejects.toBeInstanceOf(SupersededRead);
+        await flushPromises();
+        expect(wrapper.text()).toBe('2');
+    });
+
+    it('OFF-003 an overtaken fresh read leaves an empty screen to the newer load, showing no failure', async () => {
+        readMock.mockImplementation(() => new Promise(() => {}));
+        readFreshMock.mockResolvedValueOnce({ n: 5 });
+        const { wrapper, api } = screen();
+
+        const fresh = api().load({ fresh: true });
+        void api().load();
+
+        await expect(fresh).rejects.toBeInstanceOf(SupersededRead);
+        await flushPromises();
+        expect(wrapper.text()).toBe('loading');
     });
 });

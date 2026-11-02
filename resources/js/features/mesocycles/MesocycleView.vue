@@ -11,6 +11,7 @@ import type { MesocycleLengthSetInput } from '@/contracts/mesocycle_length_set';
 import type { MesocycleShowOutput } from '@/contracts/mesocycle_show';
 import BottomSheet from '@/design/BottomSheet.vue';
 import PendingMark from '@/design/PendingMark.vue';
+import { toneClasses } from '@/design/tones';
 import { PENDING_DIM } from './types';
 import ActionMenu, { type ActionMenuItem } from '@/design/ActionMenu.vue';
 import WeekColumn from './WeekColumn.vue';
@@ -102,7 +103,7 @@ watch(
             </ActionMenu>
         </header>
 
-        <div v-if="errorMessage" role="alert" class="mx-4 mb-3 flex items-start gap-2 rounded-2xl bg-tone-warning-bg p-3 text-tone-warning" data-test="error">
+        <div v-if="errorMessage" role="alert" class="mx-4 mb-3 flex items-start gap-2 rounded-2xl p-3" :class="toneClasses.warning" data-test="error">
             <p class="flex-1 text-sm"><span class="font-semibold">Something went wrong.</span> {{ errorMessage }}</p>
             <button type="button" class="min-h-tap px-2 font-semibold" @click="errorMessage = null">OK</button>
         </div>
@@ -165,10 +166,10 @@ watch(
                 <p class="text-sm text-secondary-text">{{ data.saved.end.warning }}</p>
                 <template v-if="data.saved.end.diet_break_offer">
                     <p class="text-sm text-secondary-text">{{ data.saved.end.diet_break_offer }}</p>
-                    <button type="button" class="min-h-tap w-full rounded-xl bg-tone-warning-bg text-tone-warning" data-test="end-with-break" @click="end(true)">
+                    <button type="button" class="min-h-tap w-full rounded-xl" :class="toneClasses.warning" data-test="end-with-break" @click="end(true)">
                         End and start a diet break next week
                     </button>
-                    <button type="button" class="min-h-tap w-full rounded-xl bg-tone-warning-bg text-tone-warning" data-test="end-without-break" @click="end(false)">
+                    <button type="button" class="min-h-tap w-full rounded-xl" :class="toneClasses.warning" data-test="end-without-break" @click="end(false)">
                         End without a diet break
                     </button>
                 </template>

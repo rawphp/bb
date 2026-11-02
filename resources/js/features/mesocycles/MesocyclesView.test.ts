@@ -2,6 +2,7 @@ import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityError, read, readFresh } from '@/app/call';
 import type { TrainShowOutput } from '@/contracts/train_show';
+import { SupersededRead } from '@/app/screenRead';
 import { screenFixture } from '@/testing/schemas';
 import CurrentMesocycleView from './CurrentMesocycleView.vue';
 import MesocyclesView from './MesocyclesView.vue';
@@ -120,6 +121,20 @@ describe('MesocyclesView', () => {
         await flushPromises();
 
         expect(wrapper.find('[data-test="draft"]').exists()).toBe(true);
+    });
+
+    it('MESO-007 starts nothing when a newer read overtook the draft check', async () => {
+        readMock.mockResolvedValue(empty);
+        readFreshMock.mockRejectedValueOnce(new SupersededRead('train_show'));
+        const wrapper = mount(MesocyclesView, { global });
+        await flushPromises();
+
+        await wrapper.find('[data-test="menu"]').trigger('click');
+        await wrapper.find('[data-test="item-builder"]').trigger('click');
+        await flushPromises();
+
+        expect(push).not.toHaveBeenCalled();
+        expect(wrapper.find('[data-test="error"]').text()).toBe('Your mesocycles could not be checked for a draft.');
     });
 
     it('MESO-007 starts nothing when the server cannot say whether there is a draft', async () => {

@@ -6,6 +6,14 @@ export type ReadFailure =
     | { offline: true; error: null; signedOut: false }
     | { offline: false; error: string; signedOut: boolean };
 
+/** A fresh load whose answer never reached the screen, because a newer load started first. */
+export class SupersededRead extends Error {
+    constructor(readonly capability: string) {
+        super(`A newer ${capability} read started before this fresh one answered`);
+        this.name = 'SupersededRead';
+    }
+}
+
 export function readFailure(error: unknown, message: string): ReadFailure {
     if (error instanceof CapabilityError && error.status === 0) return { offline: true, error: null, signedOut: false };
     // The statuses call.ts clears every cached read for: nothing of the user's may stay on screen.
@@ -26,7 +34,8 @@ export function readFailure(error: unknown, message: string): ReadFailure {
  * A fresh load asks the server, not the cache, for a decision or a write a cached copy
  * may predate. It fails the screen only where a refresh would (401, 419, 403, 404), so
  * offline or past a 5xx the screen keeps what it shows, and it rejects with any error,
- * so the caller knows it did not get the server's answer.
+ * so the caller knows it did not get the server's answer. It resolves only once its
+ * answer is on screen: when a newer load started meanwhile, it rejects with SupersededRead.
  */
 export function screenRead<T>(
     name: string,
@@ -55,12 +64,15 @@ export function screenRead<T>(
         };
 
         if (fresh) {
+            let data: T;
             try {
-                onData(await readFresh<T>(name, input));
+                data = await readFresh<T>(name, input);
             } catch (error) {
                 if (removesCopy(error)) onError(error);
                 throw error;
             }
+            if (ticket !== latest) throw new SupersededRead(name);
+            onData(data);
             return;
         }
 

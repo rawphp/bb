@@ -6,6 +6,7 @@ import ReadState from '@/app/ReadState.vue';
 import { useRead } from '@/app/useRead';
 import type { TrainShowOutput } from '@/contracts/train_show';
 import BottomSheet from '@/design/BottomSheet.vue';
+import { toneClasses } from '@/design/tones';
 import ActionMenu, { type ActionMenuItem } from '@/design/ActionMenu.vue';
 
 // Train → Mesocycles: the unfinished draft (MESO-007), every mesocycle grouped current,
@@ -81,7 +82,7 @@ function confirmReplace(): void {
             </ActionMenu>
         </header>
 
-        <p v-if="checkError" role="alert" class="mb-4 rounded-2xl bg-tone-warning-bg p-3 text-sm text-tone-warning" data-test="error">{{ checkError }}</p>
+        <p v-if="checkError" role="alert" class="mb-4 rounded-2xl p-3 text-sm" :class="toneClasses.warning" data-test="error">{{ checkError }}</p>
 
         <template v-if="data">
             <section v-if="data.draft" class="mb-6">
