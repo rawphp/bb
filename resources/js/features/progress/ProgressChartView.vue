@@ -25,7 +25,7 @@ const dayLabel = (date: string) => `${day.format(new Date(date))} ${month.format
 
 const time = computed(() => {
     const c = props.chart;
-    return timeAxis([...c.weights, ...c.trend, ...c.goal].map((p) => p.date), LEFT, RIGHT);
+    return timeAxis([...c.weights, ...c.trend, ...c.goal, ...c.waist].map((p) => p.date), LEFT, RIGHT);
 });
 
 const weight = computed(() => {

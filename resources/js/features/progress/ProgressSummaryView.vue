@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ProgressShowOutput } from '@/contracts/progress_show';
-import { toneText } from './toneText';
+import { toneText } from '@/design/toneText';
 
 // Start weight, change so far and goal weight (ANA-002), worded by the server.
 defineProps<{ summary: ProgressShowOutput['summary']; pending?: boolean }>();

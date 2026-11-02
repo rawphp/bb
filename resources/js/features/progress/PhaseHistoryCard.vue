@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ProgressShowOutput } from '@/contracts/progress_show';
 import ItemCard from '@/design/ItemCard.vue';
-import { toneText } from './toneText';
+import { toneText } from '@/design/toneText';
 
 // One past phase: dates, type, weight change and average rate, with its mesocycles (ANA-006, ANA-008).
 defineProps<{ entry: ProgressShowOutput['phase_history'][number]; pending?: boolean }>();

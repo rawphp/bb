@@ -2,7 +2,7 @@
 import type { ProgressShowOutput } from '@/contracts/progress_show';
 import ItemCard from '@/design/ItemCard.vue';
 import StatusPill from '@/design/StatusPill.vue';
-import { toneText } from './toneText';
+import { toneText } from '@/design/toneText';
 
 // One past mesocycle: dates, phase and average weekly sets per muscle (ANA-007).
 defineProps<{ entry: ProgressShowOutput['mesocycle_history'][number]; pending?: boolean }>();

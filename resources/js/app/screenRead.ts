@@ -1,4 +1,4 @@
-import { CapabilityError, read, type CapabilityInput } from './call';
+import { CapabilityError, read, SESSION_GONE, type CapabilityInput } from './call';
 
 // What a screen shows when its read fails: offline with no cached copy (OFF-003),
 // signed out, or the screen's own message.
@@ -8,7 +8,11 @@ export type ReadFailure =
 
 export function readFailure(error: unknown, message: string): ReadFailure {
     if (error instanceof CapabilityError && error.status === 0) return { offline: true, error: null, signedOut: false };
-    if (error instanceof CapabilityError && error.status === 401) return { offline: false, error: 'You are signed out.', signedOut: true };
+    // The statuses call.ts clears every cached read for: nothing of the user's may stay on screen.
+    if (error instanceof CapabilityError && SESSION_GONE.includes(error.status)) {
+        const words = error.status === 401 ? 'You are signed out.' : 'Your session has ended. Sign in again.';
+        return { offline: false, error: words, signedOut: true };
+    }
     return { offline: false, error: message, signedOut: false };
 }
 
