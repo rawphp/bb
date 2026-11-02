@@ -8,7 +8,6 @@ use App\Capabilities\Mesocycles\Data\MesocycleBuildSlot;
 use App\Domain\Mesocycle\MesoBuilder;
 use App\Domain\Mesocycle\MesocycleRules;
 use App\Domain\Model\MuscleGroup;
-use App\Domain\Model\Priority;
 use App\Enums\MesocycleRoute;
 use App\Models\Exercise;
 use App\Models\Mesocycle;
@@ -111,14 +110,12 @@ final class BuildMesocycle
                 $phase === null => throw new DomainException(MesocycleRules::NO_PHASE),
                 default => null,
             };
-            $column = $snapshot->buildColumn($draft);
             $draft->fill([
                 'is_draft' => false,
                 'weeks' => $draft->weeks ?? MesocycleRules::defaultLength($snapshot->experience()),
                 'start_date' => $start->format('Y-m-d'),
                 // MESO-003: the priorities the flow showed, the phase's preset until the user changed one.
-                'muscle_priorities' => ($draft->muscle_priorities ?? []) !== [] ? $draft->muscle_priorities
-                    : array_map(fn (Priority $p) => $p->value, MesoBuilder::defaultPriorities($column)),
+                'muscle_priorities' => $snapshot->buildPriorities($draft),
             ]);
         }
 

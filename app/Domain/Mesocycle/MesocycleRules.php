@@ -193,6 +193,23 @@ final class MesocycleRules
     }
 
     /**
+     * MESO-034: stored days without these muscles' slots: the rotation as it runs while they are Off.
+     *
+     * @param  list<array<string, mixed>>  $days  each with `slots`, each slot with `muscle_group`
+     * @param  list<MuscleGroup>  $muscles
+     * @return list<array<string, mixed>>
+     */
+    public static function withoutMuscles(array $days, array $muscles): array
+    {
+        $values = array_map(fn (MuscleGroup $m) => $m->value, $muscles);
+
+        return $values === [] ? $days : array_map(fn (array $day) => array_replace($day, ['slots' => array_values(array_filter(
+            $day['slots'],
+            fn (array $slot) => ! in_array($slot['muscle_group'], $values, true),
+        ))]), $days);
+    }
+
+    /**
      * MESO-034: an Off muscle's slots are left out of every session. A session left with none plans no sets; it keeps
      * its place, so the days keep their numbers.
      *

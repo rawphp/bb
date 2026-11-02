@@ -414,8 +414,8 @@ final class TrainSnapshot
             id: (string) $mesocycle->id,
             phase: $this->phaseType($mesocycle) ?? PhaseType::Maintenance,
             weeks: (int) $mesocycle->weeks,
-            // MESO-034: an Off muscle's slots are left out of the rotation; setting it Off stored the weeks that ran in
-            // earlier_weeks first ({@see \App\Actions\Mesocycles\SetMusclePriority}), so those keep theirs.
+            // MESO-034: an Off muscle's slots are left out of the rotation. Every change to the Off set stores the weeks
+            // that ran in earlier_weeks first, as they ran ({@see rotationAsRun()}), so those keep theirs.
             sessions: MesocycleRules::withoutOff($sessions($mesocycle->dayRows()), self::off($mesocycle)),
             musclePriorities: self::priorities($mesocycle),
             isResensitization: $mesocycle->is_resensitization,
@@ -514,6 +514,29 @@ final class TrainSnapshot
         }
 
         return $off;
+    }
+
+    /**
+     * SCH-039, MESO-034: the rotation as it runs now, Off muscles left out. A week stored before the rotation changes
+     * (a day added, the Off set changed) is stored from this, so it keeps what ran.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function rotationAsRun(Mesocycle $mesocycle): array
+    {
+        return MesocycleRules::withoutMuscles($mesocycle->dayRows(), self::off($mesocycle));
+    }
+
+    /**
+     * MESO-003, MESO-020: the priorities a build shows and saves: the stored ones, else the preset of its phase.
+     *
+     * @return array<string, ?string>
+     */
+    public function buildPriorities(Mesocycle $build): array
+    {
+        $stored = $build->muscle_priorities ?? [];
+
+        return $stored !== [] ? $stored : array_map(fn (Priority $p) => $p->value, MesoBuilder::defaultPriorities($this->buildColumn($build)));
     }
 
     /** @return list<int> MESO-005: the ISO weekdays the user trains on, in plan-week order */

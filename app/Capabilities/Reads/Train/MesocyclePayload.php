@@ -222,8 +222,7 @@ final class MesocyclePayload
         $start = $snapshot->buildStart($mesocycle);
         $phase = $snapshot->phaseCovering($start);
         $column = $snapshot->buildColumn($mesocycle);
-        $stored = $mesocycle->muscle_priorities ?? [];
-        $priorities = $stored !== [] ? $stored : array_map(fn (Priority $p) => $p->value, MesoBuilder::defaultPriorities($column));
+        $priorities = $snapshot->buildPriorities($mesocycle);
         $training = $snapshot->trainingWeekdays();
         // MESO-005: days are labelled as the saved view labels them ({@see Mesocycle::dayRows()}); a split with any day
         // on a weekday is a weekday split.
