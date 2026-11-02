@@ -21,7 +21,7 @@ final class MissedSessionResolveCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         // UI-010, SCH-056: a move re-targets the day's meals and shows a toast with Undo.
-        return HostDefinition::write('missed_session_resolve', affects: ['today_show', 'week_show', 'train_show', 'mesocycle_show', 'day_adjust_show', 'day_redistribute_show'], reversible: true)
+        return HostDefinition::write('missed_session_resolve', affects: ['today_show', 'week_show', 'train_show', 'mesocycle_show', 'workout_show', ...TodayReads::SHEETS], reversible: true)
             ->description('Answer the missed-day prompt for a session of this plan week whose day passed with nothing logged: do it today (only on a rest day), do it on the next rest day of the plan week, or skip it. A move re-targets that day\'s unchecked meals around the session; a skip changes no targets. Only the choices the prompt offers are accepted.')
             ->cli('workout', 'missed-resolve')
             ->input(MissedSessionResolveInput::class)
@@ -33,7 +33,8 @@ final class MissedSessionResolveCapability implements HostCapability, OwnsInput
                 return new WriteResult(
                     invalidates: [
                         ...MesocycleReads::keys($input->mesocycle_id),
-                        ...TodayReads::keys($resolved['dates'], ['day_adjust_show', 'day_redistribute_show']),
+                        TodayReads::workout($input->mesocycle_id, $input->week, $input->day),
+                        ...TodayReads::keys($resolved['dates'], TodayReads::SHEETS),
                         // SCH-022: the strip marks the days that hold a session.
                         ...TodayReads::weekKeys($resolved['week']),
                     ],
