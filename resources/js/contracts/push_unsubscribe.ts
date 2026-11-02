@@ -6,9 +6,3 @@ export interface PushUnsubscribeInput {
    */
   endpoint: string;
 }
-
-export interface PushUnsubscribeOutput {
-  invalidates: unknown[];
-  toast?: string | null;
-  undo?: string | null;
-}

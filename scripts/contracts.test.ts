@@ -24,6 +24,22 @@ describe('npm run contracts', () => {
         expect(source).toMatch(/export interface MealShowOutput \{\s+title: string;\s+kcal: string \| null;\s+\}/);
     });
 
+    it('OFF-003 versions each output schema, so the read cache can tell a changed output shape', async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'contracts-'));
+        const schema = (properties: object) => JSON.stringify({ type: 'object', additionalProperties: false, properties, required: Object.keys(properties) });
+        const version = async () => /outputVersion = '([0-9a-f]{12})'/.exec((await generate(dir)).get('meal_show.ts')!)?.[1];
+
+        writeFileSync(join(dir, 'meal_show.output.json'), schema({ title: { type: 'string' } }));
+        const first = await version();
+        writeFileSync(join(dir, 'meal_show.input.json'), schema({ id: { type: 'string' } }));
+        const sameOutput = await version();
+        writeFileSync(join(dir, 'meal_show.output.json'), schema({ title: { type: 'string' }, kcal: { type: 'number' } }));
+
+        expect(first).toBeDefined();
+        expect(sameOutput).toBe(first);
+        expect(await version()).not.toBe(first);
+    });
+
     it('CAP-001 keeps the committed contracts in step with the schema snapshots', async () => {
         const files: Map<string, string> = await generate(schemaDir);
         const committed = readdirSync(contractsDir).filter((file) => file.endsWith('.ts'));

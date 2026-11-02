@@ -10,12 +10,20 @@ const props = defineProps<{ payload?: AccountShowOutput }>();
 const account = ref<AccountShowOutput | undefined>(props.payload);
 const failure = ref<'signed-out' | 'error' | null>(null);
 
+function fail(error: unknown): void {
+    account.value = undefined;
+    failure.value = error instanceof CapabilityError && error.status === 401 ? 'signed-out' : 'error';
+}
+
 onMounted(async () => {
     if (account.value) return;
     try {
-        account.value = await read<AccountShowOutput>('account_show');
+        // A cached copy shows at once; the refresh replaces it, or takes it away when it fails (OFF-003).
+        const data = await read<AccountShowOutput>('account_show', {}, (fresh) => (account.value = fresh), fail);
+        // A refresh that already landed wins over the copy read() was handed.
+        if (failure.value === null) account.value ??= data;
     } catch (error) {
-        failure.value = error instanceof CapabilityError && error.status === 401 ? 'signed-out' : 'error';
+        fail(error);
     }
 });
 </script>

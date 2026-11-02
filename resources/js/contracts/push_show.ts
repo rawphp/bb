@@ -7,3 +7,5 @@ export interface PushShowOutput {
   public_key?: string | null;
   devices: number;
 }
+
+export const outputVersion = '049b2e511b19';

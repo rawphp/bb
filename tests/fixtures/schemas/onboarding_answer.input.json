@@ -1,0 +1,459 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "answers": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "goal": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "fatLoss",
+                        "muscleGain",
+                        "maintenance"
+                    ]
+                },
+                "finished_diet_recently": {
+                    "type": [
+                        "boolean",
+                        "null"
+                    ]
+                },
+                "name": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "maxLength": 100
+                },
+                "sex": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "male",
+                        "female"
+                    ]
+                },
+                "birth_date": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "format": "date"
+                },
+                "height": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "unit": {
+                            "type": "string",
+                            "enum": [
+                                "cm",
+                                "feetInches"
+                            ]
+                        },
+                        "cm": {
+                            "type": [
+                                "number",
+                                "null"
+                            ],
+                            "minimum": 0
+                        },
+                        "feet": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ],
+                            "minimum": 0
+                        },
+                        "inches": {
+                            "type": [
+                                "number",
+                                "null"
+                            ],
+                            "minimum": 0
+                        }
+                    },
+                    "required": [
+                        "unit"
+                    ]
+                },
+                "weight": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "unit": {
+                            "type": "string",
+                            "enum": [
+                                "kg",
+                                "lb"
+                            ]
+                        },
+                        "value": {
+                            "type": [
+                                "number",
+                                "null"
+                            ],
+                            "minimum": 0
+                        }
+                    },
+                    "required": [
+                        "unit"
+                    ]
+                },
+                "screening": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "item": {
+                                "type": "string",
+                                "enum": [
+                                    "pregnantOrBreastfeeding",
+                                    "tryingToConceive",
+                                    "transgenderOnHormoneTherapy",
+                                    "heartThyroidOrPCOS",
+                                    "weightLossSurgery",
+                                    "gallbladderDisease",
+                                    "autoimmuneDisease",
+                                    "diabetes",
+                                    "eatingDisorderHistory"
+                                ]
+                            },
+                            "is_on": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "item",
+                            "is_on"
+                        ]
+                    }
+                },
+                "uses_glp1": {
+                    "type": [
+                        "boolean",
+                        "null"
+                    ]
+                },
+                "body_fat": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "lowest",
+                        "low",
+                        "high",
+                        "highest"
+                    ]
+                },
+                "rate_option": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "custom_rate": {
+                    "type": [
+                        "number",
+                        "null"
+                    ]
+                },
+                "weeks": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "minimum": 1
+                },
+                "start_date": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "format": "date"
+                },
+                "last_day": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "format": "date"
+                },
+                "target_weight": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "unit": {
+                            "type": "string",
+                            "enum": [
+                                "kg",
+                                "lb"
+                            ]
+                        },
+                        "value": {
+                            "type": [
+                                "number",
+                                "null"
+                            ],
+                            "minimum": 0
+                        }
+                    },
+                    "required": [
+                        "unit"
+                    ]
+                },
+                "experience": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "beginner",
+                        "intermediate",
+                        "advanced"
+                    ]
+                },
+                "training_days": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "weekday": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                            },
+                            "start_minutes": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "minimum": 0,
+                                "maximum": 1439
+                            },
+                            "length_minutes": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "minimum": 1
+                            }
+                        },
+                        "required": [
+                            "weekday"
+                        ]
+                    }
+                },
+                "training_plan": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "step_ranges": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "weekday": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                            },
+                            "min": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 40000
+                            },
+                            "max": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 40000
+                            }
+                        },
+                        "required": [
+                            "weekday",
+                            "min",
+                            "max"
+                        ]
+                    }
+                },
+                "first_meal_minutes": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 1439
+                },
+                "last_meal_minutes": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 1439
+                },
+                "meal_count": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "minimum": 2,
+                    "maximum": 6
+                },
+                "busy_periods": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "label": {
+                                "type": "string",
+                                "maxLength": 60
+                            },
+                            "start_minutes": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                            },
+                            "end_minutes": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                            },
+                            "weekdays": {
+                                "type": "array",
+                                "minItems": 1,
+                                "maxItems": 7
+                            },
+                            "id": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "label",
+                            "start_minutes",
+                            "end_minutes",
+                            "weekdays"
+                        ]
+                    }
+                },
+                "weigh_ins": {
+                    "type": [
+                        "array",
+                        "null"
+                    ],
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "weekday": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 7
+                            },
+                            "minutes": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
+                                "minimum": 0,
+                                "maximum": 1439
+                            }
+                        },
+                        "required": [
+                            "weekday"
+                        ]
+                    }
+                },
+                "review_weekday": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7"
+                    ]
+                },
+                "calories": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "recommendation",
+                        "own"
+                    ]
+                },
+                "own_kcal": {
+                    "type": [
+                        "integer",
+                        "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 10000
+                }
+            }
+        },
+        "move": {
+            "type": "string",
+            "enum": [
+                "stay",
+                "next",
+                "back",
+                "edit"
+            ]
+        },
+        "edit_step": {
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 1,
+            "maximum": 13
+        }
+    }
+}

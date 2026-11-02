@@ -14,9 +14,3 @@ export interface PushSubscribeInput {
    */
   auth_token: string;
 }
-
-export interface PushSubscribeOutput {
-  invalidates: unknown[];
-  toast?: string | null;
-  undo?: string | null;
-}
