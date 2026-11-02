@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cached, clearReads, MAX_AGE_MS, store } from './cache';
-import { CapabilityError, keepWarm, read, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, write } from './call';
+import { CapabilityError, endSession, keepWarm, read, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, write } from './call';
 import { clearWalk, walkDays } from './clock';
 
 function json(body: unknown, status = 200): Response {
@@ -28,6 +28,29 @@ describe('call', () => {
     });
 
     afterEach(() => vi.unstubAllGlobals());
+
+    it('ACC-006 endSession posts to the sign-out route with the CSRF cookie', async () => {
+        document.cookie = 'XSRF-TOKEN=abc%3D%3D; path=/';
+        fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+        await endSession();
+
+        expect(fetchMock).toHaveBeenCalledWith('/sign-out', expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ 'X-XSRF-TOKEN': 'abc==' }) }));
+    });
+
+    it.each([401, 419])('ACC-006 endSession treats %i as already signed out', async (status) => {
+        document.cookie = 'XSRF-TOKEN=abc; path=/';
+        fetchMock.mockResolvedValueOnce(new Response(null, { status }));
+
+        await expect(endSession()).resolves.toBeUndefined();
+    });
+
+    it('ACC-006 endSession rejects when the sign-out fails', async () => {
+        document.cookie = 'XSRF-TOKEN=abc; path=/';
+        fetchMock.mockResolvedValueOnce(new Response(null, { status: 500 }));
+
+        await expect(endSession()).rejects.toBeInstanceOf(CapabilityError);
+    });
 
     it.each([
         ['read', read],
