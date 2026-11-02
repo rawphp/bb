@@ -24,10 +24,10 @@ final class PlanDietBreakSetCapability implements HostCapability
             ->run(function (PlanDietBreakSetInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */
                 $user = $context->user();
-                ($this->setDietBreak)($user, $input->week_start, $input->diet_break);
+                $days = ($this->setDietBreak)($user, $input->week_start, $input->diet_break);
 
                 return new WriteResult(
-                    invalidates: PlanReads::keys($user),
+                    invalidates: PlanReads::dietBreakKeys($user, $days),
                     toast: $input->diet_break ? 'Deload back at maintenance calories' : 'Deload now in a deficit',
                 );
             });

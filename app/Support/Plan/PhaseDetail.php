@@ -8,8 +8,6 @@ final readonly class PhaseDetail
     public function __construct(
         /** Length in weeks; null for a phase with no end (PH-005). */
         public ?int $weeks,
-        /** Whole plan weeks gone since it started. */
-        public int $weeksDone,
         /** 0 to 1; null for a phase with no end. */
         public ?float $progress,
         /** "Week 7 of 12", "Starts in 3 weeks" or "Finished". */

@@ -4,7 +4,7 @@ namespace App\Support\Plan;
 
 use DateTimeImmutable;
 
-/** One plan week as the timeline marks it (PLAN-008, PLAN-022 to PLAN-025). */
+/** One plan week as the timeline marks it (PLAN-008, PLAN-022 to PLAN-024). */
 final readonly class TimelineWeek
 {
     public function __construct(
@@ -14,8 +14,6 @@ final readonly class TimelineWeek
         public int $dayCount,
         public bool $isPast,
         public bool $isDeload,
-        /** PLAN-022, PLAN-025: a week at maintenance calories in a cut, planned or not. */
-        public bool $isDietBreak,
         /** "Deload · maintenance calories"; null for a week that is not a deload. */
         public ?string $deloadLabel,
         /** PLAN-023: a Fat loss or Mini-cut deload whose diet break the user may turn off. */

@@ -3,7 +3,9 @@
 namespace App\Capabilities\Plan;
 
 use App\Capabilities\Support\ReadKey;
+use App\Capabilities\Today\TodayReads;
 use App\Models\Mesocycle;
+use App\Models\Phase;
 use App\Models\User;
 
 /**
@@ -27,5 +29,23 @@ final class PlanReads
             ReadKey::for('today_show'),
             ReadKey::for('week_show'),
         ];
+    }
+
+    /**
+     * PLAN-023, PLAN-025: a deload's diet break changes that week's days and every phase's target weight and length
+     * cap, which count diet-break weeks.
+     *
+     * @param  list<string>  $days  the deload week's days, Y-m-d
+     * @return list<string>
+     */
+    public static function dietBreakKeys(User $user, array $days): array
+    {
+        $phases = Phase::query()->where('user_id', $user->id)->pluck('id')->map(fn ($id) => (string) $id)->all();
+
+        return array_values(array_unique([
+            ...self::keys($user, ...$phases),
+            ...TodayReads::keys($days),
+            ...TodayReads::weekKeys($days),
+        ]));
     }
 }

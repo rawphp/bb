@@ -27,11 +27,11 @@ final class PhaseLengthSetCapability implements HostCapability, OwnsInput
             ->run(function (PhaseLengthSetInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */
                 $user = $context->user();
-                $changed = ($this->setLength)($user, $input->phase_id, $input->weeks, $input->fix);
+                $result = ($this->setLength)($user, $input->phase_id, $input->weeks, $input->fix);
 
                 return new WriteResult(
-                    invalidates: PlanReads::keys($user, ...$changed),
-                    toast: $input->weeks === null ? 'Phase now has no end' : 'Phase is now '.PlanWords::weeks($input->weeks),
+                    invalidates: PlanReads::keys($user, ...$result['changed']),
+                    toast: $result['weeks'] === null ? 'Phase now has no end' : 'Phase is now '.PlanWords::weeks($result['weeks']),
                 );
             });
     }

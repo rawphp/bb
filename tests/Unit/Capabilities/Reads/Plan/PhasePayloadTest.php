@@ -70,8 +70,9 @@ it('PLAN-004 a Maintenance with no end has no length, progress or target', funct
 it('PH-006 the lengths stay within TBL-010 and keep the weeks already run', function () {
     $lengths = array_column(phasePayload()['lengths'], 'weeks');
 
-    // Fat loss runs 2 to 16 deficit weeks; the two diet breaks do not count (PLAN-025), and week 7 has begun.
-    expect($lengths[0])->toBe(7)
+    // Fat loss runs 2 to 16 deficit weeks; the two diet breaks do not count (PLAN-025). Week 7 has begun, and
+    // ending it there is End phase (PH-007), so the shortest is 8.
+    expect($lengths[0])->toBe(8)
         // Three deloads fall inside 19 weeks (5, 11 and 15), so 19 holds 16 deficit weeks.
         ->and(end($lengths))->toBe(19)
         ->and($lengths)->not->toContain(null)

@@ -34,11 +34,22 @@ final class PhaseChanges
     /** The longest phase weighed (52 weeks). */
     private const LONGEST = 52;
 
+    /** @var array<string, PhaseDetail> */
+    private array $details = [];
+
+    /** @var array<string, list<?int>> */
+    private array $lengths = [];
+
     public function __construct(public readonly PlanSnapshot $plan) {}
 
     // MARK: PLAN-004
 
     public function detail(Phase $phase): PhaseDetail
+    {
+        return $this->details[(string) $phase->id] ??= $this->makeDetail($phase);
+    }
+
+    private function makeDetail(Phase $phase): PhaseDetail
     {
         $range = $this->plan->weeksOf($phase);
         $weeks = $range->upper === PlanSnapshot::OPEN ? null : $range->count();
@@ -86,7 +97,6 @@ final class PhaseChanges
 
         return new PhaseDetail(
             weeks: $weeks,
-            weeksDone: $weeksDone,
             progress: $weeks === null ? null : $weeksDone / max(1, $weeks),
             progressText: $progressText,
             startKg: $startKg,
@@ -101,12 +111,18 @@ final class PhaseChanges
 
     /**
      * PH-006, PLAN-025: the lengths the phase may have, diet-break weeks not counting towards a cut's cap. A running
-     * phase keeps at least the weeks up to this one. Null stands for no end (PH-005), for a type that allows it and a
-     * phase with nothing after it. Empty once the phase is over.
+     * phase runs at least past this week: ending it this week is End phase (PH-007), which asks first. Null stands
+     * for no end (PH-005), for a type that allows it and a phase with nothing after it. Empty once the phase is over.
      *
      * @return list<?int>
      */
     public function lengths(Phase $phase): array
+    {
+        return $this->lengths[(string) $phase->id] ??= $this->allowedLengths($phase);
+    }
+
+    /** @return list<?int> */
+    private function allowedLengths(Phase $phase): array
     {
         if ($this->detail($phase)->isOver) {
             return [];
@@ -133,11 +149,15 @@ final class PhaseChanges
         if ($weeks === null && $this->plan->laterPhases($phase) !== []) {
             return PlanWords::refusal(PhaseRefusal::previousPhaseHasNoEnd(), $phase->type);
         }
-        if ($weeks !== null && $weeks < $this->shortest($phase)) {
-            $shortest = $this->shortest($phase);
-            if ($shortest > TBL010Phases::row($phase->type)->minWeeks) {
-                return 'This phase is in week '.($shortest).', so it must run at least '.PlanWords::weeks($shortest).'.';
-            }
+        if ($weeks !== null && $weeks > self::LONGEST) {
+            return 'A phase can run at most '.self::LONGEST.' weeks.';
+        }
+        $shortest = $this->shortest($phase);
+        if ($weeks !== null && $weeks < $shortest && $shortest > TBL010Phases::row($phase->type)->minWeeks) {
+            return "This phase is in week {$shortest}, so it must run at least ".PlanWords::weeks($shortest).'.';
+        }
+        if ($weeks !== null && $this->detail($phase)->isCurrent && $weeks === $this->plan->todayWeek - $this->plan->weeksOf($phase)->lower + 1) {
+            return 'That ends the phase this week. Use End phase, which asks first.';
         }
         try {
             PhaseRules::adjustingLength(
@@ -168,8 +188,11 @@ final class PhaseChanges
             // A running phase cannot move its end back before the week it is in.
             $movedEnd = $fixes?->movedEndWeek === null || $fixes->movedEndWeek - $range->lower < $this->shortest($phase)
                 ? null : $this->plan->dayOfWeek($fixes->movedEndWeek);
-            if ($fixes?->mesocycleLength !== null) {
-                $change = [$eligible[$fixes->mesocycleLength->index], $fixes->mesocycleLength->weeks];
+            // MESO-042, SCH-039: only a length the mesocycle could take on its own.
+            $length = $fixes?->mesocycleLength;
+            $placed = $length === null ? null : $eligible[$length->index];
+            if ($placed !== null && $this->plan->calendar($placed->mesocycle)->canSetWeeks($length->weeks, $placed->mesocycle->laterWeekIds() !== [])) {
+                $change = [$placed, $length->weeks];
             }
         }
         $adjusted = PlanSnapshot::domainPhase($phase)->withDates(PlanSnapshot::day($phase->start_date), $end);

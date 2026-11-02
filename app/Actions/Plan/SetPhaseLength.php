@@ -6,6 +6,7 @@ use App\Models\Phase;
 use App\Models\User;
 use App\Support\Plan\PhaseChanges;
 use App\Support\Plan\PlanSnapshot;
+use DateTimeImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -16,9 +17,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class SetPhaseLength
 {
-    public const FIXES = ['keep_end', 'move_end_to_deload', 'change_mesocycle_length'];
-
-    /** @return list<string> the ids of the phases whose dates changed */
+    /** @return array{changed: list<string>, weeks: ?int} the ids of the phases whose dates changed, and the length written */
     public function __invoke(User $user, string $phaseId, ?int $weeks, string $fix): array
     {
         $plan = PlanSnapshot::load($user) ?? throw new DomainException('There is no plan yet.');
@@ -38,27 +37,39 @@ final class SetPhaseLength
             $mesocycle = $proposal->mesocycleChange ?? throw new DomainException('No mesocycle length puts a deload on that last week.');
         }
 
-        $oldEnd = $phase->end_date === null ? null : PlanSnapshot::day($phase->end_date);
-        $later = $plan->laterPhases($phase);
+        $written = $end === null ? null : $plan->grid->weekIndexContaining($end) - $plan->weeksOf($phase)->lower;
 
-        return DB::transaction(function () use ($phase, $end, $mesocycle, $oldEnd, $later): array {
+        return DB::transaction(function () use ($plan, $phase, $end, $mesocycle, $written): array {
             if ($mesocycle !== null) {
                 $mesocycle[0]->mesocycle->update(['weeks' => $mesocycle[1]]);
             }
-            $phase->update(['end_date' => $end?->format('Y-m-d')]);
-            $changed = [(string) $phase->id];
-            $days = $oldEnd === null || $end === null ? 0 : (int) $oldEnd->diff($end)->format('%r%a');
-            if ($days !== 0) {
-                foreach ($later as $next) {
-                    $next->update([
-                        'start_date' => PlanSnapshot::day($next->start_date)->modify("{$days} days")->format('Y-m-d'),
-                        'end_date' => $next->end_date === null ? null : PlanSnapshot::day($next->end_date)->modify("{$days} days")->format('Y-m-d'),
-                    ]);
-                    $changed[] = (string) $next->id;
-                }
-            }
 
-            return $changed;
+            return ['changed' => self::moveEnd($plan, $phase, $end), 'weeks' => $written];
         });
+    }
+
+    /**
+     * Gives a phase a new end, and moves the phases after it by as many days, as the end moved (PH-006, PH-007).
+     *
+     * @return list<string> the ids of the phases whose dates changed
+     */
+    public static function moveEnd(PlanSnapshot $plan, Phase $phase, ?DateTimeImmutable $end): array
+    {
+        $oldEnd = $phase->end_date === null ? null : PlanSnapshot::day($phase->end_date);
+        $phase->update(['end_date' => $end?->format('Y-m-d')]);
+        $changed = [(string) $phase->id];
+        $days = $oldEnd === null || $end === null ? 0 : (int) $oldEnd->diff($end)->format('%r%a');
+        if ($days === 0) {
+            return $changed;
+        }
+        foreach ($plan->laterPhases($phase) as $next) {
+            $next->update([
+                'start_date' => PlanSnapshot::day($next->start_date)->modify("{$days} days")->format('Y-m-d'),
+                'end_date' => $next->end_date === null ? null : PlanSnapshot::day($next->end_date)->modify("{$days} days")->format('Y-m-d'),
+            ]);
+            $changed[] = (string) $next->id;
+        }
+
+        return $changed;
     }
 }

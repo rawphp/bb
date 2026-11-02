@@ -13,7 +13,8 @@ use DomainException;
  */
 final class SetDietBreak
 {
-    public function __invoke(User $user, string $weekStart, bool $dietBreak): PlanWeek
+    /** @return list<string> the week's days, Y-m-d */
+    public function __invoke(User $user, string $weekStart, bool $dietBreak): array
     {
         $plan = PlanSnapshot::load($user) ?? throw new DomainException('There is no plan yet.');
         $start = PlanSnapshot::day($weekStart);
@@ -39,6 +40,6 @@ final class SetDietBreak
         $row->diet_break_off = ! $dietBreak;
         $row->save();
 
-        return $row;
+        return array_map(fn (int $day) => $start->modify("+{$day} days")->format('Y-m-d'), range(0, $marks->dayCount - 1));
     }
 }

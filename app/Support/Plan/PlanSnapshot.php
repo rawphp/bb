@@ -2,6 +2,7 @@
 
 namespace App\Support\Plan;
 
+use App\Domain\Mesocycle\MesocycleCalendar;
 use App\Domain\Model\ExperienceLevel;
 use App\Domain\Model\Phase as DomainPhase;
 use App\Domain\Model\PhaseType;
@@ -51,6 +52,12 @@ final class PlanSnapshot
     /** @var list<int> SCH-060: away weeks with training paused */
     public readonly array $pausedWeeks;
 
+    /** @var array<int, TimelineWeek> each plan week's marks, worked out once */
+    private array $timelineWeeks = [];
+
+    /** @var array<string, PlanWeek> the flagged plan weeks by their Y-m-d start */
+    private array $rowsByStart = [];
+
     /**
      * @param  Collection<int, Phase>  $phases  sorted by start
      * @param  Collection<int, Mesocycle>  $mesocycles  saved ones
@@ -74,6 +81,10 @@ final class PlanSnapshot
         );
         $this->grid = PlanWeekGrid::forPlan($this->domain);
         $this->todayWeek = $this->grid->weekIndexContaining($today);
+
+        foreach ($planWeeks as $row) {
+            $this->rowsByStart[self::day($row->start_date)->format('Y-m-d')] = $row;
+        }
 
         $paused = [];
         foreach ($planWeeks as $row) {
@@ -246,9 +257,25 @@ final class PlanSnapshot
 
     public function weekRow(int $week): ?PlanWeek
     {
-        $start = $this->grid->start($week);
+        return $this->rowsByStart[$this->grid->start($week)->format('Y-m-d')] ?? null;
+    }
 
-        return $this->planWeeks->first(fn (PlanWeek $row) => self::day($row->start_date) == $start);
+    /** Where a saved mesocycle stands in time, as the mesocycle writes see it (MESO-042). */
+    public function calendar(Mesocycle $mesocycle): MesocycleCalendar
+    {
+        $start = self::day($mesocycle->start_date);
+
+        return new MesocycleCalendar(
+            start: $start,
+            weeks: (int) $mesocycle->weeks,
+            endedOn: $mesocycle->ended_on === null ? null : self::day($mesocycle->ended_on),
+            grid: $this->grid,
+            today: $this->today,
+            nextStart: $this->mesocycles
+                ->map(fn (Mesocycle $m) => self::day($m->start_date))
+                ->filter(fn (DateTimeImmutable $other) => $other > $start)
+                ->min(),
+        );
     }
 
     /** The mesocycle covering a week (PLAN-002): of overlapping ones, the one that started last. */
@@ -276,6 +303,11 @@ final class PlanSnapshot
      */
     public function timelineWeek(int $week): TimelineWeek
     {
+        return $this->timelineWeeks[$week] ??= $this->markWeek($week);
+    }
+
+    private function markWeek(int $week): TimelineWeek
+    {
         $row = $this->weekRow($week);
         $ending = null;
         foreach ($this->placed as $placed) {
@@ -299,7 +331,6 @@ final class PlanSnapshot
                 default => DeloadCalories::label($type, $isOff) ?? 'Deload · deficit calories',
             };
         }
-        $planned = ! $trainingOnly && $isDeload && $type !== null && DeloadCalories::isDietBreak($type, true, $isOff);
 
         return new TimelineWeek(
             index: $week,
@@ -307,7 +338,6 @@ final class PlanSnapshot
             dayCount: $this->grid->lengthInDays($week),
             isPast: $this->todayWeek !== null && $week < $this->todayWeek,
             isDeload: $isDeload,
-            isDietBreak: $planned || (! $trainingOnly && ($row->is_diet_break ?? false)),
             deloadLabel: $label,
             canTurnOffDietBreak: ! $trainingOnly && $isDeload && ! $isOff && $type !== null && DeloadCalories::canTurnOffDietBreak($type),
             dietBreakIsOff: $isOff,

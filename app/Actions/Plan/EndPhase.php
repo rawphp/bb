@@ -24,24 +24,7 @@ final class EndPhase
         }
 
         $end = $plan->dayOfWeek($plan->nextWeek());
-        $oldEnd = $phase->end_date === null ? null : PlanSnapshot::day($phase->end_date);
-        $later = $plan->laterPhases($phase);
 
-        return DB::transaction(function () use ($phase, $end, $oldEnd, $later): array {
-            $phase->update(['end_date' => $end->format('Y-m-d')]);
-            $changed = [(string) $phase->id];
-            $days = $oldEnd === null ? 0 : (int) $oldEnd->diff($end)->format('%r%a');
-            if ($days !== 0) {
-                foreach ($later as $next) {
-                    $next->update([
-                        'start_date' => PlanSnapshot::day($next->start_date)->modify("{$days} days")->format('Y-m-d'),
-                        'end_date' => $next->end_date === null ? null : PlanSnapshot::day($next->end_date)->modify("{$days} days")->format('Y-m-d'),
-                    ]);
-                    $changed[] = (string) $next->id;
-                }
-            }
-
-            return $changed;
-        });
+        return DB::transaction(fn (): array => SetPhaseLength::moveEnd($plan, $phase, $end));
     }
 }
