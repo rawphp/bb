@@ -66,9 +66,10 @@ describe('router', () => {
         const more = routesFor(false).find((route) => route.path === '/more');
 
         expect(more?.props).toMatchObject({ label: 'More' });
-        expect((more?.props as { links: string[] }).links).toEqual(expect.arrayContaining(['/account', '/settings/tokens', '/settings/coach']));
-        // Dev routes stay out unless the server flags them on.
+        expect((more?.props as { links: string[] }).links).toEqual(expect.arrayContaining(['/account', '/settings/tokens']));
+        // Dev routes stay out unless the server flags them on; the Coach only shows where the agent runs (AGT-002).
         expect((more?.props as { links: string[] }).links).not.toContain('/dev/clock');
+        expect((more?.props as { links: string[] }).links).not.toContain('/settings/coach');
     });
 
     it('PWA-025 gives each router its navigation', () => {

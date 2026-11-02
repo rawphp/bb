@@ -30,25 +30,32 @@ const shown = ref<TokenCreateOutput['token'] | null>(null);
 const copied = ref(false);
 const confirming = ref<string | null>(null);
 const revokeError = ref<string | null>(null);
+// One id per create form (CAP-019): a retry after a lost answer sends the same id,
+// so the server never mints a second token whose secret nobody saw.
+const tokenId = ref('');
 
 const expiryChoices = computed(() => (list.value?.expiries ?? []).map((e) => ({ id: e.days as Days, title: e.label })));
 const scopeChoices = computed(() => (list.value?.scopes ?? []).map((s) => ({ id: s.value, title: s.label, detail: s.description })));
 
+// Expiry and scope start unpicked: a token's power is the user's choice, never a default.
+const ready = computed(() => name.value.trim() !== '' && days.value !== null && scope.value !== null);
+
 function startCreate(): void {
     creating.value = true;
+    tokenId.value = ulid();
     name.value = '';
-    days.value = list.value?.expiries[0]?.days as Days | undefined ?? null;
-    scope.value = list.value?.scopes[0]?.value ?? null;
+    days.value = null;
+    scope.value = null;
     picked.value = [];
     error.value = null;
 }
 
 async function create(): Promise<void> {
-    if (busy.value || days.value === null || scope.value === null) return;
+    if (busy.value || !ready.value || days.value === null || scope.value === null) return;
     busy.value = true;
     error.value = null;
     const input: TokenCreateInput = {
-        id: ulid(),
+        id: tokenId.value,
         name: name.value.trim(),
         expires_in_days: days.value,
         scope: scope.value,
@@ -66,7 +73,7 @@ async function create(): Promise<void> {
 }
 
 async function copy(): Promise<void> {
-    if (!shown.value) return;
+    if (!shown.value?.plain_text) return;
     await navigator.clipboard?.writeText(shown.value.plain_text).then(() => (copied.value = true), () => undefined);
 }
 
@@ -98,10 +105,16 @@ async function revoke(id: string): Promise<void> {
         <section v-if="shown" class="space-y-3 rounded-2xl bg-surface p-4" aria-labelledby="token-shown">
             <h2 id="token-shown" class="font-semibold">{{ shown.name }}</h2>
             <p class="text-sm text-secondary-text">{{ shown.scope_text }} · {{ shown.expires_text }}</p>
-            <p class="rounded-xl p-3 text-sm" :class="TONE_CLASS.warning">Copy this token now. You will not see it again.</p>
-            <code class="block rounded-xl bg-background p-3 font-mono text-sm break-all select-all" data-test="plain-text">{{ shown.plain_text }}</code>
+            <template v-if="shown.plain_text">
+                <p class="rounded-xl p-3 text-sm" :class="TONE_CLASS.warning">Copy this token now. You will not see it again.</p>
+                <code class="block rounded-xl bg-background p-3 font-mono text-sm break-all select-all" data-test="plain-text">{{ shown.plain_text }}</code>
+            </template>
+            <!-- A retried create whose first answer was lost: the token exists, but its secret was shown to nobody. -->
+            <p v-else class="rounded-xl p-3 text-sm" :class="TONE_CLASS.warning" data-test="secret-lost">
+                This token was made, but its secret can't be shown again. Revoke it and make a new one.
+            </p>
             <div class="flex gap-2">
-                <button type="button" class="min-h-tap flex-1 rounded-xl border px-4 active:opacity-70" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</button>
+                <button v-if="shown.plain_text" type="button" class="min-h-tap flex-1 rounded-xl border px-4 active:opacity-70" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</button>
                 <button type="button" class="min-h-tap flex-1 rounded-xl bg-accent px-4 font-semibold text-on-accent active:opacity-70" data-test="done" @click="done">Done</button>
             </div>
         </section>
@@ -124,7 +137,7 @@ async function revoke(id: string): Promise<void> {
                             <button type="button" class="min-h-tap flex-1 rounded-xl border px-4 active:opacity-70" :disabled="busy" @click="confirming = null">Cancel</button>
                             <button
                                 type="button"
-                                class="min-h-tap flex-1 rounded-xl border px-4 font-medium text-[light-dark(#d70015,#ff453a)] active:opacity-70"
+                                class="min-h-tap flex-1 rounded-xl border px-4 font-medium text-destructive active:opacity-70"
                                 :data-test="`confirm-revoke-${token.id}`"
                                 :disabled="busy"
                                 :aria-busy="busy"
@@ -137,7 +150,7 @@ async function revoke(id: string): Promise<void> {
                     <button
                         v-else
                         type="button"
-                        class="min-h-tap text-[light-dark(#d70015,#ff453a)] active:opacity-70"
+                        class="min-h-tap text-destructive active:opacity-70"
                         :data-test="`revoke-${token.id}`"
                         @click="(confirming = token.id), (revokeError = null)"
                     >
@@ -180,7 +193,7 @@ async function revoke(id: string): Promise<void> {
                         type="button"
                         class="min-h-tap flex-1 rounded-xl bg-accent px-4 font-semibold text-on-accent active:opacity-70 disabled:opacity-50"
                         data-test="create"
-                        :disabled="busy || name.trim() === ''"
+                        :disabled="busy || !ready"
                         :aria-busy="busy"
                         @click="create"
                     >

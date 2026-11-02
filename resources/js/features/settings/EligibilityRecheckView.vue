@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { write } from '@/app/call';
+import { useNavigation, type Navigation } from '@/app/navigation';
 import { failureMessage } from '@/app/errors';
 import { useRead } from '@/app/useRead';
 import type { EligibilityRecheckInput, EligibilityRecheckOutput } from '@/contracts/eligibility_recheck';
@@ -16,16 +17,21 @@ const props = defineProps<{ payload?: EligibilityRecheckShowOutput }>();
 type Item = EligibilityRecheckInput['answers'][number]['item'];
 
 const router = useRouter();
+const nav = shellNavigation();
 const { data: screening, failure, load } = useRead<EligibilityRecheckShowOutput>('eligibility_recheck_show', props.payload);
 const ticked = ref<Partial<Record<Item, boolean>>>({});
+// Boxes the user has changed. A background refresh (OFF-003) never overrides them.
+const touched = new Set<Item>();
 const saving = ref(false);
 const error = ref<string | null>(null);
 const outcome = ref<EligibilityRecheckOutput | null>(null);
 
-// The boxes start as the server last saw them.
+// The boxes start as the server last saw them, and follow a refresh until the user ticks one.
 watch(
     screening,
-    (show) => (ticked.value = Object.fromEntries((show?.questions ?? []).map((q) => [q.item, q.applies]))),
+    (show) => {
+        for (const q of show?.questions ?? []) if (q.measured || !touched.has(q.item)) ticked.value[q.item] = q.applies;
+    },
     { immediate: true },
 );
 
@@ -45,9 +51,21 @@ async function check(): Promise<void> {
     }
 }
 
+// The tab stack's back, which stays in the app. Opened on its own (a deep link, a
+// reload, /dev/screens) there is no screen under this one, so Done goes to More.
 function finish(): void {
     if (outcome.value?.next === 'onboarding') void router.push('/onboarding');
-    else router.back();
+    else if (nav && nav.state.stacks[nav.state.active].length > 1) nav.back();
+    else void router.replace('/more');
+}
+
+function shellNavigation(): Navigation | undefined {
+    try {
+        return useNavigation();
+    } catch {
+        // A router not made by makeRouter() (dev screens, tests) has no tab stacks.
+        return undefined;
+    }
 }
 </script>
 
@@ -88,6 +106,7 @@ function finish(): void {
                     <input
                         v-model="ticked[question.item]"
                         type="checkbox"
+                        @change="touched.add(question.item)"
                         class="size-5 accent-accent"
                         :disabled="question.measured || saving"
                         :aria-describedby="question.measured ? `measured-${question.item}` : undefined"

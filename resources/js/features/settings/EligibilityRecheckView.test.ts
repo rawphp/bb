@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter } from 'vue-router';
+import { makeRouter } from '@/app/router';
 import { CapabilityError, read, write } from '@/app/call';
 import type { EligibilityRecheckShowOutput } from '@/contracts/eligibility_recheck_show';
 import type { EligibilityRecheckOutput } from '@/contracts/eligibility_recheck';
@@ -87,6 +88,62 @@ describe('EligibilityRecheckView', () => {
         await flushPromises();
 
         expect(router.currentRoute.value.path).toBe('/onboarding');
+    });
+
+    it('NAV-001 Done goes back down the tab stack to the screen it came from', async () => {
+        writeMock.mockResolvedValueOnce(result({}));
+        const router = makeRouter(false, createMemoryHistory());
+        await router.push('/more');
+        await router.push('/settings/eligibility');
+        const wrapper = mount(EligibilityRecheckView, { props: { payload: content }, global: { plugins: [router] } });
+
+        await wrapper.get('[data-test="check"]').trigger('click');
+        await flushPromises();
+        await wrapper.get('[data-test="continue"]').trigger('click');
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        expect(router.currentRoute.value.path).toBe('/more');
+        wrapper.unmount();
+    });
+
+    it('NAV-001 Done on a screen opened on its own goes to More instead of leaving the app', async () => {
+        writeMock.mockResolvedValueOnce(result({}));
+        const { wrapper, router } = await view(content);
+        const back = vi.spyOn(router, 'back');
+
+        await wrapper.get('[data-test="check"]').trigger('click');
+        await flushPromises();
+        await wrapper.get('[data-test="continue"]').trigger('click');
+        await flushPromises();
+
+        expect(back).not.toHaveBeenCalled();
+        expect(router.currentRoute.value.path).toBe('/more');
+    });
+
+    it('SAFE-017 a background refresh does not untick what the user ticked', async () => {
+        let refresh: (data: EligibilityRecheckShowOutput) => void = () => {};
+        readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {
+            refresh = onUpdate as typeof refresh;
+            return content;
+        });
+        writeMock.mockResolvedValueOnce(result({}));
+        const { wrapper } = await view();
+        await flushPromises();
+
+        const pregnant = content.questions.findIndex((q) => q.item === 'pregnantOrBreastfeeding');
+        const diabetes = content.questions.findIndex((q) => q.item === 'diabetes');
+        await wrapper.findAll('input[type="checkbox"]')[pregnant]!.setValue(true);
+        refresh({ ...content, questions: content.questions.map((q) => ({ ...q, applies: q.item === 'diabetes' })) });
+        await flushPromises();
+
+        const boxes = wrapper.findAll<HTMLInputElement>('input[type="checkbox"]');
+        expect(boxes[pregnant]!.element.checked).toBe(true);
+        // An untouched box follows the server.
+        expect(boxes[diabetes]!.element.checked).toBe(true);
+
+        await wrapper.get('[data-test="check"]').trigger('click');
+        await flushPromises();
+        expect((sent().answers as { item: string; applies: boolean }[]).find((a) => a.item === 'pregnantOrBreastfeeding')?.applies).toBe(true);
     });
 
     it('CAP-012 shows a refused check in the server\'s words and keeps the answers', async () => {

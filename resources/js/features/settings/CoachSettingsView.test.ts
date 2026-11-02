@@ -61,6 +61,18 @@ describe('CoachSettingsView', () => {
         expect(wrapper.get<HTMLInputElement>('[role="switch"]').element.checked).toBe(turnsOn);
     });
 
+    it('AGT-020 keeps the switch where the user put it when the read still reports the instance flag', async () => {
+        writeMock.mockResolvedValueOnce({ invalidates: ['agent_status_show'] });
+        readMock.mockResolvedValueOnce(on);
+        const wrapper = mount(CoachSettingsView, { props: { payload: on } });
+
+        await wrapper.get('[role="switch"]').setValue(false);
+        await flushPromises();
+
+        expect(sent('coach_enabled_set')).toEqual({ on: false });
+        expect(wrapper.get<HTMLInputElement>('[role="switch"]').element.checked).toBe(false);
+    });
+
     it('CAP-012 puts the switch back and says why when the change is refused', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('coach_enabled_set', 0, { reason: 'network' }));
         const wrapper = mount(CoachSettingsView, { props: { payload: on } });

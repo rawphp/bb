@@ -10,11 +10,15 @@ import ReadState from './ReadState.vue';
 import { TONE_CLASS } from './tones';
 
 // Settings → Coach (AGT-020): this user's Coach on or off, clear the conversation,
-// and what the Coach can and cannot do. Settings shows the row only when the
-// instance runs the agent (AGT-002), so `enabled` here is whether the Coach is on.
+// and what the Coach can and cannot do. The only way here is Settings' Coach row,
+// which settings_show leaves out when the instance does not run the agent (AGT-002);
+// the route links from no tab placeholder for that reason. agent_status_show has no
+// per-user field yet (#49), so the switch starts from `enabled` and, once a
+// coach_enabled_set succeeds, shows what the server accepted.
 const props = defineProps<{ payload?: AgentStatusShowOutput }>();
 
 const { data: status, failure, load } = useRead<AgentStatusShowOutput>('agent_status_show', props.payload);
+const accepted = ref<boolean | null>(null);
 const busy = ref(false);
 const error = ref<string | null>(null);
 const confirming = ref(false);
@@ -27,14 +31,19 @@ async function toggle(event: Event): Promise<void> {
     error.value = null;
     try {
         await write('coach_enabled_set', { on } satisfies CoachEnabledSetInput);
+        accepted.value = on;
         await load();
     } catch (failed) {
         error.value = failureMessage(failed, `The Coach could not be turned ${on ? 'on' : 'off'}. Try again.`);
     } finally {
         busy.value = false;
-        // Show what the server holds, not what was tapped.
-        box.checked = status.value?.enabled ?? false;
+        // Show what the server accepted, not what was tapped.
+        box.checked = isOn();
     }
+}
+
+function isOn(): boolean {
+    return accepted.value ?? status.value?.enabled ?? false;
 }
 
 async function clear(): Promise<void> {
@@ -63,11 +72,12 @@ async function clear(): Promise<void> {
                     type="checkbox"
                     role="switch"
                     class="peer sr-only"
-                    :checked="status.enabled"
+                    :checked="isOn()"
                     :disabled="busy"
                     :aria-busy="busy"
                     @change="toggle"
                 />
+                <!-- The knob is white in both appearances, as an iOS switch's is; a surface-coloured knob would vanish on the dark track. -->
                 <span
                     aria-hidden="true"
                     class="relative h-8 w-13 shrink-0 rounded-full bg-tone-neutral-bg transition-colors peer-checked:bg-accent peer-disabled:opacity-60 peer-focus-visible:ring-2 peer-focus-visible:ring-accent after:absolute after:top-0.5 after:left-0.5 after:size-7 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"
@@ -92,7 +102,7 @@ async function clear(): Promise<void> {
                         <button type="button" class="min-h-tap flex-1 rounded-xl border px-4 active:opacity-70" :disabled="busy" @click="confirming = false">Cancel</button>
                         <button
                             type="button"
-                            class="min-h-tap flex-1 rounded-xl border px-4 font-medium text-[light-dark(#d70015,#ff453a)] active:opacity-70"
+                            class="min-h-tap flex-1 rounded-xl border px-4 font-medium text-destructive active:opacity-70"
                             data-test="confirm-clear"
                             :disabled="busy"
                             :aria-busy="busy"
@@ -105,7 +115,7 @@ async function clear(): Promise<void> {
                 <button
                     v-else
                     type="button"
-                    class="min-h-tap w-full text-left text-[light-dark(#d70015,#ff453a)] active:opacity-70"
+                    class="min-h-tap w-full text-left text-destructive active:opacity-70"
                     data-test="clear"
                     @click="(confirming = true), (cleared = null)"
                 >

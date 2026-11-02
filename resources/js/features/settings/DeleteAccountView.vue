@@ -57,7 +57,7 @@ async function remove(): Promise<void> {
         <p v-if="error" class="rounded-2xl p-4" :class="TONE_CLASS.warning" role="alert">{{ error }}</p>
         <button
             type="button"
-            class="min-h-tap w-full rounded-2xl bg-surface py-3 font-medium text-[light-dark(#d70015,#ff453a)] active:opacity-70 disabled:text-secondary-text disabled:opacity-60"
+            class="min-h-tap w-full rounded-2xl bg-surface py-3 font-medium text-destructive active:opacity-70 disabled:text-secondary-text disabled:opacity-60"
             data-test="delete"
             :disabled="confirmation === null || busy"
             :aria-busy="busy"

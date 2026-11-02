@@ -19,6 +19,15 @@ const created: TokenCreateOutput = {
     token: { id: '01JC0000000000000000000000', name: 'Claude Desktop', plain_text: '7|s3cr3t-token', scope_text: 'Read only', expires_text: 'Expires 31 January 2027' },
 };
 
+const EXPIRY = '[role="radiogroup"][aria-label="Expires after"] [role="radio"]';
+const SCOPE = '[role="radiogroup"][aria-label="Scope"] [role="radio"]';
+
+async function fill(wrapper: ReturnType<typeof mount>, name: string, expiry = 1, scope = 2): Promise<void> {
+    await wrapper.get('input[name="token-name"]').setValue(name);
+    await wrapper.get(`${EXPIRY}:nth-child(${expiry})`).trigger('click');
+    await wrapper.get(`${SCOPE}:nth-child(${scope})`).trigger('click');
+}
+
 function sent(capability: string): Record<string, unknown> {
     const call = writeMock.mock.calls.find(([name]) => name === capability)!;
     expect(inputViolations(capability, call[1])).toEqual([]);
@@ -60,9 +69,7 @@ describe('TokensView', () => {
         const wrapper = mount(TokensView, { props: { payload: empty } });
 
         await wrapper.get('[data-test="new"]').trigger('click');
-        await wrapper.get('input[name="token-name"]').setValue('Claude Desktop');
-        await wrapper.get('[role="radiogroup"][aria-label="Expires after"] [role="radio"]:nth-child(2)').trigger('click');
-        await wrapper.get('[role="radiogroup"][aria-label="Scope"] [role="radio"]:nth-child(2)').trigger('click');
+        await fill(wrapper, 'Claude Desktop', 2, 2);
         await wrapper.get('[data-test="create"]').trigger('click');
         await flushPromises();
 
@@ -82,8 +89,7 @@ describe('TokensView', () => {
         const wrapper = mount(TokensView, { props: { payload: content } });
 
         await wrapper.get('[data-test="new"]').trigger('click');
-        await wrapper.get('input[name="token-name"]').setValue('Scale');
-        await wrapper.get('[role="radiogroup"][aria-label="Scope"] [role="radio"]:nth-child(4)').trigger('click');
+        await fill(wrapper, 'Scale', 1, 4);
         await wrapper.get('input[value="weigh_in_log"]').setValue(true);
         await wrapper.get('input[value="steps_log"]').setValue(true);
         await wrapper.get('[data-test="create"]').trigger('click');
@@ -92,20 +98,67 @@ describe('TokensView', () => {
         expect(sent('token_create')).toMatchObject({ scope: 'custom', expires_in_days: 30, capabilities: [{ name: 'weigh_in_log' }, { name: 'steps_log' }] });
     });
 
-    it('CAP-019 makes a new id for each token', async () => {
-        writeMock.mockRejectedValueOnce(new CapabilityError('token_create', 500, null)).mockResolvedValueOnce(created);
+    it('CAP-021 picks no expiry or scope for the user, so Create waits for both', async () => {
+        const wrapper = mount(TokensView, { props: { payload: content } });
+        const create = () => wrapper.get<HTMLButtonElement>('[data-test="create"]').element;
+
+        await wrapper.get('[data-test="new"]').trigger('click');
+        expect(wrapper.findAll(`${SCOPE}[aria-checked="true"]`)).toHaveLength(0);
+        expect(wrapper.findAll(`${EXPIRY}[aria-checked="true"]`)).toHaveLength(0);
+
+        await wrapper.get('input[name="token-name"]').setValue('Laptop');
+        expect(create().disabled).toBe(true);
+        await wrapper.get(`${EXPIRY}:nth-child(1)`).trigger('click');
+        expect(create().disabled).toBe(true);
+        await wrapper.get(`${SCOPE}:nth-child(2)`).trigger('click');
+        expect(create().disabled).toBe(false);
+    });
+
+    it('CAP-019 sends the same id when a create is retried, so a lost answer never makes a second token', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('token_create', 0, { reason: 'timeout' })).mockResolvedValueOnce(created);
         const wrapper = mount(TokensView, { props: { payload: content } });
         await wrapper.get('[data-test="new"]').trigger('click');
-        await wrapper.get('input[name="token-name"]').setValue('A');
+        await fill(wrapper, 'A');
 
         await wrapper.get('[data-test="create"]').trigger('click');
         await flushPromises();
+        expect(wrapper.get('[role="alert"]').text()).toContain('No connection');
         await wrapper.get('[data-test="create"]').trigger('click');
         await flushPromises();
 
         const [first, second] = writeMock.mock.calls.map(([, input]) => (input as { id: string }).id);
         expect(first).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);
-        // A failed create left no row, but a retry that did reach the server must not collide.
+        expect(second).toBe(first);
+    });
+
+    it('CAP-021 says a replayed create cannot show the secret again', async () => {
+        writeMock.mockResolvedValueOnce({ ...created, token: { ...created.token, plain_text: null } });
+        const wrapper = mount(TokensView, { props: { payload: content } });
+        await wrapper.get('[data-test="new"]').trigger('click');
+        await fill(wrapper, 'A');
+
+        await wrapper.get('[data-test="create"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="plain-text"]').exists()).toBe(false);
+        expect(wrapper.get('[data-test="secret-lost"]').text()).toContain('Revoke it and make a new one.');
+    });
+
+    it('CAP-019 makes a new id for the next token', async () => {
+        writeMock.mockResolvedValue(created);
+        readMock.mockResolvedValue(content);
+        const wrapper = mount(TokensView, { props: { payload: content } });
+
+        for (const name of ['A', 'B']) {
+            await wrapper.get('[data-test="new"]').trigger('click');
+            await fill(wrapper, name);
+            await wrapper.get('[data-test="create"]').trigger('click');
+            await flushPromises();
+            await wrapper.get('[data-test="done"]').trigger('click');
+            await flushPromises();
+        }
+
+        const [first, second] = writeMock.mock.calls.map(([, input]) => (input as { id: string }).id);
         expect(second).not.toBe(first);
     });
 
@@ -114,7 +167,7 @@ describe('TokensView', () => {
         const wrapper = mount(TokensView, { props: { payload: content } });
 
         await wrapper.get('[data-test="new"]').trigger('click');
-        await wrapper.get('input[name="token-name"]').setValue('Empty');
+        await fill(wrapper, 'Empty', 1, 4);
         await wrapper.get('[data-test="create"]').trigger('click');
         await flushPromises();
 
@@ -134,6 +187,21 @@ describe('TokensView', () => {
 
         expect(sent('token_revoke')).toEqual({ id: first.id });
         expect(wrapper.text()).not.toContain(first.last_used_text);
+    });
+
+    it('CAP-012 keeps a token listed and the confirmation open when the revoke fails', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('token_revoke', 0, { reason: 'network' }));
+        const wrapper = mount(TokensView, { props: { payload: content } });
+        const first = content.tokens[0]!;
+
+        await wrapper.get(`[data-test="revoke-${first.id}"]`).trigger('click');
+        await wrapper.get(`[data-test="confirm-revoke-${first.id}"]`).trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[role="alert"]').text()).toContain('No connection');
+        expect(wrapper.find(`[data-test="confirm-revoke-${first.id}"]`).exists()).toBe(true);
+        expect(wrapper.text()).toContain(first.last_used_text);
+        expect(readMock).not.toHaveBeenCalled();
     });
 
     it('PWA-024 shows a skeleton while the list loads', () => {
