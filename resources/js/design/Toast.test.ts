@@ -21,6 +21,14 @@ function undoButton(wrapper: ReturnType<typeof toast>) {
     return wrapper.get('button');
 }
 
+// The toast's own root element; TOAST_HOST around it is the live region.
+function root(wrapper: ReturnType<typeof toast>) {
+    return wrapper.get('div');
+}
+
+const refusal = () =>
+    new CapabilityError('undo_apply', 409, { ok: false, error: { code: 'conflict', message: 'A later change depends on this.' } });
+
 describe('Toast', () => {
     beforeEach(() => writeMock.mockReset());
 
@@ -31,15 +39,17 @@ describe('Toast', () => {
 
         const wrapper = toast({}, { invalidates: [], toast: message, undo: 'tok-1' } as ToastResult);
 
-        expect(wrapper.get('[role="status"]').text()).toContain(message);
+        expect(root(wrapper).text()).toContain(message);
         expect(undoButton(wrapper).text()).toBe('Undo');
     });
 
-    it('UI-010 shows the message and an Undo button inside a status region', () => {
+    it('UI-010 shows the message and an Undo button, leaving the live region to TOAST_HOST', () => {
         const wrapper = toast();
 
-        expect(wrapper.get('[role="status"]').text()).toContain(message);
+        expect(root(wrapper).text()).toContain(message);
         expect(undoButton(wrapper).text()).toBe('Undo');
+        expect(wrapper.find('[role="status"]').exists()).toBe(false);
+        expect(wrapper.find('[aria-live]').exists()).toBe(false);
     });
 
     it('UI-010 Undo calls undo_apply with the token and emits undone with the result', async () => {
@@ -51,7 +61,7 @@ describe('Toast', () => {
         await flushPromises();
 
         expect(writeMock).toHaveBeenCalledExactlyOnceWith('undo_apply', { token: 'tok-1' });
-        expect(wrapper.emitted('undone')).toEqual([[result]]);
+        expect(wrapper.emitted('undone')).toEqual([[result, 'tok-1']]);
     });
 
     it('UI-010 without a token there is no Undo button', () => {
@@ -73,20 +83,20 @@ describe('Toast', () => {
 
         await undoButton(wrapper).trigger('click');
 
-        expect(wrapper.get('[role="status"]').attributes('aria-busy')).toBe('true');
+        expect(root(wrapper).attributes('aria-busy')).toBe('true');
         expect(undoButton(wrapper).attributes('disabled')).toBeDefined();
         await undoButton(wrapper).trigger('click');
         expect(writeMock).toHaveBeenCalledOnce();
 
         resolve({});
         await flushPromises();
-        expect(wrapper.get('[role="status"]').attributes('aria-busy')).toBeUndefined();
+        expect(root(wrapper).attributes('aria-busy')).toBeUndefined();
     });
 
     it('VIEW-004 loading: the loading prop makes the toast busy with Undo disabled', () => {
         const wrapper = toast({ loading: true });
 
-        expect(wrapper.get('[role="status"]').attributes('aria-busy')).toBe('true');
+        expect(root(wrapper).attributes('aria-busy')).toBe('true');
         expect(undoButton(wrapper).attributes('disabled')).toBeDefined();
     });
 
@@ -142,17 +152,17 @@ describe('Toast', () => {
         expect(toast().find('[role="alert"]').exists()).toBe(false);
     });
 
-    it('VIEW-004 empty: with no toast nothing is drawn, and the status region stays for the next one', async () => {
+    it('VIEW-004 empty: with no toast nothing is drawn', async () => {
         for (const empty of [{ toast: '', undo: 'tok-1' }, { toast: null, undo: 'tok-1' }, { undo: 'tok-1' }]) {
             const wrapper = toast({ error: 'Nope' }, empty);
 
-            expect(wrapper.get('[role="status"]').text()).toBe('');
-            expect(wrapper.find('button').exists()).toBe(false);
+            expect(wrapper.find('div').exists()).toBe(false);
+            expect(wrapper.text()).toBe('');
         }
 
         const wrapper = toast({}, { toast: '', undo: null });
         await wrapper.setProps({ result: { toast: message, undo: 'tok-1' } });
-        expect(wrapper.get('[role="status"]').text()).toContain(message);
+        expect(root(wrapper).text()).toContain(message);
     });
 
     it('CAP-012 a refusal does not carry over to the next toast', async () => {
@@ -180,6 +190,17 @@ describe('Toast', () => {
         await flushPromises();
 
         expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+        expect(wrapper.emitted('undo-failed')).toEqual([['A later change depends on this.', 'tok-1']]);
+    });
+
+    it('CAP-012 a refused undo is also emitted with its token, for the host', async () => {
+        writeMock.mockRejectedValueOnce(refusal());
+        const wrapper = toast();
+
+        await undoButton(wrapper).trigger('click');
+        await flushPromises();
+
+        expect(wrapper.emitted('undo-failed')).toEqual([['A later change depends on this.', 'tok-1']]);
     });
 
     it('OFF-008 pending: the toast says "Waiting to sync" in text and Undo is described by it', () => {
@@ -206,7 +227,7 @@ describe('Toast', () => {
         expect(titles).toContain('Toast');
     });
 
-    it('UI-010 an undo that finishes after the next toast is shown neither blocks nor dismisses it', async () => {
+    it('UI-010 an undo that finishes after the next toast is shown neither blocks it nor is lost', async () => {
         let resolve: (value: unknown) => void = () => {};
         writeMock.mockReturnValueOnce(new Promise((done) => (resolve = done)));
         const wrapper = toast();
@@ -214,12 +235,13 @@ describe('Toast', () => {
 
         await wrapper.setProps({ result: { toast: 'Set added', undo: 'tok-2' } });
 
-        expect(wrapper.get('[role="status"]').attributes('aria-busy')).toBeUndefined();
+        expect(root(wrapper).attributes('aria-busy')).toBeUndefined();
         expect(undoButton(wrapper).attributes('disabled')).toBeUndefined();
 
-        resolve({});
+        resolve({ toast: 'Undone.' });
         await flushPromises();
-        expect(wrapper.emitted('undone')).toBeUndefined();
+        expect(wrapper.emitted('undone')).toEqual([[{ toast: 'Undone.' }, 'tok-1']]);
+        expect(root(wrapper).text()).toContain('Set added');
     });
 
     it('UI-010 the old undo finishing does not end the busy state of the next one', async () => {
@@ -235,7 +257,7 @@ describe('Toast', () => {
         await flushPromises();
 
         expect(writeMock).toHaveBeenLastCalledWith('undo_apply', { token: 'tok-2' });
-        expect(wrapper.get('[role="status"]').attributes('aria-busy')).toBe('true');
+        expect(root(wrapper).attributes('aria-busy')).toBe('true');
         expect(undoButton(wrapper).attributes('disabled')).toBeDefined();
     });
 });

@@ -14,6 +14,7 @@ export interface ToastResult {
 <script setup lang="ts">
 import { computed, ref, useId, watch } from 'vue';
 import { CapabilityError, write } from '@/app/call';
+import type { UndoApplyInput } from '@/contracts/undo_apply';
 
 // A message with Undo, for every automatic change (UI-010), ported from rp-clone's Toast.swift.
 // VIEW-004 states take the same props as ItemCard and ProgressBar.
@@ -29,7 +30,9 @@ const props = withDefaults(
     { loading: false, error: null, pending: false, disabled: false },
 );
 
-const emit = defineEmits<{ undone: [result: unknown] }>();
+// Each answer names the token it was for, so the host still hears an undo that lands
+// after it has shown the next toast, and can refresh or report it.
+const emit = defineEmits<{ undone: [result: unknown, token: string]; 'undo-failed': [message: string, token: string] }>();
 
 const uid = useId();
 // The token whose undo_apply is running. Only the toast it belongs to is busy.
@@ -60,11 +63,12 @@ async function undo(): Promise<void> {
     undoing.value = sent;
     failure.value = null;
     try {
-        const answer = await write('undo_apply', { token: sent });
-        // The host may have shown another toast meanwhile; this answer is not about it.
-        if (token.value === sent) emit('undone', answer);
+        emit('undone', await write('undo_apply', { token: sent } satisfies UndoApplyInput), sent);
     } catch (error) {
-        if (token.value === sent) failure.value = messageOf(error);
+        const text = messageOf(error);
+        emit('undo-failed', text, sent);
+        // The host may have shown another toast meanwhile; the refusal is not shown on it.
+        if (token.value === sent) failure.value = text;
     } finally {
         if (undoing.value === sent) undoing.value = null;
     }
@@ -72,27 +76,25 @@ async function undo(): Promise<void> {
 </script>
 
 <template>
-    <!-- The status region stays in the page so a toast that appears in it is announced. -->
-    <div role="status" :aria-busy="message && busy ? 'true' : undefined">
-        <template v-if="message">
-            <div class="flex items-center gap-3 rounded-xl border border-secondary-text/25 bg-surface pr-2 pl-4">
-                <span class="flex min-w-0 grow flex-col gap-0.5 py-2">
-                    <span class="text-sm text-primary-text">{{ message }}</span>
-                    <span v-if="pending" :id="`${uid}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
-                </span>
-                <button
-                    v-if="token !== null"
-                    type="button"
-                    :aria-describedby="pending ? `${uid}-hint ${uid}-pending` : `${uid}-hint`"
-                    :disabled="busy || disabled"
-                    class="min-h-tap min-w-tap shrink-0 text-sm font-semibold text-accent disabled:opacity-50"
-                    @click="undo"
-                >
-                    Undo
-                </button>
-                <span v-if="token !== null" :id="`${uid}-hint`" class="sr-only">Reverts this change</span>
-            </div>
-            <p v-if="shownError" role="alert" class="mt-2 text-sm text-tone-warning">{{ shownError }}</p>
-        </template>
+    <!-- TOAST_HOST is the live region (AppShell.vue), so the toast adds none of its own. -->
+    <div v-if="message" :aria-busy="busy ? 'true' : undefined">
+        <div class="flex items-center gap-3 rounded-xl border border-secondary-text/25 bg-surface pr-2 pl-4">
+            <span class="flex min-w-0 grow flex-col gap-0.5 py-2">
+                <span class="text-sm text-primary-text">{{ message }}</span>
+                <span v-if="pending" :id="`${uid}-pending`" class="text-xs text-secondary-text">Waiting to sync</span>
+            </span>
+            <button
+                v-if="token !== null"
+                type="button"
+                :aria-describedby="pending ? `${uid}-hint ${uid}-pending` : `${uid}-hint`"
+                :disabled="busy || disabled"
+                class="min-h-tap min-w-tap shrink-0 text-sm font-semibold text-accent disabled:opacity-50"
+                @click="undo"
+            >
+                Undo
+            </button>
+            <span v-if="token !== null" :id="`${uid}-hint`" class="sr-only">Reverts this change</span>
+        </div>
+        <p v-if="shownError" role="alert" class="mt-2 text-sm text-tone-warning">{{ shownError }}</p>
     </div>
 </template>
