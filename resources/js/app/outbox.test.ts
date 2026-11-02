@@ -144,6 +144,8 @@ describe('outbox', () => {
     });
 
     it('OFF-006 fails the write, and keeps nothing to send, when the device cannot store it', async () => {
+        // Follow the signed-in user first, so entries shows what memory holds for them.
+        await m.outbox.loadOutbox();
         vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(() => {
             throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
         });
