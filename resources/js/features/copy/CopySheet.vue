@@ -98,8 +98,9 @@ function pickDay(date: string): void {
     else if (date !== data.value?.shown_date) show(date);
 }
 
+// A meal that cannot take the copy is a disabled button, so it never gets here.
 function pickMeal(meal: Meal): void {
-    if (meal.enabled) meals.value = flip(meals.value, meal.id);
+    meals.value = flip(meals.value, meal.id);
 }
 
 function close(): void {
