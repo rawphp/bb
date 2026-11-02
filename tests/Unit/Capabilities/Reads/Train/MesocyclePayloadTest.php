@@ -252,6 +252,14 @@ it('MESO-007 a draft shows the create flow where it was left', function () {
         ->and(array_column($empty['priority_options'], 'title'))->toBe(['Emphasize', 'Grow', 'Maintain']);
 });
 
+it('MESO-007 a mesocycle saved without dates opens in the create flow to be finished', function () {
+    $undated = W::mesocycle(['start_date' => null]);
+    $payload = shown(W::snapshot(mesocycles: [$undated]), $undated);
+
+    expect($payload['saved'])->toBeNull()
+        ->and($payload['build']['resume_step'])->toBe('slots');
+});
+
 it('MESO-004 the draft\'s length is TBL-020\'s for the profile, and it starts next plan week', function () {
     $intermediate = draftOf()['build'];
     $advanced = draftOf(world: ['experience' => 'advanced'])['build'];

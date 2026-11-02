@@ -4,6 +4,7 @@ use App\Actions\Mesocycles\CopyMesocycle;
 use App\Models\Mesocycle;
 use App\Models\Phase;
 use App\Models\User;
+use App\Models\WorkoutSet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Support\TrainSeed;
@@ -67,6 +68,15 @@ it('MESO-061 MESO-062 each slot carries the old week-1 load of its exercise', fu
     expect($days[1]['slots'][0]['carried'])->toBe(['weight_kg' => 81.0, 'reps' => 10])
         ->and($days[1]['slots'][1]['carried'])->toBeNull()
         ->and($days[0]['slots'][0]['carried'])->toBeNull();
+});
+
+it('MESO-061 MESO-063 the copy carries the load as lifted, leaving the rise and the dumbbell hold to the planned targets', function () {
+    [$user, $source] = copyWorld();
+    $session = TrainSeed::trained($source, 1, 1, '2026-09-07');
+    WorkoutSet::query()->where('workout_session_id', $session->id)->update(['actual_weight_kg' => 12.5, 'actual_reps' => 14]);
+
+    // LoadProgression applies the copy rise, or keeps a light dumbbell's weight and chases reps, from `carried`.
+    expect(copyOf($user, $source)->dayRows()[0]['slots'][0]['carried'])->toBe(['weight_kg' => 12.5, 'reps' => 14]);
 });
 
 it('MESO-060 a copy of the mesocycle ending starts when the next one does', function () {
