@@ -6,8 +6,9 @@ import { findScreen, takesFixture } from './screens';
 // Renders a capability screen from tests/fixtures/screens/<name>.json, or
 // one of its other states from <name>.<state>.json. A screen that reads nothing
 // (meta.fixture false) renders with no payload. ?view=<route name> picks the
-// screen when several read the same capability.
-const props = defineProps<{ name: string; view?: string }>();
+// screen when several read the same capability; any other query key is passed to the
+// screen as a prop.
+const props = defineProps<{ name: string; view?: string; screenProps?: Record<string, string> }>();
 
 const fixtures = import.meta.glob<unknown>('/tests/fixtures/screens/*.json', { import: 'default' });
 
@@ -27,7 +28,7 @@ watchEffect(async () => {
 
 <template>
     <p v-if="!screen" class="p-6">No screen renders {{ name }}.</p>
-    <component :is="screen" v-else-if="fixtureless" />
+    <component :is="screen" v-else-if="fixtureless" v-bind="screenProps" />
     <p v-else-if="missing" class="p-6">No fixture at tests/fixtures/screens/{{ name }}.json.</p>
-    <component :is="screen" v-else-if="payload !== undefined" :payload="payload" />
+    <component :is="screen" v-else-if="payload !== undefined" v-bind="screenProps" :payload="payload" />
 </template>

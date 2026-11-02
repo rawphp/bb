@@ -45,9 +45,9 @@ describe('ScreenView', () => {
 
     it('CAP-001 passes the screen its props from the query, beside the fixture', async () => {
         const wrapper = mount(ScreenView, { props: { name: 'food_search', screenProps: { mealId: '01JBX5M0000000000000000001' } } });
-        await flushPromises();
 
-        expect(wrapper.text()).toBe('01JBX5M0000000000000000001 true');
+        // The fixture is a dynamic import.
+        await vi.waitFor(() => expect(wrapper.text()).toBe('01JBX5M0000000000000000001 true'));
     });
 
     it('CAP-001 /dev/screens/<name> turns every query key but view into a screen prop', () => {
