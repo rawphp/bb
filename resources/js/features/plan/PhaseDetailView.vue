@@ -12,6 +12,7 @@ import type { PhaseLengthSetInput } from '@/contracts/phase_length_set';
 import type { PhaseShowOutput } from '@/contracts/phase_show';
 import BottomSheet from '@/design/BottomSheet.vue';
 import PendingMark from '@/design/PendingMark.vue';
+import ProgressBar from '@/design/ProgressBar.vue';
 import { toneClasses } from '@/design/tones';
 import AdjustLengthSheet from './AdjustLengthSheet.vue';
 import ChangeGoalSheet from './ChangeGoalSheet.vue';
@@ -122,19 +123,17 @@ watch(
             <section class="mb-6 rounded-2xl bg-surface px-4" aria-label="Phase">
                 <div class="space-y-2 border-b border-secondary-text/15 py-3">
                     <p class="font-semibold" :class="{ 'opacity-60': pending }" data-test="dates">{{ data.dates_text }}</p>
-                    <div
+                    <ProgressBar
                         v-if="data.progress != null"
-                        role="progressbar"
-                        aria-label="Phase progress"
-                        aria-valuemin="0"
-                        aria-valuemax="100"
-                        :aria-valuenow="Math.round(data.progress * 100)"
-                        class="h-1 overflow-hidden rounded-full bg-secondary-text/20"
-                        :class="{ 'opacity-60': pending }"
-                    >
-                        <div class="h-full rounded-full" :class="phaseTints[data.type].fill" :style="{ width: `${data.progress * 100}%` }" />
-                    </div>
-                    <p class="text-sm text-secondary-text" data-test="progress">
+                        title="Phase progress"
+                        :value-text="data.progress_text"
+                        :fraction="data.progress"
+                        :tint="phaseTints[data.type].bar"
+                        :pending="pending"
+                        class="text-secondary-text"
+                        data-test="progress"
+                    />
+                    <p v-else class="text-sm text-secondary-text" data-test="progress">
                         <PendingMark v-if="pending" derived>{{ data.progress_text }}</PendingMark>
                         <template v-else>{{ data.progress_text }}</template>
                     </p>
