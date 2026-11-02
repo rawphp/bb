@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import ReadState from '@/app/ReadState.vue';
 import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
@@ -11,10 +12,13 @@ import CustomFoodSheet from './CustomFoodSheet.vue';
 
 // The Custom foods manager in More (FOOD-061), ported from rp-clone's CustomFoodsView.swift:
 // the user's own foods, to edit and delete. `pending` marks the server's serving and
-// calories as waiting to sync (OFF-008).
+// calories as waiting to sync (OFF-008). `create` is set when the Pantry's "Can't find it?"
+// link opened it (FOOD-062): the screen starts with a new food named after the search, and
+// closing that sheet, saved or not, goes back to the Pantry.
 type Food = CustomFoodsShowOutput['foods'][number];
 
-const props = withDefaults(defineProps<{ payload?: CustomFoodsShowOutput; pending?: boolean }>(), { pending: false });
+const props = withDefaults(defineProps<{ payload?: CustomFoodsShowOutput; pending?: boolean; create?: string }>(), { pending: false, create: undefined });
+const router = useRouter();
 
 const { data, failure, load } = useRead<CustomFoodsShowOutput>('custom_foods_show', {}, 'Your custom foods could not be loaded.', props.payload);
 const { send, busy, error } = useWrite(load);
@@ -25,7 +29,17 @@ const ACTIONS: RowAction[] = [
 ];
 
 /** What the form is open for: a new food, a food to edit, or nothing. */
-const form = ref<{ food: Food | null } | null>(null);
+const form = ref<{ food: Food | null } | null>(props.create === undefined ? null : { food: null });
+/** The open sheet is the one the Pantry asked for. */
+const fromPantry = ref(props.create !== undefined);
+
+function close(): void {
+    form.value = null;
+    if (fromPantry.value) {
+        fromPantry.value = false;
+        router.back();
+    }
+}
 
 function act(food: Food, action: string): void {
     if (action === 'edit') form.value = { food };
@@ -83,6 +97,13 @@ function act(food: Food, action: string): void {
         </template>
         <ReadState v-else :failure="failure" what="Your custom foods" @retry="load" />
 
-        <CustomFoodSheet :open="form !== null" :food="form?.food ?? null" :reload="load" @cancel="form = null" @saved="form = null" />
+        <CustomFoodSheet
+            :open="form !== null"
+            :food="form?.food ?? null"
+            :name="fromPantry ? create : ''"
+            :reload="load"
+            @cancel="close"
+            @saved="close"
+        />
     </main>
 </template>
