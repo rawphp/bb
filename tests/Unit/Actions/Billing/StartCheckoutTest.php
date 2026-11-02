@@ -84,7 +84,7 @@ it('SUB-007 closes the Checkout page it opened before, so only one can be paid',
 it('SUB-007 refuses a new Checkout when the page opened before was paid and Stripe has not listed it yet', function () {
     $user = User::factory()->create();
     (new StartCheckout($this->stripe))($user, 'monthly');
-    $this->stripe->paid = ['cs_test_1'];
+    $this->stripe->paid = ['cs_test_1' => 'sub_new'];
 
     expect(fn () => (new StartCheckout($this->stripe))($user, 'yearly'))
         ->toThrow(CapabilityFailure::class, 'You already have a subscription. Switch plans in Manage subscription.');
@@ -94,7 +94,7 @@ it('SUB-007 refuses a new Checkout when the page opened before was paid and Stri
 it('SUB-010 a user whose paid Checkout has since ended can resubscribe', function () {
     $user = User::factory()->create();
     (new StartCheckout($this->stripe))($user, 'monthly');
-    $this->stripe->paid = ['cs_test_1'];
+    $this->stripe->paid = ['cs_test_1' => 'sub_1'];
     $customer = (string) Subscription::of($user)?->stripe_customer_id;
     $this->stripe->subscriptions[$customer] = [['id' => 'sub_1', 'customer' => $customer, 'status' => 'canceled', 'created' => 1_793_000_000]];
 
@@ -116,5 +116,16 @@ it('SUB-007 a second tap while a Checkout is still opening is told to wait, and 
     } finally {
         $opening->release();
     }
+    expect($this->stripe->checkouts)->toBe([]);
+});
+
+it('SUB-007 a returning subscriber who paid the last page is refused until Stripe lists that subscription', function () {
+    $user = User::factory()->create();
+    Subscription::factory()->for($user)->create(['stripe_customer_id' => 'cus_back', 'checkout_session_id' => 'cs_paid']);
+    $this->stripe->subscriptions['cus_back'] = [['id' => 'sub_old', 'customer' => 'cus_back', 'status' => 'canceled', 'created' => 1_700_000_000]];
+    $this->stripe->paid = ['cs_paid' => 'sub_new'];
+
+    expect(fn () => (new StartCheckout($this->stripe))($user, 'yearly'))
+        ->toThrow(CapabilityFailure::class, 'You already have a subscription. Switch plans in Manage subscription.');
     expect($this->stripe->checkouts)->toBe([]);
 });

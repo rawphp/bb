@@ -122,21 +122,21 @@ it('SUB-021 reports a Stripe failure and tells the user only that payments are u
     'subscriptions' => fn (StripeClientGateway $stripe) => $stripe->subscriptions('cus_123'),
 ]);
 
-it('SUB-007 closes an open Checkout page, and says whether an earlier one was paid', function (string $status, bool $paid, int $calls) {
+it('SUB-007 closes an open Checkout page, and names the subscription an earlier one made when it was paid', function (array $session, ?string $paidFor, int $calls) {
     $api = stripeApi([
-        ['id' => 'cs_1', 'object' => 'checkout.session', 'status' => $status],
+        ['id' => 'cs_1', 'object' => 'checkout.session', ...$session],
         ['id' => 'cs_1', 'object' => 'checkout.session', 'status' => 'expired'],
     ]);
 
-    expect(stripeClientGateway()->closeCheckout('cs_1'))->toBe($paid)
+    expect(stripeClientGateway()->closeCheckout('cs_1'))->toBe($paidFor)
         ->and($api->requests)->toHaveCount($calls);
     if ($calls === 2) {
         expect($api->requests[1]['url'])->toEndWith('/v1/checkout/sessions/cs_1/expire');
     }
 })->with([
-    'open' => ['open', false, 2],
-    'paid' => ['complete', true, 1],
-    'expired' => ['expired', false, 1],
+    'open' => [['status' => 'open', 'subscription' => null], null, 2],
+    'paid' => [['status' => 'complete', 'subscription' => 'sub_9'], 'sub_9', 1],
+    'expired' => [['status' => 'expired', 'subscription' => null], null, 1],
 ]);
 
 it('SUB-002 after Stripe fails, shows the last prices for a minute without asking Stripe again', function () {
