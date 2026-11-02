@@ -11,7 +11,7 @@ export interface Choice<T extends string | number> {
 </script>
 
 <script setup lang="ts" generic="T extends string | number">
-import { useId } from 'vue';
+import { computed, useId } from 'vue';
 
 // Single-choice list of full-width rows, one selected (UI-006), ported from rp-clone's ChoiceList.swift.
 const props = withDefaults(
@@ -47,11 +47,41 @@ function describedBy(choice: Choice<T>, index: number): string | undefined {
     return ids.filter(Boolean).join(' ') || undefined;
 }
 
+// While an error shows, re-picking the selected row emits again so the user can retry a failed save.
 function pick(choice: Choice<T>): void {
-    if (props.modelValue === choice.id) {
+    if (props.modelValue === choice.id && !props.error) {
         return;
     }
     emit('update:modelValue', choice.id);
+}
+
+// The group is one tab stop (WAI-ARIA radio pattern): the selected row, else the first row that can be picked.
+const tabStop = computed(() => {
+    const index = props.choices.findIndex(selected);
+    return index >= 0 ? index : props.choices.findIndex(enabled);
+});
+
+const rows: HTMLButtonElement[] = [];
+
+const steps: Record<string, number> = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 };
+
+// Arrow keys move focus to the next row that can be picked, wrapping around, and pick it.
+function move(event: KeyboardEvent, from: number): void {
+    const step = steps[event.key];
+    if (step === undefined) {
+        return;
+    }
+    event.preventDefault();
+    const count = props.choices.length;
+    for (let offset = 1; offset <= count; offset++) {
+        const index = (((from + step * offset) % count) + count) % count;
+        const choice = props.choices[index]!;
+        if (enabled(choice)) {
+            rows[index]?.focus();
+            pick(choice);
+            return;
+        }
+    }
 }
 </script>
 
@@ -70,18 +100,21 @@ function pick(choice: Choice<T>): void {
             <button
                 v-for="(choice, index) in choices"
                 :key="choice.id"
+                :ref="(el) => (rows[index] = el as HTMLButtonElement)"
                 type="button"
                 role="radio"
                 :aria-checked="selected(choice)"
                 :aria-label="choice.isRecommended ? `${choice.title}, recommended` : choice.title"
                 :aria-describedby="describedBy(choice, index)"
                 :disabled="loading || disabled || !enabled(choice)"
+                :tabindex="index === tabStop ? 0 : -1"
                 class="flex min-h-tap w-full items-center gap-3 rounded-xl border bg-surface px-3.5 py-1.5 text-left"
                 :class="[
                     selected(choice) ? 'border-accent ring-1 ring-inset ring-accent' : 'border-secondary-text/25',
-                    disabled || !enabled(choice) ? 'opacity-60' : '',
+                    loading || disabled || !enabled(choice) ? 'opacity-60' : '',
                 ]"
                 @click="pick(choice)"
+                @keydown="move($event, index)"
             >
                 <svg
                     aria-hidden="true"
@@ -98,7 +131,7 @@ function pick(choice: Choice<T>): void {
                     </template>
                     <template v-else-if="selected(choice)">
                         <circle cx="12" cy="12" r="10" fill="currentColor" stroke="none" />
-                        <path d="M7.5 12.5l3 3 6-6.5" class="stroke-surface" stroke-width="2.25" />
+                        <path d="M7.5 12.5l3 3 6-6.5" class="stroke-on-accent" stroke-width="2.25" />
                     </template>
                     <circle v-else cx="12" cy="12" r="9" />
                 </svg>

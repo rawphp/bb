@@ -47,6 +47,77 @@ describe('ChoiceList', () => {
         expect(wrapper.emitted('update:modelValue')).toBeUndefined();
     });
 
+    it('UI-006 picking the selected row again while an error shows emits it, so a failed save can be retried', async () => {
+        const wrapper = list({ modelValue: 'maintain', error: "Couldn't save your choice." });
+
+        await wrapper.findAll('[role="radio"]')[1]!.trigger('click');
+
+        expect(wrapper.emitted('update:modelValue')).toEqual([['maintain']]);
+    });
+
+    it('UI-030 the group is one tab stop: the selected row, else the first row that can be picked', () => {
+        const tabIndexes = (props: Record<string, unknown>) =>
+            list(props)
+                .findAll('[role="radio"]')
+                .map((row) => row.attributes('tabindex'));
+
+        expect(tabIndexes({ modelValue: 'maintain' })).toEqual(['-1', '0', '-1']);
+        expect(tabIndexes({ modelValue: null })).toEqual(['0', '-1', '-1']);
+        expect(tabIndexes({ modelValue: 'bulk' })).toEqual(['0', '-1', '-1']);
+        expect(
+            tabIndexes({ modelValue: null, choices: [{ ...choices[0]!, isEnabled: false }, ...choices.slice(1)] }),
+        ).toEqual(['-1', '0', '-1']);
+    });
+
+    it.each([
+        ['ArrowDown', 'cut', 'maintain'],
+        ['ArrowRight', 'cut', 'maintain'],
+        ['ArrowDown', 'maintain', 'cut'],
+        ['ArrowUp', 'cut', 'maintain'],
+        ['ArrowLeft', 'maintain', 'cut'],
+    ])('UI-030 %s on %s moves focus to and picks %s, skipping rows that cannot be picked', async (key, from, to) => {
+        const wrapper = mount(ChoiceList, {
+            props: { label: 'Goal', choices, modelValue: from },
+            attachTo: document.body,
+        });
+        const rows = wrapper.findAll('[role="radio"]');
+        const index = (id: string) => choices.findIndex((choice) => choice.id === id);
+
+        const event = new KeyboardEvent('keydown', { key, cancelable: true });
+        rows[index(from)]!.element.dispatchEvent(event);
+        await wrapper.vm.$nextTick();
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(wrapper.emitted('update:modelValue')).toEqual([[to]]);
+        expect(document.activeElement).toBe(rows[index(to)]!.element);
+        wrapper.unmount();
+    });
+
+    it.each([
+        ['ArrowUp', 'a'],
+        ['ArrowLeft', 'a'],
+        ['ArrowDown', 'c'],
+        ['ArrowRight', 'c'],
+    ])('UI-030 %s from the middle row picks %s', async (key, to) => {
+        const abc: Choice<string>[] = ['a', 'b', 'c', 'd'].map((id) => ({ id, title: id.toUpperCase() }));
+        const wrapper = mount(ChoiceList, { props: { label: 'Letter', choices: abc, modelValue: 'b' } });
+
+        await wrapper.findAll('[role="radio"]')[1]!.trigger('keydown', { key });
+
+        expect(wrapper.emitted('update:modelValue')).toEqual([[to]]);
+    });
+
+    it('UI-030 other keys, such as Tab, leave the selection and the browser default alone', async () => {
+        const wrapper = list({ modelValue: 'cut' });
+
+        const event = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true });
+        wrapper.findAll('[role="radio"]')[0]!.element.dispatchEvent(event);
+        await wrapper.vm.$nextTick();
+
+        expect(event.defaultPrevented).toBe(false);
+        expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+    });
+
     it('UI-006 shows the Recommended tag only on a recommended row', () => {
         const rows = list().findAll('[role="radio"]');
 
@@ -91,8 +162,16 @@ describe('ChoiceList', () => {
         const filled = list({ loading: true });
         expect(filled.findAll('[data-placeholder]')).toHaveLength(0);
         expect(filled.findAll('[role="radio"]')[0]!.attributes('disabled')).toBeDefined();
+        expect(filled.findAll('[role="radio"]')[0]!.classes()).toContain('opacity-60');
         await filled.findAll('[role="radio"]')[0]!.trigger('click');
         expect(filled.emitted('update:modelValue')).toBeUndefined();
+    });
+
+    it('OFF-009 pending: a selected row with a detail is described by both the detail and the pending mark', () => {
+        const wrapper = list({ modelValue: 'cut', pending: true });
+        const ids = wrapper.findAll('[role="radio"]')[0]!.attributes('aria-describedby')!.split(' ');
+
+        expect(ids.map((id) => wrapper.get(`#${id}`).text())).toEqual(['About 0.5% of body weight a week', 'Waiting to sync']);
     });
 
     it('VIEW-004 error: the message is announced under the rows', () => {
@@ -136,5 +215,6 @@ describe('ChoiceList', () => {
         expect(html).not.toMatch(/#[0-9a-f]{3,6}\b|rgb\(|var\(--/i);
         expect(html).toContain('bg-surface');
         expect(html).toContain('border-accent');
+        expect(html).toContain('stroke-on-accent');
     });
 });
