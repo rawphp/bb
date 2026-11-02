@@ -23,10 +23,13 @@ export interface TokenCreateOutput {
   token: {
     id: string;
     name: string;
-    plain_text: string;
+    /**
+     * the secret, shown once; null when the create is replayed
+     */
+    plain_text?: string | null;
     scope_text: string;
     expires_text: string;
   };
 }
 
-export const outputVersion = '2f53148c5578';
+export const outputVersion = '58fbcb17a649';
