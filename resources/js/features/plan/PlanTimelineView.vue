@@ -16,6 +16,9 @@ const props = withDefaults(defineProps<{ plan: PlanShowOutput; pending?: boolean
 const emit = defineEmits<{ deload: [week: number] }>();
 
 const WEEK = 30;
+// The deload marks, drawn in a filled circle: rp-clone's pause.circle.fill and
+// arrow.down.right.circle.fill. The legend uses the same marks.
+const MARKS = { deload: 'M10 8v8M14 8v8', deficit_deload: 'm8.5 8.5 7 7M15.5 10v5.5H10' } as const;
 const px = (weeks: number, less = 0): string => `${weeks * WEEK - less}px`;
 
 const scroller = ref<HTMLElement>();
@@ -108,8 +111,7 @@ onMounted(() => {
                     >
                         <svg viewBox="0 0 24 24" class="size-5" aria-hidden="true">
                             <circle cx="12" cy="12" r="10" fill="currentColor" />
-                            <path v-if="deload.marker === 'deficit_deload'" d="m8.5 8.5 7 7M15.5 10v5.5H10" fill="none" stroke="var(--color-surface)" stroke-width="2" stroke-linecap="round" />
-                            <path v-else d="M10 8v8M14 8v8" stroke="var(--color-surface)" stroke-width="2" stroke-linecap="round" />
+                            <path :d="MARKS[deload.marker]" fill="none" stroke="var(--color-surface)" stroke-width="2" stroke-linecap="round" />
                         </svg>
                     </button>
                 </div>
@@ -127,8 +129,10 @@ onMounted(() => {
 
         <div class="flex flex-wrap items-center gap-x-3.5 gap-y-1 px-4 text-xs text-secondary-text" aria-hidden="true">
             <span class="flex items-center gap-1"><svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 18 18 6" /></svg>Today</span>
-            <span class="flex items-center gap-1"><svg viewBox="0 0 24 24" class="size-4"><circle cx="12" cy="12" r="10" fill="currentColor" /><path d="M10 8v8M14 8v8" stroke="var(--color-surface)" stroke-width="2" /></svg>Deload</span>
-            <span class="flex items-center gap-1"><svg viewBox="0 0 24 24" class="size-4"><circle cx="12" cy="12" r="10" fill="currentColor" /><path d="m8.5 8.5 7 7M15.5 10v5.5H10" fill="none" stroke="var(--color-surface)" stroke-width="2" /></svg>Deficit deload</span>
+            <span v-for="(title, marker) in { deload: 'Deload', deficit_deload: 'Deficit deload' }" :key="marker" class="flex items-center gap-1">
+                <svg viewBox="0 0 24 24" class="size-4"><circle cx="12" cy="12" r="10" fill="currentColor" /><path :d="MARKS[marker]" fill="none" stroke="var(--color-surface)" stroke-width="2" stroke-linecap="round" /></svg>
+                {{ title }}
+            </span>
         </div>
 
         <RouterLink

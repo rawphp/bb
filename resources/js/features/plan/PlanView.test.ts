@@ -61,7 +61,9 @@ describe('PlanView', () => {
     it('PLAN-003 starts the timeline at week 1 while today is in view, else scrolls today into view', () => {
         const width = Object.getOwnPropertyDescriptor(Element.prototype, 'clientWidth')!;
         Object.defineProperty(Element.prototype, 'clientWidth', { configurable: true, get: () => 360 });
-        onTestFinished(() => Object.defineProperty(Element.prototype, 'clientWidth', width));
+        onTestFinished(() => {
+            Object.defineProperty(Element.prototype, 'clientWidth', width);
+        });
         const scroller = (wrapper: ReturnType<typeof show>) => wrapper.find('[data-test="timeline"]').element.parentElement!;
 
         expect(scroller(show(plan)).scrollLeft).toBe(0);

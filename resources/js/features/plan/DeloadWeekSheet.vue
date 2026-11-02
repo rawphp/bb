@@ -38,7 +38,7 @@ function turnOff(): void {
 </script>
 
 <template>
-    <BottomSheet :open="true" :title="`Week ${deload.week + 1}`" save-title="Done" :heights="['half']" @cancel="emit('close')" @save="emit('close')">
+    <BottomSheet :open="true" :title="`Week ${deload.week + 1}`" save-title="Done" :save-disabled="busy" :cancel-disabled="busy" :dismissible="!busy" :heights="['half']" @cancel="emit('close')" @save="emit('close')">
         <div class="space-y-3.5 p-4" data-test="deload-sheet">
             <div>
                 <p class="font-semibold">{{ deload.label }}</p>

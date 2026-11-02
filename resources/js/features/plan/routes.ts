@@ -3,13 +3,14 @@ import type { RouteRecordRaw } from 'vue-router';
 // The plan screens (PLAN-003 to PLAN-006, PH-006, PH-007): the timeline, a phase, and
 // the running phase with an action already open, for the More menu's Adjust phase length
 // and End current phase. /plan comes first, so /dev/screens/plan_show opens the plan;
-// the running-phase screens open with ?view=<name>. :phaseId takes only a ULID, so the
-// add-phase and prebuilt-plan screens (#107) never read as a phase.
-const ULID = '([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26})';
+// the running-phase screens open with ?view=<name> and read the running phase's
+// phase_show from the server, as CurrentMesocycleView does. :phaseId takes a ULID (a
+// client-made id, CAP-019) or a UUID (one the server made), so a malformed id is not found.
+const ID = '([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})';
 
 export default [
     { path: '/plan', name: 'plan', component: () => import('./PlanView.vue'), meta: { screen: 'plan_show', tab: 'train' } },
-    { path: `/plan/phases/:phaseId${ULID}`, name: 'phase', component: () => import('./PhaseDetailView.vue'), props: true, meta: { screen: 'phase_show', tab: 'train' } },
+    { path: `/plan/phases/:phaseId${ID}`, name: 'phase', component: () => import('./PhaseDetailView.vue'), props: true, meta: { screen: 'phase_show', tab: 'train' } },
     {
         path: '/plan/current/length',
         name: 'adjust-phase-length',

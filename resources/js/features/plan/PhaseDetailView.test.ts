@@ -1,4 +1,4 @@
-import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
+import { flushPromises, mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityError, read, readFresh, write } from '@/app/call';
 import type { PhaseShowOutput } from '@/contracts/phase_show';
@@ -33,7 +33,7 @@ function sent(): [string, Record<string, unknown>][] {
 }
 
 const rows = (wrapper: ReturnType<typeof show>) => wrapper.findAll('[data-test="row"]').map((row) => row.text());
-const pick = async (wrapper: ReturnType<typeof show>, label: string) => {
+const pick = async (wrapper: Pick<VueWrapper, 'findAll'>, label: string) => {
     const choice = wrapper.findAll('[role="radio"]').find((r) => r.text().startsWith(label));
     await choice!.trigger('click');
 };

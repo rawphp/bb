@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue';
 import { featureRoutes } from '@/app/router';
-import { findScreen, takesFixture } from './screens';
+import { findScreen, screenProps, takesFixture } from './screens';
 
 // Renders a capability screen from tests/fixtures/screens/<name>.json, or
 // one of its other states from <name>.<state>.json. A screen that reads nothing
@@ -13,6 +13,7 @@ const fixtures = import.meta.glob<unknown>('/tests/fixtures/screens/*.json', { i
 
 const screenName = computed(() => props.name.replace(/\..*$/, ''));
 const screen = computed(() => findScreen(screenName.value, featureRoutes, props.view));
+const routeProps = computed(() => screenProps(screenName.value, featureRoutes, props.view));
 const fixtureless = computed(() => !takesFixture(screenName.value, featureRoutes, props.view));
 const payload = ref<unknown>();
 const missing = ref(false);
@@ -27,7 +28,7 @@ watchEffect(async () => {
 
 <template>
     <p v-if="!screen" class="p-6">No screen renders {{ name }}.</p>
-    <component :is="screen" v-else-if="fixtureless" />
+    <component :is="screen" v-else-if="fixtureless" v-bind="routeProps" />
     <p v-else-if="missing" class="p-6">No fixture at tests/fixtures/screens/{{ name }}.json.</p>
-    <component :is="screen" v-else-if="payload !== undefined" :payload="payload" />
+    <component :is="screen" v-else-if="payload !== undefined" v-bind="routeProps" :payload="payload" />
 </template>
