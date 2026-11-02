@@ -5,6 +5,8 @@ import type { TodayShowOutput } from '@/contracts/today_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import TodayMissedDaySheet from './TodayMissedDaySheet.vue';
 
+const back = vi.fn();
+vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back }) }));
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
 
 const readMock = vi.mocked(read);
@@ -93,5 +95,17 @@ describe('TodayMissedDaySheet', () => {
 
         expect(wrapper.get('[role="dialog"] [role="alert"]').text()).toContain('That day is full.');
         expect(wrapper.emitted('close')).toBeUndefined();
+    });
+
+    it('NAV-001 goes back when it was opened at its own route, and only then', async () => {
+        back.mockReset();
+        const routed = show({ payload: today, page: true });
+        await routed.findAll('[role="dialog"] header button')[0]!.trigger('click');
+        expect(back).toHaveBeenCalledTimes(1);
+
+        const over = show();
+        await over.findAll('[role="dialog"] header button')[0]!.trigger('click');
+        expect(back).toHaveBeenCalledTimes(1);
+        expect(over.emitted('close')).toHaveLength(1);
     });
 });
