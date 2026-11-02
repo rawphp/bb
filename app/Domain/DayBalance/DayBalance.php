@@ -85,6 +85,9 @@ final class DayBalance
      */
     public static function shiftingCarbs(float $by, array $over): array
     {
+        if (! is_finite($by)) {
+            throw MealMoveRefusal::invalid();
+        }
         if ($over === []) {
             throw MealMoveRefusal::noMeals();
         }
@@ -109,7 +112,8 @@ final class DayBalance
     }
 
     /**
-     * DAY-020: moves `$kcal` from one meal to another through carbs (4 kcal a gram). Each meal keeps 5 g of carbs.
+     * DAY-020: moves `$kcal` from one meal to another through carbs (4 kcal a gram). The giving meal keeps 5 g of
+     * carbs; the receiving meal only gains, so it never refuses (SAFE-010).
      *
      * @throws MealMoveRefusal
      */

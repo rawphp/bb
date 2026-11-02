@@ -115,3 +115,23 @@ it('SAFE-010 taking carbs from a meal already under five grams is refused', func
     expect(moveRefusal(fn () => DayBalance::moving(kcal: 4, from: moveSlot('a', carbs: 4), to: moveSlot('b', carbs: 50))))
         ->toMatchObject(['reason' => MealMoveRefusalReason::BelowCarbMinimum, 'id' => 'a']);
 });
+
+it('DAY-020 a spread needs a finite amount of carbs', function (float $by) {
+    expect(moveRefusal(fn () => DayBalance::shiftingCarbs(by: $by, over: [moveSlot('a', carbs: 50)])))
+        ->toMatchObject(['reason' => MealMoveRefusalReason::Invalid, 'id' => null]);
+})->with([
+    'NaN' => [NAN],
+    'infinite' => [INF],
+    'minus infinite' => [-INF],
+]);
+
+it('SAFE-010 the 5 g carb floor allows for float rounding', function () {
+    // 8.2 - 3.2 is 4.999999999999999 in floating point: still 5 g.
+    expect(8.2 - 3.2)->toBeLessThan(MacroRules::MEAL_MINIMUM_G)
+        ->and(DayBalance::shiftingCarbs(by: -3.2, over: [moveSlot('a', carbs: 8.2)])[0]->target->carbsG)
+        ->toEqualWithDelta(5, MOVE_ACC);
+
+    // A thousandth of a gram under is not rounding.
+    expect(moveRefusal(fn () => DayBalance::shiftingCarbs(by: -3.201, over: [moveSlot('a', carbs: 8.2)])))
+        ->toMatchObject(['reason' => MealMoveRefusalReason::BelowCarbMinimum, 'id' => 'a']);
+});

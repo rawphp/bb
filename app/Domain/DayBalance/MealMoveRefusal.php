@@ -12,7 +12,7 @@ final class MealMoveRefusal extends DomainException
         public readonly ?string $id = null,
     ) {
         parent::__construct(match ($reason) {
-            MealMoveRefusalReason::Invalid => 'The move needs positive calories between two different meals.',
+            MealMoveRefusalReason::Invalid => 'The move needs a finite, positive amount between two different meals.',
             MealMoveRefusalReason::NoMeals => 'There is no meal to carry the change in carbs.',
             MealMoveRefusalReason::BelowCarbMinimum => "Meal {$id} would keep less than 5 g of carbs.",
         });

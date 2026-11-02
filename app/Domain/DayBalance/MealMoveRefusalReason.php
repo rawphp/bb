@@ -5,7 +5,7 @@ namespace App\Domain\DayBalance;
 /** Why a calorie move between meals was refused (DAY-020, SAFE-010). */
 enum MealMoveRefusalReason: string
 {
-    /** No amount, or the same meal twice. */
+    /** No amount, an amount that is not finite, or the same meal twice. */
     case Invalid = 'invalid';
     /** A change in a day's carbs with no meal to carry it. */
     case NoMeals = 'noMeals';
