@@ -56,7 +56,8 @@ it('MEAL-070 MEAL-071 AGT-010 saved_meal_delete is destructive and no saved meal
     expect(HostDefinition::affects($registry->get('saved_meal_save')))->toBe(['saved_meals_show', 'food_search'])
         ->and(HostDefinition::affects($registry->get('saved_meal_rename')))->toBe(['saved_meals_show', 'food_search'])
         ->and(HostDefinition::affects($registry->get('saved_meal_delete')))->toBe(['saved_meals_show', 'food_search'])
-        ->and(HostDefinition::affects($registry->get('meal_saved_meal_load')))->toBe(['today_show', 'food_search']);
+        // DAY-001 to DAY-021: the Redistribute and Adjust sheets read which meals have foods and whether all are locked.
+        ->and(HostDefinition::affects($registry->get('meal_saved_meal_load')))->toBe(['today_show', 'day_redistribute_show', 'day_adjust_show', 'food_search']);
 });
 
 it('MEAL-070 MEAL-071 refuses every saved meal capability when signed out', function (string $name, array $input) {
@@ -219,13 +220,20 @@ it('MEAL-071 answers 422 naming saved_meal_id when it is missing', function () {
 });
 
 it('MEAL-070 loads a saved meal into a meal and says which day changed', function () {
+    Carbon::setTestNow('2026-10-13 09:00:00');
     $user = User::factory()->create();
     $meal = savedMealDayMeal($user);
     $saved = savedMealOf($user, 'Bulk dinner', 2);
 
     savedMealCall($user, 'meal_saved_meal_load', ['meal_id' => $meal, 'saved_meal_id' => $saved->id])
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['today_show{}', 'today_show{"date":"2026-10-13"}', 'food_search{"meal_id":"'.$meal.'"}'])
+        ->assertJsonPath('data.invalidates', [
+            'today_show{"date":"2026-10-13"}',
+            'today_show{}',
+            'day_redistribute_show{"date":"2026-10-13"}',
+            'day_adjust_show{"date":"2026-10-13"}',
+            'food_search{"meal_id":"'.$meal.'"}',
+        ])
         ->assertJsonPath('data.toast', 'Loaded Bulk dinner');
 
     expect(PlannedFood::query()->where('meal_id', $meal)->count())->toBe(2);
