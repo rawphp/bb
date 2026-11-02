@@ -3,6 +3,7 @@
 namespace Tests\Unit\Domain\WeekBuilder;
 
 use App\Domain\Energy\EnergyRules;
+use App\Domain\MealSplit\CarbPlacement;
 use App\Domain\Model\BodyFatBucket;
 use App\Domain\Model\DayType;
 use App\Domain\Model\ExerciseSlot;
@@ -17,7 +18,6 @@ use App\Domain\Model\Session;
 use App\Domain\Model\Sex;
 use App\Domain\Model\StepPlanDay;
 use App\Domain\Model\WeightUnit;
-use App\Domain\MealSplit\CarbPlacement;
 use App\Domain\Placement\ClockRange;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Placement\TrainingDay;
