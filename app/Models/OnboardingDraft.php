@@ -20,10 +20,12 @@ use App\Domain\Onboarding\TrainingPlanKind;
 use App\Domain\Onboarding\WeighInChoice;
 use App\Domain\Safety\ScreeningItem;
 use App\Models\Concerns\BelongsToUser;
+use Database\Factories\OnboardingDraftFactory;
 use DateTimeImmutable;
 use DateTimeInterface;
 use DateTimeZone;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -74,7 +76,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 ])]
 class OnboardingDraft extends Model
 {
-    use BelongsToUser;
+    /** @use HasFactory<OnboardingDraftFactory> */
+    use BelongsToUser, HasFactory;
 
     /** A new draft: step 1, kg and cm (ONB-004), the step 11 defaults and no answers. */
     protected $attributes = [
