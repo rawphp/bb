@@ -213,7 +213,7 @@ it('CAP-020 asks billing, then the agent policy', function () {
         ->and($asked->getArrayCopy())->toBe(['billing account_show', 'agent account_show', 'billing token_list', 'billing token_revoke', 'agent token_revoke']);
 });
 
-it('CAP-020 allows everything by default where billing and the agent policy are not set up', function () {
+it('CAP-020 allows a call that is not destructive by default where billing and the agent policy are not set up', function () {
     expect(app(BillingGate::class))->toBeInstanceOf(NoBilling::class)
         ->and(app(AgentPolicy::class))->toBeInstanceOf(NoAgentPolicy::class)
         ->and(app(BillingGate::class)->allows(authorizerUser(), app(CapabilityRegistry::class)->get('account_show')))->toBeTrue()
