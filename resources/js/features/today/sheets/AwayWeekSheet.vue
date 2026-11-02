@@ -104,7 +104,7 @@ async function notAway(): Promise<void> {
                         data-test="week"
                         :aria-pressed="chosen.includes(week.week_start)"
                         :disabled="busy"
-                        class="flex min-h-tap flex-col items-center justify-center rounded-xl border border-secondary-text/25 px-1 py-1.5 text-center text-sm font-semibold active:opacity-70"
+                        class="flex min-h-tap flex-col items-center justify-center rounded-xl border border-secondary-text/25 px-1 py-1.5 text-center text-[13px] font-semibold whitespace-nowrap active:opacity-70"
                         :class="chosen.includes(week.week_start) ? 'bg-accent text-on-accent' : 'bg-surface text-primary-text'"
                         @click="toggle(week.week_start)"
                     >
