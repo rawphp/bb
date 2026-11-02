@@ -168,11 +168,7 @@ The scheduler reaps the agent's stale turns, prunes the audit log (`audit_record
 * * * * * cd /var/www/bodybuilder && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-An instance that ran before the audit log moved to `audit_records` also has audit rows in the package's `capabilities_audit_outbox` table. The scheduler does not prune that table, and nothing writes to it any more. To keep only 90 days of audit history there too, delete its older rows yourself once you have the backups you need:
-
-```sql
-DELETE FROM capabilities_audit_outbox WHERE created_at < NOW() - INTERVAL 90 DAY;
-```
+An instance that ran before the audit log moved to `audit_records` also has audit rows in the package's `capabilities_audit_outbox` table. Nothing writes to it any more. The same daily prune keeps those rows to 90 days too, and deleting an account deletes its rows there.
 
 ## Food data
 

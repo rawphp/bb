@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Schema;
  * and the result. The spec requires both ends of its life: the scheduler prunes
  * it to 90 days (build plan, AUDIT; architecture.md, Scheduler) and, like every
  * user table, user_id cascades on account delete (ACC-005). The package's
- * capabilities_audit_outbox table is left as it is, with its rows.
+ * capabilities_audit_outbox table is left as it is; its rows keep the same 90 days
+ * and account-delete rules through AuditOutboxRow.
  */
 return new class extends Migration
 {
