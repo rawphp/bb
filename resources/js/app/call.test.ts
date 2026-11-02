@@ -502,8 +502,12 @@ describe('postHost', () => {
         expect(error).toMatchObject({ status: 0, body: { reason: 'network' } });
     });
 
-    it('CAP-004 a host call gives up on a stalled server', async () => {
+    it.each([
+        ['the CSRF cookie fetch', false],
+        ['the POST itself', true],
+    ])('CAP-004 a host call gives up on a stalled server when %s never answers', async (_, cookieAnswers) => {
         vi.useFakeTimers();
+        if (cookieAnswers) freshCookie();
         fetchMock.mockImplementation(
             (_url, init) =>
                 new Promise<Response>((_resolve, reject) => {
@@ -512,10 +516,49 @@ describe('postHost', () => {
         );
 
         try {
+            let settled = false;
+            const error = postHost('/sign-in', {}).catch((e: unknown) => e).finally(() => (settled = true));
+            await vi.advanceTimersByTimeAsync(TIMEOUT_MS - 1);
+            expect(settled).toBe(false);
+            await vi.advanceTimersByTimeAsync(1);
+
+            expect(await error).toMatchObject({ status: 0, body: { reason: 'timeout' } });
+            expect(fetchMock).toHaveBeenCalledTimes(cookieAnswers ? 2 : 1);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('ACC-001 a session already signed in is a refusal, not a sign-in: the guest redirect is not followed', async () => {
+        freshCookie();
+        // What fetch answers for a redirect it was told not to follow.
+        fetchMock.mockResolvedValueOnce({ type: 'opaqueredirect', status: 0, ok: false } as Response);
+
+        const error = await postHost('/sign-in', { email: 'b@example.com', password: 'anything' }).catch((e: unknown) => e);
+
+        expect(fetchMock.mock.calls[1]![1]?.redirect).toBe('manual');
+        expect(error).toBeInstanceOf(CapabilityError);
+        expect(error).toMatchObject({ capability: '/sign-in', status: 302, body: { reason: 'signed_in' } });
+    });
+
+    it('CAP-004 a refusal whose body never arrives still ends at the deadline', async () => {
+        vi.useFakeTimers();
+        freshCookie();
+        fetchMock.mockImplementationOnce(async (_url, init) => ({
+            type: 'basic',
+            status: 422,
+            ok: false,
+            json: () =>
+                new Promise((_resolve, reject) => {
+                    init?.signal?.addEventListener('abort', () => reject(init.signal!.reason));
+                }),
+        }) as unknown as Response);
+
+        try {
             const error = postHost('/sign-in', {}).catch((e: unknown) => e);
             await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
 
-            expect(await error).toMatchObject({ status: 0, body: { reason: 'timeout' } });
+            expect(await error).toMatchObject({ status: 422, body: null });
         } finally {
             vi.useRealTimers();
         }

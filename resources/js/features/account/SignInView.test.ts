@@ -219,7 +219,47 @@ describe('SignInView', () => {
         await wrapper.get('form').trigger('submit');
         await flushPromises();
 
-        expect(wrapper.get('[role="alert"]').text()).toBe("Can't reach the server. Check your connection and try again.");
+        expect(wrapper.get('[role="alert"]').text()).toBe('No connection. Try again when you are online.');
+    });
+
+    it('ACC-001 a device already signed in is told so and offered the app, not let in as someone else', async () => {
+        postMock.mockRejectedValueOnce(new CapabilityError('/sign-in', 302, { reason: 'signed_in' }));
+        const { wrapper, router } = await view();
+
+        await fill(wrapper, { email: 'other@example.com', password: 'anything' });
+        await wrapper.get('form').trigger('submit');
+        await flushPromises();
+
+        expect(wrapper.get('[role="alert"]').text()).toContain('You are already signed in on this device.');
+        expect(wrapper.get('[data-test="open-app"]').attributes('href')).toBe('/');
+        expect(warm).not.toHaveBeenCalled();
+        expect(router.currentRoute.value.path).toBe('/sign-in');
+    });
+
+    it('ACC-001 any other refusal (a stale CSRF token) says something went wrong and stays', async () => {
+        postMock.mockRejectedValueOnce(new CapabilityError('/sign-in', 419, { message: 'CSRF token mismatch.' }));
+        const { wrapper, router } = await view();
+
+        await fill(wrapper, { email: 'sam@example.com', password: 'secret' });
+        await wrapper.get('form').trigger('submit');
+        await flushPromises();
+
+        expect(wrapper.get('[role="alert"]').text()).toBe('Something went wrong. Try again.');
+        expect(wrapper.find('[data-test="open-app"]').exists()).toBe(false);
+        expect(router.currentRoute.value.path).toBe('/sign-in');
+    });
+
+    it('OFF-004 a warm that fails after sign-in still opens the app', async () => {
+        postMock.mockResolvedValueOnce(undefined);
+        vi.mocked(warm).mockRejectedValueOnce(new CapabilityError('sync_manifest', 0, { reason: 'network' }));
+        const { wrapper, router } = await view();
+
+        await fill(wrapper, { email: 'sam@example.com', password: 'secret' });
+        await wrapper.get('form').trigger('submit');
+        await flushPromises();
+
+        expect(router.currentRoute.value.path).toBe('/');
+        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
     });
 
     it('ACC-001 Use a password instead goes back to the password form with the email kept', async () => {
@@ -266,7 +306,9 @@ describe('SignInView', () => {
         expect(wrapper.text()).not.toContain('Email me a code');
         expect(button(wrapper, 'toggle-mode').text()).toBe('Have an account? Sign in');
 
-        await fill(wrapper, { name: 'Sam', email: 'sam@example.com', password: 'long secret' });
+        await fill(wrapper, { email: 'sam@example.com', password: 'long secret', password_confirmation: 'long secret' });
+        expect(button(wrapper, 'submit').element.disabled).toBe(true);
+        await fill(wrapper, { name: 'Sam', password_confirmation: '' });
         expect(button(wrapper, 'submit').element.disabled).toBe(true);
         await fill(wrapper, { password_confirmation: 'long secret' });
         expect(button(wrapper, 'submit').text()).toBe('Create account');
@@ -285,6 +327,7 @@ describe('SignInView', () => {
     it('ACC-001 a refused sign-up shows each field\'s first error under it', async () => {
         postMock.mockRejectedValueOnce(
             refused('/register', 422, {
+                name: ['The name field is required.'],
                 email: ['The email has already been taken.'],
                 password: ['The password field confirmation does not match.', 'The password field must be at least 8 characters.'],
             }),
@@ -296,6 +339,8 @@ describe('SignInView', () => {
         await wrapper.get('form').trigger('submit');
         await flushPromises();
 
+        expect(wrapper.get('[data-test="error-name"]').text()).toBe('The name field is required.');
+        expect(wrapper.get('input[name="name"]').attributes('aria-describedby')).toBe('error-name');
         expect(wrapper.get('[data-test="error-email"]').text()).toBe('The email has already been taken.');
         expect(wrapper.get('[data-test="error-password"]').text()).toBe('The password field confirmation does not match.');
         expect(wrapper.find('[role="alert"]').exists()).toBe(false);
