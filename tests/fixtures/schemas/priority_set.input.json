@@ -26,18 +26,20 @@
             ]
         },
         "priority": {
-            "type": "string",
+            "type": [
+                "string",
+                "null"
+            ],
             "enum": [
                 "emphasize",
                 "grow",
                 "maintain",
-                "off"
+                null
             ]
         }
     },
     "required": [
         "mesocycle_id",
-        "muscle",
-        "priority"
+        "muscle"
     ]
 }

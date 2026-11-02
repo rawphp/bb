@@ -8,7 +8,7 @@ export interface MesocycleShowOutput {
   id: string;
   name?: string | null;
   priority_options: {
-    priority: "emphasize" | "grow" | "maintain" | "off";
+    priority?: "emphasize" | "grow" | "maintain" | null;
     title: string;
   }[];
   saved?: {
@@ -68,7 +68,7 @@ export interface MesocycleShowOutput {
         | "traps"
         | "forearms";
       muscle_title: string;
-      priority: "emphasize" | "grow" | "maintain" | "off";
+      priority?: "emphasize" | "grow" | "maintain" | null;
       priority_title: string;
       bars: number;
     }[];
@@ -113,7 +113,7 @@ export interface MesocycleShowOutput {
         | "traps"
         | "forearms";
       muscle_title: string;
-      priority: "emphasize" | "grow" | "maintain" | "off";
+      priority?: "emphasize" | "grow" | "maintain" | null;
       priority_title: string;
       bars: number;
     }[];
@@ -183,4 +183,4 @@ export interface MesocycleShowOutput {
   } | null;
 }
 
-export const outputVersion = '044cf034427d';
+export const outputVersion = '96d6b59eac3e';

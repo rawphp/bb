@@ -55,7 +55,7 @@ export interface TemplatesShowOutput {
         | "traps"
         | "forearms";
       muscle_title: string;
-      priority: "emphasize" | "grow" | "maintain" | "off";
+      priority?: "emphasize" | "grow" | "maintain" | null;
       priority_title: string;
       bars: number;
     }[];
@@ -66,4 +66,4 @@ export interface TemplatesShowOutput {
   } | null;
 }
 
-export const outputVersion = '1e375afe5a1a';
+export const outputVersion = '2418f457e9b9';

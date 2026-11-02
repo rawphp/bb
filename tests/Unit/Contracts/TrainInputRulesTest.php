@@ -121,7 +121,7 @@ it('CAP-019 refuses an id that is not a ULID in every train ULID rule, nested on
     )->and(count($checked))->toBeGreaterThanOrEqual(30);
 });
 
-it('CAP-012 lets a train input send null for an optional enum, the same as leaving it out', function () {
+it('CAP-012 lets a train input send null for a nullable enum, and leave out an optional one', function () {
     $checked = 0;
 
     foreach (trainInputs() as $name => $input) {
@@ -133,13 +133,15 @@ it('CAP-012 lets a train input send null for an optional enum, the same as leavi
             $data = trainExample($input::jsonSchema());
 
             expect(trainInputViolations($input, [...$data, $field => null]))->toBe([], "{$name} refuses {$field}: null");
-            unset($data[$field]);
-            expect(trainInputViolations($input, $data))->toBe([], "{$name} refuses {$field} left out");
+            if (! in_array($field, $input::jsonSchema()['required'] ?? [], true)) {
+                unset($data[$field]);
+                expect(trainInputViolations($input, $data))->toBe([], "{$name} refuses {$field} left out");
+            }
             $checked++;
         }
     }
 
-    expect($checked)->toBe(8);
+    expect($checked)->toBe(9);
 });
 
 it('CAP-012 refuses a train input outside its bounds and names the field', function (string $input, string $field, mixed $value) {
@@ -176,7 +178,7 @@ it('CAP-002 uses the domain enums\' values in every train contract', function ()
         'volume' => [VolumeFeedback::class, []],
         'soreness' => [Soreness::class, []],
         'answer' => [JointPain::class, []],
-        'priority' => [Priority::class, ['off']],
+        'priority' => [Priority::class, []],
         'type' => [PhaseType::class, []],
         'default_type' => [PhaseType::class, []],
         'choice' => [PhaseType::class, ['gain_first']],

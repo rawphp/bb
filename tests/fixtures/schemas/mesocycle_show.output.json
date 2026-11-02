@@ -19,12 +19,15 @@
                 "additionalProperties": false,
                 "properties": {
                     "priority": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "enum": [
                             "emphasize",
                             "grow",
                             "maintain",
-                            "off"
+                            null
                         ]
                     },
                     "title": {
@@ -32,7 +35,6 @@
                     }
                 },
                 "required": [
-                    "priority",
                     "title"
                 ]
             }
@@ -271,12 +273,15 @@
                                 "type": "string"
                             },
                             "priority": {
-                                "type": "string",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
                                 "enum": [
                                     "emphasize",
                                     "grow",
                                     "maintain",
-                                    "off"
+                                    null
                                 ]
                             },
                             "priority_title": {
@@ -289,7 +294,6 @@
                         "required": [
                             "muscle",
                             "muscle_title",
-                            "priority",
                             "priority_title",
                             "bars"
                         ]
@@ -458,12 +462,15 @@
                                 "type": "string"
                             },
                             "priority": {
-                                "type": "string",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
                                 "enum": [
                                     "emphasize",
                                     "grow",
                                     "maintain",
-                                    "off"
+                                    null
                                 ]
                             },
                             "priority_title": {
@@ -476,7 +483,6 @@
                         "required": [
                             "muscle",
                             "muscle_title",
-                            "priority",
                             "priority_title",
                             "bars"
                         ]

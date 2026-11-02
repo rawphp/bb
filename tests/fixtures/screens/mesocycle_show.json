@@ -15,7 +15,7 @@
             "title": "Maintain"
         },
         {
-            "priority": "off",
+            "priority": null,
             "title": "Off"
         }
     ],
@@ -853,9 +853,9 @@
             {
                 "muscle": "forearms",
                 "muscle_title": "Forearms",
-                "priority": "maintain",
-                "priority_title": "Maintain",
-                "bars": 1
+                "priority": null,
+                "priority_title": "Off",
+                "bars": 0
             }
         ]
     },

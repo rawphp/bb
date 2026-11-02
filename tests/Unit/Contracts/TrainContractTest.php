@@ -1,5 +1,6 @@
 <?php
 
+use Rawphp\Capabilities\Schema\JsonSchemaValidator;
 use Tests\Support\ContractDtos;
 use Tests\Support\FixtureKeys;
 
@@ -60,8 +61,10 @@ it('CAP-032 gives every train name an input DTO', function () use ($root) {
 });
 
 // The package's DTO schemas mark nullable keys optional, so a fixture could drop
-// one and still fit; a train read always sends every key.
-it('CAP-002 sends every key in each train read\'s fixtures, in every state', function () use ($root) {
+// one and still fit; a train read always sends every key. The package's own
+// validator runs too: unlike SchemaCheck it refuses a null an enum leaves out,
+// as the API's output check will.
+it('CAP-002 sends every key in each train read\'s fixtures, in every state, and passes the package\'s output check', function () use ($root) {
     foreach (array_keys(trainOwners($root)) as $name) {
         if (ContractDtos::find($root, $name, 'output') === null) {
             continue;
@@ -72,7 +75,8 @@ it('CAP-002 sends every key in each train read\'s fixtures, in every state', fun
         foreach (glob("{$root}/tests/fixtures/screens/{$name}{,.*}.json", GLOB_BRACE) ?: [] as $path) {
             $fixture = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
 
-            expect(FixtureKeys::missing($schema, $fixture))->toBe([], basename($path).' leaves out keys');
+            expect(FixtureKeys::missing($schema, $fixture))->toBe([], basename($path).' leaves out keys')
+                ->and((new JsonSchemaValidator)->validate($schema, $fixture))->toBe([], basename($path).' fails the output check');
         }
     }
 });
