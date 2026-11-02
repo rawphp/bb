@@ -29,6 +29,12 @@ function writes(): [string, Record<string, unknown>][] {
     return writeMock.mock.calls.map((call) => call.slice(0, 2) as [string, Record<string, unknown>]);
 }
 
+// jsdom has no PointerEvent, and Test Utils cannot set clientX on the MouseEvent it falls back to.
+async function pointer(target: ReturnType<ReturnType<typeof show>['find']>, type: string, clientX: number, clientY: number) {
+    target.element.dispatchEvent(new MouseEvent(type, { clientX, clientY, bubbles: true }));
+    await flushPromises();
+}
+
 function row(wrapper: ReturnType<typeof show>, name: string) {
     const found = wrapper.findAll('[data-test="food-row"]').find((r) => r.find('[data-test="food-name"]').text() === name);
     if (!found) throw new Error(`No row for ${name}`);
@@ -125,9 +131,13 @@ describe('PantryView', () => {
 
         const eggs = row(wrapper, 'Egg whites');
         expect(eggs.find('[data-test="swipe-favorite"]').attributes('aria-hidden')).toBe('true');
-        await eggs.find('[data-test="swipe"]').trigger('pointerdown', { clientX: 300, clientY: 10, pointerId: 1 });
-        await eggs.find('[data-test="swipe"]').trigger('pointermove', { clientX: 200, clientY: 12, pointerId: 1 });
-        await eggs.find('[data-test="swipe"]').trigger('pointerup', { clientX: 200, clientY: 12, pointerId: 1 });
+        const swipe = eggs.find('[data-test="swipe"]');
+        await pointer(swipe, 'pointerdown', 300, 10);
+        await pointer(swipe, 'pointermove', 200, 12);
+        await pointer(swipe, 'pointerup', 200, 12);
+        // The drag's own click is not a tap on the row.
+        await swipe.find('[data-test="pick"]').trigger('click');
+        expect(row(wrapper, 'Egg whites').find('[data-test="pick"]').attributes('aria-pressed')).toBe('false');
 
         const action = row(wrapper, 'Egg whites').find('[data-test="swipe-favorite"]');
         expect(action.attributes('aria-hidden')).toBeUndefined();
@@ -142,9 +152,9 @@ describe('PantryView', () => {
         const wrapper = show();
 
         const swipe = row(wrapper, 'Egg whites').find('[data-test="swipe"]');
-        await swipe.trigger('pointerdown', { clientX: 300, clientY: 10, pointerId: 1 });
-        await swipe.trigger('pointermove', { clientX: 280, clientY: 120, pointerId: 1 });
-        await swipe.trigger('pointerup', { clientX: 280, clientY: 120, pointerId: 1 });
+        await pointer(swipe, 'pointerdown', 300, 10);
+        await pointer(swipe, 'pointermove', 280, 120);
+        await pointer(swipe, 'pointerup', 280, 120);
 
         expect(row(wrapper, 'Egg whites').find('[data-test="swipe-favorite"]').attributes('aria-hidden')).toBe('true');
     });
@@ -181,13 +191,14 @@ describe('PantryView', () => {
     });
 
     it('FOOD-024 offers the typo correction, and tapping it searches for that', async () => {
+        vi.useFakeTimers();
         const wrapper = show({ payload: didYouMean, mealId: MEAL });
 
         const suggestion = wrapper.find('[data-test="suggestion"]');
         expect(suggestion.text()).toBe('Did you mean chicken breast?');
         expect(wrapper.find('[data-test="empty"]').text()).toBe('No foods match chiken brest.');
         await suggestion.trigger('click');
-        await flushPromises();
+        await vi.advanceTimersByTimeAsync(300);
 
         expect(lastRead()).toMatchObject({ query: 'chicken breast' });
         expect((wrapper.find('input[type="search"]').element as HTMLInputElement).value).toBe('chicken breast');
@@ -306,7 +317,7 @@ describe('PantryView', () => {
         await flushPromises();
         await wrapper.find('[data-test="collection-row"]').trigger('click');
 
-        expect(wrapper.find('[data-test="basket"]').findAll('li').map((li) => li.text())).toEqual(['Egg whitesRaw', 'Overnight oatsRecipe', 'Bulk dinnerSaved meal']);
+        expect(wrapper.find('[data-test="basket"]').findAll('li').map((li) => li.text())).toEqual(['Egg whites', 'Overnight oatsRecipe', 'Bulk dinnerSaved meal']);
         expect(wrapper.find('[data-test="collection-row"]').attributes('aria-pressed')).toBe('true');
         await wrapper.find('[data-test="confirm"]').trigger('click');
         await flushPromises();
