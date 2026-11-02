@@ -3,14 +3,22 @@
 use App\Domain\Placement\ClockRange;
 use App\Domain\Placement\ClockTime;
 
-it('SCH-045 a clock time wraps around midnight and reads only HH:mm', function () {
+it('SCH-045 a clock time wraps around midnight and reads a stored HH:mm', function () {
     expect((string) new ClockTime(1440))->toBe('00:00')
         ->and((string) new ClockTime(-30))->toBe('23:30')
         ->and(ClockTime::at(23)->minutesUntil(ClockTime::at(1)))->toBe(120)
         ->and(ClockTime::fromHhmm('07:05')?->minuteOfDay)->toBe(425)
         ->and(ClockTime::fromHhmm('24:00'))->toBeNull()
         ->and(ClockTime::fromHhmm('07:60'))->toBeNull()
-        ->and(ClockTime::fromHhmm('late'))->toBeNull();
+        ->and(ClockTime::fromHhmm('late'))->toBeNull()
+        ->and(ClockTime::fromHhmm('07:05'."\n"))->toBeNull()
+        ->and(ClockTime::fromHhmm('07:5x'))->toBeNull();
+});
+
+it('SCH-045 an HH:mm reads as Swift reads it: unpadded, and with seconds ignored', function () {
+    expect(ClockTime::fromHhmm('7:5')?->minuteOfDay)->toBe(425)
+        ->and(ClockTime::fromHhmm('07:05:00')?->minuteOfDay)->toBe(425)
+        ->and(ClockTime::fromHhmm('007:05')?->minuteOfDay)->toBe(425);
 });
 
 it('SCH-045 a range crossing midnight measures and orders times across it', function () {

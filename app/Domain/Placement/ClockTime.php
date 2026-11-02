@@ -24,10 +24,14 @@ final readonly class ClockTime implements Stringable
         return new self($hour * 60 + $minute);
     }
 
-    /** Reads "HH:mm". Null for anything else. */
+    /**
+     * Reads a stored "HH:mm" as the Swift reader does: the digits before the first colon are the hour and the digits
+     * after it the minute, padded or not ("7:5" is 07:05), and anything after a second colon, such as seconds, is
+     * ignored. Null for anything else, and for an hour over 23 or a minute over 59.
+     */
     public static function fromHhmm(string $hhmm): ?self
     {
-        if (preg_match('/^(\d+):(\d+)(:|$)/', $hhmm, $parts) !== 1) {
+        if (preg_match('/^(\d+):(\d+)(:|\z)/', $hhmm, $parts) !== 1) {
             return null;
         }
         $hour = (int) $parts[1];

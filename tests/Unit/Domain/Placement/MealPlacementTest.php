@@ -261,6 +261,54 @@ it('SCH-044 a fixed meal that blocks the pre-workout target is kept', function (
         ->and(ids($result->meals))->toBe(ids($meals));
 });
 
+it('SCH-044 a hand-set meal in the hour after the session is the post-workout meal', function () use ($day, $workout) {
+    $meals = fixMeals(freeMeals(4), [2 => t(18, 15)]);
+
+    $result = placed(MealPlacement::place($meals, $day, [], $workout));
+
+    expect(roles($result))->toBe([R, PRE, POST, R])
+        ->and($result->meals[2]->id)->toBe('meal-2')
+        ->and((string) $result->meals[2]->time)->toBe('18:15')
+        ->and(array_filter(roles($result), fn (MealRole $role) => $role === POST))->toHaveCount(1);
+});
+
+it('SCH-044 a hand-set meal at the session start is the post-workout meal', function () use ($day, $workout) {
+    $meals = fixMeals(freeMeals(4), [2 => t(17)]);
+
+    $result = placed(MealPlacement::place($meals, $day, [], $workout));
+
+    expect(roles($result))->toBe([R, PRE, POST, R])
+        ->and((string) $result->meals[2]->time)->toBe('17:00');
+});
+
+it('SCH-044 a hand-set meal more than an hour after the session is a regular meal', function () use ($day, $workout) {
+    $meals = fixMeals(freeMeals(4), [3 => t(19, 1)]);
+
+    $result = placed(MealPlacement::place($meals, $day, [], $workout));
+
+    // Nothing is placed after the session either: the post-workout hour is within two hours of 19:01.
+    expect(times($result))->toBe(['07:00', '11:15', '15:30', '19:01'])
+        ->and(roles($result))->toBe([R, R, PRE, R]);
+});
+
+it('SCH-044 of two hand-set meals after the session, the earlier is the post-workout meal', function () use ($day, $workout) {
+    $meals = fixMeals(freeMeals(4), [2 => t(18, 10), 3 => t(18, 50)]);
+
+    $result = placed(MealPlacement::place($meals, $day, [], $workout));
+
+    expect(times($result))->toBe(['07:00', '15:30', '18:10', '18:50'])
+        ->and(roles($result))->toBe([R, PRE, POST, R]);
+});
+
+it('SCH-044 of two hand-set meals before the session, the later is the pre-workout meal', function () use ($day, $workout) {
+    $meals = fixMeals(freeMeals(4), [1 => t(14, 30), 2 => t(15, 30)]);
+
+    $result = placed(MealPlacement::place($meals, $day, [], $workout));
+
+    expect(times($result))->toBe(['07:00', '14:30', '15:30', '18:00'])
+        ->and(roles($result))->toBe([R, R, PRE, POST]);
+});
+
 it('SCH-044 two hand-set meals may be less than two hours apart', function () use ($day) {
     $meals = fixMeals(freeMeals(2), [0 => t(12), 1 => t(13)]);
 
