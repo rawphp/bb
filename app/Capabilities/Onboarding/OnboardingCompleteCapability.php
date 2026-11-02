@@ -33,7 +33,7 @@ final class OnboardingCompleteCapability implements HostCapability
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('onboarding_complete', affects: self::AFFECTS)
+        return HostDefinition::write('onboarding_complete', affects: self::AFFECTS, destructive: true)
             ->description('Start the plan from the saved setup answers: it saves the profile, the plan and its first phase, the first mesocycle, the first week\'s calorie and meal targets and the weigh-in schedule, then deletes the answers. Use it when the user presses "Start my plan" on the setup review. It refuses, naming the step to fix, while any step\'s answers cannot continue, and once the user has a plan.')
             ->cli('onboarding', 'complete')
             ->input(OnboardingCompleteInput::class)
