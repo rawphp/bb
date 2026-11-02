@@ -108,7 +108,7 @@ it('FOOD-060 creates a custom food under the client\'s id and says the list chan
 
 it('FOOD-060 edits the user\'s own custom food under its id', function () {
     $user = User::factory()->create();
-    $food = Food::factory()->custom($user)->create();
+    $food = Food::factory()->custom($user)->create(['brand' => 'Barco']);
 
     customFoodCall($user, 'custom_food_save', customFoodInput(['id' => $food->id, 'name' => 'Protein bar XL', 'protein' => 9, 'brand' => null]))->assertOk();
 
