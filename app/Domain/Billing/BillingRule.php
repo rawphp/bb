@@ -5,7 +5,8 @@ namespace App\Domain\Billing;
 /**
  * CAP-020 step 4 with billing on: what a user's subscription lets them call.
  *
- * Reads always work, so a lapsed user keeps every screen (SUB-010). A lapsed
+ * Reads always work, so a lapsed user keeps every screen (SUB-010), except the
+ * AI scans, which spend the instance's AI key ({@see AI_READS}). A lapsed
  * user's writes are refused except deleting the account and the billing
  * capabilities (SUB-022), and revoking a token or stopping push; signing in
  * and out are host routes, not capabilities.
@@ -28,12 +29,19 @@ final class BillingRule
     /** Every capability under this prefix is billing, which always stays allowed (SUB-022). */
     public const BILLING_PREFIX = 'billing_';
 
+    /**
+     * Reads that send the user's photo or words to the instance's AI key (FOOD-042 to FOOD-044). They change
+     * nothing, but each one costs the operator, so they come with the plan like a write (SUB-001): a lapsed
+     * user or one who has never subscribed is refused them, and keeps every other read (SUB-010).
+     */
+    public const AI_READS = ['scan_photo', 'scan_describe', 'scan_label'];
+
     /** The write a user who has never subscribed may make besides those, to reach the paywall (SUB-004). */
     public const ONBOARDING = 'onboarding_answer';
 
     public static function allows(Access $access, string $capability, bool $readOnly): bool
     {
-        if ($readOnly || str_starts_with($capability, self::BILLING_PREFIX)) {
+        if (self::isFree($capability, $readOnly)) {
             return true;
         }
 
@@ -42,6 +50,12 @@ final class BillingRule
             Access::None => $capability === self::ONBOARDING || in_array($capability, self::LAPSED_EXEMPT, true),
             Access::Lapsed => in_array($capability, self::LAPSED_EXEMPT, true),
         };
+    }
+
+    /** Needs no plan, whatever the subscription: a read other than an AI scan (SUB-010), or billing itself (SUB-022). */
+    public static function isFree(string $capability, bool $readOnly): bool
+    {
+        return ($readOnly && ! in_array($capability, self::AI_READS, true)) || str_starts_with($capability, self::BILLING_PREFIX);
     }
 
     /**

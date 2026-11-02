@@ -17,6 +17,10 @@
                         "type": "number",
                         "description": "At the current portion; sent back unchanged to scan_adjust"
                     },
+                    "base_grams": {
+                        "type": "number",
+                        "description": "The grams at 1\u00d7, unrounded; sent back unchanged to scan_adjust so a portion step rounds once (FOOD-045)"
+                    },
                     "grams_text": {
                         "type": "string"
                     },
@@ -46,6 +50,7 @@
                 "required": [
                     "name",
                     "grams",
+                    "base_grams",
                     "grams_text",
                     "match_text"
                 ]
@@ -56,7 +61,7 @@
         },
         "portion_text": {
             "type": "string",
-            "description": "1.25×"
+            "description": "1.25\u00d7"
         },
         "portion_down": {
             "type": [
@@ -121,7 +126,7 @@
                     "grams"
                 ]
             },
-            "description": "The matched foods, merged per food: what Add to meal and Save as saved meal send"
+            "description": "The matched foods, merged per food, by raw weight (FOOD-006): what Add to meal and Save as saved meal send"
         },
         "saved_meal_name": {
             "type": "string"

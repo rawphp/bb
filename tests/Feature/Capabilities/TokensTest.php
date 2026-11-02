@@ -344,8 +344,8 @@ it('CAP-020 makes every capability that takes an existing row\'s ID check its ow
     // Fields that name no row the user owns, each with why. A create takes a new row's
     // client-made ULID (CAP-019) and checks its owner itself.
     // mesocycle_copy's new draft is such a create (ownedOrNew); a day_id names a new day inside a mesocycle
-    // whose own ID is checked. off_plan_log's entry is a create (ownedOrNew).
-    $exempt = ['token_create' => ['id'], 'mesocycle_copy' => ['mesocycle_id'], 'mesocycle_day_add' => ['day_id'], 'off_plan_log' => ['id']];
+    // whose own ID is checked. custom_food_save and off_plan_log create or edit under the client's ULID (ownedOrNew).
+    $exempt = ['token_create' => ['id'], 'mesocycle_copy' => ['mesocycle_id'], 'mesocycle_day_add' => ['day_id'], 'custom_food_save' => ['id'], 'off_plan_log' => ['id']];
     $declared = (fn (): array => $this->capabilities)->call(app(Ownership::class));
 
     foreach (app(CapabilityRegistry::class)->all() as $name => $definition) {
