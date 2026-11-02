@@ -170,28 +170,22 @@ describe('OnboardingView', () => {
             ]);
         });
 
-        it('CAP-010 typed answers made while one saves are sent after it, in the order made', async () => {
-            readMock.mockResolvedValue(aboutYou);
+        it('CAP-010 while an answer saves its step takes no typing, and takes it again once the save lands', async () => {
+            const dated = structuredClone(aboutYou);
+            dated.about_you.birth_date = review.about_you.birth_date;
+            readMock.mockResolvedValue(dated);
             let finish: (value: unknown) => void = () => {};
             writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
-            wrapper = view(aboutYou);
+            wrapper = view(dated);
+            const typed = () => wrapper!.findAll('input').filter((input) => input.attributes('type') !== 'hidden');
 
             await radio(wrapper, 'Sex', 'Male').trigger('click');
-            await wrapper.get('input[aria-label="Weight in kg"]').setValue('80');
-            await wrapper.get('input[aria-label="Weight in kg"]').trigger('blur');
-            await wrapper.get('input[aria-label="Height in cm"]').setValue('172');
-            await wrapper.get('input[aria-label="Height in cm"]').trigger('blur');
-            await wrapper.get('input[autocomplete="given-name"]').setValue('Alex');
-            expect(writeMock).toHaveBeenCalledOnce();
+            expect(typed().length).toBe(4);
+            for (const input of typed()) expect(input.attributes('readonly'), input.html()).toBeDefined();
             finish({});
             await flushPromises();
 
-            expect(sent().map((input) => input.answers)).toEqual([
-                { sex: 'male' },
-                { weight: { unit: 'kg', value: 80 } },
-                { height: { unit: 'cm', cm: 172 } },
-                { name: 'Alex' },
-            ]);
+            for (const input of typed()) expect(input.attributes('readonly'), input.html()).toBeUndefined();
         });
 
         it('CAP-010 a pick waits for the save before it: every choice on a step is locked while an answer is out', async () => {
@@ -224,33 +218,35 @@ describe('OnboardingView', () => {
             }
         });
 
-        it('CAP-010 a Back then a Next pressed during a save sends the Back only', async () => {
-            readMock.mockResolvedValue(glp1);
+        it.each([
+            ['Back then Next', ['back', 'next'], 'back'],
+            ['Next then Back', ['next', 'back'], 'next'],
+        ] as const)('CAP-010 %s pressed during a save sends the first press only, after the save', async (_label, presses, first) => {
+            const ready = { ...glp1, step: { ...glp1.step, can_continue: true } };
+            readMock.mockResolvedValue(ready);
             let finish: (value: unknown) => void = () => {};
             writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
-            wrapper = view(aboutYou);
+            wrapper = view(ready);
 
-            await wrapper.get('input[aria-label="Weight in kg"]').setValue('80');
-            await wrapper.get('input[aria-label="Weight in kg"]').trigger('blur');
-            await back(wrapper).trigger('click');
+            await radio(wrapper, glp1.glp1.question, 'Yes').trigger('click');
+            for (const press of presses) await (press === 'back' ? back(wrapper) : next(wrapper)).trigger('click');
+            expect(writeMock).toHaveBeenCalledOnce();
             finish({});
             await flushPromises();
 
-            expect(sent().map((input) => input.move)).toEqual(['stay', 'back']);
+            expect(sent().map((input) => input.move)).toEqual(['stay', first]);
         });
 
         it.each([
             ['refused', new CapabilityError('onboarding_answer', 422, { ok: false, error: { message: 'Pick a sex first.' } }), 'Pick a sex first.'],
             ['unanswered', new CapabilityError('onboarding_answer', 0, { reason: 'timeout' }), 'may have worked'],
-        ])('CAP-012 an answer %s drops the answers and the move made behind it', async (_label, failure, message) => {
+        ])('CAP-012 an answer %s drops the move pressed behind it', async (_label, failure, message) => {
             readMock.mockResolvedValue(aboutYou);
             let fail: (error: unknown) => void = () => {};
             writeMock.mockReturnValueOnce(new Promise((_resolve, reject) => (fail = reject)));
             wrapper = view(aboutYou);
 
             await radio(wrapper, 'Sex', 'Male').trigger('click');
-            await wrapper.get('input[aria-label="Weight in kg"]').setValue('80');
-            await wrapper.get('input[aria-label="Weight in kg"]').trigger('blur');
             await back(wrapper).trigger('click');
             fail(failure);
             await flushPromises();
@@ -414,9 +410,11 @@ describe('OnboardingView', () => {
             expect(sent()).toEqual([{ answers: { birth_date: '1991-05-01' }, move: 'stay' }]);
         });
 
-        it('ONB-004 saves whole feet, and each half with the other as its field shows it', async () => {
+        it('ONB-004 saves whole feet with the saved inches, and inches with the saved feet', async () => {
             const feetInches = { ...aboutYou, about_you: review.about_you };
-            readMock.mockResolvedValue(feetInches);
+            const savedSix = structuredClone(feetInches);
+            savedSix.about_you.height = { ...savedSix.about_you.height, feet: 6, text: '6 ft 7 in' };
+            readMock.mockResolvedValue(savedSix);
             wrapper = view(feetInches);
 
             await wrapper.get('input[aria-label="Feet in ft"]').setValue('6.7');
@@ -510,26 +508,6 @@ describe('OnboardingView', () => {
             expect(weight.element.value).toBe('7');
         });
 
-        it('ONB-004 feet and inches left while the first save is out save the feet as typed', async () => {
-            const feetInches = { ...aboutYou, about_you: review.about_you };
-            readMock.mockResolvedValue(feetInches);
-            let finish: (value: unknown) => void = () => {};
-            writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
-            wrapper = view(feetInches);
-
-            await wrapper.get('input[aria-label="Feet in ft"]').setValue('6');
-            await wrapper.get('input[aria-label="Feet in ft"]').trigger('blur');
-            await wrapper.get('input[aria-label="Inches in in"]').setValue('2');
-            await wrapper.get('input[aria-label="Inches in in"]').trigger('blur');
-            finish({});
-            await flushPromises();
-
-            expect(sent().map((input) => input.answers)).toEqual([
-                { height: { unit: 'feetInches', feet: 6, inches: 7 } },
-                { height: { unit: 'feetInches', feet: 6, inches: 2 } },
-            ]);
-        });
-
         it('CAP-012 a typed value the server refuses gives way to the saved one, beside the server\'s reason', async () => {
             writeMock.mockRejectedValueOnce(new CapabilityError('onboarding_answer', 422, { ok: false, error: { message: 'Enter a weight under 400 kg.' } }));
             const saved = { ...aboutYou, about_you: { ...aboutYou.about_you, weight: { ...aboutYou.about_you.weight, value: 75, text: '75 kg' } } };
@@ -542,64 +520,6 @@ describe('OnboardingView', () => {
             expect(wrapper.get('[role="alert"]').text()).toBe('Enter a weight under 400 kg.');
             expect(wrapper.get<HTMLInputElement>('input[aria-label="Weight in kg"]').element.value).toBe('75');
         });
-        it('ONB-004 a number corrected back to the saved one during its save is sent too', async () => {
-            const saved = { ...aboutYou, about_you: { ...aboutYou.about_you, weight: { ...aboutYou.about_you.weight, value: 75, text: '75 kg' } } };
-            readMock.mockResolvedValue(saved);
-            let finish: (value: unknown) => void = () => {};
-            writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
-            wrapper = view(saved);
-            const weight = wrapper.get('input[aria-label="Weight in kg"]');
-
-            await weight.setValue('80');
-            await weight.trigger('blur');
-            await weight.setValue('75');
-            await weight.trigger('blur');
-            finish({});
-            await flushPromises();
-
-            expect(sent().map((input) => input.answers)).toEqual([{ weight: { unit: 'kg', value: 80 } }, { weight: { unit: 'kg', value: 75 } }]);
-        });
-
-        it('ONB-004 a name corrected back to the saved one during its save is sent too', async () => {
-            let finish: (value: unknown) => void = () => {};
-            writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
-            wrapper = view(aboutYou);
-            const name = wrapper.get('input[autocomplete="given-name"]');
-
-            await name.setValue('Al');
-            await name.setValue('Sam');
-            finish({});
-            await flushPromises();
-
-            expect(sent().map((input) => input.answers)).toEqual([{ name: 'Al' }, { name: 'Sam' }]);
-        });
-
-        it('CAP-012 a refused save leaves what is being typed in another field alone, and resets once that field is left', async () => {
-            readMock.mockResolvedValue(aboutYou);
-            let refuse: (error: unknown) => void = () => {};
-            writeMock.mockReturnValueOnce(new Promise((_resolve, reject) => (refuse = reject)));
-            wrapper = view(aboutYou);
-            const weight = wrapper.get<HTMLInputElement>('input[aria-label="Weight in kg"]');
-
-            await weight.setValue('900');
-            await weight.trigger('blur');
-            const name = wrapper.get<HTMLInputElement>('input[autocomplete="given-name"]');
-            name.element.focus();
-            name.element.value = 'Samantha';
-            await name.trigger('input');
-            refuse(new CapabilityError('onboarding_answer', 422, { ok: false, error: { message: 'Enter a weight under 400 kg.' } }));
-            await flushPromises();
-
-            expect(name.element.value).toBe('Samantha');
-            expect(document.activeElement).toBe(name.element);
-            await name.trigger('change');
-            name.element.blur();
-            await flushPromises();
-
-            expect(sent().map((input) => input.answers)).toEqual([{ weight: { unit: 'kg', value: 900 } }, { name: 'Samantha' }]);
-            expect(wrapper.get<HTMLInputElement>('input[aria-label="Weight in kg"]').element.value).toBe('');
-        });
-
         it('ONB-004 after a unit switch, an inches edit is saved with the feet the server converted to', async () => {
             const converted = structuredClone(aboutYou);
             converted.about_you.height = { ...review.about_you.height, feet: 5, inches: 11, text: '5 ft 11 in' };
@@ -613,6 +533,21 @@ describe('OnboardingView', () => {
             await flushPromises();
 
             expect(sent().at(-1)!.answers).toEqual({ height: { unit: 'feetInches', feet: 5, inches: 10 } });
+        });
+
+        it('ONB-004 after a unit switch, a feet edit is saved with the inches the server converted to', async () => {
+            const converted = structuredClone(aboutYou);
+            converted.about_you.height = { ...review.about_you.height, feet: 5, inches: 11, text: '5 ft 11 in' };
+            readMock.mockResolvedValue(converted);
+            wrapper = view(aboutYou);
+
+            await radio(wrapper, 'Height unit', 'ft and in').trigger('click');
+            await flushPromises();
+            await wrapper.get('input[aria-label="Feet in ft"]').setValue('6');
+            await wrapper.get('input[aria-label="Feet in ft"]').trigger('blur');
+            await flushPromises();
+
+            expect(sent().at(-1)!.answers).toEqual({ height: { unit: 'feetInches', feet: 6, inches: 11 } });
         });
 
         it('ONB-004 a name nobody is typing in follows the server', async () => {

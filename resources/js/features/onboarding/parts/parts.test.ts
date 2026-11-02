@@ -158,19 +158,12 @@ describe('NumberField', () => {
         wrapper.unmount();
     });
 
-    it('ONB-004 sends a number put back to the parent\'s value when it last sent another', async () => {
-        const wrapper = mount(NumberField, { props: { label: 'Weight', unit: 'kg', modelValue: 75, commitsWhileTyping: false }, attachTo: document.body });
-        const input = wrapper.get('input');
+    it('CAP-010 takes no typing while read-only, and keeps its look and focus', () => {
+        const wrapper = mount(NumberField, { props: { label: 'Weight', unit: 'kg', modelValue: 80, readonly: true } });
 
-        await input.setValue('80');
-        await input.trigger('blur');
-        await input.setValue('75');
-        await input.trigger('blur');
-        await input.setValue('75');
-        await input.trigger('blur');
-
-        expect(wrapper.emitted('update:modelValue')).toEqual([[80], [75]]);
-        wrapper.unmount();
+        expect(wrapper.get('input').attributes('readonly')).toBeDefined();
+        expect(wrapper.get('input').attributes('disabled')).toBeUndefined();
+        expect(wrapper.classes()).not.toContain('opacity-50');
     });
 
     it('UI-030 dims and locks a disabled field', () => {
