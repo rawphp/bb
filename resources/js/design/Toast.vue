@@ -33,13 +33,17 @@ const props = withDefaults(
         disabled?: boolean;
         /** Drawn in place rather than in TOAST_HOST (the gallery), so it carries its own live region. */
         inline?: boolean;
+        /** `@undone`: undo_apply's answer, with the token it was for. */
+        onUndone?: (result: unknown, token: string) => void;
+        /** `@undo-failed`: the message for a refused or unanswered undo, with the token it was for. */
+        onUndoFailed?: (message: string, token: string) => void;
     }>(),
     { loading: false, error: null, pending: false, disabled: false, inline: false },
 );
 
-// Each answer names the token it was for, so the host still hears an undo that lands
-// after it has shown the next toast, and can refresh or report it.
-const emit = defineEmits<{ undone: [result: unknown, token: string]; 'undo-failed': [message: string, token: string] }>();
+// The host hears every answer, named by its token, even one that lands after it has shown the
+// next toast or removed this one, so it can refresh or report it. That is why these are
+// listener props held from the tap, not emits: Vue drops an emit once the component unmounts.
 
 const uid = useId();
 // The token whose undo_apply is running. Only the toast it belongs to is busy.
@@ -76,13 +80,14 @@ async function undo(): Promise<void> {
     if (sent === null || busy.value || props.disabled) {
         return;
     }
+    const { onUndone, onUndoFailed } = props;
     undoing.value = sent;
     failure.value = null;
     try {
-        emit('undone', await write('undo_apply', { token: sent } satisfies UndoApplyInput), sent);
+        onUndone?.(await write('undo_apply', { token: sent } satisfies UndoApplyInput), sent);
     } catch (error) {
         const text = messageOf(error);
-        emit('undo-failed', text, sent);
+        onUndoFailed?.(text, sent);
         // The host may have shown another toast meanwhile; the refusal is not shown on it.
         if (token.value === sent) failure.value = text;
     } finally {

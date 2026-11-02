@@ -18,8 +18,13 @@ const message = 'Meals 3 and 4 re-targeted';
 
 // Inline, so each state test sees the toast's own status region.
 function toast(props: Record<string, unknown> = {}, result: ToastResult = { toast: message, undo: 'tok-1' }) {
-    return mount(Toast, { props: { result, inline: true, ...props } });
+    return mount(Toast, { props: { result, inline: true, onUndone: undone, onUndoFailed: undoFailed, ...props } });
 }
+
+// What the host hears: the calls made to its @undone and @undo-failed listeners, or undefined for none.
+const undone = vi.fn();
+const undoFailed = vi.fn();
+const heard = (listener: typeof undone) => (listener.mock.calls.length > 0 ? listener.mock.calls : undefined);
 
 // Everything attached to the page is removed after each test, whether it passed or not.
 const mounted: { unmount: () => void }[] = [];
@@ -27,7 +32,7 @@ const cleanups: (() => void)[] = [];
 
 // A toast in TOAST_HOST, as the shell's toast host draws it.
 function inHost(props: Record<string, unknown> = {}) {
-    const wrapper = mount(Toast, { props: { result: { toast: message, undo: 'tok-1' }, ...props }, attachTo: TOAST_HOST });
+    const wrapper = mount(Toast, { props: { result: { toast: message, undo: 'tok-1' }, onUndone: undone, onUndoFailed: undoFailed, ...props }, attachTo: TOAST_HOST });
     mounted.push(wrapper);
 
     return wrapper;
@@ -37,7 +42,7 @@ function undoButton(wrapper: ReturnType<typeof toast>) {
     return wrapper.get('button');
 }
 
-// With no TOAST_HOST in the page (as here), the toast stays in place in its own live region.
+// The toast's own status region, which it carries when inline.
 function root(wrapper: ReturnType<typeof toast>) {
     return wrapper.get('[role="status"]');
 }
@@ -61,6 +66,8 @@ describe('Toast', () => {
 
     beforeEach(() => {
         writeMock.mockReset();
+        undone.mockReset();
+        undoFailed.mockReset();
         warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
 
@@ -156,7 +163,7 @@ describe('Toast', () => {
         await flushPromises();
         expect(host.querySelector('[data-toast]')!.getAttribute('aria-busy')).toBeNull();
         expect(host.querySelector('[data-toast-error]')!.textContent).toBe('A later change depends on this.');
-        expect(wrapper.emitted('undo-failed')).toEqual([['A later change depends on this.', 'tok-1']]);
+        expect(heard(undoFailed)).toEqual([['A later change depends on this.', 'tok-1']]);
     });
 
     it('VIEW-004 in TOAST_HOST: pending is described inside the host, and disabled stops Undo', async () => {
@@ -195,7 +202,7 @@ describe('Toast', () => {
         await flushPromises();
 
         expect(writeMock).toHaveBeenCalledExactlyOnceWith('undo_apply', { token: 'tok-1' });
-        expect(wrapper.emitted('undone')).toEqual([[result, 'tok-1']]);
+        expect(heard(undone)).toEqual([[result, 'tok-1']]);
     });
 
     it('UI-010 without a token there is no Undo button', () => {
@@ -244,14 +251,14 @@ describe('Toast', () => {
         await flushPromises();
 
         expect(wrapper.get('[data-toast-error]').text()).toBe('A later change depends on this.');
-        expect(wrapper.emitted('undone')).toBeUndefined();
+        expect(heard(undone)).toBeUndefined();
         expect(undoButton(wrapper).attributes('disabled')).toBeUndefined();
 
         writeMock.mockResolvedValueOnce({});
         await undoButton(wrapper).trigger('click');
         await flushPromises();
         expect(wrapper.find('[data-toast-error]').exists()).toBe(false);
-        expect(wrapper.emitted('undone')).toHaveLength(1);
+        expect(heard(undone)).toHaveLength(1);
     });
 
     it.each([
@@ -267,7 +274,7 @@ describe('Toast', () => {
         await flushPromises();
 
         expect(wrapper.get('[data-toast-error]').text()).toBe("Couldn't undo. Try again.");
-        expect(wrapper.emitted('undo-failed')).toEqual([["Couldn't undo. Try again.", 'tok-1']]);
+        expect(heard(undoFailed)).toEqual([["Couldn't undo. Try again.", 'tok-1']]);
     });
 
     it('CAP-012 a refused undo shows the server message in place of the error prop', async () => {
@@ -325,7 +332,7 @@ describe('Toast', () => {
         await flushPromises();
 
         expect(wrapper.find('[data-toast-error]').exists()).toBe(false);
-        expect(wrapper.emitted('undo-failed')).toEqual([['A later change depends on this.', 'tok-1']]);
+        expect(heard(undoFailed)).toEqual([['A later change depends on this.', 'tok-1']]);
     });
 
     it('CAP-012 a refused undo is also emitted with its token, for the host', async () => {
@@ -335,7 +342,7 @@ describe('Toast', () => {
         await undoButton(wrapper).trigger('click');
         await flushPromises();
 
-        expect(wrapper.emitted('undo-failed')).toEqual([['A later change depends on this.', 'tok-1']]);
+        expect(heard(undoFailed)).toEqual([['A later change depends on this.', 'tok-1']]);
     });
 
     it('OFF-008 pending: the toast says "Waiting to sync" in text and Undo is described by it', () => {
@@ -352,6 +359,49 @@ describe('Toast', () => {
         expect(undoButton(wrapper).attributes('disabled')).toBeDefined();
         await undoButton(wrapper).trigger('click');
         expect(writeMock).not.toHaveBeenCalled();
+    });
+
+    it('UI-010 the host hears undone even when the toast is removed before undo_apply answers', async () => {
+        let answer: (value: unknown) => void = () => {};
+        writeMock.mockReturnValueOnce(new Promise((done) => (answer = done)));
+        const wrapper = toast();
+        await undoButton(wrapper).trigger('click');
+
+        wrapper.unmount();
+        answer({ invalidates: ['nutrition_show:{}'], toast: 'Undone.' });
+        await flushPromises();
+
+        expect(heard(undone)).toEqual([[{ invalidates: ['nutrition_show:{}'], toast: 'Undone.' }, 'tok-1']]);
+    });
+
+    it('UI-010 the host hears undo-failed even when the toast is removed before undo_apply answers', async () => {
+        let refuse: (error: unknown) => void = () => {};
+        writeMock.mockReturnValueOnce(new Promise((_, fail) => (refuse = fail)));
+        const wrapper = toast();
+        await undoButton(wrapper).trigger('click');
+
+        wrapper.unmount();
+        refuse(refusal());
+        await flushPromises();
+
+        expect(heard(undoFailed)).toEqual([['A later change depends on this.', 'tok-1']]);
+    });
+
+    it('UI-010 @undone and @undo-failed bind as listeners from a parent template', async () => {
+        writeMock.mockResolvedValueOnce({ toast: 'Undone.' });
+        const onDone = vi.fn();
+        const wrapper = mount(
+            defineComponent({
+                components: { Toast },
+                setup: () => ({ onDone, result: { toast: message, undo: 'tok-1' } }),
+                template: '<Toast inline :result="result" @undone="onDone" />',
+            }),
+        );
+
+        await wrapper.get('button').trigger('click');
+        await flushPromises();
+
+        expect(onDone).toHaveBeenCalledExactlyOnceWith({ toast: 'Undone.' }, 'tok-1');
     });
 
     it('VIEW-004 the gallery page lists the Toast entry', () => {
@@ -375,7 +425,7 @@ describe('Toast', () => {
 
         resolve({ toast: 'Undone.' });
         await flushPromises();
-        expect(wrapper.emitted('undone')).toEqual([[{ toast: 'Undone.' }, 'tok-1']]);
+        expect(heard(undone)).toEqual([[{ toast: 'Undone.' }, 'tok-1']]);
         expect(root(wrapper).text()).toContain('Set added');
     });
 
