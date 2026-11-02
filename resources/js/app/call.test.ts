@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cached, clearReads, MAX_AGE_MS, store } from './cache';
-import { CapabilityError, keepWarm, postHost, read, readFresh, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, write } from './call';
+import { CapabilityError, keepSynced, postHost, read, readFresh, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, writeNow } from './call';
 import { clearWalk, walkDays } from './clock';
 
 function json(body: unknown, status = 200): Response {
@@ -31,7 +31,7 @@ describe('call', () => {
 
     it.each([
         ['read', read],
-        ['write', write],
+        ['writeNow', writeNow],
     ] as const)('CAP-004 %s posts to /capabilities/{name} with the CSRF cookie and returns the data', async (_, call) => {
         document.cookie = 'XSRF-TOKEN=abc%3D%3D; path=/';
         fetchMock.mockResolvedValueOnce(json({ ok: true, data: { name: 'Sam' } }));
@@ -62,7 +62,7 @@ describe('call', () => {
         try {
             await read('account_show');
             walkDays(7);
-            await write('account_show');
+            await writeNow('account_show');
             clearWalk();
             await read('account_show');
         } finally {
@@ -76,16 +76,16 @@ describe('call', () => {
         expect(headers[2]).not.toHaveProperty('X-BB-Now');
     });
 
-    it('CAP-014 sends the idempotency key a write is given, and none otherwise', async () => {
+    it('CAP-014 sends the idempotency key a write is given, and a new one otherwise', async () => {
         document.cookie = 'XSRF-TOKEN=t; path=/';
         fetchMock.mockImplementation(async () => json({ ok: true, data: {} }));
 
-        await write('token_revoke', { id: 'x' }, { idempotencyKey: 'token_revoke:x' });
-        await write('token_revoke', { id: 'x' });
+        await writeNow('token_revoke', { id: 'x' }, { idempotencyKey: 'token_revoke:x' });
+        await writeNow('token_revoke', { id: 'x' });
 
         const headers = fetchMock.mock.calls.map(([, init]) => init?.headers as Record<string, string>);
         expect(headers[0]).toMatchObject({ 'Idempotency-Key': 'token_revoke:x' });
-        expect(headers[1]).not.toHaveProperty('Idempotency-Key');
+        expect(headers[1]!['Idempotency-Key']).toMatch(/^token_revoke:[0-9A-Z]{26}$/);
     });
 
     it('CAP-004 fetches the CSRF cookie first when it is missing', async () => {
@@ -95,7 +95,7 @@ describe('call', () => {
         });
         fetchMock.mockResolvedValueOnce(json({ ok: true, data: {} }));
 
-        await write('account_show', {});
+        await writeNow('account_show', {});
 
         expect(fetchMock.mock.calls[0]![0]).toBe('/sanctum/csrf-cookie');
         expect(fetchMock.mock.calls[1]![1]?.headers).toMatchObject({ 'X-XSRF-TOKEN': 'fresh' });
@@ -124,7 +124,7 @@ describe('call', () => {
         document.cookie = 'XSRF-TOKEN=t; path=/';
         fetchMock.mockResolvedValueOnce(json({ ok: false, error: { code: 'nope' } }));
 
-        await expect(write('account_show', {})).rejects.toMatchObject({ status: 200, body: { ok: false } });
+        await expect(writeNow('account_show', {})).rejects.toMatchObject({ status: 200, body: { ok: false } });
     });
 
     it.each([
@@ -156,7 +156,7 @@ describe('call', () => {
         document.cookie = 'XSRF-TOKEN=t; path=/';
         fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
-        await expect(write('account_show', {})).rejects.toMatchObject({ status: 0, body: { reason: 'network' } });
+        await expect(writeNow('account_show', {})).rejects.toMatchObject({ status: 0, body: { reason: 'network' } });
     });
 
     describe('stale-while-revalidate reads', () => {
@@ -327,7 +327,7 @@ describe('call', () => {
         });
 
         it.each([
-            ['a write drops it', () => write('workout_set_log', {})],
+            ['a write drops it', () => writeNow('workout_set_log', {})],
             ['the session ends', () => clearReads()],
         ])('OFF-003 a refresh that started before %s asks again instead of showing or storing the old answer', async (_, removeIt) => {
             await store('today_show{}', { sets: 1 });
@@ -390,7 +390,7 @@ describe('call', () => {
                 today_show: [200, { ok: true, data: { sets: 2 } }],
             });
 
-            await write('workout_set_log', { reps: 8 });
+            await writeNow('workout_set_log', { reps: 8 });
 
             expect(await cached('week_show{}')).toBeDefined();
             expect(await read('today_show')).toEqual({ sets: 2 });
@@ -447,7 +447,7 @@ describe('call', () => {
             const target = new EventTarget() as Window;
             const manifestCalls = () => fetchMock.mock.calls.filter(([url]) => url === '/capabilities/sync_manifest').length;
 
-            keepWarm(target);
+            keepSynced(target);
             await vi.waitFor(() => expect(manifestCalls()).toBe(1));
 
             target.dispatchEvent(new Event('online'));

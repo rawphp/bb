@@ -1,6 +1,6 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, writeNow } from '@/app/call';
 import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
 import { toneIcons } from '@/design/toneIcons';
 import { inputViolations, screenFixture } from '@/testing/schemas';
@@ -8,10 +8,10 @@ import BucketCard from './BucketCard.vue';
 import OnboardingView from './OnboardingView.vue';
 import ScreeningRowView from './ScreeningRowView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 
 // The contract's three states, and one per step this issue draws.
 const review = screenFixture<OnboardingShowOutput>('onboarding_show');

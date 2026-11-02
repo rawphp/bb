@@ -1,6 +1,6 @@
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import type { DayAdjustShowOutput } from '@/contracts/day_adjust_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import AdjustSheet from './AdjustSheet.vue';
@@ -9,11 +9,11 @@ import { mountSheet } from './sheetTesting';
 // A sheet left mounted would still hear the next test's online event.
 enableAutoUnmount(afterEach);
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
 const freshMock = vi.mocked(readFresh);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const content = screenFixture<DayAdjustShowOutput>('day_adjust_show');
 const refused = screenFixture<DayAdjustShowOutput>('day_adjust_show.warning');
 const meals: DayAdjustShowOutput = { ...content, mode: 'meals', other_day: null };

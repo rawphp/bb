@@ -1,0 +1,62 @@
+{
+    "rows": [
+        {
+            "name": "Burrito bowl",
+            "grams": 150,
+            "base_grams": 120,
+            "grams_text": "150 g",
+            "food_id": "01JBX5F0000000000000000077",
+            "match_text": "Burrito bowl",
+            "detail": "Chipotle",
+            "kcal_text": "225 kcal"
+        },
+        {
+            "name": "House sauce",
+            "grams": 37.5,
+            "base_grams": 30,
+            "grams_text": "37.5 g",
+            "food_id": null,
+            "match_text": "No match",
+            "detail": null,
+            "kcal_text": null
+        },
+        {
+            "name": "Grilled chicken",
+            "grams": 187.5,
+            "base_grams": 150,
+            "grams_text": "187.5 g",
+            "food_id": "01JBX5F0000000000000000042",
+            "match_text": "Chicken breast",
+            "detail": null,
+            "kcal_text": "225 kcal"
+        },
+        {
+            "name": "Rice",
+            "grams": 225,
+            "base_grams": 180,
+            "grams_text": "225 g",
+            "food_id": "01JBX5F0000000000000000041",
+            "match_text": "Basmati rice",
+            "detail": null,
+            "kcal_text": "293 kcal"
+        }
+    ],
+    "portion": 1.25,
+    "portion_text": "1.25×",
+    "portion_down": 1,
+    "portion_up": 1.5,
+    "totals": {
+        "kcal": "743 kcal",
+        "protein": "P 63",
+        "fat": "F 12",
+        "carbs": "C 89"
+    },
+    "unmatched_note": "1 food has no match and won't be added or saved.",
+    "matched": [
+        { "food_id": "01JBX5F0000000000000000077", "grams": 150 },
+        { "food_id": "01JBX5F0000000000000000042", "grams": 187.5 },
+        { "food_id": "01JBX5F0000000000000000041", "grams": 225 }
+    ],
+    "saved_meal_name": "Scanned meal",
+    "empty_text": null
+}

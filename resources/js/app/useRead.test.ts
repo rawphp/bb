@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { cached } from './cache';
 import { CapabilityError, read, readFresh, WARM_FRESH_MS } from './call';
+import { announceReplayed } from './outbox';
 import ScreenFrame from './ScreenFrame.vue';
 import { SupersededRead, type ReadFailure } from './screenRead';
 import { useRead } from './useRead';
@@ -46,6 +47,25 @@ describe('useRead', () => {
 
         expect(wrapper.text()).toBe('1');
         expect(readMock).not.toHaveBeenCalled();
+    });
+
+    it('CAP-010 reads again when a replayed outbox entry invalidates the read on screen, and not for another read', async () => {
+        readMock.mockResolvedValueOnce({ n: 1 }).mockResolvedValueOnce({ n: 2 });
+        const { wrapper } = screen();
+        await flushPromises();
+
+        announceReplayed(['other_show{}']);
+        await flushPromises();
+        expect(readMock).toHaveBeenCalledTimes(1);
+
+        announceReplayed(['probe_show{"id":7}']);
+        await flushPromises();
+        expect(readMock).toHaveBeenCalledTimes(2);
+        expect(wrapper.text()).toBe('2');
+
+        wrapper.unmount();
+        announceReplayed(['probe_show{"id":7}']);
+        expect(readMock).toHaveBeenCalledTimes(2);
     });
 
     it('CAP-002 reads the screen on mount', async () => {

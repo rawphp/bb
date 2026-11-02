@@ -1,14 +1,14 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
-import { read, write } from '@/app/call';
+import { read, writeNow } from '@/app/call';
 import { featureRoutes, makeRouter } from '@/app/router';
 import type { DayOptimizeShowOutput } from '@/contracts/day_optimize_show';
 import { findScreen, takesFixture } from '@/features/dev/screens';
 import { screenFixture } from '@/testing/schemas';
 import routes from './routes';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), writeNow: vi.fn() }));
 
 describe('today routes', () => {
     it.each(['day_adjust_show', 'day_redistribute_show', 'day_optimize_show'])('VIEW-001 /dev/screens/%s finds its sheet and its fixture', (name) => {
@@ -61,25 +61,25 @@ describe('today routes', () => {
 
     it('NAV-001 a sheet opened at its own route goes back to Today once it saves', async () => {
         vi.mocked(read).mockResolvedValueOnce(screenFixture<DayOptimizeShowOutput>('day_optimize_show'));
-        vi.mocked(write).mockResolvedValueOnce({ invalidates: [], toast: 'Schedule optimized', undo: null });
+        vi.mocked(writeNow).mockResolvedValueOnce({ invalidates: [], toast: 'Schedule optimized', undo: null });
         const { router, wrapper } = await open('/today/2026-09-23/optimize');
 
         await wrapper.get('[data-save]').trigger('click');
         await flushPromises();
 
-        expect(write).toHaveBeenCalledWith('day_optimize', { date: '2026-09-23' }, expect.anything());
+        expect(writeNow).toHaveBeenCalledWith('day_optimize', { date: '2026-09-23' }, expect.anything());
         expect(router.currentRoute.value.path).toBe('/today');
     });
 
     it('DAY-001 /today/:date/off-plan logs the food on that day, not the clock\'s', async () => {
-        vi.mocked(write).mockResolvedValueOnce({ invalidates: [] });
+        vi.mocked(writeNow).mockResolvedValueOnce({ invalidates: [] });
         const { wrapper } = await open('/today/2026-09-20/off-plan');
 
         await wrapper.get('input[name="kcal"]').setValue('320');
         await wrapper.get('[data-save]').trigger('click');
         await flushPromises();
 
-        expect(write).toHaveBeenCalledWith('off_plan_log', expect.objectContaining({ date: '2026-09-20', kcal: 320 }), expect.anything());
+        expect(writeNow).toHaveBeenCalledWith('off_plan_log', expect.objectContaining({ date: '2026-09-20', kcal: 320 }), expect.anything());
     });
 });
 

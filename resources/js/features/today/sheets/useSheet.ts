@@ -1,16 +1,16 @@
 import { computed, onMounted, onUnmounted, ref, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { write, type CapabilityInput } from '@/app/call';
+import { writeNow, type CapabilityInput } from '@/app/call';
 import { writeFailureMessage } from '@/app/errors';
 import { findNavigation } from '@/app/navigation';
 import { useRetryKey, type RetryKey } from '@/app/retryKey';
 import { readFailure, screenRead, SupersededRead, type ReadFailure } from '@/app/screenRead';
 import type { ToastResult } from '@/design/Toast.vue';
 
-// The Today sheets' read and write. They stand in for app/useRead and app/useWrite, which
-// a sheet cannot use as they are: its read's input follows what the user picks, and its
-// save hands the write's answer (the toast) to the screen. Both files change with the
-// outbox (#195); fold these into them once it lands.
+// The Today sheets' read and write, beside app/useRead and app/useWrite, which a sheet
+// cannot use as they are: its read's input follows what the user picks, and its save hands
+// the write's answer (the toast) to the screen. Like useWrite, a save is sent at once
+// (writeNow), not queued in the outbox.
 
 /**
  * What the screen that opens a Today sheet listens to: `@close` and `@saved`. Listener
@@ -60,7 +60,7 @@ export function useSheet(listeners: SheetListeners) {
         error.value = null;
         const key = (retry ??= useRetryKey(name));
         try {
-            const result = await write<ToastResult>(name, input, { idempotencyKey: key.key.value });
+            const result = await writeNow<ToastResult>(name, input, { idempotencyKey: key.key.value });
             key.settle();
             if (listeners.onSaved) listeners.onSaved(result);
             else leave();

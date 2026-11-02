@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue';
-import { CapabilityError, write, type CapabilityInput } from './call';
+import { CapabilityError, writeNow, type CapabilityInput } from './call';
 import { isTimeout, writeFailureMessage } from './errors';
 import { unanswered, useRetryKey, type RetryKey } from './retryKey';
 
@@ -27,7 +27,8 @@ export function useWrite(load: (options?: { fresh?: boolean }) => Promise<void>)
     const busy = ref(false);
     const error = ref<string | null>(null);
     // The last write sent. Its key outlives an attempt only while that attempt got no
-    // final answer (RetryKey.settle), so a retry of the same write reuses it.
+    // final answer, or a limit refused it before it ran (RetryKey.settle), so a retry of
+    // the same write reuses it.
     let last: { name: string; body: string; retry: RetryKey } | null = null;
 
     function keyFor(name: string, input: CapabilityInput): RetryKey {
@@ -44,7 +45,7 @@ export function useWrite(load: (options?: { fresh?: boolean }) => Promise<void>)
         error.value = null;
         const retry = keyFor(name, input);
         try {
-            await write(name, input, { idempotencyKey: retry.key.value });
+            await writeNow(name, input, { idempotencyKey: retry.key.value });
             retry.settle();
             await load();
             return 'done';

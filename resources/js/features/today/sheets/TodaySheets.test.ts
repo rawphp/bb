@@ -1,16 +1,16 @@
 import { flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import { refusal, sent, sheet, today, week } from './sheetTesting';
 import TodayAddMealSheet from './TodayAddMealSheet.vue';
 import TodayCalendarSheet from './TodayCalendarSheet.vue';
 import TodayMoveDaySheet from './TodayMoveDaySheet.vue';
 import TodayWorkoutTimeSheet from './TodayWorkoutTimeSheet.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const day = today();
 const workout = day.workouts[0]!;
 // A day with a second session, for the sheets that pick one by workoutId.

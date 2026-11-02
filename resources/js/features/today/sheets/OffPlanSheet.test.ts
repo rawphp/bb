@@ -1,6 +1,6 @@
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write } from '@/app/call';
+import { CapabilityError, read, writeNow } from '@/app/call';
 import { inputViolations } from '@/testing/schemas';
 import OffPlanSheet from './OffPlanSheet.vue';
 import { mountSheet } from './sheetTesting';
@@ -8,10 +8,10 @@ import { mountSheet } from './sheetTesting';
 // A sheet left mounted would still hear the next test's online event.
 enableAutoUnmount(afterEach);
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 
 function sent(): Record<string, unknown> {
     const [name, input] = writeMock.mock.calls.at(-1)!;

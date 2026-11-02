@@ -1,6 +1,6 @@
 import { enableAutoUnmount, flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh, write } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import type { DayRedistributeShowOutput } from '@/contracts/day_redistribute_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import RedistributeSheet from './RedistributeSheet.vue';
@@ -9,11 +9,11 @@ import { mountSheet } from './sheetTesting';
 // A sheet left mounted would still hear the next test's online event.
 enableAutoUnmount(afterEach);
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
 const freshMock = vi.mocked(readFresh);
-const writeMock = vi.mocked(write);
+const writeMock = vi.mocked(writeNow);
 const content = screenFixture<DayRedistributeShowOutput>('day_redistribute_show');
 const warned = screenFixture<DayRedistributeShowOutput>('day_redistribute_show.warning');
 const [lunch, preWorkout, postWorkout] = content.rows;

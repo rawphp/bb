@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue';
-import { read, write } from '@/app/call';
+import { read, writeNow } from '@/app/call';
 import { isStandalone } from '@/app/device';
 import type { PushShowInput, PushShowOutput } from '@/contracts/push_show';
 import type { PushSubscribeInput } from '@/contracts/push_subscribe';
@@ -43,7 +43,7 @@ export function usePush() {
     async function save(subscription: PushSubscription): Promise<void> {
         const { endpoint, keys } = subscription.toJSON();
 
-        await write('push_subscribe', {
+        await writeNow('push_subscribe', {
             endpoint: endpoint ?? subscription.endpoint,
             public_key: keys?.p256dh ?? '',
             auth_token: keys?.auth ?? '',
@@ -81,7 +81,7 @@ export function usePush() {
         // The browser stops receiving even when the server can't be told: its
         // endpoint is then dead, and the next send deletes the row.
         try {
-            if (subscription) await write('push_unsubscribe', { endpoint: subscription.endpoint } satisfies PushUnsubscribeInput);
+            if (subscription) await writeNow('push_unsubscribe', { endpoint: subscription.endpoint } satisfies PushUnsubscribeInput);
         } finally {
             nameBrowserEndpoint(null);
             await subscription?.unsubscribe();
