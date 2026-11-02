@@ -23,7 +23,7 @@ describe('built design tokens', () => {
 
         expect(css).toContain('--bb-background:var(--lightningcss-light,#f2f2f7)var(--lightningcss-dark,#0b0b0f)');
         expect(css).not.toContain('light-dark(');
-        expect(css).toMatch(/@media \(prefers-color-scheme:dark\)\{:root\{--lightningcss-light: ;--lightningcss-dark:initial/);
+        expect(css).toMatch(/@media \(prefers-color-scheme:dark\)\{:root(,\.bb-light)?\{--lightningcss-light: ;--lightningcss-dark:initial/);
         expect(css).toMatch(/:root\[data-appearance=light\]\{--lightningcss-light:initial;--lightningcss-dark: ;/);
         expect(css).toMatch(/:root\[data-appearance=dark\]\{--lightningcss-light: ;--lightningcss-dark:initial;/);
     });

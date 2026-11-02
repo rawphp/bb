@@ -4,7 +4,7 @@ import type { ProgressShowOutput } from '@/contracts/progress_show';
 import ProgressChartView from './ProgressChartView.vue';
 
 // The picture ANA-010 shares: title, phase summary, chart and figures. All SVG, so
-// share.ts can draw it to a PNG, and always light, so it reads the same wherever it lands.
+// share.ts can draw it to a PNG, and always light (bb-light), so it reads the same wherever it lands.
 const props = defineProps<{
     content: NonNullable<ProgressShowOutput['share']>;
     chart: NonNullable<ProgressShowOutput['chart']>;
@@ -37,8 +37,7 @@ const height = computed(() => figuresTop.value + 50);
         :viewBox="`0 0 ${WIDTH} ${height}`"
         :width="WIDTH"
         :height="height"
-        style="color-scheme: light"
-        class="font-sans"
+        class="bb-light font-sans"
         xmlns="http://www.w3.org/2000/svg"
     >
         <rect :width="WIDTH" :height="height" class="fill-surface" />

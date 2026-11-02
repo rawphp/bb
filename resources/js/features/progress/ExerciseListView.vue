@@ -1,34 +1,28 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { read } from '@/app/call';
 import type { ProgressShowOutput } from '@/contracts/progress_show';
 import OfflineNotice from '@/design/OfflineNotice.vue';
 import Skeleton from '@/design/Skeleton.vue';
-import { readFailure, type ReadFailure } from './readFailure';
+import { screenRead, type ReadFailure } from './screenRead';
 
 // Exercises with a logged set, most recent first (ANA-009), from progress_show's list.
 const exercises = ref<ProgressShowOutput['exercises'] | undefined>();
 const failure = ref<ReadFailure | null>(null);
 
-onMounted(async () => {
-    let settled = false;
-    const fail = (error: unknown) => {
-        settled = true;
-        exercises.value = undefined;
-        failure.value = readFailure(error, 'Exercises could not be loaded.');
-    };
-    const show = (data: ProgressShowOutput) => {
-        settled = true;
+const load = screenRead<ProgressShowOutput>(
+    'progress_show',
+    'Exercises could not be loaded.',
+    (data) => {
         failure.value = null;
         exercises.value = data.exercises;
-    };
-    try {
-        const data = await read<ProgressShowOutput>('progress_show', {}, show, fail);
-        if (!settled) show(data);
-    } catch (error) {
-        fail(error);
-    }
-});
+    },
+    (why) => {
+        exercises.value = undefined;
+        failure.value = why;
+    },
+);
+
+onMounted(() => void load());
 </script>
 
 <template>

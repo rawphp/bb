@@ -2,6 +2,7 @@
 import type { ProgressShowOutput } from '@/contracts/progress_show';
 import ItemCard from '@/design/ItemCard.vue';
 import StatusPill from '@/design/StatusPill.vue';
+import { toneText } from './toneText';
 
 // One past mesocycle: dates, phase and average weekly sets per muscle (ANA-007).
 defineProps<{ entry: ProgressShowOutput['mesocycle_history'][number]; pending?: boolean }>();
@@ -29,7 +30,7 @@ defineProps<{ entry: ProgressShowOutput['mesocycle_history'][number]; pending?: 
                 <dl class="flex flex-col gap-2">
                     <div v-for="row in entry.sets" :key="row.label" class="flex justify-between gap-2">
                         <dt>{{ row.label }}</dt>
-                        <dd class="tabular-nums">{{ row.value }}</dd>
+                        <dd class="tabular-nums" :class="toneText[row.tone]">{{ row.value }}</dd>
                     </div>
                 </dl>
             </template>

@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { read } from '@/app/call';
 import type { ExerciseHistoryShowOutput } from '@/contracts/exercise_history_show';
 import ExerciseHistoryContent from './ExerciseHistoryContent.vue';
-import { readFailure, type ReadFailure } from './readFailure';
+import { screenRead, type ReadFailure } from './screenRead';
 
 // One exercise's history under its name (ANA-009). Reads exercise_history_show for
 // the exercise in the route; given a payload (/dev/screens/exercise_history_show), shows that.
@@ -12,25 +11,21 @@ const props = defineProps<{ exerciseId?: string; payload?: ExerciseHistoryShowOu
 const history = ref<ExerciseHistoryShowOutput | undefined>(props.payload);
 const failure = ref<ReadFailure | null>(null);
 
-onMounted(async () => {
-    if (history.value || !props.exerciseId) return;
-    let settled = false;
-    const fail = (error: unknown) => {
-        settled = true;
-        history.value = undefined;
-        failure.value = readFailure(error, 'History could not be loaded.');
-    };
-    const show = (data: ExerciseHistoryShowOutput) => {
-        settled = true;
+const load = screenRead<ExerciseHistoryShowOutput>(
+    'exercise_history_show',
+    'History could not be loaded.',
+    (data) => {
         failure.value = null;
         history.value = data;
-    };
-    try {
-        const data = await read<ExerciseHistoryShowOutput>('exercise_history_show', { exercise_id: props.exerciseId }, show, fail);
-        if (!settled) show(data);
-    } catch (error) {
-        fail(error);
-    }
+    },
+    (why) => {
+        history.value = undefined;
+        failure.value = why;
+    },
+);
+
+onMounted(() => {
+    if (!history.value && props.exerciseId) void load({ exercise_id: props.exerciseId });
 });
 </script>
 

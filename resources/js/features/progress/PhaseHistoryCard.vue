@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ProgressShowOutput } from '@/contracts/progress_show';
 import ItemCard from '@/design/ItemCard.vue';
+import { toneText } from './toneText';
 
 // One past phase: dates, type, weight change and average rate, with its mesocycles (ANA-006, ANA-008).
 defineProps<{ entry: ProgressShowOutput['phase_history'][number]; pending?: boolean }>();
@@ -19,7 +20,7 @@ defineProps<{ entry: ProgressShowOutput['phase_history'][number]; pending?: bool
             <dl class="flex flex-col gap-2">
                 <div v-for="line in entry.lines" :key="line.label" class="flex justify-between gap-2">
                     <dt>{{ line.label }}</dt>
-                    <dd class="tabular-nums">{{ line.value }}</dd>
+                    <dd class="tabular-nums" :class="toneText[line.tone]">{{ line.value }}</dd>
                 </div>
             </dl>
             <template v-if="entry.mesocycles.length">
@@ -28,7 +29,7 @@ defineProps<{ entry: ProgressShowOutput['phase_history'][number]; pending?: bool
                 <dl class="flex flex-col gap-2">
                     <div v-for="meso in entry.mesocycles" :key="meso.label" class="flex justify-between gap-2">
                         <dt>{{ meso.label }}</dt>
-                        <dd class="tabular-nums">{{ meso.value }}</dd>
+                        <dd class="tabular-nums" :class="toneText[meso.tone]">{{ meso.value }}</dd>
                     </div>
                 </dl>
             </template>
