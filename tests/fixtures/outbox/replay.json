@@ -1,0 +1,20 @@
+{
+    "about": "One outbox as the app replays it (OFF-006, OFF-051): each entry is POST /capabilities/{capability} with its input as the body and these headers. resources/js/app/call.test.ts checks the app sends entries this way; tests/Feature/Sync/OutboxReplayTest.php replays it twice.",
+    "entries": [
+        {
+            "capability": "tally_add",
+            "input": { "amount": 3 },
+            "headers": { "Idempotency-Key": "tally_add:01JC0Z8Q4M7V2K3N4P5R6S7T8A", "X-BB-Occurred-At": "2026-11-02T08:00:00.000Z" }
+        },
+        {
+            "capability": "client_ulid_row_save",
+            "input": { "id": "01JC0Z8Q4M7V2K3N4P5R6S7T8B" },
+            "headers": { "Idempotency-Key": "client_ulid_row_save:01JC0Z8Q4M7V2K3N4P5R6S7T8C", "X-BB-Occurred-At": "2026-11-02T08:01:00.000Z" }
+        },
+        {
+            "capability": "tally_add",
+            "input": { "amount": 3 },
+            "headers": { "Idempotency-Key": "tally_add:01JC0Z8Q4M7V2K3N4P5R6S7T8D", "X-BB-Occurred-At": "2026-11-02T08:02:00.000Z" }
+        }
+    ]
+}
