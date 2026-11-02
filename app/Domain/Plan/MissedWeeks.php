@@ -2,6 +2,8 @@
 
 namespace App\Domain\Plan;
 
+use App\Domain\Plan\MissedWeeks\FlagMove;
+use App\Domain\Plan\MissedWeeks\Flags;
 use App\Domain\Plan\MissedWeeks\Week;
 use DateTimeImmutable;
 
@@ -103,5 +105,43 @@ final class MissedWeeks
         }
 
         return $moves;
+    }
+
+    /**
+     * Restart: the flags each plan week touched by `$moves` ends with, all read from `$before` (the flags of every plan
+     * week as stored, by its start Y-m-d; a week missing has none) before any write. A week keeps its own flags, less
+     * those of a move leaving it, plus those of a move arriving at it; a week that a flag both leaves and arrives at
+     * ends with the arriving one. Only the weeks that change are returned.
+     *
+     * @param  array<string, Flags>  $before
+     * @param  list<FlagMove>  $moves
+     * @return array<string, Flags>
+     */
+    public static function flagsAfterMoves(array $before, array $moves): array
+    {
+        $leaving = [];
+        $arriving = [];
+        foreach ($moves as $move) {
+            $carried = ($before[$move->from] ?? new Flags(false, false, false))->carried();
+            $leaving[$move->from] = $carried;
+            $arriving[$move->to] = $carried;
+        }
+
+        $changed = [];
+        foreach (array_unique([...array_keys($leaving), ...array_keys($arriving)]) as $day) {
+            $own = $before[$day] ?? new Flags(false, false, false);
+            $out = $leaving[$day] ?? new Flags(false, false, false);
+            $in = $arriving[$day] ?? new Flags(false, false, false);
+            $next = new Flags(
+                ($own->deload && ! $out->deload) || $in->deload,
+                ($own->dietBreak && ! $out->dietBreak) || $in->dietBreak,
+                ($own->dietBreakOff && ! $out->dietBreakOff) || $in->dietBreakOff,
+            );
+            if ($next != $own) {
+                $changed[$day] = $next;
+            }
+        }
+
+        return $changed;
     }
 }

@@ -5,6 +5,8 @@ namespace App\Actions\Today;
 use App\Actions\Mesocycles\EndMesocycle;
 use App\Capabilities\Today\Data\MissedWeekResolveInput;
 use App\Domain\Plan\MissedWeeks;
+use App\Domain\Plan\MissedWeeks\FlagMove;
+use App\Domain\Plan\MissedWeeks\Flags;
 use App\Models\Mesocycle;
 use App\Models\PlanWeek;
 use App\Models\User;
@@ -61,7 +63,7 @@ final class ResolveMissedWeek
      * Moves the deload flags stored on plan weeks inside the mesocycle, each to the plan week its mesocycle week falls
      * on once restarted: a flagged deload with its diet break (PLAN-022), and a diet break turned off (PLAN-023), which
      * the mesocycle's own deload week stores without a deload flag. An away week's flags stay on its calendar week.
-     * Each week touched ends with its own flags, less those leaving it, plus those arriving, all read before any write.
+     * What each week ends with is {@see MissedWeeks::flagsAfterMoves()}'s; this loads the rows and saves them.
      *
      * @return list<string> the days (Y-m-d) of the plan weeks whose flags changed
      */
@@ -74,41 +76,25 @@ final class ResolveMissedWeek
         $weeks = $indexes->filter(fn (?int $week) => $week !== null)->unique()->values()->all();
         $moves = MissedWeeks::movedDeloads($weeks, $prompt->index, $prompt->dated, $prompt->restartStart, $grid, $prompt->paused);
 
-        $leaving = [];
-        $arriving = [];
+        $before = $train->planWeeks->mapWithKeys(fn (PlanWeek $w) => [TrainSnapshot::day($w->start_date)->format('Y-m-d') => $w]);
+        $flags = $before->map(fn (PlanWeek $w) => new Flags((bool) $w->is_deload, (bool) $w->is_diet_break, (bool) $w->diet_break_off))->all();
+        $flagMoves = [];
         foreach ($moves as $move) {
             $row = $rows->first(fn (PlanWeek $w, int $key) => $indexes[$key] === $move->from);
-            if ($row === null) {
-                continue;
+            if ($row !== null) {
+                $flagMoves[] = new FlagMove(TrainSnapshot::day($row->start_date)->format('Y-m-d'), $grid->start($move->to)->format('Y-m-d'));
             }
-            $carried = [
-                'deload' => (bool) $row->is_deload,
-                'diet_break' => $row->is_deload && $row->is_diet_break,
-                'diet_break_off' => (bool) $row->diet_break_off,
-            ];
-            $leaving[TrainSnapshot::day($row->start_date)->format('Y-m-d')] = $carried;
-            $arriving[$grid->start($move->to)->format('Y-m-d')] = $carried;
         }
 
-        $before = $train->planWeeks->mapWithKeys(fn (PlanWeek $w) => [TrainSnapshot::day($w->start_date)->format('Y-m-d') => $w]);
         $changed = [];
-        foreach (array_unique([...array_keys($leaving), ...array_keys($arriving)]) as $day) {
-            $row = $before[$day] ?? null;
-            $flags = ['deload' => (bool) $row?->is_deload, 'diet_break' => (bool) $row?->is_diet_break, 'diet_break_off' => (bool) $row?->diet_break_off];
-            $next = [];
-            foreach ($flags as $flag => $own) {
-                $next[$flag] = ($own && ! ($leaving[$day][$flag] ?? false)) || ($arriving[$day][$flag] ?? false);
-            }
-            if ($next === $flags) {
-                continue;
-            }
+        foreach (MissedWeeks::flagsAfterMoves($flags, $flagMoves) as $day => $next) {
             // The user's own row for the week, else a new one: a row found is never moved to another owner.
-            $week = $row ?? (new PlanWeek(['start_date' => $day, 'is_deload' => false, 'is_away' => false]))->forceFill(['user_id' => $user->id]);
-            $week->is_deload = $next['deload'];
-            $week->is_diet_break = $next['diet_break'];
-            $week->diet_break_off = $next['diet_break_off'];
+            $week = $before[$day] ?? (new PlanWeek(['start_date' => $day, 'is_deload' => false, 'is_away' => false]))->forceFill(['user_id' => $user->id]);
+            $week->is_deload = $next->deload;
+            $week->is_diet_break = $next->dietBreak;
+            $week->diet_break_off = $next->dietBreakOff;
             $week->save();
-            $changed[] = $day;
+            $changed[] = (string) $day;
         }
 
         return $this->weekDays($changed, $snapshot);
