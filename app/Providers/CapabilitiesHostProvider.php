@@ -10,6 +10,7 @@ use App\Capabilities\HostCapability;
 use App\Capabilities\Support\AgentPolicy;
 use App\Capabilities\Support\BillingGate;
 use App\Capabilities\Support\HostBus;
+use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\NoAgentPolicy;
 use App\Capabilities\Support\NoBilling;
 use App\Capabilities\Support\Ownership;
@@ -91,7 +92,7 @@ final class CapabilitiesHostProvider extends ServiceProvider
                 throw new LogicException(sprintf('%s must implement %s.', $class, HostCapability::class));
             }
 
-            $name = $capability->definition()->register($registry)->name;
+            $name = HostDefinition::register($capability->definition(), $registry)->name;
             $names[] = $name;
 
             if ($capability instanceof OwnsInput) {
