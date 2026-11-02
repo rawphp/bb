@@ -2,6 +2,7 @@
 
 use App\Domain\Model\MuscleGroup;
 use App\Models\Exercise;
+use App\Models\Phase;
 use App\Models\Step;
 use App\Models\User;
 use App\Models\WeighIn;
@@ -197,4 +198,21 @@ it('EX-013 lists an exercise logged only in a session with no mesocycle, at its 
     $data = $this->actingAs($user)->postJson('/capabilities/progress_show')->assertOk()->json('data');
 
     expect(array_column($data['exercises'], 'id'))->toBe([(string) $row->id, (string) $bench->id, (string) $squat->id, (string) $curl->id]);
+});
+
+it('ANA-001 ANA-007 EX-013 keeps a set out of the tab when it names the viewer but its session belongs to another user', function () {
+    ['user' => $viewer, 'bench' => $bench] = ProgressSeed::world();
+    $cutA = $viewer->mesocycles()->where('name', 'Cut A')->firstOrFail();
+    $before = $this->actingAs($viewer)->postJson('/capabilities/progress_show')->assertOk()->json('data');
+    // Another user's session, dated and in the viewer's mesocycle, holding logged sets whose user_id is the viewer's:
+    // Bench for the mesocycle average, and Squat, held by nothing else, for the exercise list.
+    $squat = TrainSeed::exercise('Squat', MuscleGroup::Quads);
+    $session = ProgressSeed::session(User::factory()->create(), $cutA, 1, '2026-10-20 09:00:00', [[$bench, 60, 8], [$bench, 60, 8], [$squat, 100, 5]]);
+    WorkoutSet::query()->where('workout_session_id', $session->id)->update(['user_id' => $viewer->id]);
+
+    $after = $this->actingAs($viewer)->postJson('/capabilities/progress_show')->assertOk()->json('data');
+
+    expect($after['mesocycle_history'])->toBe($before['mesocycle_history'])
+        ->and($after['exercises'])->toBe($before['exercises'])
+        ->and(array_column($after['exercises'], 'name'))->not->toContain('Squat');
 });

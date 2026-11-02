@@ -88,7 +88,7 @@ it('ANA-009 a set without weight or reps shows dashes, and a session without a d
         ->and(array_column($session['sets'], 'is_best'))->toBe([false, true, false]);
 });
 
-it('ANA-009 a session with only dashes has a best of nothing', function () {
+it('ANA-009 a session whose only set has no weight or reps has a best e1RM of 0.0 kg on that set', function () {
     $session = history([historySet('s1', historySession('a1', null), null, null)])['sessions'][0];
 
     expect($session['best_label'])->toBe('Best e1RM 0.0 kg')
