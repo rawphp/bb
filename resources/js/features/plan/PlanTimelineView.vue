@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue';
 import type { PlanShowOutput } from '@/contracts/plan_show';
 import PendingMark from '@/design/PendingMark.vue';
 import { toneClasses } from '@/design/tones';
-import { phaseTints } from './phaseTints';
+import { FLAG, phaseTints } from './phaseTints';
 
 // The plan timeline (PLAN-003): phases on top, mesocycles under them, deload weeks marked
 // and today marked, on the plan's week grid. A phase opens its detail (PLAN-004), a
@@ -39,7 +39,7 @@ onMounted(() => {
     <div v-else class="space-y-3 py-3.5">
         <p v-if="plan.event_countdown" class="flex items-center gap-2 px-4 text-sm font-semibold text-tone-info" data-test="countdown">
             <svg viewBox="0 0 24 24" class="size-4 shrink-0" fill="currentColor" aria-hidden="true">
-                <path d="M5 21V4h11l-1.5 4L16 12H7v9H5Z" />
+                <path :d="FLAG" />
             </svg>
             <PendingMark v-if="pending" derived>{{ plan.event_countdown }}</PendingMark>
             <template v-else>{{ plan.event_countdown }}</template>

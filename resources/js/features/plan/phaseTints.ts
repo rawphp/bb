@@ -11,3 +11,6 @@ export const phaseTints: Record<PhaseType, { fill: string; text: string; border:
     maintenance: { fill: 'bg-macro-calories', text: 'text-macro-calories', border: 'border-macro-calories' },
     muscleGain: { fill: 'bg-macro-carbs', text: 'text-macro-carbs', border: 'border-macro-carbs' },
 };
+
+/** The filled flag (rp-clone's flag.fill) the event countdown and the event row wear. */
+export const FLAG = 'M5 21V4h11l-1.5 4L16 12H7v9H5Z';

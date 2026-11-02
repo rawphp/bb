@@ -15,7 +15,7 @@ import PendingMark from '@/design/PendingMark.vue';
 import { toneClasses } from '@/design/tones';
 import AdjustLengthSheet from './AdjustLengthSheet.vue';
 import ChangeGoalSheet from './ChangeGoalSheet.vue';
-import { phaseTints } from './phaseTints';
+import { FLAG, phaseTints } from './phaseTints';
 
 // A phase (PLAN-004): its type, dates, rate, weights and progress, and the actions on it:
 // adjust length (PH-006), change goal (PH-009), end phase (PH-007) and the event date
@@ -150,7 +150,7 @@ watch(
                         <div class="space-y-1 py-3" data-test="event">
                             <div class="flex min-h-tap items-center gap-2"><span class="flex-1">Event date</span> <span class="text-secondary-text">{{ data.event_date }}</span></div>
                             <p v-if="data.event_text" class="flex items-center gap-2 text-sm">
-                                <svg viewBox="0 0 24 24" class="size-4 shrink-0" fill="currentColor" aria-hidden="true"><path d="M5 21V4h11l-1.5 4L16 12H7v9H5Z" /></svg>
+                                <svg viewBox="0 0 24 24" class="size-4 shrink-0" fill="currentColor" aria-hidden="true"><path :d="FLAG" /></svg>
                                 {{ data.event_text }}
                             </p>
                         </div>
