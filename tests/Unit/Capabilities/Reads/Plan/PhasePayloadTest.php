@@ -2,6 +2,7 @@
 
 use App\Capabilities\Reads\Plan\PhasePayload;
 use App\Domain\Model\PhaseType;
+use App\Models\PlanWeek;
 use App\Support\Plan\PhaseChanges;
 use Tests\Unit\Capabilities\Reads\Plan\PlanWorld as W;
 
@@ -230,9 +231,28 @@ it('PLAN-021 MESO-042 changing the mesocycle length is offered only where the me
     $stored->later_weeks = [['01JB6Q400A2B3C4D5E6F7G8H9J']];
     $rearranged = lengthsByWeeks(phasePayload(mesocycles: [W::mesocycles()[0], $stored, W::mesocycles()[2]]));
 
-    // Lengthening Meso 2 to 8 weeks would run it into Meso 3, which starts in week 12.
-    expect(array_column($lengths[14]['fixes'], 'fix'))->not->toContain('change_mesocycle_length')
-        ->and(array_column($lengths[11]['fixes'], 'fix'))->toContain('change_mesocycle_length')
+    expect(array_column($lengths[11]['fixes'], 'fix'))->toContain('change_mesocycle_length')
         // SCH-039: weeks rearranged for new training days keep their number.
         ->and(array_column($rearranged[11]['fixes'], 'fix'))->not->toContain('change_mesocycle_length');
+});
+
+it('PH-007 PLAN-021 moving the end to a deload is not offered when that ends the running phase this week', function () {
+    $cut = [W::phase(W::CUT, 'fatLoss', '2026-08-31', '2026-12-21', -0.75)];
+
+    // Today is in Meso 2's deload (week 11); Meso 3 starts in week 12, so length 13 ends mid-Meso 3.
+    $fixes = lengthsByWeeks(phasePayload(today: '2026-11-18', phases: $cut))[13]['fixes'];
+
+    expect(array_column($fixes, 'fix'))->not->toContain('move_end_to_deload');
+});
+
+it('PLAN-021 SCH-060 a shortened mesocycle leaves its paused weeks out of its length', function () {
+    $paused = (new PlanWeek)->forceFill([
+        'user_id' => 1, 'start_date' => '2026-10-26', 'is_deload' => false, 'is_diet_break' => false,
+        'diet_break_off' => false, 'is_away' => true, 'away_training' => 'pause',
+    ]);
+
+    // Week 8 is paused, so Meso 2 runs weeks 6 to 12 and its deload is week 12, past the cut's last week (11).
+    $fixes = lengthsByWeeks(phasePayload(weeks: [$paused]))[12]['fixes'];
+
+    expect($fixes)->toContain(['fix' => 'change_mesocycle_length', 'text' => 'Shorten Meso 2 to 5 weeks so its deload is the last week']);
 });
