@@ -199,3 +199,13 @@ it('REV-030 a stall cut that breaks the carb minimum still falls back to steps',
         ->and($reason->stall->cutKcal)->toBeNull()
         ->and($reason->stall->recommended)->toBe(StallChange::AddSteps);
 });
+
+// PHP-only: kills a mutant the ported suite let through.
+
+it('REV-029 the centre moves by the number of weeks into the phase, not one more', function () {
+    // PH-004: +0.3%/week from 80 kg, so the half-width is 1% (0.8 kg). The reviewed week is 3: from the phase start to
+    // the day after the week's end is 21 days, over 7 (CalorieRecommendation.swift:333-339). The trend stays at 80 kg,
+    // 0.9% under the week-3 centre, inside; one week later the centre is 1.2% up, outside.
+    $scenario = corridorMaintenance(3, [0], 0.3);
+    expect($scenario->recommend()->reason)->toEqual(RecommendationReason::insideCorridor());
+});

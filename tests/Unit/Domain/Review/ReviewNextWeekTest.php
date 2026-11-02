@@ -201,3 +201,23 @@ it('SAFE-011 at BMI 17 or less in maintenance a cut is refused and a raise is no
     $below = W::refusal(fn () => ReviewNextWeek::build($world, NextWeekCalories::average($maintenance - 100)));
     expect($below->targets->reason)->toBe(TargetRefusalReason::BmiAtOrBelowFloor);
 });
+
+// PHP-only: kills a mutant the ported suite let through.
+
+it('REV-002 a late save after drop fatigue repeats past days in the world as lived, not the changed one', function () {
+    // Next week is week 2. Lived, the 5-week mesocycle makes it an ordinary week; Drop fatigue cut it to 3 weeks,
+    // which makes week 2 a deload at maintenance (REV-011).
+    $lived = F::world(nextWeek: 2, mesocycleWeeks: 5);
+    $changed = F::world(nextWeek: 2, mesocycleWeeks: 3);
+    $repeatKcal = BuiltWeekSummary::averageKcal(plannedNextWeek($lived));
+    $today = PlanFixtures::date(2026, 1, 21)->modify('+10 hours');
+
+    $late = ReviewNextWeek::forSave(
+        $changed, NextWeekCalories::dietBreak(), $repeatKcal, [], today: $today, repeatWorld: $lived,
+    );
+    $asLived = ReviewNextWeek::repeatWeek($lived, $repeatKcal);
+    $asChanged = ReviewNextWeek::repeatWeek($changed, $repeatKcal);
+
+    expect(array_slice(F::kcal($asLived), 0, 2))->not->toEqual(array_slice(F::kcal($asChanged), 0, 2))
+        ->and(array_slice(F::kcal($late), 0, 2))->toEqual(array_slice(F::kcal($asLived), 0, 2));
+});
