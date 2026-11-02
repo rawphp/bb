@@ -52,10 +52,11 @@ it('MEAL-070 MEAL-071 AGT-010 saved_meal_delete is destructive and no saved meal
     foreach (['saved_meal_save', 'saved_meal_rename', 'saved_meal_delete', 'meal_saved_meal_load'] as $name) {
         expect(HostDefinition::isReversible($registry->get($name)))->toBeFalse();
     }
-    expect(HostDefinition::affects($registry->get('saved_meal_save')))->toBe(['saved_meals_show'])
-        ->and(HostDefinition::affects($registry->get('saved_meal_rename')))->toBe(['saved_meals_show'])
-        ->and(HostDefinition::affects($registry->get('saved_meal_delete')))->toBe(['saved_meals_show'])
-        ->and(HostDefinition::affects($registry->get('meal_saved_meal_load')))->toBe(['today_show']);
+    // FOOD-020: the Pantry lists saved meals, and marks the foods already in the meal it was opened from.
+    expect(HostDefinition::affects($registry->get('saved_meal_save')))->toBe(['saved_meals_show', 'food_search'])
+        ->and(HostDefinition::affects($registry->get('saved_meal_rename')))->toBe(['saved_meals_show', 'food_search'])
+        ->and(HostDefinition::affects($registry->get('saved_meal_delete')))->toBe(['saved_meals_show', 'food_search'])
+        ->and(HostDefinition::affects($registry->get('meal_saved_meal_load')))->toBe(['today_show', 'food_search']);
 });
 
 it('MEAL-070 MEAL-071 refuses every saved meal capability when signed out', function (string $name, array $input) {
@@ -107,7 +108,7 @@ it('MEAL-070 saves a meal\'s foods under the client\'s id and says the list chan
 
     savedMealCall($user, 'saved_meal_save', ['id' => $id, 'name' => ' Usual lunch ', 'meal_id' => $meal])
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['saved_meals_show{}'])
+        ->assertJsonPath('data.invalidates', ['saved_meals_show{}', 'food_search{"collection":"saved_meals"}'])
         ->assertJsonPath('data.toast', 'Saved Usual lunch');
 
     expect(SavedMeal::query()->findOrFail($id))->user_id->toBe($user->id)->name->toBe('Usual lunch')
@@ -171,7 +172,7 @@ it('MEAL-071 renames the user\'s saved meal and says the list changed', function
 
     savedMealCall($user, 'saved_meal_rename', ['saved_meal_id' => $meal->id, 'name' => '  Cut dinner '])
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['saved_meals_show{}']);
+        ->assertJsonPath('data.invalidates', ['saved_meals_show{}', 'food_search{"collection":"saved_meals"}']);
 
     expect($meal->fresh()->name)->toBe('Cut dinner');
 });
@@ -206,7 +207,7 @@ it('MEAL-071 deletes the user\'s saved meal and says the list changed', function
 
     savedMealCall($user, 'saved_meal_delete', ['saved_meal_id' => $meal->id])
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['saved_meals_show{}']);
+        ->assertJsonPath('data.invalidates', ['saved_meals_show{}', 'food_search{"collection":"saved_meals"}']);
 
     expect(savedMealCall($user, 'saved_meals_show')->json('data.meals'))->toBe([]);
 });
@@ -224,7 +225,7 @@ it('MEAL-070 loads a saved meal into a meal and says which day changed', functio
 
     savedMealCall($user, 'meal_saved_meal_load', ['meal_id' => $meal, 'saved_meal_id' => $saved->id])
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['today_show{}', 'today_show{"date":"2026-10-13"}'])
+        ->assertJsonPath('data.invalidates', ['today_show{}', 'today_show{"date":"2026-10-13"}', 'food_search{"meal_id":"'.$meal.'"}'])
         ->assertJsonPath('data.toast', 'Loaded Bulk dinner');
 
     expect(PlannedFood::query()->where('meal_id', $meal)->count())->toBe(2);
