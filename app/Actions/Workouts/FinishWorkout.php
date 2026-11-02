@@ -5,6 +5,7 @@ namespace App\Actions\Workouts;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Retarget\Retargeting;
 use App\Domain\Retarget\RetargetRefused;
+use App\Domain\Workout\WorkoutHelp;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Today\DayPlans;
@@ -52,7 +53,7 @@ final class FinishWorkout
         }
         $pending = $snapshot->sheets()->pending();
         if ($pending !== []) {
-            throw new DomainException('Your feedback is required for '.self::list($pending).'.');
+            throw new DomainException(WorkoutHelp::FEEDBACK_REQUIRED.' for '.self::list($pending).'.');
         }
 
         $start = DateTimeImmutable::createFromInterface($session->actual_start_at);
