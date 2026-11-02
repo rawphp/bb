@@ -133,11 +133,11 @@ With billing on, add a webhook endpoint in Stripe pointing at the app's Stripe w
 
 Two workers:
 
-- `default`: the `default` queue (notifications, mail and other background jobs) and the `capabilities-audit` queue, which writes the audit log.
+- `default`: the `default` queue (notifications, mail and other background jobs). The audit log needs no worker: each row is written during the request that made the change. Earlier versions of this guide also listed a `capabilities-audit` queue. Nothing was ever pushed to it, so an upgrade has nothing to drain there. A failed audit insert is reported to the app's exception handler (your error tracker or `storage/logs`).
 - `agent`: the Coach's turns, on the `agent` connection. Its `retry_after` is `CAPABILITIES_AI_CLAIM_TTL` plus 60 seconds, so a turn that runs long is never handed to a second worker. Only needed with the agent on, but harmless without it.
 
 ```bash
-php artisan queue:work redis --queue=default,capabilities-audit --tries=3
+php artisan queue:work redis --queue=default --tries=3
 php artisan queue:work agent --queue=agent --tries=1
 ```
 
@@ -151,7 +151,7 @@ After=network.target mysql.service redis.service
 [Service]
 User=www-data
 WorkingDirectory=/var/www/bodybuilder
-ExecStart=/usr/bin/php artisan queue:work redis --queue=default,capabilities-audit --tries=3
+ExecStart=/usr/bin/php artisan queue:work redis --queue=default --tries=3
 Restart=always
 
 [Install]
@@ -162,11 +162,13 @@ Copy it for `agent` with `queue:work agent --queue=agent --tries=1`. Restart bot
 
 ## Scheduler
 
-The scheduler sends due Web Push notifications, reaps the agent's stale turns and prunes the idempotency and audit tables. Run it every minute from cron, as the web server user:
+The scheduler reaps the agent's stale turns, prunes the audit log (`audit_records`, kept 90 days) and prunes expired undo tokens. Sending due Web Push notifications is not scheduled yet. Run it every minute from cron, as the web server user:
 
 ```cron
 * * * * * cd /var/www/bodybuilder && php artisan schedule:run >> /dev/null 2>&1
 ```
+
+An instance that ran before the audit log moved to `audit_records` also has audit rows in the package's `capabilities_audit_outbox` table. Nothing writes to it any more. The same daily prune keeps those rows to 90 days too, and deleting an account deletes its rows there.
 
 ## Food data
 

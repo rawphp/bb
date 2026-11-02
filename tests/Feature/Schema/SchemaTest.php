@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\MeasurementSource;
+use App\Models\AuditRecord;
 use App\Models\DayTarget;
 use App\Models\DayTargetMeal;
 use App\Models\Exercise;
@@ -97,6 +98,7 @@ function fillAccount(User $user): void
     Step::factory()->for($user)->create();
 
     PendingSignInCode::factory()->for($user)->create();
+    AuditRecord::factory()->for($user)->create();
     UndoToken::factory()->for($user)->create();
     PushSubscription::factory()->for($user)->create();
 
