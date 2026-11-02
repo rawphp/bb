@@ -3,6 +3,7 @@
 use App\Actions\Workout\AnswerWorkoutFeedback;
 use App\Actions\Workout\FinishWorkout;
 use App\Capabilities\Workout\Data\WorkoutFeedbackAnswerInput;
+use App\Domain\Model\MuscleGroup;
 use App\Models\ExerciseFeedback;
 use App\Models\Mesocycle;
 use App\Models\MuscleFeedback;
@@ -180,4 +181,41 @@ it('FB-009 PROG-018 changing only joint pain after finish works next week out ag
     // Moderate pain keeps added sets off the only chest exercise, so the two added sets come back off.
     expect($result['toast'])->toBe('Chest −2 sets next week')
         ->and($mesocycle->fresh()->dayRows()[0]['slots'][0]['sets'])->toBe(3);
+});
+
+it('FB-002 FB-009 each answer lands on its own muscle and exercise of this session, and last week\'s stay as they were', function () {
+    Carbon::setTestNow('2026-09-21 18:30:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => TrainSeed::phase($user, 'muscleGain', '2026-08-31')->id]);
+    $bench = WorkoutSeed::exerciseId($mesocycle, 1);
+    $incline = TrainSeed::exercise('Incline Press', MuscleGroup::Chest)->id;
+    $row = TrainSeed::exercise('Barbell Row', MuscleGroup::Back)->id;
+    $days = $mesocycle->days;
+    $days[0]['slots'][] = ['id' => '01JB6Q402A2B3C4D5E6F7G8H9J', 'exercise_id' => $incline, 'muscle_group' => 'chest', 'sets' => 2];
+    $days[0]['slots'][] = ['id' => '01JB6Q403A2B3C4D5E6F7G8H9J', 'exercise_id' => $row, 'muscle_group' => 'back', 'sets' => 2];
+    $mesocycle->update(['days' => $days]);
+    $lastWeek = WorkoutSeed::started($mesocycle->fresh(), 2, 1, '2026-09-14 17:30:00');
+    ExerciseFeedback::factory()->create(['workout_session_id' => $lastWeek->id, 'exercise_id' => $bench, 'joint_pain' => 'low']);
+    $session = WorkoutSeed::started($mesocycle->fresh(), 3, 1, '2026-09-21 17:30:00');
+    $chest = fn () => WorkoutFeedbackAnswerInput::from([
+        'workout_id' => WorkoutSeed::id($session), 'muscle_group' => 'chest', 'soreness' => 'healedJustOnTime', 'pump' => 'low', 'volume' => 'notEnough',
+        'joint_pain' => [['exercise_id' => (string) $bench, 'answer' => 'none'], ['exercise_id' => (string) $incline, 'answer' => 'aLot']],
+    ]);
+
+    app(AnswerWorkoutFeedback::class)($user, $chest());
+    app(AnswerWorkoutFeedback::class)($user, WorkoutFeedbackAnswerInput::from([
+        'workout_id' => WorkoutSeed::id($session), 'muscle_group' => 'back', 'soreness' => 'healedJustOnTime', 'pump' => 'amazing', 'volume' => 'justRight',
+        'joint_pain' => [['exercise_id' => (string) $row, 'answer' => 'moderate']],
+    ]));
+    $ids = MuscleFeedback::query()->orderBy('id')->pluck('id')->all();
+    app(AnswerWorkoutFeedback::class)($user, $chest());
+
+    $muscles = MuscleFeedback::query()->where('workout_session_id', $session->id)->get()
+        ->mapWithKeys(fn (MuscleFeedback $f) => [$f->muscle_group->value => [$f->pump, $f->volume]])->all();
+    $joints = ExerciseFeedback::query()->get()
+        ->mapWithKeys(fn (ExerciseFeedback $f) => [($f->workout_session_id === $session->id ? 'this ' : 'last ').$f->exercise_id => $f->joint_pain])->all();
+
+    expect($muscles)->toEqual(['chest' => ['low', 'notEnough'], 'back' => ['amazing', 'justRight']])
+        ->and(MuscleFeedback::query()->orderBy('id')->pluck('id')->all())->toBe($ids)
+        ->and($joints)->toEqual(["last {$bench}" => 'low', "this {$bench}" => 'none', "this {$incline}" => 'aLot', "this {$row}" => 'moderate']);
 });
