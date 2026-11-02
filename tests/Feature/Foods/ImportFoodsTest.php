@@ -277,6 +277,20 @@ it('FOOD-001 fails a gzipped download with a corrupt block that zlib refuses', f
     }
 });
 
+it('FOOD-001 imports the last line of a gzipped file that has no trailing newline', function () {
+    $line = fn (int $i) => json_encode(['code' => (string) (2000000000000 + $i), 'product_name' => "Product {$i}", 'nutriments' => ['energy-kcal_100g' => 100]]);
+    $path = tempnam(sys_get_temp_dir(), 'off').'.jsonl.gz';
+    file_put_contents($path, gzencode($line(1)."\n".$line(2)));
+
+    try {
+        $this->artisan('foods:import', ['source' => 'off', 'path' => $path])
+            ->expectsOutput('Imported 2 foods, skipped 0.')
+            ->assertSuccessful();
+    } finally {
+        unlink($path);
+    }
+});
+
 it('FOOD-001 re-imports one source without touching another source\'s food that has the same source id', function () {
     $row = fn (string $source, string $name, string $label) => [
         'food' => ['name' => $name, 'source' => $source, 'source_id' => '7', 'kind' => 'packaged',
@@ -329,6 +343,23 @@ it('FOOD-001 fails a cut-off USDA download after the batches it read, so the ins
     } finally {
         unlink($path);
     }
+});
+
+it('FOOD-001 saves source ids that differ only by case or accent as one food, as the unique index sees them', function () {
+    $row = fn (string $id, string $label) => [
+        'food' => ['name' => "Thing {$id}", 'source' => 'off', 'source_id' => $id, 'kind' => 'packaged',
+            'kcal' => 10.0, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
+        'servings' => [['label' => $label, 'grams' => 10.0]],
+    ];
+    $save = new SaveImportedFoods;
+
+    expect($save([$row('ABC1', 'first'), $row('abc1', 'second')]))->toBe(1)
+        ->and($save([$row('Abc1', 'third')]))->toBe(1)
+        ->and($save([$row('ÀBC1', 'fourth')]))->toBe(1);
+
+    $food = Food::query()->where('source', 'off')->sole();
+    expect(foodsServingsOf($food))->toBe([['fourth', 10.0]])
+        ->and(FoodServing::count())->toBe(1);
 });
 
 it('FOOD-001 rolls the foods back when their servings cannot be written', function () {

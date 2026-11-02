@@ -55,6 +55,15 @@ it('FOOD-041 ranks a curated food by its curated flag, not its source, ahead of 
     expect((new LookUpFoodBarcode)($this->user, '556')?->name)->toBe('Curated usda one');
 });
 
+it('FOOD-041 returns the most recently imported row when two rows of the same rank share a barcode', function () {
+    $this->travelTo(now()->subYear());
+    foodsWithBarcode('Old branded', '557', ['source' => 'usda']);
+    $this->travelBack();
+    foodsWithBarcode('Refreshed branded', '557', ['source' => 'usda']);
+
+    expect((new LookUpFoodBarcode)($this->user, '557')?->name)->toBe('Refreshed branded');
+});
+
 it('FOOD-060 never finds another user\'s custom food by barcode, nor the user\'s deleted one', function () {
     Food::factory()->custom(User::factory()->create())->create(['name' => 'Theirs', 'barcode' => '777']);
     Food::factory()->custom($this->user)->create(['name' => 'Deleted', 'barcode' => '888'])->delete();

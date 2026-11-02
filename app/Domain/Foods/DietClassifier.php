@@ -65,11 +65,14 @@ final class DietClassifier
         'fish', 'salmon', 'tuna', 'cod', 'tilapia', 'trout', 'sardine', 'anchovy', 'anchovies', 'mackerel', 'herring',
         'shrimp', 'prawn', 'crab', 'lobster', 'oyster', 'clam', 'mussel', 'scallop', 'squid', 'seafood', 'shellfish',
         'gelatin', 'gelatine', 'pancetta', 'chorizo', 'prosciutto', 'pastrami', 'mutton', 'goat meat', 'rabbit', 'jerky',
-        'rennet', 'carmine', 'cochineal', 'collagen', 'isinglass'];
+        'rennet', 'carmine', 'cochineal', 'collagen', 'isinglass', 'pollock', 'haddock', 'halibut', 'catfish', 'crawfish',
+        'crayfish', 'whitefish', 'eel', 'roe', 'caviar', 'bonito', 'surimi', 'krill', 'octopus', 'snapper', 'pangasius',
+        'hake', 'carp', 'swordfish'];
 
     private const DAIRY = ['milk', 'cheese', 'butter', 'buttermilk', 'cream', 'whey', 'casein', 'caseinate', 'yogurt',
         'yoghurt', 'lactose', 'kefir', 'ghee', 'custard', 'ricotta', 'mascarpone', 'mozzarella', 'parmesan', 'cheddar',
-        'paneer', 'curd', 'milkfat', 'milk solids', 'quark', 'skyr'];
+        'paneer', 'curd', 'milkfat', 'milk solids', 'quark', 'skyr', 'butterfat', 'butteroil', 'lactalbumin',
+        'lactoglobulin', 'lactoferrin'];
 
     private const EGG = ['egg', 'mayonnaise', 'mayo', 'albumen', 'albumin', 'meringue'];
 

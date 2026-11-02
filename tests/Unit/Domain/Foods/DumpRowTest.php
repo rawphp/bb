@@ -59,6 +59,13 @@ it('FOOD-004 keys USDA nutrients by their exact number, so carbs by summation (2
     expect((new DumpRow)->fromUsda($record, false)['food'])->toMatchArray(['kcal' => 97.0, 'carbs' => 23.0, 'fiber' => 2.6]);
 });
 
+it('FOOD-004 takes a USDA Branded food\'s brand from its owner when it has no brand name, and energy from 958', function () {
+    $record = ['fdcId' => 2, 'description' => 'OAT BAR', 'brandOwner' => 'Bar Co', 'gtinUpc' => '', 'brandedFoodCategory' => 'Bars',
+        'foodNutrients' => [['nutrient' => ['number' => '958'], 'amount' => 410.0]]];
+
+    expect((new DumpRow)->fromUsda($record, true)['food'])->toMatchArray(['brand' => 'Bar Co', 'kcal' => 410.0]);
+});
+
 it('FOOD-004 falls back to Atwater energy when nutrient 208 is missing', function () {
     $hummus = foodsMapped('usda_foundation.json')['2262075'];
 

@@ -225,6 +225,21 @@ it('FOOD-027 still treats whole-word plant milks and nut butters as dairy free',
     expect((new DietClassifier)->classify('Product', null, $ingredients, [])['dairy_free'])->toBeTrue($ingredients);
 })->with(['oat milk, salt', 'almond milks, water', 'walnut butter, salt', 'hazelnut butter, cocoa']);
 
+it('FOOD-027 knows more fish and dairy words in ingredients', function (string $ingredients, array $false) {
+    $flags = (new DietClassifier)->classify('Crunchy fillets', null, $ingredients, []);
+
+    expect(array_intersect_key($flags, array_flip($false)))->toBe(array_fill_keys($false, false));
+})->with([
+    'pollock' => ['ALASKA POLLOCK, ENRICHED WHEAT FLOUR, SOYBEAN OIL', ['vegetarian', 'vegan']],
+    'bonito' => ['water, bonito extract, salt', ['vegetarian', 'vegan']],
+    'haddock' => ['haddock, breadcrumbs', ['vegetarian', 'vegan']],
+    'roe' => ['cod roe, salt', ['vegetarian', 'vegan']],
+    'surimi' => ['surimi, starch', ['vegetarian', 'vegan']],
+    'crayfish' => ['crayfish tails, brine', ['vegetarian', 'vegan']],
+    'butterfat' => ['sugar, cocoa butter, butterfat', ['dairy_free', 'vegan']],
+    'lactalbumin' => ['water, lactalbumin', ['dairy_free', 'vegan']],
+]);
+
 it('FOOD-027 keeps bean curd and goat cheese in the diets they belong to', function () {
     $tofu = (new DietClassifier)->classify('Tofu', null, 'bean curd, water', []);
     $goatCheese = (new DietClassifier)->classify('Cheese', null, 'goat milk, salt, cultures', []);

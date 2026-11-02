@@ -10,7 +10,8 @@ use Illuminate\Support\Str;
 
 /**
  * The one write path for imported foods (FOOD-001): upsert on (source, source_id), then replace each
- * food's servings, all in one transaction. A repeated source_id in one batch keeps the last row.
+ * food's servings, all in one transaction. A repeated source_id in one batch keeps the last row; ids that
+ * differ only by case or accent count as one, as the unique index's collation does.
  * An existing row keeps its id and its curation (FOOD-002); only the columns below are refreshed.
  * A soft-deleted row stays deleted: the import refreshes its values and servings but does not restore it.
  *
@@ -30,8 +31,7 @@ final class SaveImportedFoods
     {
         $bySource = [];
         foreach ($rows as $row) {
-            // Prefixed keys keep numeric ids strings: PHP would turn '123' into an int key.
-            $bySource[(string) $row['food']['source']]['s'.$row['food']['source_id']] = $row;
+            $bySource[(string) $row['food']['source']][self::key((string) $row['food']['source_id'])] = $row;
         }
 
         DB::transaction(function () use ($bySource, $updateColumns) {
@@ -47,13 +47,17 @@ final class SaveImportedFoods
 
                 $sourceIds = array_map(fn (array $r) => (string) $r['food']['source_id'], $batch);
                 // withTrashed: the upsert also updates soft-deleted rows, so their ids must be found too.
-                $ids = Food::withTrashed()->where('source', $source)->whereIn('source_id', $sourceIds)->pluck('id', 'source_id');
-                FoodServing::query()->whereIn('food_id', $ids->values())->delete();
+                $ids = [];
+                foreach (Food::withTrashed()->where('source', $source)->whereIn('source_id', $sourceIds)->pluck('id', 'source_id') as $sourceId => $id) {
+                    $ids[self::key((string) $sourceId)] = $id;
+                }
+                FoodServing::query()->whereIn('food_id', array_values($ids))->delete();
 
                 $servings = [];
-                foreach ($batch as $i => $r) {
-                    foreach ($r['servings'] as $serving) {
-                        $servings[] = $serving + ['food_id' => $ids[$sourceIds[$i]]];
+                foreach ($batch as $r) {
+                    $id = $ids[self::key((string) $r['food']['source_id'])] ?? null;
+                    foreach ($id === null ? [] : $r['servings'] as $serving) {
+                        $servings[] = $serving + ['food_id' => $id];
                     }
                 }
                 foreach (array_chunk($servings, 1000) as $chunk) {
@@ -63,5 +67,14 @@ final class SaveImportedFoods
         });
 
         return array_sum(array_map('count', $bySource));
+    }
+
+    /**
+     * One key per row the unique (source, source_id) index sees as one: the column's collation ignores
+     * case and accents, so "ABC1" and "abc1" are the same food. Prefixed so PHP keeps "123" a string key.
+     */
+    private static function key(string $sourceId): string
+    {
+        return 's'.mb_strtolower(Str::ascii($sourceId));
     }
 }
