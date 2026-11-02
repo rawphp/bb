@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Database\Factories\PushSubscriptionFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use NotificationChannels\WebPush\PushSubscription as WebPushSubscription;
 
@@ -13,6 +15,9 @@ use NotificationChannels\WebPush\PushSubscription as WebPushSubscription;
  */
 class PushSubscription extends WebPushSubscription
 {
+    /** @use HasFactory<PushSubscriptionFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'user_id',
         'endpoint',
