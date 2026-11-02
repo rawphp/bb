@@ -42,7 +42,7 @@ it('FOOD-042 allows a label with no serving weight and a brand', function () {
         ->and($label->kcal)->toBe(370.0);
 });
 
-it('FOOD-042 reads a label that lists no fat, fibre or protein', function () {
+it('FOOD-042 reads a label with no fat or protein and fractions of a gram', function () {
     RecordingLlmClient::answering([
         'name' => 'Cola', 'brand' => null, 'serving' => ['label' => '1 can', 'grams' => 0.5],
         'per_100g' => ['kcal' => 42, 'protein' => 0, 'fat' => 0, 'carbs' => 10.6, 'fiber' => 0.4],
