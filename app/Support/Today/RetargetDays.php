@@ -6,7 +6,6 @@ use App\Domain\Model\Day;
 use App\Domain\Model\DayType;
 use App\Domain\Model\Meal;
 use App\Domain\Model\MealTarget;
-use App\Domain\Model\WeighIn;
 use App\Domain\Placement\ClockRange;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Retarget\OtherActivity;
@@ -16,21 +15,18 @@ use App\Domain\Retarget\RetargetMeal;
 use App\Domain\WeekBuilder\MealNames;
 use App\Domain\WeekBuilder\WeekMealKind;
 use App\Domain\WeekBuilder\WeekWorkout;
-use App\Domain\Weight\CurrentWeight;
 use App\Models\DayTarget;
 use App\Models\OtherActivity as OtherActivityRow;
 use App\Models\PlanWeek as PlanWeekRow;
 use App\Models\Profile;
 use App\Models\User;
-use App\Models\WeighIn as WeighInRow;
 use DateTimeImmutable;
-use DateTimeZone;
 use DomainException;
 
 /**
  * A stored day as the re-target rule reads it, and the rule's day written back (SCH-050 to SCH-057). Ported from
- * rp-clone's TodayModel+Retarget. Only checked-in meals are fixed (SCH-055); locks, hand-edited targets and hand-set
- * times are not stored yet.
+ * rp-clone's TodayModel+Retarget. A checked-in meal and one whose planned foods are all locked are fixed (SCH-055);
+ * hand-edited targets and hand-set times are not stored yet.
  */
 final class RetargetDays
 {
@@ -46,6 +42,7 @@ final class RetargetDays
             time: $meal->time ?? $window->start,
             kind: $meal->name === MealNames::INTRA_WORKOUT_SHAKE ? WeekMealKind::IntraWorkoutShake : WeekMealKind::Regular,
             isCheckedIn: $meal->isChecked(),
+            isLocked: $meal->onlyLocked,
         ), $plan->meals);
         usort($meals, fn (RetargetMeal $a, RetargetMeal $b) => $window->offset($a->time) <=> $window->offset($b->time));
 
@@ -72,10 +69,7 @@ final class RetargetDays
         $window = $profile?->getAttribute('eating_window');
         $start = ClockTime::fromHhmm((string) ($window['start'] ?? ''));
         $end = ClockTime::fromHhmm((string) ($window['end'] ?? ''));
-        $weighIns = WeighInRow::query()->where('user_id', $user->id)->get()
-            ->map(fn (WeighInRow $row) => new WeighIn((string) $row->id, DayPlans::instant($row->weighed_at), (float) $row->weight_kg))
-            ->values()->all();
-        $weightKg = CurrentWeight::fromWeighIns($weighIns, $profile?->weight_kg, new DateTimeZone('UTC'));
+        $weightKg = TodayWeight::kg($user, $profile);
         if ($start === null || $end === null || $weightKg === null) {
             throw new DomainException(self::CANNOT);
         }

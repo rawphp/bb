@@ -28,15 +28,10 @@ use DomainException;
  */
 final class DayAdjustPayload
 {
-    public const NO_DAY = 'This day has no targets to adjust yet.';
-
     public static function build(DayAdjustShowInput $input, AdjustWeek $week, DateTimeImmutable $today): DayAdjustShowOutput
     {
-        $day = $week->selected ?? throw new DomainException(self::NO_DAY);
-        $outcome = Adjustment::outcome(
-            $day, $week->week, $input->mode, $input->kcal, $input->from_meal_id, $input->to_meal_id, $input->other_date,
-            $input->direction, $today, $week->weightKg,
-        );
+        $outcome = $week->outcome($input->mode, $input->kcal, $input->from_meal_id, $input->to_meal_id, $input->other_date, $input->direction, $today);
+        $day = $week->selected ?? throw new DomainException(AdjustWeek::NO_DAY);
         $selected = $outcome->changed[0] ?? null;
         $other = $outcome->changed[1] ?? null;
 

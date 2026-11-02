@@ -32,7 +32,7 @@ final class DayRedistributeShowCapability implements HostCapability, OwnsInput
                     $input->date,
                     DayPlans::load($user, [$input->date])->plan($input->date),
                     CarbonImmutable::now(),
-                    $input->excluded_meal_ids,
+                    array_map(strtolower(...), $input->excluded_meal_ids),
                 );
             });
     }

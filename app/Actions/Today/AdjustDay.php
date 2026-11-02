@@ -2,10 +2,8 @@
 
 namespace App\Actions\Today;
 
-use App\Capabilities\Reads\Today\DayAdjustPayload;
 use App\Capabilities\Today\Data\DayAdjustInput;
 use App\Models\User;
-use App\Support\Today\Adjustment;
 use App\Support\Today\AdjustWeek;
 use App\Support\Today\DayPlans;
 use Carbon\CarbonImmutable;
@@ -19,14 +17,13 @@ use Illuminate\Support\Facades\DB;
  */
 final class AdjustDay
 {
-    /** @return list<string> the days changed, Y-m-d */
+    /** @return array{dates: list<string>, week: list<string>} the days changed and every day of their plan week, Y-m-d */
     public function __invoke(User $user, DayAdjustInput $input): array
     {
         $week = AdjustWeek::load($user, $input->date);
-        $day = $week->selected ?? throw new DomainException(DayAdjustPayload::NO_DAY);
-        $outcome = Adjustment::outcome(
-            $day, $week->week, $input->mode, $input->kcal, $input->from_meal_id, $input->to_meal_id, $input->other_date,
-            $input->direction, DayPlans::day(CarbonImmutable::now()->format('Y-m-d')), $week->weightKg,
+        $outcome = $week->outcome(
+            $input->mode, $input->kcal, $input->from_meal_id, $input->to_meal_id, $input->other_date, $input->direction,
+            DayPlans::day(CarbonImmutable::now()),
         );
         if (! $outcome->isPlan()) {
             throw new DomainException($outcome->refusal ?? $outcome->missing ?? 'That move can\'t be made.');
@@ -44,7 +41,7 @@ final class AdjustDay
                 $dates[] = $date;
             }
 
-            return $dates;
+            return ['dates' => $dates, 'week' => $week->dates];
         });
     }
 }

@@ -29,7 +29,7 @@ final class ResolveMissedSession
 {
     public const NOT_MISSED = 'That session isn\'t waiting for an answer: it is done, skipped, not yet due, or not in this plan week.';
 
-    /** @return array{toast: string, dates: list<string>} the toast, and the days Today shows differently (Y-m-d) */
+    /** @return array{toast: string, dates: list<string>, week: list<string>} the toast, the days Today shows differently and the days of their plan week (Y-m-d) */
     public function __invoke(User $user, MissedSessionResolveInput $input): array
     {
         $snapshot = TrainSnapshot::load($user, $input->mesocycle_id);
@@ -42,11 +42,12 @@ final class ResolveMissedSession
             throw new DomainException(self::NOT_MISSED);
         }
 
-        $option = $this->offered($input, Retargeting::missedDayOptions($session->date, $snapshot->today, $week->planWeek, $week->trainingDates()));
+        $option = $this->offered($input, Retargeting::missedDayOptions($session->date, $snapshot->today, $week->planWeek, $week->trainingDates()), $snapshot->today);
+        $weekDates = array_map(fn (DateTimeImmutable $day) => $day->format('Y-m-d'), $week->planWeek->days());
         if ($option->kind === Kind::Skip) {
             $this->saveRow($user, $stored, $input, $session, $session->date, skipped: true);
 
-            return ['toast' => 'Session skipped', 'dates' => [$session->date->format('Y-m-d')]];
+            return ['toast' => 'Session skipped', 'dates' => [$session->date->format('Y-m-d')], 'week' => $weekDates];
         }
 
         $destination = $option->date ?? $snapshot->today;
@@ -70,11 +71,16 @@ final class ResolveMissedSession
         RetargetDays::save($plans->row($date), $result->days[1]);
         $this->saveRow($user, $stored, $input, $session, $destination, skipped: false);
 
-        return ['toast' => $result->message, 'dates' => [$session->date->format('Y-m-d'), $date]];
+        return ['toast' => $result->message, 'dates' => [$session->date->format('Y-m-d'), $date], 'week' => $weekDates];
     }
 
-    /** @param  list<MissedDayOption>  $options */
-    private function offered(MissedSessionResolveInput $input, array $options): MissedDayOption
+    /**
+     * The option the answer names, on the day the prompt named: a late answer (an outbox replay, a prompt left open
+     * past midnight) is refused rather than moved to another day.
+     *
+     * @param  list<MissedDayOption>  $options
+     */
+    private function offered(MissedSessionResolveInput $input, array $options, DateTimeImmutable $today): MissedDayOption
     {
         $kind = match ($input->choice) {
             'do_it_today' => Kind::DoItToday,
@@ -82,9 +88,10 @@ final class ResolveMissedSession
             default => Kind::Skip,
         };
         $option = array_find($options, fn (MissedDayOption $option) => $option->kind === $kind);
-        if ($option === null || ($option->date !== null && $input->date !== null && $option->date->format('Y-m-d') !== $input->date)) {
+        $day = $option === null ? null : ($option->kind === Kind::DoItToday ? $today : $option->date);
+        if ($option === null || ($day !== null && $input->date !== null && $day->format('Y-m-d') !== $input->date)) {
             throw new DomainException(match (true) {
-                $option !== null => 'That rest day has changed. Open the prompt again.',
+                $option !== null => 'That day has changed. Open the prompt again.',
                 $kind === Kind::DoItToday => 'Today is a training day, so this session can\'t move to it.',
                 default => 'No rest day is left this plan week, so this session can only be skipped.',
             });

@@ -29,7 +29,7 @@ final class DayAdjustShowCapability implements HostCapability, OwnsInput
                 /** @var User $user */
                 $user = $context->user();
 
-                return DayAdjustPayload::build($input, AdjustWeek::load($user, $input->date), DayPlans::day(CarbonImmutable::now()->format('Y-m-d')));
+                return DayAdjustPayload::build($input, AdjustWeek::load($user, $input->date), DayPlans::day(CarbonImmutable::now()));
             });
     }
 

@@ -10,6 +10,7 @@ use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Today\Data\OffPlanLogInput;
 use App\Models\OffPlanEntry;
 use App\Models\User;
+use App\Support\Today\DayPlans;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -28,10 +29,13 @@ final class OffPlanLogCapability implements HostCapability
             ->run(function (OffPlanLogInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */
                 $user = $context->user();
-                $entry = ($this->log)($user, $this->ownedOrNew(OffPlanEntry::class, $input->id, $user), $input);
+                $existing = $this->ownedOrNew(OffPlanEntry::class, $input->id, $user);
+                // An edit can move the entry to another day, which changes that day too.
+                $was = $existing === null ? [] : [DayPlans::day($existing->date)->format('Y-m-d')];
+                $entry = ($this->log)($user, $existing, $input);
 
                 return new WriteResult(
-                    invalidates: TodayReads::keys([$input->date], ['day_redistribute_show']),
+                    invalidates: TodayReads::keys([...$was, $input->date], ['day_redistribute_show']),
                     toast: ($entry->name ?? LogOffPlan::DEFAULT_NAME).' logged',
                 );
             });

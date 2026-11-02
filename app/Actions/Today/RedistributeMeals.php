@@ -28,6 +28,8 @@ final class RedistributeMeals
         if ($mealIds === []) {
             throw new DomainException('Choose at least one meal to take the calories.');
         }
+        // DayTarget stores meal ids lowercased; a client may send a ULID in capitals.
+        $mealIds = array_map(strtolower(...), $mealIds);
         $receivable = Redistribution::receivable($day, CarbonImmutable::now());
         $receivableIds = array_map(fn (DayMeal $meal) => $meal->id, $receivable);
         foreach ($mealIds as $id) {

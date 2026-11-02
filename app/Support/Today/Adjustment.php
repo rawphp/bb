@@ -47,7 +47,7 @@ final class Adjustment
 
         return $mode === 'days'
             ? self::dayMove($kcal, $selected, $week, $otherDate, $direction, $today, $weightKg ?? self::FALLBACK_WEIGHT_KG)
-            : self::mealMove($kcal, $selected, $fromMealId, $toMealId);
+            : self::mealMove($kcal, $selected, $fromMealId === null ? null : strtolower($fromMealId), $toMealId === null ? null : strtolower($toMealId));
     }
 
     /**

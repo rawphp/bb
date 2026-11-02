@@ -34,6 +34,8 @@ final class MissedSessionResolveCapability implements HostCapability, OwnsInput
                     invalidates: [
                         ...MesocycleReads::keys($input->mesocycle_id),
                         ...TodayReads::keys($resolved['dates'], ['day_adjust_show', 'day_redistribute_show']),
+                        // SCH-022: the strip marks the days that hold a session.
+                        ...TodayReads::weekKeys($resolved['week']),
                     ],
                     toast: $resolved['toast'],
                 );

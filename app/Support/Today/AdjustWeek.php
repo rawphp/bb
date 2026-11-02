@@ -2,16 +2,13 @@
 
 namespace App\Support\Today;
 
-use App\Domain\Model\WeighIn;
 use App\Domain\Plan\PlanWeekGrid;
 use App\Domain\Progress\PlanWeekDays;
-use App\Domain\Weight\CurrentWeight;
 use App\Models\Plan;
 use App\Models\Profile;
 use App\Models\User;
-use App\Models\WeighIn as WeighInRow;
 use DateTimeImmutable;
-use DateTimeZone;
+use DomainException;
 
 /**
  * What the Adjust sheet reads for a day: the stored days of its plan week (NUT-021) and the user's current weight
@@ -19,11 +16,17 @@ use DateTimeZone;
  */
 final readonly class AdjustWeek
 {
-    /** @param  list<DayPlan>  $week */
+    public const NO_DAY = 'This day has no targets to adjust yet.';
+
+    /**
+     * @param  list<DayPlan>  $week
+     * @param  list<string>  $dates  every day of the plan week, Y-m-d, stored or not
+     */
     private function __construct(
         public DayPlans $plans,
         public ?DayPlan $selected,
         public array $week,
+        public array $dates,
         public ?float $weightKg,
     ) {}
 
@@ -32,17 +35,27 @@ final readonly class AdjustWeek
         $plan = Plan::query()->where('user_id', $user->id)->first();
         $dates = self::weekDates(DayPlans::day($date), $plan);
         $plans = DayPlans::load($user, $dates);
-        $profile = Profile::query()->where('user_id', $user->id)->first();
-        $weighIns = WeighInRow::query()->where('user_id', $user->id)->get()
-            ->map(fn (WeighInRow $row) => new WeighIn((string) $row->id, DayPlans::instant($row->weighed_at), (float) $row->weight_kg))
-            ->values()->all();
 
         return new self(
             plans: $plans,
             selected: $plans->plan($date),
             week: array_values(array_filter(array_map(fn (string $day) => $plans->plan($day), $dates))),
-            weightKg: CurrentWeight::fromWeighIns($weighIns, $profile?->weight_kg, new DateTimeZone('UTC')),
+            dates: $dates,
+            weightKg: TodayWeight::kg($user, Profile::query()->where('user_id', $user->id)->first()),
         );
+    }
+
+    /**
+     * DAY-020: the move the sheet's choices come to, today being `$today`. The sheet and the save both ask here, so a
+     * move is refused in the same words by both.
+     *
+     * @throws DomainException when the day has no stored target
+     */
+    public function outcome(string $mode, ?int $kcal, ?string $fromMealId, ?string $toMealId, ?string $otherDate, string $direction, DateTimeImmutable $today): AdjustOutcome
+    {
+        $day = $this->selected ?? throw new DomainException(self::NO_DAY);
+
+        return Adjustment::outcome($day, $this->week, $mode, $kcal, $fromMealId, $toMealId, $otherDate, $direction, $today, $this->weightKg);
     }
 
     /** @return list<string> the plan week's days, Y-m-d */

@@ -26,10 +26,14 @@ final class DayAdjustCapability implements HostCapability, OwnsInput
             ->run(function (DayAdjustInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */
                 $user = $context->user();
-                $dates = ($this->adjust)($user, $input);
+                $adjusted = ($this->adjust)($user, $input);
 
                 return new WriteResult(
-                    invalidates: TodayReads::keys($dates, ['day_adjust_show', 'day_redistribute_show']),
+                    invalidates: [
+                        ...TodayReads::keys($adjusted['dates'], ['day_adjust_show', 'day_redistribute_show']),
+                        // NUT-021: a move between days shows on the week strip.
+                        ...(count($adjusted['dates']) > 1 ? TodayReads::weekKeys($adjusted['week']) : []),
+                    ],
                     toast: "Moved {$input->kcal} kcal",
                 );
             });
