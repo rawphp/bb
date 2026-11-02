@@ -11,7 +11,9 @@
                 "properties": {
                     "weekdays": {
                         "type": "array",
-                        "description": "ISO weekdays, 1 is Monday."
+                        "description": "ISO weekdays, 1 is Monday.",
+                        "minItems": 1,
+                        "maxItems": 7
                     },
                     "time": {
                         "type": "string",
@@ -22,7 +24,8 @@
                     "weekdays",
                     "time"
                 ]
-            }
+            },
+            "minItems": 1
         }
     },
     "required": [

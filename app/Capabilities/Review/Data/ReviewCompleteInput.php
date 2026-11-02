@@ -12,9 +12,4 @@ final class ReviewCompleteInput extends CapabilityData
         #[Field(format: 'date')]
         public readonly string $week_start,
     ) {}
-
-    public static function rules(): array
-    {
-        return ['week_start' => ['date_format:Y-m-d']];
-    }
 }

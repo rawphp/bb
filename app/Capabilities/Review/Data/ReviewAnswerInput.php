@@ -27,9 +27,4 @@ final class ReviewAnswerInput extends CapabilityData
         #[Field(description: 'REV-004: calorie moves, applied in order.', items: ReviewMoveInput::class)]
         public readonly array $moves = [],
     ) {}
-
-    public static function rules(): array
-    {
-        return ['week_start' => ['date_format:Y-m-d']];
-    }
 }

@@ -17,9 +17,4 @@ final class StepsLogInput extends CapabilityData
         #[Field(minimum: 0, maximum: 100000)]
         public readonly int $steps,
     ) {}
-
-    public static function rules(): array
-    {
-        return ['date' => ['date_format:Y-m-d']];
-    }
 }
