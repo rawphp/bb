@@ -51,12 +51,12 @@ final class PhaseSwitch
 
     /**
      * @param  list<Phase>  $phases
-     * @param  DateTimeImmutable  $end  the first day after the new phase
+     * @param  ?DateTimeImmutable  $end  the first day after the new phase; null for no end (PH-005)
      * @param  string  $newId  the new phase's id, used only when a phase is added
      * @return list<PhaseWrite>
      */
     public static function writes(
-        array $phases, DateTimeImmutable $from, PhaseType $type, float $ratePercentPerWeek, DateTimeImmutable $end,
+        array $phases, DateTimeImmutable $from, PhaseType $type, float $ratePercentPerWeek, ?DateTimeImmutable $end,
         string $newId,
     ): array {
         $covering = self::covering($from, $phases);
@@ -83,9 +83,9 @@ final class PhaseSwitch
 
     /**
      * SAFE-017, PLAN-007: a nutrition user who now fails moves to training only from the switch day: the type of the
-     * phase they are in (Maintenance with none) with no rate, for the rest of that phase, so the phases after it keep
-     * their place. A phase with no end, or no phase at all, gets PLAN-007's one default mesocycle (TBL-020), ending no
-     * later than the next phase starts.
+     * phase they are in (Maintenance with none) with no rate, for the rest of that phase, its end included, so the
+     * phases after it keep their place and a phase with no end keeps running. With no phase on the switch day, it is
+     * PLAN-007's one default mesocycle (TBL-020), ending no later than the next phase starts.
      *
      * @param  list<Phase>  $phases
      * @return list<PhaseWrite>
@@ -97,7 +97,8 @@ final class PhaseSwitch
         $week = $grid->weekIndexContaining($day) ?? 0;
         $type = self::current($phases, $grid, $today)->type ?? PhaseType::Maintenance;
         $default = PlanRules::trainingOnlyPhase($newId, $type, $week, $experience, $grid);
-        $end = self::covering($day, $phases)->end ?? self::beforeNextPhase($default->end ?? $grid->start($week + 1), $phases, $day);
+        $covering = self::covering($day, $phases);
+        $end = $covering !== null ? $covering->end : self::beforeNextPhase($default->end ?? $grid->start($week + 1), $phases, $day);
 
         return self::writes($phases, $day, $type, $default->targetRatePercentPerWeek, $end, $newId);
     }

@@ -22,6 +22,24 @@ final class CurrentSubscription
         return $subscriptions[0] ?? null;
     }
 
+    /**
+     * Whether Stripe will charge the customer again: any trial or paid subscription not set to end at its period's
+     * end (ACC-005, SUB-007).
+     *
+     * @param  list<array<string, mixed>>  $subscriptions  Stripe subscription objects of one customer
+     */
+    public static function anyRenews(array $subscriptions): bool
+    {
+        foreach ($subscriptions as $subscription) {
+            $access = Access::fromStripeStatus(isset($subscription['status']) ? (string) $subscription['status'] : null);
+            if (in_array($access, [Access::Trial, Access::Active], true) && ! ($subscription['cancel_at_period_end'] ?? false)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** @param  array<string, mixed>  $subscription */
     private static function rank(array $subscription): int
     {
