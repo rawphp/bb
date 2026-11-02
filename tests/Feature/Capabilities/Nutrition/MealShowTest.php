@@ -17,12 +17,12 @@ beforeEach(fn () => Carbon::setTestNow('2026-09-23 10:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
 /** @return list<string> the ids of a user's meals on a day, in their stored order */
-function mealIdsOn(User $user, string $date): array
+function mealShowIds(User $user, string $date): array
 {
     return array_column(DayTarget::query()->where('user_id', $user->id)->whereDate('date', $date)->firstOrFail()->meals, 'id');
 }
 
-function seededMealUser(): User
+function mealShowUser(): User
 {
     $user = TodaySeed::user();
     TodaySeed::targets($user);
@@ -31,7 +31,7 @@ function seededMealUser(): User
     return $user;
 }
 
-function chickenWithFillets(): Food
+function mealShowChicken(): Food
 {
     $chicken = Food::factory()->createOne(['name' => 'Chicken breast', 'kcal' => 120, 'protein' => 23, 'fat' => 2, 'carbs' => 0]);
     FoodServing::factory()->create(['food_id' => $chicken->getKey(), 'label' => 'fillet', 'grams' => 150]);
@@ -44,9 +44,9 @@ it('MEAL-001 refuses meal_show when signed out', function () {
 });
 
 it('CAP-020 answers 404 for another user\'s meal', function () {
-    $theirs = mealIdsOn(TodaySeed::stranger(), '2026-09-23')[0];
+    $theirs = mealShowIds(TodaySeed::stranger(), '2026-09-23')[0];
 
-    $this->actingAs(seededMealUser())->postJson('/capabilities/meal_show', ['meal_id' => $theirs])->assertNotFound();
+    $this->actingAs(mealShowUser())->postJson('/capabilities/meal_show', ['meal_id' => $theirs])->assertNotFound();
 });
 
 it('MEAL-001 answers 422 naming meal_id when it is missing', function () {
@@ -57,13 +57,13 @@ it('MEAL-001 answers 422 naming meal_id when it is missing', function () {
 });
 
 it('MEAL-001 MEAL-010 RCP-002 shows a seeded meal with foods, a recipe and the post-workout tag, with the clock fixed', function () {
-    $user = seededMealUser();
+    $user = mealShowUser();
     $day = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-23')->firstOrFail();
     $meals = $day->meals;
     $meals[2]['time'] = '18:30';
     $day->update(['meals' => $meals]);
     $dinner = $meals[2]['id'];
-    $planned = PlannedFood::factory()->create(['meal_id' => $dinner, 'food_id' => chickenWithFillets()->getKey(), 'grams' => 296, 'position' => 1, 'is_locked' => true]);
+    $planned = PlannedFood::factory()->create(['meal_id' => $dinner, 'food_id' => mealShowChicken()->getKey(), 'grams' => 296, 'position' => 1, 'is_locked' => true]);
 
     $data = $this->actingAs($user)->postJson('/capabilities/meal_show', ['meal_id' => $dinner])->assertOk()->json('data');
 
@@ -81,9 +81,9 @@ it('MEAL-001 MEAL-010 RCP-002 shows a seeded meal with foods, a recipe and the p
 });
 
 it('MEAL-046 shows an empty meal in the shape of its empty fixture', function () {
-    $user = seededMealUser();
+    $user = mealShowUser();
 
-    $data = $this->actingAs($user)->postJson('/capabilities/meal_show', ['meal_id' => mealIdsOn($user, '2026-09-24')[0]])->assertOk()->json('data');
+    $data = $this->actingAs($user)->postJson('/capabilities/meal_show', ['meal_id' => mealShowIds($user, '2026-09-24')[0]])->assertOk()->json('data');
 
     assertMatchesScreenFixture('meal_show', $data);
     expect(ScreenFixture::differences(ScreenFixture::load('meal_show.empty'), $data))->toBe([])
@@ -93,10 +93,10 @@ it('MEAL-046 shows an empty meal in the shape of its empty fixture', function ()
 });
 
 it('MEAL-007 DAY-003 shows a meal still being planned that is short of carbs in the shape of its short fixture', function () {
-    $user = seededMealUser();
-    $dinner = mealIdsOn($user, '2026-09-24')[2];
+    $user = mealShowUser();
+    $dinner = mealShowIds($user, '2026-09-24')[2];
     $oil = Food::factory()->createOne(['name' => 'Olive oil', 'kcal' => 884, 'protein' => 0, 'fat' => 100, 'carbs' => 0]);
-    PlannedFood::factory()->create(['meal_id' => $dinner, 'food_id' => chickenWithFillets()->getKey(), 'grams' => 296, 'position' => 0]);
+    PlannedFood::factory()->create(['meal_id' => $dinner, 'food_id' => mealShowChicken()->getKey(), 'grams' => 296, 'position' => 0]);
     PlannedFood::factory()->create(['meal_id' => $dinner, 'food_id' => $oil->getKey(), 'grams' => 22, 'position' => 1]);
     MealPlanningState::factory()->create(['meal_id' => $dinner, 'state' => 'still_planning']);
 

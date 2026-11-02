@@ -96,20 +96,6 @@ final class TodayPayload
         'edit_schedule' => 'Edit schedule',
     ];
 
-    /** MEAL-009, in order. */
-    private const MEAL_MENU = [
-        'edit_macros_time' => 'Edit macros/time',
-        'load_saved_meal' => 'Load saved meal',
-        'save_as_saved_meal' => 'Save as saved meal',
-        'copy_foods' => 'Copy foods',
-        'remove_foods' => 'Remove foods',
-        'check_in_meal' => 'Check in meal',
-        'check_in_manual' => 'Check in at manual macros',
-        'remove_check_in' => 'Remove check-in',
-        'still_planning' => 'Still planning foods',
-        'delete_meal' => 'Delete meal',
-    ];
-
     /** SCH-001: the order items take at the same minute. */
     private const KIND_ORDER = ['weigh_in' => 0, 'meal' => 1, 'workout' => 2, 'other_activity' => 3, 'busy' => 4];
 
@@ -322,29 +308,14 @@ final class TodayPayload
                     carbs_g: round($manual->carbsG, 1),
                 ),
             ),
-            menu: self::mealMenu($meal, $badge),
+            menu: self::mealMenu($meal),
         );
     }
 
-    /** @return list<MealMenuItem> MEAL-009: check in is off while the meal has the Adjust foods badge (MEAL-045). */
-    private static function mealMenu(TodayMealItem $meal, bool $badge): array
+    /** @return list<MealMenuItem> MEAL-009, from the rule the meal screen shares. */
+    private static function mealMenu(TodayMealItem $meal): array
     {
-        $items = [];
-        foreach (self::MEAL_MENU as $action => $label) {
-            $enabled = match ($action) {
-                'check_in_meal' => ! $meal->isChecked() && ! $badge,
-                'remove_check_in' => $meal->isChecked(),
-                'save_as_saved_meal', 'remove_foods' => $meal->foods !== [],
-                'copy_foods' => $meal->hasEntries(),
-                default => true,
-            };
-            if ($action === 'still_planning' && $meal->planningState === TodayMealItem::STILL_PLANNING) {
-                [$action, $label] = ['done_planning', 'Done planning foods'];
-            }
-            $items[] = new MealMenuItem($action, $label, $enabled);
-        }
-
-        return $items;
+        return array_map(fn (array $item) => new MealMenuItem($item['item'], $item['title'], $item['enabled']), MealMenu::items($meal));
     }
 
     /** SCH-003, SCH-046, SCH-051, SCH-053: a workout card. */

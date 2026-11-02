@@ -9,6 +9,7 @@ use App\Models\PlannedFood;
 use App\Models\PlannedRecipe;
 use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Today\TodaySnapshot;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Tests\Unit\Capabilities\Reads\Today\TodayWorld as W;
 
@@ -17,9 +18,9 @@ use Tests\Unit\Capabilities\Reads\Today\TodayWorld as W;
 // lunch the same targets, checked in on track; dinner 1040 kcal, 68 P, 28 F, 128 C with nothing planned. Lower A
 // starts at 17:30 and runs 30 minutes.
 
-const BREAKFAST = '20260923-0000-4000-8000-000000000001';
-const LUNCH = '20260923-0000-4000-8000-000000000002';
-const DINNER = '20260923-0000-4000-8000-000000000003';
+const MEAL_BREAKFAST = '20260923-0000-4000-8000-000000000001';
+const MEAL_LUNCH = '20260923-0000-4000-8000-000000000002';
+const MEAL_DINNER = '20260923-0000-4000-8000-000000000003';
 
 /** @return array<string, mixed> */
 function mealShow(TodaySnapshot $snapshot, string $mealId, string $date = W::TODAY): array
@@ -45,17 +46,17 @@ function mealFood(string $name, float $kcal, float $protein, float $fat, float $
     ]));
 }
 
-function chicken(): Food
+function mealChicken(): Food
 {
     return mealFood('Chicken breast', 120, 23, 2, 0, ['fillet', 150], 0.75);
 }
 
-function oliveOil(): Food
+function mealOil(): Food
 {
     return mealFood('Olive oil', 884, 0, 100, 0, ['tbsp', 13.5]);
 }
 
-function whiteRice(): Food
+function mealRice(): Food
 {
     return mealFood('White rice', 130, 2.7, 0.3, 28, ['cup', 158]);
 }
@@ -66,7 +67,7 @@ function whiteRice(): Food
  * @param  list<array{food: Food, grams: float, position?: int, cooked?: bool, locked?: bool, unit?: string, id?: int}>  $foods
  * @param  list<array{servings: float, position: int, locked?: bool}>  $recipes  servings of TodayWorld's chili
  */
-function planMeal(TodaySnapshot $snapshot, string $mealId, array $foods = [], array $recipes = []): void
+function mealPlan(TodaySnapshot $snapshot, string $mealId, array $foods = [], array $recipes = []): void
 {
     $planned = [];
     foreach ($foods as $index => $entry) {
@@ -85,7 +86,7 @@ function planMeal(TodaySnapshot $snapshot, string $mealId, array $foods = [], ar
 }
 
 /** @param  array<string, ?string>  $times  meal id => "HH:MM" or null */
-function retime(TodaySnapshot $snapshot, array $times, string $date = W::TODAY): void
+function mealRetime(TodaySnapshot $snapshot, array $times, string $date = W::TODAY): void
 {
     $target = $snapshot->dayTarget(TrainSnapshot::day($date));
     $meals = $target->meals;
@@ -98,13 +99,13 @@ function retime(TodaySnapshot $snapshot, array $times, string $date = W::TODAY):
 }
 
 /** Dinner planned at `$kcalPercent` of its calories and `$proteinPercent` of its protein: whey sets the protein, oil tops up. */
-function dinnerAt(float $kcalPercent, float $proteinPercent): TodaySnapshot
+function mealDinnerAt(float $kcalPercent, float $proteinPercent): TodaySnapshot
 {
     $snapshot = W::snapshot();
     $whey = 68 * $proteinPercent / 100 / 0.8;
-    planMeal($snapshot, DINNER, [
+    mealPlan($snapshot, MEAL_DINNER, [
         ['food' => W::food('whey'), 'grams' => $whey],
-        ['food' => oliveOil(), 'grams' => (1040 * $kcalPercent / 100 - $whey * 4) / 8.84],
+        ['food' => mealOil(), 'grams' => (1040 * $kcalPercent / 100 - $whey * 4) / 8.84],
     ]);
 
     return $snapshot;
@@ -113,7 +114,7 @@ function dinnerAt(float $kcalPercent, float $proteinPercent): TodaySnapshot
 // MARK: MEAL-001
 
 it('MEAL-001 shows four bars of the planned totals against the meal target, in whole numbers', function () {
-    $payload = mealShow(W::snapshot(), BREAKFAST);
+    $payload = mealShow(W::snapshot(), MEAL_BREAKFAST);
 
     // 80 g oats and 30 g whey: 424 kcal, 34.4 P, 7.4 F, 55.2 C against 780 kcal, 51 P, 21 F, 96 C.
     expect(array_column($payload['bars'], 'label'))->toBe(['Cal', 'P', 'F', 'C'])
@@ -123,9 +124,9 @@ it('MEAL-001 shows four bars of the planned totals against the meal target, in w
 });
 
 it('MEAL-001 shows the meal\'s id, name and time', function () {
-    $payload = mealShow(W::snapshot(), DINNER);
+    $payload = mealShow(W::snapshot(), MEAL_DINNER);
 
-    expect($payload['meal_id'])->toBe(DINNER)
+    expect($payload['meal_id'])->toBe(MEAL_DINNER)
         ->and($payload['title'])->toBe('Dinner')
         ->and($payload['time_text'])->toBe('7:30 PM');
 });
@@ -138,14 +139,14 @@ it('MEAL-001 a meal without a name or time is "Meal n" with no time', function (
     $meals[2]['time'] = null;
     $target->forceFill(['meals' => $meals]);
 
-    $payload = mealShow($snapshot, DINNER);
+    $payload = mealShow($snapshot, MEAL_DINNER);
 
     expect($payload['title'])->toBe('Meal 3')
         ->and($payload['time_text'])->toBeNull();
 });
 
 it('MEAL-001 a meal with nothing planned shows empty bars and no entries', function () {
-    $payload = mealShow(W::snapshot(), DINNER);
+    $payload = mealShow(W::snapshot(), MEAL_DINNER);
 
     expect(array_column($payload['bars'], 'value_text'))->toBe(['0/1040', '0/68', '0/28', '0/128'])
         ->and(array_column($payload['bars'], 'fraction'))->toBe([0.0, 0.0, 0.0, 0.0])
@@ -154,16 +155,16 @@ it('MEAL-001 a meal with nothing planned shows empty bars and no entries', funct
 
 it('MEAL-001 a bar is full, never more, when the meal is over its target', function () {
     $snapshot = W::snapshot();
-    planMeal($snapshot, DINNER, [['food' => oliveOil(), 'grams' => 200]]);
+    mealPlan($snapshot, MEAL_DINNER, [['food' => mealOil(), 'grams' => 200]]);
 
-    expect(mealShow($snapshot, DINNER)['bars'][2])->toBe(['label' => 'F', 'value_text' => '200/28', 'fraction' => 1.0, 'tone' => 'neutral']);
+    expect(mealShow($snapshot, MEAL_DINNER)['bars'][2])->toBe(['label' => 'F', 'value_text' => '200/28', 'fraction' => 1.0, 'tone' => 'neutral']);
 });
 
 it('MEAL-001 a food row shows its name, amount and macros, keyed by its row', function () {
     $snapshot = W::snapshot();
-    planMeal($snapshot, DINNER, [['food' => chicken(), 'grams' => 296, 'locked' => true, 'id' => 41]]);
+    mealPlan($snapshot, MEAL_DINNER, [['food' => mealChicken(), 'grams' => 296, 'locked' => true, 'id' => 41]]);
 
-    expect(mealShow($snapshot, DINNER)['entries'])->toBe([[
+    expect(mealShow($snapshot, MEAL_DINNER)['entries'])->toBe([[
         'id' => '41',
         'kind' => 'food',
         'name' => 'Chicken breast',
@@ -180,18 +181,18 @@ it('MEAL-001 a food row shows its name, amount and macros, keyed by its row', fu
 it('MEAL-001 FOOD-005 the amount shows grams with the household unit beside it, counted raw', function () {
     $snapshot = W::snapshot();
     // 150 g cooked chicken is 200 g raw, 1.3 fillets of 150 g; one tablespoon of oil is singular.
-    planMeal($snapshot, DINNER, [
-        ['food' => chicken(), 'grams' => 150, 'cooked' => true],
-        ['food' => oliveOil(), 'grams' => 13.5],
+    mealPlan($snapshot, MEAL_DINNER, [
+        ['food' => mealChicken(), 'grams' => 150, 'cooked' => true],
+        ['food' => mealOil(), 'grams' => 13.5],
     ]);
-    $entries = mealShow($snapshot, DINNER)['entries'];
+    $entries = mealShow($snapshot, MEAL_DINNER)['entries'];
 
     expect(array_column($entries, 'amount_text'))->toBe(['150 g (about 1.3 fillets)', '14 g (about 1 tbsp)'])
         ->and(array_column($entries, 'weighing'))->toBe(['cooked', 'raw']);
 });
 
 it('MEAL-001 FOOD-005 a food without a household unit shows grams only', function () {
-    $entry = mealShow(W::snapshot(), BREAKFAST)['entries'][0];
+    $entry = mealShow(W::snapshot(), MEAL_BREAKFAST)['entries'][0];
 
     expect($entry['name'])->toBe('Oats')
         ->and($entry['amount_text'])->toBe('80 g')
@@ -202,8 +203,8 @@ it('MEAL-001 FOOD-005 a food without a household unit shows grams only', functio
 
 it('MEAL-001 FOOD-009 a food planned in ounces opens its amount in ounces', function () {
     $snapshot = W::snapshot();
-    planMeal($snapshot, DINNER, [['food' => chicken(), 'grams' => 170.1, 'unit' => 'oz']]);
-    $entry = mealShow($snapshot, DINNER)['entries'][0];
+    mealPlan($snapshot, MEAL_DINNER, [['food' => mealChicken(), 'grams' => 170.1, 'unit' => 'oz']]);
+    $entry = mealShow($snapshot, MEAL_DINNER)['entries'][0];
 
     expect($entry['amount_unit'])->toBe('oz')
         ->and($entry['amount'])->toBe(6.0)
@@ -212,11 +213,11 @@ it('MEAL-001 FOOD-009 a food planned in ounces opens its amount in ounces', func
 
 it('MEAL-001 RCP-002 recipe servings are rows among the foods, in their shared order', function () {
     $snapshot = W::snapshot();
-    planMeal($snapshot, DINNER,
-        [['food' => chicken(), 'grams' => 150, 'position' => 0], ['food' => whiteRice(), 'grams' => 80, 'position' => 2]],
+    mealPlan($snapshot, MEAL_DINNER,
+        [['food' => mealChicken(), 'grams' => 150, 'position' => 0], ['food' => mealRice(), 'grams' => 80, 'position' => 2]],
         [['servings' => 1.5, 'position' => 1, 'locked' => true]],
     );
-    $entries = mealShow($snapshot, DINNER)['entries'];
+    $entries = mealShow($snapshot, MEAL_DINNER)['entries'];
 
     expect(array_column($entries, 'name'))->toBe(['Chicken breast', 'Chili', 'White rice'])
         ->and($entries[1])->toBe([
@@ -236,9 +237,9 @@ it('MEAL-001 RCP-002 recipe servings are rows among the foods, in their shared o
 
 it('MEAL-001 RCP-002 one serving is singular', function () {
     $snapshot = W::snapshot();
-    planMeal($snapshot, DINNER, recipes: [['servings' => 1, 'position' => 0]]);
+    mealPlan($snapshot, MEAL_DINNER, recipes: [['servings' => 1, 'position' => 0]]);
 
-    expect(mealShow($snapshot, DINNER)['entries'][0]['amount_text'])->toBe('1 serving');
+    expect(mealShow($snapshot, MEAL_DINNER)['entries'][0]['amount_text'])->toBe('1 serving');
 });
 
 // MARK: MEAL-003
@@ -246,32 +247,32 @@ it('MEAL-001 RCP-002 one serving is singular', function () {
 it('MEAL-003 shows Targets met once every macro is within 5 g', function () {
     $snapshot = W::snapshot();
     // 100 g of the mix is exactly breakfast's targets.
-    planMeal($snapshot, BREAKFAST, [['food' => W::food('fit'), 'grams' => 104]]);
+    mealPlan($snapshot, MEAL_BREAKFAST, [['food' => W::food('fit'), 'grams' => 104]]);
 
-    expect(mealShow($snapshot, BREAKFAST)['targets_met'])->toBe(['text' => 'Targets met', 'tone' => 'good']);
+    expect(mealShow($snapshot, MEAL_BREAKFAST)['targets_met'])->toBe(['text' => 'Targets met', 'tone' => 'good']);
 });
 
 it('MEAL-003 shows no Targets met when a macro is more than 5 g off', function () {
     $snapshot = W::snapshot();
     // 34.4 g protein against 51.
-    expect(mealShow($snapshot, BREAKFAST)['targets_met'])->toBeNull();
+    expect(mealShow($snapshot, MEAL_BREAKFAST)['targets_met'])->toBeNull();
 
-    planMeal($snapshot, BREAKFAST, [['food' => W::food('fit'), 'grams' => 110]]);
+    mealPlan($snapshot, MEAL_BREAKFAST, [['food' => W::food('fit'), 'grams' => 110]]);
     // 56.1 g protein against 51.
-    expect(mealShow($snapshot, BREAKFAST)['targets_met'])->toBeNull();
+    expect(mealShow($snapshot, MEAL_BREAKFAST)['targets_met'])->toBeNull();
 });
 
 it('MEAL-003 shows no Targets met on an empty meal, even with targets of zero', function () {
-    expect(mealShow(W::snapshot(), DINNER)['targets_met'])->toBeNull();
+    expect(mealShow(W::snapshot(), MEAL_DINNER)['targets_met'])->toBeNull();
 });
 
 // MARK: MEAL-007
 
 it('MEAL-007 names a macro the chosen foods cannot reach and the group to add from', function () {
     $snapshot = W::snapshot();
-    planMeal($snapshot, DINNER, [['food' => chicken(), 'grams' => 296], ['food' => oliveOil(), 'grams' => 22]]);
+    mealPlan($snapshot, MEAL_DINNER, [['food' => mealChicken(), 'grams' => 296], ['food' => mealOil(), 'grams' => 22]]);
 
-    expect(mealShow($snapshot, DINNER)['hints'])->toBe([
+    expect(mealShow($snapshot, MEAL_DINNER)['hints'])->toBe([
         ['text' => 'Short 128 g carbs. Add a food from Carbs · Recommended.', 'group' => 'carbs_recommended'],
     ]);
 });
@@ -279,12 +280,12 @@ it('MEAL-007 names a macro the chosen foods cannot reach and the group to add fr
 it('MEAL-007 judges what the foods can reach, not the amounts they hold', function () {
     $snapshot = W::snapshot();
     // Far off the targets, but a Rebalance of the same foods gets there.
-    planMeal($snapshot, DINNER, [
-        ['food' => chicken(), 'grams' => 50, 'cooked' => true],
-        ['food' => whiteRice(), 'grams' => 50],
-        ['food' => oliveOil(), 'grams' => 5],
+    mealPlan($snapshot, MEAL_DINNER, [
+        ['food' => mealChicken(), 'grams' => 50, 'cooked' => true],
+        ['food' => mealRice(), 'grams' => 50],
+        ['food' => mealOil(), 'grams' => 5],
     ]);
-    $payload = mealShow($snapshot, DINNER);
+    $payload = mealShow($snapshot, MEAL_DINNER);
 
     expect($payload['targets_met'])->toBeNull()
         ->and($payload['hints'])->toBe([]);
@@ -293,24 +294,24 @@ it('MEAL-007 judges what the foods can reach, not the amounts they hold', functi
 it('MEAL-007 gives every short macro its own hint, and a locked food counts at its locked amount', function () {
     $snapshot = W::snapshot();
     // 10 g of oil held in place is all fat: protein, fat and carbs are short.
-    planMeal($snapshot, DINNER, [['food' => oliveOil(), 'grams' => 10, 'locked' => true]]);
+    mealPlan($snapshot, MEAL_DINNER, [['food' => mealOil(), 'grams' => 10, 'locked' => true]]);
 
-    expect(array_column(mealShow($snapshot, DINNER)['hints'], 'group'))->toBe(['protein_recommended', 'fat_recommended', 'carbs_recommended'])
-        ->and(mealShow($snapshot, DINNER)['hints'][1]['text'])->toBe('Short 18 g fat. Add a food from Fat · Recommended.');
+    expect(array_column(mealShow($snapshot, MEAL_DINNER)['hints'], 'group'))->toBe(['protein_recommended', 'fat_recommended', 'carbs_recommended'])
+        ->and(mealShow($snapshot, MEAL_DINNER)['hints'][1]['text'])->toBe('Short 18 g fat. Add a food from Fat · Recommended.');
 });
 
 it('MEAL-007 shows no hint on an empty meal or once the targets are met', function () {
     $snapshot = W::snapshot();
-    planMeal($snapshot, BREAKFAST, [['food' => W::food('fit'), 'grams' => 100]]);
+    mealPlan($snapshot, MEAL_BREAKFAST, [['food' => W::food('fit'), 'grams' => 100]]);
 
-    expect(mealShow($snapshot, DINNER)['hints'])->toBe([])
-        ->and(mealShow($snapshot, BREAKFAST)['hints'])->toBe([]);
+    expect(mealShow($snapshot, MEAL_DINNER)['hints'])->toBe([])
+        ->and(mealShow($snapshot, MEAL_BREAKFAST)['hints'])->toBe([]);
 });
 
 // MARK: MEAL-009
 
 /** @return list<array{item: string, title: string, is_enabled: bool}> Today's card menu for the meal, as the meal screen names its fields */
-function todayMenu(TodaySnapshot $snapshot, string $mealId): array
+function mealTodayMenu(TodaySnapshot $snapshot, string $mealId): array
 {
     $meal = collect(TodayPayload::build($snapshot)->toArray()['meals'])->firstWhere('id', $mealId);
 
@@ -318,30 +319,30 @@ function todayMenu(TodaySnapshot $snapshot, string $mealId): array
 }
 
 /** @return array<string, bool> */
-function menuEnabled(array $payload): array
+function mealMenuEnabled(array $payload): array
 {
     return array_column($payload['menu'], 'is_enabled', 'item');
 }
 
 it('MEAL-009 lists the ten menu items in spec order', function () {
-    expect(array_column(mealShow(W::snapshot(), BREAKFAST)['menu'], 'title'))->toBe([
+    expect(array_column(mealShow(W::snapshot(), MEAL_BREAKFAST)['menu'], 'title'))->toBe([
         'Edit macros/time', 'Load saved meal', 'Save as saved meal', 'Copy foods', 'Remove foods',
         'Check in meal', 'Check in at manual macros', 'Remove check-in', 'Still planning foods', 'Delete meal',
     ]);
 });
 
 it('MEAL-009 the meal screen and Today\'s card share one menu', function () {
-    $snapshot = W::snapshot(states: [BREAKFAST => 'still_planning']);
-    planMeal($snapshot, DINNER, recipes: [['servings' => 1.5, 'position' => 0]]);
+    $snapshot = W::snapshot(states: [MEAL_BREAKFAST => 'still_planning']);
+    mealPlan($snapshot, MEAL_DINNER, recipes: [['servings' => 1.5, 'position' => 0]]);
 
-    foreach ([BREAKFAST, LUNCH, DINNER] as $id) {
-        expect(mealShow($snapshot, $id)['menu'])->toBe(todayMenu($snapshot, $id), $id);
+    foreach ([MEAL_BREAKFAST, MEAL_LUNCH, MEAL_DINNER] as $id) {
+        expect(mealShow($snapshot, $id)['menu'])->toBe(mealTodayMenu($snapshot, $id), $id);
     }
-    expect(array_column(mealShow($snapshot, BREAKFAST)['menu'], 'title', 'item')['done_planning'])->toBe('Done planning foods');
+    expect(array_column(mealShow($snapshot, MEAL_BREAKFAST)['menu'], 'title', 'item')['done_planning'])->toBe('Done planning foods');
 });
 
 it('MEAL-009 actions that need foods are off on an empty meal', function () {
-    $enabled = menuEnabled(mealShow(W::snapshot(), DINNER));
+    $enabled = mealMenuEnabled(mealShow(W::snapshot(), MEAL_DINNER));
 
     expect($enabled)->toBe([
         'edit_macros_time' => true, 'load_saved_meal' => true, 'save_as_saved_meal' => false, 'copy_foods' => false,
@@ -352,8 +353,8 @@ it('MEAL-009 actions that need foods are off on an empty meal', function () {
 
 it('MEAL-009 copy foods is on for a meal of only recipe servings, which saved meals cannot hold', function () {
     $snapshot = W::snapshot();
-    planMeal($snapshot, DINNER, recipes: [['servings' => 1.5, 'position' => 0]]);
-    $enabled = menuEnabled(mealShow($snapshot, DINNER));
+    mealPlan($snapshot, MEAL_DINNER, recipes: [['servings' => 1.5, 'position' => 0]]);
+    $enabled = mealMenuEnabled(mealShow($snapshot, MEAL_DINNER));
 
     expect($enabled['copy_foods'])->toBeTrue()
         ->and($enabled['save_as_saved_meal'])->toBeFalse()
@@ -363,25 +364,25 @@ it('MEAL-009 copy foods is on for a meal of only recipe servings, which saved me
 it('MEAL-009 a checked-in meal offers Remove check-in instead of Check in', function () {
     $snapshot = W::snapshot();
 
-    expect(menuEnabled(mealShow($snapshot, LUNCH)))->toMatchArray(['check_in_meal' => false, 'remove_check_in' => true])
-        ->and(menuEnabled(mealShow($snapshot, BREAKFAST)))->toMatchArray(['check_in_meal' => true, 'remove_check_in' => false]);
+    expect(mealMenuEnabled(mealShow($snapshot, MEAL_LUNCH)))->toMatchArray(['check_in_meal' => false, 'remove_check_in' => true])
+        ->and(mealMenuEnabled(mealShow($snapshot, MEAL_BREAKFAST)))->toMatchArray(['check_in_meal' => true, 'remove_check_in' => false]);
 });
 
 it('MEAL-009 DAY-003 MEAL-045 a meal still being planned that misses its targets is badged and cannot be checked in', function () {
-    $payload = mealShow(W::snapshot(states: [BREAKFAST => 'still_planning']), BREAKFAST);
+    $payload = mealShow(W::snapshot(states: [MEAL_BREAKFAST => 'still_planning']), MEAL_BREAKFAST);
 
     expect($payload['adjust_badge'])->toBe(['text' => 'Adjust foods', 'tone' => 'warning'])
-        ->and(menuEnabled($payload)['check_in_meal'])->toBeFalse()
-        ->and(mealShow(W::snapshot(), BREAKFAST)['adjust_badge'])->toBeNull();
+        ->and(mealMenuEnabled($payload)['check_in_meal'])->toBeFalse()
+        ->and(mealShow(W::snapshot(), MEAL_BREAKFAST)['adjust_badge'])->toBeNull();
 });
 
 // MARK: MEAL-010
 
 it('MEAL-010 the meal just after the workout is post-workout, with the workout\'s time and the help text', function () {
     $snapshot = W::snapshot();
-    retime($snapshot, [DINNER => '18:30']);
+    mealRetime($snapshot, [MEAL_DINNER => '18:30']);
 
-    expect(mealShow($snapshot, DINNER)['peri_workout'])->toBe([
+    expect(mealShow($snapshot, MEAL_DINNER)['peri_workout'])->toBe([
         'kind' => 'post', 'title' => 'Post-workout', 'detail' => 'Workout 5:30 PM', 'help' => "These meals carry most of the day's carbs.",
     ]);
 });
@@ -389,65 +390,65 @@ it('MEAL-010 the meal just after the workout is post-workout, with the workout\'
 it('MEAL-010 the meals far from the workout have no tag', function () {
     $snapshot = W::snapshot();
 
-    foreach ([BREAKFAST, LUNCH, DINNER] as $id) {
+    foreach ([MEAL_BREAKFAST, MEAL_LUNCH, MEAL_DINNER] as $id) {
         expect(mealShow($snapshot, $id)['peri_workout'])->toBeNull($id);
     }
 });
 
 it('MEAL-010 the meal within three hours before the workout is pre-workout, three hours to the minute', function () {
     $snapshot = W::snapshot();
-    retime($snapshot, [LUNCH => '14:30']);
-    expect(mealShow($snapshot, LUNCH)['peri_workout']['kind'] ?? null)->toBe('pre')
-        ->and(mealShow($snapshot, LUNCH)['peri_workout']['title'] ?? null)->toBe('Pre-workout');
+    mealRetime($snapshot, [MEAL_LUNCH => '14:30']);
+    expect(mealShow($snapshot, MEAL_LUNCH)['peri_workout']['kind'] ?? null)->toBe('pre')
+        ->and(mealShow($snapshot, MEAL_LUNCH)['peri_workout']['title'] ?? null)->toBe('Pre-workout');
 
-    retime($snapshot, [LUNCH => '14:29']);
-    expect(mealShow($snapshot, LUNCH)['peri_workout'])->toBeNull();
+    mealRetime($snapshot, [MEAL_LUNCH => '14:29']);
+    expect(mealShow($snapshot, MEAL_LUNCH)['peri_workout'])->toBeNull();
 });
 
 it('MEAL-010 only the latest meal before the workout is pre-workout', function () {
     $snapshot = W::snapshot();
-    retime($snapshot, [BREAKFAST => '15:00', LUNCH => '16:30']);
+    mealRetime($snapshot, [MEAL_BREAKFAST => '15:00', MEAL_LUNCH => '16:30']);
 
-    expect(mealShow($snapshot, BREAKFAST)['peri_workout'])->toBeNull()
-        ->and(mealShow($snapshot, LUNCH)['peri_workout']['kind'] ?? null)->toBe('pre');
+    expect(mealShow($snapshot, MEAL_BREAKFAST)['peri_workout'])->toBeNull()
+        ->and(mealShow($snapshot, MEAL_LUNCH)['peri_workout']['kind'] ?? null)->toBe('pre');
 });
 
 it('MEAL-010 post-workout reaches at most an hour after the workout ends', function () {
     $snapshot = W::snapshot();
 
     foreach (['18:00' => 'post', '19:00' => 'post', '19:01' => null] as $time => $kind) {
-        retime($snapshot, [DINNER => $time]);
-        expect(mealShow($snapshot, DINNER)['peri_workout']['kind'] ?? null)->toBe($kind, $time);
+        mealRetime($snapshot, [MEAL_DINNER => $time]);
+        expect(mealShow($snapshot, MEAL_DINNER)['peri_workout']['kind'] ?? null)->toBe($kind, $time);
     }
 });
 
 it('MEAL-010 only the earliest meal after the workout is post-workout', function () {
     $snapshot = W::snapshot();
-    retime($snapshot, [LUNCH => '18:15', DINNER => '18:45']);
+    mealRetime($snapshot, [MEAL_LUNCH => '18:15', MEAL_DINNER => '18:45']);
 
-    expect(mealShow($snapshot, LUNCH)['peri_workout']['kind'] ?? null)->toBe('post')
-        ->and(mealShow($snapshot, DINNER)['peri_workout'])->toBeNull();
+    expect(mealShow($snapshot, MEAL_LUNCH)['peri_workout']['kind'] ?? null)->toBe('post')
+        ->and(mealShow($snapshot, MEAL_DINNER)['peri_workout'])->toBeNull();
 });
 
 it('MEAL-010 a meal during the workout, on a rest day or without a time has no tag', function () {
     $snapshot = W::snapshot();
-    retime($snapshot, [LUNCH => '17:30', DINNER => '17:45']);
-    expect(mealShow($snapshot, LUNCH)['peri_workout'])->toBeNull()
-        ->and(mealShow($snapshot, DINNER)['peri_workout'])->toBeNull();
+    mealRetime($snapshot, [MEAL_LUNCH => '17:30', MEAL_DINNER => '17:45']);
+    expect(mealShow($snapshot, MEAL_LUNCH)['peri_workout'])->toBeNull()
+        ->and(mealShow($snapshot, MEAL_DINNER)['peri_workout'])->toBeNull();
 
     // Tuesday has no workout.
-    retime($snapshot, ['20260922-0000-4000-8000-000000000003' => '18:30'], '2026-09-22');
+    mealRetime($snapshot, ['20260922-0000-4000-8000-000000000003' => '18:30'], '2026-09-22');
     expect(mealShow($snapshot, '20260922-0000-4000-8000-000000000003', '2026-09-22')['peri_workout'])->toBeNull();
 
-    retime($snapshot, [DINNER => null]);
-    expect(mealShow($snapshot, DINNER)['peri_workout'])->toBeNull();
+    mealRetime($snapshot, [MEAL_DINNER => null]);
+    expect(mealShow($snapshot, MEAL_DINNER)['peri_workout'])->toBeNull();
 });
 
 // MARK: MEAL-011
 
 it('MEAL-011 a meal under target says how far under, calories then protein', function () {
     // 424 kcal against 780 and 34.4 g protein against 51.
-    expect(mealShow(W::snapshot(), BREAKFAST)['pills'])->toBe([
+    expect(mealShow(W::snapshot(), MEAL_BREAKFAST)['pills'])->toBe([
         ['text' => 'Calories 356 under', 'tone' => 'warning'],
         ['text' => 'Protein 17 g under', 'tone' => 'warning'],
     ]);
@@ -455,15 +456,15 @@ it('MEAL-011 a meal under target says how far under, calories then protein', fun
 
 it('MEAL-011 a meal over target says how far over', function () {
     $snapshot = W::snapshot();
-    planMeal($snapshot, BREAKFAST, [['food' => W::food('oats'), 'grams' => 80], ['food' => W::food('whey'), 'grams' => 200]]);
+    mealPlan($snapshot, MEAL_BREAKFAST, [['food' => W::food('oats'), 'grams' => 80], ['food' => W::food('whey'), 'grams' => 200]]);
 
     // 304 + 800 kcal against 780; 10.4 + 160 g protein against 51.
-    expect(array_column(mealShow($snapshot, BREAKFAST)['pills'], 'text'))->toBe(['Calories 324 over', 'Protein 119 g over']);
+    expect(array_column(mealShow($snapshot, MEAL_BREAKFAST)['pills'], 'text'))->toBe(['Calories 324 over', 'Protein 119 g over']);
 });
 
 it('MEAL-011 within ten percent is on track, and exactly ten percent still is', function () {
     foreach ([90.0, 100.0, 110.0] as $percent) {
-        expect(mealShow(dinnerAt($percent, $percent), DINNER)['pills'])->toBe([
+        expect(mealShow(mealDinnerAt($percent, $percent), MEAL_DINNER)['pills'])->toBe([
             ['text' => 'Calories on track', 'tone' => 'good'],
             ['text' => 'Protein on track', 'tone' => 'good'],
         ], "{$percent}%");
@@ -471,13 +472,13 @@ it('MEAL-011 within ten percent is on track, and exactly ten percent still is', 
 });
 
 it('MEAL-011 about twelve percent off says how far, and the two pills are judged apart', function () {
-    expect(array_column(mealShow(dinnerAt(88, 88), DINNER)['pills'], 'text'))->toBe(['Calories 125 under', 'Protein 8 g under'])
-        ->and(array_column(mealShow(dinnerAt(112, 112), DINNER)['pills'], 'text'))->toBe(['Calories 125 over', 'Protein 8 g over'])
-        ->and(array_column(mealShow(dinnerAt(50, 100), DINNER)['pills'], 'text'))->toBe(['Calories 520 under', 'Protein on track']);
+    expect(array_column(mealShow(mealDinnerAt(88, 88), MEAL_DINNER)['pills'], 'text'))->toBe(['Calories 125 under', 'Protein 8 g under'])
+        ->and(array_column(mealShow(mealDinnerAt(112, 112), MEAL_DINNER)['pills'], 'text'))->toBe(['Calories 125 over', 'Protein 8 g over'])
+        ->and(array_column(mealShow(mealDinnerAt(50, 100), MEAL_DINNER)['pills'], 'text'))->toBe(['Calories 520 under', 'Protein on track']);
 });
 
 it('MEAL-011 an empty meal is under on both', function () {
-    expect(array_column(mealShow(W::snapshot(), DINNER)['pills'], 'text'))->toBe(['Calories 1040 under', 'Protein 68 g under']);
+    expect(array_column(mealShow(W::snapshot(), MEAL_DINNER)['pills'], 'text'))->toBe(['Calories 1040 under', 'Protein 68 g under']);
 });
 
 // MARK: MEAL-046
@@ -485,14 +486,14 @@ it('MEAL-011 an empty meal is under on both', function () {
 it('MEAL-046 an empty meal shows the empty state, and a planned one does not', function () {
     $snapshot = W::snapshot();
 
-    expect(mealShow($snapshot, DINNER)['empty'])->toBe([
+    expect(mealShow($snapshot, MEAL_DINNER)['empty'])->toBe([
         'title' => 'Your meal is empty',
         'note' => 'Because this meal has no foods in it, the app assumes you are eating this meal at target macros.',
     ])
-        ->and(mealShow($snapshot, BREAKFAST)['empty'])->toBeNull();
+        ->and(mealShow($snapshot, MEAL_BREAKFAST)['empty'])->toBeNull();
 
-    planMeal($snapshot, DINNER, recipes: [['servings' => 1, 'position' => 0]]);
-    expect(mealShow($snapshot, DINNER)['empty'])->toBeNull();
+    mealPlan($snapshot, MEAL_DINNER, recipes: [['servings' => 1, 'position' => 0]]);
+    expect(mealShow($snapshot, MEAL_DINNER)['empty'])->toBeNull();
 });
 
 // MARK: MEAL-047
@@ -500,8 +501,8 @@ it('MEAL-046 an empty meal shows the empty state, and a planned one does not', f
 it('MEAL-047 shows the check-in state with its text and tone', function () {
     $snapshot = W::snapshot();
 
-    expect(mealShow($snapshot, LUNCH)['check_in'])->toBe(['state' => 'onTrack', 'text' => 'Checked in, on track', 'tone' => 'good'])
-        ->and(mealShow($snapshot, BREAKFAST)['check_in'])->toBe(['state' => 'notCheckedIn', 'text' => 'Not checked in', 'tone' => 'neutral'])
+    expect(mealShow($snapshot, MEAL_LUNCH)['check_in'])->toBe(['state' => 'onTrack', 'text' => 'Checked in, on track', 'tone' => 'good'])
+        ->and(mealShow($snapshot, MEAL_BREAKFAST)['check_in'])->toBe(['state' => 'notCheckedIn', 'text' => 'Not checked in', 'tone' => 'neutral'])
         // Monday: breakfast well under target, lunch well over.
         ->and(mealShow($snapshot, '20260921-0000-4000-8000-000000000001', '2026-09-21')['check_in'])->toBe(['state' => 'under', 'text' => 'Checked in, under target', 'tone' => 'warning'])
         ->and(mealShow($snapshot, '20260921-0000-4000-8000-000000000002', '2026-09-21')['check_in'])->toBe(['state' => 'over', 'text' => 'Checked in, over target', 'tone' => 'warning']);
@@ -509,4 +510,4 @@ it('MEAL-047 shows the check-in state with its text and tone', function () {
 
 it('MEAL-047 answers not found for a meal that is not on the day', function () {
     mealShow(W::snapshot(), 'no-such-meal');
-})->throws(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+})->throws(ModelNotFoundException::class);
