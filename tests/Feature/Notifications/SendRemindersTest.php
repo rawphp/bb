@@ -17,6 +17,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Tests\Support\TodaySeed;
@@ -238,17 +239,60 @@ it('NOTIF-002 a meal moved earlier, inside the window, after its reminder went o
     expect(sentLines($user))->toBe(['Lunch | Time to eat | /today?date=2026-09-24']);
 });
 
-it('NOTIF-001 a queued pass that runs more than 10 minutes late sends nothing, and the newest pass covers it', function () {
+it('NOTIF-001 a queued pass judges what is due when it runs, and one more than 10 minutes late is dropped and logged', function () {
     $user = remindedUser();
-    $job = new SendUserReminders($user, CarbonImmutable::parse('2026-09-26 07:00:00'));
+    $queuedAt = CarbonImmutable::parse('2026-09-26 07:00:00');
 
+    // 11 minutes late: the 07:00 weigh-in is past the window, and the pass is dropped without reading the plan.
+    Log::spy();
     Carbon::setTestNow('2026-09-26 07:11:00');
-    app()->call([$job, 'handle']);
+    app()->call([new SendUserReminders($user, $queuedAt), 'handle']);
     expect(sentLines($user))->toBe([]);
+    Log::shouldHaveReceived('warning')->once();
 
-    Carbon::setTestNow('2026-09-26 07:05:00');
-    app()->call([$job, 'handle']);
+    // 9 minutes late: what fell due in the 10 minutes before it runs still goes out.
+    Carbon::setTestNow('2026-09-26 07:09:00');
+    app()->call([new SendUserReminders($user, $queuedAt), 'handle']);
     expect(sentLines($user))->toBe(['Weigh-in | Time to weigh in | /today?date=2026-09-26&open=weigh-in']);
+});
+
+it('NOTIF-001 a pass run late does not send what fell due more than 10 minutes before it ran', function () {
+    $user = remindedUser();
+    WeighInScheduleEntry::query()->where('user_id', $user->id)->update(['time' => '06:55']);
+
+    Carbon::setTestNow('2026-09-26 07:09:00');
+    app()->call([new SendUserReminders($user, CarbonImmutable::parse('2026-09-26 07:00:00')), 'handle']);
+
+    expect(sentLines($user))->toBe([]);
+});
+
+it('NOTIF-001 two passes at once send a reminder once: the unique key stops the second claim', function () {
+    $user = remindedUser();
+    // Another pass claimed it between this pass's check and its insert.
+    SentReminder::query()->create(['user_id' => $user->id, 'reminder_id' => 'weigh-in-2026-09-26', 'due_at' => '2026-09-26 07:00:00', 'sent_at' => '2026-09-26 06:59:00']);
+
+    Carbon::setTestNow('2026-09-26 07:00:00');
+    app(SendDueReminders::class)($user, CarbonImmutable::now());
+
+    expect(sentLines($user))->toBe([])
+        ->and(SentReminder::query()->where('user_id', $user->id)->count())->toBe(1);
+});
+
+it('NOTIF-002 a reminder sent late and then moved earlier is not sent again', function () {
+    $user = remindedUser();
+
+    // Meals switched on at 12:37, so the 12:30 lunch first goes out with the 12:38 pass.
+    Carbon::setTestNow('2026-09-24 12:38:00');
+    NotificationPref::query()->create(['user_id' => $user->id, 'kind' => 'meal', 'on' => true]);
+    app(SendDueReminders::class)($user, CarbonImmutable::now());
+    $day = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-24')->sole();
+    $meals = $day->meals;
+    $meals[1]['time'] = '12:35';
+    $day->update(['meals' => $meals]);
+    Carbon::setTestNow('2026-09-24 12:39:00');
+    app(SendDueReminders::class)($user, CarbonImmutable::now());
+
+    expect(sentLines($user))->toBe(['Lunch | Time to eat | /today?date=2026-09-24']);
 });
 
 it('NOTIF-001 a pass just after midnight still sends what fell due late the evening before', function () {
@@ -328,12 +372,15 @@ it('NOTIF-001 nothing is sent before the plan starts, or before the profile exis
 
 it('NOTIF-001 reminders:send reaches every user with a subscribed browser, and only them', function () {
     $subscribed = remindedUser();
+    $alsoSubscribed = remindedUser();
     $unsubscribed = TodaySeed::user();
 
     Carbon::setTestNow('2026-09-26 07:00:00');
     $this->artisan('reminders:send')->assertSuccessful();
 
-    expect(sentLines($subscribed))->toHaveCount(1)
+    // Both have the same plan, so the same reminder id: one user's send does not count as the other's.
+    expect(sentLines($subscribed))->toBe(['Weigh-in | Time to weigh in | /today?date=2026-09-26&open=weigh-in'])
+        ->and(sentLines($alsoSubscribed))->toBe(['Weigh-in | Time to weigh in | /today?date=2026-09-26&open=weigh-in'])
         ->and(SentReminder::query()->where('user_id', $unsubscribed->id)->count())->toBe(0);
     Notification::assertNotSentTo($unsubscribed, PushNotification::class);
 });
