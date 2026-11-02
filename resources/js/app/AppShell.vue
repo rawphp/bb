@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue';
+import { SHEET_HOST_ID, TOAST_HOST_ID } from './hosts';
 import { useNavigation } from './navigation';
 import TabBar from './TabBar.vue';
 import TabStack from './TabStack.vue';
@@ -24,7 +25,7 @@ const nav = useNavigation();
         </div>
         <div class="bb-above-tabs">
             <div class="bb-floating">
-                <div id="bb-toast-host" class="bb-toast-host" role="status" aria-live="polite" />
+                <div :id="TOAST_HOST_ID" class="bb-toast-host" role="status" aria-live="polite" />
                 <div class="bb-coach-slot">
                     <slot name="coach"><component :is="CoachButton" v-if="CoachButton" /></slot>
                 </div>
@@ -32,6 +33,6 @@ const nav = useNavigation();
             <slot name="active-workout"><component :is="ActiveWorkoutBar" v-if="ActiveWorkoutBar" /></slot>
         </div>
         <TabBar />
-        <div id="bb-sheet-host" class="bb-sheet-host" />
+        <div :id="SHEET_HOST_ID" class="bb-sheet-host" />
     </div>
 </template>

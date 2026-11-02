@@ -62,6 +62,12 @@ describe('router', () => {
         }
     });
 
+    it('NAV-001 links a tab\'s screens from its placeholder root until the tab has its own', () => {
+        const more = routesFor(false).find((route) => route.path === '/more');
+
+        expect(more?.props).toMatchObject({ label: 'More', links: ['/account'] });
+    });
+
     it('PWA-025 gives each router its navigation', () => {
         const router = makeRouter(false, createMemoryHistory());
         let navigation: unknown;

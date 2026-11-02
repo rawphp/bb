@@ -1,4 +1,4 @@
-import { reactive } from 'vue';
+import { markRaw, reactive } from 'vue';
 import { useRouter, type RouteLocationNormalizedLoaded, type Router } from 'vue-router';
 import type { TrackedHistory } from './history';
 import { HOME_TAB, TABS, tabAtRoot, tabPath, type TabId } from './tabs';
@@ -54,7 +54,8 @@ export function createNavigation(router: Router, history: TrackedHistory): Navig
     let settle: (() => void) | undefined;
     let queue: Promise<void> = Promise.resolve();
 
-    const screen = (route: RouteLocationNormalizedLoaded): Screen => ({ key: ++key, route });
+    // The route stays raw: a reactive copy would proxy its components for RouterView.
+    const screen = (route: RouteLocationNormalizedLoaded): Screen => ({ key: ++key, route: markRaw(route) });
     const stack = (): Screen[] => state.stacks[state.active];
     const current = (): RouteLocationNormalizedLoaded => router.currentRoute.value;
 
@@ -134,8 +135,9 @@ export function createNavigation(router: Router, history: TrackedHistory): Navig
     }
 
     // A link to a tab's root (a RouterLink, or a pushed path) is a tab bar tap.
+    // From a screen outside the shell it is not: afterEach lands it instead.
     router.beforeEach((to, from) => {
-        if (syncing || from.matched.length === 0 || history.peekOp()?.type === 'pop') return true;
+        if (syncing || from.matched.length === 0 || from.meta.shell === false || history.peekOp()?.type === 'pop') return true;
         const tab = tabAtRoot(to.path);
         if (tab === undefined) return true;
         void select(tab);

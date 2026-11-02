@@ -6,6 +6,9 @@ const route = useRoute();
 </script>
 
 <template>
-    <RouterView v-if="route.meta.shell === false" />
+    <!-- The page itself never scrolls (shell.css), so a screen outside the shell scrolls in its own box. -->
+    <div v-if="route.meta.shell === false" class="bb-bare">
+        <RouterView />
+    </div>
     <AppShell v-else />
 </template>

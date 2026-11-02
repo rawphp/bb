@@ -15,3 +15,12 @@ export function startsSwipeBack(x: number, zone: number, depth: number): boolean
 export function swipeGoesBack(dx: number, width: number, velocity: number): boolean {
     return dx > width / 3 || (dx > 16 && velocity > 0.5);
 }
+
+/** How far a finger moves before a touch in the edge zone counts as a swipe or a scroll, in px. */
+export const SLOP_PX = 8;
+
+/** What a touch that started in the edge zone is, once it has moved by (dx, dy). */
+export function swipeIntent(dx: number, dy: number): 'none' | 'swipe' | 'scroll' {
+    if (Math.abs(dx) < SLOP_PX && Math.abs(dy) < SLOP_PX) return 'none';
+    return dx > Math.abs(dy) ? 'swipe' : 'scroll';
+}

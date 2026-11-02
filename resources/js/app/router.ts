@@ -35,14 +35,19 @@ export const featureRoutes: RouteRecordRaw[] = Object.keys(modules)
     .flatMap((path) => modules[path]!.default);
 
 export function routesFor(devRoutes: boolean): RouteRecordRaw[] {
+    const features = featureRoutes.filter((route) => devRoutes || route.meta?.dev !== true);
     return [
         { path: '/', redirect: tabPath(HOME_TAB) },
-        ...featureRoutes.filter((route) => devRoutes || route.meta?.dev !== true),
+        ...features,
         // A placeholder root for each tab whose feature has not declared one yet.
+        // It links the tab's screens that take no params, so they stay reachable until then.
         ...TABS.filter((tab) => !featureRoutes.some((route) => route.path === tab.path)).map((tab) => ({
             path: tab.path,
             component: TabRoot,
-            props: { label: tab.label },
+            props: {
+                label: tab.label,
+                links: features.filter((route) => route.meta?.tab === tab.id && !route.path.includes(':')).map((route) => route.path),
+            },
         })),
         { path: '/:pathMatch(.*)*', component: NotFound },
     ];

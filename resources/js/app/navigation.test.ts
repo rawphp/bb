@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { defineComponent } from 'vue';
-import { createMemoryHistory, createRouter, type Router } from 'vue-router';
+import { defineComponent, isProxy } from 'vue';
+import { createMemoryHistory, createRouter, type Router, type RouterHistory } from 'vue-router';
 import { trackHistory } from './history';
 import { createNavigation, type Navigation } from './navigation';
 import { TABS, type TabId } from './tabs';
 
 const Screen = defineComponent({ render: () => null });
 
-function setup(start = '/today'): { router: Router; nav: Navigation; ready: Promise<void> } {
-    const history = trackHistory(createMemoryHistory());
+function setup(start = '/today', raw: RouterHistory = createMemoryHistory()): { router: Router; nav: Navigation; ready: Promise<void> } {
+    const history = trackHistory(raw);
     const router = createRouter({
         history,
         routes: [
@@ -182,12 +182,91 @@ describe('navigation', () => {
         expect(router.currentRoute.value.fullPath).toBe('/today');
     });
 
-    it('PWA-025 leaves the stacks alone for a screen outside the shell', async () => {
+    it('PWA-025 leaves the stacks alone for a screen outside the shell, and back returns to them', async () => {
         const { router, nav, ready } = setup();
         await ready;
 
         await router.push('/dev/gallery');
-
         expect(paths(nav)).toEqual(['/today']);
+
+        await back(router, nav);
+        expect(nav.state.active).toBe('today');
+        expect(paths(nav)).toEqual(['/today']);
+        expect(router.currentRoute.value.fullPath).toBe('/today');
+    });
+
+    it('PWA-025 opens a deep screen linked from outside the shell over its tab\'s root', async () => {
+        const { router, nav, ready } = setup();
+        await ready;
+        await router.push('/dev/gallery');
+
+        await router.push('/meals/1');
+        await nav.idle();
+
+        expect(nav.state.active).toBe('nutrition');
+        expect(paths(nav)).toEqual(['/nutrition', '/meals/1']);
+        expect(paths(nav, 'today')).toEqual(['/today']);
+        expect(router.currentRoute.value.fullPath).toBe('/meals/1');
+    });
+
+    it('PWA-025 leaves a screen outside the shell for a link to a tab\'s root', async () => {
+        const { router, nav, ready } = setup();
+        await ready;
+        await router.push('/meals/1');
+        await router.push('/dev/gallery');
+
+        await router.push('/');
+        await nav.idle();
+
+        expect(router.currentRoute.value.fullPath).toBe('/today');
+        expect(nav.state.active).toBe('today');
+        expect(paths(nav)).toEqual(['/today']);
+    });
+
+    it('PWA-025 follows browser forward onto the stack', async () => {
+        const { router, nav, ready } = setup();
+        await ready;
+        await router.push('/meals/1');
+        const popped = nav.state.stacks.today[1]!.key;
+        await back(router, nav);
+
+        const done = navigated(router);
+        router.forward();
+        await done;
+        await nav.idle();
+
+        expect(paths(nav)).toEqual(['/today', '/meals/1']);
+        expect(nav.state.stacks.today[1]!.key).not.toBe(popped);
+        expect(router.currentRoute.value.fullPath).toBe('/meals/1');
+    });
+
+    it('PWA-025 starts afresh on browser back to an entry from before a reload', async () => {
+        // The browser still holds /today and /meals/1 from before the reload on /meals/2.
+        const raw = createMemoryHistory();
+        raw.push('/today');
+        raw.push('/meals/1');
+        raw.push('/meals/2');
+        const { router, nav, ready } = setup('/meals/2', raw);
+        await ready;
+        expect(paths(nav)).toEqual(['/nutrition', '/meals/2']);
+
+        await back(router, nav);
+        expect(paths(nav)).toEqual(['/nutrition']);
+
+        await back(router, nav);
+
+        expect(router.currentRoute.value.fullPath).toBe('/meals/1');
+        expect(nav.state.active).toBe('nutrition');
+        expect(paths(nav)).toEqual(['/nutrition', '/meals/1']);
+    });
+
+    it('PWA-020 keeps each screen\'s route raw, so RouterView gets the component itself', async () => {
+        const { router, nav, ready } = setup();
+        await ready;
+        await router.push('/meals/1');
+
+        for (const entry of nav.state.stacks.today) {
+            expect(isProxy(entry.route)).toBe(false);
+        }
     });
 });

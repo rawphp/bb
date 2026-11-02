@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, nextTick } from 'vue';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
 import AppShell from './AppShell.vue';
-import { EDGE_ZONE_PX, SETTLE_MS, startsSwipeBack, swipeGoesBack } from './edgeSwipe';
+import { EDGE_ZONE_PX, SETTLE_MS, startsSwipeBack, swipeGoesBack, swipeIntent } from './edgeSwipe';
 import { trackHistory } from './history';
 import { SHEET_HOST, TOAST_HOST } from './hosts';
 import { KEYPAD } from './keypad';
@@ -37,9 +37,9 @@ async function mountShell(slots = {}): Promise<{ wrapper: VueWrapper; router: Ro
     return { wrapper, router, nav };
 }
 
-function touch(target: Element, type: string, clientX: number): Event {
+function touch(target: Element, type: string, clientX: number, clientY = 300): Event {
     const event = new Event(type, { bubbles: true, cancelable: true });
-    const touches = type === 'touchend' || type === 'touchcancel' ? [] : [{ clientX, clientY: 300 }];
+    const touches = type === 'touchend' || type === 'touchcancel' ? [] : [{ clientX, clientY }];
     Object.defineProperty(event, 'touches', { value: touches });
     target.dispatchEvent(event);
     return event;
@@ -141,18 +141,47 @@ describe('AppShell', () => {
         expect(reduced).toMatch(/transform: none;\s*opacity: 0;/);
     });
 
-    it('PWA-022 claims a touch at the left edge, so the browser\'s own swipe back does not fire', async () => {
+    it('PWA-022 claims a sideways move from the left edge, so the browser\'s own swipe back does not fire', async () => {
         const { wrapper, router } = await mountShell();
         const stack = activeStack(wrapper).element;
 
-        expect(touch(stack, 'touchstart', 5).defaultPrevented).toBe(false);
-        touch(stack, 'touchend', 5);
+        touch(stack, 'touchstart', 5);
+        expect(touch(stack, 'touchmove', 40).defaultPrevented).toBe(false);
+        touch(stack, 'touchend', 40);
 
         await router.push('/meals/1');
         await nextTick();
-        expect(touch(stack, 'touchstart', 5).defaultPrevented).toBe(true);
-        touch(stack, 'touchcancel', 5);
-        expect(touch(stack, 'touchstart', EDGE_ZONE_PX + 40).defaultPrevented).toBe(false);
+        expect(touch(stack, 'touchstart', 5).defaultPrevented).toBe(false);
+        expect(touch(stack, 'touchmove', 40).defaultPrevented).toBe(true);
+        touch(stack, 'touchcancel', 40);
+
+        touch(stack, 'touchstart', EDGE_ZONE_PX + 40);
+        expect(touch(stack, 'touchmove', EDGE_ZONE_PX + 80).defaultPrevented).toBe(false);
+        touch(stack, 'touchcancel', EDGE_ZONE_PX + 80);
+    });
+
+    it('PWA-022 leaves a tap or a vertical scroll at the left edge to the screen', async () => {
+        const { wrapper, router } = await mountShell();
+        await router.push('/meals/1');
+        await nextTick();
+        vi.useFakeTimers();
+        const stack = activeStack(wrapper).element;
+        const top = stack.querySelector<HTMLElement>('[data-top]')!;
+        const back = vi.spyOn(router, 'back');
+
+        // A tap: the touch is never claimed, so the browser still sends its click.
+        expect(touch(stack, 'touchstart', 5).defaultPrevented).toBe(false);
+        expect(touch(stack, 'touchend', 5).defaultPrevented).toBe(false);
+
+        // A scroll: once it moves mostly down, the rest of the touch is the screen's.
+        touch(stack, 'touchstart', 5, 300);
+        expect(touch(stack, 'touchmove', 9, 340).defaultPrevented).toBe(false);
+        expect(touch(stack, 'touchmove', 200, 360).defaultPrevented).toBe(false);
+        touch(stack, 'touchend', 200);
+        vi.advanceTimersByTime(SETTLE_MS);
+
+        expect(top.style.transform).toBe('');
+        expect(back).not.toHaveBeenCalled();
     });
 
     it('PWA-022 UI-020 narrows the edge zone to 16 px on the workout screen', async () => {
@@ -161,9 +190,12 @@ describe('AppShell', () => {
         await nextTick();
         const stack = activeStack(wrapper).element;
 
-        expect(touch(stack, 'touchstart', 20).defaultPrevented).toBe(false);
-        expect(touch(stack, 'touchstart', 12).defaultPrevented).toBe(true);
-        touch(stack, 'touchcancel', 12);
+        touch(stack, 'touchstart', 20);
+        expect(touch(stack, 'touchmove', 60).defaultPrevented).toBe(false);
+        touch(stack, 'touchcancel', 60);
+        touch(stack, 'touchstart', 12);
+        expect(touch(stack, 'touchmove', 52).defaultPrevented).toBe(true);
+        touch(stack, 'touchcancel', 52);
     });
 
     it('PWA-022 follows the finger and goes back once it is let go far enough', async () => {
@@ -197,10 +229,49 @@ describe('AppShell', () => {
         const back = vi.spyOn(router, 'back');
 
         touch(stack, 'touchstart', 4);
-        touch(stack, 'touchcancel', 4);
+        touch(stack, 'touchmove', 40);
+        touch(stack, 'touchcancel', 40);
         vi.advanceTimersByTime(SETTLE_MS);
 
         expect(top.style.transform).toBe('');
+        expect(back).not.toHaveBeenCalled();
+    });
+
+    it('PWA-022 does not go back if another tab is shown before the swipe settles', async () => {
+        const { wrapper, router, nav } = await mountShell();
+        await router.push('/meals/1');
+        await nextTick();
+        const stack = activeStack(wrapper).element;
+        const top = stack.querySelector<HTMLElement>('[data-top]')!;
+
+        touch(stack, 'touchstart', 4);
+        touch(stack, 'touchmove', 904);
+        touch(stack, 'touchend', 904);
+        await nav.select('train');
+        await router.push('/workouts/1');
+        await nextTick();
+        const back = vi.spyOn(router, 'back');
+        await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 20));
+
+        expect(back).not.toHaveBeenCalled();
+        expect(nav.state.stacks.train.map((s) => s.route.fullPath)).toEqual(['/train', '/workouts/1']);
+        expect(top.style.transform).toBe('');
+    });
+
+    it('PWA-022 does not go back if the shell goes away before the swipe settles', async () => {
+        const { wrapper, router } = await mountShell();
+        await router.push('/meals/1');
+        await nextTick();
+        vi.useFakeTimers();
+        const stack = activeStack(wrapper).element;
+        const back = vi.spyOn(router, 'back');
+
+        touch(stack, 'touchstart', 4);
+        touch(stack, 'touchmove', 904);
+        touch(stack, 'touchend', 904);
+        wrapper.unmount();
+        vi.advanceTimersByTime(SETTLE_MS);
+
         expect(back).not.toHaveBeenCalled();
     });
 
@@ -210,6 +281,10 @@ describe('AppShell', () => {
         expect(swipeGoesBack(140, 390, 0.1)).toBe(true);
         expect(swipeGoesBack(80, 390, 0.1)).toBe(false);
         expect(swipeGoesBack(80, 390, 0.9)).toBe(true);
+        expect(swipeIntent(5, 5)).toBe('none');
+        expect(swipeIntent(12, 4)).toBe('swipe');
+        expect(swipeIntent(4, 12)).toBe('scroll');
+        expect(swipeIntent(-12, 0)).toBe('scroll');
     });
 
     it('PWA-010 uses the safe areas on every edge, with viewport-fit=cover', () => {
@@ -222,6 +297,7 @@ describe('AppShell', () => {
     it('PWA-011 keeps the page still and lets each screen scroll on its own', () => {
         expect(css).toMatch(/html,\s*body\s*{[^}]*overflow: hidden;[^}]*overscroll-behavior: none;/);
         expect(css).toMatch(/\.bb-screen\s*{[^}]*overflow-y: auto;[^}]*overscroll-behavior: contain;/);
+        expect(css).toMatch(/\.bb-bare\s*{[^}]*height: 100%;[^}]*overflow-y: auto;/);
     });
 
     it('PWA-012 stops selection, callouts and tap flashes on controls, but not in fields or content', () => {

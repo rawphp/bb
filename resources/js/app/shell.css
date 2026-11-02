@@ -32,6 +32,14 @@ body {
     background: var(--bb-background);
 }
 
+/* A screen outside the shell (meta.shell false) scrolls in its own box,
+   since the page itself does not. */
+.bb-bare {
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
 /* Controls are not selectable, have no long-press callout and no tap flash (PWA-012).
    Fields and content marked .bb-selectable (articles, notes) stay selectable. */
 .bb-shell {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { EDGE_ZONE_PX, SETTLE_MS, startsSwipeBack, swipeGoesBack } from './edgeSwipe';
+import { EDGE_ZONE_PX, SETTLE_MS, startsSwipeBack, swipeGoesBack, swipeIntent } from './edgeSwipe';
 import { useNavigation } from './navigation';
 import type { TabId } from './tabs';
 
@@ -24,49 +24,70 @@ watch(
     },
 );
 
-let drag: { x0: number; t0: number; dx: number; width: number; el: HTMLElement } | null = null;
+// A touch in the edge zone is a candidate. It becomes a swipe on its first move
+// that is clearly sideways; a tap or a vertical scroll goes to the screen as usual.
+let touch: { x0: number; y0: number; t0: number; el: HTMLElement } | null = null;
+let drag: { x0: number; t0: number; dx: number; width: number; el: HTMLElement; key?: number } | null = null;
+let settling: ReturnType<typeof setTimeout> | undefined;
 
 function onTouchStart(event: TouchEvent) {
-    const touch = event.touches[0];
-    if (!props.active || !root.value || !touch || event.touches.length !== 1) return;
+    touch = null;
+    const point = event.touches[0];
+    if (!props.active || !root.value || !point || event.touches.length !== 1 || drag) return;
     const box = root.value.getBoundingClientRect();
     const zone = screens.value.at(-1)?.route.meta.edgeZone ?? EDGE_ZONE_PX;
-    if (!startsSwipeBack(touch.clientX - box.left, zone, screens.value.length)) return;
+    if (!startsSwipeBack(point.clientX - box.left, zone, screens.value.length)) return;
     const el = topScreen();
-    if (!el) return;
-    // Claiming the touch stops the browser's own swipe back from also firing.
-    event.preventDefault();
-    drag = { x0: touch.clientX, t0: event.timeStamp, dx: 0, width: box.width || window.innerWidth, el };
-    el.style.transition = 'none';
+    if (el) touch = { x0: point.clientX, y0: point.clientY, t0: event.timeStamp, el };
 }
 
 function onTouchMove(event: TouchEvent) {
-    const touch = event.touches[0];
-    if (!drag || !touch) return;
+    const point = event.touches[0];
+    if (!point) return;
+    if (touch) {
+        const intent = swipeIntent(point.clientX - touch.x0, point.clientY - touch.y0);
+        if (intent === 'none') return;
+        const { x0, t0, el } = touch;
+        touch = null;
+        if (intent === 'scroll') return;
+        drag = { x0, t0, dx: 0, width: root.value?.getBoundingClientRect().width || window.innerWidth, el, key: screens.value.at(-1)?.key };
+        el.style.transition = 'none';
+    }
+    if (!drag) return;
+    // Claiming the move stops the browser's own swipe back from also firing.
     event.preventDefault();
-    drag.dx = Math.max(0, touch.clientX - drag.x0);
+    drag.dx = Math.max(0, point.clientX - drag.x0);
     drag.el.style.transform = `translateX(${drag.dx}px)`;
 }
 
+function release(el: HTMLElement) {
+    el.style.transition = '';
+    el.style.transform = '';
+}
+
 function onTouchEnd(event: TouchEvent) {
+    touch = null;
     if (!drag) return;
-    const { el, dx, width, t0 } = drag;
+    const { el, dx, width, t0, key } = drag;
     drag = null;
     const back = event.type === 'touchend' && swipeGoesBack(dx, width, dx / Math.max(1, event.timeStamp - t0));
     el.style.transition = `transform ${SETTLE_MS}ms ease-out`;
     el.style.transform = back ? 'translateX(100%)' : '';
-    setTimeout(() => {
-        if (back) {
+    settling = setTimeout(() => {
+        settling = undefined;
+        // Go back only if the screen this swipe moved is still on top of the
+        // shown tab; after a tab switch or a push in between, put it back.
+        if (back && props.active && screens.value.length > 1 && screens.value.at(-1)?.key === key) {
             nav.back({ animate: false });
         } else {
-            el.style.transition = '';
+            release(el);
         }
     }, SETTLE_MS);
 }
 
 onMounted(() => {
     const el = root.value!;
-    el.addEventListener('touchstart', onTouchStart, { passive: false });
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
     el.addEventListener('touchmove', onTouchMove, { passive: false });
     el.addEventListener('touchend', onTouchEnd);
     el.addEventListener('touchcancel', onTouchEnd);
@@ -78,6 +99,7 @@ onBeforeUnmount(() => {
     el.removeEventListener('touchmove', onTouchMove);
     el.removeEventListener('touchend', onTouchEnd);
     el.removeEventListener('touchcancel', onTouchEnd);
+    clearTimeout(settling);
 });
 </script>
 
