@@ -169,14 +169,15 @@ it('EX-013 dates an exercise by its planned start when the session has no actual
     expect(array_column($data['exercises'], 'id'))->toBe([(string) $curl->id, (string) $row->id, (string) $bench->id]);
 });
 
-it('ANA-007 WO-025 averages a mesocycle\'s sets without a deleted session\'s sets or a logged-and-skipped set', function () {
+it('ANA-007 WO-025 averages a mesocycle\'s sets without a deleted session\'s sets, a logged-and-skipped set or an unlogged one', function () {
     ['user' => $user, 'bench' => $bench] = ProgressSeed::world();
     $cutA = $user->mesocycles()->where('name', 'Cut A')->firstOrFail();
-    // A deleted Cut A session holding three logged Bench sets, and a skipped Bench set in a live Cut A session.
+    // A deleted Cut A session holding three logged Bench sets, and a skipped and an unlogged Bench set in a live one.
     $gone = ProgressSeed::session($user, $cutA, 1, '2026-10-06 09:00:00', [[$bench, 60, 8], [$bench, 60, 8], [$bench, 60, 8]]);
     $gone->delete();
     $live = WorkoutSession::query()->where('mesocycle_id', $cutA->id)->where('week', 2)->firstOrFail();
     WorkoutSet::factory()->create(['workout_session_id' => $live->id, 'exercise_id' => $bench->id, 'position' => 9, 'is_logged' => true, 'is_skipped' => true, 'actual_weight_kg' => 60, 'actual_reps' => 8]);
+    WorkoutSet::factory()->create(['workout_session_id' => $live->id, 'exercise_id' => $bench->id, 'position' => 10, 'is_logged' => false, 'is_skipped' => false]);
 
     $sets = $this->actingAs($user)->postJson('/capabilities/progress_show')->assertOk()->json('data.mesocycle_history.0.sets');
 

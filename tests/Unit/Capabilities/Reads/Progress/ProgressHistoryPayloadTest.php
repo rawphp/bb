@@ -110,14 +110,17 @@ it('ANA-007 a set without an exercise is ignored', function () {
         ->and($cutA['sets'])->toBe([['label' => 'Chest', 'value' => '1.0', 'tone' => 'neutral']]);
 });
 
-it('ANA-007 WO-025 a logged set that was skipped is not a working set, and a week of only skipped sets adds no week', function () {
-    // Week 1: one working set and one logged-and-skipped set. Week 3: only a skipped set.
-    $snapshot = W::snapshot(
-        sessions: [W::session('s-a', W::CUT_A, 1), W::session('s-c3', W::CUT_A, 3)],
-        sets: [W::set('1', 's-a', 12), W::set('2', 's-a', 12, skipped: true), W::set('3', 's-c3', 12, skipped: true)],
-    );
+it('ANA-007 the loader\'s working-set counts weigh each mesocycle week and muscle', function () {
+    // What the loader reads: working sets counted per mesocycle, week and exercise (WO-025 is applied in its SQL and
+    // proved by the progress_show seam test). Chest: 3 in week 1 and 2 in week 2; Biceps: 1 in week 1.
+    $snapshot = W::snapshot(rows: [
+        W::row(W::CUT_A, 1, 12, 3), W::row(W::CUT_A, 2, 12, 2), W::row(W::CUT_A, 1, 20, 1),
+    ]);
 
-    expect(W::payload($snapshot)['mesocycle_history'][0]['sets'])->toBe([['label' => 'Chest', 'value' => '1.0', 'tone' => 'neutral']]);
+    expect(W::payload($snapshot)['mesocycle_history'][0]['sets'])->toBe([
+        ['label' => 'Chest', 'value' => '2.5', 'tone' => 'neutral'],
+        ['label' => 'Biceps', 'value' => '0.5', 'tone' => 'neutral'],
+    ]);
 });
 
 it('ANA-007 a set of an exercise the user cannot see is ignored', function () {

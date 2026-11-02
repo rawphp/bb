@@ -4,6 +4,7 @@ namespace Tests\Unit\Capabilities\Reads\Progress;
 
 use App\Capabilities\Reads\Progress\ProgressPayload;
 use App\Domain\Progress\ProgressScope;
+use App\Domain\Progression\WorkingSet;
 use App\Models\DayTarget;
 use App\Models\Exercise;
 use App\Models\Mesocycle;
@@ -19,6 +20,7 @@ use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Progress\ProgressSnapshot;
 use App\Support\Today\TodaySnapshot;
 use Illuminate\Support\Collection;
+use stdClass;
 
 /**
  * rp-clone's ProgressModelTests scenario, as unsaved models so the Progress payloads run without a database.
@@ -58,6 +60,7 @@ final class ProgressWorld
      * @param  list<Mesocycle>|null  $mesocycles
      * @param  list<WorkoutSession>|null  $sessions
      * @param  list<WorkoutSet>|null  $sets
+     * @param  list<stdClass>|null  $rows  the loader rows themselves (see row()), in place of $sessions and $sets
      * @param  array<int, string>|null  $lastUsed  exercise id => last used
      */
     public static function snapshot(
@@ -74,6 +77,7 @@ final class ProgressWorld
         ?array $mesocycles = null,
         ?array $sessions = null,
         ?array $sets = null,
+        ?array $rows = null,
         ?array $lastUsed = null,
         bool $withPlan = true,
         float $targetKcal = 2000,
@@ -124,7 +128,7 @@ final class ProgressWorld
             week: $week,
             weighIns: new Collection($weighIns ?? self::weighIns()),
             steps: $steps,
-            sets: self::rows($sessions ?? self::sessions(), $sets ?? self::sets()),
+            sets: $rows === null ? self::rows($sessions ?? self::sessions(), $sets ?? self::sets()) : new Collection($rows),
             exercises: new Collection(self::exercises()),
             lastUsed: $lastUsed ?? [12 => '2026-10-08 07:30:00', 20 => '2026-10-05 07:30:00', 25 => '2026-10-09 07:30:00'],
         );
@@ -200,8 +204,8 @@ final class ProgressWorld
     }
 
     /**
-     * The rows the loader reads: each set joined to its session, as the loader does, so a set of a session that is gone
-     * or in no mesocycle, or with no exercise, is not in them.
+     * The rows the loader reads: the working sets (WO-025) of live sessions in a mesocycle that name an exercise,
+     * counted per mesocycle, week and exercise, as its grouped SQL does.
      *
      * @param  list<WorkoutSession>  $sessions
      * @param  list<WorkoutSet>  $sets
@@ -209,18 +213,25 @@ final class ProgressWorld
     private static function rows(array $sessions, array $sets): Collection
     {
         $byId = collect($sessions)->keyBy(fn (WorkoutSession $session) => (string) $session->id);
-
-        return collect($sets)->map(function (WorkoutSet $set) use ($byId) {
+        $counts = [];
+        foreach ($sets as $set) {
             $session = $byId->get((string) $set->workout_session_id);
-            if ($session === null || $session->mesocycle_id === null || $set->exercise_id === null) {
-                return null;
+            if ($session === null || $session->mesocycle_id === null || $set->exercise_id === null
+                || ! WorkingSet::counts((bool) $set->is_logged, (bool) $set->is_skipped)) {
+                continue;
             }
+            $key = "{$session->mesocycle_id}|{$session->week}|{$set->exercise_id}";
+            $counts[$key] ??= self::row((string) $session->mesocycle_id, (int) $session->week, (int) $set->exercise_id, 0);
+            $counts[$key]->sets++;
+        }
 
-            return (object) [
-                'mesocycle_id' => $session->mesocycle_id, 'week' => $session->week, 'exercise_id' => $set->exercise_id,
-                'is_logged' => (bool) $set->is_logged, 'is_skipped' => (bool) $set->is_skipped,
-            ];
-        })->filter()->values();
+        return new Collection(array_values($counts));
+    }
+
+    /** One loader row: `$sets` working sets of an exercise in a mesocycle week. */
+    public static function row(string $mesocycle, int $week, int $exercise, int $sets): stdClass
+    {
+        return (object) ['mesocycle_id' => $mesocycle, 'week' => $week, 'exercise_id' => $exercise, 'sets' => $sets];
     }
 
     /** @return list<WorkoutSession> */
