@@ -133,11 +133,11 @@ With billing on, add a webhook endpoint in Stripe pointing at the app's Stripe w
 
 Two workers:
 
-- `default`: the `default` queue (notifications, mail and other background jobs) and the `capabilities-audit` queue, which writes the audit log.
+- `default`: the `default` queue (notifications, mail and other background jobs). The audit log needs no worker: each row is written during the request that made the change.
 - `agent`: the Coach's turns, on the `agent` connection. Its `retry_after` is `CAPABILITIES_AI_CLAIM_TTL` plus 60 seconds, so a turn that runs long is never handed to a second worker. Only needed with the agent on, but harmless without it.
 
 ```bash
-php artisan queue:work redis --queue=default,capabilities-audit --tries=3
+php artisan queue:work redis --queue=default --tries=3
 php artisan queue:work agent --queue=agent --tries=1
 ```
 
@@ -151,7 +151,7 @@ After=network.target mysql.service redis.service
 [Service]
 User=www-data
 WorkingDirectory=/var/www/bodybuilder
-ExecStart=/usr/bin/php artisan queue:work redis --queue=default,capabilities-audit --tries=3
+ExecStart=/usr/bin/php artisan queue:work redis --queue=default --tries=3
 Restart=always
 
 [Install]

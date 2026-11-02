@@ -23,8 +23,7 @@
                             "agent",
                             "mcp",
                             "cli",
-                            "bridge",
-                            "system"
+                            "bridge"
                         ]
                     },
                     "channel_label": {

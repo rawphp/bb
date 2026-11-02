@@ -24,6 +24,9 @@ final class ActivityShowCapability implements HostCapability
 {
     public const LIMIT = 100;
 
+    /** The audit events of a capability invoke. Approval and tool-boundary events have no write of their own to show. */
+    public const INVOKE_EVENTS = ['capability.invoked', 'capability.failed', 'capability.output_invalid'];
+
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::read('activity_show')
@@ -40,7 +43,7 @@ final class ActivityShowCapability implements HostCapability
         $result = $record->result ?? [];
         $ok = ($result['ok'] ?? false) === true;
         $toast = $result['summary']['toast'] ?? null;
-        $name = Str::ucfirst(str_replace('_', ' ', (string) $record->capability));
+        $name = $record->capability === null ? 'Change' : Str::ucfirst(str_replace('_', ' ', $record->capability));
         $at = CarbonImmutable::instance($record->created_at);
 
         return new ActivityEntry(
@@ -50,9 +53,7 @@ final class ActivityShowCapability implements HostCapability
             channel_label: Channel::from($record->channel)->label(),
             occurred_at: $at->toIso8601String(),
             when_text: self::when($at, CarbonImmutable::instance($now)),
-            result: $ok
-                ? new Status('Done', Tone::Good->value)
-                : new Status(self::refusal($result), Tone::Warning->value),
+            result: self::status($record, $result, $ok),
         );
     }
 
@@ -64,6 +65,7 @@ final class ActivityShowCapability implements HostCapability
 
         $records = AuditRecord::query()
             ->whereBelongsTo($user)
+            ->whereIn('event', self::INVOKE_EVENTS)
             ->latest()
             ->latest('id')
             ->limit(self::LIMIT)
@@ -72,6 +74,21 @@ final class ActivityShowCapability implements HostCapability
         return new ActivityShowOutput(
             entries: $records->map(fn (AuditRecord $record): ActivityEntry => self::entry($record, $now))->values()->all(),
         );
+    }
+
+    /**
+     * output_invalid is a server bug after run() committed (D-014): the change was made.
+     *
+     * @param  array<string, mixed>  $result
+     */
+    private static function status(AuditRecord $record, array $result, bool $ok): Status
+    {
+        return match (true) {
+            $record->event === 'capability.output_invalid' => new Status('Done, with a server error', Tone::Warning->value),
+            $record->result === null => new Status('No result recorded', Tone::Neutral->value),
+            $ok => new Status('Done', Tone::Good->value),
+            default => new Status(self::refusal($result), Tone::Warning->value),
+        };
     }
 
     /** @param  array<string, mixed>  $result */

@@ -13,9 +13,12 @@ use Rawphp\Capabilities\Contracts\AuditWriter;
  * per entry, with the user and the channel (CAP-022). The package redacts the
  * input before the entry reaches here. Reads are not audited.
  *
- * The pipeline calls write() inside the invoke, so over http the request's
- * credential is the invoke's. An entry stored later (an outbox replay or the
- * outbox move) carries its own time, and has no credential, so http is the app.
+ * The channel is derived here because the pipeline calls write() inside the
+ * invoke, never from a queue (InvokeAuditStage::record), so over http the
+ * request's credential is the invoke's credential. The package builds the entry
+ * itself and has no field a host can fill, so the channel cannot travel in it.
+ * ActivityTest pins this with a fake queue. An entry that carries recorded_at
+ * is dated by it.
  */
 final class AuditRecordWriter implements AuditWriter
 {

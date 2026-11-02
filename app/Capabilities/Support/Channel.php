@@ -15,8 +15,6 @@ enum Channel: string
     case Mcp = 'mcp';
     case Cli = 'cli';
     case Bridge = 'bridge';
-    // A queued job or the scheduler acting for a user: the server itself, not the Coach.
-    case System = 'system';
 
     /** The abilities a Health bridge token is limited to (INT-001). */
     public const BRIDGE_ABILITIES = ['weigh_in_log', 'steps_log'];
@@ -28,9 +26,10 @@ enum Channel: string
     public static function derive(string $caller, ?object $token): self
     {
         return match ($caller) {
-            // The in-app agent's tool calls invoke as caller=agent (AGT-004).
-            'agent' => self::Agent,
-            'job' => self::System,
+            // The in-app agent's tool calls invoke as caller=agent (AGT-004). CAP-022 has
+            // five channels and no server one, so a queued job acting for the user counts
+            // as the agent: it is not the user at the app, a script or the bridge.
+            'agent', 'job' => self::Agent,
             'mcp' => self::Mcp,
             'cli', 'artisan' => self::Cli,
             default => self::overHttp($token),
@@ -45,7 +44,6 @@ enum Channel: string
             self::Mcp => 'MCP',
             self::Cli => 'CLI',
             self::Bridge => 'Health bridge',
-            self::System => 'Server',
         };
     }
 

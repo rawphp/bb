@@ -1,11 +1,13 @@
 <?php
 
+use App\Capabilities\Support\Channel;
 use App\Capabilities\Support\HostDefinition;
 use App\Models\AuditRecord;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Queue;
 use Rawphp\Capabilities\Contracts\AuditWriter;
 use Rawphp\Capabilities\Contracts\CapabilityBus;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
@@ -61,7 +63,7 @@ it('CAP-022 derives the channel on the server, ignoring a caller the client clai
     expect(AuditRecord::sole()->channel)->toBe('ui');
 });
 
-it('CAP-022 records the agent, MCP, CLI and server channels from the caller their adapters set', function () {
+it('CAP-022 records the agent, MCP and CLI channels from the caller their adapters set', function () {
     $user = User::factory()->create();
     $registry = app(CapabilityRegistry::class);
 
@@ -69,7 +71,7 @@ it('CAP-022 records the agent, MCP, CLI and server channels from the caller thei
         expect($registry->invoke('tally_add', ['amount' => 1], ['caller' => $caller, 'actor' => $user])->isOk())->toBeTrue();
     }
 
-    expect(AuditRecord::query()->orderBy('id')->pluck('channel')->all())->toBe(['agent', 'mcp', 'cli', 'system'])
+    expect(AuditRecord::query()->orderBy('id')->pluck('channel')->all())->toBe(['agent', 'mcp', 'cli', 'agent'])
         ->and(AuditRecord::query()->distinct()->pluck('user_id')->all())->toBe([$user->id]);
 });
 
@@ -111,6 +113,29 @@ it('CAP-022 audits no read and no write refused for invalid input', function () 
     $this->actingAs($user)->postJson('/capabilities/tally_add', ['amount' => 'three'])->assertStatus(422);
 
     expect(AuditRecord::count())->toBe(0);
+});
+
+it('CAP-022 writes the audit row inside the invoke, so a token write keeps its channel with a real queue', function () {
+    Queue::fake();
+    $user = User::factory()->create();
+
+    $this->withToken($user->createToken('bridge', Channel::BRIDGE_ABILITIES)->plainTextToken)
+        ->postJson('/capabilities/tally_add', ['amount' => 3])->assertOk();
+
+    expect(AuditRecord::sole()->channel)->toBe('bridge');
+    Queue::assertNothingPushed();
+});
+
+it('CAP-022 lists only capability invokes in activity_show, not approval or boundary events', function () {
+    $user = User::factory()->create();
+    $kept = AuditRecord::factory()->for($user)->create(['event' => 'capability.output_invalid', 'capability' => 'tally_add']);
+    AuditRecord::factory()->for($user)->create(['event' => 'approval.executed', 'capability' => null, 'result' => null]);
+    AuditRecord::factory()->for($user)->create(['event' => 'tool_profile.denied', 'capability' => null]);
+
+    $entries = $this->actingAs($user)->postJson('/capabilities/activity_show')->assertOk()->json('data.entries');
+
+    expect(array_column($entries, 'id'))->toBe([$kept->id])
+        ->and($entries[0]['result'])->toBe(['text' => 'Done, with a server error', 'tone' => 'warning']);
 });
 
 it('CAP-022 dates an entry by the time it carries, not the time it is stored', function () {

@@ -14,7 +14,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * One audited invoke (CAP-022), written by AuditRecordWriter. Activity lists
- * the user's last 100. Rows older than 90 days are pruned daily.
+ * the user's last 100. Rows older than 90 days are pruned daily, as the spec
+ * requires (build plan, AUDIT), and deleting the user deletes them (ACC-005).
  *
  * @property string $id
  * @property int|null $user_id

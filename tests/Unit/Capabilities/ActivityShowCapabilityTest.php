@@ -66,3 +66,20 @@ it('CAP-022 says when a write happened relative to today', function (string $at,
     'this year' => ['2026-10-26T09:10:00Z', 'Mon 26 Oct, 09:10'],
     'last year' => ['2025-12-30T09:10:00Z', '30 Dec 2025, 09:10'],
 ]);
+
+it('CAP-022 shows a write whose reply failed the output schema as done, with a server error, not refused', function () use ($now) {
+    $entry = ActivityShowCapability::entry(auditRecord([
+        'event' => 'capability.output_invalid',
+        'result' => ['ok' => false, 'code' => 'output_invalid', 'message' => 'Output failed validation.'],
+    ]), $now);
+
+    expect($entry->title)->toBe('Weigh in log')
+        ->and($entry->result->toArray())->toBe(['text' => 'Done, with a server error', 'tone' => 'warning']);
+});
+
+it('CAP-022 still names an entry with no capability or no result', function () use ($now) {
+    $entry = ActivityShowCapability::entry(auditRecord(['capability' => null, 'result' => null]), $now);
+
+    expect($entry->title)->toBe('Change')
+        ->and($entry->result->toArray())->toBe(['text' => 'No result recorded', 'tone' => 'neutral']);
+});
