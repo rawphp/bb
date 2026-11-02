@@ -114,6 +114,7 @@ describe('HelpButton', () => {
         await wrapper.get('button[aria-label="Help"]').trigger('click');
         const scrim = document.body.querySelector<HTMLElement>('[data-scrim]')!;
         expect(scrim.getAttribute('aria-hidden')).toBe('true');
+        expect(scrim.classList).toContain('bg-scrim');
         scrim.click();
         await flushPromises();
         expect(dialog()).toBeNull();
