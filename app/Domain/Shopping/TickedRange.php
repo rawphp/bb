@@ -42,10 +42,10 @@ final readonly class TickedRange
     }
 
     /**
-     * SHOP-001, SHOP-005: with no range asked for, the list comes back on the range with ticks that runs
-     * through today and starts latest; otherwise it shows the next 7 days from today. A range that has not
-     * started yet (planning next week) does not count, and starting latest, not ticked last, means a late
-     * tick replayed for an earlier week does not move the list.
+     * SHOP-001, SHOP-005: with no range asked for, the list comes back on the ticked range that runs through
+     * today and starts latest; otherwise it shows the next 7 days from today. A range that has not started
+     * yet (planning next week) does not count, and starting latest, not ticked last, means a late tick
+     * replayed for an earlier week does not move the list. Taking a tick back keeps the range.
      *
      * @param  list<self>  $saved
      */
@@ -54,7 +54,7 @@ final readonly class TickedRange
         $day = $today->setTimezone($timezone)->format('Y-m-d');
         $shown = null;
         foreach ($saved as $ticked) {
-            $running = $ticked->keys !== [] && $ticked->range->lower->format('Y-m-d') <= $day && ! $ticked->hasEnded($today, $timezone);
+            $running = $ticked->range->lower->format('Y-m-d') <= $day && ! $ticked->hasEnded($today, $timezone);
             $later = $shown === null || [$ticked->range->lower->format('Y-m-d'), $ticked->range->upper->format('Y-m-d')]
                 > [$shown->lower->format('Y-m-d'), $shown->upper->format('Y-m-d')];
             if ($running && $later) {
