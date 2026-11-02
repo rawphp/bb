@@ -1,0 +1,49 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "invalidates": {
+            "type": "array",
+            "description": "read keys whose data changed (CAP-010)"
+        },
+        "toast": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "undo": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "outcome": {
+            "type": "string",
+            "enum": [
+                "keep",
+                "switch_to_training_only",
+                "run_nutrition_setup",
+                "leave_fat_loss"
+            ]
+        },
+        "message": {
+            "type": "string"
+        },
+        "next": {
+            "type": "string",
+            "description": "onboarding: onboarding_show holds the steps this outcome needs",
+            "enum": [
+                "done",
+                "onboarding"
+            ]
+        }
+    },
+    "required": [
+        "invalidates",
+        "outcome",
+        "message",
+        "next"
+    ]
+}
