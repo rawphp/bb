@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Foods\DumpRow;
+use App\Models\Food;
 
 /** @return list<array<string, mixed>> the records of a USDA fixture */
 function foodsUsdaRecords(string $file): array
@@ -108,6 +109,13 @@ it('FOOD-001 keeps a food past an out-of-range serving or a long code, and skips
 
 it('FOOD-004 falls back to the English ingredients when ingredients_text is empty', function () {
     expect(foodsMapped('off_edge.jsonl')['1000000000003']['food'])->toMatchArray(['gluten_free' => false, 'vegan' => true]);
+});
+
+it('FOOD-004 classifies only English ingredients, so another language sets no diet flag', function () {
+    $rows = foodsMapped('off_edge.jsonl');
+
+    expect(array_filter(array_intersect_key($rows['1000000000005']['food'], array_flip(Food::DIETS))))->toBe([])
+        ->and($rows['1000000000006']['food'])->toMatchArray(['gluten_free' => false, 'dairy_free' => false, 'vegetarian' => true]);
 });
 
 it('FOOD-001 drops USDA portions that are zero, huge or over 5000 g', function () {

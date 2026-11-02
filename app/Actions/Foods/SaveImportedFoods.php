@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
  * The one write path for imported foods (FOOD-001): upsert on (source, source_id), then replace each
  * food's servings, all in one transaction. A repeated source_id in one batch keeps the last row.
  * An existing row keeps its id and its curation (FOOD-002); only the columns below are refreshed.
+ * A soft-deleted row stays deleted: the import refreshes its values and servings but does not restore it.
  *
  * @phpstan-import-type Row from DumpRow
  */
@@ -23,8 +24,9 @@ final class SaveImportedFoods
     /**
      * @param  list<Row>  $rows
      * @param  list<string>  $updateColumns  food columns refreshed when the row already exists
+     * @return int the foods saved, each repeated source_id once
      */
-    public function handle(array $rows, array $updateColumns = self::UPDATABLE): void
+    public function handle(array $rows, array $updateColumns = self::UPDATABLE): int
     {
         $bySource = [];
         foreach ($rows as $row) {
@@ -44,7 +46,8 @@ final class SaveImportedFoods
                 );
 
                 $sourceIds = array_map(fn (array $r) => (string) $r['food']['source_id'], $batch);
-                $ids = Food::query()->where('source', $source)->whereIn('source_id', $sourceIds)->pluck('id', 'source_id');
+                // withTrashed: the upsert also updates soft-deleted rows, so their ids must be found too.
+                $ids = Food::withTrashed()->where('source', $source)->whereIn('source_id', $sourceIds)->pluck('id', 'source_id');
                 FoodServing::query()->whereIn('food_id', $ids->values())->delete();
 
                 $servings = [];
@@ -58,5 +61,7 @@ final class SaveImportedFoods
                 }
             }
         });
+
+        return array_sum(array_map('count', $bySource));
     }
 }

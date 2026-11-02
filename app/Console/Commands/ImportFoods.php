@@ -22,7 +22,9 @@ use JsonMachine\JsonDecoder\ExtJsonDecoder;
  *
  * USDA FoodData Central JSON: the top-level key (FoundationFoods, SRLegacyFoods or BrandedFoods) picks
  * the type. Open Food Facts: JSONL, plain or .gz. How a record maps to a food: DumpRow. The command
- * fails when the file cannot be read or when every record was skipped.
+ * fails when the file cannot be read, when every record was skipped, or when a JSONL line is not JSON:
+ * a cut-off download ends mid-line (zlib reports a truncated .gz as a normal end of file), so the
+ * install stops and can fetch the file again instead of carrying on with part of the database.
  *
  * @phpstan-import-type Row from DumpRow
  */
@@ -38,8 +40,15 @@ final class ImportFoods extends Command
 
     private int $skipped = 0;
 
+    private int $malformed = 0;
+
+    private bool $readFailed = false;
+
     public function handle(SaveImportedFoods $save, DumpRow $rows): int
     {
+        // The container keeps one command instance, so a second run in the same process starts from zero here.
+        $this->imported = $this->skipped = $this->malformed = 0;
+        $this->readFailed = false;
         $source = FoodSource::importable((string) $this->argument('source'));
         $path = (string) $this->argument('path');
 
@@ -82,6 +91,13 @@ final class ImportFoods extends Command
         }
         $this->flush($save, $batch);
 
+        if ($this->readFailed || $this->malformed > 0) {
+            $this->error("Imported {$this->imported} foods, but {$path} is truncated or corrupt"
+                .($this->malformed > 0 ? " ({$this->malformed} lines are not valid JSON)" : '')
+                .'. Download it again and re-run the import.');
+
+            return self::FAILURE;
+        }
         if ($this->imported === 0 && $this->skipped > 0) {
             $this->error("Imported 0 foods, skipped {$this->skipped}. Is this the right file for source {$source->value}?");
 
@@ -100,8 +116,7 @@ final class ImportFoods extends Command
             return;
         }
 
-        $save->handle($batch);
-        $this->imported += count($batch);
+        $this->imported += $save->handle($batch);
     }
 
     /** @return Generator<int, Row>|null */
@@ -135,8 +150,16 @@ final class ImportFoods extends Command
     {
         try {
             while (($line = fgets($handle)) !== false) {
+                if (trim($line) === '') {
+                    continue;
+                }
                 $product = json_decode($line, true);
-                $row = is_array($product) ? $rows->fromOpenFoodFacts($product) : null;
+                if (! is_array($product)) {
+                    $this->malformed++;
+
+                    continue;
+                }
+                $row = $rows->fromOpenFoodFacts($product);
                 if ($row === null) {
                     $this->skipped++;
 
@@ -144,6 +167,7 @@ final class ImportFoods extends Command
                 }
                 yield $row;
             }
+            $this->readFailed = ! feof($handle);
         } finally {
             fclose($handle);
         }

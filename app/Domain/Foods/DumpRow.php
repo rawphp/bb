@@ -98,7 +98,9 @@ final class DumpRow
         $restaurant = array_filter($categories, fn (string $c) => str_contains($c, 'restaurant') || str_contains($c, 'fast-food')) !== [];
         $categoryText = str_replace(['en:', '-'], ['', ' '], implode(' ', $categories));
         $tags = [...$this->strings($p['ingredients_analysis_tags'] ?? null), ...$this->strings($p['allergens_tags'] ?? null)];
-        $ingredients = $this->clean($p['ingredients_text'] ?? null, 65535) ?? $this->clean($p['ingredients_text_en'] ?? null, 65535);
+        // The keyword rules are English: another language's list matches none of them and would set every flag.
+        $ingredients = $this->clean($p['ingredients_text_en'] ?? null, 65535)
+            ?? ($this->text($p['lang'] ?? null) === 'en' ? $this->clean($p['ingredients_text'] ?? null, 65535) : null);
 
         $serving = [];
         $label = $this->clean($p['serving_size'] ?? null, 255);
@@ -159,6 +161,7 @@ final class DumpRow
         if ($size === null || ! in_array($unit, ['g', 'grm', 'ml', 'mlt'], true)) {
             return [];
         }
+        // A millilitre is counted as a gram: USDA gives no density, and most branded drinks are close to water.
         $label = $this->clean($item['householdServingFullText'] ?? null, 255) ?? 'serving';
 
         return [['label' => $label, 'grams' => $size]];

@@ -125,6 +125,81 @@ it('FOOD-001 upserts foods and replaces their servings, keeping the last of a re
         ->and(foodsServingsOf(Food::query()->where('source_id', '7')->firstOrFail()))->toBe([['b', 2.0]]);
 });
 
+it('FOOD-001 imports more than one batch: every food and serving once, the same again on a re-run', function () {
+    $path = tempnam(sys_get_temp_dir(), 'off');
+    $lines = '';
+    for ($i = 1; $i <= 2001; $i++) {
+        $lines .= json_encode(['code' => (string) (2000000000000 + $i), 'product_name' => "Product {$i}",
+            'nutriments' => ['energy-kcal_100g' => 100], 'serving_quantity' => 30, 'serving_size' => '30 g'])."\n";
+    }
+    file_put_contents($path, $lines);
+
+    try {
+        foreach ([1, 2] as $run) {
+            $this->artisan('foods:import', ['source' => 'off', 'path' => $path])
+                ->expectsOutput('Imported 2001 foods, skipped 0.')
+                ->assertSuccessful();
+
+            expect(Food::count())->toBe(2001, "run {$run}")
+                ->and(FoodServing::count())->toBe(2001, "run {$run}")
+                ->and(FoodServing::query()->distinct()->count('food_id'))->toBe(2001, "run {$run}");
+        }
+    } finally {
+        unlink($path);
+    }
+});
+
+it('FOOD-001 counts a source id repeated in one file once', function () {
+    $path = tempnam(sys_get_temp_dir(), 'off');
+    $line = json_encode(['code' => '2000000000001', 'product_name' => 'Twice', 'nutriments' => ['energy-kcal_100g' => 100]])."\n";
+    file_put_contents($path, $line.$line);
+
+    try {
+        $this->artisan('foods:import', ['source' => 'off', 'path' => $path])
+            ->expectsOutput('Imported 1 foods, skipped 0.')
+            ->assertSuccessful();
+    } finally {
+        unlink($path);
+    }
+});
+
+it('FOOD-001 refreshes a soft-deleted imported food on re-import and leaves it deleted', function () {
+    $this->artisan('foods:import', ['source' => 'usda', 'path' => foodsFixture('usda_foundation.json')])->assertSuccessful();
+    $banana = Food::query()->where('source_id', '1105073')->firstOrFail();
+    $banana->servings()->delete();
+    $banana->update(['kcal' => 1.0]);
+    $banana->delete();
+
+    $this->artisan('foods:import', ['source' => 'usda', 'path' => foodsFixture('usda_foundation.json')])
+        ->expectsOutput('Imported 2 foods, skipped 0.')
+        ->assertSuccessful();
+
+    $banana = Food::withTrashed()->findOrFail($banana->id);
+    expect($banana->trashed())->toBeTrue()
+        ->and($banana->kcal)->toBe(97.0)
+        ->and(foodsServingsOf($banana))->toBe([['medium', 118.0], ['1 cup, sliced', 150.0]])
+        ->and(Food::withTrashed()->count())->toBe(2);
+});
+
+it('FOOD-001 fails a cut-off Open Food Facts download, plain or gzipped, so the install fetches it again', function (bool $gzip) {
+    $lines = '';
+    for ($i = 1; $i <= 3000; $i++) {
+        $lines .= json_encode(['code' => (string) (2000000000000 + $i), 'product_name' => str_repeat('Product ', 8).$i,
+            'nutriments' => ['energy-kcal_100g' => 100]])."\n";
+    }
+    $data = $gzip ? gzencode($lines, 9) : $lines;
+    $path = tempnam(sys_get_temp_dir(), 'off').($gzip ? '.jsonl.gz' : '.jsonl');
+    file_put_contents($path, substr($data, 0, intdiv(strlen($data), 2)));
+
+    try {
+        $this->artisan('foods:import', ['source' => 'off', 'path' => $path])
+            ->expectsOutputToContain('is truncated or corrupt (1 lines are not valid JSON)')
+            ->assertFailed();
+    } finally {
+        unlink($path);
+    }
+})->with(['plain' => false, 'gzipped' => true]);
+
 it('FOOD-001 rolls the foods back when their servings cannot be written', function () {
     $rows = [[
         'food' => ['name' => 'Broken', 'source' => 'usda', 'source_id' => '1', 'kind' => 'generic',

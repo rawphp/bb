@@ -109,7 +109,8 @@ final class FoodSearch
             return null;
         }
 
-        $builder = $this->filtered()->whereIn('foods.id', $ids->all());
+        // visibleTo: a recent or favorite never reveals another user's custom food (FOOD-060).
+        $builder = $this->filtered()->visibleTo($this->user)->whereIn('foods.id', $ids->all());
 
         $matchTerms = function (Builder $q) use ($terms) {
             foreach (SearchTerms::meaningful($terms) as $term) {

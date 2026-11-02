@@ -199,6 +199,15 @@ it('FOOD-060 never shows another user\'s custom foods in search', function () {
         ->and(foodsSearch($this->user, 'secret', 'curated'))->toBe([]);
 });
 
+it('FOOD-060 never shows another user\'s custom food through a recent or favorite that points at it', function () {
+    $other = Food::factory()->custom(User::factory()->create())->create(['name' => 'Secret bar', 'barcode' => '12345678905']);
+    FoodFavorite::factory()->create(['user_id' => $this->user->id, 'food_id' => $other->id]);
+    FoodRecent::factory()->create(['user_id' => $this->user->id, 'food_id' => $other->id]);
+
+    expect(foodsSearch($this->user, 'secret'))->toBe([])
+        ->and(foodsSearch($this->user, '12345678905'))->toBe([]);
+});
+
 it('FOOD-060 finds the user\'s custom food by name, brand and barcode, and hides it once deleted', function () {
     $food = Food::factory()->custom($this->user)->create(['name' => 'Protein bar', 'brand' => 'Barco', 'barcode' => '12345678905']);
 

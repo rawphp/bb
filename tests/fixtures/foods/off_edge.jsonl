@@ -3,3 +3,5 @@
 {"code":"1000000000002","product_name":"Overflow macro","nutriments":{"energy-kcal_100g":100,"fat_100g":"1e400"}}
 {"code":"1000000000003","product_name":"Empty ingredients","nutriments":{"energy-kcal_100g":100},"ingredients_text":"","ingredients_text_en":"Wheat flour, water"}
 {"code":"1000000000004","product_name":"Fine","nutriments":{"energy-kcal_100g":100},"serving_quantity":30,"serving_size":"30 g"}
+{"code":"1000000000005","product_name":"Baguette","lang":"fr","nutriments":{"energy-kcal_100g":270},"ingredients_text":"farine de blé, eau, sel, levure"}
+{"code":"1000000000006","product_name":"Pain de mie","lang":"fr","nutriments":{"energy-kcal_100g":270},"ingredients_text":"farine de blé, lait","ingredients_text_en":"wheat flour, milk"}
