@@ -299,6 +299,15 @@ describe('EditScheduleSheet', () => {
         ]);
     });
 
+    it('UI-005 Cancel closes it unsaved when nothing was sent', async () => {
+        const wrapper = sheet(EditScheduleSheet, { payload: day });
+
+        await wrapper.find('[data-cancel]').trigger('click');
+
+        expect(wrapper.emitted('close')).toEqual([[false]]);
+        expect(writeMock).not.toHaveBeenCalled();
+    });
+
     it('SCH-039 says the sheet saved when it closes after the weekdays changed but the schedule did not', async () => {
         writeMock.mockResolvedValueOnce({}).mockRejectedValueOnce(new CapabilityError('schedule_update', 422, refusal('The eating window is too short.', 'window_end')));
         const wrapper = sheet(EditScheduleSheet, { payload: day });
