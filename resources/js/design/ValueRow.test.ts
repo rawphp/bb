@@ -118,6 +118,18 @@ describe('ValueRow', () => {
         await items[1]!.trigger('click');
         expect(wrapper.emitted('action')).toEqual([['delete']]);
         expect(wrapper.find('[role="menu"]').exists()).toBe(false);
+        expect(document.activeElement).toBe(button.element);
+        wrapper.unmount();
+    });
+
+    it('UI-030 Tab out of the open menu closes it', async () => {
+        const wrapper = row({}, { attachTo: document.body });
+        await wrapper.get('[aria-haspopup="menu"]').trigger('click');
+        await wrapper.vm.$nextTick();
+
+        await wrapper.findAll('[role="menuitem"]')[0]!.trigger('keydown', { key: 'Tab' });
+
+        expect(wrapper.find('[role="menu"]').exists()).toBe(false);
         wrapper.unmount();
     });
 
@@ -217,7 +229,7 @@ describe('ValueRow', () => {
     });
 
     it('UI-008 swiping left reveals the swipe actions without running one, and tapping one emits it', async () => {
-        const wrapper = row({ swipeActions });
+        const wrapper = row({ swipeActions }, { attachTo: document.body });
         const tray = wrapper.get('[data-swipe-actions]');
         expect(tray.attributes('inert')).toBeDefined();
         expect(tray.attributes('aria-hidden')).toBe('true');
@@ -230,9 +242,28 @@ describe('ValueRow', () => {
 
         expect(wrapper.get('[data-row]').classes()).toContain('motion-reduce:transition-none');
 
-        await tray.findAll('button')[1]!.trigger('click');
+        const button = tray.findAll('button')[1]!;
+        (button.element as HTMLButtonElement).focus();
+        await button.trigger('click');
         expect(wrapper.emitted('action')).toEqual([['delete']]);
         expect(wrapper.get('[data-row]').attributes('data-open')).toBeUndefined();
+        expect(document.activeElement).toBe(wrapper.get('[aria-haspopup="menu"]').element);
+        wrapper.unmount();
+    });
+
+    it('UI-008 a cancelled drag snaps the row back closed', async () => {
+        const wrapper = row({ swipeActions });
+        const el = wrapper.get('[data-row]').element as HTMLElement;
+
+        el.dispatchEvent(pointer('pointerdown', 200));
+        el.dispatchEvent(pointer('pointermove', 150));
+        el.dispatchEvent(pointer('pointermove', 100));
+        el.dispatchEvent(pointer('pointercancel', 100));
+        el.dispatchEvent(pointer('pointerup', 100));
+        await wrapper.vm.$nextTick();
+
+        expect(wrapper.get('[data-row]').attributes('data-open')).toBeUndefined();
+        expect(el.style.transform).toBe('');
     });
 
     it('UI-008 a short or vertical drag, or a mouse drag, does not reveal the swipe actions; swiping right closes them', async () => {
@@ -316,6 +347,13 @@ describe('ValueRow', () => {
         expect(wrapper.get(`#${input.attributes('aria-describedby')}`).text()).toBe('Waiting to sync');
         expect(row().text()).not.toContain('Waiting to sync');
         expect(row().get('input').attributes('aria-describedby')).toBeUndefined();
+    });
+
+    it('OFF-009 pending with an error: the fields are described by both the pending mark and the message', () => {
+        const wrapper = row({ pending: true, error: "Couldn't save the set." });
+        const ids = wrapper.get('input').attributes('aria-describedby')!.split(' ');
+
+        expect(ids.map((id) => wrapper.get(`#${id}`).text())).toEqual(['Waiting to sync', "Couldn't save the set."]);
     });
 
     it('VIEW-004 disabled: fields and menu are disabled and the row cannot be swiped', async () => {
