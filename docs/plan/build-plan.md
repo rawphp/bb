@@ -71,7 +71,7 @@ Parallel issues rely on these names. They are written into architecture.md by SK
 | TS types | generated into `resources/js/contracts/` from the schema snapshots by `npm run contracts` |
 | Fixture check | Pest helper `assertMatchesScreenFixture($name, $payload)`: same keys and types at every depth, values free, and valid against the output schema snapshot |
 | Feature routes | `resources/js/features/<feature>/routes.ts`, loaded by glob |
-| Dev screens | `/dev/screens/<capability_name>` renders the screen from its fixture (local and testing only) |
+| Dev screens | `/dev/screens/<capability_name>` renders the screen from its fixture, `/dev/screens/<capability_name>.<state>` from `<capability_name>.<state>.json` (local and testing only). When several routes read the same capability, add `?view=<route name>` to pick one; without it the first matching route wins |
 | Gallery entries | `resources/js/design/gallery/<Component>.gallery.vue`, loaded by glob at `/dev/gallery` |
 | Seeds | `database/seeders/<Area>Seeder.php`, all called from `DatabaseSeeder` by glob |
 | Requirement test names | `it('NUT-003 …')` in Pest and Vitest |

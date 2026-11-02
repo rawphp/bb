@@ -43,7 +43,7 @@ export function useRetryKey(name: string): RetryKey {
  * envelope, which a proxy sends when it gives up while the app carries on; or the app's
  * own "already processing" 409, which it marks retryable (CAP-014, D-005).
  */
-function unanswered(error: unknown): boolean {
+export function unanswered(error: unknown): boolean {
     if (!(error instanceof CapabilityError)) return false;
     if (error.status === 0) return true;
     const envelope = (error.body as { error?: unknown } | null)?.error;
