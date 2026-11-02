@@ -12,6 +12,7 @@ use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use RawPHP\Warp\Concerns\InteractsWithWarmApplication;
 use RawPHP\Warp\ResetManifest;
 use RawPHP\Warp\WarmApplicationFactory;
+use Tests\Support\BillingOn;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -64,6 +65,11 @@ abstract class TestCase extends BaseTestCase
 
     protected function createClassicApplication(): Application
     {
+        // Billing is decided at boot (SUB-020); its tests are warp-isolated too, so this is their own app.
+        if (in_array(BillingOn::GROUP, $this->groups(), true)) {
+            return BillingOn::boot(fn (): Application => parent::createApplication());
+        }
+
         return parent::createApplication();
     }
 
