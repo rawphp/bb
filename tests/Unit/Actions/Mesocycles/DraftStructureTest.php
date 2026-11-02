@@ -197,3 +197,12 @@ it('MESO-013 MESO-022 an unknown draft is not found', function () {
     expect(fn () => app(GenerateMesocycleStructure::class)($user, '01JE0000000000000000000000'))
         ->toThrow(ModelNotFoundException::class);
 });
+
+it('MESO-020 with no days per week picked, Continue lays out as many days as the build shows', function () {
+    $day = fn (string $id) => ['id' => $id, 'label' => null, 'weekday' => null, 'slots' => []];
+    $draft = structureDraft(attributes: ['days' => [$day('a'), $day('b'), $day('c')]]);
+
+    app(GenerateMesocycleStructure::class)($draft->user, $draft->id);
+
+    expect(count($draft->fresh()->dayRows()))->toBe(3);
+});
