@@ -9,8 +9,9 @@ use Rawphp\Capabilities\Support\CapabilityData;
 /**
  * Add a set (CAP-019, client ULID): below `after_set_id` from the set menu
  * (WO-020), or at the end of the exercise with a type from its menu (WO-022,
- * after_set_id null). The server starts it from the set above. Added sets
- * carry forward (PROG-019).
+ * after_set_id null). The server starts it from the set above. Carrying an
+ * added set into later weeks belongs to finishing the workout (PROG-019,
+ * workout_finish), not to this write.
  */
 final class WorkoutSetAddInput extends CapabilityData
 {
