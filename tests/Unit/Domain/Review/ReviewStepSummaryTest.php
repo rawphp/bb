@@ -201,3 +201,12 @@ it('REV-003 progress needs a trend in the phase', function () {
         reviewFatLossPhase(), new TrendWeight([], new DateTimeZone('UTC')), F::day(11),
     ))->toBeNull();
 });
+
+// PHP-only: Swift took a Set.
+
+it('REV-003 an underperforming muscle listed twice is named once', function () {
+    $summary = ReviewTraining::summary(
+        ReviewTrainingFacts::empty(), [MuscleGroup::Back, MuscleGroup::Back, MuscleGroup::Quads], [], [], NextWeekKind::Normal,
+    );
+    expect($summary->underperformingMuscles)->toBe([MuscleGroup::Back, MuscleGroup::Quads]);
+});

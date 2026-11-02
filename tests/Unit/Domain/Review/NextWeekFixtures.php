@@ -18,6 +18,7 @@ use App\Domain\Placement\ClockRange;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Placement\TrainingDay;
 use App\Domain\Placement\WorkoutTime;
+use App\Domain\Plan\PlanWeekGrid;
 use App\Domain\Retarget\OtherActivity;
 use App\Domain\Review\ReviewWorld;
 use App\Domain\WeekBuilder\AwayWeek;
@@ -88,9 +89,12 @@ final class NextWeekFixtures
         PhaseType $phase = PhaseType::FatLoss,
         ?Profile $profile = null,
         array $otherActivities = [],
+        string $zone = 'UTC',
     ): ReviewWorld {
+        $grid = new PlanWeekGrid(PlanFixtures::date(2026, 1, 5, zone: $zone), PlanFixtures::MONDAY);
+
         return new ReviewWorld(
-            plan: PlanFixtures::plan([PlanFixtures::phase($phase, 0, 12, $phase === PhaseType::FatLoss ? -0.5 : 0)]),
+            plan: PlanFixtures::plan([PlanFixtures::phase($phase, 0, 12, $phase === PhaseType::FatLoss ? -0.5 : 0, $grid)], $grid),
             profile: $profile ?? self::profile(),
             schedule: self::schedule($trainingOnly),
             mesocycle: new Mesocycle(

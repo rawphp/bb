@@ -350,3 +350,11 @@ it('REV-011 fewer than three weeks done defaults to no', function () {
     expect(Fatigue::deloadOffer(6, 2))->toEqual(DeloadOffer::askDeloadToo(false))
         ->and(Fatigue::deloadOffer(8, 1))->toEqual(DeloadOffer::askDeloadToo(false));
 });
+
+// PHP-only: Swift took a Set.
+
+it('REV-040 the same muscle listed twice counts once', function () {
+    $result = Fatigue::training(fatigueWeek(under: [MuscleGroup::Chest, MuscleGroup::Chest]));
+    expect($result->underperformingMuscles)->toBe(1)
+        ->and($result->isHigh())->toBeFalse();
+});
