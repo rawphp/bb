@@ -24,6 +24,7 @@ use App\Models\Profile;
 use App\Models\User;
 use DateTimeImmutable;
 use DomainException;
+use Throwable;
 
 /**
  * A stored day as the re-target rule reads it, and the rule's day written back (SCH-050 to SCH-057). Ported from
@@ -135,7 +136,12 @@ final class RetargetDays
             'meals' => $meals,
         ])->save();
 
-        app(NotifyRetarget::class)($row, $before);
+        // The notice is best effort: a failure is reported, never allowed to fail the re-target it follows.
+        try {
+            app(NotifyRetarget::class)($row, $before);
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     /** A day with no stored target, for a session's source day that is past and is not saved. */
