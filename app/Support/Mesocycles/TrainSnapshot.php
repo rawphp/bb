@@ -306,6 +306,29 @@ final class TrainSnapshot
         return MesocycleRules::snapped($this->grid(), $date);
     }
 
+    /**
+     * MESO-045: the weekday a day added now takes: in a weekday split the first free training weekday, else none.
+     */
+    public function newDayWeekday(Mesocycle $mesocycle): ?int
+    {
+        $weekdays = array_column($mesocycle->dayRows(), 'weekday');
+        if (! MesocycleRules::isWeekdaySplit($weekdays)) {
+            return null;
+        }
+
+        return MesocycleRules::freeWeekday(
+            $weekdays,
+            PlanWeekDays::inPlanWeekOrder($this->trainingWeekdays(), $this->reviewIsoWeekday($this->calendar($mesocycle)->grid)),
+        );
+    }
+
+    /** MESO-045: a day can be added while it runs; in a weekday split, only on a free training weekday. */
+    public function canAddDay(Mesocycle $mesocycle): bool
+    {
+        return $this->calendar($mesocycle)->canAddDay()
+            && (! MesocycleRules::isWeekdaySplit(array_column($mesocycle->dayRows(), 'weekday')) || $this->newDayWeekday($mesocycle) !== null);
+    }
+
     // MARK: phases
 
     public function phase(?string $id): ?Phase

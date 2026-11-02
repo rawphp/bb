@@ -20,7 +20,7 @@ final class MesocycleDayAddCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('mesocycle_day_add', affects: ['train_show', 'mesocycle_show'])
-            ->description('Add an empty training day after the last day of a running mesocycle, in every week. Use it when the user wants to train one more day; the day is named after the next free training weekday, or numbered. Sending the same day_id again changes nothing.')
+            ->description('Add an empty training day after the last day of a running mesocycle, in the remaining weeks from this one on. Use it when the user wants to train one more day; in a weekday split it takes the next free training weekday and needs one, else it is numbered. Sending the same day_id again changes nothing.')
             ->cli('mesocycle', 'day-add')
             ->input(MesocycleDayAddInput::class)
             ->run(function (MesocycleDayAddInput $input, CapabilityContext $context): WriteResult {

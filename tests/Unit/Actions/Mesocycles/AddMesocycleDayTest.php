@@ -39,7 +39,7 @@ function floatingDays(): array
 }
 
 it('MESO-045 appends an empty day at the end and keeps the others where they are', function () {
-    [$mesocycle, $refusal] = addDay();
+    [$mesocycle, $refusal] = addDay(['days' => floatingDays()]);
     $days = $mesocycle->dayRows();
 
     expect($refusal)->toBeNull()
@@ -85,7 +85,7 @@ it('MESO-045 SCH-039 later weeks still ahead run the new day too; the ones passe
 });
 
 it('MESO-045 adding the same day again changes nothing', function () {
-    [$mesocycle] = addDay();
+    [$mesocycle] = addDay(['days' => floatingDays()]);
     app(AddMesocycleDay::class)($mesocycle->user, $mesocycle->id, NEW_DAY);
 
     expect(count($mesocycle->fresh()->dayRows()))->toBe(3);

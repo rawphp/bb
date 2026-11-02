@@ -30,6 +30,8 @@ function queriesOf(Closure $work): array
 it('MESO-042 MESO-043 MESO-045 MESO-060 the writes read neither the exercise library nor the day targets', function () {
     Carbon::setTestNow('2026-09-22 10:00:00');
     $user = TrainSeed::user();
+    // Friday is a free training day for the day added.
+    $user->profile()->update(['training_days' => array_map(fn (int $d) => ['weekday' => $d, 'start' => '17:30', 'minutes' => 60], [1, 4, 5])]);
     $mesocycle = TrainSeed::mesocycle($user);
 
     $queries = queriesOf(function () use ($user, $mesocycle) {

@@ -98,7 +98,7 @@ final class MesocyclePayload
             weeks_count: $calendar->weeks,
             can_shorten: $calendar->canShorten($laterWeeksStored),
             can_lengthen: $calendar->canLengthen($laterWeeksStored),
-            can_add_day: $calendar->canAddDay(),
+            can_add_day: $snapshot->canAddDay($mesocycle),
             end: $calendar->canEnd() ? new MesocycleEndPrompt(
                 warning: self::END_WARNING,
                 diet_break_offer: $snapshot->endOffersDietBreak($mesocycle) ? self::DIET_BREAK_OFFER : null,

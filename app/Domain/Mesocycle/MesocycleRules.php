@@ -78,6 +78,55 @@ final class MesocycleRules
         return $flagged || ($phase !== null && DeloadCalories::isDietBreak($phase, $isDeload, $turnedOff));
     }
 
+    /**
+     * MESO-005: every day has a weekday.
+     *
+     * @param  list<?int>  $weekdays  each day's ISO weekday, null for a floating day
+     */
+    public static function isWeekdaySplit(array $weekdays): bool
+    {
+        return $weekdays !== [] && ! in_array(null, $weekdays, true);
+    }
+
+    /**
+     * MESO-045: the first training weekday no day uses, in plan-week order; null when all are used.
+     *
+     * @param  list<?int>  $weekdays  each day's ISO weekday
+     * @param  list<int>  $trainingWeekdays  the profile's training days, ISO, in plan-week order
+     */
+    public static function freeWeekday(array $weekdays, array $trainingWeekdays): ?int
+    {
+        return array_find($trainingWeekdays, fn (int $weekday) => ! in_array($weekday, $weekdays, true));
+    }
+
+    /**
+     * MESO-045 "Apply to all remaining weeks": a day added from week `$fromWeek` (0 is the first) on. SCH-039: the
+     * weeks before it are stored as they ran, so they keep their days; the later weeks stored from it on run the new
+     * day too, and the weeks past them run the whole rotation.
+     *
+     * @template TDay of array{id: string}
+     *
+     * @param  list<TDay>  $days  the rotation
+     * @param  list<list<TDay>>  $earlierWeeks
+     * @param  list<list<string>>  $laterWeeks  each later week's day ids
+     * @param  TDay  $day
+     * @return array{days: list<TDay>, earlier_weeks: list<list<TDay>>, later_weeks: list<list<string>>}
+     */
+    public static function addingDay(array $days, array $earlierWeeks, array $laterWeeks, int $fromWeek, array $day): array
+    {
+        $byId = array_column($days, null, 'id');
+        for ($week = count($earlierWeeks); $week < $fromWeek; $week++) {
+            $ids = $laterWeeks === [] ? array_keys($byId) : array_shift($laterWeeks);
+            $earlierWeeks[] = array_values(array_filter(array_map(fn (string $id) => $byId[$id] ?? null, $ids)));
+        }
+
+        return [
+            'days' => [...$days, $day],
+            'earlier_weeks' => $earlierWeeks,
+            'later_weeks' => array_map(fn (array $ids) => [...$ids, $day['id']], $laterWeeks),
+        ];
+    }
+
     /** MESO-005: an ISO weekday's name, which labels a day of a weekday split. */
     public static function weekdayName(int $weekday): string
     {
