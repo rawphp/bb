@@ -17,6 +17,7 @@ use App\Support\Today\RetargetDays;
 use App\Support\Today\SessionWeek;
 use DateTimeImmutable;
 use DomainException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -68,8 +69,11 @@ final class ResolveMissedSession
         } catch (RetargetRefused $refused) {
             throw new DomainException(self::refusal($refused->refusal));
         }
-        RetargetDays::save($plans->row($date), $result->days[1]);
-        $this->saveRow($user, $stored, $input, $session, $destination, skipped: false);
+        // The day and the session's row are saved together or not at all.
+        DB::transaction(function () use ($plans, $date, $result, $user, $stored, $input, $session, $destination) {
+            RetargetDays::save($plans->row($date), $result->days[1]);
+            $this->saveRow($user, $stored, $input, $session, $destination, skipped: false);
+        });
 
         return ['toast' => $result->message, 'dates' => [$session->date->format('Y-m-d'), $date], 'week' => $weekDates];
     }

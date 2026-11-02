@@ -9,6 +9,7 @@ use App\Support\Today\DayPlans;
 use App\Support\Today\Redistribution;
 use Carbon\CarbonImmutable;
 use DomainException;
+use Illuminate\Support\Facades\DB;
 
 /**
  * DAY-002, DAY-003: spreads the day's remaining calories and macros over the chosen meals and saves the day with the
@@ -34,22 +35,25 @@ final class RedistributeMeals
         $receivableIds = array_map(fn (DayMeal $meal) => $meal->id, $receivable);
         foreach ($mealIds as $id) {
             if (! in_array($id, $receivableIds, true)) {
-                $name = $day->meal($id)->name ?? 'That meal';
+                $name = $day->meal($id)?->name ?? 'That meal';
                 throw new DomainException("{$name} can't take a share: it is checked in, past, or its foods are locked.");
             }
         }
         $chosen = array_values(array_filter($receivable, fn (DayMeal $meal) => in_array($meal->id, $mealIds, true)));
 
-        $row = $plans->row($date);
-        $row->meals = DayPlans::withTargets($row->meals, Redistribution::targets($day, $chosen));
-        $row->save();
+        // The day and the planning states are saved together or not at all.
+        DB::transaction(function () use ($plans, $date, $day, $chosen, $user) {
+            $row = $plans->row($date);
+            $row->meals = DayPlans::withTargets($row->meals, Redistribution::targets($day, $chosen));
+            $row->save();
 
-        foreach ($chosen as $meal) {
-            if ($meal->hasFoods) {
-                $state = MealPlanningState::query()->firstOrNew(['meal_id' => $meal->id]);
-                $state->forceFill(['user_id' => $user->id, 'state' => 'still_planning'])->save();
+            foreach ($chosen as $meal) {
+                if ($meal->hasFoods) {
+                    $state = MealPlanningState::query()->firstOrNew(['meal_id' => $meal->id]);
+                    $state->forceFill(['user_id' => $user->id, 'state' => 'still_planning'])->save();
+                }
             }
-        }
+        });
 
         return $chosen;
     }

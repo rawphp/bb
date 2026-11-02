@@ -12,6 +12,7 @@ use App\Domain\Retarget\OtherActivity;
 use App\Domain\Retarget\RetargetContext;
 use App\Domain\Retarget\RetargetDay;
 use App\Domain\Retarget\RetargetMeal;
+use App\Domain\WeekBuilder\AwayWeek\Calories;
 use App\Domain\WeekBuilder\MealNames;
 use App\Domain\WeekBuilder\WeekMealKind;
 use App\Domain\WeekBuilder\WeekWorkout;
@@ -88,7 +89,7 @@ final class RetargetDays
             eatingWindow: new ClockRange($start, $end),
             busy: $busy,
             isDeloadWeek: $isDeloadWeek,
-            countsWorkoutEnergy: ! ($week !== null && $week->is_away && $week->away_calories === 'rest_day'),
+            countsWorkoutEnergy: ! ($week !== null && $week->is_away && Calories::tryFrom((string) $week->away_calories) === Calories::RestDays),
         );
     }
 
