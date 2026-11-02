@@ -140,6 +140,59 @@ it('AGT-005 with no cap takes parallel Coach messages: no lock, no refusal', fun
     $held->release();
 });
 
+it('AGT-005 under a token cap holds a message while a turn runs, and takes it once the reaper fails a dead one', function () {
+    config(['agent.tokens_per_month' => 1_000_000]);
+    $user = User::factory()->create();
+    $claim = app(TurnClaim::class);
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
+    $turn = Turn::query()->latest('id')->firstOrFail();
+    $claim->claim($turn->ulid, 'worker-that-dies');
+
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hello?'])
+        ->assertStatus(429)
+        ->assertJsonPath('error.message', 'The Coach is still answering your last message.');
+
+    // The worker died mid-turn; the reaper fails the turn through the bound claim.
+    expect($claim->failStaleRunning(CarbonImmutable::now()->addMinute(), 'stale', CarbonImmutable::now()))->toBe([$turn->ulid]);
+
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hello?'])->assertCreated();
+    // The dead worker recorded no usage, so the reaped turn counts no tokens.
+    expect($turn->fresh()->getAttribute('tokens'))->toBe(0);
+});
+
+it('AGT-005 runs the day and the month in the app timezone', function () {
+    $zone = date_default_timezone_get();
+    date_default_timezone_set('Australia/Sydney');
+    config(['app.timezone' => 'Australia/Sydney', 'agent.turns_per_day' => 3, 'agent.tokens_per_month' => 10_000]);
+    try {
+        $user = User::factory()->create();
+        // Local times: 00:10 today and 23:50 yesterday are 13:10 and 12:50 on 29 Nov in UTC.
+        pastTurns($user, [3_000, 3_000], at: '2026-11-30 00:10:00');
+        pastTurns($user, [4_000], at: '2026-11-29 23:50:00');
+        pastTurns($user, [50_000], at: '2026-10-31 23:50:00');
+
+        CarbonImmutable::setTestNow('2026-11-30 23:30:00');
+        $this->actingAs($user)->postJson('/capabilities/agent_status_show')
+            ->assertOk()
+            ->assertJsonPath('data.turns_left', 1)
+            ->assertJsonPath('data.tokens_left', 0)
+            ->assertJsonPath('data.resets_at', '2026-12-01T00:00:00+11:00')
+            ->assertJsonPath('data.notice', 'You\'ve reached this month\'s Coach limit. It resets at 00:00 AEDT on 1 Dec. Everything else still works.');
+        $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertStatus(429);
+
+        // Ten minutes after local midnight, a new day and a new month.
+        CarbonImmutable::setTestNow('2026-12-01 00:10:00');
+        $this->actingAs($user)->postJson('/capabilities/agent_status_show')
+            ->assertOk()
+            ->assertJsonPath('data.turns_left', 3)
+            ->assertJsonPath('data.tokens_left', 10_000)
+            ->assertJsonPath('data.at_cap', false);
+        $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
+    } finally {
+        date_default_timezone_set($zone);
+    }
+});
+
 it('AGT-005 without a token cap takes a message while another turn runs', function () {
     config(['agent.turns_per_day' => 10]);
     $user = User::factory()->create();
