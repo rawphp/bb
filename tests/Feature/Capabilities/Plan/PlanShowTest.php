@@ -1,6 +1,9 @@
 <?php
 
+use App\Models\DayTarget;
+use App\Models\Phase;
 use App\Models\User;
+use App\Models\WeighIn;
 use Illuminate\Support\Carbon;
 use Tests\Support\PlanSeed;
 use Tests\Support\ScreenFixture;
@@ -56,4 +59,24 @@ it('PLAN-005 a draft mesocycle has no band and no deload on the timeline', funct
 
     expect(array_column($data['mesocycles'], 'id'))->toBe([W::MESO1, W::MESO2, W::MESO3])
         ->and(array_column($data['deloads'], 'week'))->toBe([5, 11, 15]);
+});
+
+it('PH-030 shows a due transition in the warning fixture\'s shape, from the phase\'s final week of targets', function () {
+    Carbon::setTestNow('2026-10-14 10:00:00');
+    $user = TrainSeed::user();
+    Phase::factory()->for($user)->create(['id' => W::CUT, 'type' => 'fatLoss', 'start_date' => '2026-08-31', 'end_date' => '2026-10-19']);
+    foreach (W::weighIns() as $weighIn) {
+        WeighIn::factory()->for($user)->create(['weight_kg' => $weighIn->weight_kg, 'weighed_at' => $weighIn->weighed_at]);
+    }
+    DayTarget::factory()->for($user)->create(['date' => '2026-10-13', 'day_type' => 'hard', 'kcal' => 2100, 'fat_g' => 30, 'carbs_g' => 150]);
+
+    $data = $this->actingAs($user)->postJson('/capabilities/plan_show')->assertOk()->json('data');
+
+    assertMatchesScreenFixture('plan_show', $data);
+    expect(ScreenFixture::differences(ScreenFixture::load('plan_show.warning'), $data))->toBe([])
+        ->and($data['transition']['phase_id'])->toBe(W::CUT)
+        ->and($data['transition']['next_from_text'])->toBe('What comes next, from 19 Oct')
+        ->and(array_column($data['transition']['options'][1]['warnings'], 'text'))->toContain('Fat is under 0.3 g per lb of lean mass')
+        // PH-044: the first step (2,100 + 250) would pass the formula's maintenance, so it stops there.
+        ->and(array_column($data['transition']['options'][0]['step_up']['steps'][0]['schedule'], 'kcal_text')[0])->toBe('1,889 kcal');
 });
