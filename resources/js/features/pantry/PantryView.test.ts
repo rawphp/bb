@@ -7,7 +7,9 @@ import PantryView from './PantryView.vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn() }));
 const back = vi.fn();
-vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back }) }));
+// The route on screen; a test changes it to leave the Pantry (another tab, a pushed screen).
+const currentRoute = { value: { fullPath: '/nutrition/pantry' } };
+vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back, currentRoute }) }));
 
 const readMock = vi.mocked(read);
 const writeMock = vi.mocked(write);
@@ -46,6 +48,7 @@ describe('PantryView', () => {
         readMock.mockReset().mockResolvedValue(curated);
         writeMock.mockReset().mockResolvedValue({});
         back.mockReset();
+        currentRoute.value = { fullPath: '/nutrition/pantry' };
     });
 
     afterEach(() => {
@@ -455,18 +458,25 @@ describe('PantryView', () => {
         expect(back).toHaveBeenCalledOnce();
     });
 
-    it('FOOD-028 picks wait while Add runs, so none is dropped or sent unseen', async () => {
+    it('FOOD-028 the whole Pantry waits while Add runs, so no pick, weighing or Cancel changes what was sent', async () => {
         let finish: (value: unknown) => void = () => {};
         writeMock.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
         const wrapper = show();
 
-        await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+        await row(wrapper, 'Broccoli').find('[data-test="pick"]').trigger('click');
+        expect(wrapper.find('[data-test="pantry-content"]').attributes('inert')).toBeUndefined();
         await wrapper.find('[data-test="confirm"]').trigger('click');
         await flushPromises();
 
-        expect(row(wrapper, 'Broccoli').find('[data-test="pick"]').attributes('disabled')).toBeDefined();
-        expect(wrapper.find('[data-test="basket"] button[aria-label="Remove Egg whites"]').attributes('disabled')).toBeDefined();
+        const content = wrapper.find('[data-test="pantry-content"]');
+        expect(content.attributes('inert')).toBeDefined();
+        for (const control of ['[data-test="cancel"]', '[data-test="basket"]', '[data-test="weighing-cooked"]', '[data-test="pick"]', '[role="tablist"]']) {
+            expect(content.find(control).exists(), control).toBe(true);
+        }
+        expect(wrapper.find('[data-test="confirm"]').attributes('disabled')).toBeDefined();
         finish({});
+        await flushPromises();
+        expect(wrapper.find('[data-test="pantry-content"]').attributes('inert')).toBeUndefined();
         await flushPromises();
         expect(back).toHaveBeenCalledOnce();
     });
@@ -485,6 +495,44 @@ describe('PantryView', () => {
         await flushPromises();
 
         expect(back).toHaveBeenCalledOnce();
+    });
+
+    it('NAV-002 an Add that finishes after the user opened another tab or screen does not go back', async () => {
+        let finish: (value: unknown) => void = () => {};
+        writeMock.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+        const wrapper = show();
+
+        await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+        await wrapper.find('[data-test="confirm"]').trigger('click');
+        await flushPromises();
+        currentRoute.value = { fullPath: '/today' };
+        finish({});
+        await flushPromises();
+
+        expect(back).not.toHaveBeenCalled();
+        expect(wrapper.find('[data-test="basket"]').exists()).toBe(false);
+    });
+
+    it('FOOD-028 leaving during Add stops the saved meals not yet sent, and they stay in the basket', async () => {
+        let finish: (value: unknown) => void = () => {};
+        writeMock.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+        const twoMeals = structuredClone(curated);
+        twoMeals.saved_meals.push({ saved_meal_id: '01JBX5S0000000000000000002', name: 'Cut lunch', detail: '2 foods' });
+        readMock.mockResolvedValue(twoMeals);
+        const wrapper = show({ payload: twoMeals, mealId: MEAL });
+
+        await wrapper.find('select[aria-label="Show"]').setValue('saved_meals');
+        await flushPromises();
+        for (const meal of wrapper.findAll('[data-test="collection-row"]')) await meal.trigger('click');
+        await wrapper.find('[data-test="confirm"]').trigger('click');
+        await flushPromises();
+        currentRoute.value = { fullPath: '/today' };
+        finish({});
+        await flushPromises();
+
+        expect(writes().map(([name, input]) => [name, input.saved_meal_id])).toEqual([['meal_saved_meal_load', '01JBX5S0000000000000000001']]);
+        expect(wrapper.find('[data-test="basket"]').findAll('li').map((li) => li.text())).toEqual(['Cut lunchSaved meal']);
+        expect(back).not.toHaveBeenCalled();
     });
 
     it('FOOD-025 the source hint goes with the source chip when a collection shows', async () => {

@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import ValueRow, { type RowAction, type ValueField } from './ValueRow.vue';
 
@@ -222,6 +222,20 @@ describe('ValueRow', () => {
         expect(open()).toBeUndefined();
         expect(wrapper.find('[role="menu"]').exists()).toBe(true);
         wrapper.unmount();
+    });
+
+    it('UI-008 a drift under the slop stays a tap; past it the row captures the pointer, so the drag ends in no click', async () => {
+        const wrapper = row({ swipeActions });
+        const capture = vi.fn();
+        (wrapper.get('[data-row]').element as HTMLElement).setPointerCapture = capture;
+
+        await swipe(wrapper, -5);
+        expect(capture).not.toHaveBeenCalled();
+        expect(wrapper.get('[data-row]').attributes('data-open')).toBeUndefined();
+
+        await swipe(wrapper, -60);
+        expect(capture).toHaveBeenCalledWith(1);
+        expect(wrapper.get('[data-row]').attributes('data-open')).toBe('true');
     });
 
     it('UI-008 with no actions there is no menu button', () => {
