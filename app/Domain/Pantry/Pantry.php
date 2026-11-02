@@ -129,10 +129,14 @@ final class Pantry
             : "No {$tab->foodsName()} yet.";
     }
 
-    /** What the empty Recipes or Saved Meals filter says: "No recipes yet.", or "No recipes match pie." */
-    public static function emptyCollectionText(string $name, string $query): string
+    /** What the empty Recipes or Saved Meals filter says: "No recipes yet.", "No recipes match pie." or "No recipes match your filters." */
+    public static function emptyCollectionText(string $name, string $query, bool $filtered = false): string
     {
-        return $query === '' ? "No {$name} yet." : "No {$name} match {$query}.";
+        return match (true) {
+            $query !== '' => "No {$name} match {$query}.",
+            $filtered => "No {$name} match your filters.",
+            default => "No {$name} yet.",
+        };
     }
 
     /** FOOD-003: a curated group's name. */

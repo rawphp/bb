@@ -22,6 +22,7 @@ final readonly class PantrySnapshot
      * @param  ?string  $suggestion  FOOD-024's corrected query
      * @param  list<PantryRecipe>  $recipes  the user's own recipes, then the library's, that pass the diet filters and the search
      * @param  list<PantrySavedMeal>  $savedMeals  the user's saved meals that match the search
+     * @param  bool  $recipesHidden  the diet filters hid every recipe there is
      */
     public function __construct(
         public array $diets = [],
@@ -32,5 +33,6 @@ final readonly class PantrySnapshot
         public ?string $suggestion = null,
         public array $recipes = [],
         public array $savedMeals = [],
+        public bool $recipesHidden = false,
     ) {}
 }

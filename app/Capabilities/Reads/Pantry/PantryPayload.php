@@ -36,7 +36,7 @@ final class PantryPayload
 
         if ($input->collection === 'recipes') {
             $recipes = array_map(self::recipeRow(...), $snapshot->recipes);
-            $emptyText = $recipes === [] ? Pantry::emptyCollectionText('recipes', $query) : null;
+            $emptyText = $recipes === [] ? Pantry::emptyCollectionText('recipes', $query, $snapshot->recipesHidden) : null;
         } elseif ($input->collection === 'saved_meals') {
             $savedMeals = array_map(self::savedMealRow(...), $snapshot->savedMeals);
             $emptyText = $savedMeals === [] ? Pantry::emptyCollectionText('saved meals', $query) : null;

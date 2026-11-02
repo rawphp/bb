@@ -46,7 +46,11 @@ final class PantryReader
         $mealFoods = $input->meal_id === null ? [] : self::mealFoods($user, $input->meal_id);
 
         if ($input->collection === 'recipes') {
-            return new PantrySnapshot(diets: $diets, mealFoods: $mealFoods, recipes: self::recipes($user, $diets, $query));
+            $recipes = self::recipes($user, $diets, $query);
+            $hidden = $recipes === [] && $diets !== [] && $query === ''
+                && Recipe::query()->where(fn (Builder $q) => $q->where('user_id', $user->id)->orWhereNull('user_id'))->exists();
+
+            return new PantrySnapshot(diets: $diets, mealFoods: $mealFoods, recipes: $recipes, recipesHidden: $hidden);
         }
         if ($input->collection === 'saved_meals') {
             return new PantrySnapshot(diets: $diets, mealFoods: $mealFoods, savedMeals: self::savedMeals($user, $query));
