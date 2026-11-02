@@ -198,6 +198,20 @@ it('FOOD-027 knows named cheeses and dairy solids, cured meats and animal additi
     'collagen' => ['collagen, water', ['vegetarian', 'vegan']],
 ]);
 
+it('FOOD-027 keeps goat milk dairy, though "oat milk" is spelled inside it', function (string $name, ?string $ingredients) {
+    $flags = (new DietClassifier)->classify($name, null, $ingredients, []);
+
+    expect($flags)->toMatchArray(['dairy_free' => false, 'vegan' => false, 'paleo' => false, 'low_fodmap' => false, 'vegetarian' => true]);
+})->with([
+    'USDA branded' => ['GOAT MILK', 'GRADE A PASTEURIZED GOAT MILK, VITAMIN D3'],
+    'Open Food Facts' => ['Goat milk', 'goat milk'],
+    'powder' => ['Goat milk powder', 'goat milk powder, lecithin'],
+]);
+
+it('FOOD-027 still treats whole-word plant milks and nut butters as dairy free', function (string $ingredients) {
+    expect((new DietClassifier)->classify('Product', null, $ingredients, [])['dairy_free'])->toBeTrue($ingredients);
+})->with(['oat milk, salt', 'almond milks, water', 'walnut butter, salt', 'hazelnut butter, cocoa']);
+
 it('FOOD-027 keeps bean curd and goat cheese in the diets they belong to', function () {
     $tofu = (new DietClassifier)->classify('Tofu', null, 'bean curd, water', []);
     $goatCheese = (new DietClassifier)->classify('Cheese', null, 'goat milk, salt, cultures', []);

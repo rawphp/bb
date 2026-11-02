@@ -100,7 +100,7 @@ final class DietClassifier
     private const NOT_DAIRY = ['peanut butter', 'almond butter', 'cashew butter', 'nut butter', 'seed butter',
         'sunflower butter', 'cocoa butter', 'shea butter', 'butter bean', 'butternut', 'coconut milk', 'almond milk',
         'oat milk', 'soy milk', 'soya milk', 'rice milk', 'hemp milk', 'cashew milk', 'coconut cream', 'cream of tartar',
-        'bean curd', 'soy curd'];
+        'bean curd', 'soy curd', 'walnut butter', 'hazelnut butter', 'pecan butter', 'macadamia butter', 'pistachio butter'];
 
     /** Flours that are not gluten grains. Rice, corn, oat and buckwheat flour are still grains. */
     private const NON_GRAIN_FLOURS = ['almond', 'coconut', 'tapioca', 'potato', 'chickpea', 'cassava', 'arrowroot',
@@ -181,9 +181,9 @@ final class DietClassifier
         $category = implode(', ', array_filter(explode(',', $category), fn (string $part) => ! preg_match(self::SUBSTITUTE_CATEGORY, $part)));
         $text = mb_strtolower($name.' '.$category.' '.$ingredients);
 
-        $dairyText = str_replace(self::NOT_DAIRY, '', $text);
+        $dairyText = $this->withoutPlantDairy($text);
         // The FODMAP check drops only the dairy word of a plant milk or butter: "cashew butter" keeps "cashew", "butter bean" keeps "bean".
-        $fodmapText = str_replace(self::NOT_DAIRY, array_map(fn (string $p) => (string) preg_replace('/\b(?:butter|milk|cream)\b/', '', $p), self::NOT_DAIRY), $text);
+        $fodmapText = $this->withoutPlantDairy($text, keepPlant: true);
         $glutenText = preg_replace($this->flourPattern([...self::NON_GRAIN_FLOURS, ...self::GLUTEN_FREE_FLOURS]), '', $text);
         $grainText = preg_replace($this->flourPattern(self::NON_GRAIN_FLOURS), '', $text);
 
@@ -259,7 +259,7 @@ final class DietClassifier
     {
         $name = mb_strtolower($name);
 
-        return $this->has(['egg'], $name) && ! $this->has(self::DAIRY, str_replace(self::NOT_DAIRY, '', $name));
+        return $this->has(['egg'], $name) && ! $this->has(self::DAIRY, $this->withoutPlantDairy($name));
     }
 
     /**
@@ -300,6 +300,21 @@ final class DietClassifier
         }
 
         return $flags;
+    }
+
+    /**
+     * Removes the plant milks and butters (NOT_DAIRY) as whole words, so "goat milk" keeps its milk
+     * ("oat milk" is not inside it). With $keepPlant, only their dairy word goes.
+     */
+    private function withoutPlantDairy(string $text, bool $keepPlant = false): string
+    {
+        $phrases = implode('|', array_map(fn (string $p) => str_replace(' ', '\s+', preg_quote($p, '/')), self::NOT_DAIRY));
+
+        return (string) preg_replace_callback(
+            '/\b(?:'.$phrases.')s?\b/',
+            fn (array $m) => $keepPlant ? (string) preg_replace('/\b(?:butter|milk|cream)\b/', '', $m[0]) : '',
+            $text,
+        );
     }
 
     /** @param  list<string>  $words */
