@@ -199,10 +199,10 @@ final class PhaseChanges
             if ($placed !== null) {
                 $start = $placed->placed->startWeek;
                 $paused = count(array_filter($this->plan->pausedWeeks, fn (int $week) => $week >= $start && $week < $start + $length->weeks));
-                $weeks = $length->weeks - $paused;
-                if (TBL020MesocycleLength::row($this->plan->experience())->allowedWeeks->contains($weeks)
-                    && $this->plan->calendar($placed->mesocycle)->canSetWeeks($weeks, $placed->mesocycle->laterWeekIds() !== [])) {
-                    $change = [$placed, $weeks];
+                $mesocycleWeeks = $length->weeks - $paused;
+                if (TBL020MesocycleLength::row($this->plan->experience())->allowedWeeks->contains($mesocycleWeeks)
+                    && $this->plan->calendar($placed->mesocycle)->canSetWeeks($mesocycleWeeks, $placed->mesocycle->laterWeekIds() !== [])) {
+                    $change = [$placed, $mesocycleWeeks];
                 }
             }
         }
