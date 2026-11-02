@@ -1,0 +1,142 @@
+{
+    "state": "ready",
+    "message": null,
+    "week_start": "2026-10-05",
+    "week_label": "5 Oct to 11 Oct",
+    "steps": [
+        {
+            "key": "weigh_ins",
+            "title": "Weigh-ins"
+        },
+        {
+            "key": "training",
+            "title": "Training"
+        },
+        {
+            "key": "progress",
+            "title": "Progress"
+        }
+    ],
+    "weigh_ins": {
+        "rows": [
+            {
+                "date": "2026-10-05",
+                "date_label": "Mon, 5 Oct",
+                "value_label": "82.9 kg",
+                "is_missing": false,
+                "add_at": "2026-10-05T07:00:00+01:00"
+            },
+            {
+                "date": "2026-10-07",
+                "date_label": "Wed, 7 Oct",
+                "value_label": "",
+                "is_missing": true,
+                "add_at": "2026-10-07T07:00:00+01:00"
+            },
+            {
+                "date": "2026-10-09",
+                "date_label": "Fri, 9 Oct",
+                "value_label": "",
+                "is_missing": true,
+                "add_at": "2026-10-09T07:00:00+01:00"
+            },
+            {
+                "date": "2026-10-10",
+                "date_label": "Sat, 10 Oct",
+                "value_label": "82.5 kg",
+                "is_missing": false,
+                "add_at": "2026-10-10T07:00:00+01:00"
+            }
+        ],
+        "empty_message": null,
+        "missing": {
+            "text": "Missing · Add",
+            "tone": "warning"
+        },
+        "add_title": "Add a weigh-in"
+    },
+    "meals": null,
+    "training": {
+        "lines": [
+            {
+                "label": "Sessions done",
+                "value": "2",
+                "tone": "neutral"
+            },
+            {
+                "label": "Skipped",
+                "value": "1",
+                "tone": "neutral"
+            },
+            {
+                "label": "Missed",
+                "value": "1",
+                "tone": "warning"
+            },
+            {
+                "label": "Sets done",
+                "value": "13 of 20 planned",
+                "tone": "neutral"
+            }
+        ],
+        "notes": [
+            {
+                "text": "Missed rep targets 2 sessions running: Chest",
+                "tone": "warning"
+            },
+            {
+                "text": "At the volume ceiling: Back",
+                "tone": "info"
+            },
+            {
+                "text": "Bench Press: Moderate pain",
+                "tone": "warning"
+            }
+        ],
+        "next_week_label": "Next week",
+        "next_week": {
+            "text": "Last hard week",
+            "tone": "neutral"
+        }
+    },
+    "progress": {
+        "lines": [
+            {
+                "label": "Trend weight",
+                "value": "82.7 kg",
+                "tone": "neutral"
+            },
+            {
+                "label": "Goal range",
+                "value": "82.1 kg to 82.9 kg",
+                "tone": "neutral"
+            },
+            {
+                "label": "This week's rate",
+                "value": "-0.42% a week",
+                "tone": "neutral"
+            },
+            {
+                "label": "Target rate",
+                "value": "-0.50% a week",
+                "tone": "neutral"
+            }
+        ],
+        "pills": [
+            {
+                "text": "Inside the goal range",
+                "tone": "good"
+            },
+            {
+                "text": "On target",
+                "tone": "good"
+            }
+        ],
+        "empty_message": null
+    },
+    "goal": null,
+    "calories": null,
+    "preview": null,
+    "can_save": true,
+    "save_title": "Save"
+}
