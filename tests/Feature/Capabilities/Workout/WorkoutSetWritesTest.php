@@ -119,6 +119,23 @@ it('WO-003 refuses a rep count no set can hold with a plain message, not a serve
     expect(WorkoutSet::query()->find($set)->actual_reps)->toBeNull();
 });
 
+it('WO-003 CAP-015 refuses a negative weight and one no set can hold, in either unit', function (array $weight, ?string $message) {
+    [$user, $shown] = startedOver();
+    $set = $shown['exercises'][0]['sets'][0]['id'];
+
+    $response = writeOver($user, 'workout_set_log', ['set_id' => $set, 'weight' => $weight, 'reps' => 8, 'is_logged' => false])
+        ->assertStatus(422);
+    if ($message !== null) {
+        $response->assertJsonPath('error.message', $message);
+    }
+
+    expect(WorkoutSet::query()->find($set)->actual_weight_kg)->toBeNull();
+})->with([
+    'negative' => [['value' => -5, 'unit' => 'kg'], null],
+    'over 1000 kg' => [['value' => 1000.5, 'unit' => 'kg'], 'Enter a weight of 1000 kg (2204 lb) or less.'],
+    'over 1000 kg in lb' => [['value' => 2205, 'unit' => 'lb'], 'Enter a weight of 1000 kg (2204 lb) or less.'],
+]);
+
 it('WO-020 refuses a write to a session not started yet with a plain message', function () {
     [$user, $shown] = startedOver();
     WorkoutSet::query()->find($shown['exercises'][0]['sets'][0]['id'])->session->update(['actual_start_at' => null]);
