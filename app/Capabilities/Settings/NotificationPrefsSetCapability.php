@@ -21,7 +21,7 @@ final class NotificationPrefsSetCapability implements HostCapability
     {
         return HostDefinition::write('notification_prefs_set', affects: ['settings_show'])
             ->description('Turn one type of notification on or off: weigh-in, meal, workout, weekly review, next mesocycle or meal target change reminders. Meal reminders start off and the rest start on. It changes only which notifications the server sends this user.')
-            ->cli('notifications', 'set')
+            ->cli('notification', 'prefs-set')
             ->input(NotificationPrefsSetInput::class)
             ->run(function (NotificationPrefsSetInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */

@@ -23,10 +23,10 @@ class NotificationPref extends Model
     use BelongsToUser, HasFactory;
 
     /** The user's switches, for the sender and for settings_show. */
-    public static function switches(User|int $user): ReminderSwitches
+    public static function switches(User $user): ReminderSwitches
     {
         return new ReminderSwitches(static::query()
-            ->where('user_id', $user instanceof User ? $user->id : $user)
+            ->where('user_id', $user->id)
             ->pluck('on', 'kind')
             ->map(fn (mixed $on): bool => (bool) $on)
             ->all());

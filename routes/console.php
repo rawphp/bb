@@ -1,7 +1,7 @@
 <?php
 
-use App\Actions\Notifications\SendDueReminders;
 use App\Billing\PlanPrices;
+use App\Jobs\SendUserReminders;
 use App\Models\AuditOutboxRow;
 use App\Models\AuditRecord;
 use App\Models\SentReminder;
@@ -43,14 +43,14 @@ Artisan::command('billing:refresh-prices', function (PlanPrices $prices): int {
 
 Schedule::command('billing:refresh-prices')->everyFifteenMinutes()->when(fn (): bool => (bool) config('billing.enabled'));
 
-// NOTIF-001 to NOTIF-005: the server decides when each reminder is due and sends it. Only users with a subscribed
-// browser have anywhere to send to; without VAPID keys nothing is sent.
-Artisan::command('reminders:send', function (SendDueReminders $send): int {
+// NOTIF-001 to NOTIF-005: the server decides when each reminder is due and sends it, one queued job per user. Only
+// users with a subscribed browser have anywhere to send to; without VAPID keys the pass does not run.
+Artisan::command('reminders:send', function (): int {
     $now = CarbonImmutable::now();
-    User::query()->whereHas('pushSubscriptions')->each(fn (User $user) => $send($user, $now));
+    User::query()->whereHas('pushSubscriptions')->each(fn (User $user) => SendUserReminders::dispatch($user, $now));
 
     return 0;
-})->purpose('Send each user the reminders that fell due in the last few minutes');
+})->purpose('Queue each subscribed user\'s reminders that fell due in the last few minutes');
 
 Schedule::command('reminders:send')->everyMinute()->withoutOverlapping(10)->when(fn (): bool => PushNotification::available());
 

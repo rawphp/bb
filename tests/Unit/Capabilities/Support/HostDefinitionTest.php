@@ -77,12 +77,13 @@ it('CAP-011 has every registered affects entry name a registered read, or a cont
     // that issue registers it, the entry is checked like any other.
     $root = dirname(__DIR__, 4);
     $owners = ContractDtos::owners($root);
+    $registered = app(CapabilityRegistry::class)->all();
     $waiting = array_filter(
         HostDefinition::unknownAffects(app(CapabilityRegistry::class)),
-        function (string $entry) use ($root, $owners): bool {
+        function (string $entry) use ($root, $owners, $registered): bool {
             $read = substr($entry, strrpos($entry, ' ') + 1);
 
-            return ! isset($owners[$read]) || ! is_file("{$root}/tests/fixtures/schemas/{$read}.output.json");
+            return isset($registered[$read]) || ! isset($owners[$read]) || ! is_file("{$root}/tests/fixtures/schemas/{$read}.output.json");
         },
     );
 

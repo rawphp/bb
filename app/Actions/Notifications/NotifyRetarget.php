@@ -23,7 +23,7 @@ final class NotifyRetarget
     /** @param  array<int, array<string, mixed>>  $before  the day's stored meals before the re-target */
     public function __invoke(DayTarget $row, array $before): void
     {
-        $user = User::query()->find($row->user_id);
+        $user = $row->user;
         if ($user === null || ! NotificationPref::switches($user)->isOn(ReminderKind::Retarget) || ! $user->pushSubscriptions()->exists()) {
             return;
         }

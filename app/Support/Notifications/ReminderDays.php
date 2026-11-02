@@ -22,8 +22,9 @@ use DateTimeImmutable;
 final class ReminderDays
 {
     /**
-     * The days from `$first` to `$last`, both whole days; a day before the plan, past its last target, or before
-     * the profile exists has nothing to remind about and is left out.
+     * The days from `$first` to `$last`, both whole days, as Today shows them: a day before the plan or before the
+     * profile exists is left out, and so is a day Today would show as another (outside the plan's weeks and not in
+     * today's week, SCH-023).
      *
      * @return list<ReminderDay>
      */

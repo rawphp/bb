@@ -14,7 +14,6 @@ use App\Models\WorkoutSession;
 use App\Notifications\PushNotification;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Notification;
@@ -195,12 +194,12 @@ it('NOTIF-001 a reminder whose push cannot be queued is not marked sent, so the 
     $user = remindedUser();
     Carbon::setTestNow('2026-09-26 07:00:00');
 
+    $bus = Bus::getFacadeRoot();
     Bus::shouldReceive('dispatch')->once()->andThrow(new RuntimeException('queue down'));
     expect(fn () => app(SendDueReminders::class)($user, CarbonImmutable::now()))->toThrow(RuntimeException::class);
     expect(SentReminder::query()->count())->toBe(0);
 
-    Bus::clearResolvedInstances();
-    app()->forgetInstance(Dispatcher::class);
+    Bus::swap($bus);
     Carbon::setTestNow('2026-09-26 07:01:00');
     app(SendDueReminders::class)($user, CarbonImmutable::now());
     expect(sentLines($user))->toBe(['Weigh-in | Time to weigh in | /today?date=2026-09-26&open=weigh-in']);
