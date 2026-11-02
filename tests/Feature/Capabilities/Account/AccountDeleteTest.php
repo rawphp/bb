@@ -1,6 +1,7 @@
 <?php
 
 use App\Agent\Exclusions;
+use App\Capabilities\Support\AuditRecordWriter;
 use App\Capabilities\Support\HostDefinition;
 use App\Models\AuditRecord;
 use App\Models\DayTarget;
@@ -9,6 +10,7 @@ use App\Models\Profile;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\WeighIn;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Str;
@@ -87,6 +89,16 @@ it('ACC-005 CAP-022 the deletion is audited with no user, since the account is g
     Exceptions::assertNothingReported();
     expect(AuditRecord::query()->where('capability', 'account_delete')->get(['user_id', 'channel'])->toArray())
         ->toBe([['user_id' => null, 'channel' => 'ui']]);
+});
+
+it('CAP-022 only account_delete\'s audit row loses a user who is gone: any other write keeps the user it names', function () {
+    $writer = app(AuditRecordWriter::class);
+    $entry = ['event' => 'capability.invoked', 'actor_type' => 'user', 'actor_id' => '999999', 'caller' => 'job'];
+
+    $writer->write($entry + ['capability_name' => 'account_delete']);
+
+    expect(AuditRecord::query()->where('capability', 'account_delete')->value('user_id'))->toBeNull()
+        ->and(fn () => $writer->write($entry + ['capability_name' => 'phase_end']))->toThrow(QueryException::class);
 });
 
 it('ACC-005 SUB-020 with billing off, a subscription row left from billing on does not stop the deletion', function () {
