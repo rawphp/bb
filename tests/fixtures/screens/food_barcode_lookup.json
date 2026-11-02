@@ -15,7 +15,8 @@
         "basis_text": "per 100 g",
         "is_curated": false,
         "is_favorite": false,
-        "is_in_meal": false
+        "is_in_meal": false,
+        "attribution": "Food data from Open Food Facts (openfoodfacts.org), available under the Open Database License (ODbL)."
     },
     "message": null
 }

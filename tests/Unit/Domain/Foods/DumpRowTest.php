@@ -126,6 +126,21 @@ it('FOOD-004 classifies only English ingredients, so another language sets no di
         ->and($rows['1000000000006']['food'])->toMatchArray(['gluten_free' => false, 'dairy_free' => false, 'vegetarian' => true]);
 });
 
+it('FOOD-004 keeps a USDA Branded serving in grams or millilitres (1 ml as 1 g) and drops other units', function (mixed $size, string $unit, ?string $household, array $servings) {
+    $record = ['fdcId' => 1, 'description' => 'JUICE', 'gtinUpc' => '', 'brandedFoodCategory' => 'Juice',
+        'servingSize' => $size, 'servingSizeUnit' => $unit, 'householdServingFullText' => $household,
+        'foodNutrients' => [['nutrient' => ['number' => '208'], 'amount' => 45.0]]];
+
+    expect((new DumpRow)->fromUsda($record, true)['servings'])->toBe($servings);
+})->with([
+    'GRM' => [30.0, 'GRM', '2 pieces', [['label' => '2 pieces', 'grams' => 30.0]]],
+    'MLT' => [240.0, 'MLT', '1 cup', [['label' => '1 cup', 'grams' => 240.0]]],
+    'g' => [43.0, 'g', '1 slice', [['label' => '1 slice', 'grams' => 43.0]]],
+    'oz is dropped' => [1.0, 'oz', '1 oz', []],
+    'no unit is dropped' => [30.0, '', '1 bar', []],
+    'no household text' => [30.0, 'GRM', null, [['label' => 'serving', 'grams' => 30.0]]],
+]);
+
 it('FOOD-001 drops USDA portions that are zero, huge or over 5000 g', function () {
     expect(foodsMapped('usda_edge.json')['3000001']['servings'])->toBe([['label' => 'cup chopped', 'grams' => 91.0]]);
 });

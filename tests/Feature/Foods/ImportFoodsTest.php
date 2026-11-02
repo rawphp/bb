@@ -208,6 +208,45 @@ it('FOOD-001 fails a cut-off Open Food Facts download, plain or gzipped, so the 
     }
 })->with(['plain' => false, 'gzipped' => true]);
 
+it('FOOD-001 fails a gzipped download that lost its end, even when every line it gives is whole', function () {
+    $lines = '';
+    for ($i = 1; $i <= 10; $i++) {
+        $lines .= json_encode(['code' => (string) (2000000000000 + $i), 'product_name' => "Product {$i}", 'nutriments' => ['energy-kcal_100g' => 100]])."\n";
+    }
+    $path = tempnam(sys_get_temp_dir(), 'off').'.jsonl.gz';
+    // The last 8 bytes are the gzip trailer: without them every line still inflates.
+    file_put_contents($path, substr((string) gzencode($lines), 0, -8));
+
+    try {
+        $this->artisan('foods:import', ['source' => 'off', 'path' => $path])
+            ->expectsOutputToContain('is truncated or corrupt')
+            ->assertFailed();
+        expect(Food::count())->toBe(10);
+    } finally {
+        unlink($path);
+    }
+});
+
+it('FOOD-001 re-imports one source without touching another source\'s food that has the same source id', function () {
+    $row = fn (string $source, string $name, string $label) => [
+        'food' => ['name' => $name, 'source' => $source, 'source_id' => '7', 'kind' => 'packaged',
+            'kcal' => 10.0, 'protein' => 1.0, 'fat' => 1.0, 'carbs' => 1.0, 'fiber' => 0.0],
+        'servings' => [['label' => $label, 'grams' => 10.0]],
+    ];
+    $save = new SaveImportedFoods;
+    $save->handle([$row('off', 'Off seven', 'off serving')]);
+
+    $save->handle([$row('usda', 'Usda seven', 'usda serving')]);
+    $save->handle([$row('usda', 'Usda seven', 'usda serving')]);
+
+    $off = Food::query()->where('source', 'off')->where('source_id', '7')->firstOrFail();
+    $usda = Food::query()->where('source', 'usda')->where('source_id', '7')->firstOrFail();
+    expect($off->name)->toBe('Off seven')
+        ->and(foodsServingsOf($off))->toBe([['off serving', 10.0]])
+        ->and(foodsServingsOf($usda))->toBe([['usda serving', 10.0]])
+        ->and(FoodServing::count())->toBe(2);
+});
+
 it('FOOD-001 fails an empty download, plain or gzipped, and imports nothing', function (bool $gzip) {
     $path = tempnam(sys_get_temp_dir(), 'off').($gzip ? '.jsonl.gz' : '.jsonl');
     file_put_contents($path, $gzip ? gzencode('') : '');

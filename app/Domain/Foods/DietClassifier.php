@@ -161,6 +161,8 @@ final class DietClassifier
         $text = mb_strtolower($name.' '.$category.' '.$ingredients);
 
         $dairyText = str_replace(self::NOT_DAIRY, '', $text);
+        // The FODMAP check drops only the dairy word of a plant milk or butter: "cashew butter" keeps "cashew", "butter bean" keeps "bean".
+        $fodmapText = str_replace(self::NOT_DAIRY, array_map(fn (string $p) => (string) preg_replace('/\b(?:butter|milk|cream)\b/', '', $p), self::NOT_DAIRY), $text);
         $glutenText = preg_replace($this->flourPattern([...self::NON_GRAIN_FLOURS, ...self::GLUTEN_FREE_FLOURS]), '', $text);
         $grainText = preg_replace($this->flourPattern(self::NON_GRAIN_FLOURS), '', $text);
 
@@ -176,7 +178,7 @@ final class DietClassifier
             'dairy_free' => ! $dairy,
             'gluten_free' => ! $gluten,
             'grain_free' => ! $grain,
-            'low_fodmap' => ! $this->has(self::HIGH_FODMAP, $dairyText),
+            'low_fodmap' => ! $this->has(self::HIGH_FODMAP, $fodmapText),
             'vegetarian' => ! $flesh,
             'paleo' => ! $dairy && ! $grain && ! $legume && ! $sugar,
             'vegan' => ! $flesh && ! $dairy && ! $eggHoney,

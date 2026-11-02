@@ -246,6 +246,10 @@ export interface SettingsShowOutput {
    * true in local and testing only (SET-011)
    */
   developer: boolean;
+  /**
+   * Settings → About: every food dataset credit, from FoodSource::attributions() (ODbL for Open Food Facts)
+   */
+  attributions: unknown[];
 }
 
-export const outputVersion = '572df20a75a1';
+export const outputVersion = '900e8d2a7634';

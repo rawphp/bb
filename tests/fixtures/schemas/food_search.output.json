@@ -133,6 +133,13 @@
                                 },
                                 "is_in_meal": {
                                     "type": "boolean"
+                                },
+                                "attribution": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "The credit the food's dataset asks for, from Food::attribution(); shown in the food detail (ODbL for Open Food Facts). Null for curated and custom foods"
                                 }
                             },
                             "required": [
@@ -173,7 +180,7 @@
                     },
                     "macros_text": {
                         "type": "string",
-                        "description": "330 kcal · P 28 · F 3 · C 47, per serving"
+                        "description": "330 kcal \u00b7 P 28 \u00b7 F 3 \u00b7 C 47, per serving"
                     },
                     "is_library": {
                         "type": "boolean"

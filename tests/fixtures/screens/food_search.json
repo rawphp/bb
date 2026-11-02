@@ -26,7 +26,8 @@
                     "basis_text": "per 100 g",
                     "is_curated": false,
                     "is_favorite": false,
-                    "is_in_meal": false
+                    "is_in_meal": false,
+                    "attribution": "Food data from Open Food Facts (openfoodfacts.org), available under the Open Database License (ODbL)."
                 },
                 {
                     "food_id": "01JBX5F0000000000000000002",
@@ -47,7 +48,8 @@
                     "basis_text": "per 100 g",
                     "is_curated": true,
                     "is_favorite": true,
-                    "is_in_meal": false
+                    "is_in_meal": false,
+                    "attribution": null
                 },
                 {
                     "food_id": "01JBX5F0000000000000000004",
@@ -68,7 +70,8 @@
                     "basis_text": "per 100 g",
                     "is_curated": true,
                     "is_favorite": false,
-                    "is_in_meal": false
+                    "is_in_meal": false,
+                    "attribution": null
                 }
             ]
         },
@@ -92,7 +95,8 @@
                     "basis_text": "per 100 g",
                     "is_curated": false,
                     "is_favorite": false,
-                    "is_in_meal": false
+                    "is_in_meal": false,
+                    "attribution": "Food data from USDA FoodData Central (fdc.nal.usda.gov), in the public domain."
                 },
                 {
                     "food_id": "01JBX5F0000000000000000006",
@@ -108,7 +112,8 @@
                     "basis_text": "per 100 g",
                     "is_curated": false,
                     "is_favorite": false,
-                    "is_in_meal": false
+                    "is_in_meal": false,
+                    "attribution": "Food data from USDA FoodData Central (fdc.nal.usda.gov), in the public domain."
                 }
             ]
         }

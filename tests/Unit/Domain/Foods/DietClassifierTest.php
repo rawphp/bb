@@ -123,6 +123,19 @@ it('FOOD-027 rules out gluten free and grain free for gluten words and compounds
     'durum' => ['durum semolina'],
 ]);
 
+it('FOOD-027 keeps the high-FODMAP word of a plant milk or butter, and lets the dairy word go', function (string $name, ?string $category, ?string $ingredients, bool $lowFodmap) {
+    $flags = (new DietClassifier)->classify($name, $category, $ingredients, [], generic: $ingredients === null);
+
+    expect($flags['low_fodmap'])->toBe($lowFodmap)->and($flags['dairy_free'])->toBeTrue();
+})->with([
+    'generic cashew butter' => ['Nuts, cashew butter, plain, without salt added', 'Nut and Seed Products', null, false],
+    'cashew butter ingredient' => ['Spread', null, 'cashew butter, salt', false],
+    'cashew milk ingredient' => ['Drink', null, 'cashew milk, water', false],
+    'butter beans ingredient' => ['Beans', null, 'butter beans, water, salt', false],
+    'almond milk stays low FODMAP' => ['Drink', null, 'almond milk, water', true],
+    'peanut butter stays low FODMAP' => ['Spread', null, 'peanut butter, salt', true],
+]);
+
 it('FOOD-027 treats soybeans as a high-FODMAP legume, not paleo', function (string $name, string $category, ?string $ingredients) {
     $flags = (new DietClassifier)->classify($name, $category, $ingredients, [], generic: $ingredients === null);
 

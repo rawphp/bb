@@ -26,7 +26,8 @@
                     "basis_text": "per 100 g",
                     "is_curated": true,
                     "is_favorite": true,
-                    "is_in_meal": false
+                    "is_in_meal": false,
+                    "attribution": null
                 },
                 {
                     "food_id": "01JBX5F0000000000000000007",
@@ -42,7 +43,8 @@
                     "basis_text": "per 100 g",
                     "is_curated": true,
                     "is_favorite": false,
-                    "is_in_meal": false
+                    "is_in_meal": false,
+                    "attribution": null
                 }
             ]
         },
@@ -71,7 +73,8 @@
                     "basis_text": "per 100 g",
                     "is_curated": true,
                     "is_favorite": false,
-                    "is_in_meal": false
+                    "is_in_meal": false,
+                    "attribution": null
                 }
             ]
         }

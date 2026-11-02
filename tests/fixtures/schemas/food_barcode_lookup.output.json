@@ -97,6 +97,13 @@
                 },
                 "is_in_meal": {
                     "type": "boolean"
+                },
+                "attribution": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "The credit the food's dataset asks for, from Food::attribution(); shown in the food detail (ODbL for Open Food Facts). Null for curated and custom foods"
                 }
             },
             "required": [

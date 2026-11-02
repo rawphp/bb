@@ -25,7 +25,7 @@ use JsonMachine\JsonDecoder\ExtJsonDecoder;
  * the type. Open Food Facts: JSONL, plain or .gz. How a record maps to a food: DumpRow. The command
  * fails when the file cannot be read, when it imports no food (an empty or wrong file), or when the
  * file is cut off or corrupt: a USDA file whose JSON does not parse, or a JSONL line that is not JSON
- * (a cut-off download ends mid-line, and zlib reports a truncated .gz as a normal end of file). The
+ * (a cut-off download usually ends mid-line), or a .gz whose gzip stream never reaches its end. The
  * install then stops and can fetch the file again instead of carrying on with part of the database.
  *
  * @phpstan-import-type Row from DumpRow
@@ -74,13 +74,13 @@ final class ImportFoods extends Command
                 return self::FAILURE;
             }
         } else {
-            $handle = @fopen(str_ends_with($path, '.gz') ? 'compress.zlib://'.$path : $path, 'rb');
+            $handle = @fopen($path, 'rb');
             if ($handle === false) {
                 $this->error("Could not open {$path}.");
 
                 return self::FAILURE;
             }
-            $records = $this->offRows($rows, $handle);
+            $records = $this->offRows($rows, $handle, str_ends_with($path, '.gz'));
         }
 
         $batch = [];
@@ -154,10 +154,10 @@ final class ImportFoods extends Command
      * @param  resource  $handle
      * @return Generator<int, Row>
      */
-    private function offRows(DumpRow $rows, $handle): Generator
+    private function offRows(DumpRow $rows, $handle, bool $gzip): Generator
     {
         try {
-            while (($line = fgets($handle)) !== false) {
+            foreach ($gzip ? $this->gzipLines($handle) : $this->lines($handle) as $line) {
                 if (trim($line) === '') {
                     continue;
                 }
@@ -175,9 +175,56 @@ final class ImportFoods extends Command
                 }
                 yield $row;
             }
-            $this->readFailed = ! feof($handle);
         } finally {
             fclose($handle);
         }
+    }
+
+    /**
+     * A plain file read to its end. A plain JSONL cut exactly at a line break cannot be told from a whole
+     * one; the .gz download can, so docs/self-hosting.md imports that.
+     *
+     * @param  resource  $handle
+     * @return Generator<int, string>
+     */
+    private function lines($handle): Generator
+    {
+        while (($line = fgets($handle)) !== false) {
+            yield $line;
+        }
+        $this->readFailed = ! feof($handle);
+    }
+
+    /**
+     * A .gz file inflated here rather than through compress.zlib://, which reports a truncated file as a
+     * normal end: the read fails unless the gzip stream reaches its end (its trailer is there).
+     *
+     * @param  resource  $handle
+     * @return Generator<int, string>
+     */
+    private function gzipLines($handle): Generator
+    {
+        $inflate = inflate_init(ZLIB_ENCODING_GZIP);
+        $buffer = '';
+        while (! feof($handle)) {
+            $chunk = fread($handle, 1 << 20);
+            $out = $chunk === false ? false : @inflate_add($inflate, $chunk);
+            if ($out === false) {
+                $this->readFailed = true;
+
+                return;
+            }
+            $buffer .= $out;
+            $start = 0;
+            while (($end = strpos($buffer, "\n", $start)) !== false) {
+                yield substr($buffer, $start, $end - $start + 1);
+                $start = $end + 1;
+            }
+            $buffer = substr($buffer, $start);
+        }
+        if ($buffer !== '') {
+            yield $buffer;
+        }
+        $this->readFailed = inflate_get_status($inflate) !== ZLIB_STREAM_END;
     }
 }
