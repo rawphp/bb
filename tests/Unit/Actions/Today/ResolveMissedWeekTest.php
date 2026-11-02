@@ -166,34 +166,35 @@ it('SCH-058 MESO-044 end refuses a diet break outside fat loss', function () {
 // What a restart or an end changes (SCH-058, SCH-023): every later session, deload and menu, so every day the client
 // can browse to from the plan week in progress.
 
-it('SCH-058 SCH-023 a restart names every day from the plan week in progress to the last day with a target', function () {
+it('SCH-058 SCH-023 a restart names the days of the old placement, back to the plan week of the old start, through the strip week of the last target', function () {
     [$user, $mesocycle] = missedWeekWorld();
     SheetSeed::day($user, '2026-11-02');
 
     $resolved = resolveWeek($user, $mesocycle);
 
-    expect($resolved['dates'][0])->toBe('2026-09-28')
-        ->and(end($resolved['dates']))->toBe('2026-11-02')
-        ->and($resolved['dates'])->toContain('2026-10-12', '2026-10-13')
-        ->and($resolved['dates'])->toHaveCount(36);
+    // Meso 2 started Monday 7 Sep: its missed sessions leave those days. 2 Nov is a Monday, so its strip runs to 8 Nov.
+    expect($resolved['dates'][0])->toBe('2026-09-07')
+        ->and($resolved['dates'])->toContain('2026-09-14', '2026-09-27', '2026-10-12', '2026-10-13', '2026-11-08')
+        ->and(end($resolved['dates']))->toBe('2026-11-08')
+        ->and($resolved['dates'])->toHaveCount(63);
 });
 
-it('SCH-058 SCH-023 an end names every day from the plan week in progress to the last day with a target', function () {
+it('SCH-058 SCH-023 an end names every day from the plan week in progress through the strip week of the last target', function () {
     [$user, $mesocycle] = missedWeekWorld();
     SheetSeed::day($user, '2026-11-02');
 
     $resolved = resolveWeek($user, $mesocycle, 'end');
 
     expect($resolved['dates'][0])->toBe('2026-09-28')
-        ->and(end($resolved['dates']))->toBe('2026-11-02')
-        ->and($resolved['dates'])->toHaveCount(36);
+        ->and(end($resolved['dates']))->toBe('2026-11-08')
+        ->and($resolved['dates'])->toHaveCount(42);
 });
 
-it('SCH-058 SCH-023 a restart names the whole plan week in progress even when the last target is earlier', function () {
+it('SCH-058 SCH-023 an end names the whole plan week in progress even when the last target is earlier', function () {
     [$user, $mesocycle] = missedWeekWorld();
     SheetSeed::day($user, '2026-09-29');
 
-    expect(resolveWeek($user, $mesocycle)['dates'])->toBe(['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04']);
+    expect(resolveWeek($user, $mesocycle, 'end')['dates'])->toBe(['2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04']);
 });
 
 it('SCH-058 end accepts only a mesocycle the prompt is due for', function () {

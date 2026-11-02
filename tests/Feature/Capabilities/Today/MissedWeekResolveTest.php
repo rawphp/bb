@@ -56,16 +56,28 @@ it('SCH-058 AGT-010 is destructive, so the agent needs the user\'s say-so', func
     expect(HostDefinition::isDestructive(app(CapabilityRegistry::class)->get('missed_week_resolve')))->toBeTrue();
 });
 
-it('SCH-058 CAP-011 SCH-023 restart and end invalidate every day the client can browse to from the plan week in progress', function (string $choice) {
+it('SCH-058 CAP-011 SCH-023 restart invalidates the days of the old placement and every day of the last strip week', function () {
     $user = TrainSeed::user();
     $mesocycle = TrainSeed::mesocycle($user);
     SheetSeed::day($user, '2026-10-20');
 
-    $invalidates = weekResolveOver($user, ['mesocycle_id' => $mesocycle->id, 'choice' => $choice])->assertOk()->json('data.invalidates');
+    $invalidates = weekResolveOver($user, ['mesocycle_id' => $mesocycle->id, 'choice' => 'restart'])->assertOk()->json('data.invalidates');
 
-    expect($invalidates)->toContain('today_show{"date":"2026-09-28"}', 'today_show{"date":"2026-10-12"}', 'today_show{"date":"2026-10-20"}', 'week_show{"date":"2026-10-14"}', 'week_show{"date":"2026-10-20"}')
+    // 14 and 27 Sep held Meso 2's missed sessions before the start moved; 25 Oct ends the strip week of the 20th.
+    expect($invalidates)->toContain('today_show{"date":"2026-09-14"}', 'today_show{"date":"2026-09-27"}', 'week_show{"date":"2026-09-14"}', 'today_show{"date":"2026-10-25"}', 'week_show{"date":"2026-10-25"}', 'plan_show{}')
+        ->and($invalidates)->not->toContain('today_show{"date":"2026-10-26"}');
+});
+
+it('SCH-058 CAP-011 SCH-023 end invalidates every day from the plan week in progress through the last strip week', function () {
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+    SheetSeed::day($user, '2026-10-20');
+
+    $invalidates = weekResolveOver($user, ['mesocycle_id' => $mesocycle->id, 'choice' => 'end'])->assertOk()->json('data.invalidates');
+
+    expect($invalidates)->toContain('today_show{"date":"2026-09-28"}', 'today_show{"date":"2026-10-20"}', 'today_show{"date":"2026-10-25"}', 'plan_show{}')
         ->and($invalidates)->not->toContain('today_show{"date":"2026-09-27"}');
-})->with(['restart', 'end']);
+});
 
 it('SCH-058 answers 422 for end when no answer is due', function () {
     Carbon::setTestNow('2026-09-09 08:00:00');
