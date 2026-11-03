@@ -3,6 +3,7 @@
 namespace App\Actions\Onboarding;
 
 use App\Domain\Onboarding\OnboardingStart;
+use App\Domain\Onboarding\OnboardingSteps;
 use App\Models\DayTarget;
 use App\Models\Mesocycle;
 use App\Models\OnboardingDraft;
@@ -29,13 +30,18 @@ final class StartPlan
 {
     public const ALREADY_STARTED = 'Your plan has already started.';
 
+    public const CHAT_STARTS_FROM_REVIEW = 'Your plan starts from the review, once you have answered the health check.';
+
     /**
-     * @throws DomainException when a step cannot continue (422)
+     * @param  bool  $byChat  the Coach is starting it (AGT-032): only from the review, which a model reaches only past
+     *                        the health check the user answered on its sheet (SAFE-001, {@see AnswerOnboarding::checkChat})
+     *
+     * @throws DomainException when a step cannot continue, or a chat start is not on the review (422)
      * @throws CapabilityFailure when the user already has a plan (409)
      */
-    public function __invoke(User $user): OnboardingStart
+    public function __invoke(User $user, bool $byChat = false): OnboardingStart
     {
-        return DB::transaction(function () use ($user): OnboardingStart {
+        return DB::transaction(function () use ($user, $byChat): OnboardingStart {
             // The draft row is locked first, so a second start waits for this one and then finds the plan.
             $row = OnboardingDraft::query()->where('user_id', $user->id)->lockForUpdate()->first();
             if (Plan::query()->where('user_id', $user->id)->exists() || Profile::query()->where('user_id', $user->id)->exists()) {
@@ -43,6 +49,9 @@ final class StartPlan
             }
 
             $draft = ($row ?? OnboardingDraft::for($user))->toDraft();
+            if ($byChat && $draft->step !== OnboardingSteps::REVIEW_STEP) {
+                throw new DomainException(self::CHAT_STARTS_FROM_REVIEW);
+            }
             $newId = fn (): string => (string) Str::uuid7();
             $start = OnboardingStart::from(
                 $draft,

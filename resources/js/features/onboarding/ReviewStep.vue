@@ -7,9 +7,14 @@ import StepPanel from './parts/StepPanel.vue';
 
 // The review before "Start my plan" (ONB-018, ONB-019): every section of the plan as the
 // server summarises it, each with an Edit link back to its step, and the fine-tuning
-// note. While a change waits to sync the summary is marked (OFF-008). Ported from
+// note. While a change waits to sync the summary is marked (OFF-008). In the Coach chat it
+// is a card with no Edit links (AGT-032): there the Coach goes back to a step. Ported from
 // rp-clone's ReviewStep.
-defineProps<{ review: OnboardingShowOutput['review']; locked?: boolean; pending?: boolean }>();
+withDefaults(defineProps<{ review: OnboardingShowOutput['review']; locked?: boolean; pending?: boolean; editable?: boolean }>(), {
+    locked: false,
+    pending: false,
+    editable: true,
+});
 
 const emit = defineEmits<{ edit: [step: number] }>();
 </script>
@@ -21,7 +26,7 @@ const emit = defineEmits<{ edit: [step: number] }>();
             <div class="flex items-center justify-between gap-2">
                 <h3 class="text-base font-semibold text-primary-text">{{ section.title }}</h3>
                 <button
-                    v-if="section.can_edit"
+                    v-if="section.can_edit && editable"
                     type="button"
                     :aria-label="`Edit ${section.title}`"
                     :disabled="locked"
