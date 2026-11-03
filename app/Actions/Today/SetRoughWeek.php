@@ -23,7 +23,7 @@ final class SetRoughWeek
 {
     /**
      * @return array{dates: list<string>, mesocycle: ?Mesocycle, toast: string} the week's days (Y-m-d), the saved
-     *                                                                            mesocycle it belongs to, and what to say
+     *                                                                          mesocycle it belongs to, and what to say
      */
     public function __invoke(User $user, RoughWeekSetInput $input): array
     {
