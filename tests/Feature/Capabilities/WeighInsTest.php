@@ -543,3 +543,39 @@ it('WT-004 reads a page in as many queries for a year of history as for three we
     expect(collect($newest['rows'])->min('weighed_at'))->toBeGreaterThanOrEqual('2026-07-13')
         ->and(collect($newest['steps']['rows'])->min('date'))->toBeGreaterThanOrEqual('2026-07-13');
 });
+
+it('WT-004 WT-020 keeps weigh-ins and steps dated after today on the newest page, and reads a future before as the newest', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    $user = weighInScenario();
+    WeighIn::factory()->for($user)->create(['weighed_at' => '2026-10-09 07:00:00']);
+    $ahead = WeighIn::factory()->for($user)->create(['weighed_at' => '2026-10-12 07:00:00']);
+    // A day ahead of UTC, as a user east of UTC logs their own today.
+    Step::factory()->for($user)->create(['date' => '2026-10-11', 'count' => 4000]);
+    Step::factory()->for($user)->create(['date' => '2026-10-09', 'count' => 8000]);
+
+    $newest = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data');
+
+    expect($newest['rows'][0]['id'])->toBe($ahead->id)
+        ->and(array_column($newest['steps']['rows'], 'date'))->toBe(['2026-10-11', '2026-10-09'])
+        ->and($newest['next_before'])->toBeNull()
+        ->and(weighInCall($user, 'weigh_ins_show', ['before' => '2099-01-01'])->assertOk()->json('data'))->toBe($newest);
+});
+
+it('WT-020 pages back to step rows older than every weigh-in, and for a user with none', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    $weighed = weighInScenario();
+    WeighIn::factory()->for($weighed)->create(['weighed_at' => '2026-10-05 07:00:00']);
+    $unweighed = weighInScenario();
+    foreach ([$weighed, $unweighed] as $user) {
+        Step::factory()->for($user)->create(['date' => '2026-05-01', 'count' => 5000]);
+        Step::factory()->for($user)->create(['date' => '2026-10-09', 'count' => 9000]);
+    }
+
+    foreach ([$weighed, $unweighed] as $user) {
+        $pages = weighInPages($user);
+        expect(array_column($pages, 'next_before'))->toBe(['2026-07-13', null])
+            ->and(array_column($pages[0]['steps']['rows'], 'date'))->toBe(['2026-10-09'])
+            ->and(array_column($pages[1]['steps']['rows'], 'date'))->toBe(['2026-05-01']);
+    }
+    expect(array_column(weighInPages($unweighed), 'empty_message'))->toBe(['No weigh-ins yet. Tap + to log your first.', 'No weigh-ins yet. Tap + to log your first.']);
+});
