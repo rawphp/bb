@@ -7,6 +7,7 @@ use App\Actions\Mesocycles\SetMusclePriority;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\Priority;
 use App\Models\Mesocycle;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,14 @@ it('MESO-032 MESO-034 each mesocycle write locks the mesocycle row before it rea
     $gain = TrainSeed::phase($user, 'muscleGain', '2026-08-31');
     $mesocycle = $seed($user, $gain->id);
 
+    $level = DB::transactionLevel();
+    $first = null;
+    DB::listen(function (QueryExecuted $query) use (&$first, $level) {
+        // The action's own transaction: the first query inside it.
+        if ($first === null && DB::transactionLevel() > $level) {
+            $first = $query;
+        }
+    });
     DB::flushQueryLog();
     DB::enableQueryLog();
     $write($user, $mesocycle);
@@ -38,7 +47,9 @@ it('MESO-032 MESO-034 each mesocycle write locks the mesocycle row before it rea
 
     expect(preg_grep('/for update/', $queries))->toHaveCount(1)
         ->and($queries[0])->toContain('for update')
-        ->and($queries[0])->toContain('`user_id`');
+        ->and($queries[0])->toContain('`user_id`')
+        ->and($first?->sql)->toBe($queries[0])
+        ->and($first?->bindings)->toBe([$user->id, $mesocycle->id]);
 })->with([
     'priority_set' => [
         fn ($user, string $phaseId) => TrainSeed::mesocycle($user, ['phase_id' => $phaseId]),
