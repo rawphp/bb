@@ -93,9 +93,10 @@ const editing = computed(() => {
 
             <p v-if="editError" class="rounded-2xl p-4 text-sm" :class="toneClasses.warning" role="alert">{{ editError }}</p>
 
-            <ExerciseDetailContent v-if="tab === 'detail'" :exercise="data" :reload="load" :pending="pending" />
+            <!-- v-show: Detail keeps what was typed, and a save in flight, while History is open. -->
+            <ExerciseDetailContent v-show="tab === 'detail'" :exercise="data" :reload="load" :pending="pending" />
 
-            <div v-else class="flex flex-col gap-3">
+            <div v-show="tab === 'history'" class="flex flex-col gap-3">
                 <p v-if="!data.history.length" class="text-sm text-secondary-text">No sessions logged yet.</p>
                 <ItemCard v-for="session in data.history" :key="session.workout_id" data-session :title="session.date_text" :pending="pending">
                     <template #icon>
