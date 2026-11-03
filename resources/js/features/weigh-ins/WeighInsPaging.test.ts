@@ -90,9 +90,20 @@ describe('WeighInsScreen Show older', () => {
 });
 
 describe('WeighInsView paging', () => {
+    /** What Show older's reads answer, in turn: a page, or an error to fail with. */
+    let olderAnswers: (WeighInsShowOutput | Error)[];
+    /** The `before` of each Show older read. */
+    const olderReads = () => readMock.mock.calls.filter(([, input]) => input?.before !== undefined).map(([, input]) => input!.before);
+
     beforeEach(() => {
+        olderAnswers = [];
         // Each read answers with its own copy, as the server and the cache do.
-        readMock.mockReset().mockImplementation(async () => structuredClone(newest));
+        readMock.mockReset().mockImplementation(async (_name, input) => {
+            if (input?.before === undefined) return structuredClone(newest);
+            const answer = olderAnswers.shift();
+            if (answer === undefined || answer instanceof Error) throw answer ?? new Error('no answer');
+            return answer;
+        });
         readFreshMock.mockReset();
     });
     afterEach(() => {
@@ -101,60 +112,71 @@ describe('WeighInsView paging', () => {
         document.body.innerHTML = '';
     });
 
+    async function showOlder(page: VueWrapper): Promise<void> {
+        await page.get('[data-test="show-older"]').trigger('click');
+        await flushPromises();
+    }
+
     it('WT-004 WT-020 Show older reads the page before next_before and adds its weigh-ins and steps after the first', async () => {
-        readFreshMock.mockResolvedValue(olderPage('Old'));
+        olderAnswers = [olderPage('Old')];
         const page = await view();
         const first = dates(page);
 
-        await page.get('[data-test="show-older"]').trigger('click');
-        await flushPromises();
+        await showOlder(page);
 
-        expect(readFreshMock).toHaveBeenCalledWith('weigh_ins_show', { before: '2026-07-13' });
+        expect(olderReads()).toEqual(['2026-07-13']);
         expect(dates(page)).toEqual([...first, ...first.map((date) => `Old ${date}`)]);
         expect(stepDates(page)).toEqual(['Fri, 9 Oct', 'Thu, 8 Oct', 'Old Fri, 9 Oct', 'Old Thu, 8 Oct']);
         expect(page.find('[data-test="show-older"]').exists()).toBe(false);
     });
 
     it('WT-004 reads on from the page it last added', async () => {
-        readFreshMock.mockResolvedValueOnce(olderPage('Old', '2026-04-14')).mockResolvedValueOnce(olderPage('Older'));
+        olderAnswers = [olderPage('Old', '2026-04-14'), olderPage('Older')];
         const page = await view();
 
-        await page.get('[data-test="show-older"]').trigger('click');
-        await flushPromises();
-        await page.get('[data-test="show-older"]').trigger('click');
-        await flushPromises();
+        await showOlder(page);
+        await showOlder(page);
 
-        expect(readFreshMock.mock.calls).toEqual([
-            ['weigh_ins_show', { before: '2026-07-13' }],
-            ['weigh_ins_show', { before: '2026-04-14' }],
-        ]);
+        expect(olderReads()).toEqual(['2026-07-13', '2026-04-14']);
         expect(stepDates(page)).toEqual(['Fri, 9 Oct', 'Thu, 8 Oct', 'Old Fri, 9 Oct', 'Old Thu, 8 Oct', 'Older Fri, 9 Oct', 'Older Thu, 8 Oct']);
     });
 
+    it('OFF-003 an older page cached on the device shows at once, and the server\'s copy replaces it', async () => {
+        let refresh: ((data: WeighInsShowOutput) => void) | undefined;
+        const page = await view();
+        readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {
+            refresh = onUpdate as (data: WeighInsShowOutput) => void;
+            return olderPage('Cached');
+        });
+
+        await showOlder(page);
+        expect(stepDates(page)).toEqual(['Fri, 9 Oct', 'Thu, 8 Oct', 'Cached Fri, 9 Oct', 'Cached Thu, 8 Oct']);
+        refresh!(olderPage('Fresh'));
+        await flushPromises();
+
+        expect(stepDates(page)).toEqual(['Fri, 9 Oct', 'Thu, 8 Oct', 'Fresh Fri, 9 Oct', 'Fresh Thu, 8 Oct']);
+    });
+
     it('WT-004 a failed older read keeps what is shown and says so, and Show older stays to try again', async () => {
-        readFreshMock.mockRejectedValueOnce(new CapabilityError('weigh_ins_show', 0, null)).mockResolvedValueOnce(olderPage('Old'));
+        olderAnswers = [new CapabilityError('weigh_ins_show', 0, null), olderPage('Old')];
         const page = await view();
         const first = dates(page);
 
-        await page.get('[data-test="show-older"]').trigger('click');
-        await flushPromises();
+        await showOlder(page);
 
         expect(dates(page)).toEqual(first);
         expect(page.get('[role="alert"]').text()).toBe('Older weigh-ins could not be loaded.');
-        await page.get('[data-test="show-older"]').trigger('click');
-        await flushPromises();
+        await showOlder(page);
         expect(page.find('[role="alert"]').exists()).toBe(false);
         expect(dates(page)).toHaveLength(first.length * 2);
     });
 
     it('WT-004 when the newest page reads again, it reads each older page it had again, in order, and shows their rows', async () => {
-        readFreshMock.mockResolvedValueOnce(olderPage('Old', '2026-04-14')).mockResolvedValueOnce(olderPage('Older'));
+        olderAnswers = [olderPage('Old', '2026-04-14'), olderPage('Older')];
         const page = await view();
-        await page.get('[data-test="show-older"]').trigger('click');
-        await flushPromises();
-        await page.get('[data-test="show-older"]').trigger('click');
-        await flushPromises();
-        readFreshMock.mockReset().mockResolvedValueOnce(olderPage('Edited', '2026-04-14')).mockResolvedValueOnce(olderPage('Older'));
+        await showOlder(page);
+        await showOlder(page);
+        readFreshMock.mockResolvedValueOnce(olderPage('Edited', '2026-04-14')).mockResolvedValueOnce(olderPage('Older'));
 
         // A write's reload: the newest page reads again.
         await page.getComponent(WeighInsScreen).props('reload')();
@@ -167,17 +189,54 @@ describe('WeighInsView paging', () => {
         expect(stepDates(page)).toEqual(['Fri, 9 Oct', 'Thu, 8 Oct', 'Edited Fri, 9 Oct', 'Edited Thu, 8 Oct', 'Older Fri, 9 Oct', 'Older Thu, 8 Oct']);
     });
 
-    it('WT-004 a failed read of an older page again keeps its old rows and says so', async () => {
-        readFreshMock.mockResolvedValueOnce(olderPage('Old'));
+    it('WT-004 when the newest page has moved on a day, the older pages read again from where it now ends, so no day goes missing', async () => {
+        olderAnswers = [olderPage('Old', '2026-04-14'), olderPage('Older')];
         const page = await view();
-        await page.get('[data-test="show-older"]').trigger('click');
+        await showOlder(page);
+        await showOlder(page);
+        // Past UTC midnight the newest page ends a day later.
+        readMock.mockImplementationOnce(async () => ({ ...structuredClone(newest), next_before: '2026-07-14' }));
+        readFreshMock.mockResolvedValueOnce(olderPage('Moved', '2026-04-15')).mockResolvedValueOnce(olderPage('Older'));
+
+        await page.getComponent(WeighInsScreen).props('reload')();
         await flushPromises();
-        readFreshMock.mockReset().mockRejectedValue(new CapabilityError('weigh_ins_show', 500, null));
+
+        expect(readFreshMock.mock.calls).toEqual([
+            ['weigh_ins_show', { before: '2026-07-14' }],
+            ['weigh_ins_show', { before: '2026-04-15' }],
+        ]);
+        expect(stepDates(page)).toEqual(['Fri, 9 Oct', 'Thu, 8 Oct', 'Moved Fri, 9 Oct', 'Moved Thu, 8 Oct', 'Older Fri, 9 Oct', 'Older Thu, 8 Oct']);
+    });
+
+    it('WT-004 a failed read of an older page again keeps its old rows and says so', async () => {
+        olderAnswers = [olderPage('Old')];
+        const page = await view();
+        await showOlder(page);
+        readFreshMock.mockRejectedValue(new CapabilityError('weigh_ins_show', 500, null));
 
         await page.getComponent(WeighInsScreen).props('reload')();
         await flushPromises();
 
         expect(stepDates(page)).toEqual(['Fri, 9 Oct', 'Thu, 8 Oct', 'Old Fri, 9 Oct', 'Old Thu, 8 Oct']);
         expect(page.get('[role="alert"]').text()).toBe('Older weigh-ins could not be loaded.');
+    });
+
+    it('WT-004 an older answer from a re-read the next one overtook is dropped', async () => {
+        olderAnswers = [olderPage('Old')];
+        const page = await view();
+        await showOlder(page);
+        let answerFirst: ((data: WeighInsShowOutput) => void) | undefined;
+        readFreshMock
+            .mockImplementationOnce(() => new Promise((resolve) => (answerFirst = resolve)))
+            .mockResolvedValueOnce(olderPage('Second'));
+        const reload = page.getComponent(WeighInsScreen).props('reload') as () => Promise<void>;
+
+        await reload();
+        await reload();
+        await flushPromises();
+        answerFirst!(olderPage('First'));
+        await flushPromises();
+
+        expect(stepDates(page)).toEqual(['Fri, 9 Oct', 'Thu, 8 Oct', 'Second Fri, 9 Oct', 'Second Thu, 8 Oct']);
     });
 });
