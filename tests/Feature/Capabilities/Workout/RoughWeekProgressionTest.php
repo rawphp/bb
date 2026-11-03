@@ -89,3 +89,29 @@ it('SCH-063 SCH-060 the rough week is the plan week that held the logged session
     'rough' => [true, 3, [[80, 10], [80, 10], [80, 10]]],
     'not rough' => [false, 5, [[82.5, 10], [82.5, 9], [82.5, 8], [82.5, 6], [82.5, 4]]],
 ]);
+
+it('SCH-063 SCH-060 a mesocycle a pause pushed later reads the rough flag where Today shows its week', function () {
+    // Mesocycle A runs 2 weeks from Monday 2026-08-31 and pauses on 2026-09-07, so it ends a week late and B, saved at
+    // A's raw end (2026-09-14), is placed from 2026-09-21: its week 1 is there, and is marked rough there.
+    Exercise::factory()->create([
+        'name' => 'Bench Press', 'muscle_group' => MuscleGroup::Chest, 'equipment' => Equipment::Barbell,
+        'load_type' => ExerciseLoadType::Barbell, 'rep_range_min' => 5, 'rep_range_max' => 30,
+    ]);
+    $user = TrainSeed::user();
+    $phase = TrainSeed::phase($user, 'muscleGain', '2026-08-31')->id;
+    TrainSeed::mesocycle($user, ['name' => 'Meso 1', 'weeks' => 2, 'start_date' => '2026-08-31', 'phase_id' => $phase]);
+    $mesocycle = TrainSeed::mesocycle($user, ['start_date' => '2026-09-14', 'phase_id' => $phase]);
+    PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-07', 'is_deload' => false, 'is_away' => true, 'away_training' => 'pause']);
+    $post = fn (string $capability, array $input) => test()->actingAs($user)->postJson("/capabilities/{$capability}", $input, ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+
+    Carbon::setTestNow('2026-09-21 19:00:00');
+    $session = WorkoutSeed::started($mesocycle, 1, 1, '2026-09-21 17:30:00');
+    $post('rough_week_set', ['week_start' => '2026-09-21', 'rough' => true]);
+    WorkoutSeed::answered($session, 'chest', WorkoutSeed::exerciseId($mesocycle, 1), ['pump' => 'low', 'volume' => 'notEnough']);
+    $post('workout_finish', ['workout_id' => WorkoutSeed::id($session)]);
+    $next = $post('workout_show', ['mesocycle_id' => $mesocycle->id, 'week' => 2, 'day' => 1])->json('data');
+
+    expect($mesocycle->fresh()->dayRows()[0]['slots'][0]['sets'])->toBe(3)
+        ->and(array_map(fn (array $set) => [$set['target_weight']['value'], $set['reps']], $next['exercises'][0]['sets']))
+        ->toEqual([[80, 10], [80, 10], [80, 10]]);
+});
