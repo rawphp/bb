@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Contracts\HasAbilities;
 use Laravel\Sanctum\HasApiTokens;
@@ -21,6 +22,7 @@ use LogicException;
 /**
  * @property bool $coach_on the user's own Coach switch (AGT-020)
  * @property string $time_zone the IANA zone the user's days are counted in (SET-012), UTC until their device sends one
+ * @property Carbon|null $time_zone_changed_at when the stored zone last changed (SET-012), null if never
  */
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
@@ -93,6 +95,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'coach_on' => 'boolean',
+            'time_zone_changed_at' => 'datetime',
         ];
     }
 
