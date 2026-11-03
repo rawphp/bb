@@ -58,7 +58,7 @@ it('CAP-021 creates a token that is shown once and lists it without its secret',
         'capabilities' => [],
     ], ['Idempotency-Key' => (string) Str::ulid()])
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['token_list{}'])
+        ->assertJsonPath('data.invalidates', ['token_list{}', 'health_bridge_show{}'])
         ->assertJsonPath('data.token.id', TOKEN_ID)
         ->assertJsonPath('data.token.scope_text', 'Read only');
 
@@ -176,7 +176,7 @@ it('CAP-021 revokes a token, which stops working at once', function () {
 
     $this->actingAs($user)->postJson('/capabilities/token_revoke', ['id' => TOKEN_ID], ['Idempotency-Key' => (string) Str::ulid()])
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['token_list{}']);
+        ->assertJsonPath('data.invalidates', ['token_list{}', 'health_bridge_show{}']);
     Auth::forgetGuards();
 
     withToken($secret)->postJson('/capabilities/account_show')->assertUnauthorized();
@@ -250,7 +250,7 @@ it('CAP-014 replays a token create without its secret, and stores no secret', fu
         ->assertJsonPath('meta.idempotent_replay', true)
         ->assertJsonPath('data.token.id', TOKEN_ID)
         ->assertJsonPath('data.token.plain_text', null)
-        ->assertJsonPath('data.invalidates', ['token_list{}']);
+        ->assertJsonPath('data.invalidates', ['token_list{}', 'health_bridge_show{}']);
 
     expect($secret)->not->toBe('')
         ->and(json_encode(DB::table('capabilities_idempotency')->get()))->not->toContain($secret)
@@ -444,7 +444,7 @@ it('CAP-014 replays a token revoke retried under its key, though the token is go
     $this->actingAs($user)->postJson('/capabilities/token_revoke', ['id' => TOKEN_ID], $key)
         ->assertOk()
         ->assertJsonPath('meta.idempotent_replay', true)
-        ->assertJsonPath('data.invalidates', ['token_list{}']);
+        ->assertJsonPath('data.invalidates', ['token_list{}', 'health_bridge_show{}']);
 
     expect(PersonalAccessToken::query()->count())->toBe(0);
 });

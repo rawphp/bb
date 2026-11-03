@@ -43,8 +43,8 @@ function row(wrapper: ReturnType<typeof show>, name: string) {
     return found;
 }
 
-// Each test's screen goes when the test ends, with its pending search pause (250 ms):
-// left mounted, it fired a read of the old query in whichever test ran 250 ms later.
+// Every test's PantryView is unmounted after it, so a search timer it left (250 ms after typing) cannot fire a
+// read during a later test and become that test's lastRead().
 enableAutoUnmount(afterEach);
 
 describe('PantryView', () => {

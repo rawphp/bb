@@ -20,7 +20,7 @@ final class TokenRevokeCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('token_revoke', affects: ['token_list'])
+        return HostDefinition::write('token_revoke', affects: ['token_list', 'health_bridge_show'])
             ->description('Revoke one of the user\'s personal access tokens, so it stops working at once; it cannot be undone. Only the signed-in user can call it, never a token (CAP-031).')
             // CAP-003 maps every capability to a CLI command. With a token, this one answers 403.
             ->cli('token', 'revoke')
@@ -40,6 +40,6 @@ final class TokenRevokeCapability implements HostCapability, OwnsInput
 
         ($this->revoke)($user, $input->id);
 
-        return new WriteResult(invalidates: [ReadKey::for('token_list')], toast: 'Token revoked');
+        return new WriteResult(invalidates: [ReadKey::for('token_list'), ReadKey::for('health_bridge_show')], toast: 'Token revoked');
     }
 }
