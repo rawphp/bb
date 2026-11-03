@@ -48,10 +48,25 @@ final class WorkoutReads
             )))];
         }
 
-        $train = self::calendarOf($user, $mesocycle);
-        $grid = $train->calendar($mesocycle)->grid;
+        return self::keysIn(TrainSnapshot::calendarOnly(
+            TrainSnapshot::day(CarbonImmutable::now()),
+            new Collection([$mesocycle]),
+            Plan::query()->where('user_id', $user->id)->first(),
+            Profile::query()->where('user_id', $user->id)->first(),
+        ), $mesocycle, $session, $planWeek);
+    }
+
+    /**
+     * {@see keys()} for a session of `$mesocycle`, on a calendar the caller has read: what {@see WorkoutSnapshot::dateOf()}
+     * and the plan weeks read, the plan, the profile's training days and the mesocycle ({@see TrainSnapshot::calendarOnly()}).
+     *
+     * @return list<string>
+     */
+    public static function keysIn(TrainSnapshot $calendar, Mesocycle $mesocycle, WorkoutSession $session, bool $planWeek = false): array
+    {
+        $grid = $calendar->calendar($mesocycle)->grid;
         $days = array_filter([
-            WorkoutSnapshot::dateOf($train, $mesocycle, $session->week, $session->day),
+            WorkoutSnapshot::dateOf($calendar, $mesocycle, $session->week, $session->day),
             self::dayOf($session->planned_start_at),
             self::dayOf($session->actual_start_at),
         ]);
@@ -73,24 +88,6 @@ final class WorkoutReads
             ...TodayReads::weekKeys($weekDates),
             ...($planWeek ? TodayReads::keys(array_values(array_filter($weekDates, fn (string $date) => $date >= $today))) : []),
         ];
-    }
-
-    /** What {@see WorkoutSnapshot::dateOf()} and the plan weeks read: the plan, the profile's training days and the mesocycle. */
-    private static function calendarOf(User $user, Mesocycle $mesocycle): TrainSnapshot
-    {
-        return new TrainSnapshot(
-            today: TrainSnapshot::day(CarbonImmutable::now()),
-            plan: Plan::query()->where('user_id', $user->id)->first(),
-            profile: Profile::query()->where('user_id', $user->id)->first(),
-            mesocycles: new Collection([$mesocycle]),
-            phases: new Collection,
-            sessions: new Collection,
-            sets: new Collection,
-            feedback: new Collection,
-            planWeeks: new Collection,
-            dayTargets: new Collection,
-            exercises: new Collection,
-        );
     }
 
     private static function dayOf(DateTimeInterface|string|null $at): ?DateTimeImmutable
