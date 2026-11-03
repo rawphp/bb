@@ -16,5 +16,5 @@
         "types": ["vite/client", "node"],
         "paths": { "@/*": ["./resources/js/*"] }
     },
-    "include": ["resources/js/**/*.ts", "resources/js/**/*.vue", "eslint/**/*.ts", "scripts/**/*.ts", "vite.config.ts", "vitest.config.ts"]
+    "include": ["resources/js/**/*.ts", "resources/js/**/*.vue", "eslint/**/*.ts", "scripts/**/*.ts", "vite.config.ts", "vitest.config.ts", "playwright.config.ts", "tests/e2e/**/*.ts"]
 }

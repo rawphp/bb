@@ -19,7 +19,7 @@ const emit = defineEmits<{ lock: []; minus: []; plus: []; delete: [] }>();
                 <path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2zM5 18a2 2 0 0 1 2-2h11" />
             </svg>
             <div class="min-w-0 flex-1">
-                <h3 class="font-semibold text-primary-text">{{ entry.name }}</h3>
+                <h2 class="font-semibold text-primary-text">{{ entry.name }}</h2>
                 <p class="text-xs text-secondary-text">Recipe</p>
             </div>
         </template>
