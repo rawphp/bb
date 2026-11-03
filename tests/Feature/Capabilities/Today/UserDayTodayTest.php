@@ -7,6 +7,7 @@ use App\Models\WeighIn;
 use App\Models\WeighInScheduleEntry;
 use App\Support\Today\TodayWeight;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Tests\Support\TodaySeed;
 
 // SET-012: Today, the week strip and Today's weigh-ins count days in the user's time zone.
@@ -54,18 +55,26 @@ it('SET-012 shows a weigh-in on the user\'s local day', function (string $zone, 
     'UTC' => ['UTC', '2026-10-09', '2026-10-10'],
 ]);
 
-it('SET-012 a write to any zone\'s today drops the undated Today and week reads', function (string $date) {
+it('SET-012 a write to the user\'s local today drops the undated Today and week reads', function () {
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    $user = zonedTodayUser('Australia/Brisbane');
+
+    $invalidates = test()->actingAs($user)->postJson('/capabilities/off_plan_log', [
+        'id' => (string) Str::ulid(), 'date' => '2026-10-10', 'time' => '07:30',
+        'kcal' => 350, 'protein_g' => 4, 'fat_g' => 18, 'carbs_g' => 45, 'name' => 'Birthday cake',
+    ], ['Idempotency-Key' => (string) Str::ulid()])->assertOk()->json('data.invalidates');
+
+    expect($invalidates)->toContain(ReadKey::for('today_show', ['date' => '2026-10-10']), ReadKey::for('today_show'))
+        ->and(TodayReads::weekKeys(['2026-10-10']))->toContain(ReadKey::for('week_show'))
+        ->and(TodayReads::keys(['2026-10-09']))->not->toContain(ReadKey::for('today_show'))
+        ->and(TodayReads::weekKeys(['2026-10-09']))->not->toContain(ReadKey::for('week_show'));
+});
+
+it('SET-012 with no one signed in, today for the undated reads is the UTC day', function () {
     Carbon::setTestNow('2026-10-09 21:58:00');
 
-    expect(TodayReads::keys([$date]))->toContain(ReadKey::for('today_show'))
-        ->and(TodayReads::weekKeys([$date]))->toContain(ReadKey::for('week_show'));
-})->with(['the day before' => '2026-10-08', 'today in UTC' => '2026-10-09', 'the day after' => '2026-10-10']);
-
-it('SET-012 a write two days from the UTC day keeps the undated reads', function () {
-    Carbon::setTestNow('2026-10-09 21:58:00');
-
-    expect(TodayReads::keys(['2026-10-11']))->not->toContain(ReadKey::for('today_show'))
-        ->and(TodayReads::weekKeys(['2026-10-07']))->not->toContain(ReadKey::for('week_show'));
+    expect(TodayReads::keys(['2026-10-09']))->toContain(ReadKey::for('today_show'))
+        ->and(TodayReads::keys(['2026-10-10']))->not->toContain(ReadKey::for('today_show'));
 });
 
 it('SET-012 buckets the current weight\'s trend by the user\'s local days, even after the zone changes', function () {
