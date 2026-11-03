@@ -144,6 +144,19 @@ it('SCH-037 this day keeps the training time when it is unchanged, and saves no 
     expect(WorkoutSession::query()->count())->toBe(0);
 });
 
+it('SCH-037 this day refuses a schedule the meals cannot fit, and saves neither the meals nor the session\'s new time', function () {
+    [$user] = editWorld();
+    $day = SheetSeed::day($user, '2026-09-24');
+    $meals = $day->meals;
+
+    expect(fn () => editSchedule($user, [
+        'date' => '2026-09-24', 'training_start' => '12:00', 'meal_count' => 6, 'window_start' => '10:00', 'window_end' => '14:00',
+        'busy_periods' => [['label' => 'Work', 'start' => '10:00', 'end' => '11:30']],
+    ]))->toThrow(DomainException::class, UpdateSchedule::DOES_NOT_FIT)
+        ->and($day->fresh()->meals)->toEqual($meals)
+        ->and(WorkoutSession::query()->count())->toBe(0);
+});
+
 it('SCH-037 NUT-024 this day refuses a past day and saves nothing', function () {
     [$user] = editWorld();
     $day = SheetSeed::day($user, '2026-09-21');

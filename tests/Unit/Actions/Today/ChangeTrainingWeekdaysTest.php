@@ -2,11 +2,13 @@
 
 use App\Actions\Today\ChangeTrainingWeekdays;
 use App\Actions\Today\PlannedSession;
+use App\Capabilities\Reads\Train\MesocyclePayload;
 use App\Capabilities\Reads\Train\TrainPayload;
 use App\Capabilities\Support\FieldRefused;
 use App\Capabilities\Today\Data\TrainingWeekdaysChangeInput;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Placement\WorkoutTime;
+use App\Models\DayTarget;
 use App\Models\Mesocycle;
 use App\Models\Plan;
 use App\Models\Profile;
@@ -17,6 +19,7 @@ use App\Support\Today\DayPlans;
 use App\Support\Workout\WorkoutSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Event;
 use Tests\Support\FakeRebuild;
 use Tests\Support\SheetSeed;
 use Tests\Support\TrainSeed;
@@ -117,11 +120,36 @@ it('SCH-039 Train and Workout date next week\'s sessions on the new weekdays and
         ->and([$date(3, 1), $date(3, 2)])->toBe(['2026-09-21', '2026-09-24'])
         ->and([$date(1, 1), $date(1, 2)])->toBe(['2026-09-07', '2026-09-10'])
         ->and(array_map(fn (int $day) => $date(4, $day), array_keys($nextWeek)))->toBe(array_values($nextWeek));
+
+    // The mesocycle's week columns: this week's Monday session has passed, Thursday's is still to come.
+    $weeks = MesocyclePayload::build(TrainSnapshot::load($user, $mesocycle->id), $stored)->saved->weeks;
+    expect(array_column($weeks[2]->days, 'state'))->toBe(['missed', 'upcoming']);
 })->with([
     're-map' => [[2, 5], null, [1 => '2026-09-29', 2 => '2026-10-02'], false],
     'extend' => [[3], 'extend', [1 => '2026-09-30'], false],
     're-map of a floating mesocycle' => [[2, 5], null, [1 => '2026-09-29', 2 => '2026-10-02'], true],
 ]);
+
+it('SCH-039 in the running mesocycle\'s last week, Train and Workout keep this week\'s and past weeks\' sessions where they ran', function (bool $nextMesocycle) {
+    [$user, $mesocycle] = weekdayWorld();
+    // A floating Meso Builder mesocycle in its last week (21 to 27 September).
+    $mesocycle->update(['weeks' => 3, 'days' => array_map(fn (array $day) => [...$day, 'weekday' => null], $mesocycle->days)]);
+    if ($nextMesocycle) {
+        TrainSeed::mesocycle($user, ['name' => 'Meso 3', 'start_date' => '2026-09-28', 'weeks' => 4]);
+    }
+    FakeRebuild::bind();
+
+    changeWeekdays($user, [2, 5]);
+
+    $train = TrainSnapshot::load($user, $mesocycle->id);
+    $stored = $train->mesocycle($mesocycle->id);
+    $date = fn (int $week, int $day) => WorkoutSnapshot::dateOf($train, $stored, $week, $day)?->format('Y-m-d');
+    expect(TrainPayload::build(TrainSnapshot::load($user))->todays_session)->toBeNull()
+        ->and([$date(1, 1), $date(1, 2)])->toBe(['2026-09-07', '2026-09-10'])
+        ->and([$date(3, 1), $date(3, 2)])->toBe(['2026-09-21', '2026-09-24'])
+        ->and(array_column($stored->days, 'weekday'))->toBe([null, null])
+        ->and($stored->weeks)->toBe(3);
+})->with(['no mesocycle next week' => false, 'the next mesocycle starts next week' => true]);
 
 it('SCH-039 a weekday that stays keeps its start time and minutes', function () {
     [$user] = weekdayWorld();
@@ -291,6 +319,18 @@ it('SCH-039 SCH-052 today\'s session that already had a row keeps its time, and 
 
     // SCH-042: a post-workout meal starts within an hour of the 1 PM end, not around the weekday's 5:30 PM.
     expect(array_filter(array_column($today->fresh()->meals, 'time'), fn (string $time) => $time >= '13:00' && $time <= '14:00'))->not->toBeEmpty();
+});
+
+it('SCH-039 a failed re-target of today undoes the whole change, so a retry runs it again', function () {
+    [$user, $mesocycle] = weekdayWorld();
+    FakeRebuild::bind();
+    SheetSeed::day($user, '2026-09-22', ['day_type' => 'rest', 'kcal' => 2200.0]);
+    Event::listen('eloquent.saving: '.DayTarget::class, fn () => throw new RuntimeException('The database went away.'));
+
+    expect(fn () => changeWeekdays($user, [2, 5]))->toThrow(RuntimeException::class)
+        ->and(array_column(trainingDaysOf($user), 'weekday'))->toBe([1, 4])
+        ->and(WorkoutSession::query()->count())->toBe(0)
+        ->and($mesocycle->fresh()->earlier_weeks ?? [])->toBe([]);
 });
 
 it('SCH-039 the stored weekdays sent again change nothing', function () {
