@@ -1,7 +1,12 @@
 <?php
 
+use App\Capabilities\Reads\WeighIns\WeighInsPayload;
 use App\Capabilities\Support\HostDefinition;
+use App\Domain\Model\WeighIn as WeighInPoint;
 use App\Domain\Tokens\TokenScope;
+use App\Domain\WeighIns\BodyMeasures;
+use App\Domain\WeighIns\WeighInSchedule;
+use App\Domain\Weight\TrendWeight;
 use App\Enums\MeasurementSource;
 use App\Models\PersonalAccessToken;
 use App\Models\Phase;
@@ -10,8 +15,11 @@ use App\Models\Step;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WeighInScheduleEntry;
+use App\Support\Today\TodayWeight;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
@@ -347,4 +355,249 @@ it('WT-002 WT-004 WT-007 WT-020 answers 422 saying why', function () {
         ->and(WeighIn::query()->count())->toBe(1)
         ->and(WeighInScheduleEntry::query()->count())->toBe(0)
         ->and(Step::query()->count())->toBe(0);
+});
+
+/**
+ * A weighInScenario() user with a year of history: a weigh-in every Mon, Wed and Fri at 07:00 from 2025-10-06 to
+ * 2026-10-09, each 0.05 kg under the last from 90.00, and a step row every day in that range. Every Saturday is
+ * missed.
+ *
+ * @return array{User, list<WeighIn>, list<string>} the user, the weigh-ins oldest first, every step date newest first
+ */
+function weighInYear(): array
+{
+    $user = weighInScenario();
+    $weighIns = [];
+    $dates = [];
+    for ($day = Carbon::parse('2025-10-06'); $day->lte('2026-10-09'); $day = $day->addDay()) {
+        if (in_array($day->dayOfWeekIso, [1, 3, 5], true)) {
+            $weighIns[] = WeighIn::factory()->for($user)->create(['weight_kg' => round(90 - 0.05 * count($weighIns), 2), 'weighed_at' => $day->format('Y-m-d').' 07:00:00']);
+        }
+        $dates[] = $day->format('Y-m-d');
+    }
+    Step::query()->insert(array_map(fn (string $date) => ['id' => (string) Str::ulid(), 'user_id' => $user->id, 'date' => $date, 'count' => 8000, 'source' => 'manual', 'created_at' => now(), 'updated_at' => now()], $dates));
+
+    return [$user, $weighIns, array_reverse($dates)];
+}
+
+/**
+ * Every page of the user's weigh_ins_show, newest first, following next_before.
+ *
+ * @return list<array<string, mixed>>
+ */
+function weighInPages(User $user): array
+{
+    $pages = [weighInCall($user, 'weigh_ins_show')->assertOk()->json('data')];
+    while (($before = end($pages)['next_before']) !== null && count($pages) < 20) {
+        $pages[] = weighInCall($user, 'weigh_ins_show', ['before' => $before])->assertOk()->json('data');
+    }
+
+    return $pages;
+}
+
+/** @param list<WeighIn> $weighIns */
+function weighInTrendLabel(array $weighIns): string
+{
+    $points = array_map(fn (WeighIn $w) => new WeighInPoint((string) $w->id, $w->weighed_at->toDateTimeImmutable(), (float) $w->weight_kg), $weighIns);
+
+    return BodyMeasures::weightLabel((new TrendWeight($points, new DateTimeZone('UTC')))->currentKg(), 'kg');
+}
+
+it('WT-004 WT-020 pages the weigh-ins, missed days and steps 90 days at a time, newest first, back to the first', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    [$user, $weighIns, $stepDates] = weighInYear();
+
+    $pages = weighInPages($user);
+
+    expect(WeighInsPayload::PAGE_DAYS)->toBe(90)
+        ->and(array_column($pages, 'next_before'))->toBe(['2026-07-13', '2026-04-14', '2026-01-14', '2025-10-16', null]);
+    assertMatchesScreenFixture('weigh_ins_show', $pages[0]);
+    // Each page is its window: the newest [2026-07-13, 2026-10-11), the next [2026-04-14, 2026-07-13).
+    expect(collect($pages[0]['rows'])->min('weighed_at'))->toBeGreaterThanOrEqual('2026-07-13')
+        ->and(collect($pages[0]['steps']['rows'])->min('date'))->toBe('2026-07-13')
+        ->and(collect($pages[1]['rows'])->max('weighed_at'))->toBeLessThan('2026-07-13')
+        ->and(collect($pages[1]['rows'])->min('weighed_at'))->toBeGreaterThanOrEqual('2026-04-14')
+        ->and(collect($pages[1]['steps']['rows'])->max('date'))->toBe('2026-07-12')
+        ->and(collect($pages[1]['steps']['rows'])->min('date'))->toBe('2026-04-14');
+
+    // Every weigh-in and every missed day once, newest first, across the pages.
+    $times = array_map(fn (WeighIn $w) => $w->weighed_at->toDateTimeImmutable(), $weighIns);
+    $expected = array_map(fn (WeighIn $w) => [$w->weighed_at->format('Y-m-d H:i'), (string) $w->id], $weighIns);
+    foreach (WeighInSchedule::missedDays([1, 3, 5, 6], $times, Carbon::now()->toDateTimeImmutable()) as $day) {
+        $expected[] = [$day->format('Y-m-d').($day->format('N') === '6' ? ' 08:30' : ' 07:00'), 'missed-'.$day->format('Y-m-d')];
+    }
+    usort($expected, fn (array $a, array $b) => $b[0] <=> $a[0]);
+    $ids = array_merge(...array_map(fn (array $page) => array_column($page['rows'], 'id'), $pages));
+    $dates = array_merge(...array_map(fn (array $page) => array_column($page['steps']['rows'], 'date'), $pages));
+
+    expect($ids)->toBe(array_column($expected, 1))
+        ->and($ids)->toContain('missed-2025-10-11', 'missed-2026-10-03')
+        ->and($dates)->toBe($stepDates);
+});
+
+it('WT-004 WT-020 puts each day on one page: a day starting the newest window on it, the day before on the next', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    $gappy = weighInScenario();
+    WeighIn::factory()->for($gappy)->create(['weighed_at' => '2026-06-01 07:00:00']);
+    WeighIn::factory()->for($gappy)->create(['weighed_at' => '2026-10-09 07:00:00']);
+    $edge = weighInScenario();
+    $late = WeighIn::factory()->for($edge)->create(['weighed_at' => '2026-07-12 23:59:59']);
+    $midnight = WeighIn::factory()->for($edge)->create(['weighed_at' => '2026-07-13 00:00:00']);
+    Step::factory()->for($edge)->create(['date' => '2026-07-12', 'count' => 1200]);
+    Step::factory()->for($edge)->create(['date' => '2026-07-13', 'count' => 1300]);
+
+    [$newest, $older] = weighInPages($gappy);
+    expect($newest['next_before'])->toBe('2026-07-13')
+        ->and(array_column($newest['rows'], 'id'))->toContain('missed-2026-07-13')->not->toContain('missed-2026-07-11')
+        ->and(array_column($older['rows'], 'id'))->toContain('missed-2026-07-11')->not->toContain('missed-2026-07-13');
+
+    [$newest, $older] = weighInPages($edge);
+    expect(array_column($newest['rows'], 'id'))->toContain($midnight->id)->not->toContain($late->id)
+        ->and(array_column($newest['steps']['rows'], 'date'))->toBe(['2026-07-13'])
+        ->and(array_column($older['rows'], 'id'))->toContain($late->id)->not->toContain($midnight->id)
+        ->and(array_column($older['steps']['rows'], 'date'))->toBe(['2026-07-12']);
+});
+
+it('WT-010 WT-011 shows the trend of every weigh-in on every page, the weight Today shows, never a page\'s own', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    [$user, $weighIns] = weighInYear();
+
+    $pages = weighInPages($user);
+    $all = weighInTrendLabel($weighIns);
+
+    expect(array_unique(array_column(array_column($pages, 'trend'), 'value')))->toBe([$all])
+        ->and($all)->toBe(BodyMeasures::weightLabel(TodayWeight::kg($user, $user->profile), 'kg'));
+    // A trend over one page's weigh-ins differs. The newest page's has caught up to a tenth of a kilo after 90 days, so
+    // the older pages are the ones a page-only trend gives away on.
+    foreach (array_slice($pages, 1) as $page) {
+        $own = array_values(array_filter($weighIns, fn (WeighIn $w) => in_array($w->id, array_column($page['rows'], 'id'), true)));
+        expect(weighInTrendLabel($own))->not->toBe($all);
+    }
+});
+
+it('WT-004 never shows another user\'s weigh-ins, steps or schedule on any page, nor pages on for them', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    $other = User::factory()->create();
+    WeighInScheduleEntry::factory()->for($other)->create(['weekdays' => [2, 4], 'time' => '06:00']);
+    foreach (['2025-01-01', '2025-10-14', '2026-01-02', '2026-05-05', '2026-08-04', '2026-10-08'] as $date) {
+        WeighIn::factory()->for($other)->create(['weighed_at' => "{$date} 06:00:00"]);
+        Step::factory()->for($other)->create(['date' => $date, 'count' => 500]);
+    }
+    [$user, $weighIns, $stepDates] = weighInYear();
+
+    $pages = weighInPages($user);
+
+    $ids = array_merge(...array_map(fn (array $page) => array_column($page['rows'], 'id'), $pages));
+    $steps = array_merge(...array_map(fn (array $page) => $page['steps']['rows'], $pages));
+    expect(array_column($pages, 'next_before'))->toBe(['2026-07-13', '2026-04-14', '2026-01-14', '2025-10-16', null])
+        ->and(array_values(array_filter($ids, fn (string $id) => ! str_starts_with($id, 'missed-'))))->toBe(array_reverse(array_map(fn (WeighIn $w) => $w->id, $weighIns)))
+        ->and(array_filter($ids, fn (string $id) => str_starts_with($id, 'missed-') && Carbon::parse(substr($id, 7))->dayOfWeekIso !== 6))->toBe([])
+        ->and(array_column($steps, 'date'))->toBe($stepDates)
+        ->and(array_unique(array_column($steps, 'steps')))->toBe([8000])
+        ->and(array_column($pages[0]['schedule']['entries'], 'days_label'))->toBe(['Mon, Wed, Fri', 'Sat']);
+});
+
+it('WT-004 reads the newest page for a null before, answers 422 for a malformed one, and an empty page before the first', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    [$user] = weighInYear();
+    $newest = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data');
+
+    weighInCall($user, 'weigh_ins_show', ['before' => 'not-a-date'])
+        ->assertStatus(422)
+        ->assertJsonPath('error.violations.0.field', 'before');
+    expect(weighInCall($user, 'weigh_ins_show', ['before' => null])->assertOk()->json('data'))->toBe($newest);
+
+    $oldest = weighInCall($user, 'weigh_ins_show', ['before' => '2025-07-01'])->assertOk()->json('data');
+    expect($oldest['rows'])->toBe([])
+        ->and($oldest['steps']['rows'])->toBe([])
+        ->and($oldest['next_before'])->toBeNull()
+        ->and($oldest['empty_message'])->toBeNull()
+        ->and($oldest['trend'])->toBe($newest['trend'])
+        ->and($oldest['schedule'])->toBe($newest['schedule'])
+        ->and($oldest['steps']['default_date'])->toBe($newest['steps']['default_date']);
+    foreach (weighInPages($user) as $page) {
+        expect($page['empty_message'])->toBeNull();
+    }
+});
+
+it('WT-004 reads a page in as many queries for a year of history as for three weigh-ins', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    $few = weighInScenario();
+    foreach (['2026-10-05', '2026-10-07', '2026-10-09'] as $date) {
+        WeighIn::factory()->for($few)->create(['weighed_at' => "{$date} 07:00:00"]);
+    }
+    [$many] = weighInYear();
+
+    $count = function (User $user): int {
+        Cache::flush();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        weighInCall($user, 'weigh_ins_show')->assertOk();
+        DB::disableQueryLog();
+
+        return count(DB::getQueryLog());
+    };
+
+    expect($count($many))->toBe($count($few));
+    $newest = weighInCall($many, 'weigh_ins_show')->json('data');
+    expect(collect($newest['rows'])->min('weighed_at'))->toBeGreaterThanOrEqual('2026-07-13')
+        ->and(collect($newest['steps']['rows'])->min('date'))->toBeGreaterThanOrEqual('2026-07-13');
+});
+
+it('WT-004 WT-020 keeps weigh-ins and steps dated after today on the newest page, and reads a future before as the newest', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    $user = weighInScenario();
+    WeighIn::factory()->for($user)->create(['weighed_at' => '2026-10-09 07:00:00']);
+    $ahead = WeighIn::factory()->for($user)->create(['weighed_at' => '2026-10-12 07:00:00']);
+    // A day ahead of UTC, as a user east of UTC logs their own today.
+    Step::factory()->for($user)->create(['date' => '2026-10-11', 'count' => 4000]);
+    Step::factory()->for($user)->create(['date' => '2026-10-09', 'count' => 8000]);
+
+    $newest = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data');
+
+    expect($newest['rows'][0]['id'])->toBe($ahead->id)
+        ->and(array_column($newest['steps']['rows'], 'date'))->toBe(['2026-10-11', '2026-10-09'])
+        ->and($newest['next_before'])->toBeNull()
+        ->and(weighInCall($user, 'weigh_ins_show', ['before' => '2099-01-01'])->assertOk()->json('data'))->toBe($newest);
+});
+
+it('WT-020 pages back to step rows older than every weigh-in, and for a user with none', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    $weighed = weighInScenario();
+    WeighIn::factory()->for($weighed)->create(['weighed_at' => '2026-10-05 07:00:00']);
+    $unweighed = weighInScenario();
+    foreach ([$weighed, $unweighed] as $user) {
+        Step::factory()->for($user)->create(['date' => '2026-05-01', 'count' => 5000]);
+        Step::factory()->for($user)->create(['date' => '2026-10-09', 'count' => 9000]);
+    }
+
+    foreach ([$weighed, $unweighed] as $user) {
+        $pages = weighInPages($user);
+        expect(array_column($pages, 'next_before'))->toBe(['2026-07-13', null])
+            ->and(array_column($pages[0]['steps']['rows'], 'date'))->toBe(['2026-10-09'])
+            ->and(array_column($pages[1]['steps']['rows'], 'date'))->toBe(['2026-05-01']);
+    }
+    expect(array_column(weighInPages($unweighed), 'empty_message'))->toBe(['No weigh-ins yet. Tap + to log your first.', 'No weigh-ins yet. Tap + to log your first.']);
+});
+
+it('WT-020 pages no further when the only step left is on the page\'s first day', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    $user = weighInScenario();
+    Step::factory()->for($user)->create(['date' => '2026-07-13', 'count' => 5000]);
+
+    $newest = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data');
+
+    expect(array_column($newest['steps']['rows'], 'date'))->toBe(['2026-07-13'])
+        ->and($newest['next_before'])->toBeNull();
+});
+
+it('WT-004 pages no further when the first weigh-in is at the first moment of the page', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    $user = weighInScenario();
+    WeighIn::factory()->for($user)->create(['weighed_at' => '2026-07-13 00:00:00']);
+
+    $newest = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data');
+
+    expect($newest['rows'])->not->toBe([])
+        ->and($newest['next_before'])->toBeNull();
 });

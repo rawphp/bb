@@ -95,6 +95,24 @@ final class WorkoutReads
         return $at === null ? null : TrainSnapshot::day($at);
     }
 
+    /**
+     * The workout_show of every session of a mesocycle, each week as it runs (SCH-039): for a write that changes the
+     * targets its weeks build on.
+     *
+     * @return list<string>
+     */
+    public static function everyWorkout(Mesocycle $mesocycle): array
+    {
+        $keys = [];
+        for ($week = 1; $week <= (int) $mesocycle->weeks; $week++) {
+            foreach (array_keys($mesocycle->earlierWeekRows()[$week - 1] ?? $mesocycle->dayRows()) as $index) {
+                $keys[] = ReadKey::for('workout_show', ['mesocycle_id' => (string) $mesocycle->id, 'week' => $week, 'day' => $index + 1]);
+            }
+        }
+
+        return $keys;
+    }
+
     public static function workout(WorkoutSession $session): string
     {
         return ReadKey::for('workout_show', ['mesocycle_id' => (string) $session->mesocycle_id, 'week' => $session->week, 'day' => $session->day]);

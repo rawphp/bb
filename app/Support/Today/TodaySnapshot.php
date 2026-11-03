@@ -301,7 +301,7 @@ final class TodaySnapshot
             return null;
         }
         $flagged = $this->train->planWeekRow($grid->start($week));
-        $paused = $this->pausedWeeks();
+        $paused = $this->train->pausedWeeks();
         $saved = $this->train->saved()->values();
         $covering = $this->coveringIn($week);
         $mesocycle = $covering === null ? null : $saved[$covering->index];
@@ -355,7 +355,7 @@ final class TodaySnapshot
             $week,
             $this->train->saved()->values()->map(fn (Mesocycle $m) => new DatedMesocycle(TrainSnapshot::day($m->start_date), (int) $m->weeks))->all(),
             $grid,
-            $this->pausedWeeks(),
+            $this->train->pausedWeeks(),
         );
     }
 
@@ -375,25 +375,6 @@ final class TodaySnapshot
             laterWeeks: $domain->laterWeeks,
             lastDay: $mesocycle->ended_on === null ? null : $this->train->calendar($mesocycle)->lastDay(),
         );
-    }
-
-    /**
-     * SCH-060: the plan weeks an away week pauses.
-     *
-     * @return list<int>
-     */
-    private function pausedWeeks(): array
-    {
-        $grid = $this->train->grid();
-        if ($grid === null) {
-            return [];
-        }
-
-        return $this->train->planWeeks
-            ->filter(fn (PlanWeek $w) => $w->is_away && $w->away_training === Training::Pause->value)
-            ->map(fn (PlanWeek $w) => $grid->weekIndexContaining(TrainSnapshot::day($w->start_date)))
-            ->filter(fn (?int $index) => $index !== null)
-            ->values()->all();
     }
 
     /** @return list<TrainingDay> the profile's training days, in the Domain's weekdays (1 is Sunday) */
