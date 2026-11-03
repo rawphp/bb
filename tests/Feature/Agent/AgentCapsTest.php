@@ -244,3 +244,24 @@ it('AGT-002 keeps the package\'s chat routes signed in only', function () {
     $this->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertUnauthorized();
     $this->postJson('/capabilities/agent_status_show')->assertUnauthorized();
 });
+
+it('AGT-005 AGT-020 keeps a cleared conversation\'s turns and tokens in the day\'s and month\'s caps', function () {
+    config(['agent.turns_per_day' => 3, 'agent.tokens_per_month' => 10_000]);
+    $user = User::factory()->create();
+    pastTurns($user, [2_000, 2_000]);
+    pastTurns($user, [3_000], at: '2026-11-01 08:00:00');
+    pastTurns($user, [50_000], at: '2026-10-31 08:00:00');
+    $before = $this->actingAs($user)->postJson('/capabilities/agent_status_show')->assertOk()->json('data');
+    expect($before)->toMatchArray(['turns_left' => 1, 'tokens_left' => 3_000]);
+
+    $this->actingAs($user)->postJson('/capabilities/coach_conversation_clear', [], ['Idempotency-Key' => 'clear-1'])->assertOk();
+
+    expect(Turn::query()->count())->toBe(0)
+        ->and($this->actingAs($user)->postJson('/capabilities/agent_status_show')->assertOk()->json('data'))
+        ->toMatchArray(['turns_left' => 1, 'tokens_left' => 3_000, 'conversation_ulid' => null]);
+
+    pastTurns($user, [3_000]);
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])
+        ->assertStatus(429)
+        ->assertJsonPath('error.code', 'rate_limited');
+});
