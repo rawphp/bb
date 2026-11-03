@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Today\DayPlans;
 use App\Support\Today\TodaySnapshot;
+use App\Support\UserDay;
 use App\Support\Workout\WorkoutSnapshot;
 use DateTimeImmutable;
 use DomainException;
@@ -40,7 +41,7 @@ final class SkipWorkout
             }
 
             // The day Today shows it on: where it started, else where it was moved, else where Today places it.
-            $at = $row->actual_start_at ?? $row?->planned_start_at;
+            $at = ($row?->actual_start_at === null ? null : UserDay::clockOf($user, $row->actual_start_at)) ?? $row?->planned_start_at;
             $date = $at !== null ? DayPlans::day($at) : self::shownOn($user, $snapshot);
             $retarget = $date === null ? null : self::retarget($user, $date->format('Y-m-d'), $snapshot);
 

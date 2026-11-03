@@ -11,8 +11,8 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\UserDay;
 use App\Support\Workout\WorkoutSnapshot;
-use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Support\Collection;
 
@@ -42,7 +42,7 @@ final class WorkoutReads
         $days = array_filter([
             WorkoutSnapshot::dateOf($train, $mesocycle, $session->week, $session->day),
             $session->planned_start_at === null ? null : TrainSnapshot::day($session->planned_start_at),
-            $session->actual_start_at === null ? null : TrainSnapshot::day($session->actual_start_at),
+            $session->actual_start_at === null ? null : UserDay::dayOf($user, $session->actual_start_at),
         ]);
         $weekDates = [];
         foreach ($days as $day) {
@@ -53,7 +53,7 @@ final class WorkoutReads
         }
 
         $weekDates = array_values(array_unique($weekDates));
-        $today = TrainSnapshot::day(CarbonImmutable::now())->format('Y-m-d');
+        $today = UserDay::today($user)->format('Y-m-d');
 
         return [
             self::workout($session),
@@ -68,7 +68,7 @@ final class WorkoutReads
     private static function calendarOf(User $user, Mesocycle $mesocycle): TrainSnapshot
     {
         return new TrainSnapshot(
-            today: TrainSnapshot::day(CarbonImmutable::now()),
+            today: UserDay::today($user),
             plan: Plan::query()->where('user_id', $user->id)->first(),
             profile: Profile::query()->where('user_id', $user->id)->first(),
             mesocycles: new Collection([$mesocycle]),

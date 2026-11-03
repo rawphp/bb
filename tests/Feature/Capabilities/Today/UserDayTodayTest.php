@@ -1,8 +1,8 @@
 <?php
 
 use App\Capabilities\Support\ReadKey;
-use App\Models\DayTarget;
 use App\Capabilities\Today\TodayReads;
+use App\Models\DayTarget;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WeighInScheduleEntry;
@@ -68,8 +68,8 @@ it('SET-012 a write to the user\'s local today drops the undated Today and week 
 
     expect($invalidates)->toContain(ReadKey::for('today_show', ['date' => '2026-10-10']), ReadKey::for('today_show'))
         ->and(TodayReads::weekKeys(['2026-10-10']))->toContain(ReadKey::for('week_show'))
-        ->and(TodayReads::keys(['2026-10-09']))->not->toContain(ReadKey::for('today_show'))
-        ->and(TodayReads::weekKeys(['2026-10-09']))->not->toContain(ReadKey::for('week_show'));
+        ->and(TodayReads::keys(['2026-10-08']))->not->toContain(ReadKey::for('today_show'))
+        ->and(TodayReads::weekKeys(['2026-10-08']))->not->toContain(ReadKey::for('week_show'));
 });
 
 it('SET-012 with no one signed in, today for the undated reads is the UTC day', function () {

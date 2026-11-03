@@ -57,6 +57,8 @@ final class ListActivity
         $records = AuditRecord::query()
             ->whereBelongsTo($user)
             ->whereIn('event', self::INVOKE_EVENTS)
+            // SET-012: the app sends the device's time zone on every load; it is audited but is not the user's doing.
+            ->where(fn ($query) => $query->whereNull('capability')->orWhere('capability', '!=', 'time_zone_set'))
             ->whereIn('channel', array_column(Channel::cases(), 'value'))
             ->latest()
             ->latest('id')

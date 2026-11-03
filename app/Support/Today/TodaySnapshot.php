@@ -180,6 +180,7 @@ final class TodaySnapshot
             exercises: fn (?array $ids): Collection => Exercise::query()->visibleTo($user)
                 ->when($ids !== null, fn ($query) => $query->whereIn('id', $ids))
                 ->orderBy('name')->get(),
+            zone: UserDay::zone($user),
         );
     }
 
@@ -316,7 +317,7 @@ final class TodaySnapshot
                 day: $s->day,
                 isSkipped: $s->is_skipped,
                 plannedStartAt: self::instant($s->planned_start_at),
-                actualStartAt: self::instant($s->actual_start_at),
+                actualStartAt: $this->train->startedAt($s),
             ))->values()->all();
         $logged = array_values(array_map(
             fn (WorkoutSessionRecord $r) => new LoggedDay($r->week, (int) $r->day),

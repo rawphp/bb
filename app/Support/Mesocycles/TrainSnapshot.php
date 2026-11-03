@@ -87,6 +87,7 @@ final class TrainSnapshot
         public readonly Collection $planWeeks,
         private readonly Collection|Closure $dayTargets,
         private readonly Collection|Closure $exercises,
+        public readonly DateTimeZone $zone = new DateTimeZone('UTC'),
     ) {}
 
     /**
@@ -111,6 +112,7 @@ final class TrainSnapshot
             planWeeks: self::read(PlanWeek::query()->where('user_id', $user->id), $locked)->get(),
             dayTargets: new Collection,
             exercises: new Collection,
+            zone: UserDay::zone($user),
         );
 
         $focus = $mesocycleId === null ? null : $base->findMesocycle($mesocycleId);
@@ -132,7 +134,17 @@ final class TrainSnapshot
             exercises: fn (?array $ids): Collection => Exercise::query()->visibleTo($user)
                 ->when($ids !== null, fn ($query) => $query->whereIn('id', $ids))
                 ->orderBy('name')->get(),
+            zone: $base->zone,
         );
+    }
+
+    /**
+     * SET-012: when a session started, as the user's wall-clock time labelled UTC, like every plan time; null before
+     * it started. The stored start is a real instant, so it is read in the user's zone before it names a day.
+     */
+    public function startedAt(?WorkoutSession $session): ?DateTimeImmutable
+    {
+        return $session?->actual_start_at === null ? null : UserDay::clockIn($this->zone, $session->actual_start_at);
     }
 
     /** The start of the day a date falls on, as midnight UTC. */
