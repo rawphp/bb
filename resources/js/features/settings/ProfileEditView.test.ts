@@ -204,17 +204,17 @@ describe('ProfileEditView', () => {
     });
 
     it.each([
-        ['height-inches', '5.5.5', imperial],
-        ['height-feet', 'five', imperial],
-        ['height-feet', '5.5', imperial],
-        ['height-cm', 'abc', settings],
-    ])('SET-004 holds Save while %s reads %s, not a number', async (field, text, payload) => {
+        ['height-inches', '5.5.5', imperial, 'Type your height in numbers, with whole feet.'],
+        ['height-feet', 'five', imperial, 'Type your height in numbers, with whole feet.'],
+        ['height-feet', '5.5', imperial, 'Type your height in numbers, with whole feet.'],
+        ['height-cm', 'abc', settings, 'Type your height as a number.'],
+    ])('SET-004 holds Save while %s reads %s, not a number', async (field, text, payload, hint) => {
         const wrapper = render(payload);
 
         await wrapper.get(`[data-test="${field}"]`).setValue(text);
 
         expect(wrapper.get('[data-test="save"]').attributes('disabled')).toBeDefined();
-        expect(wrapper.get('[data-test="not-number"]').text()).toBe('Type your height in numbers, with whole feet.');
+        expect(wrapper.get('[data-test="not-number"]').text()).toBe(hint);
         await save(wrapper);
         expect(writeMock).not.toHaveBeenCalled();
     });
