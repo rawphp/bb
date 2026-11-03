@@ -39,7 +39,6 @@ final class Review
     /**
      * @param  list<ReviewWeek>  $weeks  oldest first; $week is the last of them
      * @param  float  $expenditureKcal  measured over $weeks (REV-021), else the formula's
-     * @param  float  $formulaExpenditureKcal  NUT-002's, for a week before $week whose own measurement has too few weeks
      */
     public function __construct(
         private readonly Phase $phase,
@@ -50,7 +49,6 @@ final class Review
         private readonly Profile $profile,
         private readonly float $expenditureKcal,
         private readonly int $plannedDailySteps,
-        private readonly float $formulaExpenditureKcal,
     ) {
         $this->current = $week->targetKcal;
     }
@@ -70,9 +68,9 @@ final class Review
                 );
             }
         }
-        // SCH-064: a rough week repeats, whatever else it shows (REV-041 and REV-046 included).
+        // SCH-064: a rough week repeats, whatever else it shows (REV-041 and REV-046 included), within the floors.
         if ($this->week->isRough) {
-            return new Decision(RepeatThisWeek::targetKcal($this->weeks) ?? $this->current, RecommendationReason::roughWeek());
+            return $this->withSafety(new Decision(RepeatThisWeek::targetKcal($this->weeks) ?? $this->current, RecommendationReason::roughWeek()));
         }
         $decision = $this->choose();
         // REV-030: the stall options were checked as they were built.
@@ -95,7 +93,7 @@ final class Review
             }
         }
         // REV-025.
-        if ($this->week->loggedDays() < MeasuredExpenditure::MINIMUM_LOGGED_DAYS || $this->isOffTarget()) {
+        if ($this->hasPoorAdherence($this->week)) {
             return new Decision(
                 $this->current, RecommendationReason::poorAdherence($this->week->loggedDays(), $this->week->averageIntakeKcal()),
             );
@@ -109,9 +107,10 @@ final class Review
         if ($rate === null) {
             return new Decision($this->current, RecommendationReason::noTrend());
         }
-        // REV-046: back to the target rate in one step, uncapped. It raises calories, so no water hold.
-        if ($this->isLosingTooFast($this->week)) {
-            return new Decision($this->level(), RecommendationReason::losingTooFast());
+        // REV-046: back to the target rate in one step, uncapped. Only ever a raise, so no water hold.
+        $level = $this->level();
+        if ($this->isLosingTooFast($this->week, $level)) {
+            return new Decision($level, RecommendationReason::losingTooFast());
         }
 
         if ($this->phase->type === PhaseType::Maintenance) {
@@ -144,15 +143,15 @@ final class Review
         return RepeatThisWeek::lastOrdinaryBeforeNewest($this->weeks);
     }
 
-    /** REV-025: the average consumed is more than 10% off target, or nothing was logged. */
-    private function isOffTarget(): bool
+    /** REV-025: fewer than 5 logged days, or the average consumed more than 10% off the week's target. */
+    private function hasPoorAdherence(ReviewWeek $week): bool
     {
-        $average = $this->week->averageIntakeKcal();
-        if ($average === null) {
+        $average = $week->averageIntakeKcal();
+        if ($week->loggedDays() < MeasuredExpenditure::MINIMUM_LOGGED_DAYS || $average === null) {
             return true;
         }
 
-        return abs($average - $this->current) > CalorieReview::ADHERENCE_TOLERANCE_SHARE * $this->current;
+        return abs($average - $week->targetKcal) > CalorieReview::ADHERENCE_TOLERANCE_SHARE * $week->targetKcal;
     }
 
     private function move(float $delta, RecommendationReason $reason): Decision
@@ -190,31 +189,38 @@ final class Review
         return $this->expenditureKcal + $this->kcalForRate($this->targetRate());
     }
 
-    /** REV-046: Fat loss, the week's rate faster than the target band (TBL-050), and its training fatigue high. */
-    private function isLosingTooFast(ReviewWeek $week): bool
+    /**
+     * REV-046 decides the week: none of the rules before it did (SCH-064, REV-025, REV-032), it is Fat loss, the
+     * week's rate is faster than the target band (TBL-050), its training fatigue was high, and $level, the
+     * target-rate level for the week, is a raise on the week's target.
+     */
+    private function isLosingTooFast(ReviewWeek $week, float $level): bool
     {
-        if (! $this->phase->type->isFatLoss() || ! $week->trainingFatigueHigh) {
+        if ($week->isRough || $this->hasPoorAdherence($week) || $this->isFirstPhaseWeek($week)
+            || ! $this->phase->type->isFatLoss() || ! $week->trainingFatigueHigh) {
             return false;
         }
         $rate = $this->rate($week);
 
-        return $rate !== null && $rate < $this->targetRate() - $this->band();
+        return $rate !== null && $rate < $this->targetRate() - $this->band() && $level > $week->targetKcal;
     }
 
     /**
      * REV-046: the target the rule set in an earlier week, recomputed from that week's rows: expenditure measured over
-     * the weeks up to it (else the formula's) plus the calories for the target rate at its trend weight. Null when the
-     * rule did not apply there.
+     * the weeks up to it, plus the calories for the target rate at its trend weight. Without a measurement REV-046 used
+     * the formula maintenance built for the week after it: the break week reviewed now, stored at maintenance. Null
+     * when the rule did not decide that week.
      */
     private function correctedTarget(ReviewWeek $week): ?float
     {
         $index = array_search($week, $this->weeks, true);
-        if ($index === false || ! $this->isLosingTooFast($week)) {
+        if ($index === false) {
             return null;
         }
         $measured = MeasuredExpenditure::estimate(array_slice($this->weeks, 0, $index + 1), $this->trend);
+        $level = ($measured ?? $this->current) + MacroRules::dailyKcal($this->targetRate(), $this->trendKgAt($week));
 
-        return ($measured ?? $this->formulaExpenditureKcal) + MacroRules::dailyKcal($this->targetRate(), $this->trendKgAt($week));
+        return $this->isLosingTooFast($week, $level) ? $level : null;
     }
 
     /** The one-week correction the observed rate implies; only a fallback for a direction rule. */
