@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { RouteRecordRaw } from 'vue-router';
 import { featureRoutes, routesFor } from '@/app/router';
 import { findScreen, routeProps } from '../dev/screens';
 import routes from './routes';
@@ -13,8 +14,9 @@ describe('billing routes', () => {
     });
 
     it('SUB-020 the billing screens are dev screens only: the app opens them from the screens that show them', () => {
-        expect(routes.length).toBe(3);
-        expect(routes.every((route) => route.meta?.dev === true && route.meta?.tab === undefined)).toBe(true);
+        const billing: RouteRecordRaw[] = routes;
+        expect(billing.length).toBe(3);
+        expect(billing.every((route) => route.meta?.dev === true && route.meta?.tab === undefined)).toBe(true);
         expect(routesFor(false).some((route) => route.meta?.screen === 'billing_show')).toBe(false);
     });
 });
