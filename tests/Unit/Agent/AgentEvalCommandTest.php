@@ -5,7 +5,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Process;
 
 // agent:eval (AGT-050) runs tests/Agent through Pest and reads its JUnit log. Pest is faked here: it writes the log a
-// run of three requests would, one of them failed.
+// run of five requests would: two passed, one failed, one errored and one skipped.
 
 const EVAL_RESULT = 'tests/Agent/results/2031-01-02.json';
 
@@ -20,19 +20,28 @@ beforeEach(function () {
         file_put_contents($command[array_search('--log-junit', $command, true) + 1], <<<'XML'
             <?xml version="1.0" encoding="UTF-8"?>
             <testsuites>
-              <testsuite name="Agent" tests="3" failures="1" errors="0">
-                <testsuite name="Tests\Agent\TrainingTest" tests="3" failures="1" errors="0">
+              <testsuite name="Agent" tests="5" failures="1" errors="1" skipped="1">
+                <testsuite name="Tests\Agent\TrainingTest" tests="5" failures="1" errors="1" skipped="1">
                   <testcase name="it AGT-050 &quot;move tomorrow's workout to Saturday&quot;" file="tests/Agent/TrainingTest.php"/>
                   <testcase name="it AGT-050 &quot;swap bench for dumbbell press&quot;" file="tests/Agent/TrainingTest.php">
-                    <failure type="PHPUnit\Framework\ExpectationFailedException">The Coach should call exercise_swap with {"scope":"this_session"}, and the app accept it.</failure>
+                    <failure type="PHPUnit\Framework\ExpectationFailedException">it AGT-050 "swap bench for dumbbell press"The Coach should call exercise_swap with {"scope":"this_session"}, and the app accept it.
+            Failed asserting that null is not null.
+            at tests/Agent/Coach.php:128</failure>
                   </testcase>
-                  <testcase name="it AGT-050 &quot;undo that&quot;" file="tests/Agent/TrainingTest.php"/>
+                  <testcase name="it AGT-050 &quot;undo that&quot;" file="tests/Agent/TrainingTest.php">
+                    <error type="RuntimeException">it AGT-050 "undo that"RuntimeException: The Coach made no successful workout_time_set call.
+            at tests/Agent/Coach.php:96</error>
+                  </testcase>
+                  <testcase name="it AGT-050 &quot;add a set of bench&quot;" file="tests/Agent/TrainingTest.php">
+                    <skipped/>
+                  </testcase>
+                  <testcase name="it AGT-050 &quot;start my workout&quot;" file="tests/Agent/TrainingTest.php"/>
                 </testsuite>
               </testsuite>
             </testsuites>
             XML);
 
-        return Process::result(output: 'Tests: 1 failed, 2 passed', exitCode: 1);
+        return Process::result(output: 'Tests: 1 failed, 1 errored, 1 skipped, 2 passed', exitCode: 1);
     });
 });
 
@@ -44,7 +53,7 @@ afterEach(function () {
 
 it('AGT-050 agent:eval --live runs the eval set on the real model and records its pass rate under the date', function () {
     $this->artisan('agent:eval', ['--live' => true])
-        ->expectsOutputToContain('2 of 3 requests passed (66.7%)')
+        ->expectsOutputToContain('2 of 5 requests passed (40.0%)')
         ->assertExitCode(1);
 
     Process::assertRan(function (PendingProcess $process): bool {
@@ -60,20 +69,22 @@ it('AGT-050 agent:eval --live runs the eval set on the real model and records it
     expect(json_decode((string) file_get_contents(base_path(EVAL_RESULT)), true))->toBe([
         'date' => '2031-01-02',
         'model' => 'claude-opus-5-5',
-        'requests' => 3,
+        'requests' => 5,
         'passed' => 2,
-        'pass_rate' => 0.667,
+        'pass_rate' => 0.4,
         'cases' => [
             ['name' => 'AGT-050 "move tomorrow\'s workout to Saturday"', 'passed' => true],
-            ['name' => 'AGT-050 "swap bench for dumbbell press"', 'passed' => false, 'failure' => 'The Coach should call exercise_swap with {"scope":"this_session"}, and the app accept it.'],
-            ['name' => 'AGT-050 "undo that"', 'passed' => true],
+            ['name' => 'AGT-050 "swap bench for dumbbell press"', 'passed' => false, 'failure' => "The Coach should call exercise_swap with {\"scope\":\"this_session\"}, and the app accept it.\nFailed asserting that null is not null."],
+            ['name' => 'AGT-050 "undo that"', 'passed' => false, 'failure' => 'RuntimeException: The Coach made no successful workout_time_set call.'],
+            ['name' => 'AGT-050 "add a set of bench"', 'passed' => false],
+            ['name' => 'AGT-050 "start my workout"', 'passed' => true],
         ],
     ]);
 });
 
 it('AGT-050 agent:eval with no --live runs the eval set on the fake driver and records nothing', function () {
     $this->artisan('agent:eval')
-        ->expectsOutputToContain('2 of 3 requests passed (66.7%)')
+        ->expectsOutputToContain('2 of 5 requests passed (40.0%)')
         ->assertExitCode(1);
 
     Process::assertRan(fn (PendingProcess $process): bool => ! isset($process->environment['AGENT_EVAL_LIVE']));
