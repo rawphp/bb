@@ -17,7 +17,6 @@ use App\Domain\Progression\RecoveryStep;
 use App\Domain\Review\JointPainFlag;
 use App\Domain\Review\NextWeekKind;
 use App\Domain\Review\ReviewProgress\Position;
-use App\Domain\Review\ReviewWeek;
 use App\Domain\Review\ReviewWeighInRow as DomainRow;
 use App\Support\Plan\PlanWords;
 use App\Support\Review\ReviewAnalysis;
@@ -136,8 +135,7 @@ final class ReviewWeekPayload
      */
     private static function recoveryNotes(ReviewAnalysis $analysis): array
     {
-        $reviewed = array_values(array_filter($analysis->weeks, fn (ReviewWeek $week) => $week->week->start == $analysis->reviewed->start));
-        if ($analysis->phase?->type !== PhaseType::MuscleGain || $analysis->progress?->rateIsOnTarget !== true || ! ($reviewed[0]->trainingFatigueHigh ?? false)) {
+        if ($analysis->phase?->type !== PhaseType::MuscleGain || $analysis->progress?->rateIsOnTarget !== true || ! ($analysis->reviewedWeek()->trainingFatigueHigh ?? false)) {
             return [];
         }
         // PROG-052 names a step only when enough muscles underperformed.

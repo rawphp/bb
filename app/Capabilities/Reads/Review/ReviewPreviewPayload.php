@@ -88,12 +88,11 @@ final class ReviewPreviewPayload
     private static function days(ReviewAnalysis $analysis, BuiltWeek $week): array
     {
         // NUT-024: a day already past is locked, read in the plan's time zone as ReviewNextWeek::forSave does.
-        $zone = $analysis->world?->plan->start->getTimezone();
-        $startOfToday = $zone === null ? $analysis->today : $analysis->today->setTimezone($zone)->setTime(0, 0);
+        $zone = $analysis->world?->plan->start->getTimezone() ?? $analysis->today->getTimezone();
 
-        return array_map(function (WeekDay $day, int $index) use ($startOfToday) {
+        return array_map(function (WeekDay $day, int $index) use ($analysis, $zone) {
             $kcal = $day->target?->kcal;
-            $locked = $day->day->date->setTime(0, 0) < $startOfToday;
+            $locked = ReviewNextWeek::isPast($day->day->date, $analysis->today, $zone);
 
             return new ReviewPreviewDay(
                 index: $index,

@@ -40,12 +40,7 @@ final class ReviewCaloriesPayload
             return null;
         }
         $selected = $choices->selected();
-        $reviewed = null;
-        foreach ($analysis->weeks as $week) {
-            if ($week->week->start == $analysis->reviewed->start) {
-                $reviewed = $week;
-            }
-        }
+        $reviewed = $analysis->reviewedWeek();
 
         return new ReviewCalories(
             lines: [
@@ -167,10 +162,9 @@ final class ReviewCaloriesPayload
         }
         $recommendation = $analysis->recommendation;
         if ($recommendation !== null && in_array(CalorieOptionKind::Recommendation, $kinds, true)) {
-            $last = $analysis->weeks === [] ? null : $analysis->weeks[count($analysis->weeks) - 1];
             $warns = in_array($recommendation->reason->kind, [RecommendationReasonKind::Stalled, RecommendationReasonKind::WaterWeight], true);
             $notes[] = new Status(
-                ReviewMessages::reason($recommendation->reason, $last->targetKcal ?? 0),
+                ReviewMessages::reason($recommendation->reason, $analysis->reviewedWeek()->targetKcal ?? 0),
                 ($warns ? Tone::Warning : Tone::Info)->value,
             );
         }

@@ -165,8 +165,7 @@ final class ReviewChoices
         if ($world === null) {
             return null;
         }
-        $last = $analysis->weeks === [] ? null : $analysis->weeks[count($analysis->weeks) - 1];
-        $current = $last !== null && $last->week->start == $analysis->reviewed->start ? $last->targetKcal : null;
+        $current = $analysis->reviewedWeek()?->targetKcal;
         $reason = $analysis->recommendation?->reason;
 
         return match ($id) {
