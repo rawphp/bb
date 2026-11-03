@@ -18,7 +18,9 @@ use App\Domain\Model\DayType;
 use App\Domain\Model\ExerciseLoadType;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\WeightUnit;
+use App\Models\PlanWeek;
 use App\Models\Exercise;
+use App\Models\ExerciseFeedback;
 use App\Models\Mesocycle;
 use App\Models\Profile;
 use App\Models\User;
@@ -182,6 +184,31 @@ it('WO-031 PROG-020 an added exercise is targeted as the day would plan it, from
         ->and(saTargets($id))->toBe($planned);
 })->with(['kg', 'lb']);
 
+it('WO-031 PROG-018 an added exercise takes the recovery flags as the day would: joint pain last week holds its load', function () {
+    /** @return array{list<array{?float, ?int}>, list<array{?float, ?int}>} the day's planned targets for incline press and the added one's */
+    $targets = function (bool $hurt): array {
+        [$user, $mesocycle] = saWorld();
+        $incline = saExercise('Incline Dumbbell Press');
+        saLastWeek($user, $mesocycle, $incline);
+        if ($hurt) {
+            $last = WorkoutSession::query()->where('user_id', $user->id)->where('week', 2)->sole();
+            ExerciseFeedback::factory()->create(['workout_session_id' => $last->id, 'exercise_id' => $incline->id, 'joint_pain' => 'aLot']);
+        }
+        saWithInclineSlot($mesocycle);
+        $session = saStarted($user, $mesocycle);
+        app(AddWorkoutExercise::class)($user, WorkoutIds::workout($mesocycle->id, 3, 1), $id = saNewId(), $incline->id, false);
+
+        return [saTargets(saBlock($session, 'Incline Dumbbell Press')->id), saTargets($id)];
+    };
+
+    [$plainPlanned, $plainAdded] = $targets(false);
+    [$hurtPlanned, $hurtAdded] = $targets(true);
+
+    expect($plainAdded)->toBe($plainPlanned)
+        ->and($hurtAdded)->toBe($hurtPlanned)
+        ->and($hurtPlanned)->not->toBe($plainPlanned);
+});
+
 it('WO-006 an added exercise with no history starts with no target weight', function () {
     [$user, $mesocycle] = saWorld();
     saStarted($user, $mesocycle);
@@ -211,7 +238,7 @@ it('MESO-045 adding with Apply to all remaining weeks also gives that day a thre
 it('MESO-045 an exercise added to the remaining weeks leaves the weeks stored before this one as they ran', function () {
     [$user, $mesocycle] = saWorld();
     $before = $mesocycle->dayRows();
-    $mesocycle->update(['earlier_weeks' => [$before, $before, $before]]);
+    $mesocycle->update(['earlier_weeks' => [$before, $before, $before, $before]]);
     saStarted($user, $mesocycle);
 
     app(AddWorkoutExercise::class)($user, WorkoutIds::workout($mesocycle->id, 3, 1), saNewId(), saExercise('Standing Calf Raise')->id, true);
@@ -219,8 +246,9 @@ it('MESO-045 an exercise added to the remaining weeks leaves the weeks stored be
     $weeks = $mesocycle->fresh()->earlierWeekRows();
     expect(count($weeks[0][0]['slots']))->toBe(3)
         ->and(count($weeks[1][0]['slots']))->toBe(3)
-        // Week 3, stored too, is this session's week: it runs the change.
+        // Weeks 3 and 4, stored too, are this session's week and a later one: they run the change.
         ->and(count($weeks[2][0]['slots']))->toBe(4)
+        ->and(count($weeks[3][0]['slots']))->toBe(4)
         ->and(count($mesocycle->fresh()->dayRows()[0]['slots']))->toBe(4);
 });
 
@@ -485,8 +513,9 @@ it('EX-008 a replayed swap that moved every set changes nothing', function () {
         ->and(WorkoutSet::query()->where('workout_exercise_id', $new)->count())->toBe(3);
 });
 
-it('EX-008 PROG-020 the sets that move take the new exercise\'s targets at their places', function () {
+it('EX-008 PROG-020 the sets that move take the new exercise\'s targets at their places, in the user\'s unit', function (string $unit) {
     [$user, $mesocycle] = saWorld();
+    Profile::query()->where('user_id', $user->id)->update(['weight_unit' => $unit]);
     $incline = saExercise('Incline Dumbbell Press');
     saLastWeek($user, $mesocycle, $incline);
     saWithInclineSlot($mesocycle);
@@ -499,7 +528,7 @@ it('EX-008 PROG-020 the sets that move take the new exercise\'s targets at their
 
     expect(array_filter(array_merge(...$planned), fn ($value) => $value === null))->toBe([])
         ->and(saTargets($new))->toBe([$planned[1], $planned[2]]);
-});
+})->with(['kg', 'lb']);
 
 it('EX-008 a swap for the rest of the mesocycle also changes the day\'s slot, without the old exercise\'s carried load', function () {
     [$user, $mesocycle] = saWorld();
@@ -656,6 +685,36 @@ it('SCH-053 SCH-051 skipping a session moved to another day re-targets the day i
         ->and($skipped['toast'])->toBe('Meals updated for the skipped workout')
         ->and($wednesday->fresh()->day_type)->toBe(DayType::Rest)
         ->and(WorkoutSession::query()->sole()->is_skipped)->toBeTrue();
+});
+
+it('SCH-053 skipping a session under way re-targets the day it was started on', function () {
+    // Monday's Upper A, started on Wednesday evening.
+    [$user, $mesocycle] = saWorld('2026-09-23 18:00:00');
+    $monday = SheetSeed::day($user, '2026-09-21');
+    $before = $monday->fresh()->only(['day_type', 'kcal', 'meals']);
+    $wednesday = SheetSeed::day($user, '2026-09-23');
+    app(StartWorkout::class)($user, WorkoutIds::workout($mesocycle->id, 3, 1), CarbonImmutable::parse('2026-09-23 17:40:00'));
+
+    $skipped = app(SkipWorkout::class)($user, WorkoutIds::workout($mesocycle->id, 3, 1));
+
+    expect($skipped['dates'])->toBe(['2026-09-23'])
+        ->and($wednesday->fresh()->day_type)->toBe(DayType::Rest)
+        ->and($monday->fresh()->only(['day_type', 'kcal', 'meals']))->toBe($before);
+});
+
+it('SCH-053 a skip leaves the meals of a day Today gives to another session', function () {
+    // An away week paused on 14 September moves the mesocycle a plan week later, so Today puts week 2's Upper A on
+    // Monday 21 September, where the plan alone would put week 3's.
+    [$user, $mesocycle] = saWorld('2026-09-21 09:00:00');
+    PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-14', 'is_away' => true, 'away_training' => 'pause']);
+    $monday = SheetSeed::day($user, '2026-09-21');
+    $before = $monday->fresh()->only(['day_type', 'kcal', 'meals']);
+
+    $skipped = app(SkipWorkout::class)($user, WorkoutIds::workout($mesocycle->id, 3, 1));
+
+    expect($skipped['toast'])->toBeNull()
+        ->and($monday->fresh()->only(['day_type', 'kcal', 'meals']))->toBe($before)
+        ->and(WorkoutSession::query()->where('week', 3)->sole()->is_skipped)->toBeTrue();
 });
 
 it('SCH-053 a workout skipped after its day has passed leaves that day\'s targets as they were', function () {

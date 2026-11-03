@@ -267,3 +267,36 @@ it('EX-008 a swap sent again after it moved every set answers as the first did',
     expect(array_column(actOver($user, 'workout_show', ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1])->json('data.exercises'), 'id'))
         ->toBe([$swap['new_workout_exercise_id']]);
 });
+
+it('WO-031 a relabel refreshes Today on every day left in the plan week of each session of the day, whose Add workout sheet names it', function () {
+    Carbon::setTestNow('2026-09-20 09:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+
+    $keys = actOver($user, 'workout_day_relabel', ['workout_id' => WorkoutIds::workout($mesocycle->id, 3, 1), 'label' => 'Push'])->assertOk()->json('data.invalidates');
+
+    // Sunday 20 September ends plan week 2; week 3 runs Monday 21 to Sunday 27.
+    expect($keys)->toContain('today_show{"date":"2026-09-20"}', 'today_show{"date":"2026-09-22"}', 'today_show{"date":"2026-09-27"}', 'today_show{"date":"2026-10-06"}')
+        ->and($keys)->not->toContain('today_show{"date":"2026-09-19"}');
+});
+
+it('WO-050 a skip refreshes Today on the days left in its plan week, whose Add workout sheet offered it', function () {
+    Carbon::setTestNow('2026-09-21 09:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+
+    $keys = actOver($user, 'workout_skip', ['workout_id' => WorkoutIds::workout($mesocycle->id, 3, 2)])->assertOk()->json('data.invalidates');
+
+    expect($keys)->toContain('today_show{"date":"2026-09-21"}', 'today_show{}', 'today_show{"date":"2026-09-22"}', 'today_show{"date":"2026-09-24"}');
+});
+
+it('SCH-051 a rest-of-mesocycle swap refreshes Today of the day a later session was moved to', function () {
+    [$user, $mesocycle, $shown] = actStarted();
+    WorkoutSession::factory()->for($user)->create(['mesocycle_id' => $mesocycle->id, 'week' => 4, 'day' => 1, 'is_skipped' => false,
+        'planned_start_at' => '2026-09-29 17:30:00', 'planned_end_at' => '2026-09-29 18:30:00', 'actual_start_at' => null, 'actual_end_at' => null]);
+
+    $keys = actOver($user, 'exercise_swap', ['workout_exercise_id' => $shown['exercises'][0]['id'], 'new_workout_exercise_id' => strtolower((string) Str::ulid()), 'exercise_id' => actIncline(), 'scope' => 'rest_of_mesocycle'])
+        ->assertOk()->json('data.invalidates');
+
+    expect($keys)->toContain('today_show{"date":"2026-09-29"}');
+});
