@@ -92,9 +92,11 @@ it('INT-001 links the shared Shortcut from config, and writes out its steps agai
         ->toContain('weighed_at')
         ->toContain('"date"')
         ->toContain('"steps"')
-        // Shortcuts has no ULID action: the id is built from actions it has (CAP-019).
-        ->toContain('yyyyMMddHHmmss')
-        ->toContain('Random Number');
+        // Shortcuts has no ULID action: the id is 26 digits starting with 0, built from actions it has (CAP-019).
+        ->toContain('"Format Date" for the weight\'s date with the custom format yyyyMMddHHmmss, and "Random Number" from 10000000000 to 99999999999. Put "0", the date and the number together')
+        // A date pattern in Format Date is Unicode's: yyyy-MM-dd, never YYYY-MM-DD (week-year, day of year).
+        ->toContain('"Adjust Date" to subtract 1 day from the current date, then "Format Date" with the custom format yyyy-MM-dd')
+        ->not->toContain('YYYY');
 });
 
 it('INT-001 says the token has expired, since the Shortcut can no longer post with it', function () {
@@ -102,6 +104,13 @@ it('INT-001 says the token has expired, since the Shortcut can no longer post wi
 
     expect($page['status'])->toBe(['text' => 'The token has expired. Revoke it and set up the bridge again.', 'tone' => 'warning'])
         ->and($page['token']['expires_text'])->toBe('Expired 1 November 2026');
+});
+
+it('INT-001 words the token\'s expiry on the page\'s clock, to the minute', function () {
+    $at = fn (string $expires) => bridgePage(bridgeToken(['expires_at' => CarbonImmutable::parse($expires)]), now: '2026-11-02T09:00:00Z')['token']['expires_text'];
+
+    expect($at('2026-11-02T08:59:00Z'))->toBe('Expired 2 November 2026')
+        ->and($at('2026-11-02T09:01:00Z'))->toBe('Expires 2 November 2026');
 });
 
 it('INT-004 waits for the first post once the token exists', function () {

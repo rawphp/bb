@@ -36,13 +36,13 @@ function setUpBridge(User $user): string
 }
 
 /** What the Shortcut posts each morning: the latest body weight with its time, and yesterday's steps. */
-function runShortcut(string $secret, string $weighedAt = '2026-11-02T06:00:00+00:00', string $day = '2026-11-01'): void
+function runShortcut(string $secret, string $weighedAt = '2026-11-02T06:00:00+00:00', string $day = '2026-11-01', float $kg = 81.4): void
 {
     test()->withToken($secret)->postJson('/capabilities/weigh_in_log', [
         // Built as the page's steps say: "0", the weight's time as yyyyMMddHHmmss, and an 11-digit random number.
         'id' => '0'.CarbonImmutable::parse($weighedAt)->format('YmdHis').random_int(10_000_000_000, 99_999_999_999),
         'weighed_at' => $weighedAt,
-        'weight' => ['value' => 81.4, 'unit' => 'kg'],
+        'weight' => ['value' => $kg, 'unit' => 'kg'],
     ])->assertOk();
     test()->withToken($secret)->postJson('/capabilities/steps_log', ['date' => $day, 'steps' => 8412])->assertOk();
     Auth::forgetGuards();
@@ -167,6 +167,25 @@ it('INT-001 INT-004 shows the bridge token and the bridge\'s run, not another to
     $page = healthBridgeShow($user)->assertOk()->json('data');
 
     expect($page['token']['id'])->toBe($bridgeId)
+        ->and($page['last_post']['when_text'])->toBe('Today, 06:02')
+        ->and($page['last_post']['items'][0]['value'])->toBe('81.4 kg at 06:00');
+});
+
+it('INT-001 INT-004 shows the newest bridge token and the newest run', function () {
+    $user = User::factory()->create();
+    $this->travelTo('2026-10-30T06:01:00Z');
+    $first = setUpBridge($user);
+    runShortcut($first, '2026-10-30T06:00:00+00:00', '2026-10-29', 82.0);
+    $this->travelTo('2026-11-02T06:02:00Z');
+    runShortcut($first, '2026-11-02T06:00:00+00:00', '2026-11-01', 81.4);
+    $this->travelTo('2026-11-02T08:00:00Z');
+    setUpBridge($user);
+    $newest = PersonalAccessToken::query()->latest()->firstOrFail()->id;
+
+    $page = healthBridgeShow($user)->assertOk()->json('data');
+
+    expect(PersonalAccessToken::query()->count())->toBe(2)
+        ->and($page['token']['id'])->toBe($newest)
         ->and($page['last_post']['when_text'])->toBe('Today, 06:02')
         ->and($page['last_post']['items'][0]['value'])->toBe('81.4 kg at 06:00');
 });
