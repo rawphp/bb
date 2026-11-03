@@ -28,12 +28,15 @@ final readonly class Allowance
         $turnsLeft = $turnsPerDay === null ? null : max($turnsPerDay - $turnsToday, 0);
         $tokensLeft = $tokensPerMonth === null ? null : max($tokensPerMonth - $tokensThisMonth, 0);
 
-        // The monthly cap resets later, so it wins when both are reached.
-        if ($tokensLeft === 0) {
-            return self::reached($turnsLeft, $tokensLeft, $now->startOfMonth()->addMonth(), 'this month\'s');
+        $monthEndsAt = $now->startOfMonth()->addMonth();
+        $dayEndsAt ??= $now->startOfDay()->addDay();
+
+        // When both are reached, the later reset wins. That is the month's, unless the user's day ends after it.
+        if ($tokensLeft === 0 && ($turnsLeft !== 0 || $monthEndsAt >= $dayEndsAt)) {
+            return self::reached($turnsLeft, $tokensLeft, $monthEndsAt, 'this month\'s');
         }
         if ($turnsLeft === 0) {
-            return self::reached($turnsLeft, $tokensLeft, $dayEndsAt ?? $now->startOfDay()->addDay(), 'today\'s');
+            return self::reached($turnsLeft, $tokensLeft, $dayEndsAt, 'today\'s');
         }
 
         $notice = null;
