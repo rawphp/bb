@@ -270,15 +270,38 @@ it('AGT-005 AGT-020 keeps a cleared conversation\'s turns and tokens in the day\
         ->assertJsonPath('error.code', 'rate_limited');
 });
 
-it('AGT-005 prunes a cleared turn once its month is over', function () {
+it('AGT-005 SET-012 prunes a cleared turn a day after its month is over', function () {
     $user = User::factory()->create();
-    ClearedCoachTurn::query()->create(['user_id' => $user->id, 'tokens' => 100, 'created_at' => '2026-10-31 23:00:00']);
-    $kept = ClearedCoachTurn::query()->create(['user_id' => $user->id, 'tokens' => 100, 'created_at' => '2026-11-01 00:00:00']);
+    ClearedCoachTurn::query()->create(['user_id' => $user->id, 'tokens' => 100, 'created_at' => '2026-10-30 23:59:59']);
+    $kept = ClearedCoachTurn::query()->create(['user_id' => $user->id, 'tokens' => 100, 'created_at' => '2026-10-31 00:00:00']);
 
     Artisan::call('model:prune', ['--model' => [ClearedCoachTurn::class]]);
 
     expect(ClearedCoachTurn::query()->pluck('id')->all())->toBe([$kept->id]);
 });
+
+it('AGT-005 SET-012 keeps a cleared turn from before the month in the user\'s local day', function (string $zone, int $turnsLeft) {
+    config(['agent.turns_per_day' => 3, 'agent.tokens_per_month' => 10_000]);
+    CarbonImmutable::setTestNow('2026-11-01 05:00:00');
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => $zone])->save();
+    // 06:00 on 1 Nov in Brisbane, the day before the app's month.
+    pastTurns($user, [2_000, 2_000], at: '2026-10-31 20:00:00');
+    $status = fn () => $this->actingAs($user)->postJson('/capabilities/agent_status_show')->assertOk()->json('data');
+    expect($status())->toMatchArray(['turns_left' => $turnsLeft, 'tokens_left' => 10_000]);
+
+    $this->actingAs($user)->postJson('/capabilities/coach_conversation_clear', [], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+
+    expect(ClearedCoachTurn::query()->where('user_id', $user->id)->count())->toBe(2)
+        ->and($status())->toMatchArray(['turns_left' => $turnsLeft, 'tokens_left' => 10_000]);
+
+    Artisan::call('model:prune', ['--model' => [ClearedCoachTurn::class]]);
+
+    expect($status())->toMatchArray(['turns_left' => $turnsLeft, 'tokens_left' => 10_000]);
+})->with([
+    'Australia/Brisbane' => ['Australia/Brisbane', 1],
+    'UTC' => ['UTC', 3],
+]);
 
 it('SET-012 counts the Coach\'s turns today from the user\'s local midnight', function (string $zone, int $turnsLeft, bool $atCap, ?string $resetsAt, int $status) {
     config(['agent.turns_per_day' => 3]);
