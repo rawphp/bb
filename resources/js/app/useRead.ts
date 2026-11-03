@@ -17,10 +17,12 @@ import { onScreenReturn } from './screenTop';
  * screenRead) and rejects when it did not get it. Offline with nothing cached it reads
  * again when the device reconnects (OFF-004), and it reads again when a replayed outbox
  * entry's answer invalidates it (CAP-010), so the pending numbers give way to the server's.
+ * A screen whose input changes (dates picked, say) passes it as a function: each load
+ * reads it as it is then, and replays and the cached copy are matched against it.
  */
 export function useRead<T>(
     name: string,
-    input: CapabilityInput,
+    input: CapabilityInput | (() => CapabilityInput),
     message: string,
     payload?: T,
 ): { data: Ref<T | undefined>; failure: Ref<ReadFailure | null>; load: (options?: { fresh?: boolean }) => Promise<void> } {
@@ -43,9 +45,10 @@ export function useRead<T>(
         },
     );
     const fixture = payload !== undefined;
+    const inputNow = (): CapabilityInput => (typeof input === 'function' ? input() : input);
     const load = async (options: { fresh?: boolean } = {}): Promise<void> => {
         try {
-            await read(input, options);
+            await read(inputNow(), options);
         } catch (error) {
             // A fresh read with nothing on screen to keep says why, as a plain one would. One a
             // newer load overtook leaves the screen to that load.
@@ -57,21 +60,20 @@ export function useRead<T>(
         if (failure.value?.offline) void load();
     };
 
-    const key = readKey(name, input);
     let stopListening = () => {};
 
     onMounted(() => {
         window.addEventListener('online', reconnected);
         if (!fixture) {
             stopListening = onReplayed((keys) => {
-                if (keys.includes(key)) void load().catch(() => undefined);
+                if (keys.includes(readKey(name, inputNow()))) void load().catch(() => undefined);
             });
         }
         if (data.value === undefined) void load();
     });
     onScreenReturn(async () => {
         if (fixture) return;
-        const hit = await cached(key).catch(() => undefined);
+        const hit = await cached(readKey(name, inputNow())).catch(() => undefined);
         if (hit !== undefined && hit.fetchedAt <= shownAt && Date.now() - hit.fetchedAt < WARM_FRESH_MS) return;
         void load();
     });
