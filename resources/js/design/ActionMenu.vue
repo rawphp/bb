@@ -16,7 +16,8 @@ import { nextTick, onBeforeUnmount, ref, useId } from 'vue';
 // menu and the + menu. Keyboard use follows the menu pattern (UI-030): focus moves to the
 // first item on open, arrow keys, Home and End move between items, Escape closes and
 // focus goes back to the button. A tap outside or Tab closes it.
-const props = withDefaults(defineProps<{ label: string; items: ActionMenuItem[]; disabled?: boolean }>(), { disabled: false });
+// `align` start opens the menu from the button's left edge, for a button at the left of the screen.
+const props = withDefaults(defineProps<{ label: string; items: ActionMenuItem[]; disabled?: boolean; align?: 'start' | 'end' }>(), { disabled: false, align: 'end' });
 
 const emit = defineEmits<{ select: [key: string] }>();
 
@@ -100,7 +101,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside, tru
             :id="menuId"
             role="menu"
             :aria-label="label"
-            class="absolute right-0 z-10 mt-1 w-64 overflow-hidden rounded-xl bg-surface shadow-lg"
+            class="absolute z-10 mt-1 w-64 overflow-hidden rounded-xl bg-surface shadow-lg"
+            :class="props.align === 'start' ? 'left-0' : 'right-0'"
             @keydown="onKeydown"
         >
             <button

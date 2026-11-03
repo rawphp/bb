@@ -188,7 +188,7 @@ const field =
 <template>
     <div :data-set="set.id" :class="set.is_skipped ? 'opacity-50' : ''">
         <div class="flex items-center gap-1 rounded-xl py-0.5" :class="logged ? 'bg-accent/10' : ''">
-            <ActionMenu :label="`Set ${set.number} menu`" :items="menuItems" :disabled="!editable" data-test="set-menu" @select="choose">
+            <ActionMenu :label="`Set ${set.number} menu`" :items="menuItems" align="start" :disabled="!editable" data-test="set-menu" @select="choose">
                 <svg viewBox="0 0 24 24" class="size-6 text-accent" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                     <circle cx="12" cy="12" r="9.25" />
                     <path d="M8 12h.01M12 12h.01M16 12h.01" stroke-linecap="round" stroke-width="2.5" />
