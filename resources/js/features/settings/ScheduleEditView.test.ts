@@ -136,16 +136,17 @@ describe('ScheduleEditView', () => {
         expect(plan.find((day) => day.weekday === 2)!.max).toBe(12000);
     });
 
-    it.each(['8.000', '8,000', '8k', '-5'])('SET-005 sends a step count typed as %s as no number, for the server to refuse', async (typed) => {
-        writeMock.mockRejectedValueOnce(new CapabilityError('schedule_defaults_update', 422, { error: { code: 'validation_failed', message: 'Enter whole steps.' } }));
+    it.each(['8.000', '8,000', '8k', '-5', '7000.5'])('SET-005 holds Save while a step count reads %s, not a whole number', async (typed) => {
         const wrapper = render(settings);
 
         await wrapper.get('[data-test="steps-min-1"]').setValue(typed);
-        await save(wrapper);
 
-        const call = writeMock.mock.calls.find(([name]) => name === 'schedule_defaults_update')!;
-        expect((call[1].step_plan as { weekday: number; min: unknown }[])[0]).toEqual({ weekday: 1, min: null, max: 9000 });
-        expect(wrapper.get('[role="alert"]').text()).toBe('Enter whole steps.');
+        expect(wrapper.get('[data-test="save"]').attributes('disabled')).toBeDefined();
+        expect(wrapper.get('[data-test="not-whole"]').text()).toBe('Type steps as whole numbers, for example 8000.');
+        await save(wrapper);
+        expect(writeMock).not.toHaveBeenCalled();
+        await wrapper.get('[data-test="steps-min-1"]').setValue(' 8000 ');
+        expect(wrapper.get('[data-test="save"]').attributes('disabled')).toBeUndefined();
     });
 
     it('OFF-003 follows the refresh of a cached copy until the user edits the form', async () => {

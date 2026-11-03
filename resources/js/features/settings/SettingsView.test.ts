@@ -1,6 +1,6 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, postHost, read, writeNow } from '@/app/call';
+import { CapabilityError, postHost, read, readFresh, writeNow } from '@/app/call';
 import type { SettingsShowOutput } from '@/contracts/settings_show';
 import StatusPill from '@/design/StatusPill.vue';
 import { toneClasses } from '@/design/tones';
@@ -10,6 +10,7 @@ import SettingsView from './SettingsView.vue';
 vi.mock('@/app/call', async (original) => ({
     ...(await original<typeof import('@/app/call')>()),
     read: vi.fn(),
+    readFresh: vi.fn(),
     writeNow: vi.fn(),
     postHost: vi.fn(),
 }));
@@ -159,7 +160,8 @@ describe('SettingsView', () => {
 
     it('SET-002 paints the appearance the server took after a change with no final answer', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('settings_update', 0, { reason: 'timeout' }));
-        readMock.mockResolvedValueOnce({ ...settings, appearance: { ...settings.appearance, value: 'light' } });
+        // A write with no final answer reads the server's copy, not the cache.
+        vi.mocked(readFresh).mockResolvedValueOnce({ ...settings, appearance: { ...settings.appearance, value: 'light' } });
         const wrapper = render(settings);
 
         await wrapper.get('[data-test="appearance"]').setValue('light');

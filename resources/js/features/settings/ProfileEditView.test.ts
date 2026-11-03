@@ -192,12 +192,7 @@ describe('ProfileEditView', () => {
         expect(wrapper.get<HTMLInputElement>('[data-test="name"]').element.value).toBe('Samantha');
     });
 
-    it.each([
-        ['5,5', 5.5],
-        ['5.5', 5.5],
-        ['5.5.5', null],
-        ['five', null],
-    ])('SET-001 reads inches typed as %s as %s', async (typedInches, inches) => {
+    it.each(['5,5', '5.5'])('SET-001 reads inches typed as %s as 5.5', async (typedInches) => {
         writeMock.mockResolvedValueOnce({ invalidates: ['settings_show'] });
         readMock.mockResolvedValueOnce(imperial);
         const wrapper = render(imperial);
@@ -205,7 +200,21 @@ describe('ProfileEditView', () => {
         await wrapper.get('[data-test="height-inches"]').setValue(typedInches);
         await save(wrapper);
 
-        expect(sent()).toMatchObject({ height: { unit: 'feetInches', feet: 5, inches } });
+        expect(sent()).toMatchObject({ height: { unit: 'feetInches', feet: 5, inches: 5.5 } });
+    });
+
+    it.each([
+        ['height-inches', '5.5.5'],
+        ['height-feet', 'five'],
+    ])('SET-004 holds Save while %s reads %s, not a number', async (field, text) => {
+        const wrapper = render(imperial);
+
+        await wrapper.get(`[data-test="${field}"]`).setValue(text);
+
+        expect(wrapper.get('[data-test="save"]').attributes('disabled')).toBeDefined();
+        expect(wrapper.get('[data-test="not-number"]').text()).toBe('Type your height as a number.');
+        await save(wrapper);
+        expect(writeMock).not.toHaveBeenCalled();
     });
 
     it('PWA-024 shows a skeleton while it loads', () => {
