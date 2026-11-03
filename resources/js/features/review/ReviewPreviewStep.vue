@@ -7,9 +7,9 @@ type Preview = NonNullable<ReviewShowOutput['preview']>;
 type Day = Preview['days'][number];
 
 // Step 7 (REV-003, REV-004): next week's days with type, workout and calories. Tapping
-// one opens the move sheet; `move` sends the move and resolves null once the week took
-// it, which closes the sheet, or why not, which the sheet shows. `pending` dims the
-// server's numbers (OFF-008).
+// one opens the move sheet; `move` sends the move and resolves null to close the sheet
+// (the week took it, or no final answer came and the re-read week shows), or why the
+// move did not go, which the sheet shows. `pending` dims the server's numbers (OFF-008).
 const props = defineProps<{ preview: Preview; pending: boolean; busy: boolean; move: (move: ReviewMove) => Promise<string | null> }>();
 
 // The day whose sheet is open, and why its last move did not go through.
