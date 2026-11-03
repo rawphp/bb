@@ -10,7 +10,10 @@ use App\Support\Today\TodayWeight;
 use App\Support\Workout\WorkoutIds;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Tests\Support\SheetSeed;
 use Tests\Support\TodaySeed;
+use Tests\Support\TrainSeed;
+use Tests\Support\WorkoutSeed;
 
 // SET-012: Today, the week strip and Today's weigh-ins count days in the user's time zone.
 
@@ -153,4 +156,85 @@ it('SET-012 a workout started from Today stays on the user\'s local day', functi
         ->and(collect($week['days'])->firstWhere('date', '2026-10-09')['has_training'])->toBeTrue()
         ->and(collect($week['days'])->firstWhere('date', '2026-10-08')['has_training'])->toBeFalse()
         ->and($thursday['workouts'])->toBe([]);
+});
+
+it('SET-012 the Adjust sheet counts a day as finished by the user\'s clock', function () {
+    // Thursday 07:58 in Brisbane is Wednesday 21:58 in UTC: Wednesday is over in Brisbane and still today in UTC.
+    Carbon::setTestNow('2026-10-07 21:58:00');
+    $move = ['date' => '2026-10-08', 'mode' => 'days', 'kcal' => 100, 'other_date' => '2026-10-07'];
+    $wednesday = fn (User $user) => collect(test()->actingAs($user)->postJson('/capabilities/day_adjust_show', $move)->assertOk()->json('data.day_options'))
+        ->firstWhere('date', '2026-10-07')['enabled'];
+    $brisbane = zonedTodayUser('Australia/Brisbane');
+    $utc = zonedTodayUser('UTC');
+
+    expect($wednesday($brisbane))->toBeFalse()
+        ->and($wednesday($utc))->toBeTrue();
+    test()->actingAs($brisbane)->postJson('/capabilities/day_adjust', $move, ['Idempotency-Key' => (string) Str::ulid()])->assertStatus(422);
+    test()->actingAs($utc)->postJson('/capabilities/day_adjust', $move, ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+});
+
+it('SET-012 an untimed meal is checked in at the user\'s clock', function (string $zone, string $time) {
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    $user = zonedTodayUser($zone);
+    $day = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-10-10')->sole();
+    $day->meals = [['time' => null] + $day->meals[0], ...array_slice($day->meals, 1)];
+    $day->save();
+
+    $meals = test()->actingAs($user)->postJson('/capabilities/today_show', ['date' => '2026-10-10'])->assertOk()->json('data.meals');
+
+    expect($meals[0]['check_in']['manual']['time'])->toBe($time);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', '07:58'],
+    'UTC' => ['UTC', '21:58'],
+]);
+
+it('SET-012 a write to the UTC day still drops the undated reads for a user ahead of UTC', function () {
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    test()->actingAs(zonedTodayUser('Australia/Brisbane'));
+
+    expect(TodayReads::keys(['2026-10-09']))->toContain(ReadKey::for('today_show'))
+        ->and(TodayReads::weekKeys(['2026-10-09']))->toContain(ReadKey::for('week_show'));
+});
+
+it('SET-012 starting a session on a later local day refreshes that day\'s Today', function () {
+    // Friday's session, started at 07:58 on Saturday in Brisbane: still Friday in UTC.
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    $user = zonedTodayUser('Australia/Brisbane');
+    $friday = test()->actingAs($user)->postJson('/capabilities/today_show', ['date' => '2026-10-09'])->assertOk()->json('data.workouts.0');
+
+    $invalidates = test()->actingAs($user)->postJson('/capabilities/workout_start', ['workout_id' => WorkoutIds::workout($friday['mesocycle_id'], $friday['week'], $friday['day'])], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertOk()->json('data.invalidates');
+
+    expect($invalidates)->toContain(ReadKey::for('today_show', ['date' => '2026-10-10']));
+});
+
+it('SET-012 skipping a session started this local morning re-targets that day\'s meals', function () {
+    Carbon::setTestNow('2026-10-08 21:58:00');
+    $user = zonedTodayUser('Australia/Brisbane');
+    $friday = test()->actingAs($user)->postJson('/capabilities/today_show')->assertOk()->json('data.workouts.0');
+    $id = WorkoutIds::workout($friday['mesocycle_id'], $friday['week'], $friday['day']);
+    test()->actingAs($user)->postJson('/capabilities/workout_start', ['workout_id' => $id], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+
+    $skip = test()->actingAs($user)->postJson('/capabilities/workout_skip', ['workout_id' => $id], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertOk()->json('data');
+
+    expect($skip['toast'])->toBe('Meals updated for the skipped workout')
+        ->and($skip['invalidates'])->toContain(ReadKey::for('day_redistribute_show', ['date' => '2026-10-09']));
+});
+
+it('SET-012 finishing a session started this local morning re-targets that day\'s meals', function () {
+    // Monday 07:30 to 09:00 in Brisbane is Sunday night in UTC.
+    Carbon::setTestNow('2026-09-20 23:00:00');
+    $user = TrainSeed::user();
+    $user->forceFill(['time_zone' => 'Australia/Brisbane'])->save();
+    $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => TrainSeed::phase($user, 'muscleGain', '2026-08-31')->id]);
+    $session = WorkoutSeed::started($mesocycle, 3, 1, '2026-09-20 21:30:00');
+    WorkoutSeed::answered($session, 'chest', WorkoutSeed::exerciseId($mesocycle, 1), ['pump' => 'low', 'volume' => 'notEnough']);
+    SheetSeed::day($user, '2026-09-21');
+
+    $finish = test()->actingAs($user)->postJson('/capabilities/workout_finish', ['workout_id' => WorkoutSeed::id($session)], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertOk()->json('data');
+
+    expect($finish['toast'])->toContain('Meals updated for your 7:30 AM workout')
+        ->and($finish['invalidates'])->toContain(ReadKey::for('today_show', ['date' => '2026-09-21']));
 });
