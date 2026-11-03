@@ -494,6 +494,48 @@ describe('CoachChat', () => {
             reads({ agent_status_show: status });
         });
 
+        it('AGT-021 sends nothing again until the conversation shows the unanswered message is not there', async () => {
+            historyMock.mockResolvedValueOnce(earlier).mockRejectedValue(new CapabilityError('chat.history', 0, { reason: 'network' }));
+            sendMock.mockRejectedValueOnce(new CapabilityError('chat.send', 0, { reason: 'network' }));
+            const wrapper = mountChat();
+            await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
+
+            await sendMessage(wrapper, 'Plan my week');
+            const unknown = "Couldn't check whether the Coach got your message, so it was not sent again. Try again once you're connected.";
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').text()).toBe(unknown));
+
+            // Still no way to check: Send checks again and sends nothing.
+            await wrapper.get('form').trigger('submit');
+            await vi.waitFor(() => expect(historyMock).toHaveBeenCalledTimes(3));
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').text()).toBe(unknown));
+            expect(sendMock).toHaveBeenCalledTimes(1);
+            expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('Plan my week');
+
+            // The conversation answers without the message: now it is sent again.
+            historyMock.mockResolvedValue(earlier);
+            sendMock.mockResolvedValue(ids);
+            eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [] });
+            await wrapper.get('form').trigger('submit');
+            await vi.waitFor(() => expect(sendMock).toHaveBeenCalledTimes(2));
+            expect(sendMock).toHaveBeenLastCalledWith('Plan my week', CONVERSATION);
+        });
+
+        it('AGT-021 does not send an unanswered message again once the conversation shows it landed', async () => {
+            const landed: ChatHistory = { conversation_ulid: CONVERSATION, messages: [...earlier.messages, { ulid: ids.message_ulid, role: 'user', content: 'Plan my week', created_at: null }] };
+            historyMock.mockResolvedValueOnce(earlier).mockRejectedValueOnce(new CapabilityError('chat.history', 0, { reason: 'network' })).mockResolvedValue(landed);
+            sendMock.mockRejectedValueOnce(new CapabilityError('chat.send', 0, { reason: 'timeout' }));
+            const wrapper = mountChat();
+            await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
+            await sendMessage(wrapper, 'Plan my week');
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').exists()).toBe(true));
+
+            await wrapper.get('form').trigger('submit');
+            await vi.waitFor(() => expect(wrapper.find('[data-test="landed"]').exists()).toBe(true));
+
+            expect(sendMock).toHaveBeenCalledTimes(1);
+            expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('');
+        });
+
         it('AGT-021 checks the conversation and does not offer to send again when the message landed', async () => {
             const landed: ChatHistory = { conversation_ulid: CONVERSATION, messages: [...earlier.messages, { ulid: ids.message_ulid, role: 'user', content: 'Plan my week', created_at: null }] };
             historyMock.mockResolvedValueOnce(earlier).mockResolvedValue(landed);
