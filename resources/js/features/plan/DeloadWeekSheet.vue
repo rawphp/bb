@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import type { PlanShowOutput } from '@/contracts/plan_show';
 import BottomSheet from '@/design/BottomSheet.vue';
+import ToggleSwitch from '@/design/ToggleSwitch.vue';
 import { toneClasses } from '@/design/tones';
 
 // A deload week: what it runs at, and for a cut the switch for its diet break (PLAN-022,
@@ -45,10 +46,7 @@ function turnOff(): void {
                 <p class="text-sm text-secondary-text">{{ deload.dates_text }}</p>
             </div>
             <template v-if="deload.diet_break_action !== 'none'">
-                <label class="flex min-h-tap items-center gap-3">
-                    <span class="flex-1">Maintenance-calorie diet break</span>
-                    <input type="checkbox" role="switch" class="size-6 accent-accent" :checked="on" :disabled="busy" @change="toggle" />
-                </label>
+                <ToggleSwitch label="Maintenance-calorie diet break" :model-value="on" :disabled="busy" @change="toggle" />
                 <p class="text-[13px] text-secondary-text">A diet break holds your weight steady for the week so the next block starts fresh.</p>
             </template>
             <div v-if="confirming" role="alertdialog" aria-label="Deload in a deficit?" class="space-y-2 rounded-2xl p-3" :class="toneClasses.warning" data-test="diet-break-warning">

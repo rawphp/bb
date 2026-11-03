@@ -2,8 +2,8 @@
 import { computed, ref } from 'vue';
 import type { WorkoutTimeSetInput } from '@/contracts/workout_time_set';
 import BottomSheet from '@/design/BottomSheet.vue';
+import TimeField from '@/design/TimeField.vue';
 import SheetBody from './SheetBody.vue';
-import TimeField from './TimeField.vue';
 import { useDaySheet, type DaySheetProps } from './useDaySheet';
 
 // SCH-050: the workout menu's Change time picks the session's new start. The server

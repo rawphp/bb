@@ -5,11 +5,12 @@ import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
 import type { ScheduleDefaultsUpdateInput } from '@/contracts/schedule_defaults_update';
 import type { SettingsShowOutput } from '@/contracts/settings_show';
+import TimeField from '@/design/TimeField.vue';
+import ToggleSwitch from '@/design/ToggleSwitch.vue';
 import { toneClasses } from '@/design/tones';
 import Stepper from '@/features/onboarding/parts/Stepper.vue';
 import WeekdayPicker from '@/features/onboarding/parts/WeekdayPicker.vue';
 import StepRangeRow from './StepRangeRow.vue';
-import SwitchRow from './SwitchRow.vue';
 
 // Settings → Schedule defaults (SET-005): the eating window, meals a day, training days
 // and times, busy periods, the step plan and the review day. Weigh-in days are not on
@@ -128,7 +129,6 @@ const card = 'divide-y divide-secondary-text/20 overflow-hidden rounded-2xl bg-s
 const heading = 'px-4 pb-2 text-sm font-semibold text-secondary-text';
 const footer = 'px-4 pt-2 text-sm text-secondary-text';
 const row = 'flex min-h-tap items-center justify-between gap-3 px-4 py-2';
-const time = 'rounded-lg bg-background px-3 py-1.5 tabular-nums text-primary-text disabled:opacity-60';
 </script>
 
 <template>
@@ -156,14 +156,8 @@ const time = 'rounded-lg bg-background px-3 py-1.5 tabular-nums text-primary-tex
             <section aria-labelledby="schedule-eating">
                 <h2 id="schedule-eating" :class="heading">Eating</h2>
                 <div :class="card">
-                    <label :class="row">
-                        <span>Window starts</span>
-                        <input v-model="draft.eating_window_start" data-test="window-start" type="time" :disabled="busy" :class="time" />
-                    </label>
-                    <label :class="row">
-                        <span>Window ends</span>
-                        <input v-model="draft.eating_window_end" data-test="window-end" type="time" :disabled="busy" :class="time" />
-                    </label>
+                    <TimeField v-model="draft.eating_window_start" label="Window starts" data-test="window-start" :disabled="busy" class="px-4" />
+                    <TimeField v-model="draft.eating_window_end" label="Window ends" data-test="window-end" :disabled="busy" class="px-4" />
                     <div class="px-4 py-2">
                         <Stepper
                             v-model="draft.meal_count"
@@ -182,18 +176,23 @@ const time = 'rounded-lg bg-background px-3 py-1.5 tabular-nums text-primary-tex
                 <h2 id="schedule-training" :class="heading">Training days</h2>
                 <div :class="card">
                     <template v-for="day in schedule.weekdays" :key="day.weekday">
-                        <SwitchRow
+                        <ToggleSwitch
                             :label="day.label"
                             :data-test="`training-${day.weekday}`"
-                            :checked="draft.training[day.weekday] !== null"
+                            :model-value="draft.training[day.weekday] !== null"
                             :disabled="busy"
-                            @change="toggleTraining(day.weekday, ($event.target as HTMLInputElement).checked)"
+                            class="px-4 py-2"
+                            @update:model-value="toggleTraining(day.weekday, $event)"
                         />
                         <template v-if="draft.training[day.weekday]">
-                            <label :class="row">
-                                <span>Starts</span>
-                                <input v-model="draft.training[day.weekday]!.start" :data-test="`training-start-${day.weekday}`" type="time" :aria-label="`${day.label} starts`" :disabled="busy" :class="time" />
-                            </label>
+                            <TimeField
+                                v-model="draft.training[day.weekday]!.start"
+                                label="Starts"
+                                :data-test="`training-start-${day.weekday}`"
+                                :aria-label="`${day.label} starts`"
+                                :disabled="busy"
+                                class="px-4"
+                            />
                             <div class="px-4 py-2">
                                 <Stepper
                                     v-model="draft.training[day.weekday]!.minutes"
@@ -238,14 +237,8 @@ const time = 'rounded-lg bg-background px-3 py-1.5 tabular-nums text-primary-tex
                                 </svg>
                             </button>
                         </div>
-                        <label class="flex min-h-tap items-center justify-between gap-3">
-                            <span>From</span>
-                            <input v-model="period.start" :data-test="`busy-start-${index}`" type="time" :disabled="busy" :class="time" />
-                        </label>
-                        <label class="flex min-h-tap items-center justify-between gap-3">
-                            <span>To</span>
-                            <input v-model="period.end" :data-test="`busy-end-${index}`" type="time" :disabled="busy" :class="time" />
-                        </label>
+                        <TimeField v-model="period.start" label="From" :data-test="`busy-start-${index}`" :disabled="busy" />
+                        <TimeField v-model="period.end" label="To" :data-test="`busy-end-${index}`" :disabled="busy" />
                         <div :data-test="`busy-days-${index}`">
                             <WeekdayPicker :days="pickerDays(period)" :disabled="busy" @toggle="toggleBusyDay(period, $event)" />
                         </div>

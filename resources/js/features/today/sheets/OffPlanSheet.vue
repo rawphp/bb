@@ -4,6 +4,7 @@ import { now } from '@/app/clock';
 import { ulid } from '@/app/ulid';
 import type { OffPlanLogInput } from '@/contracts/off_plan_log';
 import BottomSheet from '@/design/BottomSheet.vue';
+import TimeField from '@/design/TimeField.vue';
 import { amount } from './amount';
 import AmountRow from './AmountRow.vue';
 import { useSheet, type SheetListeners } from './useSheet';
@@ -70,10 +71,7 @@ const divider = 'border-t border-secondary-text/20';
                     aria-label="Name (optional)"
                     class="min-h-tap bg-transparent px-4 py-2 outline-none placeholder:text-secondary-text/60"
                 />
-                <label :class="['flex min-h-tap items-center justify-between gap-2 px-4', divider]">
-                    <span>Time</span>
-                    <input v-model="time" name="time" type="time" required class="rounded-lg bg-secondary-text/15 px-3 py-1.5 tabular-nums" />
-                </label>
+                <TimeField v-model="time" label="Time" name="time" required :class="['px-4', divider]" />
                 <AmountRow v-model="kcal" :class="divider" title="Calories" unit="kcal" macro="calories" name="kcal" />
                 <AmountRow v-model="protein" :class="divider" title="Protein" unit="g" macro="protein" name="protein" />
                 <AmountRow v-model="fat" :class="divider" title="Fat" unit="g" macro="fat" name="fat" />

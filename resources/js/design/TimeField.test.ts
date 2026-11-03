@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import GalleryView from '@/features/dev/GalleryView.vue';
-import TimeField from './TimeField.vue';
+import TimeField from '@/design/TimeField.vue';
 
 function field(props: Record<string, unknown> = {}, attrs: Record<string, unknown> = {}) {
     return mount(TimeField, { props: { label: 'Start time', modelValue: '07:05', ...props }, attrs });

@@ -3,7 +3,8 @@ import { computed, ref, watch } from 'vue';
 import { KEYPAD } from '@/app/keypad';
 import type { ReviewShowOutput } from '@/contracts/review_show';
 import ChoiceList, { type Choice } from '@/design/ChoiceList.vue';
-import SegmentedPicker from '@/features/today/sheets/SegmentedPicker.vue';
+import SegmentedPicker from '@/design/SegmentedPicker.vue';
+import ToggleSwitch from '@/design/ToggleSwitch.vue';
 import ReviewLine from './ReviewLine.vue';
 import ReviewNote from './ReviewNote.vue';
 
@@ -82,21 +83,14 @@ const deloadAnswer = computed(() => (props.calories.deload?.answer ? 'yes' : 'no
             <p v-if="calories.deload.rir_label" data-test="rir" class="text-sm text-secondary-text">{{ calories.deload.rir_label }}</p>
         </div>
 
-        <label v-if="calories.step_offer" data-test="step-offer-row" class="flex min-h-tap items-center justify-between gap-3 text-sm">
-            <span>{{ calories.step_offer.label }}</span>
-            <input
-                type="checkbox"
-                role="switch"
+        <div v-if="calories.step_offer" data-test="step-offer-row" class="text-sm">
+            <ToggleSwitch
+                :label="calories.step_offer.label"
                 data-test="step-offer"
-                class="peer sr-only"
-                :checked="calories.step_offer.accepted"
+                :model-value="calories.step_offer.accepted"
                 :disabled="busy"
-                @change="emit('stepOffer', ($event.target as HTMLInputElement).checked)"
+                @update:model-value="emit('stepOffer', $event)"
             />
-            <span
-                aria-hidden="true"
-                class="relative h-8 w-13 shrink-0 rounded-full bg-tone-neutral-bg transition-colors peer-checked:bg-accent peer-disabled:opacity-60 peer-focus-visible:ring-2 peer-focus-visible:ring-accent after:absolute after:top-0.5 after:left-0.5 after:size-7 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"
-            />
-        </label>
+        </div>
     </div>
 </template>

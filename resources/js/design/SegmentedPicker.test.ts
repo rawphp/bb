@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import GalleryView from '@/features/dev/GalleryView.vue';
-import SegmentedPicker from './SegmentedPicker.vue';
+import SegmentedPicker from '@/design/SegmentedPicker.vue';
 
 const options = [
     { value: 'cm', label: 'cm' },

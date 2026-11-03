@@ -15,7 +15,7 @@ describe('ToggleSwitch', () => {
         expect(off.get('label').text()).toBe('Coach');
         expect(off.get<HTMLInputElement>('input[type="checkbox"][role="switch"]').element.checked).toBe(false);
         expect(on.get<HTMLInputElement>('[role="switch"]').element.checked).toBe(true);
-        expect(off.get('[aria-hidden="true"]').exists()).toBe(true);
+        expect(off.find('[aria-hidden="true"]').exists()).toBe(true);
     });
 
     it('AGT-020 sends each change of the switch as the new model value', async () => {
