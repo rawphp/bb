@@ -714,3 +714,49 @@ it('SET-012 starts the missed days and the paging at the first weigh-in\'s local
     'Brisbane' => ['Australia/Brisbane', ['missed-2026-10-09', 'first']],
     'UTC' => ['UTC', ['first']],
 ]);
+
+it('SET-012 lists weigh-ins and missed days on the local day of a zone behind UTC', function () {
+    // Saturday 10 October 14:58 in Los Angeles (UTC-7). On UTC days the Thursday weigh-in would fall on Friday, and
+    // Thursday would be the missed day instead.
+    Carbon::setTestNow('2026-10-10 21:58:00');
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => 'America/Los_Angeles'])->save();
+    WeighInScheduleEntry::factory()->for($user)->create(['weekdays' => [4, 5], 'time' => '07:00']);
+    // Thursday 8 October 21:30 in Los Angeles, Friday 9 October 04:30 in UTC.
+    $thursday = WeighIn::factory()->for($user)->create(['weighed_at' => '2026-10-09 04:30:00']);
+
+    $rows = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data.rows');
+
+    expect(array_map(fn (array $row) => [$row['id'], $row['date_label'], $row['weighed_at']], $rows))->toBe([
+        ['missed-2026-10-09', 'Fri, 9 Oct', '2026-10-09T07:00:00-07:00'],
+        [(string) $thursday->id, 'Thu, 8 Oct', '2026-10-08T21:30:00-07:00'],
+    ])->and($rows[1]['time_label'])->toBe('9:30 PM');
+});
+
+it('SET-012 a page that spans a daylight saving change keeps each day\'s own offset and local bounds', function () {
+    // Tuesday 10 November 12:00 in Los Angeles (UTC-8). Clocks went back on Sunday 1 November, so the newest page,
+    // from Thursday 13 August, starts in summer time (UTC-7).
+    Carbon::setTestNow('2026-11-10 20:00:00');
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => 'America/Los_Angeles'])->save();
+    WeighInScheduleEntry::factory()->for($user)->create(['weekdays' => [7], 'time' => '07:00']);
+    // Thursday 13 August 00:30 and Wednesday 12 August 23:30 in Los Angeles: either side of the page's first moment.
+    $first = WeighIn::factory()->for($user)->create(['weighed_at' => '2026-08-13 07:30:00']);
+    $older = WeighIn::factory()->for($user)->create(['weighed_at' => '2026-08-13 06:30:00']);
+
+    $newest = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data');
+    // The missed Sundays from the first weigh-in on, newest first: the three around the change.
+    $missed = array_slice(array_values(array_filter($newest['rows'], fn (array $row) => $row['is_missed'])), 0, 3);
+
+    expect(array_map(fn (array $row) => [$row['id'], $row['weighed_at']], $missed))->toBe([
+        ['missed-2026-11-08', '2026-11-08T07:00:00-08:00'],
+        ['missed-2026-11-01', '2026-11-01T07:00:00-08:00'],
+        ['missed-2026-10-25', '2026-10-25T07:00:00-07:00'],
+    ])->and(array_column($newest['rows'], 'id'))->toContain((string) $first->id)->not->toContain((string) $older->id)
+        ->and(collect($newest['rows'])->firstWhere('id', (string) $first->id)['weighed_at'])->toBe('2026-08-13T00:30:00-07:00')
+        ->and($newest['next_before'])->toBe('2026-08-13');
+
+    $page = weighInCall($user, 'weigh_ins_show', ['before' => '2026-08-13'])->assertOk()->json('data');
+    expect(array_column($page['rows'], 'id'))->toBe([(string) $older->id])
+        ->and($page['rows'][0]['weighed_at'])->toBe('2026-08-12T23:30:00-07:00');
+});
