@@ -93,7 +93,7 @@ final class ReviewCaloriesPayload
         return new ReviewChoice(
             id: $id,
             title: self::title($id, $layout['stall']),
-            detail: implode("\n", $lines),
+            detail: implode("\n", array_filter($lines, fn (string $line) => $line !== '')),
             is_recommended: $id === $layout['recommended'],
             is_selected: $id === $selected,
             is_enabled: $refusal === null,
