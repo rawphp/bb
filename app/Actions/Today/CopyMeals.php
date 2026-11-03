@@ -29,7 +29,8 @@ use Illuminate\Support\Facades\DB;
  * foods and recipe servings are read under their rows' lock in that transaction, and the copy is planned from them, so
  * a check-in or a food added meanwhile waits for the copy to commit or is seen by it: a destination checked in since
  * the Copy sheet opened is skipped, never overwritten. The locked reads are current reads, so this holds inside
- * UndoLog's transaction too.
+ * UndoLog's transaction too. The planned rows are locked by meal, which takes an empty meal's index gap: two copies into
+ * empty meals in one gap can deadlock, and the database then rolls one of them back whole.
  */
 final class CopyMeals
 {
