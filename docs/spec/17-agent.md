@@ -11,7 +11,7 @@ Behaviour comes from mesoprep's Coach (`~/EA/projects/mesoprep/docs/mesoprep-spe
 - **AGT-003** [B] The agent's tools must be the capabilities themselves: tool name = capability name, tool description = capability description (CAP-005), input schema = the capability's schema, adjusted at the tool catalog boundary for what Anthropic needs. There is no meta-tool such as `run_command`.
 - **AGT-004** [B] Tools must run as the conversation's user, with `caller=agent`, through `CapabilityBus::invoke`, so the CAP-020 authorizer decides each call. A bare invoke without the conversation user as actor is a bug. `CAPABILITIES_SURFACE_AGENT=false` stops every agent tool call. Mesoprep lost weeks to it (lessons, B.8).
 
-- **AGT-005** [B] The instance must cap agent use per user: a number of turns per day and Anthropic tokens per month, set in config (`AGENT_TURNS_PER_DAY`, `AGENT_TOKENS_PER_MONTH`; empty means no cap, the self-hosted default). Near the cap, the chat says how much is left; at the cap, it says when it resets, and every screen keeps working. The hosted instance sets the caps to keep the plan's LLM cost bounded.
+- **AGT-005** [B] The instance must cap agent use per user: a number of turns per day and Anthropic tokens per month, set in config (`AGENT_TURNS_PER_DAY`, `AGENT_TOKENS_PER_MONTH`; empty means no cap, the self-hosted default). Near the cap, the chat says how much is left; at the cap, it says when it resets, and every screen keeps working. The hosted instance sets the caps to keep the plan's LLM cost bounded. A day is the user's local day (SET-012), so a user can stretch the daily cap by changing time zone; the monthly token cap, in the app timezone, is what bounds the cost.
 
 ## Behaviour (AGT)
 
