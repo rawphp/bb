@@ -1,26 +1,28 @@
-Day Balance is how you keep a day on target when real life changes your plan. You can shift what is left across later meals, or move calories between days.
+When your day doesn't go to plan, Day Balance helps you still finish close to target. It can push leftover calories into the meals still ahead, or trade calories across the days of your week.
 
-## Read the day
+## Reading the bar
 
-The bar at the top of Today shows calories and protein against your targets. It says on track when both are within 10%. Otherwise it tells you how far under or over you are, for example "315 under".
+Today opens with a bar that tracks calories and protein against what you're aiming for. Land inside 10% on both and it says "on track". Fall outside that, and it tells you the difference instead, for example "315 under".
 
 ## Redistribute
 
-Ate more or less than planned? Tap the wand icon. The app spreads the day's remaining calories and macros across later meals. You choose which meals receive them and can leave any out.
+Lunch ran bigger or smaller than planned? The wand icon handles it. One tap takes whatever calories and macros are left for today and shares them out among the meals that come after.
 
-Meals that already hold foods can take a share too. They get an orange Adjust foods badge until you refit the foods. Locked foods stay put.
+- Pick the meals that should get some, and skip any you'd rather keep as they are.
+- A meal you've already filled with foods can still be included. It shows an orange "Adjust foods" badge, which stays put while its foods no longer fit the new numbers.
+- Any food you've locked keeps its amount.
 
 ## Adjust
 
-The Adjust sheet lets you move calories between meals on the day. It also lets you move them between days in the week. Eat less on weekdays and more on Saturday, for example. The week's total holds, and the sheet shows the projected calories and protein for the day.
+Open the Adjust sheet to shuffle calories from one meal to another inside a single day. It works across days as well, letting you eat lighter Monday to Friday and save extra for Saturday. However you shuffle, the weekly total holds. As you make changes, the sheet previews where the day's calories and protein will end up.
 
-Limits keep this safe:
+Some guardrails stay in place:
 
-- No day can drop below 80% or rise above 125% of the week's daily average.
-- Protein never moves.
-- Days you have already finished are locked.
-- Every meal keeps at least 5 g of fat and 5 g of carbs.
+- Every day stays inside a band of 80% to 125% of the week's average day.
+- Your protein is fixed and can't be shifted.
+- Days that are already over can't be edited.
+- Fat and carbs can't go under 5 g in any one meal.
 
-## Don't chase perfect
+## Keep it in perspective
 
-A small miss is fine. Within 10% of calories and protein on a day counts as success, and the weekly target is what drives your results.
+Small misses are normal. Hitting calories and protein within 10% makes it a successful day, and it's the week as a whole that moves your results.

@@ -1,34 +1,36 @@
-A mesocycle is a block of 4 to 8 weeks of training that ends with an easy deload week. Each block builds on the last, so your training keeps progressing without grinding you down.
+Your training runs in blocks called mesocycles, each lasting 4 to 8 weeks and finishing with an easy deload week. The next block then begins fresh and carries on from where you left off.
 
-## How it works
+## Across one block
 
-Over the block, your weights and reps climb, you get closer to failure each week, and your sets per muscle grow when your feedback says you can handle it. The last week is always a deload, so you start the next block fresh.
+- Load and reps rise.
+- Your target RIR drops as the weeks go on, which puts you nearer to failure.
+- A muscle earns extra sets only when your feedback shows it's recovering and can take them.
 
-Every mesocycle belongs to a diet phase. The phase sets your starting muscle priorities, rep ranges and how fast volume can rise. A fat loss block is set up differently from a muscle gain block.
+A diet phase goes with every mesocycle. It sets which muscles get priority at the start, which rep ranges you use, and the pace at which volume may rise. So a block for losing fat looks different from one for gaining muscle.
 
-## How long should it be?
+## Block length
 
-The length includes the deload week.
+These totals count the deload week too.
 
-- **Beginner:** 6 weeks by default, 5 to 8 allowed.
-- **Intermediate:** 5 weeks by default, 5 to 8 allowed.
-- **Advanced:** 5 weeks by default, 4 to 7 allowed.
+- Beginner: default of 6, range 5 to 8
+- Intermediate: default of 5, range 5 to 8
+- Advanced: default of 5, range 4 to 7
 
-You can change the length mid-block with the calendar icon. The deload stays as the final week. You can also end a block early, but skipping the deload is not recommended for intermediate and advanced lifters.
+To resize a block that's underway, tap the calendar icon; the deload remains last. The menu also lets you close a block out early, with a warning: intermediate and advanced lifters are better off keeping the deload.
 
-## Building one
+## Making a new block
 
-Tap + on the Mesocycles screen and pick a way to start:
+Start one with the "+" on the Mesocycles screen, then decide how to fill it.
 
-- **Template:** a ready-made plan. Filter by days per week, sex, whole body or emphasis, and the phase it suits.
-- **Copy previous mesocycle:** keeps the structure and weights.
-- **Meso Builder:** tell the app how many days you can train and which muscles to Emphasize, Grow or Maintain, and it builds the structure.
-- **Build from scratch.**
+- Pick a **Template** for a finished plan, with filters for sex, days per week, emphasis or whole body, and diet phase.
+- **"Copy previous mesocycle"** brings back the block you just ran in the same layout, with its weights carried forward.
+- **Meso Builder** needs two answers, your training days per week and a priority of Emphasize, Grow or Maintain for every muscle. The draft follows from those.
+- **Build from scratch** if you'd rather set up every day yourself.
 
-Pick days you can repeat every week. Sessions are done in order: Day 1, Day 2, and so on.
+The days you pick should be ones your week can always hold. The app works through them in order, so Day 1 always comes before Day 2.
 
-## Your next block
+## When the block wraps up
 
-During the deload week the app prompts you to build the next mesocycle. Copying is the default. Your starting weights are about 5% above your old week 1 (2 to 2.5% for advanced lifters), rounded to what your equipment allows.
+During your deload week, a prompt appears to set up what comes next, and copying is preselected. A copied block opens roughly 5% heavier than the old week 1. Advanced lifters get a smaller bump of 2 to 2.5%. Either way, loads round to your equipment's step.
 
-If you stop before finishing a draft, it is saved. Starting another build warns you that it will replace the draft.
+Leave a build half done and it waits as a draft. Begin a different one and you'll be warned that the draft gets replaced.
