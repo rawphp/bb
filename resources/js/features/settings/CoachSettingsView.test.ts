@@ -12,7 +12,9 @@ const readMock = vi.mocked(read);
 const writeMock = vi.mocked(writeNow);
 const fixture = screenFixture<AgentStatusShowOutput>('agent_status_show');
 const nearCap = screenFixture<AgentStatusShowOutput>('agent_status_show.warning');
-// The user's own setting, which #49 left for the coach_enabled_set API to add as `on`.
+// The user's own setting, `on`, which coach_enabled_set's API (#227) added to the read.
+// A read from a server without it, such as one cached before that change, carries none.
+const older = Object.fromEntries(Object.entries(fixture).filter(([key]) => key !== 'on')) as AgentStatusShowOutput;
 const on = { ...fixture, on: true };
 const off = { ...fixture, on: false };
 
@@ -33,7 +35,7 @@ describe('CoachSettingsView', () => {
 
     it('AGT-020 shows no switch while the read does not carry the user\'s own setting', () => {
         // enabled is the instance's flag, so it must not stand in for the user's choice.
-        const wrapper = mount(CoachSettingsView, { global, props: { payload: fixture } });
+        const wrapper = mount(CoachSettingsView, { global, props: { payload: older } });
 
         expect(wrapper.find('[role="switch"]').exists()).toBe(false);
         expect(wrapper.get('[data-test="no-switch"]').text()).toContain("isn't available on this server yet");

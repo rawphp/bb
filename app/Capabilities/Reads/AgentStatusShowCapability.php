@@ -9,7 +9,7 @@ use App\Capabilities\Reads\Data\AgentStatusShowOutput;
 use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\Tone;
-use Illuminate\Contracts\Auth\Authenticatable;
+use App\Models\User;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -18,7 +18,7 @@ final class AgentStatusShowCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::read('agent_status_show')
-            ->description('Show whether the Coach is on for this instance and how much Coach use the signed-in user has left today and this month. Use it before offering the Coach or to explain a usage limit. It changes nothing.')
+            ->description('Show whether the Coach is on for this instance and for the signed-in user, their conversation, and how much Coach use the signed-in user has left today and this month. Use it before offering the Coach or to explain a usage limit. It changes nothing.')
             ->cli('agent', 'status')
             ->input(AgentStatusShowInput::class)
             ->output(AgentStatusShowOutput::class)
@@ -27,7 +27,7 @@ final class AgentStatusShowCapability implements HostCapability
 
     private function run(CapabilityContext $context): AgentStatusShowOutput
     {
-        /** @var Authenticatable $user */
+        /** @var User $user */
         $user = $context->user();
         // Resolved per call: the definition is built once at boot, the config can change after.
         $status = app(AgentStatus::class);
@@ -35,6 +35,8 @@ final class AgentStatusShowCapability implements HostCapability
 
         return new AgentStatusShowOutput(
             enabled: $status->enabled(),
+            on: $user->coach_on,
+            conversation_ulid: $status->conversationUlid($user->getAuthIdentifier()),
             turns_left: $allowance->turnsLeft,
             tokens_left: $allowance->tokensLeft,
             at_cap: $allowance->atCap,

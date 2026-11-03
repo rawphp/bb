@@ -14,7 +14,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * One audited invoke (CAP-022), written by AuditRecordWriter. Activity lists
- * the user's last 100. Rows older than 90 days are pruned daily, as the spec
+ * the user's last 100; a Coach turn's writes carry its turn_ulid and are its
+ * change cards (AGT-013). Rows older than 90 days are pruned daily, as the spec
  * requires (build plan, AUDIT), and deleting the user deletes them (ACC-005).
  *
  * @property string $id
@@ -24,9 +25,10 @@ use Illuminate\Support\Carbon;
  * @property string|null $channel
  * @property array<array-key, mixed>|null $input
  * @property array<string, mixed>|null $result
+ * @property string|null $turn_ulid
  * @property Carbon $created_at
  */
-#[Fillable(['user_id', 'event', 'capability', 'channel', 'input', 'result', 'created_at'])]
+#[Fillable(['user_id', 'event', 'capability', 'channel', 'input', 'result', 'turn_ulid', 'created_at'])]
 class AuditRecord extends Model
 {
     /** @use HasFactory<AuditRecordFactory> */

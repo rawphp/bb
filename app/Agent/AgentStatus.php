@@ -2,8 +2,10 @@
 
 namespace App\Agent;
 
+use App\Models\ClearedCoachTurn;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Config\Repository;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Rawphp\CapabilitiesAi\Models\TableNames;
@@ -12,7 +14,8 @@ use Rawphp\CapabilitiesAi\Models\Turn;
 /**
  * Whether the instance runs the agent (AGT-002) and how much of the AGT-005
  * caps a user has used. Every turn counts towards the day; the tokens of every
- * LLM round count towards the month, from `turns.tokens` (MeteredTurnClaim).
+ * LLM round count towards the month, from `turns.tokens` (MeteredTurnClaim). The turns
+ * of a conversation the user cleared still count, from ClearedCoachTurn (AGT-020).
  */
 final class AgentStatus
 {
@@ -22,6 +25,14 @@ final class AgentStatus
     {
         return $this->config->get('capabilities-ai.llm.driver') === 'anthropic'
             && filled($this->config->get('capabilities-ai.llm.anthropic.api_key'));
+    }
+
+    /** The ULID of the user's newest conversation, or null when they have none (AGT-024). */
+    public function conversationUlid(int|string $userId): ?string
+    {
+        $ulid = DB::table(TableNames::conversations())->where('user_id', (string) $userId)->orderByDesc('id')->value('ulid');
+
+        return is_string($ulid) ? $ulid : null;
     }
 
     /** Whether the instance sets either AGT-005 cap. */
@@ -60,12 +71,18 @@ final class AgentStatus
 
     private function turnsSince(int|string $userId, CarbonImmutable $since): int
     {
-        return $this->turns($userId, $since)->count();
+        return $this->turns($userId, $since)->count() + $this->cleared($userId, $since)->count();
     }
 
     private function tokensSince(int|string $userId, CarbonImmutable $since): int
     {
-        return (int) $this->turns($userId, $since)->sum('turns.tokens');
+        return (int) $this->turns($userId, $since)->sum('turns.tokens') + (int) $this->cleared($userId, $since)->sum('tokens');
+    }
+
+    /** @return EloquentBuilder<ClearedCoachTurn> */
+    private function cleared(int|string $userId, CarbonImmutable $since): EloquentBuilder
+    {
+        return ClearedCoachTurn::query()->where('user_id', $userId)->where('created_at', '>=', $since);
     }
 
     private function turns(int|string $userId, CarbonImmutable $since): Builder
