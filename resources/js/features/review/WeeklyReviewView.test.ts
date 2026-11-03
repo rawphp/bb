@@ -440,7 +440,7 @@ describe('WeeklyReviewView', () => {
             const wrapper = show({ payload, step: 'preview' });
 
             await wrapper.findAll('[data-test="day"]')[0]!.trigger('click');
-            const sheet = wrapper.find('[data-test="move-sheet"]');
+            const sheet = wrapper.find('[role="dialog"]');
             await sheet.findAll('[role="radio"]')[1]!.trigger('click');
             await sheet.find('[data-test="other-day"]').setValue('5');
             await sheet.find('button[aria-label="More: Calories"]').trigger('click');
@@ -471,7 +471,7 @@ describe('WeeklyReviewView', () => {
                 answersWith(payload);
                 return {};
             });
-            await wrapper.find('[data-test="move-sheet"] [data-save]').trigger('click');
+            await wrapper.find('[role="dialog"] [data-save]').trigger('click');
             await flushPromises();
 
             expect(dialog()?.textContent).toContain('Monday would drop below your minimum.');
@@ -482,7 +482,7 @@ describe('WeeklyReviewView', () => {
             const wrapper = show({ payload: review(), step: 'preview' });
 
             await wrapper.findAll('[data-test="day"]')[0]!.trigger('click');
-            await wrapper.find('[data-test="move-sheet"] [data-cancel]').trigger('click');
+            await wrapper.find('[role="dialog"] [data-cancel]').trigger('click');
             await flushPromises();
 
             expect(wrapper.find('[data-test="move-sheet"]').exists()).toBe(false);
@@ -496,7 +496,7 @@ describe('WeeklyReviewView', () => {
 
             await wrapper.findAll('[data-test="day"]')[0]!.trigger('click');
 
-            expect(wrapper.find('[data-test="move-sheet"] [data-save]').attributes('disabled')).toBeDefined();
+            expect(wrapper.find('[role="dialog"] [data-save]').attributes('disabled')).toBeDefined();
         });
     });
 });

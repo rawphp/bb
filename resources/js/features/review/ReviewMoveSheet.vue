@@ -47,11 +47,10 @@ function save(): void {
         :dismissible="!busy"
         :heights="['half']"
         :error="error"
-        data-test="move-sheet"
         @cancel="emit('cancel')"
         @save="save"
     >
-        <div class="flex flex-col gap-4 p-4">
+        <div class="flex flex-col gap-4 p-4" data-test="move-sheet">
             <h3 class="font-semibold text-primary-text">{{ day.date_label }}</h3>
             <SegmentedPicker v-model="direction" label="Direction" :options="[...directions]" :disabled="busy" />
             <label class="flex min-h-tap items-center justify-between gap-3">
