@@ -20,6 +20,13 @@ final class AgentEvalCommand extends Command
 
     public function handle(): int
     {
+        // The eval set refreshes its database, so it must never run where that database could be a real one.
+        if (! $this->laravel->environment('local', 'testing')) {
+            $this->error('agent:eval runs only in a local or testing app: its tests refresh the database they are given.');
+
+            return self::FAILURE;
+        }
+
         $live = (bool) $this->option('live');
         $key = config('capabilities-ai.llm.anthropic.api_key');
         if ($live && blank($key)) {
@@ -32,7 +39,7 @@ final class AgentEvalCommand extends Command
         try {
             $run = Process::path(base_path())
                 ->forever()
-                ->env([...$this->withoutDotEnv(), ...($live ? ['AGENT_EVAL_LIVE' => '1', 'ANTHROPIC_API_KEY' => (string) $key, 'CAPABILITIES_AI_ANTHROPIC_MODEL' => (string) config('capabilities-ai.llm.anthropic.model')] : [])])
+                ->env([...$this->withoutDotEnv(), ...$this->phpunitPins(), ...($live ? ['AGENT_EVAL_LIVE' => '1', 'ANTHROPIC_API_KEY' => (string) $key, 'CAPABILITIES_AI_ANTHROPIC_MODEL' => (string) config('capabilities-ai.llm.anthropic.model')] : [])])
                 ->run([PHP_BINARY, 'vendor/bin/pest', 'tests/Agent', '--log-junit', $log], fn (string $type, string $output) => $this->output->write($output));
             $cases = $this->cases((string) @file_get_contents($log));
         } finally {
@@ -76,6 +83,23 @@ final class AgentEvalCommand extends Command
         $file = $this->laravel->environmentFilePath();
 
         return is_file($file) ? array_fill_keys(array_keys(Dotenv::parse((string) file_get_contents($file))), false) : [];
+    }
+
+    /**
+     * phpunit.xml's <env> pins, passed to Pest as they are. PHPUnit does not override a variable that is already
+     * set, so a database variable the host sets itself (a container, a PaaS, the shell) would otherwise win over
+     * DB_DATABASE=testing and point RefreshDatabase at that database.
+     *
+     * @return array<string, string>
+     */
+    private function phpunitPins(): array
+    {
+        $pins = [];
+        foreach ((new SimpleXMLElement((string) file_get_contents(base_path('phpunit.xml'))))->xpath('/phpunit/php/env') ?: [] as $env) {
+            $pins[(string) $env['name']] = (string) $env['value'];
+        }
+
+        return $pins;
     }
 
     /** @return list<array{name: string, passed: bool, failure?: string}> each request in the JUnit log, in run order */
