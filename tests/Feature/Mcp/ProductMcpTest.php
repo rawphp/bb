@@ -250,7 +250,7 @@ it('AGT-010 AGT-040 still runs a write that is not destructive over MCP with the
     $user = TrainSeed::user();
     $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => TrainSeed::phase($user, 'fatLoss', '2026-08-31')->id]);
 
-    $result = mcpCall(mcpToken($user), 'tools/call', ['name' => 'mesocycle_length_set', 'arguments' => ['mesocycle_id' => $mesocycle->id, 'weeks' => 6]])->assertOk()->json('result');
+    $result = mcpCall(mcpToken($user), 'tools/call', ['name' => 'mesocycle_length_set', 'arguments' => ['mesocycle_id' => $mesocycle->id, 'weeks' => 6, 'expected_weeks' => 5]])->assertOk()->json('result');
 
     expect($result['isError'])->toBeFalse()
         ->and($mesocycle->fresh()->weeks)->toBe(6);
