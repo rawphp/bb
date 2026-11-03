@@ -132,12 +132,14 @@ it('MEAL-060 a destination meal checked in after the first read and before the w
 it('MEAL-060 a check-in made while the copy holds the meals waits for the copy, which writes its plan', function () {
     [$racer, $user, $source, $destination] = racedCopyMeals();
     $sourceFoods = array_column(racedCopyRows($source)['foods'], 'food_id');
-    $waited = null;
+    [$raced, $waited] = [false, null];
 
-    // The check-in's foreign-key check needs the meal row the copy has locked, so it waits; a second is enough.
+    // Right after the copy reads the meals. The check-in's foreign-key check needs the meal row the copy has locked,
+    // so it waits; a second is enough.
     $copied = racedCopy($racer, $user, $source, $destination, QueryExecuted::class,
-        fn (QueryExecuted $query) => str_contains($query->sql, 'from `day_target_meals`') && str_ends_with($query->sql, 'for update'),
-        function () use ($racer, $user, $destination, &$waited) {
+        fn (QueryExecuted $query) => str_contains($query->sql, 'from `day_target_meals`'),
+        function () use ($racer, $user, $destination, &$raced, &$waited) {
+            $raced = true;
             $racer->statement('SET SESSION innodb_lock_wait_timeout = 1');
             try {
                 racedCopyCheckIn($racer, $user, $destination);
@@ -148,26 +150,29 @@ it('MEAL-060 a check-in made while the copy holds the meals waits for the copy, 
             }
         });
 
-    expect($waited)->toBe(1205)
+    expect($raced)->toBeTrue()
+        ->and($waited)->toBe(1205)
         ->and($copied['written'])->toBe([$destination])
         ->and(array_column($copied['rows']['foods'], 'food_id'))->toBe($sourceFoods)
         ->and($copied['rows']['recipes'])->toBe([])
         ->and($copied['checkedIn'])->toBeFalse();
 });
 
-it('MEAL-060 a food added to the destination after the first read is replaced by the copy, not left beside it', function () {
+it('MEAL-060 a food or recipe serving added to the destination after the first read is replaced by the copy, not left beside it', function (string $table) {
     [$racer, $user, $source, $destination] = racedCopyMeals();
     $sourceFoods = array_column(racedCopyRows($source)['foods'], 'food_id');
-    $added = racedCopyRows($destination)['foods'][0]['food_id'];
+    $held = racedCopyRows($destination);
+    $row = $table === 'planned_foods'
+        ? ['food_id' => $held['foods'][0]['food_id'], 'grams' => 40, 'is_cooked' => false, 'unit' => 'g']
+        : ['recipe_id' => $held['recipes'][0]['recipe_id'], 'servings' => 1, 'recipe' => json_encode(['name' => 'Chili'])];
 
     $copied = racedCopy($racer, $user, $source, $destination, TransactionBeginning::class, fn () => true,
-        fn () => $racer->table('planned_foods')->insert([
-            'id' => strtolower((string) Str::ulid()), 'user_id' => $user->id, 'meal_id' => $destination, 'food_id' => $added,
-            'position' => 2, 'grams' => 40, 'is_cooked' => false, 'is_locked' => false, 'unit' => 'g',
-            'created_at' => '2026-09-23 06:00:00', 'updated_at' => '2026-09-23 06:00:00',
+        fn () => $racer->table($table)->insert([
+            'id' => strtolower((string) Str::ulid()), 'user_id' => $user->id, 'meal_id' => $destination, 'position' => 2,
+            'is_locked' => false, 'created_at' => '2026-09-23 06:00:00', 'updated_at' => '2026-09-23 06:00:00', ...$row,
         ]));
 
     expect($copied['written'])->toBe([$destination])
         ->and(array_column($copied['rows']['foods'], 'food_id'))->toBe($sourceFoods)
         ->and($copied['rows']['recipes'])->toBe([]);
-});
+})->with(['planned_foods', 'planned_recipes']);
