@@ -184,9 +184,10 @@ describe('CoachChat', () => {
         expect(lines(wrapper)).toEqual(['Checking this week…']);
 
         await wrapper.get('[data-test="cancel-turn"]').trigger('click');
-        await vi.waitFor(() => expect(readFreshMock).toHaveBeenCalledWith('coach_changes_list', { turn: TURN }));
+        await vi.waitFor(() => expect(wrapper.find('[data-test="turn-state"]').exists()).toBe(true));
 
         expect(cancelMock).toHaveBeenCalledWith(TURN);
+        expect(readFreshMock).toHaveBeenCalledWith('coach_changes_list', { turn: TURN });
         expect(wrapper.get('[data-test="turn-state"]').text()).toBe('Cancelled');
         expect(wrapper.find('[data-test="cancel-turn"]').exists()).toBe(false);
         const polls = eventsMock.mock.calls.length;
@@ -211,6 +212,89 @@ describe('CoachChat', () => {
         expect(wrapper.text()).toContain('The Coach needs a connection');
         expect(wrapper.get('textarea').attributes('disabled')).toBeDefined();
         expect(wrapper.get('[data-test="send"]').attributes('disabled')).toBeDefined();
+    });
+
+    it('AGT-024 keeps the conversation when the status read after the first message fails', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        readMock.mockResolvedValue({ ...status, conversation_ulid: null });
+        sendMock.mockResolvedValue(ids);
+        let statusReads = 0;
+        readFreshMock.mockImplementation(async (name) => {
+            if (name === 'coach_changes_list') return { changes: [] };
+            if (statusReads++ === 0) throw new CapabilityError('agent_status_show', 0, { reason: 'timeout' });
+            return status;
+        });
+        historyMock.mockResolvedValue(after);
+        playStream([[0, 1, 2, 3, 4]]);
+        const wrapper = mountChat();
+        await flushPromises();
+
+        await sendMessage(wrapper, 'I ran this morning, fix my meals');
+        await vi.advanceTimersByTimeAsync(1000);
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Done. I moved carbs to breakfast.'));
+
+        // The turn's end reads the status again rather than losing the conversation.
+        expect(historyMock).toHaveBeenCalledWith(CONVERSATION);
+        expect(wrapper.text()).toContain('I ran this morning, fix my meals');
+        eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [] });
+        await sendMessage(wrapper, 'Thanks');
+        expect(sendMock).toHaveBeenLastCalledWith('Thanks', CONVERSATION);
+    });
+
+    it('AGT-021 keeps polling through a server error until the terminal event', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        readMock.mockResolvedValue(status);
+        historyMock.mockResolvedValue(after);
+        sendMock.mockResolvedValue(ids);
+        reads({ agent_status_show: status, coach_changes_list: { changes: [] } });
+        playStream([[0, 1, 2, 3, 4]]);
+        const played = eventsMock.getMockImplementation()!;
+        eventsMock.mockImplementationOnce(async () => {
+            throw new CapabilityError('chat.events', 503, null);
+        });
+        eventsMock.mockImplementation(played);
+        const wrapper = mountChat();
+        await flushPromises();
+
+        await sendMessage(wrapper, 'Plan my week');
+        await vi.advanceTimersByTimeAsync(1000);
+        await vi.advanceTimersByTimeAsync(1000);
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Done. I moved carbs to breakfast.'));
+
+        expect(wrapper.find('[data-test="turn-state"]').exists()).toBe(false);
+        expect(eventsMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('AGT-023 a send that gets no answer while online says so and leaves the input on', async () => {
+        readMock.mockResolvedValue(status);
+        historyMock.mockResolvedValue(earlier);
+        sendMock.mockRejectedValue(new CapabilityError('chat.send', 0, { reason: 'network' }));
+        const wrapper = mountChat();
+        await flushPromises();
+
+        await sendMessage(wrapper, 'Plan my week');
+
+        expect(wrapper.find('[data-test="offline"]').exists()).toBe(false);
+        expect(wrapper.get('textarea').attributes('disabled')).toBeUndefined();
+        expect(wrapper.get('[role="alert"]').text()).toBe('No connection. Try again when you are online.');
+    });
+
+    it('AGT-021 an older history answer does not take away a message sent after it', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        readMock.mockResolvedValue(status);
+        let answer: (value: ChatHistory) => void = () => {};
+        historyMock.mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+        sendMock.mockResolvedValue(ids);
+        reads({ agent_status_show: status });
+        eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [] });
+        const wrapper = mountChat();
+        await vi.waitFor(() => expect(historyMock).toHaveBeenCalled());
+
+        await sendMessage(wrapper, 'I ran this morning, fix my meals');
+        answer(earlier);
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('I ran this morning, fix my meals');
     });
 
     it('AGT-022 offers no photo attach control', async () => {
