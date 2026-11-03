@@ -36,8 +36,9 @@ export const WARM_FRESH_MS = 60_000;
 export const TIMEOUT_MS = 15_000;
 
 // The deadline for a read that waits on the server's AI call (recipe_generate,
-// recipe_import): longer than the 60 s AiJson gives that call, so the device does not
-// give up on an answer the server is still working out.
+// recipe_import): longer than the 60 s AiJson gives the AI call itself, so the device does
+// not give up on an answer the server is still working out. Import fetches the page first,
+// so a slow page and a slow AI call together can still pass it.
 export const AI_TIMEOUT_MS = 75_000;
 
 export class CapabilityError extends Error {

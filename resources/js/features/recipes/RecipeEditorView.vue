@@ -110,7 +110,7 @@ if (props.draft) {
 // away (signed out, or the recipe gone) shows why instead (OFF-003).
 const shown = computed(() => ready.value && (!isSaved || data.value !== undefined));
 const readOnly = computed(() => data.value?.is_read_only === true);
-const title = computed(() => data.value?.name ?? 'New recipe');
+const title = computed(() => data.value?.name ?? (isSaved ? 'Recipe' : 'New recipe'));
 
 // Foods picked in the Pantry join at 100 g each. A food already in the recipe stays as it is.
 const picking = ref(false);
@@ -151,7 +151,8 @@ const input = computed<RecipeSaveInput | null>(() => {
 });
 
 const saving = useWrite(load);
-const deleting = useWrite(load);
+// The recipe a delete removed is not read again: the screen goes back.
+const deleting = useWrite(noRead);
 const confirmingDelete = ref(false);
 const busy = computed(() => saving.busy.value || deleting.busy.value);
 
