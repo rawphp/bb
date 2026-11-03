@@ -47,6 +47,23 @@ it('SET-012 stores a new time zone and invalidates the plan reads', function () 
         ->and($response->json('data.invalidates'))->toBe(PlanReads::keys($user));
 });
 
+it('SET-012 takes the legacy names Chrome reports for a device zone', function (string $zone) {
+    $user = User::factory()->create();
+
+    timeZoneSet($user, ['time_zone' => $zone])->assertOk();
+
+    expect($user->fresh()->time_zone)->toBe($zone);
+})->with(['India' => 'Asia/Calcutta', 'Ukraine' => 'Europe/Kiev', 'Vietnam' => 'Asia/Saigon']);
+
+it('SET-012 keeps the automatic time zone sync out of the Activity list', function () {
+    $user = User::factory()->create();
+
+    timeZoneSet($user, ['time_zone' => 'Australia/Brisbane'])->assertOk();
+    timeZoneSet($user, ['time_zone' => 'Australia/Brisbane'])->assertOk();
+
+    expect(test()->actingAs($user)->postJson('/capabilities/activity_show')->assertOk()->json('data.entries'))->toBe([]);
+});
+
 it('SET-012 answers 422 naming time_zone for a name that is not an IANA zone, and keeps the stored one', function (string $zone) {
     $user = User::factory()->create(['time_zone' => 'America/New_York']);
 

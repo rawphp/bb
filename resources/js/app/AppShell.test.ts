@@ -6,6 +6,7 @@ import { defineComponent, h, nextTick } from 'vue';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
 import AppShell from './AppShell.vue';
 import { CapabilityError, writeNow } from './call';
+import { onReplayed } from './outbox';
 import { EDGE_ZONE_PX, SETTLE_MS, startsSwipeBack, swipeGoesBack, swipeIntent } from './edgeSwipe';
 import { trackHistory } from './history';
 import { SHEET_HOST, TOAST_HOST } from './hosts';
@@ -376,6 +377,23 @@ describe('AppShell time zone', () => {
 
         expect(writeNowMock).toHaveBeenCalledTimes(1);
         expect(writeNowMock).toHaveBeenCalledWith('time_zone_set', { time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+    });
+
+    it('SET-012 tells mounted screens about the reads a changed zone dropped, and nothing when it is unchanged', async () => {
+        const heard: (readonly string[])[] = [];
+        const stop = onReplayed((keys) => heard.push(keys));
+        writeNowMock.mockResolvedValueOnce({ invalidates: ['today_show{}', 'week_show{}'] });
+        await mountShell();
+        await flushPromises();
+        wrapper?.unmount();
+        wrapper = undefined;
+
+        writeNowMock.mockResolvedValueOnce({ invalidates: [] });
+        await mountShell();
+        await flushPromises();
+        stop();
+
+        expect(heard).toEqual([['today_show{}', 'week_show{}']]);
     });
 
     it('SET-012 shows nothing when the time zone write is refused', async () => {

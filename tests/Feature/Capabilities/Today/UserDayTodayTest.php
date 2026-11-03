@@ -1,11 +1,13 @@
 <?php
 
 use App\Capabilities\Support\ReadKey;
+use App\Models\DayTarget;
 use App\Capabilities\Today\TodayReads;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WeighInScheduleEntry;
 use App\Support\Today\TodayWeight;
+use App\Support\Workout\WorkoutIds;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Tests\Support\TodaySeed;
@@ -88,4 +90,67 @@ it('SET-012 buckets the current weight\'s trend by the user\'s local days, even 
     $user->forceFill(['time_zone' => 'Australia/Brisbane'])->save();
 
     expect(TodayWeight::kg($user->fresh(), null))->toBe(81.0);
+});
+
+it('SET-012 Train\'s session for today is the one on the user\'s local day', function (string $zone, ?string $title) {
+    // Friday 07:58 in Brisbane is Thursday in UTC; the plan trains Monday, Wednesday and Friday.
+    Carbon::setTestNow('2026-10-08 21:58:00');
+    $user = zonedTodayUser($zone);
+
+    $data = test()->actingAs($user)->postJson('/capabilities/train_show')->assertOk()->json('data');
+
+    expect($data['todays_session']['title'] ?? null)->toBe($title);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', 'Week 4 · Day 3 · Upper B'],
+    'UTC' => ['UTC', null],
+]);
+
+it('SET-012 the Plan screen marks today on the user\'s local day', function (string $zone, float $position) {
+    Carbon::setTestNow('2026-10-09 22:30:00');
+    $user = zonedTodayUser($zone);
+
+    expect((float) test()->actingAs($user)->postJson('/capabilities/plan_show')->assertOk()->json('data.today_position'))->toBe($position);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', 4.0],
+    'UTC' => ['UTC', 3.86],
+]);
+
+it('SET-012 a meal before the user\'s clock is past and cannot take a share', function () {
+    // 08:30 on Saturday in Brisbane: breakfast at 08:00 is past.
+    Carbon::setTestNow('2026-10-09 22:30:00');
+    $brisbane = zonedTodayUser('Australia/Brisbane');
+    $utc = zonedTodayUser('UTC');
+
+    $rows = fn (User $user) => array_column(test()->actingAs($user)->postJson('/capabilities/day_redistribute_show', ['date' => '2026-10-10'])
+        ->assertOk()->json('data.rows'), 'name');
+    $breakfast = fn (User $user) => DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-10-10')->sole()->meals[0]['id'];
+
+    expect($rows($brisbane))->toBe(['Lunch', 'Dinner'])
+        ->and($rows($utc))->toBe(['Breakfast', 'Lunch', 'Dinner']);
+    test()->actingAs($brisbane)->postJson('/capabilities/meal_redistribute', ['date' => '2026-10-10', 'meal_ids' => [$breakfast($brisbane)]], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertStatus(422);
+    test()->actingAs($utc)->postJson('/capabilities/meal_redistribute', ['date' => '2026-10-10', 'meal_ids' => [$breakfast($utc)]], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertOk();
+});
+
+it('SET-012 a workout started from Today stays on the user\'s local day', function () {
+    // Friday 07:58 in Brisbane, Thursday 21:58 in UTC.
+    Carbon::setTestNow('2026-10-08 21:58:00');
+    $user = zonedTodayUser('Australia/Brisbane');
+    $before = test()->actingAs($user)->postJson('/capabilities/today_show')->assertOk()->json('data');
+    expect($before['date'])->toBe('2026-10-09')
+        ->and($before['workouts'][0]['state'])->toBe('planned');
+
+    $invalidates = test()->actingAs($user)->postJson('/capabilities/workout_start', ['workout_id' => WorkoutIds::workout($before['workouts'][0]['mesocycle_id'], $before['workouts'][0]['week'], $before['workouts'][0]['day'])], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertOk()->json('data.invalidates');
+    $after = test()->actingAs($user)->postJson('/capabilities/today_show')->assertOk()->json('data');
+    $week = test()->actingAs($user)->postJson('/capabilities/week_show')->assertOk()->json('data');
+    $thursday = test()->actingAs($user)->postJson('/capabilities/today_show', ['date' => '2026-10-08'])->assertOk()->json('data');
+
+    expect($invalidates)->toContain(ReadKey::for('today_show', ['date' => '2026-10-09']), ReadKey::for('today_show'))
+        ->and($after['date'])->toBe('2026-10-09')
+        ->and(array_column($after['workouts'], 'state'))->toBe(['started'])
+        ->and(collect($week['days'])->firstWhere('date', '2026-10-09')['has_training'])->toBeTrue()
+        ->and(collect($week['days'])->firstWhere('date', '2026-10-08')['has_training'])->toBeFalse()
+        ->and($thursday['workouts'])->toBe([]);
 });
