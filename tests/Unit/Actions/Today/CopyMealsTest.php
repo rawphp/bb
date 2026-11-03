@@ -149,6 +149,22 @@ it('MEAL-060 copies the source\'s foods and recipe servings into each destinatio
         ->and(PlannedFood::query()->where('meal_id', $thursday)->pluck('position')->all())->toBe([0, 2, 3]);
 });
 
+it('MEAL-060 RCP-021 a recipe edited after it was planned copies as it is now', function () {
+    $user = copyActionUser();
+    ['oil' => $oil, 'chili' => $chili] = copyActionDinner($user);
+    $source = copyActionMeal($user, '2026-09-23', 3);
+    // The source's serving was planned with the recipe as it was then; the recipe has since gained the oil.
+    PlannedRecipe::query()->where('meal_id', $source)->firstOrFail()->update(['recipe' => $chili->plannedCopy()]);
+    RecipeIngredient::factory()->create(['recipe_id' => $chili->getKey(), 'food_id' => $oil->getKey(), 'grams' => 20]);
+    $thursday = copyActionMeal($user, '2026-09-24', 3);
+
+    copyActionCopyFoods($user, $source, [$thursday]);
+
+    expect(PlannedRecipe::query()->where('meal_id', $thursday)->firstOrFail()->recipe['ingredients'])
+        ->toEqual($chili->fresh()->plannedCopy()['ingredients'])
+        ->toHaveCount(2);
+});
+
 it('MEAL-060 by default the copies re-fit to the destination\'s targets, locked amounts held, and arrive unlocked', function () {
     $user = copyActionUser();
     ['chicken' => $chicken, 'rice' => $rice, 'oil' => $oil] = copyActionDinner($user);
