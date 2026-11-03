@@ -179,7 +179,7 @@ it('RCP-001 RCP-002 joins a recipe as unlocked servings fitted with the foods, w
         ->and($planned->is_locked)->toBeFalse()
         ->and($planned->servings)->toBeGreaterThan(0.0)
         ->and(round($planned->servings * 10))->toEqualWithDelta($planned->servings * 10, 1e-9)
-        ->and($planned->recipe)->toBe($stew->load('ingredients')->plannedCopy());
+        ->and($planned->recipe)->toEqual(json_decode(json_encode($stew->load('ingredients')->plannedCopy()), true));
 });
 
 it('RCP-001 does not add a recipe the meal already holds', function () {

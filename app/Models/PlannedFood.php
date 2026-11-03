@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** A food planned in a meal (MEAL-001 to MEAL-008, FOOD-009). */
-#[Fillable(['user_id', 'meal_id', 'food_id', 'position', 'grams', 'is_cooked', 'is_locked', 'unit'])]
+#[Fillable(['id', 'user_id', 'meal_id', 'food_id', 'position', 'grams', 'is_cooked', 'is_locked', 'unit'])]
 class PlannedFood extends Model
 {
     /** @use HasFactory<PlannedFoodFactory> */

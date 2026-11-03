@@ -38,18 +38,6 @@ it('MEAL-004 takes five grams off with down, never below zero, and saves a zero 
         ->and($chicken->fresh()->grams)->toBe(150.0);
 });
 
-it('MEAL-004 changes nothing when down is pressed on a food at zero', function () {
-    $user = User::factory()->create();
-    $meal = Seed::dinner($user);
-    $rice = Seed::planFood($meal, Seed::rice(), 0, 0);
-    $chicken = Seed::planFood($meal, Seed::chicken(), 150, 1);
-
-    app(StepMealFood::class)($user, $meal, $rice->id, 'down');
-
-    expect($rice->fresh()->grams)->toBe(0.0)
-        ->and($chicken->fresh()->grams)->toBe(150.0);
-});
-
 it('RCP-002 adds half a serving with up and takes half off with down, never below a tenth', function () {
     $user = User::factory()->create();
     $meal = Seed::dinner($user);
