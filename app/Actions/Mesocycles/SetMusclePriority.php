@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Mesocycles\TrainSnapshot;
 use DomainException;
+use Illuminate\Support\Facades\DB;
 
 /**
  * A muscle's priority: on a build (MESO-020), starting from the priorities the build showed (MESO-003), or on a saved
@@ -25,42 +26,48 @@ final class SetMusclePriority
 {
     public function __invoke(User $user, string $mesocycleId, MuscleGroup $muscle, ?Priority $priority): Mesocycle
     {
-        $snapshot = TrainSnapshot::load($user, $mesocycleId);
-        $mesocycle = $snapshot->mesocycle($mesocycleId);
-        $saved = $mesocycle->isSaved();
-        if ($priority === null && ! $saved) {
-            throw new DomainException('A muscle can be set Off only once the mesocycle is running.');
-        }
-        $calendar = $saved ? $snapshot->calendar($mesocycle) : null;
-        if ($calendar !== null && ! $calendar->isRunning()) {
-            throw new DomainException('This mesocycle has ended.');
-        }
+        return DB::transaction(function () use ($user, $mesocycleId, $muscle, $priority) {
+            // Two writes take turns, and the one that waited computes from the locked row: what the other saved.
+            $locked = Mesocycle::query()->where('user_id', $user->id)->whereKey($mesocycleId)->lockForUpdate()->first();
+            $snapshot = TrainSnapshot::load($user, $mesocycleId);
+            $mesocycle = $snapshot->lockedMesocycle($mesocycleId, $locked);
+            $saved = $mesocycle->isSaved();
+            if ($priority === null && ! $saved) {
+                throw new DomainException('A muscle can be set Off only once the mesocycle is running.');
+            }
+            $calendar = $saved ? $snapshot->calendar($mesocycle) : null;
+            if ($calendar !== null && ! $calendar->isRunning()) {
+                throw new DomainException('This mesocycle has ended.');
+            }
 
-        $stored = $saved ? ($mesocycle->muscle_priorities ?? []) : $snapshot->buildPriorities($mesocycle);
-        if (array_key_exists($muscle->value, $stored) && $stored[$muscle->value] === $priority?->value) {
+            $stored = $saved ? ($mesocycle->muscle_priorities ?? []) : $snapshot->buildPriorities($mesocycle);
+            if (array_key_exists($muscle->value, $stored) && $stored[$muscle->value] === $priority?->value) {
+                return $mesocycle;
+            }
+
+            $wasOff = array_key_exists($muscle->value, $stored) && $stored[$muscle->value] === null;
+            $history = [];
+            if ($calendar !== null && $calendar->hasStarted() && ($priority === null || $wasOff)) {
+                $current = $calendar->currentWeek();
+                $next = [...$stored, $muscle->value => $priority?->value];
+                $off = array_values(array_filter(MuscleGroup::cases(), fn (MuscleGroup $m) => array_key_exists($m->value, $next) && $next[$m->value] === null));
+                $history = MesocycleRules::changingOff(
+                    $snapshot->rotationAsRun($mesocycle),
+                    MesocycleRules::withoutMuscles($mesocycle->dayRows(), $off),
+                    $mesocycle->earlierWeekRows(),
+                    $mesocycle->laterWeekIds(),
+                    $current - 1,
+                    // A current read under the mesocycle lock, which workout writes take first: a session started
+                    // while this write waited keeps what it ran with.
+                    WorkoutSession::query()->where('mesocycle_id', $mesocycle->id)->where('week', $current)
+                        ->where(fn ($query) => $query->whereNotNull('actual_start_at')->orWhere('is_skipped', true))
+                        ->sharedLock()->pluck('day')->map(fn ($day) => (int) $day)->values()->all(),
+                );
+            }
+            $stored[$muscle->value] = $priority?->value;
+            $mesocycle->update([...$history, 'muscle_priorities' => $stored]);
+
             return $mesocycle;
-        }
-
-        $wasOff = array_key_exists($muscle->value, $stored) && $stored[$muscle->value] === null;
-        $history = [];
-        if ($calendar !== null && $calendar->hasStarted() && ($priority === null || $wasOff)) {
-            $current = $calendar->currentWeek();
-            $next = [...$stored, $muscle->value => $priority?->value];
-            $off = array_values(array_filter(MuscleGroup::cases(), fn (MuscleGroup $m) => array_key_exists($m->value, $next) && $next[$m->value] === null));
-            $history = MesocycleRules::changingOff(
-                $snapshot->rotationAsRun($mesocycle),
-                MesocycleRules::withoutMuscles($mesocycle->dayRows(), $off),
-                $mesocycle->earlierWeekRows(),
-                $mesocycle->laterWeekIds(),
-                $current - 1,
-                $snapshot->sessions
-                    ->filter(fn (WorkoutSession $s) => $s->mesocycle_id === $mesocycle->id && $s->week === $current && ($s->actual_start_at !== null || $s->is_skipped))
-                    ->map(fn (WorkoutSession $s) => (int) $s->day)->values()->all(),
-            );
-        }
-        $stored[$muscle->value] = $priority?->value;
-        $mesocycle->update([...$history, 'muscle_priorities' => $stored]);
-
-        return $mesocycle;
+        });
     }
 }

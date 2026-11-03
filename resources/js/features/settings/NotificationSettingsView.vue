@@ -5,10 +5,10 @@ import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
 import type { NotificationPrefsSetInput } from '@/contracts/notification_prefs_set';
 import type { SettingsShowOutput } from '@/contracts/settings_show';
+import ToggleSwitch from '@/design/ToggleSwitch.vue';
 import { toneClasses } from '@/design/tones';
 import HomeScreenHint from '@/features/notifications/HomeScreenHint.vue';
 import { usePush } from '@/features/notifications/usePush';
-import SwitchRow from './SwitchRow.vue';
 
 // Settings → Notifications (NOTIF-007): one switch per type, as settings_show lists them.
 // The browser is asked for permission only when a switch is turned on (NOTIF-010), never
@@ -59,13 +59,14 @@ async function toggle(kind: NotificationPrefsSetInput['kind'], event: Event): Pr
             <p v-if="pushError" class="rounded-2xl p-4 text-sm" :class="toneClasses.warning" data-test="push-error">{{ pushError }}</p>
             <section>
                 <div class="divide-y divide-secondary-text/20 overflow-hidden rounded-2xl bg-surface">
-                    <SwitchRow
+                    <ToggleSwitch
                         v-for="type in settings.notifications"
                         :key="type.kind"
                         :label="type.label"
                         :data-test="`notify-${type.kind}`"
-                        :checked="type.on"
+                        :model-value="type.on"
                         :disabled="toggling"
+                        class="px-4 py-2"
                         @change="toggle(type.kind, $event)"
                     />
                 </div>

@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Support;
 
+use App\Agent\CurrentTurn;
 use App\Models\AuditRecord;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -20,11 +21,12 @@ use UnexpectedValueException;
  * request's credential is the invoke's credential. The package builds the entry
  * itself and has no field a host can fill, so the channel cannot travel in it.
  * ActivityTest pins this with a fake queue. An entry that carries recorded_at
- * is dated by it.
+ * is dated by it. For the same reason the Coach turn a write was made in is read from
+ * {@see CurrentTurn}, which HostBus holds for the invoke (AGT-013).
  */
 final class AuditRecordWriter implements AuditWriter
 {
-    public function __construct(private readonly Auth $auth) {}
+    public function __construct(private readonly Auth $auth, private readonly CurrentTurn $turn) {}
 
     public function write(array $entry): void
     {
@@ -38,6 +40,7 @@ final class AuditRecordWriter implements AuditWriter
             'channel' => $this->channel($caller),
             'input' => $entry['redacted_input'] ?? null,
             'result' => $entry['result'] ?? null,
+            'turn_ulid' => $this->turn->ulid(),
             'created_at' => $this->recordedAt($entry),
         ]);
     }

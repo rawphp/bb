@@ -9,7 +9,7 @@ use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Today\TodayReads;
 use App\Capabilities\Workout\Data\WorkoutFinishInput;
 use App\Models\User;
-use Carbon\CarbonImmutable;
+use App\Support\OccurredAt;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -27,9 +27,8 @@ final class WorkoutFinishCapability implements HostCapability
             ->run(function (WorkoutFinishInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */
                 $user = $context->user();
-                // The request clock, by the instructor's decision on #84. Swapping in OccurredAt::get() (#195, now on main),
-                // the instant the user finished, is a one-line follow-up in #195's scope, so offline replays keep the time.
-                $finished = ($this->finish)($user, $input->workout_id, CarbonImmutable::now());
+                // OFF-007: the instant the user finished, so a replayed finish keeps its time and duration.
+                $finished = ($this->finish)($user, $input->workout_id, OccurredAt::get()->utc());
                 $session = $finished['session'];
 
                 return new WriteResult(

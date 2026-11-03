@@ -172,6 +172,14 @@ describe('TodayView', () => {
         expect(wrapper.get('[data-test="week-pills"]').text()).toContain('Away');
     });
 
+    it('SCH-062 shows the too much cardio warning under the week strip', async () => {
+        const wrapper = await show({ payload: day(), week: week('warning') });
+
+        const notice = wrapper.get('[data-test="week-warnings"] [role="status"]');
+        expect(notice.text()).toBe(week('warning').warnings[0]!.text);
+        expect(wrapper.getComponent(WeekStrip).element.nextElementSibling).toBe(wrapper.get('[data-test="week-warnings"]').element);
+    });
+
     it('SCH-023 the calendar icon opens the month view, and Go opens the date picked', async () => {
         const wrapper = await show();
 

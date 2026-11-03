@@ -135,6 +135,30 @@ final class TrainSnapshot
         );
     }
 
+    /**
+     * The light snapshot of a calendar only: today and the mesocycles, with the plan and the profile when the caller
+     * read them, and nothing else. It answers {@see current()}, {@see calendar()}, {@see domain()} (every slot named
+     * "Exercise not chosen yet") and {@see trainingWeekdays()}. The caller gives today, so this reads no clock.
+     *
+     * @param  Collection<int, Mesocycle>  $mesocycles
+     */
+    public static function calendarOnly(DateTimeImmutable $today, Collection $mesocycles, ?Plan $plan = null, ?Profile $profile = null): self
+    {
+        return new self(
+            today: $today,
+            plan: $plan,
+            profile: $profile,
+            mesocycles: $mesocycles,
+            phases: new Collection,
+            sessions: new Collection,
+            sets: new Collection,
+            feedback: new Collection,
+            planWeeks: new Collection,
+            dayTargets: new Collection,
+            exercises: new Collection,
+        );
+    }
+
     /** The start of the day a date falls on, as midnight UTC. */
     public static function day(DateTimeInterface|string $date): DateTimeImmutable
     {
@@ -165,6 +189,24 @@ final class TrainSnapshot
     public function mesocycle(string $id): Mesocycle
     {
         return $this->findMesocycle($id) ?? throw (new ModelNotFoundException)->setModel(Mesocycle::class, [$id]);
+    }
+
+    /**
+     * The mesocycle `$id` as a write that locked its row reads it: `$locked` is that row, a locking read, which returns
+     * the latest commit where the snapshot's plain read can keep an older view (MySQL's REPEATABLE READ keeps a
+     * transaction's first view). The snapshot's copy takes its columns, so the write computes from what the write
+     * before it saved. Only that row is locked, so the write waits on no other. No row (missing, not the user's, or
+     * deleted while the write waited) is not found, as the snapshot answers a missing id.
+     */
+    public function lockedMesocycle(string $id, ?Mesocycle $locked): Mesocycle
+    {
+        $mesocycle = $this->mesocycle($id);
+        if ($locked === null) {
+            throw (new ModelNotFoundException)->setModel(Mesocycle::class, [$id]);
+        }
+        $mesocycle->setRawAttributes($locked->getAttributes(), sync: true);
+
+        return $mesocycle;
     }
 
     /** MESO-007: the one unfinished build: a draft, or a row saved without dates ({@see Mesocycle::isSaved()}). */

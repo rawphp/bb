@@ -1,7 +1,10 @@
 <?php
 
+use App\Actions\Mesocycles\SetMusclePriority;
 use App\Capabilities\Support\HostDefinition;
+use App\Domain\Model\MuscleGroup;
 use App\Models\User;
+use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
 use App\Support\Workout\WorkoutIds;
 use Illuminate\Support\Carbon;
@@ -96,4 +99,22 @@ it('WO-010 SCH-051 starting a session moved to another day refreshes Today of th
 
     expect($keys)->toContain('today_show{"date":"2026-09-21"}', 'today_show{"date":"2026-09-22"}')
         ->and(WorkoutSession::query()->sole()->planned_start_at->format('Y-m-d H:i'))->toBe('2026-09-22 07:00');
+});
+
+it('MESO-034 workout_start writes no exercise of a muscle set Off', function () {
+    Carbon::setTestNow('2026-09-21 10:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+    $row = TrainSeed::exercise('Barbell Row', MuscleGroup::Back);
+    $days = $mesocycle->days;
+    $days[0]['slots'][] = ['id' => '01JB6Q402A2B3C4D5E6F7G8H9J', 'exercise_id' => $row->id, 'muscle_group' => 'back', 'sets' => 3];
+    $mesocycle->update(['days' => $days]);
+    app(SetMusclePriority::class)($user, $mesocycle->id, MuscleGroup::Chest, null);
+
+    // Week 4 day 1, Upper A, started on its day, Monday 28 September.
+    Carbon::setTestNow('2026-09-28 17:30:00');
+    startOver($user, ['workout_id' => WorkoutIds::workout($mesocycle->id, 4, 1)])->assertOk();
+
+    expect(WorkoutExercise::query()->with('exercise')->get()->map(fn (WorkoutExercise $e) => $e->exercise->muscle_group->value)->all())
+        ->toBe(['back']);
 });

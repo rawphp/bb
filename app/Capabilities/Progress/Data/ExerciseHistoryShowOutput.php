@@ -6,7 +6,7 @@ use App\Capabilities\Reads\Data\Today\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
-/** Every session of one exercise, newest first, the best e1RM of each marked (ANA-009). */
+/** Up to 20 sessions of one exercise, newest first, the best e1RM of each marked (ANA-009). */
 final class ExerciseHistoryShowOutput extends CapabilityData
 {
     /** @param  list<ExerciseHistorySession>  $sessions */
@@ -17,5 +17,7 @@ final class ExerciseHistoryShowOutput extends CapabilityData
         public readonly Status $best,
         #[Field(items: ExerciseHistorySession::class)]
         public readonly array $sessions,
+        #[Field(description: 'The id to pass as `before` to read older sessions; null when there are none.')]
+        public readonly ?string $next_before,
     ) {}
 }

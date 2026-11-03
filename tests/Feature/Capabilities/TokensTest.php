@@ -1,5 +1,6 @@
 <?php
 
+use App\Agent\CurrentTurn;
 use App\Agent\Exclusions;
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\Support\AgentPolicy;
@@ -75,14 +76,15 @@ it('CAP-021 creates a token that is shown once and lists it without its secret',
     assertMatchesScreenFixture('token_list', $list->json('data'));
 });
 
-it('CAP-021 gives a Read only token every read and no write', function () {
+it('CAP-021 CAP-031 gives a Read only token every read but the exclusions, and no write', function () {
     createToken(User::factory()->create(), 'read_only');
 
     $registry = app(CapabilityRegistry::class);
-    $reads = array_keys(array_filter($registry->all(), fn ($definition) => $definition->readOnly));
+    $reads = array_keys(array_filter($registry->all(), fn ($definition, $name) => $definition->readOnly && Exclusions::reason($name) === null, ARRAY_FILTER_USE_BOTH));
     sort($reads);
 
-    expect(PersonalAccessToken::query()->findOrFail(TOKEN_ID)->abilities)->toBe($reads)->toContain('account_show', 'token_list');
+    expect(PersonalAccessToken::query()->findOrFail(TOKEN_ID)->abilities)->toBe($reads)->toContain('account_show', 'token_list')
+        ->not->toContain('coach_changes_list');
 });
 
 it('CAP-023 stores each scope as capability names', function (string $scope, array $picked, array $abilities) {
@@ -357,7 +359,10 @@ it('CAP-020 makes every capability that takes an existing row\'s ID check its ow
     // first_phase_id and phase_transition_complete's next_phase_id name the phase each creates (ownedOrNew).
     // workout_exercise_add's workout_exercise_id and exercise_swap's new_workout_exercise_id name the exercise each creates
     // (ownedOrNew); workout_exercise_add's, workout_day_relabel's and workout_skip's workout_id are found as workout_start's.
-    $exempt = ['token_create' => ['id'], 'mesocycle_copy' => ['mesocycle_id'], 'mesocycle_build' => ['mesocycle_id', 'days.*.day_id', 'days.*.slots.*.slot_id'], 'mesocycle_day_add' => ['day_id'], 'custom_food_save' => ['id'], 'off_plan_log' => ['id'], 'saved_meal_save' => ['id'], 'recipe_save' => ['id'], 'phase_goal_change' => ['new_phase_id'], 'workout_start' => ['workout_id'], 'workout_feedback_answer' => ['workout_id'], 'workout_finish' => ['workout_id'], 'workout_set_add' => ['set_id'], 'shopping_item_add' => ['id'], 'meal_add' => ['id'], 'other_activity_save' => ['id'], 'weigh_in_log' => ['id'], 'phase_add' => ['phase_id'], 'prebuilt_plan_apply' => ['first_phase_id'], 'phase_transition_complete' => ['next_phase_id'], 'onboarding_answer' => ['answers.busy_periods.*.id'], 'exercise_swap' => ['new_workout_exercise_id'], 'workout_exercise_add' => ['workout_id', 'workout_exercise_id'], 'workout_day_relabel' => ['workout_id'], 'workout_skip' => ['workout_id']];
+    // meal_food_add's entries.*.id names the planned food or recipe each entry creates (an id another row holds is a 404 in the action).
+    // The entry_id of the other meal builder writes names a planned food or a planned recipe, two tables, so the action finds it among the
+    // meal's own entries or answers 404.
+    $exempt = ['token_create' => ['id'], 'mesocycle_copy' => ['mesocycle_id'], 'mesocycle_build' => ['mesocycle_id', 'days.*.day_id', 'days.*.slots.*.slot_id'], 'mesocycle_day_add' => ['day_id'], 'custom_food_save' => ['id'], 'off_plan_log' => ['id'], 'saved_meal_save' => ['id'], 'recipe_save' => ['id'], 'phase_goal_change' => ['new_phase_id'], 'workout_start' => ['workout_id'], 'workout_feedback_answer' => ['workout_id'], 'workout_finish' => ['workout_id'], 'workout_set_add' => ['set_id'], 'shopping_item_add' => ['id'], 'meal_add' => ['id'], 'other_activity_save' => ['id'], 'weigh_in_log' => ['id'], 'phase_add' => ['phase_id'], 'prebuilt_plan_apply' => ['first_phase_id'], 'phase_transition_complete' => ['next_phase_id'], 'onboarding_answer' => ['answers.busy_periods.*.id'], 'exercise_swap' => ['new_workout_exercise_id'], 'workout_exercise_add' => ['workout_id', 'workout_exercise_id'], 'workout_day_relabel' => ['workout_id'], 'workout_skip' => ['workout_id'], 'meal_food_add' => ['entries.*.id'], 'meal_food_remove' => ['entry_id'], 'meal_food_amount_set' => ['entry_id'], 'meal_food_step' => ['entry_id'], 'meal_food_lock_set' => ['entry_id']];
     $declared = (fn (): array => $this->capabilities)->call(app(Ownership::class));
 
     foreach (app(CapabilityRegistry::class)->all() as $name => $definition) {
@@ -424,7 +429,7 @@ it('INT-001 lets a Health bridge token post a weigh-in and steps, and nothing el
             ->register($registry);
     }
     $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, new Ownership, new NoBilling, app(AgentPolicy::class)));
-    $bus = new HostBus($registry, new Ownership, app(IdempotencyKeys::class));
+    $bus = new HostBus($registry, new Ownership, app(IdempotencyKeys::class), new CurrentTurn);
     $invoke = fn (string $name) => $bus->invoke($name, ['amount' => 1], ['actor' => $bearer, 'caller' => 'http']);
 
     foreach (TokenScope::HEALTH_BRIDGE as $name) {

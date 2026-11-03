@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
+import SegmentedPicker from '@/design/SegmentedPicker.vue';
 import type { Answers } from './choices';
 import NumberField from './parts/NumberField.vue';
 
@@ -57,7 +58,16 @@ function typedWeight(value: number | null): void {
     if (value !== null) emit('answer', { weight: { unit: props.about.weight.unit, value } });
 }
 
-const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3 text-sm font-medium disabled:opacity-50';
+type Option = AboutYou['sex_options'][number];
+
+// The server's options as SegmentedPicker takes them, and the one it holds as chosen.
+function segments(options: Option[]): { value: string; label: string; disabled: boolean }[] {
+    return options.map((option) => ({ value: option.value, label: option.title, disabled: !option.is_enabled }));
+}
+
+function chosen(options: Option[]): string | undefined {
+    return options.find((option) => option.is_selected)?.value;
+}
 </script>
 
 <template>
@@ -81,20 +91,7 @@ const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3
 
         <div class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold text-primary-text">Sex</span>
-            <div role="radiogroup" aria-label="Sex" class="flex gap-1 rounded-xl bg-background p-1">
-                <button
-                    v-for="option in about.sex_options"
-                    :key="option.value"
-                    type="button"
-                    role="radio"
-                    :aria-checked="option.is_selected"
-                    :disabled="locked || !option.is_enabled"
-                    :class="[segment, option.is_selected ? 'bg-surface text-primary-text shadow-sm' : 'text-primary-text']"
-                    @click="option.is_selected || emit('answer', { sex: option.value as 'male' | 'female' })"
-                >
-                    {{ option.title }}
-                </button>
-            </div>
+            <SegmentedPicker label="Sex" :options="segments(about.sex_options)" :model-value="chosen(about.sex_options)" :disabled="locked" @update:model-value="(sex) => emit('answer', { sex: sex as 'male' | 'female' })" />
         </div>
 
         <div class="flex flex-col gap-1.5">
@@ -125,20 +122,7 @@ const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3
 
         <div class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold text-primary-text">Height</span>
-            <div role="radiogroup" aria-label="Height unit" class="flex gap-1 rounded-xl bg-background p-1">
-                <button
-                    v-for="option in about.height.unit_options"
-                    :key="option.value"
-                    type="button"
-                    role="radio"
-                    :aria-checked="option.is_selected"
-                    :disabled="locked || !option.is_enabled"
-                    :class="[segment, option.is_selected ? 'bg-surface text-primary-text shadow-sm' : 'text-primary-text']"
-                    @click="option.is_selected || emit('answer', { height: { unit: option.value as HeightUnit } })"
-                >
-                    {{ option.title }}
-                </button>
-            </div>
+            <SegmentedPicker label="Height unit" :options="segments(about.height.unit_options)" :model-value="chosen(about.height.unit_options)" :disabled="locked" @update:model-value="(unit) => emit('answer', { height: { unit: unit as HeightUnit } })" />
             <NumberField v-if="about.height.unit === 'cm'" label="Height" unit="cm" :model-value="about.height.cm" :commits-while-typing="false" :readonly="locked" @update:model-value="typedCm" />
             <div v-else class="flex gap-2">
                 <NumberField class="flex-1" label="Feet" unit="ft" :model-value="about.height.feet" :commits-while-typing="false" :readonly="locked" @update:model-value="typedFeet" />
@@ -148,20 +132,7 @@ const segment = 'flex min-h-9 flex-1 items-center justify-center rounded-lg px-3
 
         <div class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold text-primary-text">Weight</span>
-            <div role="radiogroup" aria-label="Weight unit" class="flex gap-1 rounded-xl bg-background p-1">
-                <button
-                    v-for="option in about.weight.unit_options"
-                    :key="option.value"
-                    type="button"
-                    role="radio"
-                    :aria-checked="option.is_selected"
-                    :disabled="locked || !option.is_enabled"
-                    :class="[segment, option.is_selected ? 'bg-surface text-primary-text shadow-sm' : 'text-primary-text']"
-                    @click="option.is_selected || emit('answer', { weight: { unit: option.value as WeightUnit } })"
-                >
-                    {{ option.title }}
-                </button>
-            </div>
+            <SegmentedPicker label="Weight unit" :options="segments(about.weight.unit_options)" :model-value="chosen(about.weight.unit_options)" :disabled="locked" @update:model-value="(unit) => emit('answer', { weight: { unit: unit as WeightUnit } })" />
             <NumberField
                 label="Weight"
                 :unit="about.weight.unit"

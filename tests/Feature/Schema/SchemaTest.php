@@ -2,6 +2,7 @@
 
 use App\Enums\MeasurementSource;
 use App\Models\AuditRecord;
+use App\Models\ClearedCoachTurn;
 use App\Models\DayTarget;
 use App\Models\DayTargetMeal;
 use App\Models\Exercise;
@@ -111,6 +112,7 @@ function fillAccount(User $user): void
     PendingSignInCode::factory()->for($user)->create();
     AuditRecord::factory()->for($user)->create();
     UndoToken::factory()->for($user)->create();
+    ClearedCoachTurn::factory()->for($user)->create();
     PushSubscription::factory()->for($user)->create();
     Subscription::factory()->for($user)->create();
     NotificationPref::factory()->for($user)->create();
@@ -193,6 +195,8 @@ it('CAP-019 keys every row the outbox creates by a ULID and keeps a client-made 
 })->with([
     'workout sets' => WorkoutSet::class,
     'check-ins' => MealCheckIn::class,
+    'planned foods' => PlannedFood::class,
+    'planned recipes' => PlannedRecipe::class,
     'weigh-ins' => WeighIn::class,
     'steps' => Step::class,
     'off-plan entries' => OffPlanEntry::class,

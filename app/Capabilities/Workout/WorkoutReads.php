@@ -14,12 +14,16 @@ use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Workout\WorkoutSnapshot;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
+use DateTimeInterface;
 use Illuminate\Support\Collection;
 
 /**
  * The reads a workout write changes (CAP-011, CAP-017): the session's workout_show, the Train tab and its mesocycle,
  * and Today and the week strip (SCH-022) of each day the session shows on: the day the plan or a move put it on, and
  * the day it started, which can be another day or plan week (as missed_session_resolve names them).
+ *
+ * A session whose mesocycle is unset or gone (soft-deleted) has no calendar, so a write names only its workout_show and
+ * the Today of its own planned and started days.
  *
  * The days come from the session row and the plan alone: a write runs on every set, so it reads the plan, the profile
  * and the mesocycle, not the mesocycle's sessions and sets a Train snapshot brings.
@@ -36,13 +40,35 @@ final class WorkoutReads
      */
     public static function keys(User $user, WorkoutSession $session, bool $planWeek = false): array
     {
-        $mesocycle = Mesocycle::query()->where('user_id', $user->id)->findOrFail($session->mesocycle_id);
-        $train = self::calendarOf($user, $mesocycle);
-        $grid = $train->calendar($mesocycle)->grid;
+        $mesocycle = $session->mesocycle_id === null ? null : Mesocycle::query()->where('user_id', $user->id)->find($session->mesocycle_id);
+        if ($mesocycle === null) {
+            return [self::workout($session), ...TodayReads::keys(array_values(array_map(
+                fn (DateTimeImmutable $day) => $day->format('Y-m-d'),
+                array_filter([self::dayOf($session->planned_start_at), self::dayOf($session->actual_start_at)]),
+            )))];
+        }
+
+        return self::keysIn(TrainSnapshot::calendarOnly(
+            TrainSnapshot::day(CarbonImmutable::now()),
+            new Collection([$mesocycle]),
+            Plan::query()->where('user_id', $user->id)->first(),
+            Profile::query()->where('user_id', $user->id)->first(),
+        ), $mesocycle, $session, $planWeek);
+    }
+
+    /**
+     * {@see keys()} for a session of `$mesocycle`, on a calendar the caller has read: what {@see WorkoutSnapshot::dateOf()}
+     * and the plan weeks read, the plan, the profile's training days and the mesocycle ({@see TrainSnapshot::calendarOnly()}).
+     *
+     * @return list<string>
+     */
+    public static function keysIn(TrainSnapshot $calendar, Mesocycle $mesocycle, WorkoutSession $session, bool $planWeek = false): array
+    {
+        $grid = $calendar->calendar($mesocycle)->grid;
         $days = array_filter([
-            WorkoutSnapshot::dateOf($train, $mesocycle, $session->week, $session->day),
-            $session->planned_start_at === null ? null : TrainSnapshot::day($session->planned_start_at),
-            $session->actual_start_at === null ? null : TrainSnapshot::day($session->actual_start_at),
+            WorkoutSnapshot::dateOf($calendar, $mesocycle, $session->week, $session->day),
+            self::dayOf($session->planned_start_at),
+            self::dayOf($session->actual_start_at),
         ]);
         $weekDates = [];
         foreach ($days as $day) {
@@ -64,22 +90,9 @@ final class WorkoutReads
         ];
     }
 
-    /** What {@see WorkoutSnapshot::dateOf()} and the plan weeks read: the plan, the profile's training days and the mesocycle. */
-    private static function calendarOf(User $user, Mesocycle $mesocycle): TrainSnapshot
+    private static function dayOf(DateTimeInterface|string|null $at): ?DateTimeImmutable
     {
-        return new TrainSnapshot(
-            today: TrainSnapshot::day(CarbonImmutable::now()),
-            plan: Plan::query()->where('user_id', $user->id)->first(),
-            profile: Profile::query()->where('user_id', $user->id)->first(),
-            mesocycles: new Collection([$mesocycle]),
-            phases: new Collection,
-            sessions: new Collection,
-            sets: new Collection,
-            feedback: new Collection,
-            planWeeks: new Collection,
-            dayTargets: new Collection,
-            exercises: new Collection,
-        );
+        return $at === null ? null : TrainSnapshot::day($at);
     }
 
     public static function workout(WorkoutSession $session): string

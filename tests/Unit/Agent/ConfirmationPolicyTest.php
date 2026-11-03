@@ -77,8 +77,13 @@ function agentMayCall(string $capability, mixed $input, string $caller, ?array $
     return app(ConfirmationPolicy::class)->allows(app(CapabilityRegistry::class)->get($capability), $input, new CapabilityContext(caller: $caller, actor: new User, agent: $agent));
 }
 
-it('AGT-010 allows a call that is not destructive, and one from another caller, with no line', function () {
+it('AGT-010 allows a call that is not destructive, and a destructive one from http, with no line', function () {
     expect(agentMayCall('mesocycle_length_set', [], 'agent'))->toBeTrue()
+        ->and(agentMayCall('mesocycle_length_set', [], 'mcp'))->toBeTrue()
         ->and(agentMayCall('mesocycle_end', endCall(), 'http'))->toBeTrue()
-        ->and(agentMayCall('mesocycle_end', endCall(), 'mcp'))->toBeTrue();
+        ->and(agentMayCall('mesocycle_end', endCall(), 'mcp'))->toBeFalse();
+});
+
+it('AGT-010 AGT-040 refuses a destructive capability to an MCP call, even one whose context names a turn', function () {
+    expect(agentMayCall('mesocycle_end', endCall(), 'mcp', ['turn_ulid' => '01JD4Q8V6Y3N0M2K7T5R9W1XTT']))->toBeFalse();
 });
