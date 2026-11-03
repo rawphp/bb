@@ -478,6 +478,42 @@ describe('WorkoutView', () => {
         expect(releaseWakeLock).not.toHaveBeenCalledWith();
     });
 
+    it('PWA-030 a finish sent before the read returns keeps the lock let go and Finish off', async () => {
+        readMock.mockResolvedValue({ ...workout('warning'), can_finish: true });
+        const wrapper = await show({ mesocycleId: 'm', week: 3, day: 1 });
+        expect(holdWakeLock).toHaveBeenCalledTimes(1);
+
+        await wrapper.get('[data-test="finish"]').trigger('click');
+        await flushPromises();
+
+        expect(releaseWakeLock).toHaveBeenCalledWith('01JB8W3Q000000000000000901');
+        expect(holdWakeLock).toHaveBeenCalledTimes(1);
+        expect(wrapper.get('[data-test="finish"]').attributes('disabled')).toBeDefined();
+    });
+
+    it('CAP-014 a double tap on Finish sends one finish', async () => {
+        let stored!: () => void;
+        writeMock.mockImplementation(() => new Promise((resolve) => (stored = () => resolve({} as never))));
+        const wrapper = await show({ payload: { ...workout('warning'), can_finish: true } });
+
+        await wrapper.get('[data-test="finish"]').trigger('click');
+        await wrapper.get('[data-test="finish"]').trigger('click');
+        stored();
+        await flushPromises();
+
+        expect(sent().map(([name]) => name)).toEqual(['workout_finish']);
+    });
+
+    it('OFF-006 a finish that could not be stored leaves Finish on', async () => {
+        writeMock.mockRejectedValue(new CapabilityError('workout_finish', 401, null));
+        const wrapper = await show({ payload: { ...workout('warning'), can_finish: true } });
+
+        await wrapper.get('[data-test="finish"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[data-test="finish"]').attributes('disabled')).toBeUndefined();
+    });
+
     it('OFF-021 Finish is on while changes wait to sync, as workout_finish has the last word', async () => {
         const wrapper = await show({ payload: workout('warning'), pending: true });
 

@@ -7,7 +7,8 @@ import { inputViolations, screenFixture } from '@/testing/schemas';
 import WorkoutSetRow from './WorkoutSetRow.vue';
 import type { WorkoutWrite } from './workoutWrite';
 
-vi.mock('@/app/outbox', async (original) => ({ ...(await original<typeof import('@/app/outbox')>()), pendingInput: vi.fn(() => undefined) }));
+const { outboxEntries } = vi.hoisted(() => ({ outboxEntries: { value: [] as unknown[] } }));
+vi.mock('@/app/outbox', async (original) => ({ ...(await original<typeof import('@/app/outbox')>()), pendingInput: vi.fn(() => undefined), entries: outboxEntries }));
 
 const workout = () => screenFixture<WorkoutShowOutput>('workout_show');
 
@@ -41,6 +42,7 @@ const sends = (wrapper: ReturnType<typeof row>) =>
 describe('WorkoutSetRow', () => {
     beforeEach(() => {
         vi.mocked(pendingInput).mockReturnValue(undefined);
+        outboxEntries.value = [];
     });
 
     it('WO-003 shows a menu, a weight field, a reps field and a Log box', () => {
@@ -212,6 +214,35 @@ describe('WorkoutSetRow', () => {
 
         expect(weight(wrapper).element.value).toBe('85');
         expect(wrapper.get('[data-test="log"]').attributes('aria-checked')).toBe('true');
+    });
+
+    it('OFF-011 a log the server refused gives way to the server\'s set, as no read follows a refusal', async () => {
+        const waiting = ref<unknown>(undefined);
+        const tray = ref<unknown[]>([]);
+        vi.mocked(pendingInput).mockImplementation((() => waiting.value) as never);
+        Object.defineProperty(outboxEntries, 'value', { get: () => tray.value, set: (v) => (tray.value = v), configurable: true });
+        const wrapper = row();
+
+        await weight(wrapper).setValue('85');
+        await wrapper.get('[data-test="log"]').trigger('click');
+        const [change] = wrapper.emitted('send')!.at(-1) as [WorkoutWrite];
+        waiting.value = change.input;
+        await wrapper.vm.$nextTick();
+        waiting.value = undefined;
+        tray.value = [{ seq: 1, name: 'workout_set_log', input: change.input, refusal: { status: 422, body: {} } }];
+        await wrapper.vm.$nextTick();
+
+        expect(weight(wrapper).element.value).toBe('82.5');
+        expect(wrapper.get('[data-test="log"]').attributes('aria-checked')).toBe('false');
+    });
+
+    it('OFF-006 a Log tap that never reaches the outbox does not show the set as logged', async () => {
+        const wrapper = row();
+
+        await wrapper.get('[data-test="log"]').trigger('click');
+
+        expect(wrapper.emitted('send')).toHaveLength(1);
+        expect(wrapper.get('[data-test="log"]').attributes('aria-checked')).toBe('false');
     });
 
     it('WO-003 a new read of the set shows the server\'s values in the fields', async () => {
