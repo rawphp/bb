@@ -39,8 +39,9 @@ final class Coach
      * @param  list<array{0: string, 1: array<string, mixed>}>  $refused  calls that must not succeed; the fake model tries each, after $calls
      * @param  array{0: string, 1: array<string, mixed>}|null  $asks  a destructive call the reply must ask the user to confirm (AGT-010), and must not make
      * @param  string  $reply  what the fake model says at the end
+     * @param  list<array<string, mixed>>|null  $script  the fake model's rounds, in place of the ones made from the calls above
      */
-    public static function says(User $user, string $message, array $calls = [], array $refused = [], ?array $asks = null, string $reply = 'Done.'): self
+    public static function says(User $user, string $message, array $calls = [], array $refused = [], ?array $asks = null, string $reply = 'Done.', ?array $script = null): self
     {
         config(['capabilities-ai.llm.driver' => 'anthropic']);
         if (self::live()) {
@@ -49,7 +50,7 @@ final class Coach
             $model = app(LlmClient::class);
         } else {
             config(['capabilities-ai.llm.anthropic.api_key' => 'test-key']);
-            $model = new FakeLlmClient(self::script($calls, $refused, $asks, $reply));
+            $model = new FakeLlmClient($script ?? self::script($calls, $refused, $asks, $reply));
         }
 
         $recorder = new Recorder($model);

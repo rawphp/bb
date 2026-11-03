@@ -100,6 +100,6 @@ final class AgentEvalCommand extends Command
     {
         $text = str_starts_with($fault, $name) ? substr($fault, strlen($name)) : $fault;
 
-        return trim((string) preg_replace('/\R\s*at \S+:\d+.*$/s', '', $text));
+        return trim((string) preg_replace('/\R\s*at \S+\.php:\d+.*$/s', '', $text));
     }
 }
