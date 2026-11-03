@@ -138,6 +138,15 @@ it('PH-030 PLAN-007 the next phase takes its type\'s rate, and none in training-
         ->and(Phase::query()->findOrFail('01JC1C000000000000000000ZY')->target_rate_percent_per_week)->toBe(0.0);
 });
 
+it('PH-007 PH-030 ending a phase with phases after it opens no transition: what comes next is already planned', function () {
+    [$user] = PlanSeed::world();
+
+    app(EndPhase::class)($user, W::CUT);
+
+    expect(Phase::query()->findOrFail(W::CUT)->end_date->format('Y-m-d'))->toBe('2026-10-19')
+        ->and(PlanPayload::build(PlanSnapshot::load($user))->toArray()['transition'])->toBeNull();
+});
+
 it('PH-007 ending the plan\'s last phase with phase_end opens its transition', function () {
     $user = TrainSeed::user();
     Phase::factory()->for($user)->create(['id' => W::CUT, 'type' => 'fatLoss', 'start_date' => '2026-08-31', 'end_date' => '2026-11-23']);
