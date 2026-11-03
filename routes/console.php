@@ -12,6 +12,7 @@ use App\Models\UndoToken;
 use App\Models\User;
 use App\Notifications\PushNotification;
 use App\Support\Notifications\ReminderDays;
+use App\Support\UserDay;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Inspiring;
@@ -53,11 +54,15 @@ Schedule::command('billing:refresh-prices')->everyFifteenMinutes()->when(fn (): 
 // users with a subscribed browser have anywhere to send to; without VAPID keys the pass does not run.
 Artisan::command('reminders:send', function (): int {
     $now = CarbonImmutable::now();
-    $after = $now->subMinutes(SendDueReminders::WINDOW_MINUTES);
-    // A cheap set-based check first, so a job is queued only for a user who may have something due.
-    User::query()->whereHas('pushSubscriptions')->select('id')->chunkById(500, function (Collection $users) use ($now, $after) {
-        $due = ReminderDays::mayHaveDue(array_map('intval', $users->modelKeys()), $after->toDateTimeImmutable(), $now->toDateTimeImmutable());
-        $users->whereIn('id', $due)->each(fn (User $user) => SendUserReminders::dispatch($user, $now));
+    // A cheap set-based check first, so a job is queued only for a user who may have something due. Reminders fall due
+    // at the user's clock time (SET-012), so the check runs once per zone, on that zone's last few minutes. The job
+    // gets the real instant: it judges lateness on real instants.
+    User::query()->whereHas('pushSubscriptions')->select(['id', 'time_zone'])->chunkById(500, function (Collection $users) use ($now) {
+        foreach ($users->groupBy('time_zone') as $zone => $inZone) {
+            $local = UserDay::clockIn(new DateTimeZone((string) $zone), $now);
+            $due = ReminderDays::mayHaveDue(array_map('intval', $inZone->modelKeys()), $local->modify('-'.SendDueReminders::WINDOW_MINUTES.' minutes'), $local);
+            $inZone->whereIn('id', $due)->each(fn (User $user) => SendUserReminders::dispatch($user, $now));
+        }
     });
 
     return 0;
