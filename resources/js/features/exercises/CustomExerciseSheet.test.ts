@@ -72,7 +72,7 @@ describe('CustomExerciseSheet', () => {
         wrapper.unmount();
     });
 
-    it('EX-004 saves a new exercise under a fresh ULID with the trimmed name', async () => {
+    it('EX-004 CAP-019 saves a new exercise with no id, for the server to assign, and the trimmed name', async () => {
         const reload = vi.fn().mockResolvedValue(undefined);
         const wrapper = show({ reload });
 
@@ -86,7 +86,6 @@ describe('CustomExerciseSheet', () => {
         const [name, input] = writeMock.mock.calls[0]!;
         expect(name).toBe('custom_exercise_save');
         expect(input).toEqual({
-            exercise_id: expect.stringMatching(/^[0-9A-HJKMNP-TV-Z]{26}$/),
             name: 'Seal row',
             muscle_group: 'back',
             equipment: 'dumbbell',
@@ -94,7 +93,7 @@ describe('CustomExerciseSheet', () => {
         });
         expect(inputViolations('custom_exercise_save', input)).toEqual([]);
         expect(reload).toHaveBeenCalled();
-        expect(wrapper.emitted('saved')).toEqual([[(input as { exercise_id: string }).exercise_id]]);
+        expect(wrapper.emitted('saved')).toEqual([[]]);
         wrapper.unmount();
     });
 
@@ -114,18 +113,15 @@ describe('CustomExerciseSheet', () => {
         wrapper.unmount();
     });
 
-    it('CAP-019 each opening for a new exercise starts blank under a new ULID', async () => {
-        const wrapper = show();
+    it('CAP-019 a new exercise opened after an edit starts blank and is sent with no id', async () => {
+        const wrapper = show({ exercise: landmine });
 
-        await type('name', 'Seal row');
-        await type('muscle_group', 'back');
-        await type('equipment', 'dumbbell');
-        await type('load_type', 'dumbbell');
         save().click();
         await flushPromises();
-        await wrapper.setProps({ open: false });
+        await wrapper.setProps({ open: false, exercise: null });
         await wrapper.setProps({ open: true });
 
+        expect(document.body.querySelector('[role="dialog"] h2')!.textContent).toBe('New exercise');
         expect(field('name').value).toBe('');
         expect(field<HTMLSelectElement>('muscle_group').value).toBe('');
         await type('name', 'Pendlay row');
@@ -135,9 +131,10 @@ describe('CustomExerciseSheet', () => {
         save().click();
         await flushPromises();
 
-        const [first, second] = writeMock.mock.calls.map((call) => (call[1] as { exercise_id: string }).exercise_id);
-        expect(second).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);
-        expect(second).not.toBe(first);
+        const [edit, create] = writeMock.mock.calls.map((call) => call[1] as Record<string, unknown>);
+        expect(edit).toMatchObject({ exercise_id: landmine.id });
+        expect(create).toEqual({ name: 'Pendlay row', muscle_group: 'back', equipment: 'barbell', load_type: 'barbell' });
+        expect(inputViolations('custom_exercise_save', create)).toEqual([]);
         wrapper.unmount();
     });
 
