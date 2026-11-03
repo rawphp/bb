@@ -138,6 +138,16 @@ it('SET-005 the schedule shows the stored defaults, every weekday\'s step range 
         ->and($schedule->review_weekday)->toBe(1);
 });
 
+it('SET-005 PLAN-008 the schedule shows the review day chosen last, so a pending change shows straight away', function () {
+    $user = settingsUser();
+    $plan = Plan::factory()->for($user)->create(['start_date' => '2026-09-07', 'review_weekday' => 1]);
+    expect(showSettings($user)->schedule->review_weekday)->toBe(1);
+
+    $plan->reviewDayChanges()->create(['effective_on' => '2026-10-19', 'review_weekday' => 3]);
+
+    expect(showSettings($user)->schedule->review_weekday)->toBe(3);
+});
+
 it('SET-005 the review day is null until there is a plan', function () {
     expect(showSettings(settingsUser())->schedule->review_weekday)->toBeNull();
 });

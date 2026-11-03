@@ -144,6 +144,24 @@ it('NOTIF-004 sends the weekly review on review day once a full plan week has pa
     expect(sentLines($user))->toBe(['Weekly review available | Your week is ready to review | /today?date=2026-09-19']);
 });
 
+it('NOTIF-004 PLAN-008 after a review-day change the weekly review is due on the new day and not the old one', function () {
+    $user = remindedUser();
+    // Weeks start Monday 09-07; from 09-28 they start Thursday, so week 4 starts Thursday 2026-10-08.
+    Plan::query()->where('user_id', $user->id)->update(['start_date' => '2026-09-07', 'review_weekday' => 1]);
+    $user->plan->reviewDayChanges()->create(['effective_on' => '2026-09-28', 'review_weekday' => 4]);
+
+    foreach (['2026-10-05 09:00:00', '2026-10-08 09:00:00'] as $at) {
+        Carbon::setTestNow($at);
+        app(SendDueReminders::class)($user, CarbonImmutable::now());
+    }
+
+    expect(array_values(array_filter(sentLines($user), fn (string $line) => str_starts_with($line, 'Weekly review'))))
+        ->toBe(['Weekly review available | Your week is ready to review | /today?date=2026-10-08']);
+
+    $at = fn (string $date) => ReminderDays::mayHaveDue([$user->id], new DateTimeImmutable("{$date} 08:50:00"), new DateTimeImmutable("{$date} 09:00:00"));
+    expect($at('2026-10-08'))->toBe([$user->id]);
+});
+
 it('NOTIF-005 sends next mesocycle on the first day of the deload week only', function () {
     $user = remindedUser();
 
