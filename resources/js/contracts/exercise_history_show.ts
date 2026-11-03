@@ -2,6 +2,7 @@
 
 export interface ExerciseHistoryShowInput {
   exercise_id: string;
+  before?: string | null;
 }
 
 export interface ExerciseHistoryShowOutput {
@@ -30,6 +31,10 @@ export interface ExerciseHistoryShowOutput {
       is_best: boolean;
     }[];
   }[];
+  /**
+   * The id to pass as `before` to read older sessions; null when there are none.
+   */
+  next_before?: string | null;
 }
 
-export const outputVersion = '4ad53144f3b6';
+export const outputVersion = 'a9a4053c6dbd';
