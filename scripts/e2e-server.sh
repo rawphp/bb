@@ -33,7 +33,7 @@ trap 'exit 143' TERM INT
 
 # A run killed hard leaves its MySQL here; this script started it, so it may stop it.
 if [ -f "$data/mysqld.pid" ]; then kill "$(cat "$data/mysqld.pid")" 2>/dev/null || true; sleep 2; fi
-rm -rf "$data" "$socket" "$socket.lock" storage/framework/testing/e2e.json
+rm -rf "$data" "$socket" "$socket.lock" storage/framework/testing/e2e.json storage/framework/testing/e2e-coach.json
 
 "$mysqld" --no-defaults --initialize-insecure --datadir="$data" --log-error="$data.init.log" >/dev/null 2>&1
 rm -f "$data.init.log"
@@ -51,12 +51,17 @@ export SESSION_DRIVER=file CACHE_STORE=file QUEUE_CONNECTION=sync MAIL_MAILER=ar
 export SESSION_LIFETIME=10080
 # Rate-limit counters live for one request: a scripted user answers onboarding faster than the 30-a-minute limit.
 export CAPABILITIES_RATE_LIMITS_DRIVER=memory
+# The Coach's turns run inside the request that sends the message, as in phpunit.xml: no queue worker, no Redis.
+export CAPABILITIES_AI_QUEUE_CONNECTION=sync
+# The scripted Coach's file is its only switch: a key exported in the developer's shell must not turn the Coach on.
+export ANTHROPIC_API_KEY=
 
 php artisan migrate --seed --force --no-interaction >/dev/null
 php artisan db:seed --class='Tests\Support\AuditSeeder' --force --no-interaction >/dev/null
 
 # php -S directly, not artisan serve, which drops these variables and reads .env again.
-# Laravel's router script serves from its working directory, so it runs in public/.
-(cd public && PHP_CLI_SERVER_WORKERS=4 exec php -S "127.0.0.1:$port" ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php) &
+# tests/e2e/router.php is Laravel's router script plus the scripted Coach, which a spec turns on by writing
+# storage/framework/testing/e2e-coach.json; it serves from the working directory, so it runs in public/.
+(cd public && PHP_CLI_SERVER_WORKERS=4 exec php -S "127.0.0.1:$port" ../tests/e2e/router.php) &
 server=$!
 wait "$server"
