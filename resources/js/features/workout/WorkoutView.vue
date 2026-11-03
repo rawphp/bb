@@ -193,8 +193,10 @@ watch(
     { immediate: true },
 );
 
+// With every due answer waiting to sync, the banner reopens the first of them to edit it.
 function openFeedback(): void {
-    if (dueFeedback.value !== undefined) sheet.value = { name: 'feedback', muscle: dueFeedback.value };
+    const muscle = dueFeedback.value ?? data.value?.feedback.find((entry) => isFeedbackDue(data.value!, entry) && !entry.is_answered)?.muscle_group;
+    if (muscle !== undefined) sheet.value = { name: 'feedback', muscle };
 }
 
 // WO-031: the workout menu.

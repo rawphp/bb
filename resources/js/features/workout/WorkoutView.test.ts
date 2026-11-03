@@ -748,7 +748,7 @@ describe('WorkoutView', () => {
                         : name === 'workout_set_skip'
                           ? skipped.map((set_id) => ({ set_id, is_skipped: isSkipped }))
                           : name === 'workout_feedback_answer'
-                            ? answered.map((muscle_group) => ({ workout_id: answeredIn, muscle_group }))
+                            ? answered.map((muscle_group) => ({ workout_id: answeredIn, muscle_group, joint_pain: [], pump: 'low', volume: 'justRight' }))
                             : [];
                 return inputs.filter(match).at(-1);
             }) as never);
