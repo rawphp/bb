@@ -166,6 +166,17 @@ describe('WeekStrip', () => {
         expect(strip().get('[role="group"]').attributes('aria-label')).toBe('Week');
     });
 
+    it('PWA-051 the words a day shows are in its spoken label, in order, so a voice command naming them finds it', () => {
+        const words = (text: string) => text.toLowerCase().replace(/[^a-z0-9–]+/g, ' ').trim().split(' ');
+
+        for (const day of buttons(strip())) {
+            const shown = words(day.element.textContent!).filter((word) => word !== '–').join(' ');
+
+            expect(shown.split(' ').length).toBeGreaterThanOrEqual(2);
+            expect(` ${words(day.attributes('aria-label')!).join(' ')} `).toContain(` ${shown} `);
+        }
+    });
+
     it("UI-001 takes week_show's days as the server sends them", () => {
         expectTypeOf<WeekShowOutput['days']>().toExtend<WeekStripDay[]>();
 
