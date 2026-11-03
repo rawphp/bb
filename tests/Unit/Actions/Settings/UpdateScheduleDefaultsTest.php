@@ -100,12 +100,21 @@ it('SET-005 saves the eating window, meal count, training days, busy periods and
     ]);
 
     $profile = scheduleProfile($user);
-    expect($profile->eating_window)->toBe(['start' => '08:00', 'end' => '01:00'])
+    expect($profile->eating_window)->toEqual(['start' => '08:00', 'end' => '01:00'])
         ->and($profile->meal_count)->toBe(5)
-        ->and($profile->training_days)->toBe([['weekday' => 4, 'start' => '06:30', 'minutes' => 75]])
-        ->and($profile->busy_periods)->toBe([['label' => 'Work', 'start' => '09:00', 'end' => '17:00', 'weekdays' => [1, 3]]])
-        ->and($profile->step_plan)->toBe([['weekday' => 1, 'min' => 5000, 'max' => 8000], ['weekday' => 2, 'min' => 7000, 'max' => 9000]])
+        ->and($profile->training_days)->toEqual([['weekday' => 4, 'start' => '06:30', 'minutes' => 75]])
+        ->and($profile->busy_periods)->toEqual([['label' => 'Work', 'start' => '09:00', 'end' => '17:00', 'weekdays' => [1, 3]]])
+        ->and($profile->step_plan)->toEqual([['weekday' => 1, 'min' => 5000, 'max' => 8000], ['weekday' => 2, 'min' => 7000, 'max' => 9000]])
         ->and($rebuild->calls)->toHaveCount(1);
+});
+
+it('SET-004 saving the schedule as it is stored does not rebuild', function () {
+    $rebuild = FakeRebuild::bind();
+    $user = scheduleUser();
+
+    updateSchedule($user);
+
+    expect($rebuild->calls)->toBe([]);
 });
 
 it('SET-005 training days are kept in weekday order, one session a weekday', function () {
@@ -140,7 +149,7 @@ it('SET-005 weigh-in days are not part of the schedule defaults and stay as they
 
     updateSchedule($user, ['meal_count' => 3]);
 
-    expect(scheduleProfile($user)->weigh_in_days)->toBe([['weekday' => 1, 'time' => '07:00']])
+    expect(scheduleProfile($user)->weigh_in_days)->toEqual([['weekday' => 1, 'time' => '07:00']])
         ->and(array_map(fn (ReflectionParameter $p) => $p->name, (new ReflectionClass(ScheduleDefaultsUpdateInput::class))->getConstructor()->getParameters()))
         ->not->toContain('weigh_in_days');
 });
@@ -156,8 +165,8 @@ it('SCH-039 a change of training weekdays while a mesocycle is under way is refu
 
     expect($refused->field)->toBe('training_days')
         ->and($refused->getMessage())->toBe('A mesocycle is under way. Change training weekdays to move its sessions from next week.')
-        ->and(scheduleProfile($user)->eating_window)->toBe(['start' => '07:00', 'end' => '21:00'])
-        ->and(scheduleProfile($user)->training_days)->toBe([['weekday' => 4, 'start' => '17:30', 'minutes' => 60]])
+        ->and(scheduleProfile($user)->eating_window)->toEqual(['start' => '07:00', 'end' => '21:00'])
+        ->and(scheduleProfile($user)->training_days)->toEqual([['weekday' => 4, 'start' => '17:30', 'minutes' => 60]])
         ->and($rebuild->calls)->toBe([]);
 });
 
@@ -178,7 +187,7 @@ it('SCH-039 the same weekdays with new times or minutes save while a mesocycle i
 
     updateSchedule($user, ['training_days' => [['weekday' => 4, 'start' => '06:00', 'minutes' => 90]]]);
 
-    expect(scheduleProfile($user)->training_days)->toBe([['weekday' => 4, 'start' => '06:00', 'minutes' => 90]])
+    expect(scheduleProfile($user)->training_days)->toEqual([['weekday' => 4, 'start' => '06:00', 'minutes' => 90]])
         ->and($rebuild->calls)->toHaveCount(1);
 });
 
@@ -188,7 +197,7 @@ it('SCH-039 with no mesocycle covering next week the weekdays change normally', 
 
     updateSchedule($user, ['training_days' => [['weekday' => 5, 'start' => '17:30', 'minutes' => 60]]]);
 
-    expect(scheduleProfile($user)->training_days)->toBe([['weekday' => 5, 'start' => '17:30', 'minutes' => 60]])
+    expect(scheduleProfile($user)->training_days)->toEqual([['weekday' => 5, 'start' => '17:30', 'minutes' => 60]])
         ->and($rebuild->calls)->toHaveCount(1);
 })->with([
     'no mesocycle' => [null],

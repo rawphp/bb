@@ -72,11 +72,7 @@ it('CAP-011 names each affects entry that is not a registered read', function ()
 });
 
 it('CAP-011 has every registered affects entry name a registered read', function () {
-    // The one entry waiting for its read: settings_show is a contract read that #90 registers. Delete this line
-    // when it does; until then nothing else may wait.
-    $waiting = ['notification_prefs_set affects settings_show'];
-
-    expect(array_values(array_diff(HostDefinition::unknownAffects(app(CapabilityRegistry::class)), $waiting)))->toBe([]);
+    expect(HostDefinition::unknownAffects(app(CapabilityRegistry::class)))->toBe([]);
 });
 
 it('CAP-011 has every registered write declare what it affects', function () {

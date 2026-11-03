@@ -52,7 +52,7 @@ it('SET-001 height reads in whole centimetres, or feet and whole inches', functi
     'cm' => [178.0, 'cm', '178 cm', 178.0, null, null],
     'cm rounds' => [177.6, 'cm', '178 cm', 177.6, null, null],
     'ft and in' => [167.64, 'feetInches', '5 ft 6 in', null, 5, 6.0],
-    '11.8 in rounds up to the next foot' => [182.4, 'feetInches', '6 ft 0 in', null, 6, 0.0],
+    '11.8 in reads as the next foot' => [182.4, 'feetInches', '6 ft 0 in', null, 5, 11.8],
 ]);
 
 it('SET-001 each unit setting has its value and both choices', function () {

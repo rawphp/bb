@@ -5,6 +5,7 @@ use App\Domain\Plan\PlanRebuildRefusal;
 use App\Domain\Plan\PlanRebuildRefused;
 use App\Models\Profile;
 use App\Models\User;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Support\FakeRebuild;
@@ -121,7 +122,7 @@ it('SET-004 a rebuild that fails keeps the saved profile, rolls back only the re
     $failure = new RuntimeException('the database went away');
     FakeRebuild::bind($failure);
     $reported = [];
-    app(Illuminate\Contracts\Debug\ExceptionHandler::class)->reportable(function (Throwable $e) use (&$reported) {
+    app(ExceptionHandler::class)->reportable(function (Throwable $e) use (&$reported) {
         $reported[] = $e;
 
         return false;
