@@ -18,6 +18,7 @@ use App\Domain\Model\Soreness;
 use App\Domain\Model\StepPlanDay;
 use App\Domain\Model\VolumeFeedback;
 use App\Domain\Model\WeighIn as DomainWeighIn;
+use App\Domain\Model\WeightUnit;
 use App\Domain\Plan\PlanRules;
 use App\Domain\Progression\LoggedExercise;
 use App\Domain\Progression\LoggedSet;
@@ -41,6 +42,7 @@ use App\Domain\Review\ReviewNextWeek;
 use App\Domain\Review\ReviewPeriod;
 use App\Domain\Review\ReviewProgress;
 use App\Domain\Review\ReviewProgressRules;
+use App\Domain\Review\ReviewStatus;
 use App\Domain\Review\ReviewTiming;
 use App\Domain\Review\ReviewTraining;
 use App\Domain\Review\ReviewTrainingFacts;
@@ -87,6 +89,8 @@ final readonly class ReviewAnalysis
      * @param  list<ReviewWeek>  $weeks  finished weeks with a stored target, oldest first; the last is the reviewed week
      *                                   when it has one
      * @param  ?string  $deloadMesocycleID  the mesocycle the deload would be moved in
+     * @param  DateTimeImmutable  $today  the review day, a whole day at midnight UTC
+     * @param  WeightUnit  $weightUnit  the unit the user's weights are shown in
      */
     private function __construct(
         public ReviewMode $mode,
@@ -108,12 +112,51 @@ final readonly class ReviewAnalysis
         public ?CalorieOptions $options,
         public DeloadPlan $deload,
         public ?string $deloadMesocycleID,
+        public DateTimeImmutable $today,
+        public WeightUnit $weightUnit,
     ) {}
+
+    /** The reviewed week's own entry of {@see $weeks}; null when it has no stored target. */
+    public function reviewedWeek(): ?ReviewWeek
+    {
+        foreach ($this->weeks as $week) {
+            if ($week->week->start == $this->reviewed->start) {
+                return $week;
+            }
+        }
+
+        return null;
+    }
 
     /** The review open for the user on `$today`; null when none is (no plan, no finished week, too few weigh-ins, or done). */
     public static function for(User $user, DateTimeImmutable|string $today): ?self
     {
         return self::fromData(ReviewData::load($user, $today));
+    }
+
+    /**
+     * Where the review stands on the loaded data's day (REV-001, REV-002); null when there is no plan or profile to
+     * review.
+     */
+    public static function status(ReviewData $data): ?ReviewStatus
+    {
+        $context = ReviewPlanContext::from($data);
+
+        return $context === null || $data->profile === null ? null : self::statusIn($data, $context);
+    }
+
+    private static function statusIn(ReviewData $data, ReviewPlanContext $context): ReviewStatus
+    {
+        $stored = $data->planWeeks->map(fn (PlanWeek $row) => new StoredPlanWeek(
+            start: TrainSnapshot::day($row->start_date),
+            isDeload: (bool) $row->is_deload,
+            isDietBreak: (bool) $row->is_diet_break,
+            isAway: (bool) $row->is_away,
+            reviewedAt: TodaySnapshot::instant($row->reviewed_at),
+        ))->values()->all();
+        $times = $data->weighIns->map(fn (WeighIn $w) => TodaySnapshot::instant($w->weighed_at))->filter()->values()->all();
+
+        return ReviewTiming::status($data->today, $context->grid, $stored, $times);
     }
 
     /** The review the loaded data has open on its day; null when none is. */
@@ -124,15 +167,7 @@ final readonly class ReviewAnalysis
         if ($context === null || $profile === null) {
             return null;
         }
-        $stored = $data->planWeeks->map(fn (PlanWeek $row) => new StoredPlanWeek(
-            start: TrainSnapshot::day($row->start_date),
-            isDeload: (bool) $row->is_deload,
-            isDietBreak: (bool) $row->is_diet_break,
-            isAway: (bool) $row->is_away,
-            reviewedAt: TodaySnapshot::instant($row->reviewed_at),
-        ))->values()->all();
-        $times = $data->weighIns->map(fn (WeighIn $w) => TodaySnapshot::instant($w->weighed_at))->filter()->values()->all();
-        $status = ReviewTiming::status($data->today, $context->grid, $stored, $times);
+        $status = self::statusIn($data, $context);
         $period = $status->period();
         if (! $status->isAvailable() || $period === null) {
             return null;
@@ -328,6 +363,8 @@ final readonly class ReviewAnalysis
                 reviewedWeek: $reviewedIndex, nextWeek: $nextIndex, nextIsDeload: $nextWeek->isDeload,
             ) : DeloadPlan::dietBreakOnly(),
             deloadMesocycleID: $sameMesocycle ? (string) $coveringReviewed->id : null,
+            today: $data->today,
+            weightUnit: WeightUnit::tryFrom((string) $profile->weight_unit) ?? WeightUnit::Kg,
         );
     }
 

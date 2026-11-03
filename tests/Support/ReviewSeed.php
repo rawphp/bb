@@ -63,6 +63,9 @@ final class ReviewSeed
 
     public bool $trainingOnly = false;
 
+    /** The profile's weight unit: kg or lb. */
+    public string $weightUnit = 'kg';
+
     /** @var array{start: string, end: string} the profile's eating window */
     public array $eatingWindow = ['start' => '07:00', 'end' => '21:00'];
 
@@ -91,6 +94,9 @@ final class ReviewSeed
 
     /** Day targets stored for the next week too. */
     public bool $nextWeekHasTargets = false;
+
+    /** Day targets stored for the reviewed week (5 to 11 October); false leaves that week without a stored target. */
+    public bool $reviewedWeekHasTargets = true;
 
     /** The reviewed week's sessions: how many were done, and how many skipped (the rest are missed). */
     public int $sessionsDone = 3;
@@ -151,8 +157,9 @@ final class ReviewSeed
     public function storedDays(): array
     {
         $last = $this->nextWeekHasTargets ? 6 : -1;
+        $offsets = array_filter(range(-7 * $this->weeksFinished, $last), fn (int $offset) => $this->reviewedWeekHasTargets || $offset < -7 || $offset > -1);
 
-        return array_map(fn (int $offset) => self::day($offset), range(-7 * $this->weeksFinished, $last));
+        return array_values(array_map(fn (int $offset) => self::day($offset), $offsets));
     }
 
     /** The reviewed week's session on mesocycle day 1, 2 or 3. */
@@ -217,7 +224,7 @@ final class ReviewSeed
         Plan::factory()->for($user)->create(['start_date' => $start, 'review_weekday' => 1]);
         Profile::factory()->for($user)->create([
             'name' => 'Sam', 'sex' => 'male', 'birth_date' => '1990-06-15', 'height_cm' => $this->heightCm, 'weight_kg' => $this->profileKg,
-            'body_fat_bucket' => 'low', 'uses_glp1' => false, 'experience' => 'intermediate', 'weight_unit' => 'kg',
+            'body_fat_bucket' => 'low', 'uses_glp1' => false, 'experience' => 'intermediate', 'weight_unit' => $this->weightUnit,
             'height_unit' => 'cm', 'consumed_totals' => 'checked_in', 'eating_window' => $this->eatingWindow,
             'meal_count' => 4, 'busy_periods' => [],
             'training_days' => [

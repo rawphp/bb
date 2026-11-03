@@ -33,13 +33,13 @@ it('CAP-002 gives every contracted name one owner issue and a schema snapshot', 
     }
 });
 
-it('CAP-002 contracts the progress area\'s reads and writes to issues 86 to 89', function () {
+it('CAP-002 contracts the progress area\'s reads and writes to issues 87 to 89 and 232', function () {
     expect(ownersFiles()['progress'])->toBe([
         'exercise_history_show' => 89,
         'progress_show' => 89,
         'review_answer' => 87,
         'review_complete' => 87,
-        'review_show' => 86,
+        'review_show' => 232,
         'steps_log' => 88,
         'weigh_in_delete' => 88,
         'weigh_in_log' => 88,
