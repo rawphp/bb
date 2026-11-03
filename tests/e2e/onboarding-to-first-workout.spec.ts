@@ -18,6 +18,14 @@ const TRAINING_DAYS = [0, 2, 4].map((offset) => WEEKDAYS[(FIRST + offset) % 7]!)
 const WEIGHT = 20;
 const REPS = 10;
 
+// The answer given to each feedback question (FB), by the start of its question, with the value the server stores.
+// None of them is a sheet's first choice, so an answer stored under the wrong question shows.
+const FEEDBACK = [
+    { question: 'How did your joints feel', answer: 'Low pain', stored: 'low' },
+    { question: 'How much of a pump', answer: 'Moderate pump', stored: 'moderate' },
+    { question: 'How was the volume', answer: 'Just right', stored: 'justRight' },
+] as const;
+
 type Meal = { name: string; time: string; kcal: number; carbs_g: number };
 type Feedback = { muscle_group: string; is_due: boolean; is_answered: boolean };
 
@@ -77,7 +85,7 @@ const ANSWERS: Record<string, (page: Page) => Promise<void>> = {
     },
 };
 
-test('ONB-020 WO-010 SCH-052 a new account onboards, starts its first workout, logs every set, answers the feedback and finishes', async ({ page }) => {
+test('ONB-020 WO-010 SCH-052 SCH-054 a new account onboards, starts its first workout, logs every set, answers the feedback and finishes', async ({ page }) => {
     const email = `first-workout-${Date.now()}@example.com`;
 
     // ACC-001: a new account, after the signed-out page settles (tests/e2e/support.ts says why).
@@ -93,12 +101,15 @@ test('ONB-020 WO-010 SCH-052 a new account onboards, starts its first workout, l
     // ONB-002 to ONB-018: the thirteen steps, then the review. Nothing sends a new account to setup yet (the
     // SetupGate in docs/spec/19-views.md), so the journey opens it.
     await page.goto('/onboarding', { waitUntil: 'networkidle' });
+    const visited: string[] = [];
     for (let step = 1; step <= 13; step++) {
         await expect(page.getByText(`Step ${step} of 13`, { exact: true })).toBeVisible();
         const heading = (await page.getByRole('heading', { level: 2 }).first().textContent())!.trim();
+        visited.push(heading);
         await ANSWERS[heading]?.(page);
         await page.getByRole('button', { name: /^(Next|Continue)$/ }).click();
     }
+    expect(visited).toEqual(expect.arrayContaining(Object.keys(ANSWERS)));
     const review = page.getByRole('group', { name: 'Review your plan' });
     await expect(review).toBeVisible();
     const summary = (await review.innerText()).replace(/\s+/g, ' ');
@@ -111,14 +122,16 @@ test('ONB-020 WO-010 SCH-052 a new account onboards, starts its first workout, l
     await expect(tour).toBeVisible();
     await tour.getByRole('button', { name: 'Skip' }).click();
     await expect(page.getByText(/Your plan starts/)).toBeVisible();
+    const user = rows<{ id: number }>('select id from users where email = ?', email)[0]!;
+    const userId = String(user.id);
+    // DAY was set when the run began; a run that crossed UTC midnight since has a later start and must fail here.
+    expect(rows<{ start_date: string }>('select start_date from plans where user_id = ?', userId)).toEqual([{ start_date: DAY }]);
 
     // The plan's first day, a training day.
     await page.evaluate((offset) => localStorage.setItem('bb.clock-offset', String(offset)), WALKED_TO - Date.now());
     await page.reload({ waitUntil: 'networkidle' });
     const workoutCard = page.locator('[data-test="workout-card"]');
     await expect(workoutCard).toContainText('Week 1 · Day 1');
-    const user = rows<{ id: number }>('select id from users where email = ?', email)[0]!;
-    const userId = String(user.id);
     const mealsBefore = plannedMeals(userId);
 
     // Every workout_show requested, and how many there were when the latest Log tap was answered.
@@ -143,6 +156,7 @@ test('ONB-020 WO-010 SCH-052 a new account onboards, starts its first workout, l
     // WO-001 to WO-010, FB-001: each set typed and logged. The next set waits for the read that follows the Log tap,
     // as a person does: a field left while an older read is still coming back sends the set unlogged again.
     const answered: string[] = [];
+    let jointQuestions = 0;
     for (let index = 0; index < setCount; index++) {
         const set = sets.nth(index);
         await set.locator('[data-test="weight"]').fill(String(WEIGHT));
@@ -157,7 +171,13 @@ test('ONB-020 WO-010 SCH-052 a new account onboards, starts its first workout, l
         if (due.length === 0) continue;
         const sheet = page.getByRole('dialog');
         await expect(sheet).toBeVisible();
-        for (const group of await sheet.getByRole('radiogroup').all()) await group.getByRole('radio').first().click();
+        for (const group of await sheet.getByRole('radiogroup').all()) {
+            const question = (await group.getAttribute('aria-label')) ?? '';
+            const feedback = FEEDBACK.find((entry) => question.startsWith(entry.question));
+            if (feedback === undefined) throw new Error(`No answer for the feedback question "${question}"`);
+            if (feedback === FEEDBACK[0]) jointQuestions++;
+            await group.getByRole('radio', { name: feedback.answer, exact: true }).click();
+        }
         await sheet.getByRole('button', { name: 'Save', exact: true }).click();
         await expect(sheet).toBeHidden();
         answered.push(due[0]!.muscle_group);
@@ -180,9 +200,15 @@ test('ONB-020 WO-010 SCH-052 a new account onboards, starts its first workout, l
         session.id,
     );
     expect(stored).toEqual(Array.from({ length: setCount }, () => ({ actual_weight_kg: WEIGHT, actual_reps: REPS, is_logged: 1, deleted_at: null })));
-    const feedback = rows<{ muscle_group: string }>('select muscle_group from muscle_feedback where workout_session_id = ?', session.id);
     expect(answered.length).toBeGreaterThan(0);
-    expect(feedback.map((row) => row.muscle_group).sort()).toEqual([...answered].sort());
+    const [joints, pump, volume] = FEEDBACK.map((entry) => entry.stored);
+    expect(
+        rows('select muscle_group, soreness, pump, volume, deleted_at from muscle_feedback where workout_session_id = ? order by muscle_group', session.id),
+    ).toEqual([...answered].sort().map((muscle_group) => ({ muscle_group, soreness: null, pump, volume, deleted_at: null })));
+    expect(jointQuestions).toBeGreaterThan(0);
+    expect(rows('select joint_pain, deleted_at from exercise_feedback where workout_session_id = ?', session.id)).toEqual(
+        Array.from({ length: jointQuestions }, () => ({ joint_pain: joints, deleted_at: null })),
+    );
 
     // SCH-052, SCH-054: the meals still to come follow the session as it happened, and Today shows them.
     const mealsAfter = plannedMeals(userId);
