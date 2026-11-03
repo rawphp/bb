@@ -8,7 +8,7 @@ export interface ReviewAnswerInput {
   option?:
     ("recommendation" | "repeat_this_week" | "choose_own" | "drop_fatigue" | "cut_calories" | "add_steps") | null;
   /**
-   * Average kcal a day for choose_own; null leaves it to be sent, and review_complete waits for it.
+   * Average kcal a day for choose_own; null leaves it to be sent, and review_complete waits for it. While choose_own waits for it, the suggested amount sent with other changes is read as not yet chosen; send it alone, or with no other change, to choose it.
    */
   own_kcal?: number | null;
   /**

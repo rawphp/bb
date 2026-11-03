@@ -2,6 +2,9 @@
 
 namespace Tests\Support;
 
+use App\Actions\Review\OpenReview;
+use App\Capabilities\Reads\Review\ReviewShowPayload;
+use App\Models\User;
 use App\Support\Review\ReviewAnalysis;
 use Closure;
 use RuntimeException;
@@ -26,5 +29,13 @@ final class ReviewShowWorld
         $seed->phaseType = 'muscleGain';
         $seed->ratePercent = 0.25;
         $seed->weight = fn (int $offset): float => 90 + 0.0321 * ($offset + 28);
+    }
+
+    /** The amount review_show shows in the own-calories field for the user's stored answers today. */
+    public static function shownOwnKcal(User $user): int
+    {
+        $analysis = ReviewAnalysis::for($user, ReviewSeed::TODAY) ?? throw new RuntimeException('No review is open.');
+
+        return ReviewShowPayload::build($analysis, OpenReview::answers($user, $analysis))->toArray()['calories']['own']['value'];
     }
 }

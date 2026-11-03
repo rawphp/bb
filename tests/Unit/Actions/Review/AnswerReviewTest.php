@@ -2,13 +2,12 @@
 
 use App\Actions\Review\AnswerReview;
 use App\Actions\Review\CompleteReview;
+use App\Actions\Review\OpenReview;
 use App\Capabilities\Reads\Review\ReviewPreviewPayload;
-use App\Capabilities\Reads\Review\ReviewShowPayload;
 use App\Capabilities\Review\Data\ReviewAnswerInput;
 use App\Models\ReviewAnswer;
 use App\Models\User;
 use App\Support\Review\ReviewAnalysis;
-use App\Support\Review\ReviewAnswers;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Support\ReviewSeed;
@@ -54,7 +53,7 @@ function rqaPreview(User $user): array
 {
     $analysis = ReviewAnalysis::for($user, Carbon::now()->format('Y-m-d')) ?? throw new RuntimeException('No review is open.');
 
-    return ReviewPreviewPayload::build($analysis, ReviewAnswer::answersFor($user, '2026-10-05'))->toArray();
+    return ReviewPreviewPayload::build($analysis, OpenReview::answers($user, $analysis))->toArray();
 }
 
 /** @param  array<string, mixed>  $preview */
@@ -87,11 +86,11 @@ it('REV-004 answering again replaces the week\'s answer, and the stored answer i
     rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => 2300]);
     rqaAnswer($user, ['option' => 'repeat_this_week']);
 
-    $answers = ReviewAnswer::answersFor($user, '2026-10-05');
+    $answers = ReviewAnswer::forWeek($user, '2026-10-05')->answers();
     expect(ReviewAnswer::query()->where('user_id', $user->id)->count())->toBe(1)
         ->and($answers->option)->toBe('repeat_this_week')
         ->and($answers->ownKcal)->toBeNull()
-        ->and(ReviewAnswer::answersFor(rqaUser(), '2026-10-05'))->toBe(ReviewAnswers::defaults());
+        ->and(ReviewAnswer::forWeek(rqaUser(), '2026-10-05'))->toBeNull();
 });
 
 it('REV-004 a move that builds changes the preview, and the week\'s total holds', function () {
@@ -237,7 +236,7 @@ it('REV-010 an answer with no option is refused unless it sends an amount for a 
 it('REV-010 a draft stays a draft when another answer echoes the amount review_show filled in, and a typed amount ends it', function () {
     $user = rqaUser();
     rqaAnswer($user, ['option' => 'choose_own']);
-    $shown = ReviewShowPayload::build(ReviewAnalysis::for($user, ReviewSeed::TODAY), ReviewAnswer::answersFor($user, '2026-10-05'))->toArray()['calories']['own']['value'];
+    $shown = ReviewShowWorld::shownOwnKcal($user);
 
     $echoed = rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown, 'update_step_plan' => true, 'moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
     expect($shown)->toBeInt()
@@ -251,7 +250,7 @@ it('REV-010 a draft stays a draft when another answer echoes the amount review_s
 it('REV-010 the suggested amount sent with Choose my own counts as typed when it is the answer\'s only change', function () {
     $user = rqaUser();
     rqaAnswer($user, ['option' => 'choose_own', 'update_step_plan' => true]);
-    $shown = ReviewShowPayload::build(ReviewAnalysis::for($user, ReviewSeed::TODAY), ReviewAnswer::answersFor($user, '2026-10-05'))->toArray()['calories']['own']['value'];
+    $shown = ReviewShowWorld::shownOwnKcal($user);
 
     // The screen's own amount answer: the shown option, the typed amount, the other answers as shown, no moves.
     $row = rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown, 'update_step_plan' => true, 'moves' => []]);
@@ -263,7 +262,7 @@ it('REV-010 the suggested amount sent with Choose my own counts as typed when it
 it('REV-011 a draft stays a draft when the deload answer echoes the pre-filled amount', function () {
     $user = rqaUser(fn (ReviewSeed $seed) => $seed->mesocycleWeeks = 8);
     rqaAnswer($user, ['option' => 'choose_own']);
-    $shown = ReviewShowPayload::build(ReviewAnalysis::for($user, ReviewSeed::TODAY), ReviewAnswer::answersFor($user, '2026-10-05'))->toArray()['calories']['own']['value'];
+    $shown = ReviewShowWorld::shownOwnKcal($user);
 
     expect(rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown, 'deload_too' => false])->fresh()->needsAmount())->toBeTrue();
 });
@@ -271,7 +270,7 @@ it('REV-011 a draft stays a draft when the deload answer echoes the pre-filled a
 it('REV-010 an amount sent alone for a draft is taken as typed, even when it is the amount review_show filled in', function () {
     $user = rqaUser();
     rqaAnswer($user, ['option' => 'choose_own']);
-    $shown = ReviewShowPayload::build(ReviewAnalysis::for($user, ReviewSeed::TODAY), ReviewAnswer::answersFor($user, '2026-10-05'))->toArray()['calories']['own']['value'];
+    $shown = ReviewShowWorld::shownOwnKcal($user);
 
     $row = rqaAnswer($user, ['option' => null, 'own_kcal' => $shown]);
 

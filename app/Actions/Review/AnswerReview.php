@@ -26,7 +26,8 @@ use Illuminate\Support\Facades\DB;
  * Choose my own with no amount is stored as sent, a draft that review_complete refuses until an amount comes
  * ({@see ReviewAnswer::needsAmount()}). The amount may come alone, with no option: it is set on the stored Choose my
  * own, which keeps its other answers and drops its moves, as a new amount does on the screen. The suggested amount
- * review_show fills a draft's field with, sent back with another answer, leaves the draft a draft.
+ * review_show fills a draft's field with, sent back with another change (the deload answer, the step offer, a move),
+ * leaves the draft a draft.
  */
 final class AnswerReview
 {
@@ -56,13 +57,15 @@ final class AnswerReview
             [$option, $deloadToo, $updateStepPlan] = [$input->option, $input->deload_too, $input->update_step_plan];
             $sent = array_map(fn (ReviewMoveInput $move) => ['from_index' => $move->from_index, 'to_index' => $move->to_index, 'kcal' => $move->kcal], $input->moves);
         }
-        if (! in_array($option, OpenReview::offered($analysis), true)) {
+        if (! OpenReview::offers($analysis, $option)) {
             throw new DomainException(self::NOT_OFFERED);
         }
         $ownKcal = $input->own_kcal;
         // REV-010: review_show fills a draft's field with the suggested amount, and the screen sends the field back with
-        // every answer. That echo is not an amount the user typed, so the draft stays one; an amount sent alone counts.
-        if ($input->option === 'choose_own' && $row?->needsAmount() && $ownKcal === self::prefill($analysis, $row)) {
+        // every other answer: the deload answer, the step offer, a move. That echo is not an amount the user typed, so
+        // the draft stays one. The amount counts when it is the answer's only change, or when it is sent alone.
+        $echo = $row !== null && ($deloadToo !== $row->deload_too || $updateStepPlan !== $row->update_step_plan || ($sent !== [] && $sent != $row->moves));
+        if ($input->option === 'choose_own' && $row?->needsAmount() && $echo && $ownKcal === self::prefill($analysis, $row)) {
             $ownKcal = null;
         }
         $answers = fn (array $moves) => new ReviewAnswers(

@@ -23,12 +23,6 @@ class ReviewAnswer extends Model
     /** @use HasFactory<ReviewAnswerFactory> */
     use BelongsToUser, HasFactory, HasUuids;
 
-    /** The user's stored answers for the week starting `$weekStart` (Y-m-d); the unanswered defaults when there are none. */
-    public static function answersFor(User $user, string $weekStart): ReviewAnswers
-    {
-        return self::forWeek($user, $weekStart)?->answers() ?? ReviewAnswers::defaults();
-    }
-
     public static function forWeek(User $user, string $weekStart, bool $lock = false): ?self
     {
         return self::query()->where('user_id', $user->id)->whereDate('week_start', $weekStart)

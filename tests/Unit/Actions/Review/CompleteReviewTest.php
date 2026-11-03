@@ -11,7 +11,6 @@ use App\Models\DayTarget;
 use App\Models\Mesocycle;
 use App\Models\PlanWeek;
 use App\Models\Profile;
-use App\Models\ReviewAnswer;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Support\Review\ReviewAnalysis;
@@ -21,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Tests\Support\ReviewSeed;
+use Tests\Support\ReviewShowWorld;
 
 // review_complete (rp-clone WeeklyReviewModel+Save and WeeklyReviewSaveTests): next week's plan week and days, the
 // moved deload, the step plan, and last the review stamp (REV-001, REV-002, REV-005, REV-011, REV-027, REV-031,
@@ -234,7 +234,7 @@ it('REV-010 refuses to save a Choose my own draft with no amount, and writes not
 it('REV-010 a draft whose pre-filled amount the screen echoed with a move still needs an amount to save', function () {
     $user = rqcUser();
     rqcAnswer($user, ['option' => 'choose_own']);
-    $shown = ReviewShowPayload::build(ReviewAnalysis::for($user, ReviewSeed::TODAY), ReviewAnswer::answersFor($user, '2026-10-05'))->toArray()['calories']['own']['value'];
+    $shown = ReviewShowWorld::shownOwnKcal($user);
     rqcAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown, 'moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
     $before = rqcStored($user);
 

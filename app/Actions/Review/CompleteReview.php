@@ -3,6 +3,7 @@
 namespace App\Actions\Review;
 
 use App\Domain\Model\StepPlanDay;
+use App\Domain\Plan\PlanRebuild;
 use App\Domain\Review\ReviewMode;
 use App\Domain\Review\StepPlanUpdate;
 use App\Domain\WeekBuilder\BuiltWeek;
@@ -38,7 +39,7 @@ final class CompleteReview
 
     public const NEEDS_AMOUNT = 'Enter how many calories a day you want for Choose my own before saving.';
 
-    public const OUT_OF_DATE = 'Your review has changed since you answered. Choose next week\'s calories again.';
+    public const OUT_OF_DATE = OpenReview::OUT_OF_DATE;
 
     /**
      * @return array{dates: list<string>, mesocycle: ?string} next week's days, Y-m-d, and the mesocycle whose deload moved
@@ -55,12 +56,15 @@ final class CompleteReview
     {
         $analysis = OpenReview::analysis($user, $weekStart);
         $stored = ReviewAnswer::forWeek($user, $weekStart);
-        if ($stored?->needsAmount()) {
-            throw new DomainException(self::NEEDS_AMOUNT);
-        }
-        // An answer the review stopped offering (a stall that has cleared) is refused, not swapped for another option.
-        if ($stored !== null && ! in_array($stored->option, OpenReview::offered($analysis), true)) {
-            throw new DomainException(self::OUT_OF_DATE);
+        // Only a full review applies the answered option; an away or training-only one ignores it (REV-005, SCH-061).
+        if ($analysis->mode === ReviewMode::Full) {
+            if ($stored?->needsAmount()) {
+                throw new DomainException(self::NEEDS_AMOUNT);
+            }
+            // An option the review stopped offering (a stall that has cleared) is refused, not swapped for another.
+            if ($stored !== null && ! OpenReview::offers($analysis, $stored->option)) {
+                throw new DomainException(self::OUT_OF_DATE);
+            }
         }
         $choices = new ReviewChoices($analysis, $stored?->answers() ?? ReviewAnswers::defaults());
         $week = $choices->saveWeek();
@@ -113,8 +117,8 @@ final class CompleteReview
     }
 
     /**
-     * Next week's days (NUT-030). A date that has a target is replaced on its row and keeps its meal ids by position, so
-     * only meals beyond the new count go, with their foods; a new date gets a new row. A day with no target writes
+     * Next week's days (NUT-030). A date that has a target is replaced on its row and keeps its meals' ids
+     * ({@see PlanRebuild::withStoredMealIds()}); a new date gets a new row. A day with no target writes
      * nothing (REV-005).
      *
      * @return list<string> the week's dates, Y-m-d
@@ -134,13 +138,8 @@ final class CompleteReview
                 $row = new DayTarget(['date' => $dates[$index]]);
                 $row->user_id = $user->id;
             }
-            // A stored day keeps its meal ids by position, so only meals beyond the new count go, with their foods.
-            $attributes = DayTargetRow::from($day);
-            $mealIds = array_column($row->meals ?? [], 'id');
-            foreach ($attributes['meals'] as $position => $meal) {
-                $attributes['meals'][$position]['id'] = $mealIds[$position] ?? $meal['id'];
-            }
-            $row->fill($attributes)->save();
+            // A stored day keeps its meals' ids, so only meals the new day has no place for go, with their foods.
+            $row->fill(DayTargetRow::from(PlanRebuild::withStoredMealIds($day, $row->meals ?? [])))->save();
         }
 
         return $dates;

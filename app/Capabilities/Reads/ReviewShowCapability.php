@@ -2,13 +2,13 @@
 
 namespace App\Capabilities\Reads;
 
+use App\Actions\Review\OpenReview;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Reads\Review\ReviewShowPayload;
 use App\Capabilities\Reads\Review\ReviewUnavailable;
 use App\Capabilities\Review\Data\ReviewShowInput;
 use App\Capabilities\Review\Data\ReviewShowOutput;
 use App\Capabilities\Support\HostDefinition;
-use App\Models\ReviewAnswer;
 use App\Models\User;
 use App\Support\Review\ReviewAnalysis;
 use App\Support\Review\ReviewData;
@@ -33,7 +33,7 @@ final class ReviewShowCapability implements HostCapability
 
                 return $analysis === null
                     ? ReviewShowPayload::unavailable(ReviewUnavailable::message($data))
-                    : ReviewShowPayload::build($analysis, ReviewAnswer::answersFor($user, $analysis->period->reviewed->start->format('Y-m-d')));
+                    : ReviewShowPayload::build($analysis, OpenReview::answers($user, $analysis));
             });
     }
 }
