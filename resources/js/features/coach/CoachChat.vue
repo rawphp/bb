@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { cached, readKey, store } from '@/app/cache';
-import { CapabilityError, read, readFresh } from '@/app/call';
+import { CapabilityError, read, readFresh, TIMEOUT_MS } from '@/app/call';
 import { cancel, events, history, send, type ChatHistory, type ChatMessage } from '@/app/chatTransport';
 import { failureMessage, writeFailureMessage } from '@/app/errors';
 import type { AgentStatusShowOutput } from '@/contracts/agent_status_show';
@@ -50,8 +50,16 @@ const error = ref<string | null>(null);
 const landed = ref(false);
 // A message whose send got no answer and whose fate the conversation has not shown yet,
 // with the messages on screen before it. Nothing is sent until a check settles it.
-let unanswered: { content: string; before: Set<string> } | null = null;
+// `graceOver` turns true once the server can no longer be taking it (GRACE_MS after the
+// failure); until then a conversation without it means "not yet", not "not sent".
+type Unanswered = { content: string; before: Set<string>; failure: CapabilityError; graceOver: boolean };
+let unanswered: Unanswered | null = null;
+let graceTimer: ReturnType<typeof setTimeout> | undefined;
+// Twice the client's deadline: a request the server is still working on past the
+// deadline has landed by then or will not land.
+const GRACE_MS = 2 * TIMEOUT_MS;
 const UNCHECKED = "Couldn't check whether the Coach got your message, so it was not sent again. Try again once you're connected.";
+const WAITING = 'The Coach may still be taking your message, so it was not sent again. It will be checked again in a moment.';
 // The device's own word: a request that gets no answer while online is an error, not offline.
 const offline = ref(typeof navigator !== 'undefined' && navigator.onLine === false);
 const end = ref<HTMLElement | null>(null);
@@ -145,15 +153,20 @@ async function submit(): Promise<void> {
             sending.value = false;
             return;
         }
+        error.value = null;
     }
     let sent;
     try {
         sent = await send(content, conversation.value);
     } catch (failed) {
         if (failed instanceof CapabilityError && failed.status === 0) {
-            const outcome = await settle({ content, before: new Set(messages.value.map((message) => message.ulid)) });
-            if (outcome === 'landed') draft.value = '';
-            if (outcome === 'absent') error.value = writeFailureMessage(failed, "The Coach couldn't take that message. Try again.");
+            const message: Unanswered = { content, before: new Set(messages.value.map((m) => m.ulid)), failure: failed, graceOver: false };
+            clearTimeout(graceTimer);
+            graceTimer = setTimeout(() => {
+                message.graceOver = true;
+                void recheck(message);
+            }, GRACE_MS);
+            if ((await settle(message)) === 'landed') draft.value = '';
         } else {
             error.value = writeFailureMessage(failed, "The Coach couldn't take that message. Try again.");
         }
@@ -176,13 +189,17 @@ async function submit(): Promise<void> {
  * A send with no answer may still have reached the package, and sending it again would
  * run a second turn. So the conversation is read again. `landed`: it now holds this
  * message, which was not on screen before; its turn is not known, so it is not polled, and
- * its reply shows on the next open. `absent`: the conversation answered without it, so it
- * may be sent again. `unknown`: the conversation could not be read, so the message is kept
- * unanswered and the next Send checks again before sending anything.
+ * its reply shows on the next open. `absent`: the conversation answered without it after
+ * the grace period, so it was not sent and may be sent again. `waiting`: it answered
+ * without it within the grace period, when the server may still be taking it. `unknown`:
+ * the conversation could not be read. While waiting or unknown the message stays
+ * unanswered, every Send checks again first, and the end of the grace period checks too.
  */
-async function settle(message: { content: string; before: Set<string> }): Promise<'landed' | 'absent' | 'unknown'> {
+async function settle(message: Unanswered): Promise<'landed' | 'absent' | 'waiting' | 'unknown'> {
     unanswered = message;
-    let outcome: 'landed' | 'absent' | 'unknown';
+    // Only a read that starts after the grace period can show the message was not sent.
+    const graceOver = message.graceOver;
+    let outcome: 'landed' | 'absent' | 'waiting' | 'unknown';
     if (conversation.value === null && !(await refreshStatus())) {
         outcome = 'unknown';
     } else if (conversation.value === null) {
@@ -193,13 +210,31 @@ async function settle(message: { content: string; before: Set<string> }): Promis
         if (fresh === undefined) outcome = 'unknown';
         else outcome = fresh.messages.some((m) => m.role === 'user' && m.content === message.content && !message.before.has(m.ulid)) ? 'landed' : 'absent';
     }
-    if (outcome !== 'unknown') unanswered = null;
+    if (outcome === 'absent' && !graceOver) outcome = 'waiting';
+    if (outcome === 'landed' || outcome === 'absent') {
+        unanswered = null;
+        clearTimeout(graceTimer);
+    }
     if (outcome === 'landed') {
         sends++;
+        error.value = null;
         landed.value = true;
     }
+    if (outcome === 'absent') error.value = writeFailureMessage(message.failure, "The Coach couldn't take that message. Try again.");
+    if (outcome === 'waiting') error.value = WAITING;
     if (outcome === 'unknown') error.value = UNCHECKED;
     return outcome;
+}
+
+/** The grace period ended: check once more, unless a Send has settled it meanwhile. */
+async function recheck(message: Unanswered): Promise<void> {
+    if (unanswered !== message || unmounted) return;
+    if (sending.value) {
+        // A Send is checking now, from before the grace ended: check again after it.
+        graceTimer = setTimeout(() => void recheck(message), POLL_MS);
+        return;
+    }
+    if ((await settle(message)) === 'landed' && draft.value.trim() === message.content) draft.value = '';
 }
 
 function poll(current: Turn, delayMs = POLL_MS): void {
@@ -316,6 +351,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
     unmounted = true;
     clearTimeout(timer);
+    clearTimeout(graceTimer);
     window.removeEventListener('online', wentOnline);
     window.removeEventListener('offline', wentOffline);
 });
