@@ -4,6 +4,7 @@ use App\Actions\Plan\RebuildTargets;
 use App\Domain\Model\DayType;
 use App\Domain\Plan\PlanRebuildRefusal\Reason;
 use App\Domain\Plan\PlanRebuildRefused;
+use App\Domain\WeekBuilder\MealNames;
 use App\Models\DayTarget;
 use App\Models\Mesocycle;
 use App\Models\OtherActivity;
@@ -17,6 +18,7 @@ use App\Models\WorkoutSession;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
@@ -400,20 +402,95 @@ it('SCH-060 an away week that pauses training and holds maintenance has only res
         ->and(rebuildKcal($user)['2026-10-16'])->toBeGreaterThan($plain['2026-10-16']);
 });
 
-it('SCH-060 an away week on rest days takes the training day\'s workout out', function () {
+it('SCH-060 an away week on rest days leaves the workout energy out and keeps the deficit', function () {
     $user = rebuildUser();
     rebuildSeedMesocycle($user);
     rebuildRun($user);
+    $plain = rebuildKcal($user);
     expect(rebuildTypes($user)['2026-10-15'])->not->toBe(DayType::Rest);
 
-    PlanWeek::factory()->for($user)->create([
-        'start_date' => '2026-10-12', 'is_away' => true, 'away_training' => 'pause', 'away_calories' => 'restDays',
+    $week = PlanWeek::factory()->for($user)->create([
+        'start_date' => '2026-10-12', 'is_away' => true, 'away_training' => 'pause', 'away_calories' => 'maintenance',
     ]);
     rebuildRun($user);
+    $maintenance = rebuildKcal($user);
 
-    expect(rebuildTypes($user)['2026-10-15'])->toBe(DayType::Rest);
+    $week->update(['away_calories' => 'rest_days']);
+    rebuildRun($user);
+    $restDays = rebuildKcal($user);
+
+    // Training is paused, so there is no workout to leave out on Friday: its deficit is the plain week's, below maintenance.
+    // Thursday's session is not planned either, so it is as Friday: the plain week's workout energy is gone.
+    expect(rebuildTypes($user))->each->toBe(DayType::Rest)
+        ->and($restDays['2026-10-16'])->toEqualWithDelta($plain['2026-10-16'], 1e-6)
+        ->and($restDays['2026-10-16'])->toBeLessThan($maintenance['2026-10-16'])
+        ->and($restDays['2026-10-15'])->toBeLessThan($plain['2026-10-15']);
 });
 
+it('SCH-060 an away week that deloads still runs its session, and rest-day calories leave its workout energy out', function () {
+    $user = rebuildUser();
+    rebuildSeedMesocycle($user);
+
+    // A deloaded week runs at maintenance (PLAN-022), so the two runs differ only by the session's energy.
+    $week = PlanWeek::factory()->for($user)->create([
+        'start_date' => '2026-10-12', 'is_away' => true, 'away_training' => 'deload', 'away_calories' => 'maintenance',
+    ]);
+    rebuildRun($user);
+    $maintenance = rebuildKcal($user);
+
+    $week->update(['away_calories' => 'rest_days']);
+    rebuildRun($user);
+
+    $types = rebuildTypes($user);
+    expect($types['2026-10-15'])->not->toBe(DayType::Rest)
+        ->and($types['2026-10-16'])->toBe(DayType::Rest)
+        ->and(rebuildKcal($user)['2026-10-16'])->toEqualWithDelta($maintenance['2026-10-16'], 1e-6)
+        ->and(rebuildKcal($user)['2026-10-15'])->toBeLessThan($maintenance['2026-10-15']);
+});
+
+it('SCH-060 an earlier week that paused training does not count as a mesocycle week', function () {
+    // A 3-week mesocycle from 2026-09-28 covers weeks 28 Sep, 5 Oct and 12 Oct, so 12 Oct is its deload week. With the
+    // week of 5 Oct paused it covers 28 Sep, 12 Oct and 19 Oct, and 12 Oct is only its second week: no deload.
+    $user = rebuildUser();
+    rebuildSeedMesocycle($user, ['start_date' => '2026-09-28', 'weeks' => 3]);
+    rebuildRun($user);
+    $deload = rebuildKcal($user);
+
+    PlanWeek::factory()->for($user)->create(['start_date' => '2026-10-05', 'is_away' => true, 'away_training' => 'pause']);
+    rebuildRun($user);
+    $shifted = rebuildKcal($user);
+
+    // A deload week runs at maintenance (PLAN-022), so its kcal is above the same week's deficit.
+    expect($shifted['2026-10-16'])->toBeLessThan($deload['2026-10-16']);
+});
+
+it('NUT-030 a stored intra-workout shake keeps its id, and the regular meals theirs', function () {
+    // 22 sets is 65 minutes, over the 60 that earn a shake (SCH-043).
+    $user = rebuildUser();
+    rebuildSeedMesocycle($user, ['days' => [['id' => 'push', 'label' => 'Push', 'weekday' => 4, 'slots' => [
+        ['id' => 'push-chest', 'exercise_id' => null, 'muscle_group' => 'chest', 'sets' => 22],
+    ]]]]);
+    $regular = array_map(fn (int $n) => sprintf('bbbbbbbb-0000-4000-8000-00000000000%d', $n), [1, 2, 3, 4]);
+    $shakeId = 'cccccccc-0000-4000-8000-000000000001';
+    $meal = fn (string $id, string $name) => [
+        'id' => $id, 'name' => $name, 'time' => '12:00', 'kcal' => 500, 'protein_g' => 30, 'fat_g' => 15, 'carbs_g' => 60,
+    ];
+    $stored = DayTarget::factory()->for($user)->create(['date' => '2026-10-15', 'meals' => [
+        ...array_map(fn (string $id) => $meal($id, 'M'), $regular),
+        $meal($shakeId, MealNames::INTRA_WORKOUT_SHAKE),
+    ]]);
+
+    rebuildRun($user);
+
+    $meals = rebuildRows($user)['2026-10-15']->meals;
+    $shake = array_values(array_filter($meals, fn (array $m) => $m['name'] === MealNames::INTRA_WORKOUT_SHAKE));
+    $others = array_values(array_filter($meals, fn (array $m) => $m['name'] !== MealNames::INTRA_WORKOUT_SHAKE));
+    expect($meals)->toHaveCount(5)
+        ->and($shake)->toHaveCount(1)
+        ->and($shake[0]['id'])->toBe($shakeId)
+        ->and(array_column($others, 'id'))->toBe($regular)
+        ->and(DB::table('day_target_meals')->where('day_target_id', $stored->id)->where('id', $shakeId)->exists())->toBeTrue();
+});
 it('PLAN-023 turning the diet break off keeps a deload week in the deficit', function () {
     $user = rebuildUser();
     rebuildRun($user);
