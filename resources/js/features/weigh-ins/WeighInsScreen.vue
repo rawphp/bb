@@ -8,6 +8,7 @@ import ItemCard from '@/design/ItemCard.vue';
 import PendingMark from '@/design/PendingMark.vue';
 import StatusPill from '@/design/StatusPill.vue';
 import { toneText } from '@/design/toneText';
+import { toneClasses } from '@/design/tones';
 import StepsEntrySheet from './StepsEntrySheet.vue';
 import WeighInEntrySheet from './WeighInEntrySheet.vue';
 
@@ -15,7 +16,8 @@ import WeighInEntrySheet from './WeighInEntrySheet.vue';
 // the trend weight, the schedule, every weigh-in newest first with the missed days the
 // server marks, and the step counts. A weigh-in opens to edit or delete; a missed day
 // opens a new one at the time the server gives for it. Display state only: which sheet
-// is open. `reload` is the screen's read, run after each write.
+// is open. `reload` is the screen's read, run after each write. When the server says
+// there is more (`next_before`), Show older under each list emits `more`.
 type Row = WeighInsShowOutput['rows'][number];
 type StepRow = WeighInsShowOutput['steps']['rows'][number];
 
@@ -26,9 +28,15 @@ const props = withDefaults(
         pending?: boolean;
         /** Opened by /weigh-ins/log: a new weigh-in at this time, or now when empty. */
         log?: string;
+        /** An older page is loading: Show older is off. */
+        loadingMore?: boolean;
+        /** Why an older page did not load, shown under Show older. */
+        moreError?: string | null;
     }>(),
-    { pending: false, log: undefined },
+    { pending: false, log: undefined, loadingMore: false, moreError: null },
 );
+
+const emit = defineEmits<{ more: [] }>();
 
 const router = useRouter();
 const nav = findNavigation(router);
@@ -127,6 +135,17 @@ function closeWeighIn(): void {
             </li>
         </ul>
         <p v-else-if="data.empty_message" class="px-1 text-secondary-text">{{ data.empty_message }}</p>
+        <button
+            v-if="data.next_before"
+            type="button"
+            data-test="show-older"
+            class="min-h-tap w-full rounded-2xl bg-surface px-4 font-medium text-accent active:opacity-70 disabled:opacity-50"
+            :disabled="loadingMore"
+            @click="emit('more')"
+        >
+            Show older
+        </button>
+        <p v-if="moreError" class="rounded-2xl p-4 text-sm" :class="toneClasses.warning" role="alert">{{ moreError }}</p>
 
         <section data-test="steps" class="flex flex-col gap-2">
             <div class="flex items-center justify-between gap-2 px-1">
@@ -162,6 +181,17 @@ function closeWeighIn(): void {
                     </button>
                 </li>
             </ul>
+            <button
+                v-if="data.next_before"
+                type="button"
+                data-test="show-older"
+                class="min-h-tap w-full rounded-2xl bg-surface px-4 font-medium text-accent active:opacity-70 disabled:opacity-50"
+                :disabled="loadingMore"
+                @click="emit('more')"
+            >
+                Show older
+            </button>
+            <p v-if="moreError" class="rounded-2xl p-4 text-sm" :class="toneClasses.warning" role="alert">{{ moreError }}</p>
         </section>
 
         <WeighInEntrySheet

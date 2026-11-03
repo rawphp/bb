@@ -3,6 +3,7 @@
 namespace App\Actions\Today;
 
 use App\Capabilities\Today\Data\RoughWeekSetInput;
+use App\Models\Mesocycle;
 use App\Models\Plan;
 use App\Models\PlanWeek;
 use App\Models\User;
@@ -12,13 +13,18 @@ use DomainException;
 use Illuminate\Support\Facades\DB;
 
 /**
- * SCH-063: mark the plan week in progress as a rough week, or unmark it. The flag is stored and checked here and
- * nothing else reads it yet. The week is named by its plan start or by the start the week strip shows; the row is
- * stored at the plan start. A deload or an away week cannot be marked; unmarking is always allowed.
+ * SCH-063: mark the plan week in progress as a rough week, or unmark it. The flag is stored and checked here.
+ * WorkoutSnapshot reads it: a session of this week finished or re-answered while it is set saves no sets added from
+ * feedback, and next week's loads get no weekly rise while it stays set. The week is named by its plan start or by the
+ * start the week strip shows; the row is stored at the plan start. A deload or an away week cannot be marked;
+ * unmarking is always allowed.
  */
 final class SetRoughWeek
 {
-    /** @return array{dates: list<string>, toast: string} the week's days, Y-m-d, and what to say */
+    /**
+     * @return array{dates: list<string>, mesocycle: ?Mesocycle, toast: string} the week's days (Y-m-d), the saved
+     *                                                                          mesocycle it belongs to, and what to say
+     */
     public function __invoke(User $user, RoughWeekSetInput $input): array
     {
         // The plan is locked first, so two writes to its weeks run one after the other and cannot both add the row.
@@ -51,6 +57,7 @@ final class SetRoughWeek
 
             return [
                 'dates' => array_values(array_unique($days)),
+                'mesocycle' => $snapshot->covering($today),
                 'toast' => $input->rough ? 'Marked as a rough week' : 'Rough week unmarked',
             ];
         });

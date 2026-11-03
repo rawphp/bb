@@ -5,7 +5,8 @@ import { useModalFocus } from './useModalFocus';
 
 // A "?" icon that opens a short sheet with a Read more link (UI-009). On a
 // feature screen, `to` is the screen's Learn article (LRN-003). Ported from
-// rp-clone's HelpButton.swift.
+// rp-clone's HelpButton.swift. With `opens`, the icon only emits open, for a screen
+// that shows its own help sheet.
 defineOptions({ inheritAttrs: false });
 
 const props = withDefaults(
@@ -22,11 +23,15 @@ const props = withDefaults(
         /** The message is server-derived and waiting on the outbox (OFF-008). */
         pending?: boolean;
         disabled?: boolean;
+        /** The icon's accessible name. */
+        label?: string;
+        /** A tap emits open and shows no sheet here: the screen opens its own. */
+        opens?: boolean;
     }>(),
-    { loading: false, error: null, pending: false, disabled: false },
+    { loading: false, error: null, pending: false, disabled: false, label: 'Help', opens: false },
 );
 
-const emit = defineEmits<{ 'read-more': [] }>();
+const emit = defineEmits<{ 'read-more': []; open: [] }>();
 
 const isShowing = ref(false);
 const trigger = ref<HTMLButtonElement>();
@@ -36,6 +41,10 @@ const titleId = useId();
 const focus = useModalFocus(sheet);
 
 async function show(): Promise<void> {
+    if (props.opens) {
+        emit('open');
+        return;
+    }
     isShowing.value = true;
     await focus.opened(trigger.value);
 }
@@ -59,10 +68,10 @@ const readMoreClass = 'inline-flex min-h-tap items-center text-accent';
         v-bind="$attrs"
         ref="trigger"
         type="button"
-        aria-label="Help"
+        :aria-label="props.label"
         :aria-description="props.title"
         aria-haspopup="dialog"
-        :aria-expanded="isShowing"
+        :aria-expanded="props.opens ? undefined : isShowing"
         :disabled="props.disabled"
         class="inline-flex min-h-tap min-w-tap items-center justify-center text-accent disabled:text-secondary-text"
         @click="show"

@@ -48,13 +48,29 @@ final class WorkoutReads
             )))];
         }
 
-        $train = self::calendarOf($user, $mesocycle);
-        $grid = $train->calendar($mesocycle)->grid;
+        return self::keysIn(TrainSnapshot::calendarOnly(
+            UserDay::today($user),
+            new Collection([$mesocycle]),
+            Plan::query()->where('user_id', $user->id)->first(),
+            Profile::query()->where('user_id', $user->id)->first(),
+            UserDay::zone($user),
+        ), $mesocycle, $session, $planWeek);
+    }
+
+    /**
+     * {@see keys()} for a session of `$mesocycle`, on a calendar the caller has read: what {@see WorkoutSnapshot::dateOf()}
+     * and the plan weeks read, the plan, the profile's training days and the mesocycle ({@see TrainSnapshot::calendarOnly()}).
+     *
+     * @return list<string>
+     */
+    public static function keysIn(TrainSnapshot $calendar, Mesocycle $mesocycle, WorkoutSession $session, bool $planWeek = false): array
+    {
+        $grid = $calendar->calendar($mesocycle)->grid;
         $days = array_filter([
-            WorkoutSnapshot::dateOf($train, $mesocycle, $session->week, $session->day),
+            WorkoutSnapshot::dateOf($calendar, $mesocycle, $session->week, $session->day),
             self::dayOf($session->planned_start_at),
             // SET-012: the start is a real instant, so its day is the user's local one.
-            $session->actual_start_at === null ? null : UserDay::dayOf($user, $session->actual_start_at),
+            self::dayOf($calendar->startedAt($session)),
         ]);
         $weekDates = [];
         foreach ($days as $day) {
@@ -65,7 +81,7 @@ final class WorkoutReads
         }
 
         $weekDates = array_values(array_unique($weekDates));
-        $today = UserDay::today($user)->format('Y-m-d');
+        $today = $calendar->today->format('Y-m-d');
 
         return [
             self::workout($session),
@@ -76,27 +92,27 @@ final class WorkoutReads
         ];
     }
 
-    /** What {@see WorkoutSnapshot::dateOf()} and the plan weeks read: the plan, the profile's training days and the mesocycle. */
-    private static function calendarOf(User $user, Mesocycle $mesocycle): TrainSnapshot
-    {
-        return new TrainSnapshot(
-            today: UserDay::today($user),
-            plan: Plan::query()->where('user_id', $user->id)->first(),
-            profile: Profile::query()->where('user_id', $user->id)->first(),
-            mesocycles: new Collection([$mesocycle]),
-            phases: new Collection,
-            sessions: new Collection,
-            sets: new Collection,
-            feedback: new Collection,
-            planWeeks: new Collection,
-            dayTargets: new Collection,
-            exercises: new Collection,
-        );
-    }
-
     private static function dayOf(DateTimeInterface|string|null $at): ?DateTimeImmutable
     {
         return $at === null ? null : TrainSnapshot::day($at);
+    }
+
+    /**
+     * The workout_show of every session of a mesocycle, each week as it runs (SCH-039): for a write that changes the
+     * targets its weeks build on.
+     *
+     * @return list<string>
+     */
+    public static function everyWorkout(Mesocycle $mesocycle): array
+    {
+        $keys = [];
+        for ($week = 1; $week <= (int) $mesocycle->weeks; $week++) {
+            foreach (array_keys($mesocycle->earlierWeekRows()[$week - 1] ?? $mesocycle->dayRows()) as $index) {
+                $keys[] = ReadKey::for('workout_show', ['mesocycle_id' => (string) $mesocycle->id, 'week' => $week, 'day' => $index + 1]);
+            }
+        }
+
+        return $keys;
     }
 
     public static function workout(WorkoutSession $session): string

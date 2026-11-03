@@ -3,7 +3,7 @@
 namespace App\Domain\Progression;
 
 /**
- * The targets of one exercise's sets (WO-004, WO-006, PROG-020 to PROG-027, PROG-041, MESO-061). The caller gathers
+ * The targets of one exercise's sets (WO-004, WO-006, PROG-020 to PROG-027, PROG-041, MESO-061, SCH-063). The caller gathers
  * last week's sets and the carried load; this decides. Weights are in the user's unit throughout.
  */
 final class SetPlan
@@ -38,9 +38,16 @@ final class SetPlan
 
         $rir = $inputs->rir ?? 3;
 
-        // PROG-020: from week 2 on, last week's sets set this week's.
+        // PROG-020: from week 2 on, last week's sets set this week's. SCH-063: after a rough week they are repeated as
+        // logged, with no rise in weight or reps (PROG-021, PROG-022, PROG-027).
         if ($inputs->lastWeek !== []) {
-            $targets = LoadProgression::targets($inputs->lastWeek, $rir, $inputs->isFatLoss, $inputs->rules);
+            $targets = $inputs->lastWeekWasRough
+                ? array_map(function (SetLoad $set) use ($inputs, $rir): SetTarget {
+                    $held = LoadProgression::addedLoad($set, $inputs->rules);
+
+                    return new SetTarget($held->weight, $held->reps, $rir);
+                }, $inputs->lastWeek)
+                : LoadProgression::targets($inputs->lastWeek, $rir, $inputs->isFatLoss, $inputs->rules);
             $last = $targets[count($targets) - 1];
             $planned = [];
             for ($index = 0; $index < $count; $index++) {

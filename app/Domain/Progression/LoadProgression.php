@@ -113,7 +113,7 @@ final class LoadProgression
     }
 
     /** A bodyweight-plus-load set logged without added load carried 0 on top of bodyweight. */
-    private static function addedLoad(SetLoad $set, LoadRules $rules): SetLoad
+    public static function addedLoad(SetLoad $set, LoadRules $rules): SetLoad
     {
         if ($rules->loadType !== LoadType::BodyweightPlusLoad || $set->weight !== null) {
             return $set;

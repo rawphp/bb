@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, reactive, ref } from 'vue';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
 import { CapabilityError, read, write } from '@/app/call';
 import { isPending, pendingInput } from '@/app/outbox';
@@ -60,6 +60,22 @@ async function menu(wrapper: VueWrapper, scope: string, key: string): Promise<vo
     await wrapper.get(`${scope} [data-test="item-${key}"]`).trigger('click');
     await flushPromises();
 }
+
+/** Opens the set's menu sheet from its row and taps one of its actions. */
+async function setAction(wrapper: VueWrapper, setId: string, action: string): Promise<void> {
+    await wrapper.get(`[data-set="${setId}"] [data-test="menu"]`).trigger('click');
+    await wrapper.get(`[data-action="${action}"]`).trigger('click');
+    await flushPromises();
+}
+
+/** Opens the exercise's menu and picks an item. */
+async function exerciseItem(wrapper: VueWrapper, id: string, key: string): Promise<void> {
+    await exercise(wrapper, id).get('[data-test="menu"]').trigger('click');
+    await exercise(wrapper, id).get(`[data-test="item-${key}"]`).trigger('click');
+    await flushPromises();
+}
+
+const dialog = (wrapper: VueWrapper) => wrapper.find('[role="dialog"] h2').exists() ? wrapper.get('[role="dialog"] h2').text() : null;
 
 describe('WorkoutView', () => {
     beforeEach(() => {
@@ -164,7 +180,10 @@ describe('WorkoutView', () => {
 
         expect(wrapper.get('[data-test="no-exercises"]').text()).toBe('This workout has no exercises.');
         expect(wrapper.find('[data-test="next-meal"]').exists()).toBe(false);
-        expect(wrapper.find('[data-test="look-back"]').exists()).toBe(false);
+
+        await wrapper.get('[data-test="look-back"]').trigger('click');
+
+        expect(wrapper.get('[data-test="none"]').text()).toBe('No earlier sessions in this mesocycle yet.');
     });
 
     it('CAP-002 reads the session it names, with a skeleton until it comes', async () => {
@@ -304,15 +323,27 @@ describe('WorkoutView', () => {
         expect(wrapper.get('[data-test="error"]').text()).not.toBe('');
     });
 
+    it('WO-020 the set menu opens as a sheet titled with the set, and Cancel closes it', async () => {
+        const wrapper = await show({ payload: workout('warning') });
+
+        await wrapper.get(`[data-set="${BENCH_SET_1}"] [data-test="menu"]`).trigger('click');
+        expect(dialog(wrapper)).toBe('Set 1 · Bench Press');
+        await wrapper.get('[data-cancel]').trigger('click');
+
+        expect(dialog(wrapper)).toBeNull();
+        expect(writeMock).not.toHaveBeenCalled();
+    });
+
     it('WO-020 the set menu adds a set below, of its own type, under a new id (CAP-019)', async () => {
         const wrapper = await show({ payload: workout('warning') });
 
-        await menu(wrapper, `[data-set="${BENCH_SET_1}"]`, 'add');
+        await setAction(wrapper, BENCH_SET_1, 'add');
 
         const [name, input] = sent()[0]!;
         expect(name).toBe('workout_set_add');
         expect(input).toMatchObject({ workout_exercise_id: BENCH, after_set_id: BENCH_SET_1, set_type: 'regular_straight' });
         expect(writeMock.mock.calls[0]![2].creates).toEqual([input.set_id]);
+        expect(dialog(wrapper)).toBeNull();
     });
 
     it('WO-020 the set menu skips a set, and unskips a skipped one', async () => {
@@ -320,11 +351,11 @@ describe('WorkoutView', () => {
         payload.exercises[1]!.sets[2]!.is_skipped = true;
         const wrapper = await show({ payload });
 
-        await menu(wrapper, `[data-set="${BENCH_SET_1}"]`, 'skip');
+        await setAction(wrapper, BENCH_SET_1, 'skip');
         const skipped = payload.exercises[1]!.sets[2]!.id;
         expect(setRow(wrapper, skipped).classes()).toContain('opacity-50');
         expect(setRow(wrapper, skipped).get('[data-test="weight"]').attributes('disabled')).toBeDefined();
-        await menu(wrapper, `[data-set="${skipped}"]`, 'skip');
+        await setAction(wrapper, skipped, 'skip');
 
         expect(sent()).toEqual([
             ['workout_set_skip', { set_id: BENCH_SET_1, is_skipped: true }],
@@ -335,7 +366,7 @@ describe('WorkoutView', () => {
     it('WO-020 Delete set asks first, then deletes it', async () => {
         const wrapper = await show({ payload: workout('warning') });
 
-        await menu(wrapper, `[data-set="${BENCH_SET_1}"]`, 'delete');
+        await setAction(wrapper, BENCH_SET_1, 'delete');
         expect(writeMock).not.toHaveBeenCalled();
         expect(wrapper.get('[data-test="confirm"]').text()).toContain('Delete set 1?');
         await wrapper.get('[data-test="confirm"] [data-save]').trigger('click');
@@ -349,13 +380,25 @@ describe('WorkoutView', () => {
         const wrapper = await show({ payload: workout('warning') });
 
         await wrapper.get(`[data-set="${BENCH_SET_1}"] [data-test="menu"]`).trigger('click');
-        const types = wrapper.findAll(`[data-set="${BENCH_SET_1}"] [data-test^="item-type:"]`);
-        expect(types.map((item) => item.find('span').text())).toEqual(workout().set_type_choices.map((choice) => `Set type: ${choice.label}`));
-        expect(wrapper.get(`[data-set="${BENCH_SET_1}"] [data-test="item-type:regular_straight"]`).attributes('disabled')).toBeDefined();
-        await wrapper.get(`[data-set="${BENCH_SET_1}"] [data-test="item-type:myorep"]`).trigger('click');
+        const types = wrapper.get('[role="radiogroup"][aria-label="Set type"]').findAll('[role="radio"]');
+        expect(types.map((item) => item.attributes('aria-label'))).toEqual(workout().set_type_choices.map((choice) => choice.label));
+        expect(wrapper.get('[role="radio"][aria-checked="true"]').attributes('aria-label')).toBe('Regular · Straight');
+        await wrapper.get('[role="radio"][aria-label="Myorep (M)"]').trigger('click');
+        await wrapper.get('[data-save]').trigger('click');
         await flushPromises();
 
         expect(sent()).toEqual([['workout_set_type_set', { set_id: BENCH_SET_1, set_type: 'myorep' }]]);
+    });
+
+    it('WO-007 the RIR icon on a set opens the RIR info sheet', async () => {
+        const wrapper = await show();
+
+        await setRow(wrapper, BENCH_SET_1).get('[data-test="rir-info"]').trigger('click');
+
+        expect(dialog(wrapper)).toBe('Reps and RIR');
+        expect(wrapper.text()).toContain("This week's target is 2 RIR");
+        await wrapper.get('[data-cancel]').trigger('click');
+        expect(dialog(wrapper)).toBeNull();
     });
 
     it('WO-021 a myorep set shows its badge', async () => {
@@ -384,6 +427,53 @@ describe('WorkoutView', () => {
         ]);
         expect(exercise(wrapper, BENCH).get('[data-test="item-up"]').attributes('disabled')).toBeDefined();
         expect(exercise(wrapper, BENCH).get('[data-test="item-down"]').attributes('disabled')).toBeUndefined();
+    });
+
+    it('WO-022 Swap exercise, Pin note and Add note are on, and each opens its sheet', async () => {
+        readMock.mockImplementation(((name: string) => (name === 'exercises_show' ? Promise.resolve(screenFixture('exercises_show')) : new Promise(() => {}))) as never);
+        const wrapper = await show({ payload: workout('warning') });
+        await exercise(wrapper, BENCH).get('[data-test="menu"]').trigger('click');
+        for (const key of ['swap', 'pin', 'note']) expect(exercise(wrapper, BENCH).get(`[data-test="item-${key}"]`).attributes('disabled')).toBeUndefined();
+        await exercise(wrapper, BENCH).get('[data-test="item-swap"]').trigger('click');
+        await flushPromises();
+        expect(dialog(wrapper)).toBe('Swap exercise');
+        await wrapper.get('[data-cancel]').trigger('click');
+        await exerciseItem(wrapper, BENCH, 'pin');
+        expect(dialog(wrapper)).toBe('Pin note');
+        await wrapper.get('[data-cancel]').trigger('click');
+        await exerciseItem(wrapper, BENCH, 'note');
+        expect(dialog(wrapper)).toBe('Add note');
+    });
+
+    it('EX-010 a pinned note saved from its sheet goes through the outbox, for the library exercise', async () => {
+        const wrapper = await show({ payload: workout('warning') });
+
+        await exerciseItem(wrapper, ROW, 'pin');
+        await wrapper.get('textarea').setValue('Elbows tucked');
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([['exercise_note_set', { exercise_id: workout().exercises[1]!.exercise_id, note: 'Elbows tucked' }]]);
+        expect(dialog(wrapper)).toBeNull();
+    });
+
+    it('EX-008 the swap suggestion\'s Swap button opens the swap sheet', async () => {
+        const library = screenFixture<{ exercises: Record<string, unknown>[] }>('exercises_show');
+        library.exercises.push({ ...library.exercises[0]!, id: '01JA8Q0V3K2M4N6P8R0T2W4Y99', name: 'Chest Supported Row', detail: 'Back · Machine', muscle_group: 'back' });
+        readMock.mockImplementation(((name: string) => (name === 'exercises_show' ? Promise.resolve(library) : new Promise(() => {}))) as never);
+        const wrapper = await show({ payload: workout('warning') });
+
+        const swap = exercise(wrapper, ROW).get('[data-test="swap-suggestion"] button');
+        expect(swap.attributes('disabled')).toBeUndefined();
+        await swap.trigger('click');
+        await flushPromises();
+
+        expect(dialog(wrapper)).toBe('Swap exercise');
+        await wrapper.get('[role="radio"][aria-label="Rest of the mesocycle"]').trigger('click');
+        await wrapper.get('[data-test="exercise"]').trigger('click');
+        await flushPromises();
+        expect(sent()[0]![0]).toBe('exercise_swap');
+        expect(sent()[0]![1]).toMatchObject({ workout_exercise_id: ROW, scope: 'rest_of_mesocycle' });
     });
 
     it('WO-022 Add set adds the chosen type at the end of the exercise', async () => {
@@ -419,17 +509,261 @@ describe('WorkoutView', () => {
         expect(sent()).toEqual([['workout_exercise_remove', { workout_exercise_id: ROW }]]);
     });
 
-    it('WO-008 the calendar lists the earlier sessions and opens the one picked', async () => {
+    it('WO-008 the calendar opens the look back sheet with the earlier sessions', async () => {
         const wrapper = await show();
 
-        await wrapper.get('[data-test="look-back"] [data-test="menu"]').trigger('click');
-        const items = wrapper.findAll('[data-test="look-back"] [role="menuitem"]');
+        expect(wrapper.get('[data-test="look-back"]').attributes('aria-label')).toBe('Look back');
+        await wrapper.get('[data-test="look-back"]').trigger('click');
+
+        expect(dialog(wrapper)).toBe('Look back');
+        const items = wrapper.findAll('[data-test="session"]');
         expect(items).toHaveLength(workout().look_back.length);
         expect(items[0]!.text()).toBe('Week 2 · Day 2 · Lower ADone');
-        await items[0]!.trigger('click');
+        await wrapper.get('[data-cancel]').trigger('click');
+        expect(dialog(wrapper)).toBeNull();
+    });
+
+    it('WO-008 a session picked in the look back sheet reads that session', async () => {
+        const wrapper = await show();
+
+        await wrapper.get('[data-test="look-back"]').trigger('click');
+        await wrapper.findAll('[data-test="session"]')[0]!.trigger('click');
+
+        expect(readMock).toHaveBeenCalledWith('workout_show', { mesocycle_id: '01JB8W3Q000000000000000900', week: 2, day: 2 }, expect.any(Function), expect.any(Function));
+    });
+
+    it('WO-030 the ? icon opens the workout help sheet', async () => {
+        const wrapper = await show();
+
+        await wrapper.get('[data-test="help"]').trigger('click');
+
+        expect(dialog(wrapper)).toBe('Workout help');
+        expect(wrapper.findAll('[data-test="section"]')).toHaveLength(workout().help.length);
+        await wrapper.get('[data-cancel]').trigger('click');
+        expect(dialog(wrapper)).toBeNull();
+    });
+
+    it('WO-031 the workout menu offers Add exercise, Reorder exercises, Skip workout, Progression rates and Relabel day, in order', async () => {
+        const wrapper = await show();
+
+        await wrapper.get('[data-test="day-menu"] [data-test="menu"]').trigger('click');
+
+        expect(wrapper.findAll('[data-test="day-menu"] [role="menuitem"]').map((item) => item.find('span').text())).toEqual([
+            'Add exercise',
+            'Reorder exercises',
+            'Skip workout',
+            'Progression rates',
+            'Relabel day',
+        ]);
+    });
+
+    it('WO-031 Add exercise opens the exercise picker, and a pick is added to the session through the outbox', async () => {
+        const library = screenFixture<{ exercises: { id: string }[] }>('exercises_show');
+        readMock.mockImplementation(((name: string) => (name === 'exercises_show' ? Promise.resolve(library) : new Promise(() => {}))) as never);
+        const wrapper = await show({ payload: workout('warning') });
+
+        await wrapper.get('[data-test="day-menu"] [data-test="menu"]').trigger('click');
+        await wrapper.get('[data-test="item-add"]').trigger('click');
+        await flushPromises();
+        expect(dialog(wrapper)).toBe('Add exercise');
+        await wrapper.get('[data-test="exercise"]').trigger('click');
         await flushPromises();
 
-        expect(router.currentRoute.value.fullPath).toBe('/workouts/01JB8W3Q000000000000000900/2/2');
+        expect(sent()[0]![0]).toBe('workout_exercise_add');
+        expect(sent()[0]![1]).toMatchObject({ workout_id: '01JB8W3Q000000000000000901', exercise_id: library.exercises[0]!.id, remaining_weeks: false });
+        expect(dialog(wrapper)).toBeNull();
+    });
+
+    it('WO-031 Reorder exercises opens the reorder sheet, and a move goes through the outbox', async () => {
+        const wrapper = await show({ payload: workout('warning') });
+
+        await wrapper.get('[data-test="day-menu"] [data-test="menu"]').trigger('click');
+        await wrapper.get('[data-test="item-reorder"]').trigger('click');
+        expect(dialog(wrapper)).toBe('Reorder exercises');
+        await wrapper.get('[aria-label="Move Bench Press down"]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([['workout_exercise_reorder', { workout_exercise_id: BENCH, position: 2, remaining_weeks: false }]]);
+        expect(dialog(wrapper)).toBe('Reorder exercises');
+    });
+
+    it('WO-050 Skip workout asks first, then skips it without starting the session', async () => {
+        const wrapper = await show();
+
+        await wrapper.get('[data-test="day-menu"] [data-test="menu"]').trigger('click');
+        await wrapper.get('[data-test="item-skip"]').trigger('click');
+        expect(writeMock).not.toHaveBeenCalled();
+        expect(wrapper.get('[data-test="confirm"]').text()).toContain("Skip this workout? This can't be undone.");
+        expect(wrapper.get('[data-test="confirm"] [data-save]').text()).toBe('Skip workout');
+        await wrapper.get('[data-test="confirm"] [data-save]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([['workout_skip', { workout_id: '01JB8W3Q000000000000000901' }]]);
+    });
+
+    it('MESO-045 Progression rates opens the mesocycle\'s rates screen', async () => {
+        const wrapper = await show();
+
+        await wrapper.get('[data-test="day-menu"] [data-test="menu"]').trigger('click');
+        await wrapper.get('[data-test="item-rates"]').trigger('click');
+        await flushPromises();
+
+        expect(router.currentRoute.value.fullPath).toBe('/train/mesocycles/01JB8W3Q000000000000000900/rates');
+    });
+
+    it('WO-031 Relabel day opens the relabel sheet, and the new name goes through the outbox', async () => {
+        const wrapper = await show({ payload: workout('warning') });
+
+        await wrapper.get('[data-test="day-menu"] [data-test="menu"]').trigger('click');
+        await wrapper.get('[data-test="item-relabel"]').trigger('click');
+        expect(dialog(wrapper)).toBe('Relabel day');
+        await wrapper.get('input[aria-label="Day name"]').setValue('Push');
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([['workout_day_relabel', { workout_id: '01JB8W3Q000000000000000901', label: 'Push' }]]);
+    });
+
+    it('WO-001 a session that can no longer change has no workout menu', async () => {
+        const wrapper = await show({ payload: { ...workout('warning'), status: 'finished', is_editable: false } });
+
+        expect(wrapper.find('[data-test="day-menu"]').exists()).toBe(false);
+    });
+
+    it('EX-008 a session that can no longer change offers no swap: the suggestion\'s Swap is off and opens nothing', async () => {
+        const wrapper = await show({ payload: { ...workout('warning'), status: 'finished', is_editable: false } });
+
+        const swap = wrapper.get('[data-test="swap-suggestion"] button');
+        expect(swap.attributes('disabled')).toBeDefined();
+        await swap.trigger('click');
+        await flushPromises();
+
+        expect(dialog(wrapper)).toBeNull();
+        expect(wrapper.find('[data-test="exercise-menu"] button').attributes('disabled')).toBeDefined();
+    });
+
+    it('FB-001 a due feedback that is not answered opens its sheet by itself', async () => {
+        const wrapper = await show({ payload: workout('warning') });
+
+        expect(dialog(wrapper)).toBe('Chest');
+    });
+
+    it('FB-001 no sheet opens by itself when nothing is due', async () => {
+        const wrapper = await show();
+
+        expect(dialog(wrapper)).toBeNull();
+    });
+
+    it('FB-001 no sheet opens by itself for an answer already waiting in the outbox', async () => {
+        vi.mocked(pendingInput).mockImplementation(((name: string) => (name === 'workout_feedback_answer' ? { workout_id: '01JB8W3Q000000000000000901', muscle_group: 'chest' } : undefined)) as never);
+        const wrapper = await show({ payload: workout('warning') });
+
+        expect(dialog(wrapper)).toBeNull();
+    });
+
+    it('FB-001 cancelling the sheet keeps it closed for the visit: closing another sheet does not bring it back', async () => {
+        const wrapper = await show({ payload: workout('warning') });
+
+        await wrapper.get('[data-cancel]').trigger('click');
+        expect(dialog(wrapper)).toBeNull();
+        await wrapper.get('[data-test="help"]').trigger('click');
+        await wrapper.get('[data-cancel]').trigger('click');
+        await flushPromises();
+
+        expect(dialog(wrapper)).toBeNull();
+        expect(writeMock).not.toHaveBeenCalled();
+    });
+
+    it('FB-001 a cancelled muscle does not block the next muscle that becomes due', async () => {
+        const payload = reactive(workout('warning'));
+        payload.feedback.push({ ...payload.feedback[0]!, muscle_group: 'back', is_due: false });
+        const wrapper = await show({ payload });
+        expect(dialog(wrapper)).toBe('Chest');
+
+        await wrapper.get('[data-cancel]').trigger('click');
+        payload.feedback[1]!.is_due = true;
+        await flushPromises();
+
+        expect(dialog(wrapper)).toBe('Back');
+    });
+
+    it('FB-001 an answer for one muscle waiting in the outbox does not block the next muscle that is due', async () => {
+        vi.mocked(pendingInput).mockImplementation(((name: string, match: (input: unknown) => boolean) =>
+            name === 'workout_feedback_answer' && match({ workout_id: '01JB8W3Q000000000000000901', muscle_group: 'chest' }) ? {} : undefined) as never);
+        const payload = workout('warning');
+        payload.feedback.push({ ...payload.feedback[0]!, muscle_group: 'back' });
+        const wrapper = await show({ payload });
+
+        expect(dialog(wrapper)).toBe('Back');
+    });
+
+    it('FB-001 feedback that becomes due while another sheet is open opens when that sheet closes', async () => {
+        const payload = reactive(workout());
+        const wrapper = await show({ payload });
+        await setRow(wrapper, BENCH_SET_1).get('[data-test="rir-info"]').trigger('click');
+        const open = dialog(wrapper);
+        expect(open).not.toBeNull();
+
+        payload.feedback[0]!.is_due = true;
+        await flushPromises();
+        expect(dialog(wrapper)).toBe(open);
+        await wrapper.get('[data-cancel]').trigger('click');
+        await flushPromises();
+
+        expect(dialog(wrapper)).toBe('Chest');
+    });
+
+    it('FB-001 tapping the feedback banner opens the first due feedback again', async () => {
+        const wrapper = await show({ payload: workout('warning') });
+        await wrapper.get('[data-cancel]').trigger('click');
+
+        await wrapper.get('[data-test="feedback-banner"]').trigger('click');
+
+        expect(dialog(wrapper)).toBe('Chest');
+    });
+
+    it('FB-001 answering the sheet sends workout_feedback_answer through the outbox', async () => {
+        const wrapper = await show({ payload: workout('warning') });
+
+        for (const group of wrapper.findAll('[role="radiogroup"]')) await group.get('[role="radio"]').trigger('click');
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        const [name, input] = sent()[0]!;
+        expect(name).toBe('workout_feedback_answer');
+        expect(input).toMatchObject({ workout_id: '01JB8W3Q000000000000000901', muscle_group: 'chest', pump: 'low' });
+        expect(dialog(wrapper)).toBeNull();
+    });
+
+    it('FB-009 a feedback button sits under the exercise the feedback is due after: needed while unanswered', async () => {
+        const wrapper = await show({ payload: workout('warning') });
+        await wrapper.get('[data-cancel]').trigger('click');
+
+        const button = exercise(wrapper, BENCH).get('[data-test="feedback"]');
+        expect(button.text()).toBe('Chest feedback needed');
+        expect(exercise(wrapper, ROW).find('[data-test="feedback"]').exists()).toBe(false);
+        await button.trigger('click');
+
+        expect(dialog(wrapper)).toBe('Chest');
+    });
+
+    it('FB-009 an answered feedback that can still change reads "Chest feedback"; one that is not due shows no button', async () => {
+        const answered = workout('warning');
+        answered.feedback[0]!.is_answered = true;
+        answered.feedback[0]!.is_due = false;
+        const wrapper = await show({ payload: answered });
+
+        expect(exercise(wrapper, BENCH).get('[data-test="feedback"]').text()).toBe('Chest feedback');
+
+        const closed = workout('warning');
+        closed.feedback[0]!.is_due = false;
+        const other = await show({ payload: closed });
+        expect(other.find('[data-test="feedback"]').exists()).toBe(false);
+
+        const locked = workout('warning');
+        Object.assign(locked.feedback[0]!, { is_answered: true, is_due: false, can_edit: false });
+        const frozen = await show({ payload: locked });
+        expect(frozen.find('[data-test="feedback"]').exists()).toBe(false);
     });
 
     it('WO-001 a finished session is read only: no menus, fields or Finish', async () => {

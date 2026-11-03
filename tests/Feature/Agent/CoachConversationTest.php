@@ -81,11 +81,11 @@ it('AGT-024 returns the user\'s newest conversation', function () {
     expect(coachStatus($user)['conversation_ulid'])->toBe($newest->ulid);
 });
 
-it('AGT-020 AGT-024 refuses to clear while one of the user\'s turns is queued, and deletes nothing', function () {
+it('AGT-020 AGT-024 refuses to clear while one of the user\'s turns is <status>, and deletes nothing', function (string $status) {
     Queue::fake();
     $user = User::factory()->create();
     coachMessage($user)->assertCreated();
-    expect(Turn::query()->value('status'))->toBe(Turn::STATUS_QUEUED);
+    DB::table(TableNames::turns())->update(['status' => $status]);
     $before = coachRows($user);
 
     coachWrite($user, 'coach_conversation_clear')
@@ -95,6 +95,16 @@ it('AGT-020 AGT-024 refuses to clear while one of the user\'s turns is queued, a
 
     expect(coachRows($user))->toBe($before)
         ->and($before['conversations'])->toBe(1);
+})->with([Turn::STATUS_QUEUED, Turn::STATUS_RUNNING]);
+
+it('AGT-020 AGT-024 clears when the user\'s only turn is completed', function () {
+    $user = User::factory()->create();
+    coachMessage($user)->assertCreated();
+    expect(Turn::query()->pluck('status')->all())->toBe([Turn::STATUS_COMPLETED]);
+
+    coachWrite($user, 'coach_conversation_clear')->assertOk();
+
+    expect(coachRows($user))->toBe(['conversations' => 0, 'messages' => 0, 'turns' => 0]);
 });
 
 it('AGT-020 turns the user\'s own Coach off and on', function () {

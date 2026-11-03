@@ -10,7 +10,7 @@ use App\Domain\Model\Session;
 use App\Domain\Model\Workout;
 
 /**
- * PROG-010 to PROG-019, PROG-050, PROG-051, UI-010: a finished session and its feedback, turned into the day's new slot
+ * PROG-010 to PROG-019, PROG-050, PROG-051, SCH-063, UI-010: a finished session and its feedback, turned into the day's new slot
  * counts. From rp-clone's ProgressionApply.
  *
  * The base of each slot is the sets the session actually ran in it, not the count stored, so sets added or deleted in
@@ -82,8 +82,11 @@ final class ProgressionApply
         }
         $outcomes = $next->outcomes;
         // PROG-050, PROG-051: a held muscle gains no sets. Its slots go back to the base, and the messages of the add
-        // that did not happen go too. A removal stands.
-        foreach ($input->held as $muscle) {
+        // that did not happen go too. A removal stands. SCH-063: in a rough week every muscle of the session is held.
+        $held = $input->isRoughWeek
+            ? array_map(fn (string $muscle) => MuscleGroup::from($muscle), array_unique(array_column($slots, 'muscle_group')))
+            : $input->held;
+        foreach ($held as $muscle) {
             $outcome = $outcomes[$muscle->value] ?? null;
             if ($outcome === null || $outcome->change < 0) {
                 continue;

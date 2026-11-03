@@ -1,9 +1,12 @@
 <?php
 
+use App\Capabilities\Support\HostDefinition;
+use App\Capabilities\Support\ReadKey;
 use App\Models\PlanWeek;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Tests\Support\TodaySeed;
 
 // The HTTP seam of rough_week_set. The rules are SetRoughWeekTest's.
@@ -49,4 +52,16 @@ it('SCH-063 CAP-013 marks this week rough with a toast, drops its days, and its 
         ->assertOk();
 
     expect(PlanWeek::query()->where('user_id', $user->id)->where('is_rough', true)->count())->toBe(0);
+});
+
+it('SCH-063 CAP-017 rough_week_set declares workout_show and drops the workouts of the week\'s mesocycle, whose next targets it holds', function () {
+    $user = TodaySeed::user();
+    $mesocycle = TodaySeed::mesocycle($user);
+    $workout = fn (int $week, int $day) => ReadKey::for('workout_show', ['mesocycle_id' => (string) $mesocycle->id, 'week' => $week, 'day' => $day]);
+
+    $invalidates = roughSet($user, ['week_start' => '2026-09-19', 'rough' => true])->assertOk()->json('data.invalidates');
+
+    // The week from 2026-09-19 is the mesocycle's week 2, so week 3 is the one whose targets it holds.
+    expect(HostDefinition::affects(app(CapabilityRegistry::class)->get('rough_week_set')))->toContain('workout_show')
+        ->and($invalidates)->toContain($workout(3, 1), $workout(3, 2));
 });
