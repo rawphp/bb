@@ -17,6 +17,8 @@ declare module 'vue-router' {
         screen?: string;
         /** false: the screen reads nothing, so /dev/screens renders it without a fixture. */
         fixture?: boolean;
+        /** A screen that shows a second read: the prop that takes it, and the read whose fixture /dev/screens passes. */
+        fixtures?: Record<string, string>;
     }
 }
 
