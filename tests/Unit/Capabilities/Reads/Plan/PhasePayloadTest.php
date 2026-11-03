@@ -4,6 +4,7 @@ use App\Capabilities\Reads\Plan\PhasePayload;
 use App\Capabilities\Reads\Plan\PlanPayload;
 use App\Domain\Model\PhaseType;
 use App\Models\PlanWeek;
+use App\Models\WeighIn;
 use App\Support\Plan\PhaseChanges;
 use App\Support\Plan\PlanSnapshot;
 use Illuminate\Support\Collection;
@@ -284,3 +285,27 @@ it('PLAN-004 weigh-ins are read only for a phase\'s weights, from 60 days before
     expect($asked)->toBe(['2026-07-02'])
         ->and($phase['start_weight_text'])->toBe('90.0 kg');
 });
+
+it('SET-012 a snapshot\'s weigh-ins since a day are on the user\'s local days', function (string $zone, array $read) {
+    $weighIns = [];
+    foreach (['2026-07-01 13:00:00', '2026-07-01 21:00:00', '2026-07-02 06:00:00'] as $index => $at) {
+        $weighIns[] = (new WeighIn)->forceFill(['id' => $index + 1, 'user_id' => 1, 'weight_kg' => 90.0, 'weighed_at' => $at]);
+    }
+    $plan = new PlanSnapshot(
+        today: PlanSnapshot::day('2026-10-14'),
+        plan: W::snapshot()->plan,
+        profile: W::snapshot()->profile,
+        phases: new Collection(W::phases()),
+        mesocycles: new Collection(W::mesocycles()),
+        planWeeks: new Collection,
+        weighIns: new Collection($weighIns),
+        zone: new DateTimeZone($zone),
+    );
+
+    $since = $plan->weighInsSince(PlanSnapshot::day('2026-07-02'));
+
+    expect($since->map(fn (WeighIn $w) => $w->weighed_at->format('Y-m-d H:i:s'))->all())->toBe($read);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', ['2026-07-01 21:00:00', '2026-07-02 06:00:00']],
+    'UTC' => ['UTC', ['2026-07-02 06:00:00']],
+]);
