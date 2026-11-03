@@ -13,7 +13,7 @@ import type { ScanPhotoOutput } from '@/contracts/scan_photo';
 import BottomSheet from '@/design/BottomSheet.vue';
 import { toneIcons } from '@/design/toneIcons';
 import { toneClasses } from '@/design/tones';
-import SegmentedPicker from '@/features/today/sheets/SegmentedPicker.vue';
+import SegmentedPicker from '@/design/SegmentedPicker.vue';
 import ScanFoundCard from './ScanFoundCard.vue';
 import ScanNotFoundCard from './ScanNotFoundCard.vue';
 import ScanResultView from './ScanResultView.vue';

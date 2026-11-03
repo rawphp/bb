@@ -5,6 +5,12 @@
     "properties": {
         "exercise_id": {
             "type": "string"
+        },
+        "before": {
+            "type": [
+                "string",
+                "null"
+            ]
         }
     },
     "required": [
