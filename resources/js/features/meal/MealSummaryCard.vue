@@ -2,13 +2,14 @@
 import type { MealShowOutput } from '@/contracts/meal_show';
 import ProgressBar from '@/design/ProgressBar.vue';
 import StatusPill from '@/design/StatusPill.vue';
-import { toneIcons } from '@/design/toneIcons';
+import type { CheckInState } from '@/design/checkInLook';
 import { toneText } from '@/design/toneText';
 import { toneClasses } from '@/design/tones';
+import CheckInButton from '@/features/today/CheckInButton.vue';
 
 // MEAL-001, MEAL-003, MEAL-010, MEAL-011, MEAL-040, MEAL-047: the four macro bars, the
 // Targets met badge, the calorie and protein pills, the peri-workout tag and the check-in
-// tick. Ported from rp-clone's MealSummaryCard. The server sends every text and tone.
+// box (Today's CheckInButton). Ported from rp-clone's MealSummaryCard. The server sends every text and tone.
 // `checkable` is false when the menu offers neither Check in meal nor Remove check-in.
 // `pending` marks the server's numbers as waiting to sync (OFF-008).
 defineProps<{ meal: MealShowOutput; checkable: boolean; busy: boolean; pending: boolean }>();
@@ -16,6 +17,14 @@ defineProps<{ meal: MealShowOutput; checkable: boolean; busy: boolean; pending: 
 const emit = defineEmits<{ check: [] }>();
 
 // The bar's macro colour and its spoken name, by the server's short label.
+// meal_show names the check-in states in camelCase; the box takes today_show's names.
+const CHECK_IN_STATES: Record<MealShowOutput['check_in']['state'], CheckInState> = {
+    notCheckedIn: 'not_checked_in',
+    onTrack: 'on_track',
+    under: 'under',
+    over: 'over',
+};
+
 const MACROS: Record<string, { title: string; tint: 'calories' | 'protein' | 'fat' | 'carbs' }> = {
     Cal: { title: 'Calories', tint: 'calories' },
     P: { title: 'Protein', tint: 'protein' },
@@ -31,23 +40,15 @@ const MACROS: Record<string, { title: string; tint: 'calories' | 'protein' | 'fa
             <span class="flex-1" />
             <StatusPill v-if="meal.targets_met" :text="meal.targets_met.text" :tone="meal.targets_met.tone" :pending="pending" />
             <StatusPill v-if="meal.adjust_badge" :text="meal.adjust_badge.text" :tone="meal.adjust_badge.tone" :pending="pending" />
-            <!-- MEAL-040, MEAL-044: the tick checks the meal in at its planned foods, or removes the check-in. -->
-            <button
-                type="button"
-                class="flex min-h-tap min-w-tap items-center justify-center text-accent disabled:opacity-40"
-                :aria-label="meal.check_in.state === 'notCheckedIn' ? `Check in ${meal.title}` : `Remove check-in for ${meal.title}`"
-                :aria-pressed="meal.check_in.state !== 'notCheckedIn'"
+            <!-- MEAL-040, MEAL-044: the box checks the meal in at its planned foods, or removes the check-in. -->
+            <CheckInButton
+                :state="CHECK_IN_STATES[meal.check_in.state]"
+                :label="meal.check_in.text"
+                :meal-name="meal.title"
                 :disabled="!checkable || busy"
                 data-test="check"
-                @click="emit('check')"
-            >
-                <svg v-if="meal.check_in.state === 'notCheckedIn'" viewBox="0 0 24 24" class="size-7" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-                    <circle cx="12" cy="12" r="10" />
-                </svg>
-                <svg v-else viewBox="0 0 24 24" class="size-7 rounded-full" :class="toneClasses[meal.check_in.tone]" fill="currentColor" aria-hidden="true">
-                    <path :d="toneIcons[meal.check_in.tone]" />
-                </svg>
-            </button>
+                @toggle="emit('check')"
+            />
         </div>
         <p v-if="meal.check_in.state !== 'notCheckedIn'" class="text-sm font-semibold" :class="toneText[meal.check_in.tone]" data-test="check-in-text">
             {{ meal.check_in.text }}

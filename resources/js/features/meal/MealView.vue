@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import ReadState from '@/app/ReadState.vue';
 import { ulid } from '@/app/ulid';
 import { useRead } from '@/app/useRead';
@@ -38,9 +38,10 @@ import MealSummaryCard from './MealSummaryCard.vue';
 type Entry = MealShowOutput['entries'][number];
 type MenuKey = MealShowOutput['menu'][number]['item'];
 
-const props = withDefaults(defineProps<{ payload?: MealShowOutput; mealId?: string; pending?: boolean }>(), { pending: false });
+const props = withDefaults(defineProps<{ payload?: MealShowOutput; mealId?: string; action?: string; pending?: boolean }>(), { pending: false });
 
 const router = useRouter();
+const route = useRoute();
 const mealId = props.mealId ?? props.payload?.meal_id ?? '';
 const { data, failure, load } = useRead<MealShowOutput>('meal_show', { meal_id: mealId }, 'The meal could not be loaded.', props.payload);
 const { send, busy, error } = useWrite(load);
@@ -89,6 +90,28 @@ function onMenu(key: string): void {
         void send('meal_planning_done', { ...id, done: key === 'done_planning' } satisfies MealPlanningDoneInput, 'The meal could not be changed.');
     else if (key === 'delete_meal') confirmingDelete.value = true;
 }
+
+// Today's meal menu hands these to the meal screen as /meals/:id?action=<item> (MEAL-070),
+// as rp-clone opens the meal with the item to run. Once the meal has loaded the item runs
+// as a menu tap would, if the server has it on, and the address drops it so a reload or a
+// return does not run it again. Delete asks first in the menu, so it never runs from here.
+const ON_ARRIVAL: MenuKey[] = ['edit_macros_time', 'load_saved_meal', 'save_as_saved_meal', 'remove_foods'];
+
+let arrival = props.action;
+watch(
+    data,
+    (meal) => {
+        const action = arrival;
+        if (!meal || !action) return;
+        arrival = undefined;
+        const query = { ...route.query };
+        delete query.action;
+        void router.replace({ path: route.path, query });
+        const item = menuItems.value.find((entry) => entry.key === action);
+        if (ON_ARRIVAL.includes(action as MenuKey) && item && !item.disabled) onMenu(action);
+    },
+    { immediate: true },
+);
 
 function check(): void {
     if (checkItem.value) onMenu(checkItem.value);
