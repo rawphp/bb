@@ -7,7 +7,6 @@ use App\Domain\Plan\PlanRebuildRefusal;
 use App\Domain\Plan\PlanRebuildRefused;
 use App\Domain\Plan\PlanRules;
 use App\Domain\WeekBuilder\WeekDay;
-use App\Domain\WeekBuilder\WeekMeal;
 use App\Domain\WeekBuilder\WeekSessions\SessionRow;
 use App\Domain\WeekBuilder\WorkoutSessionRecord;
 use App\Models\DayTarget;
@@ -20,6 +19,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\Plan\DayTargetRow;
 use App\Support\Plan\PlanRebuildRows;
 use App\Support\Plan\PlanSnapshot;
 use App\Support\Today\DayPlans;
@@ -148,27 +148,11 @@ final class RebuildTargets
      */
     private function save(User $user, WeekDay $day, Collection $stored): string
     {
-        $date = $day->day->date->format('Y-m-d');
-        $target = $day->target;
-        $row = $stored->get($date) ?? new DayTarget(['date' => $date]);
+        $attributes = DayTargetRow::from($day);
+        $row = $stored->get($attributes['date']) ?? new DayTarget;
         $row->user_id = $user->id;
-        $row->fill([
-            'day_type' => $day->day->type,
-            'kcal' => $target->kcal,
-            'protein_g' => $target->proteinG,
-            'fat_g' => $target->fatG,
-            'carbs_g' => $target->carbsG,
-            'meals' => array_map(fn (WeekMeal $meal) => [
-                'id' => $meal->id(),
-                'name' => $meal->meal->name,
-                'time' => (string) $meal->time,
-                'kcal' => $meal->meal->target->kcal,
-                'protein_g' => $meal->meal->target->proteinG,
-                'fat_g' => $meal->meal->target->fatG,
-                'carbs_g' => $meal->meal->target->carbsG,
-            ], $day->meals),
-        ])->save();
+        $row->fill($attributes)->save();
 
-        return $date;
+        return $attributes['date'];
     }
 }
