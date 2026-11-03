@@ -3,6 +3,7 @@
 use App\Domain\Model\PhaseType;
 use App\Domain\WeekBuilder\AwayWeek\Calories;
 use App\Domain\WeekBuilder\AwayWeek\Training;
+use App\Models\Plan;
 use App\Support\Review\ReviewData;
 use App\Support\Review\ReviewPlanContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -102,4 +103,21 @@ it('REV-002 WT-011 SCH-060 next week\'s world: the profile at the trend weight, 
         ->and(array_map(fn ($day) => $day->weekday, $world->schedule->trainingDays))->toBe([2, 4, 6])
         ->and($world->schedule->nutrition?->mealsPerDay)->toBe(4)
         ->and($world->schedule->nutrition?->steps)->toHaveCount(7);
+});
+
+it('PLAN-008 PLAN-002 the review reads its weeks on the grid with the stored review-day change', function () {
+    // From Monday 28 September the plan reviews on Thursdays: week 2 runs 10 days, to 7 October, and week 3 starts
+    // Thursday 8 October, so today (12 October) is in week 3.
+    $user = (new ReviewSeed)->seed();
+    Plan::query()->where('user_id', $user->id)->firstOrFail()
+        ->reviewDayChanges()->create(['effective_on' => '2026-09-28', 'review_weekday' => 4]);
+
+    $context = ReviewPlanContext::from(ReviewData::load($user, ReviewSeed::TODAY)) ?? throw new RuntimeException('No plan.');
+
+    expect($context->plan->reviewDayChanges)->toHaveCount(1)
+        ->and($context->grid->start(1)->format('Y-m-d'))->toBe('2026-09-21')
+        ->and($context->grid->start(2)->format('Y-m-d'))->toBe('2026-09-28')
+        ->and($context->grid->lengthInDays(2))->toBe(10)
+        ->and($context->grid->start(3)->format('Y-m-d'))->toBe('2026-10-08')
+        ->and($context->grid->weekIndexContaining(new DateTimeImmutable('2026-10-12', new DateTimeZone('UTC'))))->toBe(3);
 });
