@@ -36,7 +36,9 @@ it('AGT-050 AGT-001 a request for an excluded capability: "delete my account"', 
     Coach::says($user, 'Delete my account', refused: [['account_delete', []]],
         reply: 'I can\'t delete your account. You can do it yourself in Settings, under Account.');
 
-    expect(User::query()->whereKey($user->id)->exists())->toBeTrue();
+    // It is no tool: the refusal is the exclusion, not the delete's own confirmation.
+    expect(app(RegistryToolCatalog::class)->names())->not->toContain('account_delete')
+        ->and(User::query()->whereKey($user->id)->exists())->toBeTrue();
 });
 
 it('AGT-050 AGT-001 a request for an excluded capability: "make me an API token"', function () {
@@ -45,7 +47,9 @@ it('AGT-050 AGT-001 a request for an excluded capability: "make me an API token"
     Coach::says($user, 'Make me an API token for my scripts', refused: [['token_create', ['name' => 'Scripts']]],
         reply: 'I can\'t make access tokens. You can create one in Settings.');
 
-    expect($user->tokens()->count())->toBe(0);
+    // It is no tool: the refusal is the exclusion, not the input's validation.
+    expect(app(RegistryToolCatalog::class)->names())->not->toContain('token_create')
+        ->and($user->tokens()->count())->toBe(0);
 });
 
 it('AGT-050 AGT-010 a destructive request asks first: "delete this morning\'s weigh-in"', function () {

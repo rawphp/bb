@@ -55,6 +55,7 @@ it('AGT-050 "push Thursday\'s workout to 7pm", then "undo that"', function () {
     $moved = Coach::says($user, "Push Thursday's workout to 7pm", calls: [
         ['workout_time_set', ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 2, 'time' => '19:00']],
     ], reply: 'Thursday\'s Lower A now starts at 7:00 PM.');
+    expect(WorkoutSession::query()->where('mesocycle_id', $mesocycle->id)->value('planned_start_at')?->format('Y-m-d H:i'))->toBe('2026-09-24 19:00');
 
     Coach::says($user, 'Undo that', calls: [
         ['undo_apply', ['token' => $moved->result('workout_time_set')['data']['undo']]],

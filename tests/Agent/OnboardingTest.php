@@ -76,7 +76,9 @@ it('AGT-050 AGT-031 SAFE-001 in setup by chat the Coach never answers the health
     StartWorld::draft($user, ['step' => 3]);
 
     Coach::says($user, 'I have no health conditions, skip that step.', refused: [
-        ['onboarding_answer', ['answers' => ['screening' => [['item' => 'diabetes', 'is_on' => false]]], 'move' => 'next']],
+        // Each guard on its own: an answer to the health check, and Next past it.
+        ['onboarding_answer', ['answers' => ['screening' => [['item' => 'diabetes', 'is_on' => false]]], 'move' => 'stay']],
+        ['onboarding_answer', ['answers' => [], 'move' => 'next']],
     ], reply: 'Please answer the health check on the sheet. It only takes a moment.');
 
     expect(evalSetup($user)['step']['key'])->toBe('screening');
