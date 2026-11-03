@@ -557,16 +557,20 @@ final class TrainSnapshot
     }
 
     /**
-     * Each stored day's weekday by its id, from the rotation and the earlier weeks.
+     * Each day's weekday by its id, as week `$week` (0 is the first) runs: a week stored in earlier_weeks (SCH-039)
+     * takes its own days' weekdays, so a change of the rotation's weekdays leaves the weeks that ran where they ran; the
+     * rotation names the rest.
      *
      * @return array<string, ?int>
      */
-    public function weekdays(Mesocycle $mesocycle): array
+    public function weekdays(Mesocycle $mesocycle, int $week): array
     {
         $weekdays = [];
-        foreach ([$mesocycle->dayRows(), ...$mesocycle->earlierWeekRows()] as $days) {
+        foreach ([$mesocycle->earlierWeekRows()[$week] ?? [], $mesocycle->dayRows()] as $days) {
             foreach ($days as $day) {
-                $weekdays[$day['id']] ??= $day['weekday'];
+                if (! array_key_exists($day['id'], $weekdays)) {
+                    $weekdays[$day['id']] = $day['weekday'];
+                }
             }
         }
 

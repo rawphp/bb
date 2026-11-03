@@ -81,11 +81,10 @@ final class MesocyclePayload
         $now = $calendar->isRunning() && $calendar->hasStarted();
         $laterWeeksStored = $mesocycle->laterWeekIds() !== [];
         $domain = $snapshot->domain($mesocycle);
-        $weekdays = $snapshot->weekdays($mesocycle);
 
         $weeks = [];
         for ($index = 0; $index < $calendar->weeks; $index++) {
-            $weeks[] = self::week($snapshot, $mesocycle, $domain, $weekdays, $calendar, $index, $now && $index + 1 === $current);
+            $weeks[] = self::week($snapshot, $mesocycle, $domain, $snapshot->weekdays($mesocycle, $index), $calendar, $index, $now && $index + 1 === $current);
         }
 
         $phaseType = $snapshot->phaseType($mesocycle);
@@ -110,7 +109,7 @@ final class MesocyclePayload
      * MESO-040, MESO-041: one week's column. A day logged counts its working sets by the exercise's muscle; a day
      * still ahead counts its plan, halved in a deload (PROG-041, PROG-042).
      *
-     * @param  array<string, ?int>  $weekdays  each stored day's weekday by its id
+     * @param  array<string, ?int>  $weekdays  each day's weekday by its id, as this week runs
      */
     private static function week(
         TrainSnapshot $snapshot, Mesocycle $mesocycle, DomainMesocycle $domain, array $weekdays, MesocycleCalendar $calendar, int $index, bool $isNow,

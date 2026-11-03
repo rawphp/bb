@@ -872,7 +872,7 @@ final class WorkoutSnapshot
     {
         $calendar = $train->calendar($mesocycle);
         $sessions = $train->domain($mesocycle)->sessionsInWeek($week - 1);
-        $weekdays = $train->weekdays($mesocycle);
+        $weekdays = $train->weekdays($mesocycle, $week - 1);
 
         return MesocycleCalendar::dayDates(
             $calendar->planWeek($week - 1),

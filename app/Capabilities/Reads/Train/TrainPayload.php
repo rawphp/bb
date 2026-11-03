@@ -76,7 +76,7 @@ final class TrainPayload
 
         $week = $calendar->currentWeek();
         $sessions = $snapshot->domain($mesocycle)->sessionsInWeek($week - 1);
-        $weekdays = $snapshot->weekdays($mesocycle);
+        $weekdays = $snapshot->weekdays($mesocycle, $week - 1);
         $dates = MesocycleCalendar::dayDates(
             $calendar->planWeek($week - 1),
             array_map(fn ($session) => $weekdays[$session->id] ?? null, $sessions),
