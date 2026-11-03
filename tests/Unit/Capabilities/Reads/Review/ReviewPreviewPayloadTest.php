@@ -120,6 +120,17 @@ it('REV-041 the preview is built at the option answered, not at the recommended 
         ->and(array_sum(rvDayKcal($chosen)))->toBeGreaterThan(7 * 2399)->toBeLessThan(7 * 2401);
 });
 
+it('REV-011 the deload answer reaches the preview: Yes builds the deload week, No an ordinary diet break', function () {
+    $eight = fn (ReviewSeed $seed) => $seed->mesocycleWeeks = 8;
+    $yes = rvPreview($eight, rvWith('drop_fatigue', deloadToo: true));
+    $no = rvPreview($eight, rvWith('drop_fatigue', deloadToo: false));
+    // Five weeks puts the deload on next week itself, so Drop fatigue is the diet break and the deload in one.
+    $deload = rvPreview(fn (ReviewSeed $seed) => $seed->mesocycleWeeks = 5, rvWith('drop_fatigue'));
+
+    expect($yes['days'])->not->toBe($no['days'])
+        ->and($yes['days'])->toBe($deload['days']);
+});
+
 it('REV-002 Repeat this week builds the week that ended again', function () {
     $preview = rvPreview(answers: rvWith('repeat_this_week'));
 

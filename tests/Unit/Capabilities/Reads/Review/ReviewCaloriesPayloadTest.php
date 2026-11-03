@@ -315,6 +315,31 @@ it('REV-011 the answer to the deload moves the deload in the week Drop fatigue b
     expect($yes['detail'])->not->toBe($no['detail']);
 });
 
+it('REV-011 an unanswered deload question means the default, whichever option is selected', function () {
+    $eight = fn (ReviewSeed $seed) => $seed->mesocycleWeeks = 8;
+    $detail = fn (array $calories) => rvOption($calories, 'drop_fatigue')['detail'];
+    $unanswered = rvCalories($eight, rvAnswers('recommendation'));
+    $yes = rvCalories($eight, rvAnswers('recommendation', deloadToo: true));
+    $no = rvCalories($eight, rvAnswers('recommendation', deloadToo: false));
+
+    // Drop fatigue's own "Next week" is the week choosing it would give: the deload is Yes by default.
+    expect($detail($unanswered))->toBe($detail($yes))
+        ->and($detail($unanswered))->not->toBe($detail($no))
+        ->and($unanswered['deload'])->toBeNull();
+});
+
+it('REV-011 REV-041 nothing answered in a week that recommends Drop fatigue far from the deload shows the deload as Yes', function () {
+    $calories = rvCalories(function (ReviewSeed $seed) {
+        $seed->muscleFeedback = ReviewSeed::highFatigue(ReviewSeed::sessionKey(1));
+        $seed->mesocycleWeeks = 8;
+    }, ReviewAnswers::defaults());
+
+    expect(rvSelected($calories))->toBe(['drop_fatigue'])
+        ->and($calories['deload']['kind'])->toBe('ask')
+        ->and($calories['deload']['answer'])->toBeTrue()
+        ->and($calories['deload']['rir_label'])->toStartWith('Target RIR by week: 3');
+});
+
 // MARK: REV-050
 
 it('REV-050 offers to update the step plan when the walked average is more than 2,000 steps from the plan', function () {
