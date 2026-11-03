@@ -46,13 +46,13 @@ function applyRan(?int $bench = 3, ?int $incline = 3, ?int $row = 3, ?int $curl 
     return array_replace(array_filter(['bench' => $bench, 'incline' => $incline, 'row' => $row, 'curl' => $curl], fn ($n) => $n !== null), $others);
 }
 
-function applyInput(array $days, array $sets, array $muscles = [], array $pain = [], array $held = []): ProgressionInput
+function applyInput(array $days, array $sets, array $muscles = [], array $pain = [], array $held = [], bool $rough = false): ProgressionInput
 {
     return new ProgressionInput(
         days: $days, dayIndex: 0, phase: PhaseType::MuscleGain, isResensitization: false, weeks: 5,
         priorities: ['chest' => Priority::Emphasize, 'back' => Priority::Grow, 'biceps' => Priority::Maintain],
         experience: ExperienceLevel::Intermediate, ranSets: $sets, muscleAnswers: $muscles, jointPain: $pain,
-        held: $held, now: new DateTimeImmutable('2026-10-12 18:30:00'),
+        held: $held, now: new DateTimeImmutable('2026-10-12 18:30:00'), isRoughWeek: $rough,
     );
 }
 
@@ -206,6 +206,32 @@ it('PROG-050 a hold keeps the sets the user added by hand', function () {
 
     expect($result->slotSets['bench'])->toBe(4)
         ->and($result->lines)->toBe(['Chest +1 set next week']);
+});
+
+it('SCH-063 a rough week adds no set to any muscle of the session, and the add\'s messages go', function () {
+    // Chest is near its ceiling (PROG-015), so its add would also say so. Back ran a set short, so a toast is built and
+    // shows only that.
+    $result = ProgressionApply::apply(applyInput(applyDays(fly: 17), applyRan(row: 2), ['chest' => applyWantsMore(), 'back' => applyWantsMore()], rough: true));
+
+    expect($result->slotSets)->toBe(['bench' => 3, 'incline' => 3, 'row' => 2, 'curl' => 2])
+        ->and($result->changes)->toBe(['back' => -1])
+        ->and($result->lines)->toBe(['Back −1 set next week']);
+});
+
+it('SCH-063 a removal still applies in a rough week', function () {
+    $result = ProgressionApply::apply(applyInput(applyDays(), applyRan(), ['chest' => applyTooMuch(), 'back' => applyWantsMore()], [12 => JointPain::ALot, 13 => JointPain::Low], rough: true));
+
+    expect($result->slotSets)->toBe(['bench' => 2, 'incline' => 3, 'row' => 3, 'curl' => 2])
+        ->and($result->changes)->toBe(['chest' => -1])
+        ->and($result->lines)->toBe(['Chest −1 set next week']);
+});
+
+it('SCH-063 a week that is not rough progresses exactly as before', function () {
+    $muscles = ['chest' => applyWantsMore(), 'back' => applyWantsMore()];
+
+    expect(ProgressionApply::apply(applyInput(applyDays(), applyRan(), $muscles, rough: false)))
+        ->toEqual(ProgressionApply::apply(applyInput(applyDays(), applyRan(), $muscles)))
+        ->and(ProgressionApply::apply(applyInput(applyDays(), applyRan(), $muscles))->changes)->toBe(['chest' => 2, 'back' => 1]);
 });
 
 it('PROG-014 Dr. Mike\'s example: Grow, 3 sets, never sore with a low pump, gives 4 next week', function () {
