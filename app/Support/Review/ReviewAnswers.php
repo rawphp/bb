@@ -8,6 +8,10 @@ use App\Domain\WeekBuilder\CalorieMove;
  * What the user has answered in the weekly review so far (REV-031: nothing is applied until review_complete). The
  * review_show builders render any answers; review_show itself passes {@see defaults()}, and review_answer feeds the
  * ones the user sent.
+ *
+ * {@see defaults()} is the unanswered state, and it selects the recommended option (the Swift review opens on
+ * `layout.recommended`). Answers made with `new` are what the user answered and are taken literally: #87 stores the
+ * option the screen showed, even when it is `recommendation` and Drop fatigue was the recommended one.
  */
 final readonly class ReviewAnswers
 {
@@ -28,9 +32,14 @@ final readonly class ReviewAnswers
         public ?string $refusal,
     ) {}
 
-    /** Nothing answered yet: the recommendation, the suggested amounts, no moves. */
+    /**
+     * Nothing answered yet: the recommendation, the suggested amounts, no moves. It is one shared instance, so callers
+     * tell "unanswered" from an answer that happens to hold the same values with `=== ReviewAnswers::defaults()`.
+     */
     public static function defaults(): self
     {
-        return new self('recommendation', null, null, false, [], null);
+        static $unanswered = null;
+
+        return $unanswered ??= new self('recommendation', null, null, false, [], null);
     }
 }

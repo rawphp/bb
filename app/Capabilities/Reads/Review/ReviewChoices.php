@@ -100,7 +100,7 @@ final class ReviewChoices
             return null;
         }
         $fallback = $layout['recommended'] ?? $layout['ids'][0] ?? null;
-        if ($this->answers == ReviewAnswers::defaults()) {
+        if ($this->answers === ReviewAnswers::defaults()) {
             return $fallback;
         }
 
