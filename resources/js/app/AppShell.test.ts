@@ -352,7 +352,31 @@ describe('AppShell', () => {
 
         expect(top.style.transform).toBe('');
         expect(back).not.toHaveBeenCalled();
+        vi.useRealTimers();
+        await flushPromises();
+        await nav.idle();
         expect(nav.state.stacks.today).toHaveLength(2);
+    });
+
+    it('PWA-022 an edge swipe still goes back below 768 px', async () => {
+        vi.stubGlobal('matchMedia', () => ({ matches: false }));
+        const { wrapper, router, nav } = await mountShell();
+        await router.push('/meals/1');
+        await nextTick();
+        vi.useFakeTimers();
+        const stack = activeStack(wrapper).element;
+        const back = vi.spyOn(router, 'back');
+
+        touch(stack, 'touchstart', 4);
+        expect(touch(stack, 'touchmove', 904).defaultPrevented).toBe(true);
+        touch(stack, 'touchend', 904);
+        vi.advanceTimersByTime(SETTLE_MS);
+        vi.useRealTimers();
+        await flushPromises();
+        await nav.idle();
+
+        expect(back).toHaveBeenCalledOnce();
+        expect(nav.state.stacks.today).toHaveLength(1);
     });
 
     it('PWA-022 a mouse drag from the edge never goes back', async () => {
@@ -372,6 +396,9 @@ describe('AppShell', () => {
 
         expect(top.style.transform).toBe('');
         expect(back).not.toHaveBeenCalled();
+        vi.useRealTimers();
+        await flushPromises();
+        await nav.idle();
         expect(nav.state.stacks.today).toHaveLength(2);
     });
 
@@ -440,7 +467,12 @@ describe('AppShell', () => {
         expect(inside).toMatch(/\.bb-tab-bar\s*{[^}]*grid-column: 1;[^}]*grid-row: 1 \/ -1;[^}]*flex-direction: column;/);
         expect(inside).toMatch(/\.bb-tab-bar\s*{[^}]*padding-left: env\(safe-area-inset-left\);[^}]*border-top: 0;[^}]*border-right: 1px solid/);
         expect(inside).toMatch(/\.bb-stacks\s*{[^}]*grid-column: 2;[^}]*grid-row: 1;/);
-        expect(inside).toMatch(/\.bb-above-tabs\s*{[^}]*grid-column: 2;[^}]*grid-row: 2;/);
+        expect(inside).toMatch(/\.bb-above-tabs\s*{[^}]*grid-column: 2;[^}]*grid-row: 2;[^}]*padding-bottom: env\(safe-area-inset-bottom\);/);
+        // Only the rail takes the left inset (PWA-010); the column to its right is already clear of it.
+        expect(inside).toMatch(/\.bb-screen\s*{[^}]*padding-left: 0;/);
+        expect(inside).toMatch(/\.bb-floating\s*{[^}]*padding-left: 1rem;/);
+        // A short window with large text scrolls the rail rather than clipping tabs (UI-030).
+        expect(inside).toMatch(/\.bb-tab-bar\s*{[^}]*overflow-y: auto;/);
         // Tabs keep their tap target and wrapping labels (UI-030); the sheet host still covers the whole app.
         expect(inside).not.toMatch(/min-height|overflow-wrap|bb-sheet-host/);
         expect(outside).toMatch(/\.bb-sheet-host\s*{[^}]*position: absolute;[^}]*inset: 0;/);
