@@ -562,12 +562,14 @@ describe('WorkoutView', () => {
         await wrapper.get('[data-test="finish"]').trigger('click');
         await flushPromises();
         expect(wrapper.get('[data-test="finish"]').attributes('disabled')).toBeDefined();
+        const holds = vi.mocked(holdWakeLock).mock.calls.length;
 
         tray.value = [{ seq: 1, name: 'workout_finish', input: { workout_id: '01JB8W3Q000000000000000901' }, refusal: { status: 422, body: {} } }];
         await flushPromises();
 
         expect(wrapper.get('[data-test="finish"]').attributes('disabled')).toBeUndefined();
-        expect(holdWakeLock).toHaveBeenCalledTimes(2);
+        expect(vi.mocked(holdWakeLock).mock.calls.length).toBeGreaterThan(holds);
+        expect(holdWakeLock).toHaveBeenLastCalledWith('01JB8W3Q000000000000000901');
     });
 
     it('OFF-011 a refused finish of another workout leaves this one\'s Finish as it is', async () => {
