@@ -172,7 +172,8 @@ function toggleSavedMeal(meal: FoodSearchOutput['saved_meals'][number]): void {
 function pickDetail(pick: Pick): string | null {
     if (pick.kind === 'recipe') return 'Recipe';
     if (pick.kind === 'saved_meal') return 'Saved meal';
-    if (!pick.hasCooked) return pick.brand;
+    // A recipe takes the food, not how it was weighed here.
+    if (!pick.hasCooked || forRecipe.value) return pick.brand;
     return weighingOf(pick.id, true) === 'cooked' ? 'Cooked' : 'Raw';
 }
 
