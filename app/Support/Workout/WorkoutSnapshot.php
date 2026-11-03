@@ -39,7 +39,6 @@ use App\Domain\Progression\Underperformance;
 use App\Domain\Progression\WorkingSet;
 use App\Domain\Progression\WorkoutSetType;
 use App\Domain\Progression\WorkoutStatus;
-use App\Domain\WeekBuilder\AwayWeek\Training;
 use App\Models\DayTarget;
 use App\Models\Exercise;
 use App\Models\ExerciseFeedback;
@@ -47,7 +46,6 @@ use App\Models\ExerciseLoadStep;
 use App\Models\ExerciseNote;
 use App\Models\Mesocycle;
 use App\Models\MuscleFeedback;
-use App\Models\PlanWeek;
 use App\Models\User;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
@@ -445,24 +443,20 @@ final class WorkoutSnapshot
     }
 
     /**
-     * SCH-063: whether the plan week mesocycle week `$week` falls in is marked rough. No row means it is not, and week 1
-     * has no week before it. SCH-060: a paused away week is not a mesocycle week, so the weeks after it fall a plan
-     * week later, as Today places them.
+     * SCH-063: whether the plan week mesocycle week `$week` falls in is marked rough, that week as Today places it
+     * (SCH-060: from where the mesocycle is placed, past paused away weeks, which are not mesocycle weeks). No row means
+     * it is not; week 1 has no week before it, and nothing is marked without a plan or before it starts.
      */
     private function isRoughWeek(int $week): bool
     {
-        if ($week < 1) {
+        $grid = $this->train->grid();
+        $start = $this->train->placedStartWeek($this->mesocycle);
+        if ($week < 1 || $grid === null || $start === null) {
             return false;
         }
-        $calendar = $this->calendar();
-        $start = $calendar->grid->weekIndexCountingBack($calendar->start);
-        $paused = $this->train->planWeeks
-            ->filter(fn (PlanWeek $row) => $row->is_away && $row->away_training === Training::Pause->value)
-            ->map(fn (PlanWeek $row) => $calendar->grid->weekIndexCountingBack(TrainSnapshot::day($row->start_date)))
-            ->values()->all();
-        $planWeek = $calendar->planWeek(PlanRules::planWeek($week - 1, $start, $paused) - $start);
+        $planWeek = PlanRules::planWeek($week - 1, $start, $this->train->pausedWeeks());
 
-        return $this->train->planWeekRow($planWeek->start)?->is_rough === true;
+        return $planWeek >= 0 && $this->train->planWeekRow($grid->start($planWeek))?->is_rough === true;
     }
 
     // MARK: feedback (FB-007, FB-009)
