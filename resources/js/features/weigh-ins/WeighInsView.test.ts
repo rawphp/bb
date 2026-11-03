@@ -7,7 +7,11 @@ import WeighInsView from './WeighInsView.vue';
 
 const push = vi.fn();
 const back = vi.fn();
-vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ push, back }) }));
+const replace = vi.fn();
+vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ push, back, replace }) }));
+// The tab stack the screen sits on: two screens deep unless a test says otherwise.
+const nav = { state: { active: 'today', stacks: { today: ['/today', '/weigh-ins/log'] as string[] } }, back: vi.fn() };
+vi.mock('@/app/navigation', async (original) => ({ ...(await original<typeof import('@/app/navigation')>()), findNavigation: () => nav }));
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
@@ -49,6 +53,9 @@ describe('WeighInsView', () => {
         writeMock.mockReset().mockResolvedValue({});
         push.mockReset();
         back.mockReset();
+        replace.mockReset();
+        nav.back.mockReset();
+        nav.state.stacks.today = ['/today', '/weigh-ins/log'];
     });
     afterEach(() => {
         wrapper?.unmount();
@@ -277,7 +284,7 @@ describe('WeighInsView', () => {
         await save();
 
         expect(Date.parse((writeMock.mock.calls[0]![1] as { weighed_at: string }).weighed_at)).toBe(Date.parse('2026-10-07T07:00:00+00:00'));
-        expect(back).toHaveBeenCalled();
+        expect(nav.back).toHaveBeenCalled();
         expect(view.findAll('[data-test="weigh-in"]')).toHaveLength(5);
     });
 
@@ -290,7 +297,20 @@ describe('WeighInsView', () => {
         await flushPromises();
 
         expect(writeMock).not.toHaveBeenCalled();
-        expect(back).toHaveBeenCalled();
+        expect(nav.back).toHaveBeenCalled();
+    });
+
+    it('WT-002 opened to log one as the first screen, closing it stays on Weigh-ins', async () => {
+        nav.state.stacks.today = ['/weigh-ins/log'];
+        show({ payload: content, log: '' });
+        await flushPromises();
+
+        document.body.querySelector<HTMLButtonElement>('[data-cancel]')!.click();
+        await flushPromises();
+
+        expect(nav.back).not.toHaveBeenCalled();
+        expect(back).not.toHaveBeenCalled();
+        expect(replace).toHaveBeenCalledWith('/weigh-ins');
     });
 
     it('WT-020 lists the step counts with how each was logged', () => {
@@ -306,6 +326,7 @@ describe('WeighInsView', () => {
         await view.get('button[aria-label="Add steps"]').trigger('click');
         expect(dialogTitle()).toBe('Log steps');
         expect(field('date').value).toBe('2026-10-09');
+        expect(field('date').readOnly).toBe(false);
         await type('steps', '9500');
         await save();
 
@@ -320,6 +341,7 @@ describe('WeighInsView', () => {
         await view.findAll('[data-test="steps-row"]')[1]!.trigger('click');
         expect(dialogTitle()).toBe('Edit steps');
         expect(field('date').value).toBe('2026-10-08');
+        expect(field('date').readOnly).toBe(true);
         expect(field('steps').value).toBe('10230');
         await type('steps', '10.5');
         expect(document.body.querySelector<HTMLButtonElement>('[data-save]')!.disabled).toBe(true);

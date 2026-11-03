@@ -171,6 +171,23 @@ describe('WeighInScheduleView', () => {
         expect(dialog()!.textContent).toContain('Deleting this would leave fewer than 2 weigh-in days a week.');
     });
 
+    it('CAP-014 a delete that got no answer is sent again as it was, though the read after it moved the entries', async () => {
+        const after: WeighInsShowOutput = { ...content, schedule: { ...content.schedule, entries: [content.schedule.entries[1]!] } };
+        vi.mocked(readFresh).mockReset().mockResolvedValue(after);
+        readMock.mockReset().mockResolvedValue(after);
+        writeMock.mockReset().mockRejectedValueOnce(new CapabilityError('weigh_in_schedule_set', 502, null)).mockResolvedValueOnce({});
+        const view = show({ payload: { ...content, schedule: { ...content.schedule, entries: [content.schedule.entries[1]!, content.schedule.entries[0]!] } } });
+
+        await view.findAll('[data-test="entry"]')[0]!.trigger('click');
+        await click(button('[data-test="delete-entry"]'));
+        expect(dialog()!.querySelector('h2')!.textContent).toBe('Edit schedule');
+        await click(button('[data-test="delete-entry"]'));
+
+        expect(writeMock).toHaveBeenCalledTimes(2);
+        expect(writeMock.mock.calls[1]![1]).toEqual(writeMock.mock.calls[0]![1]);
+        expect(writeMock.mock.calls[1]![2]).toEqual(writeMock.mock.calls[0]![2]);
+    });
+
     it('CAP-012 a refused schedule keeps the sheet open with the server\'s words', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('weigh_in_schedule_set', 422, { error: { message: 'Weigh in at least 2 days a week.' } }));
         const view = show({ payload: content });
