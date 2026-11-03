@@ -740,7 +740,7 @@ describe('WorkoutView', () => {
         const ROW_SETS = ['01JB8W3Q000000000000000110', '01JB8W3Q000000000000000111', '01JB8W3Q000000000000000112'];
 
         /** The newest waiting set_log, set_skip and feedback answer of each set or muscle, as the outbox holds them. */
-        function waitingSets(logged: string[], skipped: string[] = [], answered: string[] = [], isLogged = true, isSkipped = true): void {
+        function waitingSets(logged: string[], skipped: string[] = [], answered: string[] = [], isLogged = true, isSkipped = true, answeredIn = '01JB8W3Q000000000000000901'): void {
             vi.mocked(pendingInput).mockImplementation(((name: string, match: (input: unknown) => boolean) => {
                 const inputs: unknown[] =
                     name === 'workout_set_log'
@@ -748,7 +748,7 @@ describe('WorkoutView', () => {
                         : name === 'workout_set_skip'
                           ? skipped.map((set_id) => ({ set_id, is_skipped: isSkipped }))
                           : name === 'workout_feedback_answer'
-                            ? answered.map((muscle_group) => ({ workout_id: '01JB8W3Q000000000000000901', muscle_group }))
+                            ? answered.map((muscle_group) => ({ workout_id: answeredIn, muscle_group }))
                             : [];
                 return inputs.filter(match).at(-1);
             }) as never);
@@ -835,6 +835,26 @@ describe('WorkoutView', () => {
             await wrapper.get('[data-test="feedback-banner"]').trigger('click');
 
             expect(dialog(wrapper)).toBe('Back');
+        });
+
+        it('OFF-009 FB-001 an answer waiting for another workout does not count for this one', async () => {
+            waitingSets(BENCH_SETS, [], ['chest'], true, true, '01JB8W3Q000000000000000902');
+            const wrapper = await show();
+
+            expect(dialog(wrapper)).toBe('Chest');
+            await wrapper.get('[data-cancel]').trigger('click');
+            expect(exercise(wrapper, BENCH).get('[data-test="feedback"]').text()).toBe('Chest feedback needed');
+        });
+
+        it('OFF-009 FB-001 with every due answer waiting, the feedback banner reopens the first to edit it', async () => {
+            const read = workout('warning');
+            waitingSets(BENCH_SETS, [], ['chest']);
+            const wrapper = await show({ payload: read });
+            expect(dialog(wrapper)).toBeNull();
+
+            await wrapper.get('[data-test="feedback-banner"]').trigger('click');
+
+            expect(dialog(wrapper)).toBe('Chest');
         });
 
         it('OFF-021 FB-009 the feedback button shows under the exercise whose waiting sets are all done', async () => {
