@@ -9,6 +9,9 @@ export type PantryUnit = NonNullable<FoodSearchInput['unit']>;
 /** What the Pantry is open for (rp-clone's PantryPurpose): a meal, or with no meal browsing; a recipe's ingredients; one drafted item's food. */
 export type PantryPurpose = 'meal' | 'recipeIngredients' | 'recipeMatch';
 
+/** A food picked for a recipe, as Confirm hands it back. */
+export type PickedFood = { food_id: string; name: string };
+
 /** The confirm button for a number of picks, in PantryPurpose's words. */
 export const CONFIRM_TITLES: Record<PantryPurpose, (count: number) => string> = {
     meal: (count) => (count === 0 ? 'Add to meal' : `Add ${count} to meal`),

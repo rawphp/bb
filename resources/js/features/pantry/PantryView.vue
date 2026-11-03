@@ -12,12 +12,9 @@ import { ulid } from '@/app/ulid';
 import { useWrite } from '@/app/useWrite';
 import PantryFilterBar from './PantryFilterBar.vue';
 import PantryRowView, { type Weighing } from './PantryRowView.vue';
-import { CONFIRM_TITLES, TABS, type PantryCollection, type PantryGroup, type PantryPurpose, type PantrySource, type PantryTab, type PantryUnit } from './options';
+import { CONFIRM_TITLES, TABS, type PantryCollection, type PantryGroup, type PantryPurpose, type PantrySource, type PickedFood, type PantryTab, type PantryUnit } from './options';
 
 type Food = FoodSearchOutput['sections'][number]['rows'][number];
-
-/** A food picked for a recipe. */
-export type PickedFood = { food_id: string; name: string };
 type Diet = FoodSearchOutput['diets'][number];
 
 /** What Confirm hands to the meal (FOOD-028). A pick's entry id is made once, so a retry adds nothing twice (CAP-019). */
