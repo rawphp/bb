@@ -381,4 +381,35 @@ describe('useRead', () => {
         expect(readMock).toHaveBeenCalledTimes(2);
         expect(wrapper.text()).toBe('2');
     });
+
+    it('CAP-004 an input given as a function is read as it is at each load, and replays and the cache follow it', async () => {
+        readMock.mockResolvedValue({ n: 1 });
+        const day = ref('2026-11-02');
+        const top = ref(true);
+        let api!: ReturnType<typeof useRead<{ n: number }>>;
+        const Probe = defineComponent(() => {
+            api = useRead('probe_show', () => ({ day: day.value }), 'No.');
+            return () => h('p', String(api.data.value?.n ?? 'loading'));
+        });
+        mount(defineComponent(() => () => h(ScreenFrame, { top: top.value }, () => h(Probe))));
+        await flushPromises();
+        expect(readMock).toHaveBeenLastCalledWith('probe_show', { day: '2026-11-02' }, expect.any(Function), expect.any(Function));
+
+        day.value = '2026-11-09';
+        await api.load();
+        expect(readMock).toHaveBeenLastCalledWith('probe_show', { day: '2026-11-09' }, expect.any(Function), expect.any(Function));
+
+        announceReplayed(['probe_show{"day":"2026-11-02"}']);
+        await flushPromises();
+        expect(readMock).toHaveBeenCalledTimes(2);
+        announceReplayed(['probe_show{"day":"2026-11-09"}']);
+        await flushPromises();
+        expect(readMock).toHaveBeenCalledTimes(3);
+
+        top.value = false;
+        await flushPromises();
+        top.value = true;
+        await flushPromises();
+        expect(cachedMock).toHaveBeenLastCalledWith('probe_show{"day":"2026-11-09"}');
+    });
 });

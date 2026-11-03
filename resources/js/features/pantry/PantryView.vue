@@ -8,11 +8,12 @@ import type { MealFoodAddInput } from '@/contracts/meal_food_add';
 import type { MealSavedMealLoadInput } from '@/contracts/meal_saved_meal_load';
 import ReadState from '@/app/ReadState.vue';
 import { screenRead, type ReadFailure } from '@/app/screenRead';
+import { onScreenReturn } from '@/app/screenTop';
 import { ulid } from '@/app/ulid';
 import { useWrite } from '@/app/useWrite';
 import PantryFilterBar from './PantryFilterBar.vue';
 import PantryRowView, { type Weighing } from './PantryRowView.vue';
-import { TABS, type PantryCollection, type PantryGroup, type PantrySource, type PantryTab, type PantryUnit } from './options';
+import { CONFIRM_TITLES, TABS, type PantryCollection, type PantryGroup, type PantryPurpose, type PantrySource, type PickedFood, type PantryTab, type PantryUnit } from './options';
 
 type Food = FoodSearchOutput['sections'][number]['rows'][number];
 type Diet = FoodSearchOutput['diets'][number];
@@ -28,6 +29,8 @@ type Pick =
 // and its words come from food_search; the script holds what the user has typed and
 // picked. With a meal it adds the basket to that meal and goes back. Without one it is the
 // Nutrition tab's browser (NAV-001): favorites and filters, nothing to add to.
+// For a recipe (RCP-001, RCP-003, rp-clone's PantryPurpose) it picks foods only and hands
+// them back: several for the recipe's ingredients, or one to match a drafted item.
 const props = withDefaults(
     defineProps<{
         payload?: FoodSearchOutput;
@@ -39,9 +42,13 @@ const props = withDefaults(
         group?: PantryGroup | null;
         /** A write that changes these numbers waits in the outbox (OFF-008). */
         pending?: boolean;
+        /** What the picks are for: a meal (or, with no meal, browsing), or a recipe. */
+        purpose?: PantryPurpose;
     }>(),
-    { payload: undefined, mealId: undefined, search: '', group: null, pending: false },
+    { payload: undefined, mealId: undefined, search: '', group: null, pending: false, purpose: 'meal' },
 );
+
+const emit = defineEmits<{ picked: [foods: PickedFood[]]; cancel: [] }>();
 
 const router = useRouter();
 
@@ -55,7 +62,11 @@ const expandedGroups = ref<PantryGroup[]>([]);
 const basket = ref<Pick[]>([]);
 const weighings = ref<Record<string, Weighing>>({});
 
-const forMeal = computed(() => props.mealId !== undefined);
+const forRecipe = computed(() => props.purpose !== 'meal');
+const forMeal = computed(() => !forRecipe.value && props.mealId !== undefined);
+/** Rows pick into the basket, and Confirm hands it on. */
+const picking = computed(() => forMeal.value || forRecipe.value);
+const destination = computed(() => (forRecipe.value ? 'recipe' : 'meal'));
 
 function input() {
     return {
@@ -65,7 +76,7 @@ function input() {
         source: source.value,
         group: groupFilter.value,
         unit: unit.value,
-        meal_id: props.mealId ?? null,
+        meal_id: forMeal.value ? props.mealId! : null,
         expanded_groups: expandedGroups.value,
     } satisfies FoodSearchInput;
 }
@@ -112,6 +123,11 @@ onMounted(() => {
     if (!data.value) void load();
 });
 onUnmounted(() => clearTimeout(typing));
+// Back on top after a screen it opened (a recipe made from its Recipes list, say), it reads
+// again, so what that screen saved shows here.
+onScreenReturn(() => {
+    if (props.payload === undefined) void load();
+});
 
 const favorites = useWrite(load);
 const diets = useWrite(load);
@@ -146,6 +162,8 @@ function remove(key: string): void {
 
 function toggleFood(food: Food): void {
     const key = `food-${food.food_id}`;
+    // A drafted item takes one food: a new pick replaces the old one.
+    if (props.purpose === 'recipeMatch' && !isPicked(key)) basket.value = [];
     toggle({ kind: 'food', key, entryId: ulid(), id: food.food_id, name: food.name, brand: food.detail ?? null, hasCooked: food.cooked != null });
 }
 
@@ -160,7 +178,8 @@ function toggleSavedMeal(meal: FoodSearchOutput['saved_meals'][number]): void {
 function pickDetail(pick: Pick): string | null {
     if (pick.kind === 'recipe') return 'Recipe';
     if (pick.kind === 'saved_meal') return 'Saved meal';
-    if (!pick.hasCooked) return pick.brand;
+    // A recipe takes the food, not how it was weighed here.
+    if (!pick.hasCooked || forRecipe.value) return pick.brand;
     return weighingOf(pick.id, true) === 'cooked' ? 'Cooked' : 'Raw';
 }
 
@@ -182,6 +201,10 @@ onUnmounted(() => (gone = true));
 // Each pick leaves the basket once its write is done, so a retry sends only the rest.
 // The basket cannot change meanwhile: the screen is inert while Add runs.
 async function confirm(): Promise<void> {
+    if (forRecipe.value) {
+        if (basket.value.length > 0) emit('picked', basket.value.map((pick) => ({ food_id: pick.id, name: pick.name })));
+        return;
+    }
     if (!props.mealId || basket.value.length === 0) return;
     const here = router.currentRoute.value.fullPath;
     const shown = () => !gone && router.currentRoute.value.fullPath === here;
@@ -202,7 +225,12 @@ async function confirm(): Promise<void> {
     if (shown()) router.back();
 }
 
-const confirmTitle = computed(() => (basket.value.length === 0 ? 'Add to meal' : `Add ${basket.value.length} to meal`));
+function cancel(): void {
+    if (forRecipe.value) emit('cancel');
+    else router.back();
+}
+
+const confirmTitle = computed(() => CONFIRM_TITLES[props.purpose](basket.value.length));
 const error = computed(() => favorites.error.value ?? diets.error.value ?? searchError.value);
 </script>
 
@@ -211,8 +239,8 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
         <!-- FOOD-028: while Add runs nothing here can change what it sends, or leave the screen. -->
         <div data-test="pantry-content" class="flex flex-col gap-3" :inert="adding.busy.value || undefined">
         <header class="grid grid-cols-[1fr_auto_1fr] items-center">
-            <button type="button" data-test="cancel" class="min-h-tap justify-self-start rounded-full bg-surface px-4 text-primary-text" @click="router.back()">
-                {{ forMeal ? 'Cancel' : 'Done' }}
+            <button type="button" data-test="cancel" class="min-h-tap justify-self-start rounded-full bg-surface px-4 text-primary-text" @click="cancel">
+                {{ picking ? 'Cancel' : 'Done' }}
             </button>
             <h1 class="text-base font-semibold">Pantry</h1>
         </header>
@@ -255,6 +283,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
             v-model:group="groupFilter"
             v-model:unit="unit"
             :diets="data?.diets ?? []"
+            :shows-collections="!forRecipe"
             :diet-saving="diets.busy.value"
             :diet-error="diets.error.value"
             @diet="toggleDiet"
@@ -265,7 +294,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
 
         <template v-if="data">
             <section v-if="basket.length > 0" data-test="basket" aria-labelledby="pantry-basket">
-                <h2 id="pantry-basket" class="pb-1 text-lg font-semibold">Adding to meal</h2>
+                <h2 id="pantry-basket" class="pb-1 text-lg font-semibold">Adding to {{ destination }}</h2>
                 <ul class="divide-y divide-secondary-text/15">
                     <li v-for="pick in basket" :key="pick.key" class="flex min-h-tap items-center gap-2 py-1.5">
                         <span class="min-w-0 flex-1">
@@ -287,7 +316,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                 </ul>
             </section>
 
-            <section v-if="data.already_in_meal.length > 0" data-test="already-in-meal" aria-labelledby="pantry-in-meal">
+            <section v-if="!forRecipe && data.already_in_meal.length > 0" data-test="already-in-meal" aria-labelledby="pantry-in-meal">
                 <h2 id="pantry-in-meal" class="pb-1 text-lg font-semibold">Already in meal</h2>
                 <ul class="divide-y divide-secondary-text/15">
                     <li v-for="food in data.already_in_meal" :key="food.food_id" class="flex min-h-tap items-center gap-3 text-secondary-text">
@@ -364,7 +393,9 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                             :row="food"
                             :weighing="weighingOf(food.food_id, food.cooked != null)"
                             :picked="isPicked(`food-${food.food_id}`)"
-                            :pickable="forMeal"
+                            :pickable="picking"
+                            :destination="destination"
+                            :weighs="!forRecipe"
                             :pending="pending"
                             :favorite-disabled="favorites.busy.value"
                             @pick="toggleFood(food)"
@@ -388,7 +419,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
             <p v-if="data.empty_text" data-test="empty" class="text-secondary-text">{{ data.empty_text }}</p>
             <!-- FOOD-062: after the empty note, as rp-clone puts it. -->
             <RouterLink
-                v-if="collection === null && data.create_custom_food"
+                v-if="!forRecipe && collection === null && data.create_custom_food"
                 :to="{ path: '/nutrition/custom-foods/new', query: { name: data.create_custom_food.name } }"
                 class="flex min-h-tap items-center self-start text-sm font-semibold text-accent"
             >
@@ -399,7 +430,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
 
         </div>
 
-        <div v-if="forMeal" class="sticky bottom-0 -mx-4 mt-auto bg-background/90 px-4 py-2 backdrop-blur">
+        <div v-if="picking" class="sticky bottom-0 -mx-4 mt-auto bg-background/90 px-4 py-2 backdrop-blur">
             <p v-if="adding.error.value" role="alert" data-test="confirm-error" class="pb-2 text-sm text-tone-warning">{{ adding.error.value }}</p>
             <button
                 type="button"

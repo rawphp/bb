@@ -3,17 +3,24 @@
 namespace App\Capabilities\Exercises\Data;
 
 use App\Capabilities\Support\DomainValues;
+use App\Capabilities\Support\ExplicitNulls;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
 /**
- * Create a custom exercise, or edit one the user made (EX-004, EX-005). A new
- * `exercise_id` is a client-made ULID (CAP-019); an existing one edits it.
+ * Create a custom exercise, or edit one the user made (EX-004, EX-005).
+ *
+ * This is the one create that takes no client-made ULID (the CAP-019 exception):
+ * exercise ids are integers across the training tables, so a create sends no
+ * `exercise_id` (or null) and the server assigns it. An edit sends the integer
+ * id of one of the user's own custom exercises, written as a string of digits,
+ * the way exercises_show returns it.
  */
 final class CustomExerciseSaveInput extends CapabilityData
 {
+    use ExplicitNulls;
+
     public function __construct(
-        public readonly string $exercise_id,
         #[Field(minLength: 1, maxLength: 255)]
         public readonly string $name,
         #[Field(enum: DomainValues::MUSCLE_GROUPS)]
@@ -22,10 +29,18 @@ final class CustomExerciseSaveInput extends CapabilityData
         public readonly string $equipment,
         #[Field(enum: DomainValues::LOAD_TYPES)]
         public readonly string $load_type,
+        public readonly ?string $exercise_id = null,
     ) {}
 
     public static function rules(): array
     {
-        return ['exercise_id' => ['ulid']];
+        // The id is typed as a string, so the package's portable `integer` rule would never run (it counts on the
+        // schema); not_regex does. Digits and nothing else: an integer id, as a string.
+        return [
+            'exercise_id' => ['nullable', 'not_regex:/\\D/'],
+            // The agent, MCP and job surfaces have no TrimStrings, so "   " passes minLength and the action would trim it
+            // to "". `filled` refuses a name that is blank after trimming; it is not a portable rule, so the schema is unchanged.
+            'name' => ['filled'],
+        ];
     }
 }

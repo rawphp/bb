@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cached, clearReads, MAX_AGE_MS, store } from './cache';
-import { CapabilityError, keepSynced, postHost, read, readFresh, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, writeNow } from './call';
+import { cached, clearReads, drop, MAX_AGE_MS, store } from './cache';
+import { AI_TIMEOUT_MS, CapabilityError, keepSynced, postHost, read, readFresh, readNow, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, writeNow } from './call';
 import { clearWalk, walkDays } from './clock';
 
 function json(body: unknown, status = 200): Response {
@@ -152,6 +152,27 @@ describe('call', () => {
         vi.useRealTimers();
     });
 
+    it('RCP-010 readNow, for a read that runs the server\'s AI, gives up only after its deadline', async () => {
+        vi.useFakeTimers();
+        document.cookie = 'XSRF-TOKEN=t; path=/';
+        fetchMock.mockImplementation(
+            (_url, init) =>
+                new Promise<Response>((_resolve, reject) => {
+                    init?.signal?.addEventListener('abort', () => reject(init.signal!.reason));
+                }),
+        );
+
+        let settled = false;
+        const error = readNow('recipe_generate', {}, { timeoutMs: AI_TIMEOUT_MS }).catch((e: unknown) => e).finally(() => (settled = true));
+        await vi.advanceTimersByTimeAsync(AI_TIMEOUT_MS - 1);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+
+        expect(AI_TIMEOUT_MS).toBeGreaterThan(60_000);
+        expect(await error).toMatchObject({ capability: 'recipe_generate', status: 0, body: { reason: 'timeout' } });
+        vi.useRealTimers();
+    });
+
     it('CAP-004 throws a CapabilityError with status 0 when the network fails', async () => {
         document.cookie = 'XSRF-TOKEN=t; path=/';
         fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
@@ -208,6 +229,19 @@ describe('call', () => {
 
             expect(await readFresh('train_show')).toEqual({ draft: 'd1' });
             expect((await cached('train_show{}'))?.data).toEqual({ draft: 'd1' });
+        });
+
+        it('RCP-010 readNow asks the server once and keeps nothing, even when its read is dropped meanwhile', async () => {
+            document.cookie = 'XSRF-TOKEN=t; path=/';
+            fetchMock.mockImplementation(async () => {
+                // A write lands while the AI call runs: fetchRead would ask again, and pay for it twice.
+                await drop(['recipe_generate{"protein":40}']);
+                return json({ ok: true, data: { name: 'Bowl' } });
+            });
+
+            expect(await readNow('recipe_generate', { protein: 40 })).toEqual({ name: 'Bowl' });
+            expect(fetchMock).toHaveBeenCalledOnce();
+            expect(await cached('recipe_generate{"protein":40}')).toBeUndefined();
         });
 
         it('MESO-007 readFresh fails offline and leaves the cached copy', async () => {
