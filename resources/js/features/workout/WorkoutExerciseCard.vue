@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { pendingInput } from '@/app/outbox';
 import { ulid } from '@/app/ulid';
 import type { WorkoutExerciseRemoveInput } from '@/contracts/workout_exercise_remove';
+import type { WorkoutFeedbackAnswerInput } from '@/contracts/workout_feedback_answer';
 import type { WorkoutExerciseReorderInput } from '@/contracts/workout_exercise_reorder';
 import type { WorkoutSetAddInput } from '@/contracts/workout_set_add';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
@@ -37,6 +39,14 @@ const feedback = computed(() =>
         (entry) => entry.due_after_exercise_id === props.exercise.id && (isFeedbackDue(props.workout, entry) || (entry.is_answered && entry.can_edit)),
     ),
 );
+
+// OFF-009: an answer waiting to sync shows as answered.
+const answered = computed(() => {
+    const entry = feedback.value;
+    if (!entry) return false;
+    const waiting = pendingInput<WorkoutFeedbackAnswerInput>('workout_feedback_answer', (input) => input.workout_id === props.workout.workout_id && input.muscle_group === entry.muscle_group);
+    return entry.is_answered || waiting !== undefined;
+});
 
 // WO-006: the first set's weight as typed, shown on later sets that have none.
 const firstTyped = ref<string | null>(null);
@@ -176,11 +186,11 @@ const iconButton = 'flex min-h-tap min-w-tap shrink-0 items-center justify-cente
             v-if="feedback"
             type="button"
             class="flex min-h-tap w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold"
-            :class="feedback.is_answered ? 'border-accent text-accent' : 'border-tone-warning text-tone-warning'"
+            :class="answered ? 'border-accent text-accent' : 'border-tone-warning text-tone-warning'"
             data-test="feedback"
             @click="emit('open', { name: 'feedback', muscle: feedback.muscle_group })"
         >
-            {{ feedback.is_answered ? `${feedback.title} feedback` : `${feedback.title} feedback needed` }}
+            {{ answered ? `${feedback.title} feedback` : `${feedback.title} feedback needed` }}
         </button>
     </section>
 </template>
