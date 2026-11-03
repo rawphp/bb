@@ -23,8 +23,8 @@ use Carbon\CarbonImmutable;
  *
  * A post is one run of the Shortcut: its weigh-in and steps writes, seconds apart. The run is the newest successful
  * bridge write and those made in the RUN_MINUTES before it, so an older post of the other kind is never shown as
- * part of it. The status judges only the current token: a run from before it was made is shown as the last post,
- * but the status waits for the token's own first post.
+ * part of it. Audit rows do not name the token that wrote them, so the status goes by time: a run from before the
+ * shown token was made is still the last post, but the status waits for a post made after it.
  */
 final class ShowHealthBridge
 {
@@ -218,7 +218,9 @@ final class ShowHealthBridge
             // with 0 is one: the weight's time and a random number, both actions Shortcuts has.
             'Add "Format Date" for the weight\'s date with the custom format yyyyMMddHHmmss, and "Random Number" from 10000000000 to 99999999999. Put "0", the date and the number together in one "Text": that is the weigh-in\'s id.',
             "Add \"Get Contents of URL\" to POST to {$endpoint}/weigh_in_log, with the header \"Authorization\" set to \"Bearer \" and your token, and a JSON body: \"id\", the text above; \"weighed_at\", the weight's date and time in ISO 8601; and \"weight\", with \"value\" and \"unit\" (\"kg\" or \"lb\").",
-            "Add another \"Get Contents of URL\" to POST to {$endpoint}/steps_log, with the same header, and a JSON body: \"date\", yesterday as YYYY-MM-DD; and \"steps\", the sum of yesterday's steps.",
+            // Format Date's patterns are Unicode's: yyyy-MM-dd is a date, YYYY-MM-DD is week-year and day of year.
+            'Add "Adjust Date" to subtract 1 day from the current date, then "Format Date" with the custom format yyyy-MM-dd: that is yesterday\'s date.',
+            "Add another \"Get Contents of URL\" to POST to {$endpoint}/steps_log, with the same header, and a JSON body: \"date\", yesterday's date from the step above; and \"steps\", the sum of yesterday's steps.",
             'Run it once, then check this page shows the post.',
         ]);
     }
