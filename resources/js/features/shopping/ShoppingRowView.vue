@@ -41,12 +41,13 @@ function remove(): void {
 }
 
 // A tap on the line while Delete shows only hides it, as in SwiftUI: the click that
-// follows that tap does not tick the line.
+// follows the touch that closed the line does not tick it.
 let closing = false;
 
-function down(event: PointerEvent): void {
-    closing = open.value;
-    pointerDown(event);
+function up(event: PointerEvent): void {
+    const wasOpen = open.value;
+    pointerUp(event);
+    closing = wasOpen && !open.value;
 }
 
 function tick(): void {
@@ -78,9 +79,9 @@ function tick(): void {
             class="relative touch-pan-y bg-surface"
             :class="drag === null ? 'transition-transform duration-200 motion-reduce:transition-none' : ''"
             :style="{ transform: `translateX(${shift}px)` }"
-            @pointerdown="down"
+            @pointerdown="pointerDown"
             @pointermove="pointerMove"
-            @pointerup="pointerUp"
+            @pointerup="up"
             @pointercancel="pointerCancel"
         >
             <button

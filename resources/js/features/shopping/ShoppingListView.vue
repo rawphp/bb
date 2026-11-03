@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { parseReadKey } from '@/app/cache';
+import { computed, onUnmounted, ref, watch } from 'vue';
 import { write } from '@/app/call';
 import { writeFailureMessage } from '@/app/errors';
-import { entries, onReplayed, pendingInput } from '@/app/outbox';
-import { screenRead, type ReadFailure } from '@/app/screenRead';
-import { onScreenReturn } from '@/app/screenTop';
+import { entries, pendingInput } from '@/app/outbox';
 import { ulid } from '@/app/ulid';
+import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
 import type { ShoppingItemAddInput } from '@/contracts/shopping_item_add';
 import type { ShoppingItemCheckInput } from '@/contracts/shopping_item_check';
@@ -25,70 +23,30 @@ type Row = ShoppingShowOutput['sections'][number]['rows'][number];
 
 const props = withDefaults(defineProps<{ payload?: ShoppingShowOutput; pending?: boolean }>(), { pending: false });
 
-// The dates picked: empty until the user picks some, so the server's default range is read.
-// Each read gets its own input, so one still on its way keeps the dates it asked for
-// (screenRead ignores its late answer).
+// The dates asked for: none until the user picks some, so the server's default range is read.
 const asked = ref<ShoppingShowInput>({});
-// Ticks the server took, by line, held until the next answer (tickOf).
-const sentTicks = ref<Record<string, { seq: number; ticked: boolean }>>({});
-const data = ref<ShoppingShowOutput | undefined>(props.payload);
-const failure = ref<ReadFailure | null>(null);
-const read = screenRead<ShoppingShowOutput>(
-    'shopping_show',
-    'Your shopping list could not be loaded.',
-    (list) => {
-        failure.value = null;
-        data.value = list;
-        // A new answer has the server's ticks, so the ones held since the last go.
-        sentTicks.value = {};
-    },
-    (why, hadData) => {
-        // The list for other dates did not load: the list on screen stays, with its dates,
-        // so it can still be ticked and other dates picked. A copy that must go goes (OFF-003).
-        if (data.value && !hadData && !why.signedOut) {
-            error.value = why.offline ? 'The list for those dates needs a connection.' : why.error;
-            asked.value = { from: data.value.from, to: data.value.to };
-            showDates(data.value);
-            return;
-        }
-        data.value = undefined;
-        failure.value = why;
-    },
-);
-const load = (options?: { fresh?: boolean }): Promise<void> => read({ ...asked.value }, options);
+const { data, failure, load } = useRead<ShoppingShowOutput>('shopping_show', () => ({ ...asked.value }), 'Your shopping list could not be loaded.', props.payload);
 const { send, busy, error } = useWrite(load);
 
-// As useRead: read on open, again on reconnect with nothing shown (OFF-004), when a replayed
-// outbox entry's answer invalidates a shopping list (CAP-010), and when the screen comes back
-// on top. A /dev/screens fixture reads nothing.
-const fixture = props.payload !== undefined;
-const reload = (): void => void load().catch(() => undefined);
-const reconnected = (): void => {
-    if (failure.value?.offline) reload();
-};
-let stopListening = (): void => {};
-onMounted(() => {
-    window.addEventListener('online', reconnected);
-    if (!fixture) stopListening = onReplayed((keys) => keys.some((key) => parseReadKey(key)?.name === 'shopping_show') && reload());
-    if (!data.value) reload();
-});
-onScreenReturn(() => fixture || reload());
-onUnmounted(() => {
-    window.removeEventListener('online', reconnected);
-    stopListening();
-});
-
+// The pickers' dates. They stay when the list for them does not load, to pick again.
 const from = ref('');
 const to = ref('');
+// The server's own dates, from its answer to the read with none.
+let defaults: { from: string; to: string } | null = null;
 
-function showDates(list: ShoppingShowOutput): void {
-    from.value = list.from;
-    to.value = list.to;
-}
+watch(
+    data,
+    (list) => {
+        if (!list) return;
+        from.value = list.from;
+        to.value = list.to;
+        if (asked.value.from === undefined) defaults = { from: list.from, to: list.to };
+    },
+    { immediate: true },
+);
 
-watch(data, (list) => list && showDates(list), { immediate: true });
-
-// As rp-clone's pickers: a first day after the last moves the last day with it.
+// As rp-clone's pickers: a first day after the last moves the last day with it. The
+// server's own dates are asked for with no dates, the read whose copy is kept warm.
 function pickDates(which: 'from' | 'to', value: string): void {
     if (value === '') return;
     if (which === 'from') {
@@ -97,9 +55,9 @@ function pickDates(which: 'from' | 'to', value: string): void {
     } else {
         to.value = value < from.value ? from.value : value;
     }
-    asked.value = { from: from.value, to: to.value };
+    asked.value = defaults?.from === from.value && defaults.to === to.value ? {} : { from: from.value, to: to.value };
     error.value = null;
-    reload();
+    void load().catch(() => undefined);
 }
 
 // The dates of the list on screen, so a write names the list it changes.
@@ -107,20 +65,45 @@ function shown(): { from: string; to: string } {
     return { from: data.value!.from, to: data.value!.to };
 }
 
-// OFF-009: the user's own tick for this line on this list while it waits to sync.
-function waitingTick(row: Row): ShoppingItemCheckInput | undefined {
-    const { from: first, to: last } = shown();
-    return pendingInput<ShoppingItemCheckInput>('shopping_item_check', (input) => input.key === row.key && input.from === first && input.to === last);
+function lineOf(input: { from: string; to: string; key: string }): string {
+    return `${input.from} ${input.to} ${input.key}`;
 }
 
-// The tick shown: the user's while it waits; once the server took it (its entry left the
-// outbox), still the user's until the list is read again; else the server's.
+// OFF-009: the user's own tick for this line on this list while it waits to sync.
+function waitingTick(row: Row): ShoppingItemCheckInput | undefined {
+    const line = lineOf({ ...shown(), key: row.key });
+    return pendingInput<ShoppingItemCheckInput>('shopping_item_check', (input) => lineOf(input) === line);
+}
+
+// The user's ticks, by line, from each outbox entry seen while it waits. One the server took
+// leaves the outbox and its tick holds until an answer read after that, as the list on
+// screen may predate it; a refused one goes, and the line shows the server's tick.
+const held = ref<Record<string, { seq: number; ticked: boolean }>>({});
+watch(
+    entries,
+    (now) => {
+        const next = { ...held.value };
+        for (const entry of now) {
+            if (entry.name !== 'shopping_item_check') continue;
+            const input = entry.input as unknown as ShoppingItemCheckInput;
+            const line = lineOf(input);
+            if (entry.refusal !== undefined) {
+                if (next[line]?.seq === entry.seq) delete next[line];
+            } else if ((next[line]?.seq ?? -1) <= entry.seq) {
+                next[line] = { seq: entry.seq, ticked: input.ticked };
+            }
+        }
+        held.value = next;
+    },
+    { immediate: true },
+);
+watch(data, () => {
+    const waiting = new Set(entries.value.map((entry) => entry.seq));
+    held.value = Object.fromEntries(Object.entries(held.value).filter(([, tick]) => waiting.has(tick.seq)));
+});
+
 function tickOf(row: Row): boolean {
-    const waiting = waitingTick(row);
-    if (waiting) return waiting.ticked;
-    const sent = sentTicks.value[row.key];
-    if (sent && !entries.value.some((entry) => entry.seq === sent.seq)) return sent.ticked;
-    return row.is_ticked;
+    return held.value[lineOf({ ...shown(), key: row.key })]?.ticked ?? row.is_ticked;
 }
 
 function tick(row: Row): void {
@@ -128,22 +111,19 @@ function tick(row: Row): void {
     const input: ShoppingItemCheckInput = { ...shown(), key: row.key, ticked };
     const label = ticked ? `Ticked ${row.name} off the shopping list` : `Took the tick off ${row.name} on the shopping list`;
     error.value = null;
-    write('shopping_item_check', { ...input }, { label }).then(
-        (entry) => {
-            sentTicks.value = { ...sentTicks.value, [row.key]: { seq: entry.seq, ticked } };
-        },
-        (failed: unknown) => {
-            error.value = writeFailureMessage(failed, 'The item could not be ticked. Try again.');
-        },
-    );
+    write('shopping_item_check', { ...input }, { label }).catch((failed: unknown) => {
+        error.value = writeFailureMessage(failed, 'The item could not be ticked. Try again.');
+    });
 }
 
-// The user's own items (SHOP-005). The id is made here (CAP-019) and kept while the add is
-// unsure, so a retry after no answer adds the same item. Once the server answered, or its
-// own list read after no answer shows the item, the next add is a new item.
+// The user's own items (SHOP-005). The id is made here (CAP-019). A new text is a new item,
+// so the id is renewed whenever the text changes, and a retry of the same text after no
+// answer adds the same item. Once the server answered, or its list read after no answer
+// shows the item, the field clears for the next one.
 const newItem = ref('');
 const itemText = computed(() => newItem.value.trim());
 let itemId = ulid();
+watch(newItem, () => (itemId = ulid()));
 
 async function add(): Promise<void> {
     if (itemText.value === '') return;
@@ -151,10 +131,7 @@ async function add(): Promise<void> {
     const outcome = await send('shopping_item_add', { ...input }, 'The item could not be added. Try again.');
     const listed = data.value?.sections.some((section) => section.rows.some((row) => row.key === `manual:${input.id}`)) ?? false;
     if (outcome === 'refused') itemId = ulid();
-    if (outcome === 'done' || (outcome === 'no-answer' && listed)) {
-        newItem.value = '';
-        itemId = ulid();
-    }
+    if (outcome === 'done' || (outcome === 'no-answer' && listed)) newItem.value = '';
 }
 
 function remove(row: Row): void {
@@ -203,7 +180,7 @@ async function share(): Promise<void> {
         <h1 class="text-3xl font-bold">Shopping list</h1>
         <p v-if="copied" role="status" class="px-1 text-sm text-secondary-text">Copied the list.</p>
 
-        <section v-if="data" class="space-y-1.5" aria-labelledby="shopping-dates">
+        <section v-if="from" class="space-y-1.5" aria-labelledby="shopping-dates">
             <h2 id="shopping-dates" class="px-4 text-[0.9375rem] font-medium text-secondary-text">Dates</h2>
             <div class="divide-y divide-secondary-text/15 rounded-2xl bg-surface px-4">
                 <label class="flex min-h-tap items-center justify-between gap-3 py-2.5">
@@ -234,7 +211,7 @@ async function share(): Promise<void> {
             :data="data"
             :failure="failure"
             :error="error"
-            @retry="reload"
+            @retry="load"
         />
 
         <template v-if="data">
