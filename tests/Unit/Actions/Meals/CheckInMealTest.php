@@ -103,9 +103,9 @@ it('OFF-030 with no time, takes the time the user acted, not the server clock', 
     expect(checkInMeal($user, SheetSeed::DINNER)->time)->toBe('10:05');
 });
 
-it('OFF-030 writes the time the user acted in the app\'s timezone', function () {
-    config(['app.timezone' => 'Australia/Brisbane']);
+it('OFF-030 SET-012 writes the time the user acted on the user\'s clock', function () {
     $user = checkInMealUser();
+    $user->forceFill(['time_zone' => 'Australia/Brisbane'])->save();
     request()->attributes->set(OccurredAt::ATTRIBUTE, CarbonImmutable::parse('2026-09-23T10:05:00Z'));
 
     expect(checkInMeal($user, SheetSeed::DINNER)->time)->toBe('20:05');

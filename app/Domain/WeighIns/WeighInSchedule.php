@@ -89,13 +89,30 @@ final class WeighInSchedule
      */
     public static function missedDays(array $weekdays, array $weighedAt, DateTimeImmutable $today): array
     {
-        if ($weekdays === [] || $weighedAt === []) {
+        if ($weighedAt === []) {
+            return [];
+        }
+
+        return self::missedDaysBetween($weekdays, $weighedAt, min($weighedAt), $today);
+    }
+
+    /**
+     * WT-004 for one stretch of days: the scheduled days in [$from's day, $until's day) with no reading in $weighedAt,
+     * newest first, each at the start of its day. missedDays() is this from the first weigh-in's day up to today.
+     *
+     * @param  list<int>  $weekdays  the scheduled ISO weekdays
+     * @param  list<DateTimeImmutable>  $weighedAt  every weigh-in's time on those days
+     * @return list<DateTimeImmutable>
+     */
+    public static function missedDaysBetween(array $weekdays, array $weighedAt, DateTimeImmutable $from, DateTimeImmutable $until): array
+    {
+        if ($weekdays === []) {
             return [];
         }
 
         $weighed = array_flip(array_map(fn (DateTimeImmutable $at) => $at->format('Y-m-d'), $weighedAt));
-        $day = min($weighedAt)->setTime(0, 0);
-        $end = $today->setTime(0, 0);
+        $day = $from->setTime(0, 0);
+        $end = $until->setTime(0, 0);
         $missed = [];
         while ($day < $end) {
             if (in_array((int) $day->format('N'), $weekdays, true) && ! isset($weighed[$day->format('Y-m-d')])) {

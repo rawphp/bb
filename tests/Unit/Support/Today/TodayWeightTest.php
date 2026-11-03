@@ -81,3 +81,19 @@ it('WT-011 one user\'s weight is never another\'s, whatever their weigh-ins hold
 
     expect(weightRead($user)[0])->not->toBe(weightRead($other)[0]);
 });
+
+it('WT-011 trendKg is the cached trend kg() uses, one summary row once kept, and null with no weigh-ins', function () {
+    $user = weighedUser();
+    $kg = TodayWeight::kg($user, $user->profile);
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $trendKg = TodayWeight::trendKg($user);
+    DB::disableQueryLog();
+
+    $none = User::factory()->create();
+    Profile::factory()->for($none)->create(['weight_kg' => 64.0]);
+    expect($trendKg)->toBe($kg)
+        ->and(DB::getQueryLog())->toHaveCount(1)
+        ->and(TodayWeight::trendKg($none))->toBeNull();
+});

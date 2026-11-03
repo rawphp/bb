@@ -304,6 +304,13 @@
                 "default_date",
                 "rows"
             ]
+        },
+        "next_before": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The date to pass as before for older weigh-ins and steps; null when there are none."
         }
     },
     "required": [

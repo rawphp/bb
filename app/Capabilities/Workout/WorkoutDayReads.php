@@ -3,10 +3,12 @@
 namespace App\Capabilities\Workout;
 
 use App\Models\Mesocycle;
+use App\Models\Plan;
+use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Mesocycles\TrainSnapshot;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use Illuminate\Support\Collection;
 
 /**
@@ -24,32 +26,29 @@ final class WorkoutDayReads
      */
     public static function keys(User $user, WorkoutSession $session, ?int $fromWeek, bool $planWeek = false): array
     {
-        $keys = WorkoutReads::keys($user, $session, $planWeek);
-        if ($fromWeek !== null) {
-            $mesocycle = Mesocycle::query()->where('user_id', $user->id)->findOrFail($session->mesocycle_id);
-            $rows = WorkoutSession::query()->where('user_id', $user->id)->where('mesocycle_id', $mesocycle->id)->get();
-            // The rotation and the weeks as the plan runs them; slot names are not needed.
-            $domain = (new TrainSnapshot(
-                today: TrainSnapshot::day(CarbonImmutable::now()),
-                plan: null,
-                profile: null,
-                mesocycles: new Collection([$mesocycle]),
-                phases: new Collection,
-                sessions: new Collection,
-                sets: new Collection,
-                feedback: new Collection,
-                planWeeks: new Collection,
-                dayTargets: new Collection,
-                exercises: new Collection,
-            ))->domain($mesocycle);
-            $dayId = $domain->sessionsInWeek($session->week - 1)[$session->day - 1]->id ?? null;
-            for ($week = $fromWeek; $week <= (int) $mesocycle->weeks; $week++) {
-                foreach ($domain->sessionsInWeek($week - 1) as $index => $day) {
-                    if ($day->id === $dayId) {
-                        $row = $rows->first(fn (WorkoutSession $row) => $row->week === $week && $row->day === $index + 1)
-                            ?? new WorkoutSession(['mesocycle_id' => $mesocycle->id, 'week' => $week, 'day' => $index + 1]);
-                        $keys = [...$keys, ...WorkoutReads::keys($user, $row, $planWeek)];
-                    }
+        if ($fromWeek === null) {
+            return WorkoutReads::keys($user, $session, $planWeek);
+        }
+
+        $mesocycle = Mesocycle::query()->where('user_id', $user->id)->findOrFail($session->mesocycle_id);
+        // One calendar for every session's keys; domain() reads only the mesocycle, so slot names are not needed.
+        $calendar = TrainSnapshot::calendarOnly(
+            UserDay::today($user),
+            new Collection([$mesocycle]),
+            Plan::query()->where('user_id', $user->id)->first(),
+            Profile::query()->where('user_id', $user->id)->first(),
+            UserDay::zone($user),
+        );
+        $keys = WorkoutReads::keysIn($calendar, $mesocycle, $session, $planWeek);
+        $rows = WorkoutSession::query()->where('user_id', $user->id)->where('mesocycle_id', $mesocycle->id)->get();
+        $domain = $calendar->domain($mesocycle);
+        $dayId = $domain->sessionsInWeek($session->week - 1)[$session->day - 1]->id ?? null;
+        for ($week = $fromWeek; $week <= (int) $mesocycle->weeks; $week++) {
+            foreach ($domain->sessionsInWeek($week - 1) as $index => $day) {
+                if ($day->id === $dayId) {
+                    $row = $rows->first(fn (WorkoutSession $row) => $row->week === $week && $row->day === $index + 1)
+                        ?? new WorkoutSession(['mesocycle_id' => $mesocycle->id, 'week' => $week, 'day' => $index + 1]);
+                    $keys = [...$keys, ...WorkoutReads::keysIn($calendar, $mesocycle, $row, $planWeek)];
                 }
             }
         }

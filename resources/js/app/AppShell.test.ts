@@ -1,4 +1,4 @@
-import { mount, type VueWrapper } from '@vue/test-utils';
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -12,6 +12,11 @@ import { KEYPAD } from './keypad';
 import { attachNavigation, type Navigation } from './navigation';
 import { onScreenReturn } from './screenTop';
 import { TABS } from './tabs';
+import { syncTimeZone } from './timeZone';
+
+// SET-012: the shell syncs the device's time zone on mount (timeZone.test.ts has the rules).
+vi.mock('./timeZone', () => ({ syncTimeZone: vi.fn(() => Promise.resolve()) }));
+const syncTimeZoneMock = vi.mocked(syncTimeZone);
 
 const css = readFileSync(join(import.meta.dirname, 'shell.css'), 'utf8');
 const shellHtml = readFileSync(join(import.meta.dirname, '../../views/app.blade.php'), 'utf8');
@@ -353,5 +358,22 @@ describe('AppShell', () => {
 
     it('PLT-002 centres the phone column up to 480 px', () => {
         expect(css).toMatch(/#app\s*{[^}]*max-width: 480px;[^}]*margin-inline: auto;/);
+    });
+});
+
+describe('AppShell time zone', () => {
+    afterEach(() => {
+        wrapper?.unmount();
+        wrapper = undefined;
+        syncTimeZoneMock.mockClear();
+    });
+
+    it('SET-012 syncs the device time zone once on mount', async () => {
+        const { router, nav } = await mountShell();
+        await router.push('/train');
+        await nav.idle();
+        await flushPromises();
+
+        expect(syncTimeZoneMock).toHaveBeenCalledTimes(1);
     });
 });

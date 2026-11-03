@@ -8,7 +8,7 @@ use App\Domain\Weight\TrendWeight;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\WeighIn as WeighInRow;
-use DateTimeZone;
+use App\Support\UserDay;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -24,27 +24,33 @@ final class TodayWeight
 
     public static function kg(User $user, ?Profile $profile): ?float
     {
+        return CurrentWeight::kg(self::trendKg($user), $profile?->weight_kg);
+    }
+
+    /** WT-010: the trend over every weigh-in, kept under today's summary row. Null with no weigh-ins. */
+    public static function trendKg(User $user): ?float
+    {
         $summary = WeighInRow::query()->where('user_id', $user->id)
             ->toBase()
             ->selectRaw('count(*) as n, max(updated_at) as changed, sum(weight_kg) as total, sum(unix_timestamp(weighed_at)) as moments')
             ->first();
         if ($summary === null || (int) $summary->n === 0) {
-            return CurrentWeight::kg(null, $profile?->weight_kg);
+            return null;
         }
-        $key = 'today-weight:'.$user->id.':'.sha1(implode('|', [$summary->n, $summary->changed, $summary->total, $summary->moments]));
+        $key = 'today-weight:'.$user->id.':'.sha1(implode('|', [$summary->n, $summary->changed, $summary->total, $summary->moments, $user->time_zone]));
 
         /** @var float|null $trendKg */
-        $trendKg = Cache::remember($key, self::KEEP_SECONDS, fn (): ?float => self::trendKg($user));
+        $trendKg = Cache::remember($key, self::KEEP_SECONDS, fn (): ?float => self::historyTrendKg($user));
 
-        return CurrentWeight::kg($trendKg, $profile?->weight_kg);
+        return $trendKg;
     }
 
-    private static function trendKg(User $user): ?float
+    private static function historyTrendKg(User $user): ?float
     {
         $weighIns = WeighInRow::query()->where('user_id', $user->id)->get(['id', 'weighed_at', 'weight_kg'])
             ->map(fn (WeighInRow $row) => new WeighIn((string) $row->id, DayPlans::instant($row->weighed_at), (float) $row->weight_kg))
             ->values()->all();
 
-        return (new TrendWeight($weighIns, new DateTimeZone('UTC')))->currentKg();
+        return (new TrendWeight($weighIns, UserDay::zone($user)))->currentKg();
     }
 }

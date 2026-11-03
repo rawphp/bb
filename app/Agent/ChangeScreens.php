@@ -82,6 +82,7 @@ final class ChangeScreens
         'shopping_item_check' => '/nutrition',
         'shopping_item_delete' => '/nutrition',
         'steps_log' => '/progress',
+        'time_zone_set' => '/today',
         'undo_apply' => null,
         'week_copy' => '/today',
         'weigh_in_delete' => '/progress',

@@ -2,14 +2,12 @@
 
 namespace App\Actions\Review;
 
-use App\Actions\Onboarding\StartRows;
 use App\Domain\Model\StepPlanDay;
 use App\Domain\Review\ReviewMode;
 use App\Domain\Review\StepPlanUpdate;
 use App\Domain\WeekBuilder\BuiltWeek;
 use App\Domain\WeekBuilder\WeekBuildRefusal;
 use App\Domain\WeekBuilder\WeekDay;
-use App\Domain\WeekBuilder\WeekMeal;
 use App\Models\DayTarget;
 use App\Models\Mesocycle;
 use App\Models\PlanWeek;
@@ -17,6 +15,7 @@ use App\Models\Profile;
 use App\Models\ReviewAnswer;
 use App\Models\User;
 use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\Plan\DayTargetRow;
 use App\Support\Review\ReviewAnalysis;
 use App\Support\Review\ReviewAnswers;
 use App\Support\Review\ReviewChoices;
@@ -135,8 +134,13 @@ final class CompleteReview
                 $row = new DayTarget(['date' => $dates[$index]]);
                 $row->user_id = $user->id;
             }
+            // A stored day keeps its meal ids by position, so only meals beyond the new count go, with their foods.
+            $attributes = DayTargetRow::from($day);
             $mealIds = array_column($row->meals ?? [], 'id');
-            $row->fill(StartRows::day($day, fn (WeekMeal $meal, int $position) => $mealIds[$position] ?? $meal->id()))->save();
+            foreach ($attributes['meals'] as $position => $meal) {
+                $attributes['meals'][$position]['id'] = $mealIds[$position] ?? $meal['id'];
+            }
+            $row->fill($attributes)->save();
         }
 
         return $dates;

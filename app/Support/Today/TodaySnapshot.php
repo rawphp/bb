@@ -46,6 +46,7 @@ use App\Models\WeighInScheduleEntry;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\UserDay;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -110,7 +111,7 @@ final class TodaySnapshot
 
     private static function read(User $user, ?string $date, bool $wholeDay): self
     {
-        $today = TrainSnapshot::day(CarbonImmutable::now());
+        $today = UserDay::today($user);
         $plan = Plan::query()->where('user_id', $user->id)->first();
         $profile = Profile::query()->where('user_id', $user->id)->first();
         $mesocycles = Mesocycle::query()->where('user_id', $user->id)->get();
@@ -143,11 +144,11 @@ final class TodaySnapshot
             offPlan: OffPlanEntry::query()->where('user_id', $user->id)->whereBetween('date', $range)->orderBy('time')->get(),
             otherActivities: OtherActivity::query()->where('user_id', $user->id)->whereBetween('date', $range)->get(),
             weighIns: $wholeDay ? WeighIn::query()->where('user_id', $user->id)
-                ->whereBetween('weighed_at', [$day->format('Y-m-d 00:00:00'), $day->format('Y-m-d 23:59:59')])
+                ->whereBetween('weighed_at', array_map(fn (DateTimeImmutable $at) => $at->format('Y-m-d H:i:s'), UserDay::bounds($user, $day)))
                 ->orderBy('weighed_at')->get() : new Collection,
             weighInSchedule: $wholeDay ? WeighInScheduleEntry::query()->where('user_id', $user->id)->orderBy('id')->get() : new Collection,
             steps: $wholeDay ? Step::query()->where('user_id', $user->id)->whereDate('date', $day->format('Y-m-d'))->first() : null,
-            nowTime: CarbonImmutable::now()->format('H:i'),
+            nowTime: UserDay::now($user)->format('H:i'),
         );
     }
 
@@ -179,6 +180,7 @@ final class TodaySnapshot
             exercises: fn (?array $ids): Collection => Exercise::query()->visibleTo($user)
                 ->when($ids !== null, fn ($query) => $query->whereIn('id', $ids))
                 ->orderBy('name')->get(),
+            zone: UserDay::zone($user),
         );
     }
 
@@ -301,7 +303,7 @@ final class TodaySnapshot
             return null;
         }
         $flagged = $this->train->planWeekRow($grid->start($week));
-        $paused = $this->pausedWeeks();
+        $paused = $this->train->pausedWeeks();
         $saved = $this->train->saved()->values();
         $covering = $this->coveringIn($week);
         $mesocycle = $covering === null ? null : $saved[$covering->index];
@@ -315,7 +317,7 @@ final class TodaySnapshot
                 day: $s->day,
                 isSkipped: $s->is_skipped,
                 plannedStartAt: self::instant($s->planned_start_at),
-                actualStartAt: self::instant($s->actual_start_at),
+                actualStartAt: $this->train->startedAt($s),
             ))->values()->all();
         $logged = array_values(array_map(
             fn (WorkoutSessionRecord $r) => new LoggedDay($r->week, (int) $r->day),
@@ -355,7 +357,7 @@ final class TodaySnapshot
             $week,
             $this->train->saved()->values()->map(fn (Mesocycle $m) => new DatedMesocycle(TrainSnapshot::day($m->start_date), (int) $m->weeks))->all(),
             $grid,
-            $this->pausedWeeks(),
+            $this->train->pausedWeeks(),
         );
     }
 
@@ -375,25 +377,6 @@ final class TodaySnapshot
             laterWeeks: $domain->laterWeeks,
             lastDay: $mesocycle->ended_on === null ? null : $this->train->calendar($mesocycle)->lastDay(),
         );
-    }
-
-    /**
-     * SCH-060: the plan weeks an away week pauses.
-     *
-     * @return list<int>
-     */
-    private function pausedWeeks(): array
-    {
-        $grid = $this->train->grid();
-        if ($grid === null) {
-            return [];
-        }
-
-        return $this->train->planWeeks
-            ->filter(fn (PlanWeek $w) => $w->is_away && $w->away_training === Training::Pause->value)
-            ->map(fn (PlanWeek $w) => $grid->weekIndexContaining(TrainSnapshot::day($w->start_date)))
-            ->filter(fn (?int $index) => $index !== null)
-            ->values()->all();
     }
 
     /** @return list<TrainingDay> the profile's training days, in the Domain's weekdays (1 is Sunday) */

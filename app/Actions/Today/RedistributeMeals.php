@@ -7,7 +7,7 @@ use App\Models\User;
 use App\Support\Today\DayMeal;
 use App\Support\Today\DayPlans;
 use App\Support\Today\Redistribution;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -31,7 +31,7 @@ final class RedistributeMeals
         }
         // DayTarget stores meal ids lowercased; a client may send a ULID in capitals.
         $mealIds = array_map(strtolower(...), $mealIds);
-        $receivable = Redistribution::receivable($day, CarbonImmutable::now());
+        $receivable = Redistribution::receivable($day, UserDay::now($user));
         $receivableIds = array_map(fn (DayMeal $meal) => $meal->id, $receivable);
         foreach ($mealIds as $id) {
             if (! in_array($id, $receivableIds, true)) {

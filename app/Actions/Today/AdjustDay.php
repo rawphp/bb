@@ -6,7 +6,7 @@ use App\Capabilities\Today\Data\DayAdjustInput;
 use App\Models\User;
 use App\Support\Today\AdjustWeek;
 use App\Support\Today\DayPlans;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -23,7 +23,7 @@ final class AdjustDay
         $week = AdjustWeek::load($user, $input->date);
         $outcome = $week->outcome(
             $input->mode, $input->kcal, $input->from_meal_id, $input->to_meal_id, $input->other_date, $input->direction,
-            DayPlans::day(CarbonImmutable::now()),
+            UserDay::today($user),
         );
         if (! $outcome->isPlan()) {
             throw new DomainException($outcome->refusal ?? $outcome->missing ?? 'That move can\'t be made.');

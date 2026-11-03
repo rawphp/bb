@@ -18,10 +18,12 @@ use App\Domain\Model\Session;
 use App\Domain\Model\Soreness;
 use App\Domain\Model\VolumeFeedback;
 use App\Domain\Model\Workout;
+use App\Domain\Plan\DatedMesocycle;
 use App\Domain\Plan\PlanRules;
 use App\Domain\Plan\PlanWeekGrid;
 use App\Domain\Progress\PlanWeekDays;
 use App\Domain\Progression\ActiveRest;
+use App\Domain\WeekBuilder\AwayWeek\Training;
 use App\Models\DayTarget;
 use App\Models\Exercise;
 use App\Models\Mesocycle;
@@ -33,7 +35,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use Closure;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -87,6 +89,7 @@ final class TrainSnapshot
         public readonly Collection $planWeeks,
         private readonly Collection|Closure $dayTargets,
         private readonly Collection|Closure $exercises,
+        public readonly DateTimeZone $zone = new DateTimeZone('UTC'),
     ) {}
 
     /**
@@ -100,7 +103,7 @@ final class TrainSnapshot
     public static function load(User $user, ?string $mesocycleId = null, bool $locked = false): self
     {
         $base = new self(
-            today: self::day(CarbonImmutable::now()),
+            today: UserDay::today($user),
             plan: self::read(Plan::query()->where('user_id', $user->id), $locked)->first(),
             profile: self::read(Profile::query()->where('user_id', $user->id), $locked)->first(),
             mesocycles: self::read(Mesocycle::query()->where('user_id', $user->id), $locked)->get(),
@@ -111,6 +114,7 @@ final class TrainSnapshot
             planWeeks: self::read(PlanWeek::query()->where('user_id', $user->id), $locked)->get(),
             dayTargets: new Collection,
             exercises: new Collection,
+            zone: UserDay::zone($user),
         );
 
         $focus = $mesocycleId === null ? null : $base->findMesocycle($mesocycleId);
@@ -132,6 +136,44 @@ final class TrainSnapshot
             exercises: fn (?array $ids): Collection => Exercise::query()->visibleTo($user)
                 ->when($ids !== null, fn ($query) => $query->whereIn('id', $ids))
                 ->orderBy('name')->get(),
+            zone: $base->zone,
+        );
+    }
+
+    /**
+     * SET-012: when a session started, as the user's wall-clock time labelled UTC, like every plan time; null before
+     * it started. The stored start is a real instant, so it is read in the user's zone before it names a day.
+     */
+    public function startedAt(?WorkoutSession $session): ?DateTimeImmutable
+    {
+        return $session?->actual_start_at === null ? null : UserDay::clockIn($this->zone, $session->actual_start_at);
+    }
+
+    /**
+     * The light snapshot of a calendar only: today and the mesocycles, with the plan and the profile when the caller
+     * read them, and nothing else. It answers {@see current()}, {@see calendar()}, {@see domain()} (every slot named
+     * "Exercise not chosen yet") and {@see trainingWeekdays()}. The caller gives today, so this reads no clock, and the
+     * user's zone, which {@see startedAt()} reads a session's start in (SET-012).
+     *
+     * @param  Collection<int, Mesocycle>  $mesocycles
+     */
+    public static function calendarOnly(
+        DateTimeImmutable $today, Collection $mesocycles, ?Plan $plan = null, ?Profile $profile = null,
+        DateTimeZone $zone = new DateTimeZone('UTC'),
+    ): self {
+        return new self(
+            today: $today,
+            plan: $plan,
+            profile: $profile,
+            mesocycles: $mesocycles,
+            phases: new Collection,
+            sessions: new Collection,
+            sets: new Collection,
+            feedback: new Collection,
+            planWeeks: new Collection,
+            dayTargets: new Collection,
+            exercises: new Collection,
+            zone: $zone,
         );
     }
 
@@ -155,6 +197,45 @@ final class TrainSnapshot
         return $this->mesocycles
             ->filter(fn (Mesocycle $m) => $m->isSaved())
             ->values();
+    }
+
+    /**
+     * SCH-060: the plan week a saved mesocycle's first week is placed on, as Today places it: later than its start
+     * when a pause in the one before pushed it. Null without a plan, or for a mesocycle that is not saved.
+     */
+    public function placedStartWeek(Mesocycle $mesocycle): ?int
+    {
+        $grid = $this->grid();
+        $saved = $this->saved()->values();
+        $index = $saved->search(fn (Mesocycle $m) => $m->id === $mesocycle->id);
+        if ($grid === null || $index === false) {
+            return null;
+        }
+
+        return PlanRules::placements(
+            $saved->map(fn (Mesocycle $m) => new DatedMesocycle(self::day($m->start_date), (int) $m->weeks))->all(),
+            $grid,
+            $this->pausedWeeks(),
+        )[$index]?->startWeek;
+    }
+
+    /**
+     * SCH-060: the plan weeks an away week pauses; an away week that becomes the deload is a mesocycle week.
+     *
+     * @return list<int>
+     */
+    public function pausedWeeks(): array
+    {
+        $grid = $this->grid();
+        if ($grid === null) {
+            return [];
+        }
+
+        return $this->planWeeks
+            ->filter(fn (PlanWeek $week) => $week->is_away && $week->away_training === Training::Pause->value)
+            ->map(fn (PlanWeek $week) => $grid->weekIndexContaining(self::day($week->start_date)))
+            ->filter(fn (?int $index) => $index !== null)
+            ->values()->all();
     }
 
     /**
