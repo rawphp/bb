@@ -55,3 +55,22 @@ it('EX-012 refuses a step for a reps-only exercise and stores nothing', function
         ->toThrow(DomainException::class, SetExerciseLoadStep::REPS_ONLY)
         ->and(storedStep($user, $pushUp))->toBeNull();
 });
+
+it('EX-012 stores a step for a bodyweight-plus-load exercise, which carries a load', function () {
+    $user = User::factory()->create();
+    $dip = Exercise::factory()->create(['load_type' => 'bodyweightPlusLoad']);
+
+    (new SetExerciseLoadStep)($user, $dip, 1.25, WeightUnit::Kg);
+
+    expect(storedStep($user, $dip))->toBe(1.25);
+});
+
+it('EX-012 clears a step kept for an exercise that is now reps only', function () {
+    $user = User::factory()->create();
+    $pushUp = Exercise::factory()->create(['load_type' => 'bodyweight']);
+    ExerciseLoadStep::factory()->create(['user_id' => $user->id, 'exercise_id' => $pushUp->id, 'step_kg' => 2.5]);
+
+    (new SetExerciseLoadStep)($user, $pushUp, null, WeightUnit::Kg);
+
+    expect(storedStep($user, $pushUp))->toBeNull();
+});

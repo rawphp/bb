@@ -100,7 +100,11 @@ it('EX-012 refuses a step for a reps-only exercise with a 422 that says why, and
         ->assertJsonPath('error.message', SetExerciseLoadStep::REPS_ONLY);
     expect(ExerciseLoadStep::query()->count())->toBe(0);
 
+    // One kept from before its load type became bodyweight.
+    ExerciseLoadStep::factory()->create(['user_id' => $user->id, 'exercise_id' => $pushUp->id, 'step_kg' => 2.5]);
     exerciseWriteCall($user, 'exercise_load_step_set', ['exercise_id' => (string) $pushUp->id, 'step' => null, 'unit' => 'kg'])->assertOk();
+
+    expect(ExerciseLoadStep::query()->count())->toBe(0);
 });
 
 it('EX-010 EX-012 name the workout_show of each day of a saved, not-started mesocycle that holds the exercise, and no other', function (string $name, array $input) {
