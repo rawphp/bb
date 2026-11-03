@@ -111,10 +111,11 @@ export interface MealShowOutput {
       | "check_in_manual"
       | "remove_check_in"
       | "still_planning"
+      | "done_planning"
       | "delete_meal";
     title: string;
     is_enabled: boolean;
   }[];
 }
 
-export const outputVersion = '188d2d3ccbb6';
+export const outputVersion = '32772e023355';
