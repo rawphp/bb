@@ -33,6 +33,7 @@ use App\Support\Plan\PlanSnapshot;
 use App\Support\Today\TodaySnapshot;
 use App\Support\UserDay;
 use DomainException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -77,28 +78,38 @@ final class ChangeTrainingWeekdays
         $changed = false;
         /** @var list<array{weekday: int, start: string, minutes: int}> $trainingDays */
         $trainingDays = [];
+        /** @var ?array{mesocycle: Mesocycle, train: TrainSnapshot, toWeek: int} $running */
+        $running = null;
         /** @var list<string> $kept */
         $kept = [];
-        $rebuilt = ($this->save)($user, [], function (Profile $profile) use ($user, $weekdays, $input, &$covering, &$changed, &$trainingDays): void {
-            $old = TodaySnapshot::json($profile->training_days);
-            $trainingDays = self::trainingDays($old, $weekdays);
-            $changed = self::sorted(array_values(array_unique(array_map(fn (mixed $day) => (int) (is_array($day) ? ($day['weekday'] ?? 0) : 0), $old)))) !== $weekdays;
-            $covering = $changed ? self::covering($user, $old, $trainingDays, $input->fewer_days) : null;
-            $profile->fill(['training_days' => $trainingDays]);
-        }, function () use ($user, &$covering, &$changed, &$kept): bool {
-            if (! $changed) {
-                return false;
-            }
-            // This week's sessions stay on their days whether or not a mesocycle runs next week.
-            $kept = self::pinThisWeek($user);
-            if ($covering !== null) {
-                self::store($covering);
-            }
+        // One transaction: today's re-target commits with the change or not at all, so a retry finds it undone.
+        [$rebuilt, $today] = DB::transaction(function () use ($user, $weekdays, $input, &$covering, &$changed, &$trainingDays, &$running, &$kept): array {
+            $rebuilt = ($this->save)($user, [], function (Profile $profile) use ($user, $weekdays, $input, &$covering, &$changed, &$trainingDays, &$running): void {
+                $old = TodaySnapshot::json($profile->training_days);
+                $trainingDays = self::trainingDays($old, $weekdays);
+                $changed = self::sorted(array_values(array_unique(array_map(fn (mixed $day) => (int) (is_array($day) ? ($day['weekday'] ?? 0) : 0), $old)))) !== $weekdays;
+                $covering = $changed ? self::covering($user, $old, $trainingDays, $input->fewer_days) : null;
+                $running = $changed ? self::running($user, $covering) : null;
+                $profile->fill(['training_days' => $trainingDays]);
+            }, function () use ($user, &$covering, &$changed, &$kept, &$running): bool {
+                if (! $changed) {
+                    return false;
+                }
+                // This week's sessions stay on their days whether or not a mesocycle runs next week: Today's by their
+                // rows, Train's and Workout's by the weeks of this week's mesocycle stored as they ran.
+                $kept = self::pinThisWeek($user);
+                if ($covering !== null) {
+                    self::store($covering);
+                }
+                if ($running !== null) {
+                    self::freeze($running['mesocycle'], $running['toWeek'], $running['train']);
+                }
 
-            return true;
-        });
+                return true;
+            });
 
-        $today = $changed ? self::retargetToday($user, $trainingDays, $kept) : null;
+            return [$rebuilt, $changed ? self::retargetToday($user, $trainingDays, $kept) : null];
+        }, 3);
 
         return [
             'toast' => $today === null ? null : self::RETARGETED,
@@ -191,6 +202,36 @@ final class ChangeTrainingWeekdays
             'restructure' => $result !== null && $fewerDays === 'restructure',
             'weekdays' => $grid === null ? $weekdaysIso : PlanWeekDays::inPlanWeekOrder($weekdaysIso, $train->reviewIsoWeekday($grid)),
         ];
+    }
+
+    /**
+     * The mesocycle running this plan week, when it is not the one `covering()` reshapes: its last week, or one the next
+     * mesocycle follows. Its weeks up to and including this one are then stored as they ran, and nothing else of it
+     * changes, so Train and Workout keep them where they ran.
+     *
+     * @param  ?array{mesocycle: Mesocycle}  $covering
+     * @return ?array{mesocycle: Mesocycle, train: TrainSnapshot, toWeek: int}
+     */
+    private static function running(User $user, ?array $covering): ?array
+    {
+        $plan = PlanSnapshot::load($user, lock: true);
+        $week = $plan?->todayWeek;
+        $placed = $week === null ? null : $plan->mesocycleCoveringWeek($week);
+        if ($placed === null || $placed->isEnded || (string) $placed->mesocycle->id === (string) ($covering['mesocycle']->id ?? '')) {
+            return null;
+        }
+        $train = TrainSnapshot::load($user, (string) $placed->mesocycle->id, locked: true);
+        $mesocycle = $train->mesocycle((string) $placed->mesocycle->id);
+        $toWeek = min((int) $mesocycle->weeks, PlanRules::mesocycleWeek($week, $placed->placed->startWeek, $plan->pausedWeeks) + 1);
+
+        return $toWeek <= 0 ? null : ['mesocycle' => $mesocycle, 'train' => $train, 'toWeek' => $toWeek];
+    }
+
+    /** The weeks before `$toWeek` (0 is the first) stored as they ran, each floating day on the weekday it ran on. */
+    private static function freeze(Mesocycle $mesocycle, int $toWeek, TrainSnapshot $train): void
+    {
+        $frozen = MesocycleRules::freezingWeeks($train->rotationAsRun($mesocycle), $mesocycle->earlierWeekRows(), $mesocycle->laterWeekIds(), $toWeek);
+        $mesocycle->update(['earlier_weeks' => self::anchored($frozen['earlier_weeks'], $mesocycle, $train), 'later_weeks' => $frozen['later_weeks']]);
     }
 
     /**
