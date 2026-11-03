@@ -2,7 +2,9 @@
 
 namespace App\Actions\Coach;
 
+use App\Models\ClearedCoachTurn;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Rawphp\Capabilities\Support\CapabilityFailure;
 use Rawphp\CapabilitiesAi\Models\Conversation;
@@ -11,7 +13,8 @@ use Rawphp\CapabilitiesAi\Models\Turn;
 /**
  * AGT-020, AGT-024: deletes every conversation the user owns. The package's foreign
  * keys cascade to their messages, turns and proposals. Refused, deleting nothing,
- * while one of the user's turns is queued or running.
+ * while one of the user's turns is queued or running. This month's turns are kept in
+ * ClearedCoachTurn first, so the AGT-005 caps still count them.
  */
 final class ClearCoachConversation
 {
@@ -33,6 +36,15 @@ final class ClearCoachConversation
             if ($busy) {
                 throw CapabilityFailure::conflict(self::BUSY);
             }
+
+            // The longest cap window is the month (AgentStatus::allowance).
+            ClearedCoachTurn::query()->insertUsing(
+                ['user_id', 'tokens', 'created_at'],
+                Turn::query()
+                    ->whereIn('conversation_id', $ids)
+                    ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth())
+                    ->select([DB::raw((string) (int) $user->getKey()), 'tokens', 'created_at']),
+            );
 
             Conversation::query()->whereKey($ids->all())->delete();
         });
