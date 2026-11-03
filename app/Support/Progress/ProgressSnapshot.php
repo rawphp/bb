@@ -23,6 +23,7 @@ use App\Models\WorkoutSet;
 use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Plan\PlanSnapshot;
 use App\Support\Today\TodaySnapshot;
+use App\Support\UserDay;
 use DateTimeImmutable;
 use DateTimeZone;
 use Illuminate\Support\Collection;
@@ -32,7 +33,8 @@ use stdClass;
  * What the Progress tab looks at, read once per invoke (ANA-001 to ANA-011): the plan, phases, mesocycles and week
  * as {@see TodaySnapshot} reads them, every weigh-in, today's steps, the sets of live mesocycle sessions, and when each exercise was last used.
  *
- * Dates are whole days at midnight UTC, read from their Y-m-d.
+ * Dates are whole days at midnight UTC, read from their Y-m-d. A weigh-in's day is the user's local day (SET-012):
+ * {@see weighedAt()} reads its stored instant as the user's clock time.
  */
 final class ProgressSnapshot
 {
@@ -133,6 +135,10 @@ final class ProgressSnapshot
         return $this->week->today();
     }
 
+    /**
+     * The calendar-day zone: UTC, by decision 5 of #229, as every day here is midnight UTC of its Y-m-d. Weigh-ins come
+     * in as the user's clock times ({@see weighedAt()}), so this stays UTC.
+     */
     public function zone(): DateTimeZone
     {
         return new DateTimeZone('UTC');
@@ -187,12 +193,18 @@ final class ProgressSnapshot
             ))->values()->all();
     }
 
-    /** WT-010: the trend over all the user's weigh-ins. */
+    /** SET-012: the user's wall-clock time at a weigh-in, labelled UTC, so its Y-m-d is the user's local day. */
+    public function weighedAt(WeighIn $weighIn): DateTimeImmutable
+    {
+        return UserDay::clockIn($this->week->train->zone, $weighIn->weighed_at);
+    }
+
+    /** WT-010: the trend over all the user's weigh-ins, each on the user's local day. */
     public function trend(): TrendWeight
     {
         return $this->trend ??= new TrendWeight(
             $this->weighIns->map(fn (WeighIn $weighIn) => new DomainWeighIn(
-                (string) $weighIn->id, TodaySnapshot::instant($weighIn->weighed_at), (float) $weighIn->weight_kg,
+                (string) $weighIn->id, $this->weighedAt($weighIn), (float) $weighIn->weight_kg,
             ))->values()->all(),
             $this->zone(),
         );

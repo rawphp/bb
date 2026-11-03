@@ -231,3 +231,52 @@ it('ANA-001 ANA-007 EX-013 keeps a set out of the tab when it sits in the viewer
         ->and($after['exercises'])->toBe($before['exercises'])
         ->and(array_column($after['exercises'], 'name'))->not->toContain('Squat');
 });
+
+/**
+ * SET-012: ProgressSeed's user in `$zone` at 2026-10-09 21:58 UTC (Saturday 10 Oct 07:58 in Brisbane), with only these
+ * weigh-ins: 06:30 Brisbane on Wed 7 to Sat 10 Oct with a waist, and 21:00 Brisbane on Fri 9 Oct without one.
+ */
+function progressLocalDayUser(string $zone): User
+{
+    ['user' => $user] = ProgressSeed::world();
+    $user->forceFill(['time_zone' => $zone])->save();
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    WeighIn::query()->where('user_id', $user->id)->delete();
+    foreach ([
+        ['2026-10-06 20:30:00', 80.0, 90.0],
+        ['2026-10-07 20:30:00', 79.8, 89.5],
+        ['2026-10-08 20:30:00', 79.6, 89.0],
+        ['2026-10-09 11:00:00', 80.4, null],
+        ['2026-10-09 20:30:00', 79.4, 88.5],
+    ] as [$at, $kg, $waist]) {
+        WeighIn::factory()->for($user)->create(['weighed_at' => $at, 'weight_kg' => $kg, 'waist_cm' => $waist]);
+    }
+
+    return $user;
+}
+
+it('SET-012 draws the Progress chart\'s weigh-ins and trend on the user\'s local day', function (string $zone, array $dates, array $weights, float $lastTrend) {
+    $user = progressLocalDayUser($zone);
+
+    $chart = $this->actingAs($user)->postJson('/capabilities/progress_show')->assertOk()->json('data.chart');
+
+    expect(array_column($chart['weights'], 'date'))->toBe($dates)
+        ->and(array_column($chart['weights'], 'value'))->toEqual($weights)
+        ->and(array_column($chart['trend'], 'date'))->toBe($dates)
+        ->and($chart['trend'][array_key_last($chart['trend'])]['value'])->toEqual($lastTrend);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', ['2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10'], [80.0, 79.8, 79.6, 79.4], 79.89],
+    'UTC' => ['UTC', ['2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09'], [80.0, 79.8, 79.6, 80.4], 79.99],
+]);
+
+it('SET-012 draws the waist line on the user\'s local day', function (string $zone, array $dates) {
+    $user = progressLocalDayUser($zone);
+
+    $waist = $this->actingAs($user)->postJson('/capabilities/progress_show')->assertOk()->json('data.chart.waist');
+
+    expect(array_column($waist, 'date'))->toBe($dates)
+        ->and(array_column($waist, 'value'))->toEqual([90.0, 89.5, 89.0, 88.5]);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', ['2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10']],
+    'UTC' => ['UTC', ['2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09']],
+]);

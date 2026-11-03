@@ -56,8 +56,8 @@ final class ProgressChartPayload
     }
 
     /**
-     * WT-021: empty until the user has 4 waist readings in all; then each day of the chart that has one, taking the
-     * day's earliest reading with a waist as the trend takes the earliest weigh-in.
+     * WT-021: empty until the user has 4 waist readings in all; then each local day of the chart that has one (SET-012),
+     * taking the day's earliest reading with a waist as the trend takes the earliest weigh-in.
      *
      * @return list<ChartPoint>
      */
@@ -69,7 +69,7 @@ final class ProgressChartPayload
         }
         $byDay = [];
         foreach ($readings->sortBy(fn (WeighIn $weighIn) => TodaySnapshot::instant($weighIn->weighed_at)->getTimestamp()) as $weighIn) {
-            $byDay[TodaySnapshot::instant($weighIn->weighed_at)->format('Y-m-d')] ??= (float) $weighIn->waist_cm;
+            $byDay[$snapshot->weighedAt($weighIn)->format('Y-m-d')] ??= (float) $weighIn->waist_cm;
         }
         ksort($byDay);
         $centimetres = $snapshot->usesCentimetres();
