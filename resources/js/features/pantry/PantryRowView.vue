@@ -22,8 +22,10 @@ const props = withDefaults(
         /** The nutrition is the server's and waits on the outbox (OFF-008). */
         pending?: boolean;
         favoriteDisabled?: boolean;
+        /** What a pick adds to, for its label: the meal or the recipe. */
+        destination?: 'meal' | 'recipe';
     }>(),
-    { pickable: true, pending: false, favoriteDisabled: false },
+    { pickable: true, pending: false, favoriteDisabled: false, destination: 'meal' },
 );
 
 const emit = defineEmits<{ pick: []; favorite: []; weighing: [weighing: Weighing] }>();
@@ -128,7 +130,7 @@ function favoriteFromSwipe(): void {
                 type="button"
                 data-test="pick"
                 class="flex min-h-tap min-w-tap shrink-0 items-center justify-center"
-                :aria-label="picked ? `Remove ${row.name} from meal` : `Add ${row.name} to meal`"
+                :aria-label="picked ? `Remove ${row.name} from ${destination}` : `Add ${row.name} to ${destination}`"
                 :aria-pressed="picked"
                 @click="emit('pick')"
             >
