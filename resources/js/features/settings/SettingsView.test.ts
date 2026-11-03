@@ -2,6 +2,7 @@ import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityError, postHost, read, writeNow } from '@/app/call';
 import type { SettingsShowOutput } from '@/contracts/settings_show';
+import StatusPill from '@/design/StatusPill.vue';
 import { toneClasses } from '@/design/tones';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import SettingsView from './SettingsView.vue';
@@ -175,7 +176,7 @@ describe('SettingsView', () => {
         const wrapper = render(warning);
 
         expect(wrapper.get('[data-test="subscription"]').text()).toContain('Ended');
-        expect(wrapper.get('[data-test="subscription"] span.rounded-full').classes()).toEqual(expect.arrayContaining(toneClasses.warning.split(' ')));
+        expect(wrapper.get('[data-test="subscription"]').getComponent(StatusPill).props('tone')).toBe('warning');
     });
 
     it('SUB-007 Manage subscription opens the Stripe portal', async () => {
