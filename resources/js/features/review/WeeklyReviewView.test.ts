@@ -190,7 +190,7 @@ describe('WeeklyReviewView', () => {
             const missing = wrapper.findAll('[data-test="add-missing"]');
             expect(missing).toHaveLength(2);
             expect(missing[0]!.attributes('aria-label')).toBe('Add the missing weigh-in for Wed, 7 Oct');
-            expect(wrapper.findAll('[data-test="weigh-in"] > span')[1]!.classes()).toContain('text-tone-warning');
+            expect(wrapper.findAll('[data-test="weigh-in"]')[1]!.find('span').classes()).toContain('text-tone-warning');
         });
 
         it('REV-003 adds a missing weigh-in late, for its day', async () => {
