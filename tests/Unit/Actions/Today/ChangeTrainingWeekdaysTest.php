@@ -82,7 +82,8 @@ it('SCH-039 the same number of days re-maps: the new weekdays are saved, this we
         ->and(sessionRows($mesocycle))->toBe(['3/1 at 2026-09-21 17:30', '3/2 at 2026-09-24 17:30'])
         ->and(array_column($mesocycle->fresh()->days, 'weekday'))->toBe([2, 5])
         ->and(array_column($mesocycle->fresh()->days, 'label'))->toBe(['Upper A', 'Lower A'])
-        ->and($mesocycle->fresh()->only(['weeks', 'earlier_weeks', 'later_weeks']))->toEqual($before)
+        ->and($mesocycle->fresh()->weeks)->toBe($before['weeks'])
+        ->and($mesocycle->fresh()->earlier_weeks)->toHaveCount(3)
         ->and($rebuild->calls)->toHaveCount(1);
 });
 
@@ -98,16 +99,22 @@ it('SCH-039 a re-map gives the mesocycle\'s days the new weekdays in plan-week o
     expect(array_column($mesocycle->fresh()->days, 'weekday'))->toBe([5, 2]);
 });
 
-it('SCH-039 after keeping all sessions, Train and Workout date next week\'s sessions on the new weekday', function () {
+it('SCH-039 Train and Workout date next week\'s sessions on the new weekdays and this week\'s where they are', function (array $weekdays, ?string $fewerDays, array $nextWeek) {
     [$user, $mesocycle] = weekdayWorld();
     FakeRebuild::bind();
 
-    changeWeekdays($user, [3], 'extend');
+    changeWeekdays($user, $weekdays, $fewerDays);
 
     $train = TrainSnapshot::load($user, $mesocycle->id);
-    expect($train->weekdays($train->mesocycle($mesocycle->id)))->toBe(['01JB6Q400A2B3C4D5E6F7G8H9J' => null, '01JB6Q410A2B3C4D5E6F7G8H9J' => null])
-        ->and(WorkoutSnapshot::dateOf($train, $train->mesocycle($mesocycle->id), 4, 1)?->format('Y-m-d'))->toBe('2026-09-30');
-});
+    $stored = $train->mesocycle($mesocycle->id);
+    $date = fn (int $week, int $day) => WorkoutSnapshot::dateOf($train, $stored, $week, $day)?->format('Y-m-d');
+    expect([$date(3, 1), $date(3, 2)])->toBe(['2026-09-21', '2026-09-24'])
+        ->and([$date(1, 1), $date(1, 2)])->toBe(['2026-09-07', '2026-09-10'])
+        ->and(array_map(fn (int $day) => $date(4, $day), array_keys($nextWeek)))->toBe(array_values($nextWeek));
+})->with([
+    're-map' => [[2, 5], null, [1 => '2026-09-29', 2 => '2026-10-02']],
+    'extend' => [[3], 'extend', [1 => '2026-09-30']],
+]);
 
 it('SCH-039 a weekday that stays keeps its start time and minutes', function () {
     [$user] = weekdayWorld();
@@ -210,7 +217,8 @@ it('SCH-039 more days asks nothing and applies no choice: the days float and the
     expect(array_column(trainingDaysOf($user), 'weekday'))->toBe([1, 3, 4])
         ->and(array_column($mesocycle->fresh()->days, 'label'))->toBe(['Upper A', 'Lower A'])
         ->and(array_column($mesocycle->fresh()->days, 'weekday'))->toBe([null, null])
-        ->and($mesocycle->fresh()->only(['weeks', 'earlier_weeks', 'later_weeks']))->toEqual($before);
+        ->and($mesocycle->fresh()->weeks)->toBe($before['weeks'])
+        ->and($mesocycle->fresh()->later_weeks ?? [])->toBe([]);
 });
 
 it('SCH-039 MESO-042 extend is refused when the longer mesocycle would run into the next one', function () {

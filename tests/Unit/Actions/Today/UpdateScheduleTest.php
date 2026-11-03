@@ -34,7 +34,7 @@ function editWorld(): array
         'meal_count' => 3,
         'busy_periods' => json_encode([
             ['label' => 'Team meeting', 'start' => '09:00', 'end' => '10:30', 'weekdays' => [1, 2, 3, 4, 5]],
-            ['label' => 'Choir', 'start' => '18:00', 'end' => '19:00', 'weekdays' => [3]],
+            ['label' => 'Choir', 'start' => '18:00', 'end' => '19:00', 'weekdays' => [3, 5]],
         ]),
     ]);
 
@@ -223,6 +223,44 @@ it('SCH-037 all future days removes the period taken off and edits the one kept 
     expect(editProfile($user)->busy_periods)->toEqual([
         ['label' => 'Work', 'start' => '09:00', 'end' => '13:00', 'weekdays' => [1, 2, 3, 4, 5]],
     ]);
+});
+
+it('SCH-037 all future days keeps two periods renamed at once, each by its times', function () {
+    [$user] = editWorld();
+    Profile::query()->where('user_id', $user->id)->update(['busy_periods' => json_encode([
+        ['id' => 'w1', 'label' => 'Work', 'start' => '09:00', 'end' => '17:00', 'weekdays' => [1, 2, 3, 4, 5]],
+        ['id' => 'g1', 'label' => 'Gym', 'start' => '18:00', 'end' => '19:00', 'weekdays' => [1, 2, 3, 4, 5]],
+    ])]);
+    FakeRebuild::bind();
+
+    editSchedule($user, ['apply_to' => 'all_future_days', 'busy_periods' => [
+        ['label' => 'Office', 'start' => '09:00', 'end' => '17:00'],
+        ['label' => 'Fitness', 'start' => '18:00', 'end' => '19:00'],
+    ]]);
+
+    expect(editProfile($user)->busy_periods)->toEqual([
+        ['id' => 'w1', 'label' => 'Office', 'start' => '09:00', 'end' => '17:00', 'weekdays' => [1, 2, 3, 4, 5]],
+        ['id' => 'g1', 'label' => 'Fitness', 'start' => '18:00', 'end' => '19:00', 'weekdays' => [1, 2, 3, 4, 5]],
+    ]);
+});
+
+it('SCH-037 all future days reads a period that shares nothing with the one taken off as new on the weekday only', function () {
+    [$user] = editWorld();
+    Profile::query()->where('user_id', $user->id)->update(['busy_periods' => json_encode([
+        ['id' => 'w1', 'label' => 'Work', 'start' => '09:00', 'end' => '17:00', 'weekdays' => [1, 2, 3, 4, 5]],
+        ['id' => 's1', 'label' => 'School run', 'start' => '08:00', 'end' => '08:30', 'weekdays' => [1, 2, 3, 4, 5]],
+    ])]);
+    FakeRebuild::bind();
+
+    editSchedule($user, ['apply_to' => 'all_future_days', 'busy_periods' => [
+        ['label' => 'Work', 'start' => '09:00', 'end' => '17:00'],
+        ['label' => 'Dentist', 'start' => '14:00', 'end' => '15:00'],
+    ]]);
+
+    $periods = editProfile($user)->busy_periods;
+    expect(array_column($periods, 'label'))->toBe(['Work', 'Dentist'])
+        ->and($periods[1]['weekdays'])->toBe([3])
+        ->and($periods[1]['id'])->not->toBe('s1');
 });
 
 it('SCH-037 all future days keeps a renamed period, re-timed or not, with its id on every day it repeats', function (array $sent) {
