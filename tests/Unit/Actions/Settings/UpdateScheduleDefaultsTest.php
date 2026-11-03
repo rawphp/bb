@@ -191,6 +191,21 @@ it('SCH-039 the same weekdays with new times or minutes save while a mesocycle i
         ->and($rebuild->calls)->toHaveCount(1);
 });
 
+it('SCH-039 the same weekdays sent in another order are not a change of weekdays', function () {
+    $rebuild = FakeRebuild::bind();
+    $user = scheduleUser();
+    scheduleProfile($user)->update(['training_days' => [
+        ['weekday' => 1, 'start' => '07:00', 'minutes' => 60], ['weekday' => 4, 'start' => '17:30', 'minutes' => 60],
+    ]]);
+
+    updateSchedule($user, ['training_days' => [
+        ['weekday' => 4, 'start' => '18:00', 'minutes' => 60], ['weekday' => 1, 'start' => '07:00', 'minutes' => 60],
+    ]]);
+
+    expect(array_column(scheduleProfile($user)->training_days, 'start'))->toBe(['07:00', '18:00'])
+        ->and($rebuild->calls)->toHaveCount(1);
+});
+
 it('SCH-039 with no mesocycle covering next week the weekdays change normally', function (?string $mesocycleStart) {
     $rebuild = FakeRebuild::bind();
     $user = scheduleUser(mesocycleStart: $mesocycleStart);

@@ -35,5 +35,5 @@ it('SET-006 diet filters never rebuild the targets, even while a rebuild is pend
     app(SetDietFilters::class)($user, filters('paleo'));
 
     expect($rebuild->calls)->toBe([])
-        ->and(Profile::query()->where('user_id', $user->id)->firstOrFail()->targets_rebuild_failed_at)->not->toBeNull();
+        ->and(Profile::query()->where('user_id', $user->id)->firstOrFail()->targets_rebuild_failed_at?->toDateTimeString())->toBe('2026-10-13 09:00:00');
 });
