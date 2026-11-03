@@ -10,14 +10,21 @@ use DomainException;
 
 /**
  * MESO-042: changes a running mesocycle's length. The deload stays the last week, because it is worked out from the
- * length. The lengths allowed are the ones mesocycle_show offers ({@see MesocycleCalendar}).
+ * length. The lengths allowed are the ones mesocycle_show offers ({@see MesocycleCalendar}). `$expectedWeeks` is the
+ * length the user saw: when the mesocycle's length has moved since, the change is refused, so a step from a stale screen
+ * never adds or removes weeks the user did not choose.
  */
 final class SetMesocycleLength
 {
-    public function __invoke(User $user, string $mesocycleId, int $weeks): Mesocycle
+    public function __invoke(User $user, string $mesocycleId, int $weeks, int $expectedWeeks): Mesocycle
     {
         $snapshot = TrainSnapshot::load($user, $mesocycleId);
         $mesocycle = $snapshot->mesocycle($mesocycleId);
+
+        if ($mesocycle->weeks !== $expectedWeeks) {
+            throw new DomainException("This mesocycle's length changed to {$mesocycle->weeks} weeks since the screen was loaded, so nothing was changed.");
+        }
+
         $calendar = $snapshot->calendar($mesocycle);
         $laterWeeksStored = $mesocycle->laterWeekIds() !== [];
 

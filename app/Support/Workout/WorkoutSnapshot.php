@@ -626,6 +626,18 @@ final class WorkoutSnapshot
         ));
     }
 
+    /**
+     * WO-031, EX-008: the targets an exercise put into this session takes for `$sets` sets, as {@see plannedBlocks()}
+     * plans a day's exercise: PROG-020 from its last week with the recovery flags on top. It brings no carried load
+     * (WO-006: a new exercise starts empty in week 1). Weights are in the user's unit.
+     *
+     * @return list<PlannedLoad>
+     */
+    public function plannedLoads(Exercise $exercise, int $sets): array
+    {
+        return $this->recovery($exercise, $this->targets($exercise, $sets, null))->targets;
+    }
+
     /** WO-002: why an exercise's weight is not the plain PROG-020 one this week; null when it is. */
     public function recoveryNote(Exercise $exercise, int $sets): ?string
     {

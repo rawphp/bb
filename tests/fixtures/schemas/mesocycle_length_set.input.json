@@ -10,10 +10,17 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 8
+        },
+        "expected_weeks": {
+            "type": "integer",
+            "description": "The weeks_count mesocycle_show last gave; refused when the length has moved since",
+            "minimum": 1,
+            "maximum": 8
         }
     },
     "required": [
         "mesocycle_id",
-        "weeks"
+        "weeks",
+        "expected_weeks"
     ]
 }

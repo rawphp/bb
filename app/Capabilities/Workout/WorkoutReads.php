@@ -29,8 +29,12 @@ final class WorkoutReads
     /** What a start or a set write declares it changes. */
     public const AFFECTS = ['workout_show', 'today_show', 'week_show', 'train_show', 'mesocycle_show'];
 
-    /** @return list<string> */
-    public static function keys(User $user, WorkoutSession $session): array
+    /**
+     * @param  bool  $planWeek  also Today on each day left in the session's plan week, whose Add workout sheet can name it
+     *                          (SCH-038): for a write that changes its label or whether it can still move
+     * @return list<string>
+     */
+    public static function keys(User $user, WorkoutSession $session, bool $planWeek = false): array
     {
         $mesocycle = Mesocycle::query()->where('user_id', $user->id)->findOrFail($session->mesocycle_id);
         $train = self::calendarOf($user, $mesocycle);
@@ -48,11 +52,15 @@ final class WorkoutReads
             }
         }
 
+        $weekDates = array_values(array_unique($weekDates));
+        $today = TrainSnapshot::day(CarbonImmutable::now())->format('Y-m-d');
+
         return [
             self::workout($session),
             ...MesocycleReads::keys((string) $session->mesocycle_id),
             ...TodayReads::keys(array_values(array_map(fn (DateTimeImmutable $day) => $day->format('Y-m-d'), $days))),
-            ...TodayReads::weekKeys(array_values(array_unique($weekDates))),
+            ...TodayReads::weekKeys($weekDates),
+            ...($planWeek ? TodayReads::keys(array_values(array_filter($weekDates, fn (string $date) => $date >= $today))) : []),
         ];
     }
 

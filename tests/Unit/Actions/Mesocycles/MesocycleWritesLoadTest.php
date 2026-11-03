@@ -35,7 +35,7 @@ it('MESO-042 MESO-043 MESO-045 MESO-060 the writes read neither the exercise lib
     $mesocycle = TrainSeed::mesocycle($user);
 
     $queries = queriesOf(function () use ($user, $mesocycle) {
-        app(SetMesocycleLength::class)($user, $mesocycle->id, 6);
+        app(SetMesocycleLength::class)($user, $mesocycle->id, 6, 5);
         app(AddMesocycleDay::class)($user, $mesocycle->id, (string) Str::ulid());
         app(CopyMesocycle::class)($user, null, (string) Str::ulid(), $mesocycle->id, null, false);
         app(EndMesocycle::class)($user, $mesocycle->id, false);

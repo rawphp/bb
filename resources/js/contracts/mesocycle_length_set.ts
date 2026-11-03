@@ -3,4 +3,8 @@
 export interface MesocycleLengthSetInput {
   mesocycle_id: string;
   weeks: number;
+  /**
+   * The weeks_count mesocycle_show last gave; refused when the length has moved since
+   */
+  expected_weeks: number;
 }

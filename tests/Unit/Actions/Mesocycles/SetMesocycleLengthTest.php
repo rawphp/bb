@@ -11,13 +11,13 @@ uses(RefreshDatabase::class);
 
 afterEach(fn () => Carbon::setTestNow());
 
-function lengthSet(string $today, int $weeks, array $meso = []): array
+function lengthSet(string $today, int $weeks, array $meso = [], int $expected = 5): array
 {
     Carbon::setTestNow("{$today} 10:00:00");
     $mesocycle = TrainSeed::mesocycle(TrainSeed::user(), $meso);
     $before = $mesocycle->fresh()->getAttributes();
     try {
-        app(SetMesocycleLength::class)($mesocycle->user, $mesocycle->id, $weeks);
+        app(SetMesocycleLength::class)($mesocycle->user, $mesocycle->id, $weeks, $expected);
         $refusal = null;
     } catch (DomainException $refused) {
         $refusal = $refused->getMessage();
@@ -33,6 +33,19 @@ it('MESO-042 plus adds a week and the deload stays last, keeping the days and th
         ->and($mesocycle->weeks)->toBe(6)
         ->and($mesocycle->ended_on->format('Y-m-d'))->toBe('2026-10-20')
         ->and(array_column($mesocycle->dayRows(), 'label'))->toBe(['Upper A', 'Lower A']);
+});
+
+it('MESO-042 refuses a change when the length moved since the screen was loaded, and goes ahead when it did not', function () {
+    // Another device took Meso 2 from 5 to 6 weeks; a minus on a screen still showing 5 sends 4.
+    [$mesocycle, $refusal, $before] = lengthSet('2026-09-22', 4, ['weeks' => 6], expected: 5);
+
+    expect($refusal)->toBe('This mesocycle\'s length changed to 6 weeks since the screen was loaded, so nothing was changed.')
+        ->and($mesocycle->getAttributes())->toBe($before);
+
+    [$mesocycle, $refusal] = lengthSet('2026-09-22', 5, ['weeks' => 6], expected: 6);
+
+    expect($refusal)->toBeNull()
+        ->and($mesocycle->weeks)->toBe(5);
 });
 
 it('MESO-042 minus removes the last training week', function () {
@@ -64,7 +77,7 @@ it('MESO-042 refuses to run into the next saved mesocycle, saying when it starts
     $mesocycle = TrainSeed::mesocycle($user);
     TrainSeed::mesocycle($user, ['name' => 'Meso 3', 'start_date' => '2026-10-12']);
 
-    expect(fn () => app(SetMesocycleLength::class)($user, $mesocycle->id, 6))
+    expect(fn () => app(SetMesocycleLength::class)($user, $mesocycle->id, 6, 5))
         ->toThrow(DomainException::class, 'The next mesocycle starts on 12 Oct, so this one can run at most 5 weeks.')
         ->and($mesocycle->fresh()->weeks)->toBe(5);
 });
@@ -76,7 +89,7 @@ it('MESO-042 a copy waiting for the next start, and an earlier mesocycle, do not
     $mesocycle = TrainSeed::mesocycle($user);
     TrainSeed::mesocycle($user, ['name' => null, 'is_draft' => true, 'route' => 'copy_previous', 'start_date' => '2026-10-12']);
 
-    app(SetMesocycleLength::class)($user, $mesocycle->id, 6);
+    app(SetMesocycleLength::class)($user, $mesocycle->id, 6, 5);
 
     expect($mesocycle->fresh()->weeks)->toBe(6);
 });
