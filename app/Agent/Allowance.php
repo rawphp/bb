@@ -22,7 +22,8 @@ final readonly class Allowance
         public ?string $notice,
     ) {}
 
-    public static function check(?int $turnsPerDay, ?int $tokensPerMonth, int $turnsToday, int $tokensThisMonth, CarbonImmutable $now): self
+    /** `$dayEndsAt` is when the user's day ends (SET-012); without it, the app's day. */
+    public static function check(?int $turnsPerDay, ?int $tokensPerMonth, int $turnsToday, int $tokensThisMonth, CarbonImmutable $now, ?CarbonImmutable $dayEndsAt = null): self
     {
         $turnsLeft = $turnsPerDay === null ? null : max($turnsPerDay - $turnsToday, 0);
         $tokensLeft = $tokensPerMonth === null ? null : max($tokensPerMonth - $tokensThisMonth, 0);
@@ -32,7 +33,7 @@ final readonly class Allowance
             return self::reached($turnsLeft, $tokensLeft, $now->startOfMonth()->addMonth(), 'this month\'s');
         }
         if ($turnsLeft === 0) {
-            return self::reached($turnsLeft, $tokensLeft, $now->startOfDay()->addDay(), 'today\'s');
+            return self::reached($turnsLeft, $tokensLeft, $dayEndsAt ?? $now->startOfDay()->addDay(), 'today\'s');
         }
 
         $notice = null;
