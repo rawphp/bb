@@ -1,6 +1,7 @@
 <?php
 
 use App\Capabilities\Reads\Progress\ExerciseHistoryPayload;
+use App\Capabilities\Support\Ownership;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\WeightUnit;
 use App\Models\Exercise;
@@ -305,6 +306,10 @@ it('ANA-009 answers 404 for a before that is a stranger\'s session, unknown or d
     $deleted = WorkoutSession::factory()->for($user)->create(['actual_start_at' => '2026-10-07 09:00:00']);
     $deleted->delete();
 
+    // The ownership check refuses it before the read runs (CAP-020 step 2).
+    expect(app(Ownership::class)->allows('exercise_history_show', ['exercise_id' => (string) $bench->id, 'before' => $theirs->id], $user))->toBeFalse()
+        ->and(app(Ownership::class)->allows('exercise_history_show', ['exercise_id' => (string) $bench->id, 'before' => $deleted->id], $user))->toBeFalse()
+        ->and(app(Ownership::class)->allows('exercise_history_show', ['exercise_id' => (string) $bench->id, 'before' => $second->id], $user))->toBeTrue();
     historyOf($this, $user, $bench, $theirs->id)->assertNotFound();
     historyOf($this, $user, $bench, '0193f1a2-0000-7000-8000-000000000000')->assertNotFound();
     historyOf($this, $user, $bench, $deleted->id)->assertNotFound();
@@ -331,4 +336,20 @@ it('ANA-009 runs as many queries for 45 sessions as for 3, and loads sets of at 
 
     expect($queries($many))->toBe($queries($few))
         ->and(ExerciseHistorySnapshot::load($many, (string) $bench->id)->sets->pluck('workout_session_id')->unique())->toHaveCount(20);
+});
+
+it('EX-002 dates a session with only a planned start by that start, on every page and as the cursor', function () {
+    ['user' => $user] = ProgressSeed::world();
+    $bench = Exercise::factory()->create(['name' => 'Squat']);
+    $ids = array_column(benchSessions($user, $bench, 25), 'id');
+    // Between day 19 (2026-09-21) and day 20 (2026-09-20 09:00): the 20th session, so the first page ends on it.
+    $planned = WorkoutSession::factory()->for($user)->create(['actual_start_at' => null, 'planned_start_at' => '2026-09-20 12:00:00']);
+    WorkoutSet::factory()->create(['workout_session_id' => $planned->id, 'exercise_id' => $bench->id, 'position' => 1, 'actual_weight_kg' => 50, 'actual_reps' => 5, 'is_logged' => true]);
+
+    $pages = everyPage($this, $user, $bench);
+
+    expect($pages[0]['next_before'])->toBe($planned->id)
+        ->and($pages[0]['sessions'][19]['date_label'])->toBe('Sun, 20 Sep 2026')
+        ->and(array_merge(...array_map(fn ($page) => array_column($page['sessions'], 'id'), $pages)))
+        ->toBe([...array_slice($ids, 0, 19), $planned->id, ...array_slice($ids, 19)]);
 });
