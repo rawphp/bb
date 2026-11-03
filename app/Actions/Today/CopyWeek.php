@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 /**
  * SCH-035: copies every planned food of a plan week to the next one, with the default MEAL-060 options. Each day's
  * meals pair, as in Copy day, with those of the same weekday a week later; a day without a target on either side has
- * nothing to pair, and a day of the next week before the plan ({@see CopyDay::inPlan()}) takes nothing. The week is
+ * nothing to pair, and a day of the next week before the plan ({@see CopyMeals::inPlan()}) takes nothing. The week is
  * the 7 days the week strip shows around `$weekStart` ({@see TodaySnapshot::weekStart()}).
  */
 final class CopyWeek
@@ -38,7 +38,7 @@ final class CopyWeek
             throw (new ModelNotFoundException)->setModel(DayTarget::class, [$dates[0]]);
         }
 
-        $next = CopyDay::inPlan($user, array_slice($dates, 7));
+        $next = CopyMeals::inPlan($user, array_slice($dates, 7));
         $pairs = [];
         for ($offset = 0; $offset < 7; $offset++) {
             $from = $days->get($dates[$offset]);

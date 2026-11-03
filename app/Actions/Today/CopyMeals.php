@@ -12,6 +12,7 @@ use App\Domain\MealFit\Weighing;
 use App\Domain\Recipe\RecipeServing;
 use App\Models\DayTarget;
 use App\Models\DayTargetMeal;
+use App\Models\Plan;
 use App\Models\PlannedFood;
 use App\Models\PlannedRecipe;
 use App\Models\User;
@@ -23,7 +24,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * MEAL-060: copies each pair's source meal into its destination meal, as {@see CopyPlanner} decides, replacing the
  * destination's planned foods and recipe servings. Every row is removed and created through its model, and the meal
- * times through the day's target, in one transaction. Meals that are not the user's, or whose day is gone, are left out.
+ * times through the day's target, in one transaction. Meals that are not the user's, or whose day is gone, are left out,
+ * and so is a destination on a day outside the user's plan ({@see self::inPlan()}).
  */
 final class CopyMeals
 {
@@ -43,9 +45,12 @@ final class CopyMeals
             ->get()
             ->keyBy(fn (DayTargetMeal $meal) => strtolower((string) $meal->id));
         $meals = $rows->map(fn (DayTargetMeal $meal) => self::meal($meal));
+        $date = fn (DayTargetMeal $meal): string => DayPlans::day($meal->dayTarget->date)->format('Y-m-d');
+        $inPlan = self::inPlan($user, array_values(array_unique($rows->map($date)->all())));
+        $takes = fn (string $id): bool => $rows->has($id) && in_array($date($rows[$id]), $inPlan, true);
 
         $writes = $this->planner->writes(array_values(array_filter(array_map(
-            fn (array $pair) => $meals->has($pair[0]) && $meals->has($pair[1]) ? ['source' => $meals[$pair[0]], 'destination' => $meals[$pair[1]]] : null,
+            fn (array $pair) => $meals->has($pair[0]) && $takes($pair[1]) ? ['source' => $meals[$pair[0]], 'destination' => $meals[$pair[1]]] : null,
             $pairs,
         ))), $options);
 
@@ -57,6 +62,23 @@ final class CopyMeals
         });
 
         return array_map(fn (CopyWrite $write) => $rows[$write->destinationId], $writes);
+    }
+
+    /**
+     * MEAL-060, SCH-034, SCH-035: the dates a copy may write to, those from the user's plan start on; none without a plan.
+     *
+     * @param  list<string>  $dates  Y-m-d
+     * @return list<string>
+     */
+    public static function inPlan(User $user, array $dates): array
+    {
+        $start = Plan::query()->where('user_id', $user->id)->value('start_date');
+        if ($start === null) {
+            return [];
+        }
+        $planStart = DayPlans::day($start)->format('Y-m-d');
+
+        return array_values(array_filter($dates, fn (string $date) => $date >= $planStart));
     }
 
     /** The destination's planned foods and recipe servings become the copies, numbered in the source's order. */

@@ -24,7 +24,7 @@ final class MealCopyCapability implements HostCapability, OwnsInput
     {
         // UI-010, CAP-013: a copy shows a toast with Undo.
         return HostDefinition::write('meal_copy', affects: CopyReads::AFFECTS, reversible: true)
-            ->description('Copy a meal\'s planned foods and recipe servings into other meals on any days, replacing what those meals hold. By default the copies re-fit to each meal\'s own targets with locked amounts kept, keep each meal\'s time and arrive unlocked; update_target_macros, update_meal_times and copy_locked_state change that. Checked-in meals and the source itself are skipped (copy_show lists the meals that can take the copy).')
+            ->description('Copy a meal\'s planned foods and recipe servings into other meals on any days, replacing what those meals hold. By default the copies re-fit to each meal\'s own targets with locked amounts kept, keep each meal\'s time and arrive unlocked; update_target_macros, update_meal_times and copy_locked_state change that. Checked-in meals, meals on a day before the plan and the source itself are skipped (copy_show lists the meals that can take the copy).')
             ->cli('meal', 'copy')
             ->input(MealCopyInput::class)
             ->run(function (MealCopyInput $input, CapabilityContext $context): WriteResult {

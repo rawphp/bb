@@ -153,17 +153,21 @@ final class CopyPayload
 
     /**
      * MEAL-060: the shown day's meals in time order with its workout between them; a meal and the workout at one
-     * minute put the meal first, and meals at one minute keep their stored order.
+     * minute put the meal first, and meals at one minute keep their stored order. None for a day before the plan.
      *
      * @return list<TodayMealItem|TodayWorkoutItem>
      */
     private static function timeline(TodaySnapshot $snapshot, DateTimeImmutable $day): array
     {
+        // A day before the plan takes no copy, so it lists nothing, as Today shows nothing for it.
+        if ($snapshot->isBeforePlan($day)) {
+            return [];
+        }
         $items = [];
         foreach ($snapshot->meals($day) as $index => $meal) {
             $items[] = [MealOrder::minute($meal->time), 0, $index, $meal];
         }
-        $workout = $snapshot->isBeforePlan($day) ? null : $snapshot->workout($day);
+        $workout = $snapshot->workout($day);
         if ($workout !== null && $workout->state !== TodayWorkoutItem::SKIPPED) {
             $items[] = [$workout->time->minuteOfDay, 1, 0, $workout];
         }

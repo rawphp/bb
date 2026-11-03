@@ -6,7 +6,6 @@ use App\Domain\Copy\CopyOptions;
 use App\Domain\Placement\MealOrder;
 use App\Models\DayTarget;
 use App\Models\DayTargetMeal;
-use App\Models\Plan;
 use App\Models\User;
 use App\Support\Today\DayPlans;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -34,7 +33,7 @@ final class CopyDay
             ->keyBy(fn (DayTarget $day) => DayPlans::day($day->date)->format('Y-m-d'));
         $source = $days->get($sourceDate) ?? throw (new ModelNotFoundException)->setModel(DayTarget::class, [$sourceDate]);
 
-        $dates = self::inPlan($user, array_values(array_unique($targetDates)));
+        $dates = CopyMeals::inPlan($user, array_values(array_unique($targetDates)));
         sort($dates);
         $pairs = [];
         foreach ($dates as $date) {
@@ -46,23 +45,6 @@ final class CopyDay
         }
 
         return ($this->copy)($user, $pairs, $options);
-    }
-
-    /**
-     * SCH-034, SCH-035: the dates a copy may write to, those from the user's plan start on; none without a plan.
-     *
-     * @param  list<string>  $dates  Y-m-d
-     * @return list<string>
-     */
-    public static function inPlan(User $user, array $dates): array
-    {
-        $start = Plan::query()->where('user_id', $user->id)->value('start_date');
-        if ($start === null) {
-            return [];
-        }
-        $planStart = DayPlans::day($start)->format('Y-m-d');
-
-        return array_values(array_filter($dates, fn (string $date) => $date >= $planStart));
     }
 
     /**
