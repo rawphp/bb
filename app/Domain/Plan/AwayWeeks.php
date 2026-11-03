@@ -153,6 +153,29 @@ final class AwayWeeks
         return ! $choice && self::isMovable($row) ? -1 : 0;
     }
 
+    /**
+     * PLAN-025: what saving a week moves the phase end by, in weeks, and the keep_phase_end to store for it.
+     *
+     * A diet break this sheet made either moved the end (saved with keep_phase_end off) or did not (on); the stored
+     * flag is that record. So the end moves back only for a break that moved it, and out only for a break that has not,
+     * and it never drifts from the breaks that count. `$keep` true leaves the end where it is. A week away without a
+     * diet break stores `$keep` as the user's choice; a week not away stores false.
+     *
+     * @return array{0: int, 1: bool}
+     */
+    public function endMove(int $week, bool $away, Calories $calories, bool $keep): array
+    {
+        $row = $this->row($week);
+        $movedBefore = self::isMovable($row) && ! $row->keepPhaseEnd;
+        $counts = $this->isDietBreakChoice($away, $calories) && (! $row->isDietBreak || self::isMovable($row));
+        if (! $counts) {
+            return [$movedBefore && ! $keep ? -1 : 0, $away && $keep];
+        }
+        $movedAfter = $movedBefore || ! $keep;
+
+        return [(int) $movedAfter - (int) $movedBefore, ! $movedAfter];
+    }
+
     /** A diet break this sheet made: away with maintenance. Only these move or undo the end date. */
     private static function isMovable(AwayWeekRow $row): bool
     {

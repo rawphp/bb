@@ -171,3 +171,23 @@ it('PLAN-025 a phase with no end moves nothing, and neither does a net of none',
     expect(awayWeeks(F::phase(PhaseType::FatLoss, 0, null))->movedPhases(1))->toBe([])
         ->and(awayWeeks()->movedPhases(0))->toBe([]);
 });
+
+// What a save moves the end by, and the keep_phase_end it stores: the end never drifts from the breaks that moved it.
+
+it('PLAN-025 the end moves out once per diet break that has not moved it, and back only for one that has', function (?AwayWeekRow $row, bool $away, Calories $calories, bool $keep, array $expected) {
+    expect(awayWeeks(rows: $row === null ? [] : [4 => $row])->endMove(4, $away, $calories, $keep))->toBe($expected);
+})->with([
+    'a new break, end moves' => [null, true, Calories::Maintenance, false, [1, false]],
+    'a new break, end kept' => [null, true, Calories::Maintenance, true, [0, true]],
+    'rest days, no break' => [null, true, Calories::RestDays, false, [0, false]],
+    'a moved break stays' => [awayRow(keep: false), true, Calories::Maintenance, false, [0, false]],
+    'a moved break stays, keep sent' => [awayRow(keep: false), true, Calories::Maintenance, true, [0, false]],
+    'a kept break, keep turned off' => [awayRow(keep: true), true, Calories::Maintenance, false, [1, false]],
+    'a kept break stays kept' => [awayRow(keep: true), true, Calories::Maintenance, true, [0, true]],
+    'a moved break to rest days' => [awayRow(keep: false), true, Calories::RestDays, false, [-1, false]],
+    'a moved break to rest days, keep sent' => [awayRow(keep: false), true, Calories::RestDays, true, [0, true]],
+    'a kept break to rest days, keep off' => [awayRow(keep: true), true, Calories::RestDays, false, [0, false]],
+    'a moved break not away' => [awayRow(keep: false), false, Calories::Maintenance, false, [-1, false]],
+    'a kept break not away, keep off' => [awayRow(keep: true), false, Calories::Maintenance, false, [0, false]],
+    'a break from elsewhere marked away' => [new AwayWeekRow(false, null, null, true, false), true, Calories::Maintenance, false, [0, false]],
+]);

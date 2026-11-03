@@ -68,16 +68,14 @@ final class SetAwayWeeks
             $updated = $updated || $before->isAway;
 
             // PLAN-025: a week sent without keep_phase_end keeps what it was saved with.
-            $keep = $input->keep_phase_end ?? $before->keepPhaseEnd;
-            if (! $keep) {
-                $net += $away->change($week, $input->away, $calories);
-            }
+            [$move, $storedKeep] = $away->endMove($week, $input->away, $calories, $input->keep_phase_end ?? $before->keepPhaseEnd);
+            $net += $move;
             $row->fill([
                 'is_away' => $input->away,
                 'away_training' => $input->away ? $training->value : null,
                 'away_calories' => $input->away ? $calories->value : null,
                 'is_diet_break' => $away->storedDietBreak($week, $input->away, $calories),
-                'keep_phase_end' => $input->away && $keep,
+                'keep_phase_end' => $storedKeep,
             ])->save();
 
             array_push($dates, ...array_map(fn (\DateTimeImmutable $day) => $day->format('Y-m-d'), $away->days($week)));
