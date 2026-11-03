@@ -21,7 +21,7 @@ final class BusyPeriodSetCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('busy_period_set', affects: [...SettingsReads::REBUILDS, ...TodayReads::SHEETS])
-            ->description('Add a repeating busy period to the user\'s schedule: a label, a start and end time ("HH:MM", 24-hour) and the ISO weekdays it repeats on (1 = Monday). Saving the same id again edits it. Meals are placed outside busy periods, and the targets are recalculated from tomorrow.')
+            ->description('Add a repeating busy period to the user\'s schedule: a label, a start and end time ("HH:MM", 24-hour) and the ISO weekdays it repeats on (1 = Monday). Saving the same id again edits the period saved with it, so a retry never adds it twice; to change a busy period the user already had, use schedule_update or schedule_defaults_update. Meals are placed outside busy periods, and the targets are recalculated from tomorrow.')
             ->cli('busy-period', 'set')
             ->input(BusyPeriodSetInput::class)
             ->run(function (BusyPeriodSetInput $input, CapabilityContext $context): WriteResult {

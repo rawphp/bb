@@ -54,9 +54,14 @@ final class ChangeTrainingWeekdays
 {
     public const NO_DAYS = 'Pick at least one training day.';
 
+    /** SCH-056: the toast when today is re-targeted. */
+    public const CANNOT_EXTEND = 'Your mesocycle can\'t run longer: the next one starts too soon. Choose restructure instead.';
+
+    public const RETARGETED = 'Meals updated for your new schedule';
+
     public function __construct(private readonly SaveProfile $save) {}
 
-    /** @return array{toast: ?string, dates: list<string>, mesocycle_id: ?string} the re-target's toast, the days changed, and the mesocycle reshaped */
+    /** @return array{toast: ?string, dates: list<string>, today: ?array{date: string, week: list<string>}, mesocycle_id: ?string} the toast of today's re-target, the dates the rebuild wrote, today and its plan week when re-targeted, and the mesocycle changed */
     public function __invoke(User $user, TrainingWeekdaysChangeInput $input): array
     {
         $weekdays = array_values(array_unique($input->weekdays));
@@ -65,31 +70,39 @@ final class ChangeTrainingWeekdays
             throw new FieldRefused('weekdays', self::NO_DAYS);
         }
 
-        /** @var ?array{mesocycle: Mesocycle, fromWeek: int, train: TrainSnapshot, result: ?DomainMesocycle, restructure: bool} $covering */
+        /** @var ?array{mesocycle: Mesocycle, fromWeek: int, train: TrainSnapshot, result: ?DomainMesocycle, restructure: bool, weekdays: list<int>} $covering */
         $covering = null;
+        /** @var bool $changed whether the weekday set changed; set under the profile's lock */
+        $changed = false;
+        /** @var list<array{weekday: int, start: string, minutes: int}> $trainingDays */
         $trainingDays = [];
-        $rebuilt = ($this->save)($user, [], function (Profile $profile) use ($user, $weekdays, $input, &$covering, &$trainingDays): void {
+        /** @var list<string> $kept */
+        $kept = [];
+        $rebuilt = ($this->save)($user, [], function (Profile $profile) use ($user, $weekdays, $input, &$covering, &$changed, &$trainingDays): void {
             $old = TodaySnapshot::json($profile->training_days);
             $trainingDays = self::trainingDays($old, $weekdays);
-            $covering = self::covering($user, $old, $trainingDays, $input->fewer_days);
+            $changed = self::sorted(array_values(array_unique(array_map(fn (mixed $day) => (int) (is_array($day) ? ($day['weekday'] ?? 0) : 0), $old)))) !== $weekdays;
+            $covering = $changed ? self::covering($user, $old, $trainingDays, $input->fewer_days) : null;
             $profile->fill(['training_days' => $trainingDays]);
-        }, function () use ($user, &$covering): bool {
-            if ($covering === null) {
+        }, function () use ($user, &$covering, &$changed, &$kept): bool {
+            if (! $changed) {
                 return false;
             }
-            self::pinThisWeek($user);
-            if ($covering['result'] !== null) {
-                self::store($covering['mesocycle'], $covering['result'], $covering['restructure'], $covering['fromWeek'], $covering['train']);
+            // This week's sessions stay on their days whether or not a mesocycle runs next week.
+            $kept = self::pinThisWeek($user);
+            if ($covering !== null) {
+                self::store($covering);
             }
 
             return true;
         });
 
-        $today = self::retargetToday($user, $trainingDays);
+        $today = $changed ? self::retargetToday($user, $trainingDays, $kept) : null;
 
         return [
-            'toast' => $today === null ? null : 'Meals updated for your new schedule',
-            'dates' => array_values(array_unique([...($today === null ? [] : [$today]), ...$rebuilt])),
+            'toast' => $today === null ? null : self::RETARGETED,
+            'dates' => $rebuilt,
+            'today' => $today,
             'mesocycle_id' => $covering === null ? null : (string) $covering['mesocycle']->id,
         ];
     }
@@ -121,7 +134,7 @@ final class ChangeTrainingWeekdays
      *
      * @param  array<array-key, mixed>  $old
      * @param  list<array{weekday: int, start: string, minutes: int}>  $new
-     * @return ?array{mesocycle: Mesocycle, fromWeek: int, train: TrainSnapshot, result: ?DomainMesocycle, restructure: bool}
+     * @return ?array{mesocycle: Mesocycle, fromWeek: int, train: TrainSnapshot, result: ?DomainMesocycle, restructure: bool, weekdays: list<int>}
      *
      * @throws FieldRefused on `fewer_days` when fewer days come without a choice
      */
@@ -141,7 +154,8 @@ final class ChangeTrainingWeekdays
             return null;
         }
         $fromWeek = PlanRules::mesocycleWeek($next, $placed->placed->startWeek, $plan->pausedWeeks);
-        $train = TrainSnapshot::load($user, (string) $placed->mesocycle->id);
+        // The rows are read with a lock, so the mesocycle is written from what it is now.
+        $train = TrainSnapshot::load($user, (string) $placed->mesocycle->id, locked: true);
         $mesocycle = $train->mesocycle((string) $placed->mesocycle->id);
         $domain = $train->domain($mesocycle);
         if ($fromWeek < 0 || $fromWeek >= $domain->weeks) {
@@ -149,16 +163,23 @@ final class ChangeTrainingWeekdays
         }
 
         $change = TrainingWeekdays::change($domain, $oldDays, $newDays, $fromWeek);
+        $weekdaysIso = array_map(fn (array $day) => $day['weekday'], $new);
         $days = count($weekdaysOf($newDays));
         $fewer = $days < count($weekdaysOf($oldDays));
         if ($change->kind === ChangeKind::Choose && $fewerDays === null && $fewer) {
             throw new FieldRefused('fewer_days', self::question($change->choices, $days, $domain->weeks));
         }
-        $result = match ($change->kind === ChangeKind::Choose ? $fewerDays : null) {
+        // More days asks nothing, and a choice sent with them is not applied: the sessions take the first weekdays.
+        $result = match ($change->kind === ChangeKind::Choose && $fewer ? $fewerDays : null) {
             'restructure' => TrainingWeekdays::restructured($domain, $days, $fromWeek, self::exercises($train, $mesocycle), fn () => Str::lower((string) Str::ulid())),
             'extend' => TrainingWeekdays::keepingAllSessions($domain, $days, $fromWeek),
             default => null,
         };
+        // MESO-042: running longer must still end before the next mesocycle starts, and within the longest length.
+        if ($fewerDays === 'extend' && $result !== null && ! $plan->calendar($mesocycle)->lengthRange()->contains($result->weeks)) {
+            throw new FieldRefused('fewer_days', self::CANNOT_EXTEND);
+        }
+        $grid = $train->grid();
 
         return [
             'mesocycle' => $mesocycle,
@@ -166,7 +187,8 @@ final class ChangeTrainingWeekdays
             'train' => $train,
             // Keeping all sessions with as many days as every week's sessions changes nothing.
             'result' => $result === $domain ? null : $result,
-            'restructure' => $fewerDays === 'restructure',
+            'restructure' => $result !== null && $fewerDays === 'restructure',
+            'weekdays' => $grid === null ? $weekdaysIso : PlanWeekDays::inPlanWeekOrder($weekdaysIso, $train->reviewIsoWeekday($grid)),
         ];
     }
 
@@ -191,40 +213,58 @@ final class ChangeTrainingWeekdays
     /**
      * This plan week's sessions that have no row and are not logged, each given a row on the day they are on now at
      * their time, so they stay there whatever the training weekdays become. A session with a row keeps it.
+     *
+     * @return list<string> the days (Y-m-d) whose session already had a row, or was logged: it keeps the time it has
      */
-    private static function pinThisWeek(User $user): void
+    private static function pinThisWeek(User $user): array
     {
         $snapshot = TodaySnapshot::loadWeek($user);
         $grid = $snapshot->train->grid();
         $index = $grid?->weekIndexContaining($snapshot->today());
         if ($index === null) {
-            return;
+            return [];
         }
+        $kept = [];
         foreach ($grid->planWeek($index)->days() as $day) {
             $workout = $snapshot->workout($day);
             $scheduled = $snapshot->planning($day)['plan']->session ?? null;
-            if ($workout === null || $scheduled === null || $workout->isLogged()) {
+            if ($workout === null || $scheduled === null) {
                 continue;
             }
             $rowed = WorkoutSession::query()->where('user_id', $user->id)->where('mesocycle_id', $workout->mesocycle->id)
                 ->where('week', $workout->week)->where('day', $workout->day)->exists();
-            if (! $rowed) {
-                PlannedSession::saveRow($user, null, (string) $workout->mesocycle->id, $workout->week, $workout->day, $day, $scheduled->time);
+            if ($rowed || $workout->isLogged()) {
+                $kept[] = $day->format('Y-m-d');
+
+                continue;
             }
+            PlannedSession::saveRow($user, null, (string) $workout->mesocycle->id, $workout->week, $workout->day, $day, $scheduled->time);
         }
+
+        return $kept;
     }
 
     /**
-     * Stores the mesocycle as the choice reshaped it (rp-clone's `replacingWeeks`). The weeks before `$fromWeek` are
-     * stored as they ran. Keep all sessions changes the length and the later weeks only, so the rotation stays as
-     * stored. Restructure replaces the rotation with the new sessions: a stored slot keeps its exercise and a new one
-     * takes the exercise the muscle had; a new session has no weekday.
+     * Stores the mesocycle covering next week for the new weekdays (rp-clone's `replacingWeeks`).
+     *
+     * - A re-map, more days, or keeping all sessions: each rotation day takes the new weekday in its place, in plan-week
+     *   order, so Train and Workout put next week's sessions where Today does; with a different number of days the days
+     *   float. Keeping all sessions also stores the length and the later weeks, and the weeks before `fromWeek` as
+     *   they ran.
+     * - Restructure: the rotation is the new sessions, from `fromWeek` on, with the weeks before it stored as they ran.
+     *   A stored slot keeps its exercise, a new one takes the exercise its muscle had; a new session has no weekday.
+     *
+     * @param  array{mesocycle: Mesocycle, fromWeek: int, train: TrainSnapshot, result: ?DomainMesocycle, restructure: bool, weekdays: list<int>}  $covering
      */
-    private static function store(Mesocycle $mesocycle, DomainMesocycle $result, bool $restructure, int $fromWeek, TrainSnapshot $train): void
+    private static function store(array $covering): void
     {
-        $frozen = MesocycleRules::freezingWeeks($train->rotationAsRun($mesocycle), $mesocycle->earlierWeekRows(), $mesocycle->laterWeekIds(), $fromWeek);
-        $changes = ['weeks' => $result->weeks, 'earlier_weeks' => $frozen['earlier_weeks'], 'later_weeks' => $result->laterWeeks];
-        if ($restructure) {
+        ['mesocycle' => $mesocycle, 'fromWeek' => $fromWeek, 'train' => $train, 'result' => $result] = $covering;
+        $changes = [];
+        if ($result !== null) {
+            $frozen = MesocycleRules::freezingWeeks($train->rotationAsRun($mesocycle), $mesocycle->earlierWeekRows(), $mesocycle->laterWeekIds(), $fromWeek);
+            $changes = ['weeks' => $result->weeks, 'earlier_weeks' => $frozen['earlier_weeks'], 'later_weeks' => $result->laterWeeks];
+        }
+        if ($result !== null && $covering['restructure']) {
             $slots = [];
             $exerciseIds = [];
             foreach ($mesocycle->dayRows() as $day) {
@@ -248,6 +288,14 @@ final class ChangeTrainingWeekdays
                 ], $session->slots),
             ], $result->sessions);
             $changes['days_per_week'] = count($result->sessions);
+        } else {
+            $weekdays = $covering['weekdays'];
+            $stored = $mesocycle->days ?? [];
+            $changes['days'] = array_map(
+                fn (mixed $day, int $index) => array_replace((array) $day, ['weekday' => count($stored) === count($weekdays) ? $weekdays[$index] : null]),
+                $stored,
+                array_keys($stored),
+            );
         }
         $mesocycle->update($changes);
     }
@@ -274,12 +322,14 @@ final class ChangeTrainingWeekdays
 
     /**
      * SCH-039: today re-targeted with the new schedule (TrainingWeekdays::retargetThisWeek), the one day of this plan
-     * week the rebuild leaves. Nothing changes on a day with no meals, a checked-in meal, or that the rule refuses.
+     * week the rebuild leaves. A session that had a row or was logged keeps the time it has (rp-clone's
+     * `weekdayChangeKeptTime`). Nothing changes on a day with no meals, a checked-in meal, or that the rule refuses.
      *
      * @param  list<array{weekday: int, start: string, minutes: int}>  $trainingDays
-     * @return ?string the day re-targeted, Y-m-d
+     * @param  list<string>  $kept  the days whose session keeps its time, Y-m-d
+     * @return ?array{date: string, week: list<string>} today and its plan week, when re-targeted
      */
-    private static function retargetToday(User $user, array $trainingDays): ?string
+    private static function retargetToday(User $user, array $trainingDays, array $kept): ?array
     {
         $date = UserDay::today($user)->format('Y-m-d');
         try {
@@ -287,8 +337,12 @@ final class ChangeTrainingWeekdays
         } catch (DomainException) {
             return null;
         }
+        $weekday = (int) UserDay::today($user)->format('N');
+        $training = in_array($date, $kept, true)
+            ? array_values(array_filter($trainingDays, fn (array $training) => $training['weekday'] !== $weekday))
+            : $trainingDays;
         try {
-            $result = TrainingWeekdays::retargetThisWeek([$day->day], self::domainDays($trainingDays), $day->context, RetargetableDay::newId(...));
+            $result = TrainingWeekdays::retargetThisWeek([$day->day], self::domainDays($training), $day->context, RetargetableDay::newId(...));
         } catch (RetargetRefused) {
             return null;
         }
@@ -297,7 +351,7 @@ final class ChangeTrainingWeekdays
         }
         $day->save($result->days[0]);
 
-        return $date;
+        return ['date' => $date, 'week' => $day->weekDates()];
     }
 
     /**

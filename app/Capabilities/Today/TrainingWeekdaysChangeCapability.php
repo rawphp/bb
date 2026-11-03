@@ -19,8 +19,9 @@ final class TrainingWeekdaysChangeCapability implements HostCapability
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        // AGT-010: it can reshape the running mesocycle, so the agent asks first.
-        return HostDefinition::write('training_weekdays_change', affects: [...SettingsReads::REBUILDS, 'train_show', 'mesocycle_show', ...TodayReads::SHEETS], destructive: true)
+        // AGT-010: it can reshape the running mesocycle, so the agent asks first. SCH-056, UI-010: today's re-target
+        // shows a toast with Undo, which takes back the whole change.
+        return HostDefinition::write('training_weekdays_change', affects: [...SettingsReads::REBUILDS, 'train_show', 'mesocycle_show', 'workout_show', ...TodayReads::SHEETS], reversible: true, destructive: true)
             ->description('Change the ISO weekdays the user trains on (1 = Monday), from the next plan week; this week\'s sessions stay on their days. A weekday kept keeps its start time, a new one starts at 17:30 for 60 minutes. While a mesocycle runs, the same number of days moves its sessions to the new weekdays. Fewer days needs fewer_days: restructure lays the muscles out over the new days from next week, extend keeps all sessions so the mesocycle runs longer; without it the call is refused on fewer_days with what each choice does, to ask the user. The targets are recalculated from tomorrow and today\'s unchecked meals are placed again.')
             ->cli('training-weekdays', 'change')
             ->input(TrainingWeekdaysChangeInput::class)
@@ -30,10 +31,11 @@ final class TrainingWeekdaysChangeCapability implements HostCapability
                 $changed = ($this->change)($user, $input);
 
                 return new WriteResult(
-                    invalidates: [
+                    invalidates: array_values(array_unique([
                         ...SettingsReads::keys($changed['dates']),
+                        ...($changed['today'] === null ? [] : TodayReads::forDays([$changed['today']['date']], $changed['today']['week'])),
                         ...($changed['mesocycle_id'] === null ? [] : MesocycleReads::keys($changed['mesocycle_id'])),
-                    ],
+                    ])),
                     toast: $changed['toast'],
                 );
             });
