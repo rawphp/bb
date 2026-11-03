@@ -32,15 +32,34 @@ const emit = defineEmits<{ cancel: []; done: [] }>();
 const id = ref('');
 const weight = ref('');
 const waist = ref('');
-/** The date and time field's value, in the device's time zone: "2026-10-10T08:35". */
+/** The date and time field's value, "2026-10-10T08:35", read in `offset`. */
 const when = ref('');
+/**
+ * The UTC offset the time is read in. The server has no time zone per user and words its
+ * labels in the offset it sends (ReadingTime), so a weigh-in or a missed day keeps the
+ * server's, and the field shows the time its row does. A new one for now takes the device's.
+ */
+const offset = ref('+00:00');
 
 const { send, busy, error } = useWrite((options) => props.reload(options));
 
 const two = (n: number) => String(n).padStart(2, '0');
 
-function local(date: Date): string {
-    return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}T${two(date.getHours())}:${two(date.getMinutes())}`;
+/** The device's time now, as the field takes it, and the device's offset. */
+function deviceNow(): { field: string; offset: string } {
+    const date = now();
+    const minutes = -date.getTimezoneOffset();
+    const sign = minutes < 0 ? '-' : '+';
+    return {
+        field: `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}T${two(date.getHours())}:${two(date.getMinutes())}`,
+        offset: `${sign}${two(Math.floor(Math.abs(minutes) / 60))}:${two(Math.abs(minutes) % 60)}`,
+    };
+}
+
+/** An ISO time the server sent, split into the field's value and its offset. */
+function split(iso: string): { field: string; offset: string } {
+    const zone = /(Z|[+-]\d{2}:\d{2})$/.exec(iso)?.[1] ?? 'Z';
+    return { field: iso.slice(0, 16), offset: zone === 'Z' ? '+00:00' : zone };
 }
 
 // Each opening starts from the weigh-in, or blank with a new id (CAP-019).
@@ -49,7 +68,9 @@ function reset(): void {
     weight.value = props.row?.weight_field ?? '';
     waist.value = props.row?.waist_field ?? '';
     const start = props.row?.weighed_at ?? props.at;
-    when.value = local(start ? new Date(start) : now());
+    const picked = start ? split(start) : deviceNow();
+    when.value = picked.field;
+    offset.value = picked.offset;
     error.value = null;
 }
 
@@ -68,12 +89,11 @@ function typed(text: string): number | null {
 const input = computed<WeighInLogInput | null>(() => {
     const kg = typed(weight.value);
     const cm = waist.value.trim() === '' ? null : typed(waist.value);
-    const at = new Date(when.value);
-    if (kg === null || (waist.value.trim() !== '' && cm === null) || Number.isNaN(at.getTime())) return null;
+    if (kg === null || (waist.value.trim() !== '' && cm === null) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(when.value)) return null;
 
     return {
         id: id.value,
-        weighed_at: at.toISOString(),
+        weighed_at: `${when.value}:00${offset.value}`,
         weight: { value: kg, unit: props.units.weight },
         waist: cm === null ? null : { value: cm, unit: props.units.waist },
     };
