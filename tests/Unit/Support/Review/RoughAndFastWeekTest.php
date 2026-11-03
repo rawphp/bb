@@ -86,6 +86,19 @@ it('SCH-064 REV-046 a rough week repeats even when the week lost too fast with t
         ->and($rough->recommendation->kcal)->toEqualWithDelta(2400, 1e-6);
 });
 
+it('SCH-064 REV-023 a rough diet break repeats the last ordinary week, not the break\'s target', function () {
+    $seed = new ReviewSeed;
+    $seed->planWeekRows = [['start_date' => '2026-10-05', 'is_diet_break' => true, 'is_rough' => true]];
+    $seed->reviewedWeekShiftKcal = 300;
+    $analysis = $seed->analysis();
+
+    expect($analysis->weeks[3]->targetKcal)->toEqualWithDelta(2700, 1e-6)
+        ->and($analysis->weeks[3]->isRough)->toBeTrue()
+        ->and($analysis->recommendation->reason->kind)->toBe(RecommendationReasonKind::RoughWeek)
+        ->and($analysis->repeatKcal)->toEqualWithDelta(2400, 1e-6)
+        ->and($analysis->recommendation->kcal)->toEqualWithDelta(2400, 1e-6);
+});
+
 it('SCH-064 REV-030 the SAFE-011 check still runs first in a rough week', function () {
     $seed = new ReviewSeed;
     $seed->heightCm = 230;
@@ -195,4 +208,42 @@ it('REV-046 the week after the break returns to the corrected target, not the la
         ->and($analysis->recommendation->kcal)->toBeGreaterThan(2400 + CalorieReview::MAX_CHANGE_KCAL)
         ->and($plain->recommendation->reason->kind)->toBe(RecommendationReasonKind::ReturnFromBreak)
         ->and($plain->recommendation->kcal)->toEqualWithDelta(2400, 1e-6);
+});
+
+/** The target-rate level REV-046 would move the reviewed week to, from the analysis' expenditure (REV-023). */
+function fastWeekLevel(ReviewAnalysis $analysis, ReviewSeed $seed): float
+{
+    return $analysis->recommendation->expenditure->kcal
+        + MacroRules::dailyKcal(-0.5, $seed->trend()->trendKg(new DateTimeImmutable('2026-10-11', new DateTimeZone('UTC'))));
+}
+
+it('REV-046 REV-025 a poorly eaten week that lost too fast with the lifts paying for it is poor adherence', function () {
+    // The week's target is cut to 1,800, so REV-046's level would be a raise, were it to decide the week.
+    $seed = new ReviewSeed;
+    losingFast($seed);
+    $seed->reviewedWeekShiftKcal = -600;
+    $seed->eatenShare = 0.8;
+    $seed->muscleFeedback = ReviewSeed::highFatigue(ReviewSeed::sessionKey(1));
+    $analysis = $seed->analysis();
+
+    expect($analysis->weeks[3]->trainingFatigueHigh)->toBeTrue()
+        ->and(fastWeekLevel($analysis, $seed))->toBeGreaterThan($analysis->weeks[3]->targetKcal)
+        ->and($analysis->recommendation->reason->kind)->toBe(RecommendationReasonKind::PoorAdherence);
+});
+
+it('REV-046 REV-032 the phase\'s first week that lost too fast with the lifts paying for it holds as the first week', function () {
+    $seed = new ReviewSeed;
+    $seed->weeksFinished = 1;
+    // Steeper than losingFast(): one week of trend lags the readings.
+    $seed->weight = fn (int $offset): float => 90 - 0.2 * ($offset + 7);
+    $seed->reviewedWeekShiftKcal = -600;
+    $seed->muscleFeedback = ReviewSeed::highFatigue(ReviewSeed::sessionKey(1));
+    $analysis = $seed->analysis();
+    $rate = $seed->trend()->weeklyRatePercent(new DateTimeImmutable('2026-10-11', new DateTimeZone('UTC')));
+
+    expect($analysis->weeks)->toHaveCount(1)
+        ->and($analysis->weeks[0]->trainingFatigueHigh)->toBeTrue()
+        ->and($rate)->toBeLessThan(-0.65)
+        ->and(fastWeekLevel($analysis, $seed))->toBeGreaterThan($analysis->weeks[0]->targetKcal)
+        ->and($analysis->recommendation->reason->kind)->toBe(RecommendationReasonKind::FirstWeekOfPhase);
 });

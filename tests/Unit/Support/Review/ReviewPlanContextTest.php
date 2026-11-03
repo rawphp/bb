@@ -50,6 +50,22 @@ it('PLAN-022 SCH-060 a flagged week carries its row\'s marks and the deload its 
         ->and($context->flagged(4, PhaseType::FatLoss)->isDeload)->toBeTrue();
 });
 
+it('SCH-060 PLAN-022 a paused away week before the mesocycle\'s last week moves its deload a week later', function () {
+    $away = ['start_date' => '2026-09-21', 'is_away' => true, 'away_training' => 'pause', 'away_calories' => 'maintenance'];
+    [$plain] = reviewContext(fn (ReviewSeed $seed) => $seed->mesocycleWeeks = 5);
+    [$paused] = reviewContext(function (ReviewSeed $seed) use ($away) {
+        $seed->mesocycleWeeks = 5;
+        $seed->planWeekRows = [$away];
+    });
+
+    expect($plain->coveringMesocycle(4, PhaseType::FatLoss)['pausedWeeks'])->toBe([])
+        ->and($plain->flagged(4, PhaseType::FatLoss)->isDeload)->toBeTrue()
+        ->and($plain->flagged(5, PhaseType::FatLoss)->isDeload)->toBeFalse()
+        ->and($paused->coveringMesocycle(4, PhaseType::FatLoss)['pausedWeeks'])->toBe([1])
+        ->and($paused->flagged(4, PhaseType::FatLoss)->isDeload)->toBeFalse()
+        ->and($paused->flagged(5, PhaseType::FatLoss)->isDeload)->toBeTrue();
+});
+
 it('REV-021 the finished weeks carry their average target and the calories checked in on each logged day', function () {
     [$context, $data] = reviewContext(fn (ReviewSeed $seed) => $seed->isChecked = fn (string $date, int $meal) => ! ($date === '2026-10-06' || ($date === '2026-10-07' && $meal === 1)));
     $weeks = $context->reviewWeeks(3, 2, PhaseType::FatLoss, $data->meals);

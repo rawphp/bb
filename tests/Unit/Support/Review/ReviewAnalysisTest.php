@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Model\MuscleGroup;
 use App\Domain\Phases\StartingCaloriesSource;
 use App\Domain\Review\DropFatigueReason;
 use App\Domain\Review\FatigueAdvice;
@@ -7,9 +8,11 @@ use App\Domain\Review\MeasuredExpenditure;
 use App\Domain\Review\RecommendationReasonKind;
 use App\Domain\Review\ReviewMode;
 use App\Domain\Review\StallChange;
+use App\Models\DayTargetMeal;
 use App\Models\PlanWeek;
 use App\Models\User;
 use App\Support\Review\ReviewAnalysis;
+use App\Support\Review\ReviewData;
 use App\Support\Review\ReviewMessages;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -254,6 +257,19 @@ it('REV-040 a week\'s training fatigue counts its still-sore and too-much answer
         ->and($calm->weeksSinceBreak)->toBe(4);
 });
 
+it('REV-040 PROG-050 two muscles missing their rep targets make training fatigue high, with no feedback', function () {
+    $one = reviewed(fn (ReviewSeed $seed) => $seed->chestUnderperforms = true);
+    $two = reviewed(function (ReviewSeed $seed) {
+        $seed->chestUnderperforms = true;
+        $seed->backUnderperforms = true;
+    });
+
+    expect($one->weeks[3]->trainingFatigueHigh)->toBeFalse()
+        ->and($two->weeks[3]->trainingFatigueHigh)->toBeTrue()
+        ->and($two->fatigue)->toEqual(FatigueAdvice::dropFatigue(DropFatigueReason::TrainingFatigue))
+        ->and($two->training->underperformingMuscles)->toBe([MuscleGroup::Back, MuscleGroup::Chest]);
+});
+
 it('REV-041 high training fatigue recommends Drop fatigue with the spec\'s words', function () {
     $analysis = reviewed(fn (ReviewSeed $seed) => $seed->muscleFeedback = [
         ['session' => ReviewSeed::sessionKey(1), 'muscle' => 'chest', 'soreness' => 'stillSore', 'volume' => 'tooMuch'],
@@ -308,7 +324,9 @@ it('REV-044 Muscle gain never turns fatigue into a diet change', function () {
         $seed->muscleFeedback = [['session' => ReviewSeed::sessionKey(1), 'muscle' => 'chest', 'soreness' => 'stillSore', 'volume' => 'tooMuch']];
     });
 
-    expect($analysis->fatigue)->toBeNull();
+    expect($analysis->fatigue)->toBeNull()
+        ->and($analysis->weeks[3]->trainingFatigueHigh)->toBeTrue()
+        ->and($analysis->recommendation->reason->kind)->not->toBe(RecommendationReasonKind::LosingTooFast);
 });
 
 // MARK: steps (REV-050)
@@ -336,9 +354,19 @@ it('REV-050 without step data or a clear gap there is no offer', function () {
 // MARK: one user's rows
 
 it('reads only the user\'s own rows, never another user\'s in the same week', function () {
-    // Made first, so an unscoped query would find its rows: heavier, half eaten, fatigued, a rough week, steps.
+    // Made first, so an unscoped query would find its rows, and different on every table the loader reads: an older
+    // plan, a faster phase, a longer mesocycle, another profile and weigh-in schedule, heavier, a shifted target half
+    // eaten, an Other activity, fatigued, joint pain, a rough week and steps.
     $stranger = new ReviewSeed;
+    $stranger->weeksFinished = 6;
+    $stranger->ratePercent = -1.0;
+    $stranger->mesocycleWeeks = 8;
+    $stranger->heightCm = 170;
+    $stranger->profileKg = 120;
+    $stranger->weighInWeekdays = [2, 5];
+    $stranger->otherActivityDates = ['2026-10-07'];
     $stranger->weight = fn (int $offset): float => 120.0;
+    $stranger->reviewedWeekShiftKcal = 300;
     $stranger->eatenShare = 0.5;
     $stranger->muscleFeedback = ReviewSeed::highFatigue(ReviewSeed::sessionKey(1));
     $stranger->planWeekRows = [['start_date' => '2026-10-05', 'is_rough' => true, 'reviewed_at' => '2026-10-12 08:00:00']];
@@ -346,12 +374,31 @@ it('reads only the user\'s own rows, never another user\'s in the same week', fu
     $stranger->exerciseFeedback = [['session' => ReviewSeed::sessionKey(1), 'exercise' => 'Bench Press', 'pain' => 'aLot']];
     $other = $stranger->seed();
 
-    $analysis = reviewed();
+    $user = (new ReviewSeed)->seed();
+    $data = ReviewData::load($user, ReviewSeed::TODAY);
+    $analysis = ReviewAnalysis::fromData($data) ?? throw new RuntimeException('No review is open.');
+
+    $sessionIds = $data->sessions->modelKeys();
+    $mealIds = DayTargetMeal::query()->where('user_id', $user->id)->pluck('id')->map(fn ($id) => strtolower((string) $id))->all();
+    $owned = fn ($rows) => $rows->every(fn ($row) => $row->user_id === $user->id);
+    expect($data->plan->user_id)->toBe($user->id)
+        ->and($data->profile->user_id)->toBe($user->id)
+        ->and($data->sessions)->not->toBeEmpty()
+        ->and($data->sets)->not->toBeEmpty();
+    foreach ([$data->phases, $data->mesocycles, $data->planWeeks, $data->dayTargets, $data->otherActivities, $data->weighIns,
+        $data->weighInSchedule, $data->sessions, $data->sets, $data->muscleFeedback, $data->exerciseFeedback, $data->steps] as $rows) {
+        expect($owned($rows))->toBeTrue();
+    }
+    expect($data->sets->every(fn ($set) => in_array($set->workout_session_id, $sessionIds, true)))->toBeTrue()
+        ->and($data->exercises->every(fn ($exercise) => $exercise->user_id === null || $exercise->user_id === $user->id))->toBeTrue()
+        ->and(array_diff(array_column($data->meals, 'id'), $mealIds))->toBe([]);
 
     expect($analysis->recommendation->reason->kind)->toBe(RecommendationReasonKind::OnTarget)
         ->and($analysis->weighInRows[0]->weightKg)->toBeLessThan(100)
         ->and($analysis->meals->total())->toBe(28)
+        ->and($analysis->meals->checkedIn())->toBe(28)
         ->and($analysis->weeks)->toHaveCount(4)
+        ->and($analysis->weeks[3]->targetKcal)->toEqualWithDelta(2400, 1e-6)
         ->and($analysis->weeks[3]->averageIntakeKcal())->toEqualWithDelta(2400, 1e-6)
         ->and($analysis->training->sessionsDone)->toBe(3)
         ->and($analysis->training->setsDone)->toBe(20)

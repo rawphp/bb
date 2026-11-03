@@ -10,6 +10,7 @@ use App\Models\ExerciseFeedback;
 use App\Models\MealCheckIn;
 use App\Models\Mesocycle;
 use App\Models\MuscleFeedback;
+use App\Models\OtherActivity;
 use App\Models\Phase;
 use App\Models\Plan;
 use App\Models\PlanWeek;
@@ -64,6 +65,15 @@ final class ReviewSeed
 
     public float $heightCm = 180;
 
+    /** The profile's stored weight. */
+    public float $profileKg = 90;
+
+    /** @var list<int> the weigh-in schedule's ISO weekdays */
+    public array $weighInWeekdays = [1, 4];
+
+    /** @var list<string> dates with a stored Other activity */
+    public array $otherActivityDates = [];
+
     /** @var Closure(int): ?float the weight on a day, by days from the next week's start (-1 is 11 October); null is no weigh-in */
     public Closure $weight;
 
@@ -86,6 +96,9 @@ final class ReviewSeed
 
     /** Both chest sessions of the week missed their rep targets by 4 (PROG-050). */
     public bool $chestUnderperforms = false;
+
+    /** Both back sessions of the week missed their rep targets by 4 (PROG-050). */
+    public bool $backUnderperforms = false;
 
     /** Sets in the Monday chest slot. */
     public int $chestSlotSets = 4;
@@ -200,7 +213,7 @@ final class ReviewSeed
         $start = $this->planStart();
         Plan::factory()->for($user)->create(['start_date' => $start, 'review_weekday' => 1]);
         Profile::factory()->for($user)->create([
-            'name' => 'Sam', 'sex' => 'male', 'birth_date' => '1990-06-15', 'height_cm' => $this->heightCm, 'weight_kg' => 90,
+            'name' => 'Sam', 'sex' => 'male', 'birth_date' => '1990-06-15', 'height_cm' => $this->heightCm, 'weight_kg' => $this->profileKg,
             'body_fat_bucket' => 'low', 'uses_glp1' => false, 'experience' => 'intermediate', 'weight_unit' => 'kg',
             'height_unit' => 'cm', 'consumed_totals' => 'checked_in', 'eating_window' => ['start' => '07:00', 'end' => '21:00'],
             'meal_count' => 4, 'busy_periods' => [],
@@ -212,7 +225,7 @@ final class ReviewSeed
             'weigh_in_days' => [['weekday' => 1, 'time' => '07:00'], ['weekday' => 4, 'time' => '07:00']],
             'step_plan' => $this->stepPlan, 'training_only' => $this->trainingOnly,
         ]);
-        WeighInScheduleEntry::factory()->for($user)->create(['weekdays' => [1, 4], 'time' => '07:00']);
+        WeighInScheduleEntry::factory()->for($user)->create(['weekdays' => $this->weighInWeekdays, 'time' => '07:00']);
         $phase = Phase::factory()->for($user)->create([
             'type' => $this->phaseType, 'start_date' => $start, 'end_date' => $this->phaseEndDate,
             'target_rate_percent_per_week' => $this->ratePercent,
@@ -226,6 +239,9 @@ final class ReviewSeed
             if ($kg !== null) {
                 WeighIn::factory()->for($user)->create(['weight_kg' => $kg, 'weighed_at' => self::day($offset).' 07:00:00']);
             }
+        }
+        foreach ($this->otherActivityDates as $date) {
+            OtherActivity::factory()->for($user)->create(['date' => $date]);
         }
         foreach ($this->steps as $date => $count) {
             Step::factory()->for($user)->create(['date' => $date, 'count' => $count]);
@@ -331,7 +347,7 @@ final class ReviewSeed
                 $block = WorkoutExercise::factory()->create([
                     'workout_session_id' => $session->id, 'user_id' => $user->id, 'exercise_id' => $exercises[$exercise]->id,
                 ]);
-                $missed = $this->chestUnderperforms && $exercise === 12;
+                $missed = ($this->chestUnderperforms && $exercise === 12) || ($this->backUnderperforms && $exercise === 25);
                 foreach (range(1, $sets) as $ignored) {
                     WorkoutSet::factory()->create([
                         'workout_session_id' => $session->id, 'user_id' => $user->id, 'workout_exercise_id' => $block->id,
