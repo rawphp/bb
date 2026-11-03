@@ -3,6 +3,7 @@
 use App\Actions\Mesocycles\SetMesocycleLength;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Tests\Support\TrainSeed;
 
 // The action's job is what it saves, so it runs on the database. Which lengths are allowed is MesocycleCalendarTest's.
@@ -92,4 +93,29 @@ it('MESO-042 a copy waiting for the next start, and an earlier mesocycle, do not
     app(SetMesocycleLength::class)($user, $mesocycle->id, 6, 5);
 
     expect($mesocycle->fresh()->weeks)->toBe(6);
+});
+
+it('MESO-042 a second length change from a stale screen is refused once the first has saved, because the check reads the mesocycle row under a lock', function () {
+    Carbon::setTestNow('2026-09-22 10:00:00');
+    $mesocycle = TrainSeed::mesocycle(TrainSeed::user());
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    app(SetMesocycleLength::class)($mesocycle->user, $mesocycle->id, 6, 5);
+    DB::disableQueryLog();
+    $queries = array_column(DB::getQueryLog(), 'query');
+    DB::flushQueryLog();
+
+    $onMesocycles = array_values(preg_grep('/`mesocycles`/', $queries));
+    $selects = array_values(preg_grep('/^select /', $onMesocycles));
+    expect(preg_grep('/for update$/', $onMesocycles))->toHaveCount(1)
+        ->and($onMesocycles[0])->toEndWith('for update')
+        ->and(array_filter($selects, fn (string $sql) => ! preg_match('/(for update|lock in share mode)$/', $sql)))->toBe([])
+        ->and($mesocycle->fresh()->weeks)->toBe(6);
+
+    $before = $mesocycle->fresh()->getAttributes();
+
+    expect(fn () => app(SetMesocycleLength::class)($mesocycle->user, $mesocycle->id, 4, 5))
+        ->toThrow(DomainException::class, 'This mesocycle\'s length changed to 6 weeks since the screen was loaded, so nothing was changed.')
+        ->and($mesocycle->fresh()->getAttributes())->toBe($before);
 });
