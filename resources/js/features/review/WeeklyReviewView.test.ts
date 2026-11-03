@@ -97,6 +97,8 @@ describe('WeeklyReviewView', () => {
 
         expect(counter(wrapper)).toBe('Step 3 of 3');
         expect(wrapper.find('[data-step="next"]').text()).toBe('Save');
+        await next(wrapper);
+        expect(sent()).toEqual([['review_complete', { week_start: '2026-10-05' }]]);
     });
 
     it('SCH-061 an away week shows its weigh-ins, then the preview', async () => {
@@ -168,11 +170,23 @@ describe('WeeklyReviewView', () => {
         expect(title(wrapper)).toBe('Weigh-ins');
     });
 
-    it('OFF-008 waiting writes dim the server numbers and say so', () => {
-        const wrapper = show({ payload: review(), pending: true, step: 'training' });
+    it.each([
+        ['meals', '[data-test="note"]'],
+        ['training', '[data-test="lines"]'],
+        ['progress', '[data-test="lines"]'],
+        ['calories', '[data-test="lines"]'],
+        ['preview', '[data-test="kcal"]'],
+    ])('OFF-008 waiting writes dim the %s step\'s server numbers and say so', (step, numbers) => {
+        const wrapper = show({ payload: review(), pending: true, step });
 
         expect(wrapper.text()).toContain('Waiting to sync');
-        expect(wrapper.find('[data-test="lines"]').classes()).toContain('opacity-60');
+        expect(wrapper.find(numbers).classes()).toContain('opacity-60');
+    });
+
+    it('OFF-008 the picked calorie option shows as pending', () => {
+        const wrapper = show({ payload: review(), pending: true, step: 'calories' });
+
+        expect(radios(wrapper, 'calorie-options')[0]!.attributes('aria-describedby')).toContain('pending');
     });
 
     it('OFF-008 an outbox entry for review_show marks the screen pending', () => {
@@ -259,18 +273,28 @@ describe('WeeklyReviewView', () => {
         it('REV-003 offers keeping the goal, recommended and picked, a new goal, or ending the plan', () => {
             const wrapper = show({ payload: review(), step: 'goal' });
 
-            const options = radios(wrapper, 'goal-options');
+            const options = wrapper.findAll('[data-test="goal-option"]');
             expect(options.map((o) => o.attributes('aria-label'))).toEqual(['Keep current goal, recommended', 'Choose a new goal', 'End the plan']);
-            expect(options[0]!.attributes('aria-checked')).toBe('true');
+            expect(options.map((o) => o.attributes('aria-pressed'))).toEqual(['true', 'false', 'false']);
         });
 
         it.each([1, 2])('PH-030 option %i opens the phase transition', async (index) => {
             const wrapper = show({ payload: review(), step: 'goal' });
 
-            await radios(wrapper, 'goal-options')[index]!.trigger('click');
+            await wrapper.findAll('[data-test="goal-option"]')[index]!.trigger('click');
 
             expect(push).toHaveBeenCalledWith('/train/plan/transition');
             expect(writeNow).not.toHaveBeenCalled();
+        });
+
+        it('PH-041 keeping the goal stays in the review, and arrow keys move focus without leaving', async () => {
+            const wrapper = show({ payload: review(), step: 'goal' });
+
+            const options = wrapper.findAll('[data-test="goal-option"]');
+            await options[0]!.trigger('click');
+            await options[0]!.trigger('keydown', { key: 'ArrowDown' });
+
+            expect(push).not.toHaveBeenCalled();
         });
     });
 
@@ -302,6 +326,36 @@ describe('WeeklyReviewView', () => {
             expect(sent()).toEqual([
                 ['review_answer', { week_start: '2026-10-05', option: 'repeat_this_week', own_kcal: null, deload_too: null, update_step_plan: false, moves: [] }],
             ]);
+        });
+
+        it('REV-031 a new option clears the own amount, the deload answer and the moves the old one had', async () => {
+            const payload = review('drop_fatigue');
+            payload.preview!.moves = [{ from_index: 2, to_index: 0, kcal: 100 }];
+            const wrapper = show({ payload, step: 'calories' });
+
+            await radios(wrapper, 'calorie-options')[1]!.trigger('click');
+            await flushPromises();
+
+            expect(sent()).toEqual([
+                ['review_answer', { week_start: '2026-10-05', option: 'repeat_this_week', own_kcal: null, deload_too: null, update_step_plan: false, moves: [] }],
+            ]);
+        });
+
+        it('REV-031 a new own amount or deload answer clears the moves, as the week they were made on changes', async () => {
+            const own = review('choose_own');
+            own.preview!.moves = [{ from_index: 2, to_index: 0, kcal: 100 }];
+            const wrapper = show({ payload: own, step: 'calories' });
+            const field = wrapper.find('[data-test="own-kcal"]');
+            await field.setValue('2300');
+            await field.trigger('change');
+            await flushPromises();
+            const fatigue = review('drop_fatigue');
+            fatigue.preview!.moves = [{ from_index: 2, to_index: 0, kcal: 100 }];
+            const deload = show({ payload: fatigue, step: 'calories' });
+            await deload.findAll('[data-test="deload"] [role="radio"]')[1]!.trigger('click');
+            await flushPromises();
+
+            expect(sent().map(([, input]) => input.moves)).toEqual([[], []]);
         });
 
         it('REV-027 a stall shows its notes and the server\'s pick', () => {
@@ -382,6 +436,31 @@ describe('WeeklyReviewView', () => {
             ]);
         });
 
+        it('REV-050 a step plan answer keeps the moves', async () => {
+            const payload = review();
+            payload.preview!.moves = [{ from_index: 2, to_index: 0, kcal: 100 }];
+            const wrapper = show({ payload, step: 'calories' });
+
+            await wrapper.find('[data-test="step-offer"]').setValue(true);
+            await flushPromises();
+
+            expect(sent()[0]![1].moves).toEqual([{ from_index: 2, to_index: 0, kcal: 100 }]);
+        });
+
+        it('CAP-012 a refused step plan answer puts the switch back, and a refused own amount puts the field back', async () => {
+            vi.mocked(writeNow).mockRejectedValue(new CapabilityError('review_answer', 422, { error: { message: 'No.' } }));
+            const offer = show({ payload: review(), step: 'calories' });
+            await offer.find('[data-test="step-offer"]').setValue(true);
+            await flushPromises();
+            expect(offer.find<HTMLInputElement>('[data-test="step-offer"]').element.checked).toBe(false);
+
+            const own = show({ payload: review('choose_own'), step: 'calories' });
+            await own.find('[data-test="own-kcal"]').setValue('100');
+            await own.find('[data-test="own-kcal"]').trigger('change');
+            await flushPromises();
+            expect(own.find<HTMLInputElement>('[data-test="own-kcal"]').element.value).toBe('2400');
+        });
+
         it('CAP-012 a refused answer says why', async () => {
             vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('review_answer', 422, { error: { message: 'That is below your safe minimum.' } }));
             const wrapper = show({ payload: review(), step: 'calories' });
@@ -435,47 +514,80 @@ describe('WeeklyReviewView', () => {
             expect(wrapper.find('[data-test="move-sheet"]').exists()).toBe(false);
         });
 
-        it('REV-004 gives calories to the tapped day from the picked one, by the stepper\'s amount, and later answers keep the move', async () => {
-            const payload = review();
+        it('REV-004 a move sends the answered moves and every other answer as the server shows them', async () => {
+            const payload = review('choose_own');
+            payload.calories!.step_offer = { label: 'Update my step plan to 6,100 steps a day', accepted: true };
+            payload.preview!.moves = [{ from_index: 1, to_index: 3, kcal: 50 }];
+            const fatigue = review('drop_fatigue');
             const wrapper = show({ payload, step: 'preview' });
+            const other = show({ payload: fatigue, step: 'preview' });
+
+            await wrapper.findAll('[data-test="day"]')[2]!.trigger('click');
+            await wrapper.find('[role="dialog"] [data-save]').trigger('click');
+            await flushPromises();
+            await other.findAll('[data-test="day"]')[2]!.trigger('click');
+            await other.findAll('[role="dialog"]').at(-1)!.find('[data-save]').trigger('click');
+            await flushPromises();
+
+            expect(sent()).toEqual([
+                [
+                    'review_answer',
+                    {
+                        week_start: '2026-10-05',
+                        option: 'choose_own',
+                        own_kcal: 2400,
+                        deload_too: null,
+                        update_step_plan: true,
+                        moves: [
+                            { from_index: 1, to_index: 3, kcal: 50 },
+                            { from_index: 2, to_index: 0, kcal: 100 },
+                        ],
+                    },
+                ],
+                ['review_answer', { week_start: '2026-10-05', option: 'drop_fatigue', own_kcal: null, deload_too: true, update_step_plan: false, moves: [{ from_index: 2, to_index: 0, kcal: 100 }] }],
+            ]);
+        });
+
+        it('REV-004 the move sheet offers only the other days that can still move', async () => {
+            const payload = review();
+            payload.preview!.days[0] = { ...payload.preview!.days[0]!, is_locked: true };
+            payload.preview!.days[1] = { ...payload.preview!.days[1]!, can_move: false };
+            const wrapper = show({ payload, step: 'preview' });
+
+            await wrapper.findAll('[data-test="day"]')[2]!.trigger('click');
+
+            const others = [...dialog()!.querySelectorAll('[data-test="other-day"] option')].map((o) => o.textContent?.trim());
+            expect(others).toEqual(['Thu, 15 Oct · 2500 kcal', 'Fri, 16 Oct · 2500 kcal', 'Sat, 17 Oct · 2250 kcal', 'Sun, 18 Oct · 2500 kcal']);
+        });
+
+        it('REV-004 gives calories to the tapped day from the picked one, by the stepper\'s amount', async () => {
+            const wrapper = show({ payload: review(), step: 'preview' });
 
             await wrapper.findAll('[data-test="day"]')[0]!.trigger('click');
             const sheet = wrapper.find('[role="dialog"]');
             await sheet.findAll('[role="radio"]')[1]!.trigger('click');
             await sheet.find('[data-test="other-day"]').setValue('5');
             await sheet.find('button[aria-label="More: Calories"]').trigger('click');
-            answersWith(payload);
             await sheet.find('[data-save]').trigger('click');
             await flushPromises();
-            await back(wrapper);
-            await radios(wrapper, 'calorie-options')[1]!.trigger('click');
-            await flushPromises();
 
-            const moves = sent().map(([, input]) => input.moves);
-            expect(moves).toEqual([[{ from_index: 5, to_index: 0, kcal: 125 }], [{ from_index: 5, to_index: 0, kcal: 125 }]]);
+            expect(sent().map(([, input]) => input.moves)).toEqual([[{ from_index: 5, to_index: 0, kcal: 125 }]]);
         });
 
-        it('REV-004 a move the week refuses keeps the sheet open with why, and the answer goes back without it', async () => {
-            const payload = review();
-            const refused = review();
-            refused.preview!.error = 'Monday would drop below your minimum.';
-            const wrapper = show({ payload, step: 'preview' });
+        it('REV-004 a move the week refuses keeps the sheet open with why, sends nothing more, and a sheet opened later starts clear', async () => {
+            vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('review_answer', 422, { error: { message: 'Monday would drop below your minimum.' } }));
+            const wrapper = show({ payload: review(), step: 'preview' });
 
             await wrapper.findAll('[data-test="day"]')[0]!.trigger('click');
-            answersWith(refused);
-            vi.mocked(writeNow).mockImplementationOnce(async () => {
-                answersWith(refused);
-                return {};
-            });
-            vi.mocked(writeNow).mockImplementationOnce(async () => {
-                answersWith(payload);
-                return {};
-            });
             await wrapper.find('[role="dialog"] [data-save]').trigger('click');
             await flushPromises();
 
+            expect(wrapper.find('[data-test="move-sheet"]').exists()).toBe(true);
             expect(dialog()?.textContent).toContain('Monday would drop below your minimum.');
-            expect(sent().map(([, input]) => input.moves)).toEqual([[{ from_index: 0, to_index: 1, kcal: 100 }], []]);
+            expect(sent()).toHaveLength(1);
+            await wrapper.find('[role="dialog"] [data-cancel]').trigger('click');
+            await wrapper.findAll('[data-test="day"]')[3]!.trigger('click');
+            expect(dialog()?.textContent).not.toContain('Monday would drop below your minimum.');
         });
 
         it('REV-004 Cancel closes the sheet and sends nothing', async () => {
