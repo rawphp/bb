@@ -94,9 +94,9 @@ it('AGT-011 keeps only user and assistant messages in what comes before', functi
     expect(app(TurnMessages::class)->forTurn($turn))->toMatchArray(['before' => [], 'message' => 'Hi.']);
 });
 
-function mayEnd(?string $turn): bool
+function mayEnd(?string $turn, string $caller = 'agent'): bool
 {
-    $context = new CapabilityContext(caller: 'agent', actor: new User, agent: $turn === null ? null : ['turn_ulid' => $turn]);
+    $context = new CapabilityContext(caller: $caller, actor: new User, agent: $turn === null ? null : ['turn_ulid' => $turn]);
 
     return app(ConfirmationPolicy::class)->allows(app(CapabilityRegistry::class)->get('mesocycle_end'), new MesocycleEndInput('01JD4Q8V6Y3N0M2K7T5R9W1XBC', false), $context);
 }
@@ -178,4 +178,12 @@ it('AGT-010 never takes a message of another role as the turn message, even one 
 
     expect(app(TurnMessages::class)->forTurn($turn)['message'])->toBeNull()
         ->and(app(ConfirmationPolicy::class)->allows($definition, new MesocycleEndInput('01JD4Q8V6Y3N0M2K7T5R9W1XBC'), $context))->toBeFalse();
+});
+
+it('AGT-010 AGT-040 refuses a destructive call to MCP even with the turn of a confirm line that lets the agent make it', function () {
+    $this->freezeTime();
+    $turn = sendUserMessage(turnConversation(), CONFIRM_LINE, '01');
+
+    expect(mayEnd($turn))->toBeTrue()
+        ->and(mayEnd($turn, 'mcp'))->toBeFalse();
 });
