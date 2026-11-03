@@ -167,12 +167,13 @@ it('AGT-005 under a token cap holds a message while a turn runs, and takes it on
     expect($turn->fresh()->getAttribute('tokens'))->toBe(0);
 });
 
-it('AGT-005 runs the day and the month in the app timezone', function () {
+it('AGT-005 SET-012 runs the month in the app timezone and the day in the user\'s time zone', function () {
     $zone = date_default_timezone_get();
     date_default_timezone_set('Australia/Sydney');
     config(['app.timezone' => 'Australia/Sydney', 'agent.turns_per_day' => 3, 'agent.tokens_per_month' => 10_000]);
     try {
         $user = User::factory()->create();
+        $user->forceFill(['time_zone' => 'Australia/Sydney'])->save();
         // Local times: 00:10 today and 23:50 yesterday are 13:10 and 12:50 on 29 Nov in UTC.
         pastTurns($user, [3_000, 3_000], at: '2026-11-30 00:10:00');
         pastTurns($user, [4_000], at: '2026-11-29 23:50:00');
@@ -278,3 +279,37 @@ it('AGT-005 prunes a cleared turn once its month is over', function () {
 
     expect(ClearedCoachTurn::query()->pluck('id')->all())->toBe([$kept->id]);
 });
+
+it('SET-012 counts the Coach\'s turns today from the user\'s local midnight', function (string $zone, int $turnsLeft, bool $atCap, ?string $resetsAt, int $status) {
+    config(['agent.turns_per_day' => 3]);
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => $zone])->save();
+    // 19:00 on 2 Nov and 00:30 on 3 Nov in Brisbane; it is 01:30 on 3 Nov there now.
+    pastTurns($user, [100, 100]);
+    pastTurns($user, [100], at: '2026-11-02 14:30:00');
+
+    $this->actingAs($user)->postJson('/capabilities/agent_status_show')
+        ->assertOk()
+        ->assertJsonPath('data.turns_left', $turnsLeft)
+        ->assertJsonPath('data.at_cap', $atCap)
+        ->assertJsonPath('data.resets_at', $resetsAt);
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertStatus($status);
+})->with([
+    'Australia/Brisbane' => ['Australia/Brisbane', 2, false, null, 201],
+    'UTC' => ['UTC', 0, true, '2026-11-03T00:00:00+00:00', 429],
+]);
+
+it('SET-012 says the Coach\'s daily cap resets at the user\'s local midnight', function (string $zone, string $resetsAt, string $message) {
+    config(['agent.turns_per_day' => 1]);
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => $zone])->save();
+    pastTurns($user, [100], at: '2026-11-02 14:30:00');
+
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])
+        ->assertStatus(429)
+        ->assertJsonPath('error.resets_at', $resetsAt)
+        ->assertJsonPath('error.message', $message);
+})->with([
+    'Australia/Brisbane' => ['Australia/Brisbane', '2026-11-04T00:00:00+10:00', 'You\'ve reached today\'s Coach limit. It resets at 00:00 AEST on 4 Nov. Everything else still works.'],
+    'UTC' => ['UTC', '2026-11-03T00:00:00+00:00', 'You\'ve reached today\'s Coach limit. It resets at 00:00 UTC on 3 Nov. Everything else still works.'],
+]);

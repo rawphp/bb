@@ -70,8 +70,8 @@ final class AgentGate
         // cannot all pass the checks before any of them has stored its turn. A post
         // that overlaps another waits for it, then is checked against what it stored.
         try {
-            return Cache::lock(self::LOCK.$userId, self::LOCK_SECONDS)->block(self::WAIT_SECONDS, function () use ($request, $next, $userId): Response {
-                $allowance = $this->status->allowance($userId);
+            return Cache::lock(self::LOCK.$userId, self::LOCK_SECONDS)->block(self::WAIT_SECONDS, function () use ($request, $next, $user, $userId): Response {
+                $allowance = $this->status->allowance($user);
                 if ($allowance->atCap) {
                     return self::refuse(CapabilityResult::failure('rate_limited', (string) $allowance->notice, [
                         'resets_at' => $allowance->resetsAt?->toIso8601String(),

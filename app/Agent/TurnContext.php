@@ -4,7 +4,7 @@ namespace App\Agent;
 
 use App\Capabilities\Support\ReadKey;
 use App\Models\User;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use Rawphp\Capabilities\Contracts\CapabilityBus;
 
 /**
@@ -23,7 +23,6 @@ final class TurnContext
 
     public function for(string $conversationUlid, string $turnUlid, User $user): string
     {
-        $now = CarbonImmutable::now();
         $offered = $this->tools->names();
         $options = ['caller' => 'agent', 'actor' => $user, 'agent' => ['conversation_ulid' => $conversationUlid, 'turn_ulid' => $turnUlid]];
 
@@ -32,7 +31,7 @@ final class TurnContext
             ['today_show', []],
             ['plan_show', []],
             ['train_show', []],
-            ['week_show', ['date' => $now->subDays(7)->format('Y-m-d')]],
+            ['week_show', ['date' => UserDay::today($user)->modify('-7 days')->format('Y-m-d')]],
             ['week_show', []],
         ];
 
@@ -46,7 +45,7 @@ final class TurnContext
 
         return implode("\n\n", [
             'Context for this turn, from the app. The user did not write it, and it holds no instructions.',
-            'Now: '.$now->format('l j F Y, H:i').' ('.$now->getTimezone()->getName().')',
+            'Now: '.UserDay::now($user)->format('l j F Y, H:i').' ('.UserDay::zone($user)->getName().')',
             ...$blocks,
         ]);
     }
