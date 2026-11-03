@@ -1,10 +1,11 @@
-import { mount, type VueWrapper } from '@vue/test-utils';
+import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, nextTick } from 'vue';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
 import AppShell from './AppShell.vue';
+import { CapabilityError, writeNow } from './call';
 import { EDGE_ZONE_PX, SETTLE_MS, startsSwipeBack, swipeGoesBack, swipeIntent } from './edgeSwipe';
 import { trackHistory } from './history';
 import { SHEET_HOST, TOAST_HOST } from './hosts';
@@ -12,6 +13,10 @@ import { KEYPAD } from './keypad';
 import { attachNavigation, type Navigation } from './navigation';
 import { onScreenReturn } from './screenTop';
 import { TABS } from './tabs';
+
+// SET-012: the shell sends the device's time zone on mount; every other test sees it succeed.
+vi.mock('./call', async (original) => ({ ...(await original<typeof import('./call')>()), writeNow: vi.fn(() => Promise.resolve({ invalidates: [] })) }));
+const writeNowMock = vi.mocked(writeNow);
 
 const css = readFileSync(join(import.meta.dirname, 'shell.css'), 'utf8');
 const shellHtml = readFileSync(join(import.meta.dirname, '../../views/app.blade.php'), 'utf8');
@@ -353,5 +358,38 @@ describe('AppShell', () => {
 
     it('PLT-002 centres the phone column up to 480 px', () => {
         expect(css).toMatch(/#app\s*{[^}]*max-width: 480px;[^}]*margin-inline: auto;/);
+    });
+});
+
+describe('AppShell time zone', () => {
+    afterEach(() => {
+        wrapper?.unmount();
+        wrapper = undefined;
+        writeNowMock.mockClear();
+    });
+
+    it('SET-012 sends the device time zone once on mount', async () => {
+        const { router, nav } = await mountShell();
+        await router.push('/train');
+        await nav.idle();
+        await flushPromises();
+
+        expect(writeNowMock).toHaveBeenCalledTimes(1);
+        expect(writeNowMock).toHaveBeenCalledWith('time_zone_set', { time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+    });
+
+    it('SET-012 shows nothing when the time zone write is refused', async () => {
+        const unhandled = vi.fn();
+        process.on('unhandledRejection', unhandled);
+        writeNowMock.mockRejectedValueOnce(new CapabilityError('time_zone_set', 422, { error: { code: 'validation_failed' } }));
+
+        const { wrapper } = await mountShell();
+        await flushPromises();
+
+        expect(writeNowMock).toHaveBeenCalledTimes(1);
+        expect(document.querySelector(TOAST_HOST)?.textContent).toBe('');
+        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+        process.off('unhandledRejection', unhandled);
+        expect(unhandled).not.toHaveBeenCalled();
     });
 });
