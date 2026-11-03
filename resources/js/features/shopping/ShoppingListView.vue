@@ -145,7 +145,7 @@ async function share(): Promise<void> {
         <section v-if="data" class="space-y-1.5" aria-labelledby="shopping-dates">
             <h2 id="shopping-dates" class="px-4 text-[0.9375rem] font-medium text-secondary-text">Dates</h2>
             <div class="divide-y divide-secondary-text/15 rounded-2xl bg-surface px-4">
-                <label class="flex min-h-tap items-center justify-between gap-3 py-2">
+                <label class="flex min-h-tap items-center justify-between gap-3 py-2.5">
                     <span class="text-primary-text">From</span>
                     <input
                         name="from"
@@ -155,7 +155,7 @@ async function share(): Promise<void> {
                         @change="pickDates('from', ($event.target as HTMLInputElement).value)"
                     />
                 </label>
-                <label class="flex min-h-tap items-center justify-between gap-3 py-2">
+                <label class="flex min-h-tap items-center justify-between gap-3 py-2.5">
                     <span class="text-primary-text">To</span>
                     <input
                         name="to"

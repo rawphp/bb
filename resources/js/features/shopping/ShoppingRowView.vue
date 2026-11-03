@@ -68,7 +68,7 @@ function remove(): void {
             <button
                 type="button"
                 data-test="tick"
-                class="flex min-h-tap w-full items-center gap-3 px-4 py-2 text-left active:opacity-70 disabled:opacity-60"
+                class="flex min-h-tap w-full items-center gap-3 px-4 py-3 text-left active:opacity-70 disabled:opacity-60"
                 :aria-pressed="ticked"
                 :disabled="disabled"
                 @click="emit('tick')"
