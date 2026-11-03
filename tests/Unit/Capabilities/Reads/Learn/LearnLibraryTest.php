@@ -54,7 +54,7 @@ it('LRN-001 LRN-002 builds the Learn index: each section in order, each article 
         ->and($sections[2]['articles'][1])->toBe([
             'slug' => 'rir',
             'title' => 'Reps in reserve (RIR)',
-            'summary' => 'RIR stands for reps in reserve, the number of clean reps you had left at the point you stopped. Your target falls as the weeks pass, which makes the work harder as a block goes on.',
+            'summary' => 'RIR stands for reps in reserve, the number of clean reps you had left at the point you stopped. Each week asks for a smaller number than the last, so effort climbs through the block.',
         ]);
 });
 
@@ -126,7 +126,7 @@ it('LRN-005 lists the tools you need in the tools article', function () {
 
 it('LRN-006 tells users to hold off cheat foods for 1 to 4 weeks after a cut ends', function () {
     foreach ([LearnTopic::FatLoss, LearnTopic::MiniCut, LearnTopic::Maintenance] as $topic) {
-        expect(learnArticleText($topic))->toContain('1 to 4 weeks');
+        expect(learnArticleText($topic))->toContain('1 to 4 weeks')->toContain('cheat foods');
     }
 });
 
@@ -146,10 +146,52 @@ it('SAFE-001 SAFE-002 lists in Learn every screening answer that needs medical c
     }
 });
 
-it('SAFE-005 states the 1.0% weekly fat-loss ceiling and never a faster rate', function () {
+it('SAFE-005 states the 1.0% weekly fat-loss ceiling and no fat-loss rate above it', function () {
+    $rates = [];
+    $lines = [
+        ...explode("\n", learnArticleText(LearnTopic::FatLoss)),
+        ...explode("\n", learnArticleText(LearnTopic::MiniCut)),
+        ...array_filter(explode("\n", learnArticleText(LearnTopic::ChoosingAGoal)), fn (string $line) => str_starts_with($line, 'Fat loss:')),
+    ];
+    foreach ($lines as $line) {
+        // The 10%-of-starting-weight warning is a total for the phase, not a weekly rate.
+        if (! str_contains($line, 'bodyweight you started')) {
+            preg_match_all('/(\d+(?:\.\d+)?)%/', $line, $matches);
+            array_push($rates, ...array_map('floatval', $matches[1]));
+        }
+    }
+
     expect(learnArticleText(LearnTopic::ChoosingAGoal))->toContain('1.0% as the ceiling')
-        ->and(learnArticleText(LearnTopic::FatLoss))->toContain('between 0.25% and 1%')
-        ->and(learnArticleText(LearnTopic::MiniCut))->toContain('from 0.75% to 1%');
+        ->and($rates)->toContain(SafetyWarnings::MAX_FAT_LOSS_RATE_PERCENT)
+        ->and(max($rates))->toBeLessThanOrEqual(SafetyWarnings::MAX_FAT_LOSS_RATE_PERCENT);
+});
+
+it('SAFE-001 SAFE-003 SAFE-004 says failing screening turns calorie targets off while training and weigh-ins carry on', function () {
+    expect(learnArticleText(LearnTopic::IsItRightForMe))->toContain('turns off every calorie target')
+        ->toContain('Training features and weigh-ins carry on');
+});
+
+it('SAFE-006 SAFE-007 caps fat loss and muscle gain phases at 16 weeks', function () {
+    expect(learnArticleText(LearnTopic::ChoosingAGoal))->toContain('Fat loss and muscle gain both cap out at 16 weeks');
+});
+
+it('SAFE-008 says calorie cuts never take protein', function () {
+    expect(learnArticleText(LearnTopic::FatLoss))->toContain('comes from fat and carbs, and protein stays untouched')
+        ->and(learnArticleText(LearnTopic::DayBalance))->toContain('protein is fixed');
+});
+
+it('SAFE-010 says every meal keeps the minimum fat and carbs', function () {
+    expect(learnArticleText(LearnTopic::DayBalance))->toContain("Fat and carbs can't go under ".(int) SafetyWarnings::MEAL_MINIMUM_G.' g in any one meal');
+});
+
+it('SAFE-013 says what changes for someone on a GLP-1 drug', function () {
+    expect(learnArticleText(LearnTopic::IsItRightForMe))->toContain('each meal lists protein at the top')
+        ->toContain('two straight weeks');
+});
+
+it('PROG-018 says joint pain stops added sets and a lot of pain cuts the next load by 10%', function () {
+    expect(learnArticleText(LearnTopic::FeedbackQuestions))->toContain('a moderate answer or worse stops new sets being added to that exercise')
+        ->toContain('drops its next load by 10%');
 });
 
 it('SAFE-015 says when the step target warning shows', function () {
@@ -163,7 +205,7 @@ it('LRN-001 keeps each health article\'s doctor note with every condition it nam
         expect($text)->toContain($phrase);
     }
 })->with([
-    'is it right for me' => [LearnTopic::IsItRightForMe, ['what your doctor tells you about the drug']],
+    'is it right for me' => [LearnTopic::IsItRightForMe, ['what your doctor tells you about the drug and about eating']],
     'fat loss' => [LearnTopic::FatLoss, ['unwell', 'pregnant', 'glp-1', 'disordered eating']],
     'mini-cut' => [LearnTopic::MiniCut, ['pregnancy', 'medical condition', 'weight-loss medication']],
     'maintenance' => [LearnTopic::Maintenance, ['pregnancy', 'medical condition', 'weight-loss medication']],
@@ -171,7 +213,7 @@ it('LRN-001 keeps each health article\'s doctor note with every condition it nam
     'body fat' => [LearnTopic::BodyFat, ['pregnancy', 'illness']],
     'alcohol' => [LearnTopic::Alcohol, ['medication', 'health issue']],
     'coffee' => [LearnTopic::Coffee, ['pregnant', 'heart condition', 'medication']],
-    'training while sick' => [LearnTopic::TrainingWhileSick, ['whatever your doctor tells you', 'your doctor is the person to ask', 'your doctor has given you specific advice', 'sicker']],
+    'training while sick' => [LearnTopic::TrainingWhileSick, ['whatever your doctor tells you', 'your doctor is the person to ask', 'your doctor has given you specific advice', 'sicker', 'fever', 'chest', 'vomiting', 'diarrhea', 'too weak', 'feeling worse is your cue to stop']],
 ]);
 
 it('FOOD-081 guides on alcohol and coffee', function () {
