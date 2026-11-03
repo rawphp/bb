@@ -204,10 +204,12 @@ describe('ProfileEditView', () => {
     });
 
     it.each([
-        ['height-inches', '5.5.5'],
-        ['height-feet', 'five'],
-    ])('SET-004 holds Save while %s reads %s, not a number', async (field, text) => {
-        const wrapper = render(imperial);
+        ['height-inches', '5.5.5', imperial],
+        ['height-feet', 'five', imperial],
+        ['height-feet', '5.5', imperial],
+        ['height-cm', 'abc', settings],
+    ])('SET-004 holds Save while %s reads %s, not a number', async (field, text, payload) => {
+        const wrapper = render(payload);
 
         await wrapper.get(`[data-test="${field}"]`).setValue(text);
 

@@ -136,16 +136,23 @@ describe('ScheduleEditView', () => {
         expect(plan.find((day) => day.weekday === 2)!.max).toBe(12000);
     });
 
-    it.each(['8.000', '8,000', '8k', '-5', '7000.5'])('SET-005 holds Save while a step count reads %s, not a whole number', async (typed) => {
+    it.each([
+        ['steps-min-1', '8.000'],
+        ['steps-min-1', '8,000'],
+        ['steps-min-1', '8k'],
+        ['steps-min-1', '-5'],
+        ['steps-min-1', '7000.5'],
+        ['steps-max-1', '9.000'],
+    ])('SET-005 holds Save while %s reads %s, not a whole number', async (field, typed) => {
         const wrapper = render(settings);
 
-        await wrapper.get('[data-test="steps-min-1"]').setValue(typed);
+        await wrapper.get(`[data-test="${field}"]`).setValue(typed);
 
         expect(wrapper.get('[data-test="save"]').attributes('disabled')).toBeDefined();
         expect(wrapper.get('[data-test="not-whole"]').text()).toBe('Type steps as whole numbers, for example 8000.');
         await save(wrapper);
         expect(writeMock).not.toHaveBeenCalled();
-        await wrapper.get('[data-test="steps-min-1"]').setValue(' 8000 ');
+        await wrapper.get(`[data-test="${field}"]`).setValue(' 8000 ');
         expect(wrapper.get('[data-test="save"]').attributes('disabled')).toBeUndefined();
     });
 

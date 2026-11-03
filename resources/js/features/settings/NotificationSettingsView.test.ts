@@ -63,7 +63,7 @@ describe('NotificationSettingsView', () => {
         expect(enable).not.toHaveBeenCalled();
     });
 
-    it('NOTIF-010 asks for permission when a type is turned on, then saves the switch', async () => {
+    it('NOTIF-010 asks for permission when a type is turned on, and saves the switch', async () => {
         enable.mockResolvedValueOnce('on');
         writeMock.mockResolvedValueOnce({ invalidates: ['settings_show'] });
         readMock.mockResolvedValueOnce(withMeals(true));
@@ -118,20 +118,32 @@ describe('NotificationSettingsView', () => {
         expect(wrapper.get('[data-test="push-error"]').text()).toContain('could not be set up');
     });
 
-    it('NOTIF-007 holds every switch while one is being turned on, so no tap is lost', async () => {
-        let allow: (state: PushState) => void = () => {};
-        enable.mockReturnValueOnce(new Promise((resolve) => (allow = resolve)));
+    it('NOTIF-007 saves the switch even when setting up this device never finishes', async () => {
+        enable.mockReturnValueOnce(new Promise(() => {}));
         writeMock.mockResolvedValueOnce({ invalidates: ['settings_show'] });
         readMock.mockResolvedValueOnce(withMeals(true));
         const wrapper = render(settings);
 
         await wrapper.get('[data-test="notify-meal"]').setValue(true);
-        expect(wrapper.get('[data-test="notify-workout"]').attributes('disabled')).toBeDefined();
-        allow('on');
         await flushPromises();
 
+        expect(enable).toHaveBeenCalledOnce();
         expect(sent()).toEqual({ kind: 'meal', on: true });
         expect(wrapper.get('[data-test="notify-workout"]').attributes('disabled')).toBeUndefined();
+    });
+
+    it('NOTIF-007 holds every switch while a change is with the server, so no tap is lost', async () => {
+        let answer: (value: unknown) => void = () => {};
+        writeMock.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+        readMock.mockResolvedValueOnce(settings);
+        const wrapper = render(settings);
+
+        await wrapper.get('[data-test="notify-workout"]').setValue(false);
+        expect(wrapper.get('[data-test="notify-meal"]').attributes('disabled')).toBeDefined();
+        answer({ invalidates: ['settings_show'] });
+        await flushPromises();
+
+        expect(wrapper.get('[data-test="notify-meal"]').attributes('disabled')).toBeUndefined();
     });
 
     it.each(['settings_show.empty', 'settings_show.warning'])('VIEW-001 renders the %s fixture', (name) => {
