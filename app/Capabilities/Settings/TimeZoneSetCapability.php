@@ -14,12 +14,14 @@ use Rawphp\Capabilities\Support\CapabilityContext;
 
 final class TimeZoneSetCapability implements HostCapability
 {
+    public const NAME = 'time_zone_set';
+
     public function __construct(private readonly SetTimeZone $set) {}
 
     public function definition(): CapabilityDefinitionBuilder
     {
         // A new zone can move the user's "today", so every read built on it refetches.
-        return HostDefinition::write('time_zone_set', affects: PlanReads::AFFECTS)
+        return HostDefinition::write(self::NAME, affects: PlanReads::AFFECTS)
             ->description('Set the IANA time zone the user\'s days are counted in, such as Australia/Brisbane; until one is set it is UTC. The app sends the device\'s zone on each load, so Today, its week strip and its weigh-ins follow the user when they travel. Sending the zone already set changes nothing.')
             ->cli('time-zone', 'set')
             ->input(TimeZoneSetInput::class)

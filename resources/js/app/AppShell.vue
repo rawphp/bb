@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { onMounted, type Component } from 'vue';
-import { writeNow } from './call';
-import { announceReplayed } from './outbox';
 import { SHEET_HOST_ID, TOAST_HOST_ID } from './hosts';
 import { useNavigation } from './navigation';
 import TabBar from './TabBar.vue';
 import TabStack from './TabStack.vue';
 import { TABS } from './tabs';
+import { syncTimeZone } from './timeZone';
 
 // The shell (19-views.md, "Shell"): one stack per tab, the tab bar, and above it
 // the ActiveWorkoutBar (NAV-004) and the Coach button (NAV-001). Those two fill
@@ -19,16 +18,9 @@ const CoachButton = found['./CoachButton.vue'];
 
 const nav = useNavigation();
 
-// SET-012: the server counts the user's days in the device's time zone, so send it on
-// each load. It is never kept in the outbox and a failure shows nothing: the next load
-// sends it again, and until then the server keeps the zone it has. A new zone can move
-// today, so the screens showing a read it dropped load again.
+// SET-012: send the device's time zone when the server may not have it (timeZone.ts).
 onMounted(() => {
-    writeNow<{ invalidates: string[] }>('time_zone_set', { time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone })
-        .then(({ invalidates }) => {
-            if (invalidates.length > 0) announceReplayed(invalidates);
-        })
-        .catch(() => undefined);
+    void syncTimeZone();
 });
 </script>
 

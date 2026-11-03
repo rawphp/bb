@@ -10,7 +10,8 @@ use DateTimeInterface;
 use DateTimeZone;
 
 /**
- * SET-012: the only place a real instant becomes the user's day or clock time.
+ * SET-012: the one place a real instant should become the user's day or clock time. The readers that still count UTC
+ * days are listed in architecture.md, "Days and time zones", under "Not moved yet".
  *
  * The app's convention stays: a calendar day is midnight UTC of its Y-m-d, and a wall-clock time is read as UTC, as
  * ClockTime and the plan's meal and session times are. So the user's local time is returned labelled UTC, and every
