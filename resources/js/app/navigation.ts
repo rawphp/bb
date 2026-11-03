@@ -167,7 +167,10 @@ export function createNavigation(router: Router, history: TrackedHistory): Navig
                 void enqueue(() => land(to));
             }
         } else if (op?.type === 'replace') {
-            entries.splice(-1, 1, screen(to));
+            // A replace that keeps the path only changes the address of the screen on show
+            // (a query it has used up, say), so that screen stays; another path is a new screen.
+            const last = entries.at(-1);
+            entries.splice(-1, 1, last?.route.path === to.path ? { key: last.key, route: markRaw(to) } : screen(to));
         } else {
             entries.push(screen(to));
         }

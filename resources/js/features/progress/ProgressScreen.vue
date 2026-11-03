@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import type { ProgressShowOutput } from '@/contracts/progress_show';
 import OfflineNotice from '@/design/OfflineNotice.vue';
 import PendingMark from '@/design/PendingMark.vue';
@@ -30,10 +31,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{ scope: [scope: ProgressShowOutput['scopes'][number]['value']] }>();
 
-// The weigh-in sheet, the weekly review and the schedule editor are built by their own issues.
+const router = useRouter();
+
+// The weigh-in sheet and the schedule editor are built by their own issues.
 const placeholders = {
     weighIn: { title: 'Log a weigh-in', message: 'Logging a weigh-in arrives with the weigh-ins screens.' },
-    review: { title: 'Weekly review', message: 'The weekly review arrives with the review flow.' },
     schedule: { title: 'Edit schedule', message: 'Editing the schedule arrives with the schedule menu.' },
 } as const;
 type Placeholder = keyof typeof placeholders;
@@ -121,7 +123,7 @@ function pickScope(scope: ProgressShowOutput['scopes'][number]): void {
             </section>
 
             <ThisWeekCard v-if="payload.this_week" :week="payload.this_week" :pending="pending" @edit-schedule="openPlaceholder('schedule')" />
-            <ReviewCard v-if="payload.review_card" :card="payload.review_card" @open="openPlaceholder('review')" />
+            <ReviewCard v-if="payload.review_card" :card="payload.review_card" @open="router.push('/review')" />
             <StepsCard v-if="payload.steps" :steps="payload.steps" :pending="pending" />
 
             <section class="flex flex-col gap-3" aria-labelledby="progress-history">
