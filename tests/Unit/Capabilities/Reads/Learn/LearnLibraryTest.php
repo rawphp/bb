@@ -1,9 +1,16 @@
 <?php
 
 use App\Capabilities\Reads\Learn\LearnLibrary;
+use App\Domain\Defaults\TBL023TargetRIR;
+use App\Domain\Defaults\TBL033CarbsPerMeal;
 use App\Domain\Learn\LearnArticle;
 use App\Domain\Learn\LearnSection;
 use App\Domain\Learn\LearnTopic;
+use App\Domain\Macros\MacroRules;
+use App\Domain\MealFit\MealFit;
+use App\Domain\Progress\Adherence;
+use App\Domain\Progression\Deload;
+use App\Domain\Progression\DeloadHalf;
 use App\Domain\Progression\VolumeProgression;
 use App\Domain\Safety\SafetyWarnings;
 use App\Domain\Safety\Screening;
@@ -216,6 +223,67 @@ it('LRN-001 keeps each health article\'s doctor note with every condition it nam
     'coffee' => [LearnTopic::Coffee, ['pregnant', 'heart condition', 'medication']],
     'training while sick' => [LearnTopic::TrainingWhileSick, ['whatever your doctor tells you', 'your doctor is the person to ask', 'your doctor has given you specific advice', 'sicker', 'fever', 'chest', 'vomiting', 'diarrhea', 'too weak', 'feeling worse is your cue to stop', 'none of the signs above apply']],
 ]);
+
+// The numbers the articles state, read out of the copy and checked against the rules that set them.
+
+it('PROG-030 lists the same weekly RIR targets the app plans, for every block of 3 to 7 training weeks', function () {
+    preg_match_all('/^(\d) training weeks: ([\d, ]+)$/m', learnArticleText(LearnTopic::Rir), $matches, PREG_SET_ORDER);
+    $stated = [];
+    foreach ($matches as [, $weeks, $targets]) {
+        $stated[(int) $weeks] = array_map('intval', explode(', ', $targets));
+    }
+
+    expect($stated)->toBe(array_filter(TBL023TargetRIR::RIR_BY_TRAINING_WEEKS, fn (int $weeks) => $weeks >= 3, ARRAY_FILTER_USE_KEY));
+});
+
+it('NUT-022 states the Day Balance band the app enforces', function () {
+    $band = MacroRules::moveBand();
+
+    expect(learnArticleText(LearnTopic::DayBalance))->toContain(sprintf('%d%% to %d%% of the week\'s average day', $band->lower * 100, $band->upper * 100));
+});
+
+it('MEAL-003 states the 5 g tolerance for Targets met and on-track meals', function (LearnTopic $topic, string $phrase) {
+    expect(learnArticleText($topic))->toContain(sprintf($phrase, (int) MealFit::TOLERANCE));
+})->with([
+    'building meals' => [LearnTopic::BuildingMeals, 'Once each macro lands within %d g of target, a "Targets met" badge appears'],
+    'check-ins' => [LearnTopic::CheckIns, 'protein, carbs and fat all come within %d g'],
+]);
+
+it('DAY-010 states the 10% margin that makes a day a success, wherever an article mentions it', function (LearnTopic $topic) {
+    preg_match_all('/(\d+)% (?:margin|of (?:target|your calorie)|on both|makes it a successful day)/', learnArticleText($topic), $matches);
+
+    expect($matches[1])->not->toBe([])
+        ->and(array_unique($matches[1]))->toBe([(string) (int) (Adherence::TOLERANCE * 100)]);
+})->with([LearnTopic::CheckIns, LearnTopic::DayBalance, LearnTopic::NotATracker, LearnTopic::MealsPerDay]);
+
+it('NUT-031 lists the 4-meal training-day carb split the app uses', function () {
+    $text = learnArticleText(LearnTopic::CarbsAroundWorkouts);
+    $row = TBL033CarbsPerMeal::row(4);
+    $stated = [];
+    foreach (['Pre-workout', 'Post-workout', 'Bedtime', 'Other meal'] as $meal) {
+        expect(preg_match("/^{$meal}: (\\d+)%$/m", $text, $match))->toBe(1);
+        $stated[] = (float) $match[1];
+    }
+
+    expect($stated)->toBe([$row->preWorkoutPercent, $row->postWorkoutPercent, $row->bedtimePercent, $row->restPercent])
+        ->and(array_sum($stated))->toBe(100.0);
+});
+
+it('PROG-041 describes the deload halves the app applies', function () {
+    $text = learnArticleText(LearnTopic::Deloads);
+
+    expect($text)->toContain("For the opening half of the week, weights don't change, but you do only half as many sets, each with half the usual reps.")
+        ->toContain('Over the second half, the weight comes down by half as well.')
+        ->and([Deload::sets(10), Deload::reps(10)])->toBe([5, 5])
+        ->and(Deload::weight(100.0, DeloadHalf::First))->toBe(100.0)
+        ->and(Deload::weight(100.0, DeloadHalf::Second))->toBe(50.0);
+});
+
+it('FOOD-007 gives the calories in a tablespoon of oil', function () {
+    // A tablespoon of oil is about 13.5 g of fat; at 9 kcal a gram that is about 120 kcal.
+    expect(learnArticleText(LearnTopic::Oils))->toContain('roughly 120 kcal per tablespoon')
+        ->and(13.5 * MacroRules::KCAL_PER_GRAM_FAT)->toEqualWithDelta(120.0, 5.0);
+});
 
 it('FOOD-081 guides on alcohol and coffee', function () {
     expect(learnArticleText(LearnTopic::Alcohol))->toContain('avoid alcohol while dieting')->toContain('1 to 2 drinks a week')
