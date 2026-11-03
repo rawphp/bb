@@ -8,7 +8,7 @@ use Tests\Support\ScreenFixture;
 // The Today area's contract (C_TODAY): DTOs, schema snapshots and screen fixtures
 // that the Today API issues register and the Today views render.
 
-const TODAY_API_ISSUES = [60, 68, 69, 70, 71];
+const TODAY_API_ISSUES = [60, 68, 69, 70, 71, 239];
 
 /** @return array<string, int> capability name => issue that registers it */
 function todayOwners(): array

@@ -2,8 +2,8 @@
 
 namespace App\Support\Today;
 
+use App\Actions\Foods\MealFitFoods;
 use App\Domain\Energy\EnergyRules;
-use App\Domain\MealFit\Food as MealFitFood;
 use App\Domain\MealFit\MealFood;
 use App\Domain\MealFit\Weighing;
 use App\Domain\Model\MealTarget;
@@ -28,7 +28,6 @@ use App\Domain\WeekBuilder\WorkoutSessionRecord;
 use App\Models\DayTarget;
 use App\Models\DayTargetMeal;
 use App\Models\Exercise;
-use App\Models\Food;
 use App\Models\Mesocycle;
 use App\Models\MuscleFeedback;
 use App\Models\OffPlanEntry;
@@ -572,7 +571,7 @@ final class TodaySnapshot
         $food = $planned->food;
         $macros = $food === null ? new MealTarget(0, 0, 0, 0) : (new MealFood(
             id: (string) $planned->id,
-            food: self::mealFitFood($food),
+            food: MealFitFoods::of($food),
             grams: $planned->grams,
             weighing: $planned->is_cooked ? Weighing::Cooked : Weighing::Raw,
         ))->macros();
@@ -583,21 +582,12 @@ final class TodaySnapshot
     /** RCP-002: servings of a recipe, at its ingredients' macros per serving. */
     private static function recipe(PlannedRecipe $planned): TodayPlannedEntry
     {
-        $recipe = $planned->sourceRecipe;
-        $perServing = $recipe === null ? new MealTarget(0, 0, 0, 0) : RecipeMacros::perServing(
-            $recipe->ingredients->map(fn (RecipeIngredient $i) => new MealFood(
-                id: (string) $i->id,
-                food: self::mealFitFood($i->food),
-                grams: (float) $i->grams,
-                weighing: $i->is_cooked ? Weighing::Cooked : Weighing::Raw,
-            ))->values()->all(),
-            (float) $recipe->servings,
-        );
+        $perServing = self::perServing($planned);
         $servings = $planned->servings;
 
         return new TodayPlannedEntry(
-            (string) (self::json($planned->recipe)['name'] ?? $recipe->name ?? 'Recipe'),
-            self::number($servings).($servings == 1.0 ? ' serving' : ' servings'),
+            self::recipeName($planned),
+            self::servingsText($servings),
             new MealTarget(
                 kcal: $perServing->kcal * $servings,
                 proteinG: $perServing->proteinG * $servings,
@@ -608,17 +598,32 @@ final class TodaySnapshot
         );
     }
 
-    private static function mealFitFood(Food $food): MealFitFood
+    /** RCP-021: the meal's copy of the recipe names it. */
+    public static function recipeName(PlannedRecipe $planned): string
     {
-        return new MealFitFood(
-            id: (string) $food->id,
-            name: $food->name,
-            kcal: $food->kcal,
-            proteinG: $food->protein,
-            fatG: $food->fat,
-            carbsG: $food->carbs,
-            cookedRatio: $food->cooked_ratio,
+        return (string) (self::json($planned->recipe)['name'] ?? $planned->sourceRecipe->name ?? 'Recipe');
+    }
+
+    /** RCP-002: one serving's calories and macros, from the recipe's ingredients. */
+    public static function perServing(PlannedRecipe $planned): MealTarget
+    {
+        $recipe = $planned->sourceRecipe;
+
+        return $recipe === null ? new MealTarget(0, 0, 0, 0) : RecipeMacros::perServing(
+            $recipe->ingredients->map(fn (RecipeIngredient $i) => new MealFood(
+                id: (string) $i->id,
+                food: MealFitFoods::of($i->food),
+                grams: (float) $i->grams,
+                weighing: $i->is_cooked ? Weighing::Cooked : Weighing::Raw,
+            ))->values()->all(),
+            (float) $recipe->servings,
         );
+    }
+
+    /** "1 serving", "1.5 servings". */
+    public static function servingsText(float $servings): string
+    {
+        return self::number($servings).($servings == 1.0 ? ' serving' : ' servings');
     }
 
     /**
