@@ -54,5 +54,6 @@
             "tone": "info"
         }
     ],
-    "shows_keep_phase_end": true
+    "shows_keep_phase_end": true,
+    "keep_phase_end": false
 }

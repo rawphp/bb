@@ -10,8 +10,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-/** A plan week (PLAN-008) flagged as a deload, diet break or away week (SCH-060), and when its review was saved (REV-001). */
-#[Fillable(['start_date', 'is_deload', 'is_diet_break', 'diet_break_off', 'is_away', 'away_training', 'away_calories', 'reviewed_at'])]
+/**
+ * A plan week (PLAN-008) flagged as a deload, diet break, away week (SCH-060) or rough week (SCH-063), and when its review
+ * was saved (REV-001). An away week keeps whether it was saved keeping the phase end date (PLAN-025).
+ */
+#[Fillable(['start_date', 'is_deload', 'is_diet_break', 'diet_break_off', 'is_away', 'away_training', 'away_calories', 'is_rough', 'keep_phase_end', 'reviewed_at'])]
 class PlanWeek extends Model
 {
     /** @use HasFactory<PlanWeekFactory> */
@@ -26,6 +29,8 @@ class PlanWeek extends Model
             'is_diet_break' => 'boolean',
             'diet_break_off' => 'boolean',
             'is_away' => 'boolean',
+            'is_rough' => 'boolean',
+            'keep_phase_end' => 'boolean',
             'reviewed_at' => 'datetime',
         ];
     }

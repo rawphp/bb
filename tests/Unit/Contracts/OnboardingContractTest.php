@@ -32,14 +32,14 @@ it('ONB-002 maps every onboarding read and write to the API issue that registers
         ->and($owners)->toBe(['onboarding_show' => 63, 'onboarding_answer' => 67, 'onboarding_complete' => 63]);
 });
 
-it('ONB-002 registers onboarding_show and leaves onboarding_answer to #67', function () use ($names) {
+it('ONB-002 registers every onboarding read and write from its own class file', function () use ($names) {
     $registry = app(CapabilityRegistry::class);
+    $files = array_map('basename', glob(app_path('Capabilities/Onboarding/*Capability.php')) ?: []);
 
-    foreach (array_diff($names, ['onboarding_show', 'onboarding_complete']) as $name) {
-        expect($registry->has($name))->toBeFalse("{$name} is registered");
+    foreach ($names as $name) {
+        expect($registry->has($name))->toBeTrue("{$name} is not registered")
+            ->and($files)->toContain(str_replace('_', '', ucwords($name, '_')).'Capability.php');
     }
-    expect($registry->has('onboarding_show'))->toBeTrue()
-        ->and(array_map('basename', glob(app_path('Capabilities/Onboarding/*Capability.php'))))->toContain('OnboardingShowCapability.php');
 });
 
 it('CAP-018 lets a status carry only the tones the server picks from', function () {

@@ -120,6 +120,29 @@ describe('navigation', () => {
         expect(paths(nav)).toEqual(['/today', '/meals/2']);
     });
 
+    it('PWA-025 a replace of the top screen with the same path keeps that screen, at its new address', async () => {
+        const { router, nav, ready } = setup();
+        await ready;
+        await router.push('/meals/1?action=load_saved_meal');
+        const before = nav.state.stacks.today.at(-1)!.key;
+
+        await router.replace('/meals/1');
+
+        expect(paths(nav)).toEqual(['/today', '/meals/1']);
+        expect(nav.state.stacks.today.at(-1)!.key).toBe(before);
+    });
+
+    it('PWA-025 a replace to another path still swaps the top screen', async () => {
+        const { router, nav, ready } = setup();
+        await ready;
+        await router.push('/meals/1');
+        const before = nav.state.stacks.today.at(-1)!.key;
+
+        await router.replace('/meals/2');
+
+        expect(nav.state.stacks.today.at(-1)!.key).not.toBe(before);
+    });
+
     it('PWA-025 opens a link straight into its screen, over its tab\'s root', async () => {
         const { router, nav, ready } = setup('/meals/5');
         await ready;

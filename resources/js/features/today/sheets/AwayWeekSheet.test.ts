@@ -172,9 +172,8 @@ describe('AwayWeekSheet', () => {
         expect(sent('away_week_set')).toEqual({ week_starts: ['2026-09-26'], away: true, training: 'pause', calories: 'maintenance' });
     });
 
-    // away_week_show does not carry what an away week saved, and away_week_set reads a missing
-    // keep_phase_end as false, so an untouched switch on an edit does reset a saved "keep".
-    // The sheet can only leave the value out; keeping it needs the contract change (#70).
+    // away_week_set reads a missing keep_phase_end as "keep what each week was saved with" (#70),
+    // so leaving it out is how an untouched switch keeps a saved "keep" on an edit.
     it('PLAN-025 sends keep_phase_end only once the user has set the switch, on Not away as on Save', async () => {
         const offered = { ...editing, shows_keep_phase_end: true };
         const untouched = show({ payload: offered });
