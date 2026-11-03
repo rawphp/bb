@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Support\Mesocycles\TrainSnapshot;
 use DomainException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -24,37 +25,41 @@ final class GenerateMesocycleStructure
 {
     public function __invoke(User $user, string $mesocycleId): Mesocycle
     {
-        $snapshot = TrainSnapshot::load($user);
-        $draft = $snapshot->mesocycle($mesocycleId);
-        if ($draft->isSaved()) {
-            throw (new ModelNotFoundException)->setModel(Mesocycle::class, [$mesocycleId]);
-        }
-        $route = $draft->route ?? MesocycleRoute::Scratch;
-        if ($route === MesocycleRoute::Template || $route === MesocycleRoute::CopyPrevious) {
-            throw new DomainException('This build already has its days.');
-        }
+        return DB::transaction(function () use ($user, $mesocycleId) {
+            // Two writes take turns: each reads, computes and writes the mesocycle under its row lock.
+            Mesocycle::query()->where('user_id', $user->id)->whereKey($mesocycleId)->lockForUpdate()->first();
+            $snapshot = TrainSnapshot::load($user);
+            $draft = $snapshot->mesocycle($mesocycleId);
+            if ($draft->isSaved()) {
+                throw (new ModelNotFoundException)->setModel(Mesocycle::class, [$mesocycleId]);
+            }
+            $route = $draft->route ?? MesocycleRoute::Scratch;
+            if ($route === MesocycleRoute::Template || $route === MesocycleRoute::CopyPrevious) {
+                throw new DomainException('This build already has its days.');
+            }
 
-        $training = $snapshot->trainingWeekdaysInPlanOrder();
-        $daysPerWeek = $draft->days_per_week ?? MesoBuilder::daysPerWeek($draft->dayRows(), $training);
-        $newId = fn (): string => (string) Str::ulid();
+            $training = $snapshot->trainingWeekdaysInPlanOrder();
+            $daysPerWeek = $draft->days_per_week ?? MesoBuilder::daysPerWeek($draft->dayRows(), $training);
+            $newId = fn (): string => (string) Str::ulid();
 
-        if ($route === MesocycleRoute::Builder) {
-            $column = $snapshot->buildColumn($draft);
-            $days = array_map(fn (Session $session) => [
-                'id' => $session->id,
-                'slots' => array_map(fn (ExerciseSlot $slot) => [
-                    'id' => $slot->id, 'exercise_id' => null, 'muscle_group' => $slot->muscle->value, 'sets' => MesoBuilder::DEFAULT_SETS,
-                ], $session->slots),
-            ], MesoBuilder::sessions($daysPerWeek, MesoBuilder::priorities($draft->muscle_priorities ?? [], $column), $column, $newId));
-        } else {
-            $days = array_map(fn () => ['id' => $newId(), 'slots' => []], range(1, $daysPerWeek));
-        }
+            if ($route === MesocycleRoute::Builder) {
+                $column = $snapshot->buildColumn($draft);
+                $days = array_map(fn (Session $session) => [
+                    'id' => $session->id,
+                    'slots' => array_map(fn (ExerciseSlot $slot) => [
+                        'id' => $slot->id, 'exercise_id' => null, 'muscle_group' => $slot->muscle->value, 'sets' => MesoBuilder::DEFAULT_SETS,
+                    ], $session->slots),
+                ], MesoBuilder::sessions($daysPerWeek, MesoBuilder::priorities($draft->muscle_priorities ?? [], $column), $column, $newId));
+            } else {
+                $days = array_map(fn () => ['id' => $newId(), 'slots' => []], range(1, $daysPerWeek));
+            }
 
-        $draft->update([
-            'days' => MesocycleRules::labelDays($days, 'weekdays', $training),
-            'days_per_week' => $daysPerWeek,
-        ]);
+            $draft->update([
+                'days' => MesocycleRules::labelDays($days, 'weekdays', $training),
+                'days_per_week' => $daysPerWeek,
+            ]);
 
-        return $draft;
+            return $draft;
+        });
     }
 }
