@@ -165,6 +165,43 @@ it('FOOD-045 joins a scanned food locked at its grams and fits the others around
         ->and($rice->fresh()->grams)->not->toBe(80.0);
 });
 
+it('FOOD-045 skips a scanned food the meal already holds, leaving the planned one as it was', function () {
+    $user = User::factory()->create();
+    $meal = Seed::dinner($user);
+    $chicken = Seed::chicken();
+    $held = Seed::planFood($meal, $chicken, 150, 0, locked: true);
+
+    app(AddMealFoods::class)($user, $meal, [addFood($chicken, addUlid(), grams: 300)]);
+
+    expect(PlannedFood::query()->where('meal_id', $meal)->count())->toBe(1)
+        ->and($held->fresh()->grams)->toBe(150.0);
+});
+
+it('FOOD-045 FOOD-006 weighs a scanned food cooked when it has a cooked value and the entry says cooked', function () {
+    $user = User::factory()->create();
+    $meal = Seed::dinner($user);
+
+    app(AddMealFoods::class)($user, $meal, [addFood(Seed::chicken(), $id = addUlid(), 'cooked', grams: 120)]);
+
+    $scanned = PlannedFood::query()->findOrFail($id);
+    expect($scanned->is_cooked)->toBeTrue()
+        ->and($scanned->is_locked)->toBeTrue()
+        ->and($scanned->grams)->toBe(120.0);
+});
+
+it('CAP-019 treats a recipe entry id the meal already holds as a retry and changes nothing', function () {
+    $user = User::factory()->create();
+    $meal = Seed::dinner($user);
+    $entries = [new MealFoodAddEntry(id: addUlid(), recipe_id: Seed::stew($user)->id), addFood(Seed::rice(), addUlid())];
+    app(AddMealFoods::class)($user, $meal, $entries);
+    $rows = PlannedRecipe::query()->where('meal_id', $meal)->get()->map->getAttributes()->all();
+
+    app(AddMealFoods::class)($user, $meal, $entries);
+
+    expect(PlannedRecipe::query()->where('meal_id', $meal)->get()->map->getAttributes()->all())->toBe($rows)
+        ->and(PlannedFood::query()->where('meal_id', $meal)->count())->toBe(1);
+});
+
 it('RCP-001 RCP-002 joins a recipe as unlocked servings fitted with the foods, with the meal\'s copy of the recipe', function () {
     $user = User::factory()->create();
     $meal = Seed::dinner($user);
