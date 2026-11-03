@@ -11,6 +11,7 @@ use Illuminate\Database\DeadlockException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Tests\Support\FakeRebuild;
 
 // SET-004: a settings write saves the profile, then rebuilds the targets from the next day when it touched a target
@@ -167,6 +168,21 @@ it('SET-004 a deadlock the database reports as a query error also fails the whol
     expect(fn () => saveProfile(saveProfileUser(), ['experience' => 'advanced']))
         ->toThrow(fn (Exception $e) => expect((new ConcurrencyErrorDetector)->causedByConcurrencyError($e))->toBeTrue())
         ->and($reported)->toBe([]);
+});
+
+it('SET-004 the plan row is locked before the profile row, the order RebuildTargets takes them in', function () {
+    FakeRebuild::bind();
+    $user = saveProfileUser();
+    $locks = [];
+    DB::listen(function ($query) use (&$locks) {
+        if (str_contains($query->sql, 'for update')) {
+            $locks[] = preg_match('/from [`"]?(\w+)/', $query->sql, $m) === 1 ? $m[1] : $query->sql;
+        }
+    });
+
+    saveProfile($user, ['experience' => 'advanced']);
+
+    expect(array_slice($locks, 0, 2))->toBe(['plans', 'profiles']);
 });
 
 it('SET-004 a rebuild that runs after a failure clears the notice', function () {

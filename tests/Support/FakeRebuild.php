@@ -18,12 +18,16 @@ final class FakeRebuild
     public array $calls = [];
 
     /** @param  list<string>  $dates */
-    public function __construct(private readonly ?Throwable $throw = null, private readonly array $dates = ['2026-10-15']) {}
+    public function __construct(private readonly ?Throwable $throw = null, private readonly array $dates = ['2026-10-15'], private int $throws = PHP_INT_MAX) {}
 
-    /** Bound in place of RebuildTargets, which callers resolve with app() at each call. */
-    public static function bind(?Throwable $throw = null): self
+    /**
+     * Bound in place of RebuildTargets, which callers resolve with app() at each call.
+     *
+     * @param  int  $times  how many calls throw before the rest succeed
+     */
+    public static function bind(?Throwable $throw = null, int $times = PHP_INT_MAX): self
     {
-        $fake = new self($throw);
+        $fake = new self($throw, throws: $times);
         app()->instance(RebuildTargets::class, $fake);
 
         return $fake;
@@ -33,7 +37,7 @@ final class FakeRebuild
     public function __invoke(User $user, float $calorieChangePerDay = 0, bool $beforeStartBuildsFirstWeek = false): array
     {
         $this->calls[] = ['user' => $user->id, 'beforeStart' => $beforeStartBuildsFirstWeek];
-        if ($this->throw !== null) {
+        if ($this->throw !== null && $this->throws-- > 0) {
             DB::table('profiles')->where('user_id', $user->id)->update(['meal_count' => 6]);
 
             throw $this->throw;
