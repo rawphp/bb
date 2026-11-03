@@ -469,6 +469,29 @@ it('ONB-013 saves the step ranges, and a minimum above the maximum raises the ma
         ->and($draft->step)->toBe(11);
 });
 
+it('ONB-013 keeps every step range inside 0 to 40,000', function () {
+    $draft = onboardingAnswerDraft(F::atStep10(), ['answers' => ['step_ranges' => [
+        ['weekday' => 1, 'min' => -500, 'max' => -1], ['weekday' => 2, 'min' => 50_000, 'max' => 60_000], ['weekday' => 3, 'min' => 1000, 'max' => 45_000],
+    ]]]);
+
+    expect($draft->stepRanges)->toEqual([
+        new StepRangeChoice(1, 0, 0),
+        new StepRangeChoice(2, OnboardingLifestyle::MAXIMUM_DAILY_STEPS, OnboardingLifestyle::MAXIMUM_DAILY_STEPS),
+        new StepRangeChoice(3, 1000, OnboardingLifestyle::MAXIMUM_DAILY_STEPS),
+    ]);
+});
+
+it('ONB-014 keeps the meal count at 2 to 6 and the meal times inside the day', function (int $count, int $first, int $last, int $keptCount, int $keptFirst, int $keptLast) {
+    $draft = onboardingAnswerDraft(F::atStep11(), ['answers' => ['meal_count' => $count, 'first_meal_minutes' => $first, 'last_meal_minutes' => $last]]);
+
+    expect($draft->mealCount)->toBe($keptCount)
+        ->and($draft->eatingStartMinutes)->toBe($keptFirst)
+        ->and($draft->eatingEndMinutes)->toBe($keptLast);
+})->with([
+    'below the range' => [1, -30, -1, 2, 0, 0],
+    'above the range' => [9, 1500, 2000, 6, 1439, 1439],
+]);
+
 it('ONB-014 saves the eating window, the meal count and the busy periods', function () {
     $saved = F::atStep11()->with(busyPeriods: [new BusyPeriodChoice('gym', 'Gym', 17 * 60, 18 * 60, [1])]);
     $draft = onboardingAnswerDraft($saved, ['answers' => [
@@ -537,6 +560,20 @@ it('ONB-017 choosing my own calories starts from the recommended average, and th
         ->and($typed->step)->toBe(OnboardingSteps::REVIEW_STEP)
         ->and($back->choosesOwnCalories)->toBeFalse()
         ->and($back->ownDailyKcal)->toBeNull();
+});
+
+it('ONB-017 keeps my own calories at 10,000 or less', function () {
+    $draft = onboardingAnswerDraft(F::atStep13(), ['answers' => ['calories' => 'own', 'own_kcal' => 12_000]]);
+
+    expect($draft->ownDailyKcal)->toBe(OnboardingCalories::MAXIMUM_OWN_DAILY_KCAL);
+});
+
+it('ONB-017 an own average sent with the recommendation is kept but not chosen', function () {
+    $draft = onboardingAnswerDraft(F::atStep13(), ['answers' => ['calories' => 'recommendation', 'own_kcal' => 1800]]);
+
+    expect($draft->choosesOwnCalories)->toBeFalse()
+        ->and($draft->ownDailyKcal)->toBe(1800)
+        ->and((new OnboardingCalories($draft, F::today(), []))->isReady())->toBeTrue();
 });
 
 it('ONB-017 refuses Next while the calories are not ready, with step 13\'s message', function () {
