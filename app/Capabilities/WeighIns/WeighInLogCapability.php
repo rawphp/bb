@@ -10,6 +10,7 @@ use App\Capabilities\Support\WriteResult;
 use App\Capabilities\WeighIns\Data\WeighInLogInput;
 use App\Models\User;
 use App\Models\WeighIn;
+use App\Support\UserDay;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -38,7 +39,7 @@ final class WeighInLogCapability implements HostCapability
                     MeasuredBy::caller($context),
                 );
 
-                return new WriteResult(invalidates: WeighInReads::weighInKeys($user, [$weighIn->weighed_at->format('Y-m-d')]));
+                return new WriteResult(invalidates: WeighInReads::weighInKeys($user, [UserDay::dayOf($user, $weighIn->weighed_at)->format('Y-m-d')]));
             });
     }
 }
