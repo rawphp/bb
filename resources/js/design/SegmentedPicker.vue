@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="T extends string">
 // SwiftUI's segmented Picker: one row of mutually exclusive options, the chosen one raised.
-// An undefined model means nothing is chosen yet. Picking the chosen option sends nothing.
+// An undefined model means nothing is chosen yet. Picking the chosen option, a disabled
+// option or any option of a disabled group sends nothing.
 const props = withDefaults(defineProps<{ label: string; options: { value: T; label: string; disabled?: boolean }[]; modelValue?: T; disabled?: boolean }>(), {
     modelValue: undefined,
     disabled: false,
@@ -8,8 +9,8 @@ const props = withDefaults(defineProps<{ label: string; options: { value: T; lab
 
 const emit = defineEmits<{ 'update:modelValue': [value: T] }>();
 
-function pick(value: T): void {
-    if (value !== props.modelValue) emit('update:modelValue', value);
+function pick(option: { value: T; disabled?: boolean }): void {
+    if (!props.disabled && !option.disabled && option.value !== props.modelValue) emit('update:modelValue', option.value);
 }
 </script>
 
@@ -24,7 +25,7 @@ function pick(value: T): void {
             :disabled="disabled || option.disabled"
             class="min-h-9 flex-1 rounded-md px-2 text-sm font-medium text-primary-text disabled:opacity-50"
             :class="modelValue === option.value ? 'bg-surface shadow-sm' : ''"
-            @click="pick(option.value)"
+            @click="pick(option)"
         >
             {{ option.label }}
         </button>
