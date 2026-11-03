@@ -8,7 +8,6 @@ use App\Domain\Plan\PlanRebuildRefused;
 use App\Domain\Plan\PlanRules;
 use App\Domain\WeekBuilder\WeekDay;
 use App\Domain\WeekBuilder\WeekSessions\SessionRow;
-use App\Domain\WeekBuilder\WorkoutSessionRecord;
 use App\Models\DayTarget;
 use App\Models\Mesocycle;
 use App\Models\OtherActivity;
@@ -22,7 +21,6 @@ use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Plan\DayTargetRow;
 use App\Support\Plan\PlanRebuildRows;
 use App\Support\Plan\PlanSnapshot;
-use App\Support\Today\DayPlans;
 use App\Support\Today\TodayWeight;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
@@ -104,7 +102,7 @@ final class RebuildTargets
             dietBreakTurnedOff: (bool) ($row->diet_break_off ?? false),
             calorieChangePerDay: $calorieChangePerDay,
             pausedWeeks: $snapshot->pausedWeeks,
-            sessionRows: $this->sessionRows($user, $covering['mesocycle']->id),
+            sessionRows: $this->sessionRows($user, $train, $covering['mesocycle']->id),
             otherActivities: PlanRebuildRows::activitiesByDay(
                 OtherActivity::query()->where('user_id', $user->id)->whereIn('date', $dates)->orderBy('created_at')->orderBy('id')->sharedLock()->get(),
             ),
@@ -121,21 +119,13 @@ final class RebuildTargets
      *
      * @return list<SessionRow>
      */
-    private function sessionRows(User $user, string $mesocycleId): array
+    private function sessionRows(User $user, TrainSnapshot $train, string $mesocycleId): array
     {
         if ($mesocycleId === '') {
             return [];
         }
         $records = WorkoutSession::query()->where('user_id', $user->id)->where('mesocycle_id', $mesocycleId)->sharedLock()->get()
-            ->map(fn (WorkoutSession $session) => new WorkoutSessionRecord(
-                id: (string) $session->id,
-                mesocycleId: $session->mesocycle_id,
-                week: $session->week,
-                day: $session->day,
-                isSkipped: $session->is_skipped,
-                plannedStartAt: $session->planned_start_at === null ? null : DayPlans::instant($session->planned_start_at),
-                actualStartAt: $session->actual_start_at === null ? null : DayPlans::instant($session->actual_start_at),
-            ))->values()->all();
+            ->map(fn (WorkoutSession $session) => $train->record($session))->values()->all();
 
         return SessionRow::rows($records, $mesocycleId);
     }
