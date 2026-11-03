@@ -71,7 +71,8 @@ it('REV-004 REV-031 stores the answer for the open week as sent, owned by the us
         'moves' => [['from_index' => 0, 'to_index' => 6, 'kcal' => 100]],
     ]);
 
-    expect($row->fresh()->only(['user_id', 'option', 'own_kcal', 'deload_too', 'update_step_plan', 'moves', 'refusal']))->toBe([
+    // A json column keeps its own key order, so the rows compare by value.
+    expect($row->fresh()->only(['user_id', 'option', 'own_kcal', 'deload_too', 'update_step_plan', 'moves', 'refusal']))->toEqual([
         'user_id' => $user->id, 'option' => 'choose_own', 'own_kcal' => 2300, 'deload_too' => true, 'update_step_plan' => true,
         'moves' => [['from_index' => 0, 'to_index' => 6, 'kcal' => 100]], 'refusal' => null,
     ])
@@ -117,7 +118,7 @@ it('REV-004 NUT-022 a move that will not build is stored with its refusal, keepi
     ]]);
     $preview = rqaPreview($user);
 
-    expect($row->fresh()->moves)->toBe([['from_index' => 0, 'to_index' => 1, 'kcal' => 100]])
+    expect($row->fresh()->moves)->toEqual([['from_index' => 0, 'to_index' => 1, 'kcal' => 100]])
         ->and($row->fresh()->refusal)->toBe(RQA_REFUSED_MOVE)
         ->and($row->fresh()->update_step_plan)->toBeTrue()
         ->and($preview['error'])->toBe(RQA_REFUSED_MOVE)
@@ -169,7 +170,7 @@ it('NUT-022 an option that will not build is stored as sent, with its refusal, a
     $row = rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => 1000, 'moves' => [['from_index' => 0, 'to_index' => 1, 'kcal' => 100]]]);
     $preview = rqaPreview($user);
 
-    expect($row->fresh()->only(['option', 'own_kcal', 'moves']))->toBe([
+    expect($row->fresh()->only(['option', 'own_kcal', 'moves']))->toEqual([
         'option' => 'choose_own', 'own_kcal' => 1000, 'moves' => [['from_index' => 0, 'to_index' => 1, 'kcal' => 100]],
     ])
         ->and($row->fresh()->refusal)->toBe('That is too few calories to fit your protein, fat and carbs. Choose a higher average.')
@@ -218,6 +219,6 @@ it('SCH-061 an away review lists no calorie option, so it takes moves under the 
     rqaRefused($user, ['option' => 'repeat_this_week'], 'That option is not one this review offers.');
     $row = rqaAnswer($user, ['moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
 
-    expect($row->fresh()->moves)->toBe([['from_index' => 0, 'to_index' => 5, 'kcal' => 100]])
+    expect($row->fresh()->moves)->toEqual([['from_index' => 0, 'to_index' => 5, 'kcal' => 100]])
         ->and($row->fresh()->refusal)->toBeNull();
 });

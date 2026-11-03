@@ -8,9 +8,9 @@ use App\Capabilities\Reads\Review\ReviewUnavailable;
 use App\Capabilities\Review\Data\ReviewShowInput;
 use App\Capabilities\Review\Data\ReviewShowOutput;
 use App\Capabilities\Support\HostDefinition;
+use App\Models\ReviewAnswer;
 use App\Models\User;
 use App\Support\Review\ReviewAnalysis;
-use App\Support\Review\ReviewAnswers;
 use App\Support\Review\ReviewData;
 use Carbon\CarbonImmutable;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
@@ -31,10 +31,9 @@ final class ReviewShowCapability implements HostCapability
                 $data = ReviewData::load($user, CarbonImmutable::now());
                 $analysis = ReviewAnalysis::fromData($data);
 
-                // ReviewAnswers::defaults() is where review_answer's stored answers join in.
                 return $analysis === null
                     ? ReviewShowPayload::unavailable(ReviewUnavailable::message($data))
-                    : ReviewShowPayload::build($analysis, ReviewAnswers::defaults());
+                    : ReviewShowPayload::build($analysis, ReviewAnswer::answersFor($user, $analysis->period->reviewed->start->format('Y-m-d')));
             });
     }
 }
