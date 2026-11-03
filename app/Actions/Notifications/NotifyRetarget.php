@@ -4,6 +4,7 @@ namespace App\Actions\Notifications;
 
 use App\Domain\Model\Meal;
 use App\Domain\Model\MealTarget;
+use App\Domain\Notifications\PlannedReminder;
 use App\Domain\Notifications\ReminderKind;
 use App\Domain\Notifications\ReminderPlanner;
 use App\Jobs\SendPushNotification;
@@ -27,15 +28,26 @@ final class NotifyRetarget
         if ($user === null || ! NotificationPref::switches($user)->isOn(ReminderKind::Retarget) || ! $user->pushSubscriptions()->exists()) {
             return;
         }
+        $notice = $this->notice($row, $before);
+        if ($notice !== null) {
+            SendPushNotification::dispatch($user, $notice->title, $notice->body, $notice->url)->afterCommit();
+        }
+    }
+
+    /**
+     * The notice for the re-target, or null when it changed no meal with planned foods. Its `fireAt` is the user's
+     * clock now (SET-012), as every reminder's is; the push goes out at once, so nothing reads it.
+     *
+     * @param  array<int, array<string, mixed>>  $before  the day's stored meals before the re-target
+     */
+    public function notice(DayTarget $row, array $before): ?PlannedReminder
+    {
         $planned = DayTargetMeal::query()->where('day_target_id', $row->id)
             ->where(fn ($query) => $query->whereHas('plannedFoods')->orWhereHas('plannedRecipes'))
             ->pluck('id')->map(fn (mixed $id): string => strtolower((string) $id))->all();
 
-        $notice = ReminderPlanner::retargetNotice(self::meals($before), self::meals($row->meals ?? []), $planned,
-            TrainSnapshot::day($row->date), UserDay::now($user));
-        if ($notice !== null) {
-            SendPushNotification::dispatch($user, $notice->title, $notice->body, $notice->url)->afterCommit();
-        }
+        return ReminderPlanner::retargetNotice(self::meals($before), self::meals($row->meals ?? []), $planned,
+            TrainSnapshot::day($row->date), UserDay::now($row->user));
     }
 
     /**
