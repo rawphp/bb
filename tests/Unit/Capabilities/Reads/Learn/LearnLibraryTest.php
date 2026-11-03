@@ -1,6 +1,7 @@
 <?php
 
 use App\Capabilities\Reads\Learn\LearnLibrary;
+use App\Domain\Learn\LearnArticle;
 use App\Domain\Learn\LearnSection;
 use App\Domain\Learn\LearnTopic;
 use Illuminate\Support\Facades\File;
@@ -75,6 +76,29 @@ it('LRN-002 builds the index summaries once and rebuilds them when an article fi
 
         expect($summary())->toBe(str_replace('RIR means', 'RIR MEANS', $old));
     } finally {
+        File::deleteDirectory($dir);
+    }
+});
+
+it('LRN-002 rebuilds the index summaries when the article parser changes', function () {
+    $dir = sys_get_temp_dir().'/learn-'.bin2hex(random_bytes(6));
+    File::copyDirectory(resource_path('learn'), $dir);
+    $path = "{$dir}/rir.md";
+    $parser = (new ReflectionClass(LearnArticle::class))->getFileName();
+    $parserMtime = filemtime($parser);
+    $summary = fn (): string => (new LearnLibrary($dir))->index()->toArray()['sections'][2]['articles'][1]['summary'];
+
+    try {
+        $old = $summary();
+        $mtime = filemtime($path);
+        file_put_contents($path, str_replace('RIR means', 'RIR MEANS', file_get_contents($path)));
+        touch($path, $mtime);
+        touch($parser, $parserMtime + 60);
+        clearstatcache();
+
+        expect($summary())->toBe(str_replace('RIR means', 'RIR MEANS', $old));
+    } finally {
+        touch($parser, $parserMtime);
         File::deleteDirectory($dir);
     }
 });
