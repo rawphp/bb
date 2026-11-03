@@ -55,9 +55,10 @@ const picking = ref(false);
 const copying = ref(false);
 const scanning = ref(false);
 const confirmingDelete = ref(false);
-// The new saved meal's id (CAP-019), kept until the server answers, so a retry after no
-// answer saves the same meal and not a second one.
-let savedMealId: string | null = null;
+// The new saved meal's id and the name it went with (CAP-019), kept until the server
+// answers, so a retry of that save after no answer is the same meal and not a second one.
+// Another name is another saved meal, with its own id.
+let pendingSave: { id: string; name: string } | null = null;
 
 // Edit macros/time has no screen yet (rp-clone shows a placeholder), and the manual check-in
 // sheet is the Today screen's (#96). Until they land, the menu shows them off.
@@ -133,10 +134,10 @@ const trimmedName = computed(() => savedMealName.value.trim());
 
 async function saveAsSavedMeal(): Promise<void> {
     if (trimmedName.value === '') return;
-    savedMealId ??= ulid();
-    const input: SavedMealSaveInput = { id: savedMealId, name: trimmedName.value, meal_id: mealId };
+    if (pendingSave?.name !== trimmedName.value) pendingSave = { id: ulid(), name: trimmedName.value };
+    const input: SavedMealSaveInput = { id: pendingSave.id, name: pendingSave.name, meal_id: mealId };
     const outcome = await nameWrite.send('saved_meal_save', { ...input }, 'The saved meal could not be saved.');
-    if (outcome === 'done' || outcome === 'refused') savedMealId = null;
+    if (outcome === 'done' || outcome === 'refused') pendingSave = null;
     if (outcome === 'done') naming.value = false;
 }
 
