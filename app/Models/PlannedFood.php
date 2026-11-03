@@ -10,7 +10,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** A food planned in a meal (MEAL-001 to MEAL-008, FOOD-009). */
+/**
+ * A food planned in a meal (MEAL-001 to MEAL-008, FOOD-009). Keyed by a ULID, so the outbox can create one offline (CAP-019).
+ *
+ * @property string $id
+ */
 #[Fillable(['id', 'user_id', 'meal_id', 'food_id', 'position', 'grams', 'is_cooked', 'is_locked', 'unit'])]
 class PlannedFood extends Model
 {

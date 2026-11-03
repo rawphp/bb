@@ -12,7 +12,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Servings of a recipe planned in a meal (RCP-001, RCP-002). `recipe` is this meal's copy of
- * the recipe: it follows the recipe until the meal is checked in, then stays as it was (RCP-021).
+ * the recipe: it follows the recipe until the meal is checked in, then stays as it was (RCP-021). Keyed by a ULID, so
+ * the outbox can create one offline (CAP-019).
+ *
+ * @property string $id
  */
 #[Fillable(['id', 'user_id', 'meal_id', 'recipe_id', 'position', 'servings', 'is_locked', 'recipe'])]
 class PlannedRecipe extends Model
