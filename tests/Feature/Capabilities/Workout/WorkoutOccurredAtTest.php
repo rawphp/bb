@@ -56,6 +56,19 @@ it('OFF-007 WO-010 workout_finish replayed with an older X-BB-Occurred-At record
     expect($session->fresh()->actual_end_at->format('Y-m-d H:i'))->toBe('2026-09-21 18:30');
 });
 
+it('OFF-007 workout_finish stores an X-BB-Occurred-At with an offset as its UTC instant', function () {
+    Carbon::setTestNow('2026-09-21 19:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => TrainSeed::phase($user, 'muscleGain', '2026-08-31')->id]);
+    $session = WorkoutSeed::started($mesocycle, 3, 1, '2026-09-21 17:30:00');
+    WorkoutSeed::answered($session, 'chest', WorkoutSeed::exerciseId($mesocycle, 1), ['pump' => 'low', 'volume' => 'notEnough']);
+    Carbon::setTestNow('2026-09-23 09:00:00');
+
+    workoutAt($user, 'workout_finish', WorkoutSeed::id($session), '2026-09-22T04:30:00+10:00')->assertOk();
+
+    expect($session->fresh()->getRawOriginal('actual_end_at'))->toBe('2026-09-21 18:30:00');
+});
+
 it('OFF-007 workout_start with no X-BB-Occurred-At records the request clock', function () {
     Carbon::setTestNow('2026-09-21 17:40:00');
     $user = TrainSeed::user();
