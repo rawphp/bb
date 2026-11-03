@@ -25,6 +25,7 @@ use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\UserDay;
 use Closure;
 use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Support\Collection;
 
 /**
@@ -32,8 +33,8 @@ use Illuminate\Support\Collection;
  * mesocycles placed on the plan-week grid with any paused weeks inside them (PLAN-002, SCH-060), the flagged plan
  * weeks and the weigh-ins. A write refuses exactly what a read does not offer, because both ask here.
  *
- * Dates are whole days at midnight UTC, read from their Y-m-d. A phase with no end (PH-005) fills the weeks up to
- * {@see self::OPEN}.
+ * Dates are whole days at midnight UTC, read from their Y-m-d. A weigh-in's day is the user's local day in `$zone`
+ * (SET-012). A phase with no end (PH-005) fills the weeks up to {@see self::OPEN}.
  */
 final class PlanSnapshot
 {
@@ -73,6 +74,7 @@ final class PlanSnapshot
         public readonly Collection $mesocycles,
         public readonly Collection $planWeeks,
         private readonly Collection|Closure $weighIns,
+        public readonly DateTimeZone $zone = new DateTimeZone('UTC'),
     ) {
         $this->domain = new DomainPlan(
             id: (string) $plan->id,
@@ -133,7 +135,8 @@ final class PlanSnapshot
             mesocycles: Mesocycle::savedBy($user)->get(),
             planWeeks: PlanWeek::query()->where('user_id', $user->id)->get(),
             weighIns: fn (DateTimeImmutable $from): Collection => WeighIn::query()->where('user_id', $user->id)
-                ->where('weighed_at', '>=', $from->format('Y-m-d H:i:s'))->orderBy('weighed_at')->get(),
+                ->where('weighed_at', '>=', UserDay::bounds($user, $from)[0]->format('Y-m-d H:i:s'))->orderBy('weighed_at')->get(),
+            zone: UserDay::zone($user),
         );
     }
 
@@ -148,7 +151,7 @@ final class PlanSnapshot
             return ($this->weighIns)($from);
         }
 
-        return $this->weighIns->filter(fn (WeighIn $w) => self::day($w->weighed_at) >= $from)->values();
+        return $this->weighIns->filter(fn (WeighIn $w) => self::day(UserDay::clockIn($this->zone, $w->weighed_at)) >= $from)->values();
     }
 
     public static function day(\DateTimeInterface|string $date): DateTimeImmutable

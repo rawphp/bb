@@ -16,6 +16,9 @@ final class OnboardingSteps
 {
     public const STEP_COUNT = 13;
 
+    /** The health check (SAFE-001). */
+    public const SCREENING_STEP = 3;
+
     /** The review (ONB-018) comes after step 13. It is not counted in "Step n of 13". */
     public const REVIEW_STEP = 14;
 
