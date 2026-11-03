@@ -12,6 +12,7 @@ use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\OccurredAt;
 use App\Support\Today\TodayMealItem;
 use App\Support\Today\TodaySnapshot;
+use App\Support\UserDay;
 use DomainException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -20,7 +21,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * it records what the planned foods and recipe servings add up to, or the meal's targets when nothing is planned
  * ("check in as given"); a meal showing the "Adjust foods" badge (DAY-003) refuses that one-tap check-in. All four
  * amounts record what the user entered, marked manual, on any meal. With no time, the time is when the user acted
- * (OFF-007), which the outbox may send days later, in the app's timezone.
+ * (OFF-007), which the outbox may send days later, on the user's clock (SET-012) like the meal times it sits beside.
  */
 final class CheckInMeal
 {
@@ -34,7 +35,7 @@ final class CheckInMeal
 
         MealCheckIn::query()->updateOrCreate(['meal_id' => $meal->getKey()], [
             'user_id' => $user->id,
-            'time' => $input->time ?? OccurredAt::get()->setTimezone(config('app.timezone'))->format('H:i'),
+            'time' => $input->time ?? UserDay::clockOf($user, OccurredAt::get())->format('H:i'),
             'kcal' => $eaten->kcal,
             'protein_g' => $eaten->proteinG,
             'fat_g' => $eaten->fatG,
