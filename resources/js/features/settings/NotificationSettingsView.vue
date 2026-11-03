@@ -17,27 +17,35 @@ import SwitchRow from './SwitchRow.vue';
 const props = defineProps<{ payload?: SettingsShowOutput }>();
 
 const { data: settings, failure, load } = useRead<SettingsShowOutput>('settings_show', {}, 'Your notification settings could not be loaded.', props.payload);
-const { send, busy, error } = useWrite(load);
+const { send, error } = useWrite(load);
 const push = usePush();
 const pushError = ref<string | null>(null);
+// From the tap to the server's answer, setting up this device's push included: every
+// switch waits, so the writes go out in the order they were tapped and none is dropped.
+const toggling = ref(false);
 
 onMounted(() => void push.refresh().catch(() => undefined));
 
 async function toggle(kind: NotificationPrefsSetInput['kind'], event: Event): Promise<void> {
     const box = event.target as HTMLInputElement;
     const on = box.checked;
+    toggling.value = true;
     pushError.value = null;
-    // The switch is the user's choice and saves either way; this device then gets the
-    // reminders once it can (another device may already).
-    if (on) {
-        await push.enable().catch(() => {
-            pushError.value = 'This device could not be set up for notifications. Turn the switch off and on to try again.';
-        });
+    try {
+        // The switch is the user's choice and saves either way; this device then gets the
+        // reminders once it can (another device may already).
+        if (on) {
+            await push.enable().catch(() => {
+                pushError.value = 'This device could not be set up for notifications. Turn the switch off and on to try again.';
+            });
+        }
+        await send('notification_prefs_set', { kind, on } satisfies NotificationPrefsSetInput, 'The notification could not be changed. Try again.');
+    } finally {
+        toggling.value = false;
+        // Show what the server holds, not what was tapped.
+        await nextTick();
+        box.checked = settings.value?.notifications.find((type) => type.kind === kind)?.on ?? false;
     }
-    await send('notification_prefs_set', { kind, on } satisfies NotificationPrefsSetInput, 'The notification could not be changed. Try again.');
-    // Show what the server holds, not what was tapped.
-    await nextTick();
-    box.checked = settings.value?.notifications.find((type) => type.kind === kind)?.on ?? false;
 }
 </script>
 
@@ -56,7 +64,7 @@ async function toggle(kind: NotificationPrefsSetInput['kind'], event: Event): Pr
                         :label="type.label"
                         :data-test="`notify-${type.kind}`"
                         :checked="type.on"
-                        :disabled="busy"
+                        :disabled="toggling"
                         @change="toggle(type.kind, $event)"
                     />
                 </div>

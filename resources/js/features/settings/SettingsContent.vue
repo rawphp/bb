@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { postHost, writeNow } from '@/app/call';
 import { failureMessage } from '@/app/errors';
 import { useWrite } from '@/app/useWrite';
@@ -29,14 +29,17 @@ const held = computed<SettingsUpdateInput>(() => ({
     micro_plates: props.settings.micro_plates,
 }));
 
+// Appearance is also this device's look (SET-002, PWA-041): paint what the server holds,
+// whenever it answers, so a choice made on another device or a change with no final
+// answer still shows here.
+watch(() => held.value.appearance, (appearance) => setAppearance(appearance as Appearance), { immediate: true });
+
 async function change(field: keyof SettingsUpdateInput, event: Event): Promise<void> {
     const control = event.target as HTMLInputElement | HTMLSelectElement;
     const toggle = control instanceof HTMLInputElement && control.type === 'checkbox';
     const value = toggle ? control.checked : control.value;
     actionError.value = null;
-    const outcome = await send('settings_update', { ...held.value, [field]: value }, 'The setting could not be saved. Try again.');
-    // Appearance is also this device's look (PWA-041): repaint with what the server took.
-    if (outcome === 'done' && field === 'appearance') setAppearance(held.value.appearance as Appearance);
+    await send('settings_update', { ...held.value, [field]: value }, 'The setting could not be saved. Try again.');
     await nextTick();
     if (toggle) control.checked = held.value.micro_plates;
     else control.value = String(held.value[field]);

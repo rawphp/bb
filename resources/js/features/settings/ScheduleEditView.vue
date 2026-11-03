@@ -12,10 +12,11 @@ import StepRangeRow from './StepRangeRow.vue';
 import SwitchRow from './SwitchRow.vue';
 
 // Settings → Schedule defaults (SET-005): the eating window, meals a day, training days
-// and times, busy periods, the step plan and the review day. Weigh-in days have their
-// own screen. The form starts from what settings_show holds, with the bounds, steps and
+// and times, busy periods, the step plan and the review day. Weigh-in days are not on
+// this screen (rp-clone gives them their own, which the weigh-ins screens bring). The form starts from what settings_show holds, with the bounds, steps and
 // defaults it sends, and Save sends it whole (schedule_defaults_update); the server
-// recalculates the targets from the next day and says what it did in `notice`.
+// recalculates the targets from the next day and says what it did in `notice`. The form
+// follows each new answer (a refresh of the cached copy, say) until the user changes something.
 const props = defineProps<{ payload?: SettingsShowOutput }>();
 
 const { data: settings, failure, load } = useRead<SettingsShowOutput>('settings_show', {}, 'Your schedule could not be loaded.', props.payload);
@@ -35,6 +36,8 @@ type Draft = {
 };
 
 const draft = ref<Draft | null>(null);
+// The draft as last filled from the server, to tell whether the user has changed it.
+let seeded = '';
 let keys = 0;
 
 function busyFrom(period: SettingsShowOutput['schedule']['new_busy_period']): Busy {
@@ -56,10 +59,12 @@ function seed(from: SettingsShowOutput): void {
         steps: Object.fromEntries(schedule.step_plan.map((day) => [day.weekday, { min: text(day.min), max: text(day.max) }])),
         review_weekday: schedule.review_weekday ?? null,
     };
+    seeded = JSON.stringify(draft.value);
 }
 
-// The form takes the first answer; a background refresh does not overwrite what is typed.
-watch(settings, (now) => now && draft.value === null && seed(now), { immediate: true });
+const edited = () => draft.value !== null && JSON.stringify(draft.value) !== seeded;
+
+watch(settings, (now) => now && !edited() && seed(now), { immediate: true });
 
 const schedule = computed(() => settings.value?.schedule);
 
@@ -81,8 +86,13 @@ function toggleBusyDay(period: Busy, weekday: number): void {
 }
 
 const filled = (text: string) => text.trim() !== '';
-// A day's range is both numbers or neither; the server judges the numbers themselves.
-const halfRange = computed(() => Object.values(draft.value?.steps ?? {}).some((day) => filled(day.min) !== filled(day.max)));
+const whole = (text: string) => /^\d+$/.test(text.trim());
+const steps = computed(() => Object.values(draft.value?.steps ?? {}));
+// A day's range is both numbers or neither, each typed as digits only, so "8.000" never
+// goes out as 8. The server judges the numbers themselves.
+const halfRange = computed(() => steps.value.some((day) => filled(day.min) !== filled(day.max)));
+const notWhole = computed(() => steps.value.some((day) => [day.min, day.max].some((text) => filled(text) && !whole(text))));
+const held = computed(() => halfRange.value || notWhole.value);
 
 function input(form: Draft, weekdays: number[]): ScheduleDefaultsUpdateInput {
     return {
@@ -102,14 +112,14 @@ function input(form: Draft, weekdays: number[]): ScheduleDefaultsUpdateInput {
         })),
         step_plan: weekdays.flatMap((weekday) => {
             const day = form.steps[weekday];
-            return day && filled(day.min) && filled(day.max) ? [{ weekday, min: Number(day.min), max: Number(day.max) }] : [];
+            return day && filled(day.min) && filled(day.max) ? [{ weekday, min: Number(day.min.trim()), max: Number(day.max.trim()) }] : [];
         }),
         review_weekday: form.review_weekday,
     };
 }
 
 async function save(): Promise<void> {
-    if (!draft.value || !schedule.value || halfRange.value) return;
+    if (!draft.value || !schedule.value || held.value) return;
     const outcome = await send('schedule_defaults_update', { ...input(draft.value, schedule.value.weekdays.map((day) => day.weekday)) }, 'Your schedule could not be saved. Try again.');
     if (outcome === 'done' && settings.value) seed(settings.value);
 }
@@ -131,7 +141,7 @@ const time = 'rounded-lg bg-background px-3 py-1.5 tabular-nums text-primary-tex
                 type="button"
                 data-test="save"
                 class="min-h-tap justify-self-end font-semibold text-accent disabled:opacity-40"
-                :disabled="busy || halfRange"
+                :disabled="busy || held"
                 :aria-busy="busy"
                 @click="save"
             >
@@ -267,6 +277,7 @@ const time = 'rounded-lg bg-background px-3 py-1.5 tabular-nums text-primary-tex
                     />
                 </div>
                 <p :class="footer">A daily range, used for your activity level. Leave a day empty for none.</p>
+                <p v-if="notWhole" class="px-4 pt-1 text-sm text-tone-warning" data-test="not-whole">Type steps as whole numbers, for example 8000.</p>
                 <p v-if="halfRange" class="px-4 pt-1 text-sm text-tone-warning" data-test="half-range">Fill in both numbers for a day, or leave both empty.</p>
             </section>
 

@@ -12,7 +12,8 @@ import SwitchRow from './SwitchRow.vue';
 // GLP-1 answer and training experience. The form starts from what settings_show holds
 // and Save sends it whole (profile_update); the server recalculates the targets from
 // the next day and says what it did in `notice`. Save stays on, so a save whose targets
-// did not update can be sent again (the notice asks for that).
+// did not update can be sent again (the notice asks for that). The form follows each new
+// answer (a refresh of the cached copy, say) until the user changes something.
 const props = defineProps<{ payload?: SettingsShowOutput }>();
 
 const { data: settings, failure, load } = useRead<SettingsShowOutput>('settings_show', {}, 'Your profile could not be loaded.', props.payload);
@@ -20,6 +21,7 @@ const { send, busy, error } = useWrite(load);
 
 type Sex = ProfileUpdateInput['sex'];
 type Draft = {
+    unit: SettingsShowOutput['profile']['height']['unit'];
     name: string;
     sex: Sex;
     birth_date: string;
@@ -32,11 +34,14 @@ type Draft = {
 };
 
 const draft = ref<Draft | null>(null);
+// The draft as last filled from the server, to tell whether the user has changed it.
+let seeded = '';
 
 function seed(from: SettingsShowOutput): void {
     const profile = from.profile;
     const text = (value: number | null | undefined) => (value === null || value === undefined ? '' : String(value));
     draft.value = {
+        unit: profile.height.unit,
         name: profile.name,
         sex: profile.sex.value as Sex,
         birth_date: profile.birth_date,
@@ -47,24 +52,36 @@ function seed(from: SettingsShowOutput): void {
         uses_glp1: profile.uses_glp1,
         experience: profile.experience.value as ProfileUpdateInput['experience'],
     };
+    seeded = JSON.stringify(draft.value);
 }
 
-// The form takes the first answer; a background refresh does not overwrite what is typed.
-watch(settings, (now) => now && draft.value === null && seed(now), { immediate: true });
+const edited = () => draft.value !== null && JSON.stringify(draft.value) !== seeded;
 
-const unit = computed(() => settings.value?.profile.height.unit ?? 'cm');
+watch(settings, (now) => now && !edited() && seed(now), { immediate: true });
 // The server labels each bucket per sex (TBL-001); the sex picked here picks the list.
 const buckets = computed(() => (settings.value && draft.value ? settings.value.profile.body_fat.choices[draft.value.sex] : []));
 
-// The number typed, or null for an empty field; the server says what is out of range.
-const typed = (text: string): number | null => (text.trim() === '' ? null : Number(text));
+// What is typed, read as a number: null for an empty field, NaN for text that is not a
+// number (Save waits for it). A decimal comma reads as a point. The server says what is
+// out of range.
+function typed(text: string, whole: boolean): number | null {
+    const plain = text.trim().replace(',', '.');
+    if (plain === '') return null;
+    return (whole ? /^\d+$/ : /^\d+(\.\d+)?$/).test(plain) ? Number(plain) : NaN;
+}
+
+function height(form: Draft): ProfileUpdateInput['height'] {
+    return form.unit === 'cm' ? { unit: 'cm', cm: typed(form.cm, false) } : { unit: 'feetInches', feet: typed(form.feet, true), inches: typed(form.inches, false) };
+}
+
+const notNumber = computed(() => draft.value !== null && Object.values(height(draft.value)).some((part) => Number.isNaN(part)));
 
 function input(form: Draft): ProfileUpdateInput {
     return {
         name: form.name.trim(),
         sex: form.sex,
         birth_date: form.birth_date,
-        height: unit.value === 'cm' ? { unit: 'cm', cm: typed(form.cm) } : { unit: 'feetInches', feet: typed(form.feet), inches: typed(form.inches) },
+        height: height(form),
         body_fat_bucket: form.body_fat_bucket,
         uses_glp1: form.uses_glp1,
         experience: form.experience,
@@ -72,7 +89,7 @@ function input(form: Draft): ProfileUpdateInput {
 }
 
 async function save(): Promise<void> {
-    if (!draft.value) return;
+    if (!draft.value || notNumber.value) return;
     const outcome = await send('profile_update', { ...input(draft.value) }, 'Your profile could not be saved. Try again.');
     if (outcome === 'done' && settings.value) seed(settings.value);
 }
@@ -94,7 +111,7 @@ const select = 'max-w-[60%] rounded-lg bg-transparent text-right text-secondary-
                 type="button"
                 data-test="save"
                 class="min-h-tap justify-self-end font-semibold text-accent disabled:opacity-40"
-                :disabled="busy"
+                :disabled="busy || notNumber"
                 :aria-busy="busy"
                 @click="save"
             >
@@ -139,7 +156,7 @@ const select = 'max-w-[60%] rounded-lg bg-transparent text-right text-secondary-
                 <div :class="card">
                     <div :class="row">
                         <span>Height</span>
-                        <span v-if="unit === 'cm'" class="flex items-center gap-2">
+                        <span v-if="draft.unit === 'cm'" class="flex items-center gap-2">
                             <input v-model="draft.cm" data-test="height-cm" type="text" inputmode="numeric" aria-label="Height in cm" size="4" :disabled="busy" :class="field" />
                             <span class="text-secondary-text">cm</span>
                         </span>
@@ -151,6 +168,7 @@ const select = 'max-w-[60%] rounded-lg bg-transparent text-right text-secondary-
                         </span>
                     </div>
                 </div>
+                <p v-if="notNumber" class="px-4 pt-2 text-sm text-tone-warning" data-test="not-number">Type your height as a number.</p>
             </section>
 
             <section aria-labelledby="profile-body-fat">
