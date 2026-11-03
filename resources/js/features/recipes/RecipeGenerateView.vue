@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { AI_TIMEOUT_MS, readFresh } from '@/app/call';
+import { AI_TIMEOUT_MS, readNow } from '@/app/call';
 import { failureMessage, isTimeout } from '@/app/errors';
 import type { RecipeGenerateInput, RecipeGenerateOutput } from '@/contracts/recipe_generate';
+import SegmentedPicker from '@/features/today/sheets/SegmentedPicker.vue';
 import RecipeDraftView from './RecipeDraftView.vue';
 import { COMPLEXITIES, MEAL_TYPES, typedNumber, type RecipeComplexity, type RecipeMealType } from './options';
 
@@ -30,6 +31,9 @@ const preferences = ref('');
 const draft = ref<RecipeGenerateOutput | null>(props.payload ?? null);
 const busy = ref(false);
 const error = ref<string | null>(null);
+
+const MEAL_TYPE_OPTIONS = MEAL_TYPES.map((option) => ({ value: option.value, label: option.title }));
+const COMPLEXITY_OPTIONS = COMPLEXITIES.map((option) => ({ value: option.value, label: option.title }));
 
 const MACROS = [
     { label: 'Protein (g)', model: protein },
@@ -65,7 +69,7 @@ async function generate(): Promise<void> {
     busy.value = true;
     error.value = null;
     try {
-        draft.value = await readFresh<RecipeGenerateOutput>('recipe_generate', { ...input.value }, { timeoutMs: AI_TIMEOUT_MS });
+        draft.value = await readNow<RecipeGenerateOutput>('recipe_generate', { ...input.value }, { timeoutMs: AI_TIMEOUT_MS });
     } catch (failure) {
         // The AI call can outlast a normal read; past its deadline the device is not offline.
         error.value = isTimeout(failure) ? 'The recipe took too long. Try again.' : failureMessage(failure, "Couldn't generate a recipe. Try again.");
@@ -103,36 +107,8 @@ async function generate(): Promise<void> {
 
         <section aria-labelledby="generate-kind" class="flex flex-col gap-2">
             <h2 id="generate-kind" class="text-lg font-semibold">Meal type and complexity</h2>
-            <div role="group" aria-label="Meal type" class="grid grid-cols-4 rounded-full bg-secondary-text/15 p-0.5">
-                <button
-                    v-for="option in MEAL_TYPES"
-                    :key="option.value"
-                    type="button"
-                    data-test="meal-type"
-                    :aria-pressed="mealType === option.value"
-                    :disabled="busy"
-                    class="min-h-9 rounded-full text-sm font-medium"
-                    :class="mealType === option.value ? 'bg-surface text-primary-text shadow-sm ring-1 ring-secondary-text/25' : 'text-secondary-text'"
-                    @click="mealType = option.value"
-                >
-                    {{ option.title }}
-                </button>
-            </div>
-            <div role="group" aria-label="Complexity" class="grid grid-cols-3 rounded-full bg-secondary-text/15 p-0.5">
-                <button
-                    v-for="option in COMPLEXITIES"
-                    :key="option.value"
-                    type="button"
-                    data-test="complexity"
-                    :aria-pressed="complexity === option.value"
-                    :disabled="busy"
-                    class="min-h-9 rounded-full text-sm font-medium"
-                    :class="complexity === option.value ? 'bg-surface text-primary-text shadow-sm ring-1 ring-secondary-text/25' : 'text-secondary-text'"
-                    @click="complexity = option.value"
-                >
-                    {{ option.title }}
-                </button>
-            </div>
+            <SegmentedPicker v-model="mealType" label="Meal type" :options="MEAL_TYPE_OPTIONS" :disabled="busy" class="bg-secondary-text/15!" />
+            <SegmentedPicker v-model="complexity" label="Complexity" :options="COMPLEXITY_OPTIONS" :disabled="busy" class="bg-secondary-text/15!" />
         </section>
 
         <section aria-labelledby="generate-ingredients">

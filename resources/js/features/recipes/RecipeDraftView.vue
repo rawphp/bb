@@ -44,6 +44,8 @@ function useFood(foods: PickedFood[]): void {
 // typed as a number. Whether the amounts are allowed is recipe_save's to say (CAP-012).
 const ready = computed(() => entries.value.length > 0 && entries.value.every((entry) => entry.food_id !== null && typedNumber(entry.grams) !== null));
 
+// A drafted item names a food and grams, not how the food is weighed: its detail is the
+// food's brand (RecipeDrafts). So each joins the recipe raw, as recipe_save then stores it.
 function proceed(): void {
     if (!ready.value) return;
     editing.value = {

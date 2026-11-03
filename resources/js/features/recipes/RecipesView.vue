@@ -9,6 +9,7 @@ import ActionMenu, { type ActionMenuItem } from '@/design/ActionMenu.vue';
 import BottomSheet from '@/design/BottomSheet.vue';
 import PendingMark from '@/design/PendingMark.vue';
 import PantryChip from '@/features/pantry/PantryChip.vue';
+import SegmentedPicker from '@/features/today/sheets/SegmentedPicker.vue';
 import { DIETS, MEAL_TYPES, SEGMENTS, type RecipeDiet, type RecipeMealType, type RecipeSegment } from './options';
 
 // The Recipes screen (RCP-020), ported from rp-clone's RecipesView: My recipes and the
@@ -66,6 +67,8 @@ const MENU: ActionMenuItem[] = [
     { key: '/nutrition/recipes/generate', title: 'Generate with AI' },
 ];
 
+const SEGMENT_OPTIONS = SEGMENTS.map((option) => ({ value: option.value, label: option.title }));
+
 const dietTitle = computed(() => (diets.value.length === 0 ? 'Diet' : `Diet · ${diets.value.length}`));
 </script>
 
@@ -80,20 +83,7 @@ const dietTitle = computed(() => (diets.value.length === 0 ? 'Diet' : `Diet · $
             </ActionMenu>
         </header>
 
-        <div role="tablist" aria-label="List" class="grid grid-cols-2 rounded-full bg-secondary-text/15 p-0.5">
-            <button
-                v-for="option in SEGMENTS"
-                :key="option.value"
-                type="button"
-                role="tab"
-                :aria-selected="segment === option.value"
-                class="min-h-9 rounded-full text-sm font-medium"
-                :class="segment === option.value ? 'bg-surface text-primary-text shadow-sm ring-1 ring-secondary-text/25' : 'text-secondary-text'"
-                @click="segment = option.value"
-            >
-                {{ option.title }}
-            </button>
-        </div>
+        <SegmentedPicker v-model="segment" label="List" :options="SEGMENT_OPTIONS" class="bg-secondary-text/15!" />
 
         <div class="-mx-4 flex items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
             <button

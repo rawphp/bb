@@ -25,6 +25,7 @@ import PendingMark from '@/design/PendingMark.vue';
 import StatusPill from '@/design/StatusPill.vue';
 import type { PickedFood } from '@/features/pantry/options';
 import PantryView from '@/features/pantry/PantryView.vue';
+import SegmentedPicker from '@/features/today/sheets/SegmentedPicker.vue';
 import { isMealType, MEAL_TYPES, typedNumber, type RecipeMealType } from './options';
 
 // A recipe to read or change (RCP-001, RCP-021), ported from rp-clone's RecipeEditorView:
@@ -51,6 +52,11 @@ const emit = defineEmits<{ back: [] }>();
 
 type Ingredient = { key: number; food_id: string; name: string; grams: string; isCooked: boolean; canToggleCooked: boolean; amountText: string };
 type Step = { key: number; text: string };
+
+const WEIGHINGS: { value: 'raw' | 'cooked'; label: string }[] = [
+    { value: 'raw', label: 'Raw' },
+    { value: 'cooked', label: 'Cooked' },
+];
 
 const router = useRouter();
 
@@ -283,24 +289,15 @@ async function remove(): Promise<void> {
                                 </button>
                             </span>
                             <!-- FOOD-006: only a food with a cooked value can be weighed cooked. -->
-                            <div v-if="item.canToggleCooked" role="group" :aria-label="`${item.name} weighed`" class="flex w-48 rounded-full bg-secondary-text/15 p-0.5">
-                                <button
-                                    v-for="option in [
-                                        { cooked: false, title: 'Raw' },
-                                        { cooked: true, title: 'Cooked' },
-                                    ]"
-                                    :key="option.title"
-                                    type="button"
-                                    :data-test="`${option.cooked ? 'cooked' : 'raw'}-${item.name}`"
-                                    :aria-pressed="item.isCooked === option.cooked"
-                                    :disabled="busy"
-                                    class="min-h-8 flex-1 rounded-full text-sm font-medium"
-                                    :class="item.isCooked === option.cooked ? 'bg-surface text-primary-text shadow-sm ring-1 ring-secondary-text/25' : 'text-secondary-text'"
-                                    @click="item.isCooked = option.cooked"
-                                >
-                                    {{ option.title }}
-                                </button>
-                            </div>
+                            <SegmentedPicker
+                                v-if="item.canToggleCooked"
+                                :model-value="item.isCooked ? 'cooked' : 'raw'"
+                                :label="`${item.name} weighed`"
+                                :options="WEIGHINGS"
+                                :disabled="busy"
+                                class="w-48 bg-secondary-text/15!"
+                                @update:model-value="(weighing) => (item.isCooked = weighing === 'cooked')"
+                            />
                         </template>
                     </li>
                     <li v-if="!readOnly">

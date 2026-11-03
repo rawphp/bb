@@ -86,8 +86,18 @@ export async function read<T = unknown>(
  * an old one (MESO-007: whether a draft would be replaced). The answer is cached as
  * read() caches it. Offline it fails with status 0 and the cached copy stays.
  */
-export function readFresh<T = unknown>(name: string, input: CapabilityInput = {}, options: { timeoutMs?: number } = {}): Promise<T> {
-    return fetchRead<T>(name, input, readKey(name, input), options.timeoutMs);
+export function readFresh<T = unknown>(name: string, input: CapabilityInput = {}): Promise<T> {
+    return fetchRead<T>(name, input, readKey(name, input));
+}
+
+/**
+ * The server's answer to a read that does costly work each time it runs, such as an AI
+ * call (recipe_generate, recipe_import): asked once, never asked again because a write
+ * landed meanwhile, and never cached, since the next call should run it afresh. Offline
+ * it fails with status 0; past `timeoutMs` with status 0 and reason 'timeout'.
+ */
+export function readNow<T = unknown>(name: string, input: CapabilityInput = {}, options: { timeoutMs?: number } = {}): Promise<T> {
+    return invoke<T>(name, input, {}, options.timeoutMs);
 }
 
 // The statuses after which a cached copy may not be shown. A gone session clears
@@ -222,16 +232,16 @@ async function learnAffects(): Promise<void> {
     }
 }
 
-async function fetchRead<T>(name: string, input: CapabilityInput, key: string, timeoutMs = TIMEOUT_MS): Promise<T> {
+async function fetchRead<T>(name: string, input: CapabilityInput, key: string): Promise<T> {
     const since = stamp();
-    const data = await invoke<T>(name, input, {}, timeoutMs).catch(async (error: unknown) => {
+    const data = await invoke<T>(name, input).catch(async (error: unknown) => {
         if (hasStatus(error, READ_GONE)) await drop([key]).catch(() => undefined);
 
         throw error;
     });
     // A write, a clear or a new owner came while this was in flight, so the answer
     // may predate it: ask again rather than show or store it.
-    if (!isCurrent(key, since)) return fetchRead(name, input, key, timeoutMs);
+    if (!isCurrent(key, since)) return fetchRead(name, input, key);
 
     await store(key, data).catch(() => {
         // No IndexedDB (a private window, say): the read still answers.
