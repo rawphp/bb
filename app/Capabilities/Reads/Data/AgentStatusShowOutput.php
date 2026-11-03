@@ -9,7 +9,12 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class AgentStatusShowOutput extends CapabilityData
 {
     public function __construct(
+        /** Whether this instance runs the Coach (AGT-002). */
         public readonly bool $enabled,
+        /** The user's own Coach switch (AGT-020). */
+        public readonly bool $on,
+        /** The user's newest conversation, sent with each message; null when they have none (AGT-024). */
+        public readonly ?string $conversation_ulid,
         public readonly ?int $turns_left,
         public readonly ?int $tokens_left,
         public readonly bool $at_cap,

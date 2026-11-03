@@ -18,6 +18,9 @@ use Laravel\Sanctum\Contracts\HasAbilities;
 use Laravel\Sanctum\HasApiTokens;
 use LogicException;
 
+/**
+ * @property bool $coach_on the user's own Coach switch (AGT-020)
+ */
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -31,6 +34,11 @@ class User extends Authenticatable
 
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    /** The columns' defaults, so a user made in this request reads them before a refresh. */
+    protected $attributes = [
+        'coach_on' => true,
+    ];
 
     /**
      * Deleting a user cascades through every user_id (ACC-005). MySQL refuses a cascade that also
@@ -82,6 +90,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'coach_on' => 'boolean',
         ];
     }
 

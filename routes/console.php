@@ -5,6 +5,7 @@ use App\Billing\PlanPrices;
 use App\Jobs\SendUserReminders;
 use App\Models\AuditOutboxRow;
 use App\Models\AuditRecord;
+use App\Models\ClearedCoachTurn;
 use App\Models\ReminderMorning;
 use App\Models\SentReminder;
 use App\Models\UndoToken;
@@ -22,7 +23,8 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Activity keeps 90 days (CAP-022), and so do the audit rows the package wrote before it.
-Schedule::command('model:prune', ['--model' => [AuditRecord::class, AuditOutboxRow::class]])->daily();
+// A cleared conversation's turns count toward the caps until their month is over (AGT-005).
+Schedule::command('model:prune', ['--model' => [AuditRecord::class, AuditOutboxRow::class, ClearedCoachTurn::class]])->daily();
 
 // The package does not schedule its reaper; the host does, once (AGT setup defaults).
 Schedule::command('capabilities-ai:reap-stale-turns')->everyFiveMinutes()
