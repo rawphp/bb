@@ -1,21 +1,23 @@
-A maintenance phase holds your weight steady. It gives your body a rest from dieting or gaining and keeps the results you built.
+During maintenance your weight stays put. Think of it as a breather between diets and gains, one that protects what those phases built.
 
-## What it does
+## Calories and the corridor
 
-Calories stay close to what you burn. Your target is a weight corridor, not a single number. If your trend weight stays within about 1% of where the phase started, the app keeps your calories the same. If you drift outside it, the weekly review nudges you back toward the middle. You can also set a small gain or loss of up to 0.25% a week.
+Your intake roughly matches what your body burns. Rather than chasing a single number, you aim to stay inside a corridor around the weight you began the phase at. Trend weight within about 1% of that starting point means calories stay as they are. Should the trend wander beyond that band, calorie tweaks from the weekly review bring it back to center. There's also an option to drift slightly, gaining or losing up to 0.25% per week.
 
-## Length
+## Training
 
-A maintenance phase runs from 2 weeks up to no end date. After a cut, the recommended length is two thirds to the full length of the cut. If you have dieted several times this year, aim for the longer end.
+Expect lower volume. The lighter load gives you room to recover, so your body responds well to the next push.
 
-## After a cut
+## How long
 
-Your new lower weight is the one to hold. Do not bounce back up to your old weight. Hold off cheat foods for 1 to 4 weeks after a cut ends, while your hunger and appetite settle. Then you can add more flexibility.
+Maintenance lasts at least 2 weeks and can go on with no end date. Coming off a cut, plan on somewhere between two thirds of that cut's length and its full length, leaning long when you've already dieted several times this year.
 
-Training during this phase is lighter on volume so your body can recover and respond well to the next push.
+## Coming off a cut
 
-## What comes next
+The point here is to hold the lower weight you worked for, not slide back to where you started. Hunger and appetite need time to settle, so wait 1 to 4 weeks once the cut is over before having cheat foods. More flexibility is fine after that.
 
-After maintenance, you can start a fat loss or muscle gain phase. The app will not suggest fat loss straight after another fat loss, and it warns you when maintenance was too short.
+## Your next phase
 
-If you have a medical condition, are pregnant, or take weight-loss medication, follow your doctor's advice.
+From maintenance you move into either muscle gain or fat loss. A second fat loss phase right behind the first won't appear among the suggestions. A maintenance stretch that was too short brings a warning.
+
+Talk with a doctor before starting if a medical condition, pregnancy or weight-loss medication applies to you.

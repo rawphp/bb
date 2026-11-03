@@ -1,18 +1,18 @@
-Cooking oils are foods like any other. They count toward your calories and fat, so you need to measure them.
+Cooking oil counts as food, adding to your calories and your fat, so measure it.
 
-## Why oil needs care
+## Small pour, big number
 
-Oil is very calorie dense. One tablespoon holds about 120 calories, all of it fat. A quick splash from the bottle can be two or three tablespoons without you noticing. That small habit can quietly erase a whole day's deficit, or add up to a surplus you did not plan for.
+Oil is pure fat, at roughly 120 kcal per tablespoon. Tip the bottle for a quick splash and 2 to 3 tablespoons can land in the pan unnoticed. If it goes unlogged, the extra can cancel a day's deficit or leave you in an unplanned surplus.
 
-## What to do
+## Good habits
 
-- **Measure oil.** Use a spoon or put the pan on the scale and pour by weight.
-- Add the oil to your meal in the app, the same as you would add chicken or rice. Oils are in the food database, and the app counts them in your fat target.
-- If you cook for several people, weigh the oil you use and divide by the number of servings.
-- Use a spray or a non-stick pan to cut down on how much you need.
+- Weigh as you pour with the pan sitting on a scale, or use a measuring spoon
+- Treat oil in the app like chicken or rice: search the food database, add it to the meal, and it counts toward your fat target
+- Cooking for a crowd? Divide the weight of oil you used by how many servings you made
+- Sprays and non-stick pans mean using less
 
-## Fit it into the plan
+## Where it fits
 
-Oil is a fat source, so it is part of the meal's fat target. If you use more oil in one meal, the app will lower the other fats in that meal to keep the meal on target.
+Oil draws from the meal's fat target like any other fat source does. Pour in extra and the app cuts back the meal's other fats to keep you on target.
 
-Do the same with butter, mayonnaise and dressings. They are also easy to under-count.
+Treat butter, mayonnaise and dressings with the same care, since they're just as easy to under-count.

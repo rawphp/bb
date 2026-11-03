@@ -1,35 +1,35 @@
-After you train a muscle, the app asks a few quick questions. Your answers decide how many sets that muscle gets next time, so answer honestly rather than optimistically.
+Once a muscle's work is done for the day, a few quick questions pop up. Be truthful instead of optimistic, since those answers size the muscle's workload for its next session.
 
-## The questions
+## What gets asked
 
-- **Joint pain:** asked for each exercise. None, low, moderate or a lot. Moderate or a lot stops the app adding sets to that exercise. A lot of pain also cuts its next load by 10%.
-- **Soreness:** asked once per muscle, and it is about *last time* you trained it. Did it heal before today?
-- **Pump:** how much blood-filled fullness you felt in the muscle today. Low, moderate or amazing.
-- **Volume:** how the number of hard sets felt. Not enough, just right, pushed my limits, or too much.
+- **Joint pain**, per exercise. You answer none, low, moderate or a lot.
+- **Soreness**, per muscle. It looks back: had the muscle healed from last time before today began?
+- **Pump** is about today: how swollen with blood did the muscle get? You answer low, moderate or amazing.
+- **Volume** asks whether the hard sets added up to the right amount. Choices are "Not enough", "Just right", "Pushed my limits" and "Too much".
 
-Tap the ? icon on any question for its own help.
+Every question has a "?" icon that opens help for it.
 
-## How the answers change things
+On joint pain, a moderate answer or worse stops new sets being added to that exercise, and answering "A lot" also drops its next load by 10%.
 
-- Low pump, barely sore and volume not enough usually mean more sets.
-- Good pump, healed just on time and just right mean no change.
-- Amazing pump, still sore and too much mean fewer sets.
+## Turning answers into sets
 
-Changes apply to the same session next week. So Week 3 Day 2 sets up Week 4 Day 2.
+A muscle that pumped poorly, barely got sore and wanted more work usually gains sets. A decent pump, recovery that finished right on time and volume that felt right leave things as they are. An amazing pump with lingering soreness and too much volume earns a cut.
 
-"Pushed my limits" stops any increase at the next occurrence, whatever else you answered. "Too much" removes a set.
+"Pushed my limits" blocks any new sets the next time that session comes round, one week later, no matter how pump and soreness came out. Picking "Too much" goes a step further, and one set is dropped.
 
-## What volume should feel like
+Any change shows up a week on, in the matching session, so answers given on day 2 of week 3 are applied to day 2 of week 4.
 
-- **Week 1:** it should feel easy, because you start low on purpose.
-- **Middle weeks:** just right.
-- **Last training week:** pushed my limits.
+## The feel of a good block
 
-If week 1 already feels hard, say so.
+- Week 1 is easy, and the low start is intentional.
+- Middle weeks should feel just right.
+- The final training week should push your limits.
 
-## Good to know
+Tell the app when week 1 already feels like a stretch.
 
-- Soreness is skipped the first time you train a muscle in the app, and when it has been more than 14 days.
-- No feedback is asked in deload weeks.
-- You must answer before you can finish a workout.
-- You can change a session's feedback until the next session for that muscle starts.
+## Small print
+
+- The soreness question won't appear for a muscle's first session in the app, or when over 14 days have gone by since you last trained it.
+- Deload weeks come without feedback.
+- Finishing a workout requires your answers.
+- Answers stay editable up to the start of that muscle's next session.

@@ -1,9 +1,19 @@
 <?php
 
 use App\Capabilities\Reads\Learn\LearnLibrary;
+use App\Domain\Defaults\TBL023TargetRIR;
+use App\Domain\Defaults\TBL033CarbsPerMeal;
 use App\Domain\Learn\LearnArticle;
 use App\Domain\Learn\LearnSection;
 use App\Domain\Learn\LearnTopic;
+use App\Domain\Macros\MacroRules;
+use App\Domain\MealFit\MealFit;
+use App\Domain\Progress\Adherence;
+use App\Domain\Progression\Deload;
+use App\Domain\Progression\DeloadHalf;
+use App\Domain\Progression\VolumeProgression;
+use App\Domain\Safety\SafetyWarnings;
+use App\Domain\Safety\Screening;
 use Illuminate\Support\Facades\File;
 
 // The bundled articles in resources/learn and the payloads built from them.
@@ -52,7 +62,7 @@ it('LRN-001 LRN-002 builds the Learn index: each section in order, each article 
         ->and($sections[2]['articles'][1])->toBe([
             'slug' => 'rir',
             'title' => 'Reps in reserve (RIR)',
-            'summary' => 'RIR means reps in reserve: how many more good reps you could have done when you stopped a set. The app lowers your target RIR week by week, so you work harder as the block goes on.',
+            'summary' => 'RIR stands for reps in reserve, the number of clean reps you had left at the point you stopped. The target works its way down over the block, so effort climbs toward the last training week.',
         ]);
 });
 
@@ -64,8 +74,9 @@ it('LRN-002 builds the index summaries once and rebuilds them when an article fi
 
     try {
         $old = $summary();
+        expect($old)->toContain('RIR stands');
         $mtime = filemtime($path);
-        file_put_contents($path, str_replace('RIR means', 'RIR MEANS', file_get_contents($path)));
+        file_put_contents($path, str_replace('RIR stands', 'RIR STANDS', file_get_contents($path)));
         touch($path, $mtime);
         clearstatcache();
 
@@ -74,7 +85,7 @@ it('LRN-002 builds the index summaries once and rebuilds them when an article fi
         touch($path, $mtime + 60);
         clearstatcache();
 
-        expect($summary())->toBe(str_replace('RIR means', 'RIR MEANS', $old));
+        expect($summary())->toBe(str_replace('RIR stands', 'RIR STANDS', $old));
     } finally {
         File::deleteDirectory($dir);
     }
@@ -90,13 +101,14 @@ it('LRN-002 rebuilds the index summaries when the article parser changes', funct
 
     try {
         $old = $summary();
+        expect($old)->toContain('RIR stands');
         $mtime = filemtime($path);
-        file_put_contents($path, str_replace('RIR means', 'RIR MEANS', file_get_contents($path)));
+        file_put_contents($path, str_replace('RIR stands', 'RIR STANDS', file_get_contents($path)));
         touch($path, $mtime);
         touch($parser, $parserMtime + 60);
         clearstatcache();
 
-        expect($summary())->toBe(str_replace('RIR means', 'RIR MEANS', $old));
+        expect($summary())->toBe(str_replace('RIR stands', 'RIR STANDS', $old));
     } finally {
         touch($parser, $parserMtime);
         File::deleteDirectory($dir);
@@ -108,7 +120,7 @@ it('LRN-001 shows an article by its slug, in blocks of styled spans', function (
 
     expect($article['slug'])->toBe('rir')
         ->and($article['title'])->toBe('Reps in reserve (RIR)')
-        ->and($article['blocks'][1])->toBe(['kind' => 'heading', 'spans' => [['text' => 'What the numbers mean', 'bold' => false, 'italic' => false]]])
+        ->and($article['blocks'][1])->toBe(['kind' => 'heading', 'spans' => [['text' => 'Reading the scale', 'bold' => false, 'italic' => false]]])
         ->and($article['blocks'][2]['spans'][0])->toBe(['text' => '3 RIR:', 'bold' => true, 'italic' => false]);
 });
 
@@ -122,13 +134,160 @@ it('LRN-005 lists the tools you need in the tools article', function () {
 
 it('LRN-006 tells users to hold off cheat foods for 1 to 4 weeks after a cut ends', function () {
     foreach ([LearnTopic::FatLoss, LearnTopic::MiniCut, LearnTopic::Maintenance] as $topic) {
-        expect(learnArticleText($topic))->toContain('1 to 4 weeks');
+        expect(learnArticleText($topic))->toContain('1 to 4 weeks')->toContain('cheat foods');
     }
+});
+
+it('SAFE-014 says in Learn that medical diets are not supported and metabolic conditions need a physician', function () {
+    expect(learnArticleText(LearnTopic::IsItRightForMe))->toContain('Medical diets are unsupported')
+        ->toContain('metabolic condition')->toContain('physician');
+});
+
+it('SAFE-001 SAFE-002 lists in Learn every screening answer that needs medical clearance first', function () {
+    $text = learnArticleText(LearnTopic::IsItRightForMe);
+
+    expect($text)->toContain('medical clearance')
+        ->toContain('younger than '.Screening::MINIMUM_AGE)->toContain('older than '.Screening::MAXIMUM_AGE)
+        ->toContain('trying to conceive, which blocks only fat loss');
+    foreach (['baby is on the way', 'breastfeeding', 'diabetes', 'PCOS', 'autoimmune', 'gallbladder', 'heart', 'thyroid', 'weight-loss surgery', '5 years', 'hormone therapy', 'eating disorder'] as $item) {
+        expect($text)->toContain($item);
+    }
+});
+
+it('SAFE-005 states the 1.0% weekly fat-loss ceiling and no fat-loss rate above it', function () {
+    $rates = [];
+    $lines = [
+        ...explode("\n", learnArticleText(LearnTopic::FatLoss)),
+        ...explode("\n", learnArticleText(LearnTopic::MiniCut)),
+        ...array_filter(explode("\n", learnArticleText(LearnTopic::ChoosingAGoal)), fn (string $line) => str_starts_with($line, 'Fat loss:')),
+    ];
+    foreach ($lines as $line) {
+        // The 10%-of-starting-weight warning is a total for the phase, not a weekly rate.
+        if (! str_contains($line, 'bodyweight you started')) {
+            preg_match_all('/(\d+(?:\.\d+)?)%/', $line, $matches);
+            array_push($rates, ...array_map('floatval', $matches[1]));
+        }
+    }
+
+    expect(learnArticleText(LearnTopic::ChoosingAGoal))->toContain('1.0% as the ceiling')
+        ->and($rates)->toContain(SafetyWarnings::MAX_FAT_LOSS_RATE_PERCENT)
+        ->and(max($rates))->toBeLessThanOrEqual(SafetyWarnings::MAX_FAT_LOSS_RATE_PERCENT);
+});
+
+it('SAFE-001 SAFE-003 SAFE-004 says failing screening turns calorie targets off while training and weigh-ins carry on', function () {
+    expect(learnArticleText(LearnTopic::IsItRightForMe))->toContain('turns off every calorie target')
+        ->toContain('Training features and weigh-ins carry on');
+});
+
+it('SAFE-006 SAFE-007 caps fat loss and muscle gain phases at 16 weeks', function () {
+    expect(learnArticleText(LearnTopic::ChoosingAGoal))->toContain('Fat loss and muscle gain both cap out at 16 weeks');
+});
+
+it('SAFE-008 says calorie cuts never take protein', function () {
+    expect(learnArticleText(LearnTopic::FatLoss))->toContain('comes from fat and carbs, and protein stays untouched')
+        ->and(learnArticleText(LearnTopic::DayBalance))->toContain('protein is fixed');
+});
+
+it('SAFE-010 says every meal keeps the minimum fat and carbs', function () {
+    expect(learnArticleText(LearnTopic::DayBalance))->toContain("Fat and carbs can't go under ".(int) SafetyWarnings::MEAL_MINIMUM_G.' g in any one meal');
+});
+
+it('SAFE-013 says what changes for someone on a GLP-1 drug', function () {
+    expect(learnArticleText(LearnTopic::IsItRightForMe))->toContain('each meal lists protein at the top')
+        ->toContain('two straight weeks');
+});
+
+it('PROG-018 says joint pain stops added sets and a lot of pain cuts the next load by 10%', function () {
+    expect(learnArticleText(LearnTopic::FeedbackQuestions))->toContain('a moderate answer or worse stops new sets being added to that exercise')
+        ->toContain('answering "A lot" also drops its next load by '.VolumeProgression::LOAD_CUT_PERCENT.'%');
+});
+
+it('SAFE-015 says when the step target warning shows', function () {
+    expect(learnArticleText(LearnTopic::TrainingOnACut))->toContain('above '.number_format(SafetyWarnings::MAX_STEP_TARGET_WITHOUT_WARNING));
+});
+
+it('LRN-001 keeps each health article\'s doctor note with every condition it names', function (LearnTopic $topic, array $conditions) {
+    $text = strtolower(learnArticleText($topic));
+
+    foreach (['doctor', ...$conditions] as $phrase) {
+        expect($text)->toContain($phrase);
+    }
+})->with([
+    'is it right for me' => [LearnTopic::IsItRightForMe, ['what your doctor tells you about the drug and about eating']],
+    'fat loss' => [LearnTopic::FatLoss, ['unwell', 'pregnant', 'glp-1', 'disordered eating']],
+    'mini-cut' => [LearnTopic::MiniCut, ['pregnancy', 'medical condition', 'weight-loss medication']],
+    'maintenance' => [LearnTopic::Maintenance, ['pregnancy', 'medical condition', 'weight-loss medication']],
+    'muscle gain' => [LearnTopic::MuscleGain, ['medical condition']],
+    'body fat' => [LearnTopic::BodyFat, ['pregnancy', 'illness']],
+    'alcohol' => [LearnTopic::Alcohol, ['medication', 'health issue']],
+    'coffee' => [LearnTopic::Coffee, ['pregnant', 'heart condition', 'medication']],
+    'training while sick' => [LearnTopic::TrainingWhileSick, ['whatever your doctor tells you', 'your doctor is the person to ask', 'your doctor has given you specific advice', 'sicker', 'fever', 'chest', 'vomiting', 'diarrhea', 'too weak', 'feeling worse is your cue to stop', 'none of the signs above apply']],
+]);
+
+// The numbers the articles state, read out of the copy and checked against the rules that set them.
+
+it('PROG-030 lists the same weekly RIR targets the app plans, for every block of 3 to 7 training weeks', function () {
+    preg_match_all('/^(\d) training weeks: ([\d, ]+)$/m', learnArticleText(LearnTopic::Rir), $matches, PREG_SET_ORDER);
+    $stated = [];
+    foreach ($matches as [, $weeks, $targets]) {
+        $stated[(int) $weeks] = array_map('intval', explode(', ', $targets));
+    }
+
+    expect($stated)->toBe(array_filter(TBL023TargetRIR::RIR_BY_TRAINING_WEEKS, fn (int $weeks) => $weeks >= 3, ARRAY_FILTER_USE_KEY));
+});
+
+it('NUT-022 states the Day Balance band the app enforces', function () {
+    $band = MacroRules::moveBand();
+
+    expect(learnArticleText(LearnTopic::DayBalance))->toContain(sprintf('%d%% to %d%% of the week\'s average day', $band->lower * 100, $band->upper * 100));
+});
+
+it('MEAL-003 states the 5 g tolerance for Targets met and on-track meals', function (LearnTopic $topic, string $phrase) {
+    expect(learnArticleText($topic))->toContain(sprintf($phrase, (int) MealFit::TOLERANCE));
+})->with([
+    'building meals' => [LearnTopic::BuildingMeals, 'Once each macro lands within %d g of target, a "Targets met" badge appears'],
+    'check-ins' => [LearnTopic::CheckIns, 'protein, carbs and fat all come within %d g'],
+]);
+
+it('DAY-010 states the 10% margin that makes a day a success, wherever an article mentions it', function (LearnTopic $topic) {
+    preg_match_all('/(\d+)% (?:margin|of (?:target|your calorie)|on both|makes it a successful day)/', learnArticleText($topic), $matches);
+
+    expect($matches[1])->not->toBe([])
+        ->and(array_unique($matches[1]))->toBe([(string) (int) (Adherence::TOLERANCE * 100)]);
+})->with([LearnTopic::CheckIns, LearnTopic::DayBalance, LearnTopic::NotATracker, LearnTopic::MealsPerDay]);
+
+it('NUT-031 lists the 4-meal training-day carb split the app uses', function () {
+    $text = learnArticleText(LearnTopic::CarbsAroundWorkouts);
+    $row = TBL033CarbsPerMeal::row(4);
+    $stated = [];
+    foreach (['Pre-workout', 'Post-workout', 'Bedtime', 'Other meal'] as $meal) {
+        expect(preg_match("/^{$meal}: (\\d+)%$/m", $text, $match))->toBe(1);
+        $stated[] = (float) $match[1];
+    }
+
+    expect($stated)->toBe([$row->preWorkoutPercent, $row->postWorkoutPercent, $row->bedtimePercent, $row->restPercent])
+        ->and(array_sum($stated))->toBe(100.0);
+});
+
+it('PROG-041 describes the deload halves the app applies', function () {
+    $text = learnArticleText(LearnTopic::Deloads);
+
+    expect($text)->toContain("For the opening half of the week, weights don't change, but you do only half as many sets, each with half the usual reps.")
+        ->toContain('Over the second half, the weight comes down by half as well.')
+        ->and([Deload::sets(10), Deload::reps(10)])->toBe([5, 5])
+        ->and(Deload::weight(100.0, DeloadHalf::First))->toBe(100.0)
+        ->and(Deload::weight(100.0, DeloadHalf::Second))->toBe(50.0);
+});
+
+it('FOOD-007 gives the calories in a tablespoon of oil', function () {
+    // A tablespoon of oil is about 13.5 g of fat; at 9 kcal a gram that is about 120 kcal.
+    expect(learnArticleText(LearnTopic::Oils))->toContain('roughly 120 kcal per tablespoon')
+        ->and(13.5 * MacroRules::KCAL_PER_GRAM_FAT)->toEqualWithDelta(120.0, 5.0);
 });
 
 it('FOOD-081 guides on alcohol and coffee', function () {
     expect(learnArticleText(LearnTopic::Alcohol))->toContain('avoid alcohol while dieting')->toContain('1 to 2 drinks a week')
-        ->and(learnArticleText(LearnTopic::Coffee))->toContain('Coffee and caffeine are fine');
+        ->and(learnArticleText(LearnTopic::Coffee))->toContain('keep drinking coffee')->toContain('caffeine is fine');
 });
 
 it('FOOD-007 says to measure cooking oil', function () {

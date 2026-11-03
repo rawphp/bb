@@ -1,28 +1,22 @@
-If a muscle never feels pumped or sore, you may be under-training it or running low on recovery. The app responds in two ways, depending on how long it lasts.
+When a muscle rarely gets a pump or any soreness, it could be getting too little work or too little recovery. The app reacts differently to a brief dip than to one that drags on.
 
-## One muscle with a low pump
+## One muscle lagging
 
-Answer the pump question honestly. A low pump, especially with little soreness, tells the app to add sets for that muscle next week. Priority matters too:
+Be straight with the app when it asks about pump. Report a low one, all the more if soreness was low too, and next week that muscle picks up sets. Its priority controls how willing the app is to do that. A muscle on **Emphasize** gets extra sets most freely, one on **Grow** needs clear signals in your feedback first, and one on **Maintain** is never given more.
 
-- **Emphasize** muscles add sets most readily.
-- **Grow** muscles add sets only when feedback clearly calls for it.
-- **Maintain** muscles never add sets.
+Want more from a muscle sitting on Maintain? Open the workout menu, go to "Progression rates" and bump it up. It takes effect starting with the following session.
 
-If a muscle you care about is on Maintain, raise its priority from the workout menu, under Progression rates. It applies from your next session.
+Judging a pump is tricky, and more so for beginners. It tends to feel as if the muscle you just worked is full, tight or squeezed. Some muscles pump more than others, so measure each one against how it felt in earlier weeks.
 
-Pump can be hard to judge, especially for beginners. Look for fullness, tightness or a squeezed feeling in the muscle you just trained. Not every muscle pumps equally, so compare a muscle with itself over weeks.
+## Flat all over
 
-## Everything flat for weeks
+Pump and soreness fading for most of your muscles over 2 weeks or longer often points to a long run of training. What helps then is a real break rather than extra sets. The app's suggestion is "active rest", first a deload week and then seven days out of the gym entirely. Once that's done, start a fresh mesocycle at lower volume.
 
-Sometimes pump and soreness drop away across most muscles for 2 weeks or more. This often means you have been training for a long stretch and need a proper break, not more work.
+## Other things to check
 
-The app then recommends an **active rest**: a deload week followed by a full week off the gym. After that, build a new mesocycle and start again from lower volume.
+- Effort: are your sets really getting to the target RIR?
+- Rest: do you give yourself enough time before the next set?
+- Recovery: are sleep and food covered? Hitting your nutrition plan carries the same weight as the training itself.
+- Joints: if a movement aggravates a joint, that alone justifies a swap.
 
-## Before you assume the worst
-
-- Is your effort honest? Check you are reaching the target reps in reserve.
-- Are you resting long enough between sets?
-- Are you sleeping and eating enough to recover? Your nutrition plan matters as much as your sets.
-- Is an exercise bothering a joint? Swap it for a good reason.
-
-Never skip the feedback questions to avoid a change. The app can only fix what it can see.
+Don't sidestep the feedback questions to head off a change, since your answers are all the app has to go on.

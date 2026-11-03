@@ -1,28 +1,28 @@
-Maintenance is where you hold your new weight, let diet fatigue fade, and train with low volume so your body responds well to the next hard phase. That low-volume training is called resensitization.
+A maintenance phase lets you settle at the weight you just reached and recover from dieting, with light training throughout. The low-volume training part has a name, resensitization, and its purpose is to make your next demanding phase work better.
 
-## Why it matters
+## What it's for
 
-After a cut, your hunger, energy and recovery all need time to recover. Going straight into another diet or a big gain usually backfires. Maintenance sets up the next phase.
+Coming off a cut, appetite, energy levels and recovery all lag behind for a while. Jumping right into a fresh diet or an aggressive gain tends to go badly. Time at maintenance lays the groundwork for the phase that follows.
 
-## How long
+## How long it lasts
 
-After a fat-loss phase, plan Maintenance for about two-thirds to the same length as the cut. If you have run two or more cuts in the past year, use the full length. A longer break suits people who diet a lot. If your weight is still falling on maintenance calories, a much shorter break can do.
+- Following a fat-loss phase, expect roughly two-thirds of the cut's duration, or up to the full duration.
+- Cut twice or more in the last 12 months? Then go for the full duration. Longer breaks suit frequent dieters.
+- Still seeing the scale drop on maintenance calories? A far briefer break may be all you need.
 
-## Calories
+## Raising calories
 
-The app steps your calories back up by 250 to 500 a day from your last cut target, adding another step every 3 weeks until you reach maintenance. A 12-week diet is closer to a 16-week process. You can skip this and go straight to maintenance if you prefer.
+Your first increase adds 250–500 calories a day on top of the target you finished the cut on. Every 3 weeks after that, calories rise again, until they reach maintenance. Put together, a diet lasting 12 weeks becomes something close to a 16-week project. Jumping directly to maintenance and skipping the increments is also an option.
 
-Your weight should hold at the new, lower level. It does not bounce back to your pre-diet weight. The review keeps it within 1% of where it started.
+The aim is for your weight to stay at its new, lower mark, not climb back to what it was before you dieted. Your review holds you to within 1% of your weight on the first day of maintenance. Cheat foods can wait: give it 1 to 4 weeks once the cut is over.
 
-For 1 to 4 weeks after a cut ends, hold off on cheat foods.
+## How you train
 
-## Training
+The usual next step after cutting is a brief resensitization mesocycle lasting 3–4 weeks.
 
-By default, Maintenance after a cut pairs with a short resensitization mesocycle of 3 to 4 weeks:
+- All muscles sit at Maintain, and their volume stays near the bottom of their range.
+- Sessions are full body, either 2 or 3 per week.
+- Weights stay the same, with no large increases.
+- Effort is turned down. A block of 3 weeks tops out at 2 RIR, though a block that runs longer still takes you to failure in the final week.
 
-- every muscle at Maintain, close to its minimum volume;
-- 2 or 3 full-body sessions a week;
-- loads held, no big jumps;
-- easier effort; a 3-week block stops at 2 reps in reserve, while a longer one still reaches failure in its last week.
-
-If you'd prefer more training, pick a balanced template instead.
+For a heavier training load during this phase, go with a balanced template.
