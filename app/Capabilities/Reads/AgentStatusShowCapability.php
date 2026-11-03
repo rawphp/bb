@@ -31,7 +31,7 @@ final class AgentStatusShowCapability implements HostCapability
         $user = $context->user();
         // Resolved per call: the definition is built once at boot, the config can change after.
         $status = app(AgentStatus::class);
-        $allowance = $status->allowance($user->getAuthIdentifier());
+        $allowance = $status->allowance($user);
 
         return new AgentStatusShowOutput(
             enabled: $status->enabled(),
