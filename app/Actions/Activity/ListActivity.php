@@ -3,10 +3,10 @@
 namespace App\Actions\Activity;
 
 use App\Capabilities\Reads\Data\Settings\ActivityEntry;
-use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Settings\TimeZoneSetCapability;
 use App\Capabilities\Support\Channel;
 use App\Capabilities\Support\ErrorWording;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Models\AuditRecord;
 use App\Models\User;

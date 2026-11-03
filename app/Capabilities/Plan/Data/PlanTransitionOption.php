@@ -3,7 +3,7 @@
 namespace App\Capabilities\Plan\Data;
 
 use App\Capabilities\Support\DomainValues;
-use App\Capabilities\Train\Data\Pill;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -28,7 +28,7 @@ final class PlanTransitionOption extends CapabilityData
     /**
      * @param  list<PlanLengthChoice>  $lengths
      * @param  list<PlanTransitionTemplate>  $templates
-     * @param  list<Pill>  $warnings
+     * @param  list<Status>  $warnings
      * @param  list<PlanReadinessQuestion>  $readiness
      */
     public function __construct(
@@ -47,7 +47,7 @@ final class PlanTransitionOption extends CapabilityData
         public readonly array $templates,
         public readonly ?string $corridor_text,
         public readonly ?PlanStepUp $step_up,
-        #[Field(items: Pill::class)]
+        #[Field(items: Status::class)]
         public readonly array $warnings,
         #[Field(items: PlanReadinessQuestion::class)]
         public readonly array $readiness,

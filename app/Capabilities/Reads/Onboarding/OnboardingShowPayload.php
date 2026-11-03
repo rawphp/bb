@@ -3,8 +3,8 @@
 namespace App\Capabilities\Reads\Onboarding;
 
 use App\Capabilities\Onboarding\Data\OnboardingShowOutput;
-use App\Capabilities\Onboarding\Data\OnboardingStatus;
 use App\Capabilities\Onboarding\Data\OnboardingStep;
+use App\Capabilities\Support\Status;
 use App\Domain\Onboarding\Draft;
 use App\Domain\Onboarding\OnboardingCalories;
 use App\Domain\Onboarding\OnboardingHealth;
@@ -81,7 +81,7 @@ final class OnboardingShowPayload
      * The callouts for the current step, in order: Fat loss turned off (step 1), nutrition targets turned off
      * (training-only, after step 3), the fat-loss cautions (step 6) and the step-target caution (step 10).
      *
-     * @return list<OnboardingStatus>
+     * @return list<Status>
      */
     private static function notices(Draft $draft, OnboardingHealth $health, OnboardingRateLength $rateLength, OnboardingLifestyle $lifestyle): array
     {

@@ -2,13 +2,13 @@
 
 namespace App\Capabilities\Reads\Review;
 
-use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Review\Data\ReviewCalories;
 use App\Capabilities\Review\Data\ReviewChoice;
 use App\Capabilities\Review\Data\ReviewDeload;
 use App\Capabilities\Review\Data\ReviewOwnCalories;
 use App\Capabilities\Review\Data\ReviewStepOffer;
 use App\Capabilities\Support\Line;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Review\BuiltWeekSummary;
 use App\Domain\Review\CalorieOptionKind;

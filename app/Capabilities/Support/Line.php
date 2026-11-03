@@ -11,7 +11,7 @@ final class Line extends CapabilityData
     public function __construct(
         public readonly string $label,
         public readonly string $value,
-        #[Field(description: 'The value\'s colour; neutral for plain text.', enum: [Tone::Good->value, Tone::Neutral->value, Tone::Warning->value, Tone::Info->value])]
+        #[Field(description: 'The value\'s colour; neutral for plain text.', enum: DomainValues::TONES)]
         public readonly string $tone,
     ) {}
 }

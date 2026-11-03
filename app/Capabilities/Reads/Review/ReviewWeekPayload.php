@@ -2,7 +2,6 @@
 
 namespace App\Capabilities\Reads\Review;
 
-use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Review\Data\ReviewMeal;
 use App\Capabilities\Review\Data\ReviewMeals;
 use App\Capabilities\Review\Data\ReviewProgress;
@@ -10,6 +9,7 @@ use App\Capabilities\Review\Data\ReviewTraining;
 use App\Capabilities\Review\Data\ReviewWeighInRow;
 use App\Capabilities\Review\Data\ReviewWeighIns;
 use App\Capabilities\Support\Line;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\PhaseType;

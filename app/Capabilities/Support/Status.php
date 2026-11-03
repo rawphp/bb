@@ -1,16 +1,15 @@
 <?php
 
-namespace App\Capabilities\Train\Data;
+namespace App\Capabilities\Support;
 
-use App\Capabilities\Support\DomainValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
 /**
- * A decided status for a pill, bar or banner (CAP-018): the words to show and
- * the tone to show them in (UI-004). The client never picks the tone.
+ * A decided status for a pill, banner, badge or note (CAP-018): the words to
+ * show and the tone to show them in (UI-004). The client never picks the tone.
  */
-final class Pill extends CapabilityData
+final class Status extends CapabilityData
 {
     public function __construct(
         public readonly string $text,

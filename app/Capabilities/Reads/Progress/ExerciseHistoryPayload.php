@@ -5,7 +5,7 @@ namespace App\Capabilities\Reads\Progress;
 use App\Capabilities\Progress\Data\ExerciseHistorySession;
 use App\Capabilities\Progress\Data\ExerciseHistorySet;
 use App\Capabilities\Progress\Data\ExerciseHistoryShowOutput;
-use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Model\WeightUnit;
 use App\Domain\Progress\EstimatedOneRepMax;

@@ -2,9 +2,9 @@
 
 namespace App\Capabilities\Reads\Review;
 
-use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Review\Data\ReviewChoice;
 use App\Capabilities\Review\Data\ReviewGoal;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Model\PlanWeek;
 use App\Domain\Phases\FinalReviewChoice;

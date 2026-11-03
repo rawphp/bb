@@ -6,7 +6,7 @@ use App\Capabilities\Reads\Data\AwayWeekShowOutput;
 use App\Capabilities\Reads\Data\Today\AwayCaloriesOption;
 use App\Capabilities\Reads\Data\Today\AwayTrainingOption;
 use App\Capabilities\Reads\Data\Today\AwayWeekOption;
-use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Plan\AwayWeeks;
 use App\Domain\WeekBuilder\AwayWeek\Calories;

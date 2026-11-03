@@ -7,12 +7,10 @@ use App\Capabilities\Onboarding\Data\OnboardingHeight;
 use App\Capabilities\Onboarding\Data\OnboardingHeightAnswer;
 use App\Capabilities\Onboarding\Data\OnboardingReviewBlock;
 use App\Capabilities\Onboarding\Data\OnboardingScreeningAnswer;
-use App\Capabilities\Onboarding\Data\OnboardingStatus;
 use App\Capabilities\Onboarding\Data\OnboardingStepRangeAnswer;
 use App\Capabilities\Onboarding\Data\OnboardingTargetWeight;
 use App\Capabilities\Onboarding\Data\OnboardingWeight;
 use App\Capabilities\Onboarding\Data\OnboardingWeightAnswer;
-use App\Capabilities\Support\Tone;
 use App\Domain\Model\BodyFatBucket;
 use App\Domain\Model\ExperienceLevel;
 use App\Domain\Model\HeightUnit;
@@ -40,11 +38,6 @@ it('ONB-002 registers every onboarding read and write from its own class file', 
         expect($registry->has($name))->toBeTrue("{$name} is not registered")
             ->and($files)->toContain(str_replace('_', '', ucwords($name, '_')).'Capability.php');
     }
-});
-
-it('CAP-018 lets a status carry only the tones the server picks from', function () {
-    expect(OnboardingStatus::jsonSchema()['properties']['tone']['enum'])
-        ->toBe(array_column(Tone::cases(), 'value'));
 });
 
 it('SAFE-001 takes only the screening items a person ticks; age, height, weight and BMI come from step 2', function () {

@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Workout\Data;
 
-use App\Capabilities\Train\Data\Pill;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Support\CapabilityData;
 
 /**
@@ -17,6 +17,6 @@ final class WorkoutLookBackRow extends CapabilityData
         /** "Week 2 · Day 1 · Upper A". */
         public readonly string $title,
         /** "Done", "Skipped" or "Started". */
-        public readonly Pill $status,
+        public readonly Status $status,
     ) {}
 }

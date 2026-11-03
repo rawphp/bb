@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Exercises\Data;
 
-use App\Capabilities\Train\Data\Pill;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Support\CapabilityData;
 
 /**
@@ -14,6 +14,6 @@ final class ExerciseHistorySet extends CapabilityData
     public function __construct(
         public readonly string $id,
         public readonly string $text,
-        public readonly ?Pill $badge,
+        public readonly ?Status $badge,
     ) {}
 }

@@ -3,10 +3,10 @@
 namespace App\Capabilities\Reads\Today;
 
 use App\Capabilities\Reads\Data\Today\CalendarRange;
-use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Reads\Data\Today\StripDay;
 use App\Capabilities\Reads\Data\Today\WeekAction;
 use App\Capabilities\Reads\Data\WeekShowOutput;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Models\OtherActivity;
 use App\Support\Mesocycles\TrainSnapshot;

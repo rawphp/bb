@@ -8,9 +8,9 @@ use App\Capabilities\Exercises\Data\ExerciseLoadStep;
 use App\Capabilities\Exercises\Data\ExerciseShowOutput;
 use App\Capabilities\Reads\Progress\ExerciseHistoryPayload;
 use App\Capabilities\Reads\Workout\WorkoutWords;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Capabilities\Train\Data\Measure;
-use App\Capabilities\Train\Data\Pill;
 use App\Domain\Defaults\TBL040LoadSteps;
 use App\Domain\Model\UnitConversion;
 use App\Domain\Model\WeightUnit;
@@ -89,7 +89,7 @@ final class ExercisePayload
             sets: array_map(fn ($set) => new ExerciseHistorySet(
                 $set->id,
                 $set->label,
-                $set->is_best && in_array($day->id, $loaded) ? new Pill('Best e1RM', Tone::Good->value) : null,
+                $set->is_best && in_array($day->id, $loaded) ? new Status('Best e1RM', Tone::Good->value) : null,
             ), $day->sets),
             best_text: in_array($day->id, $loaded) ? $day->best_label : null,
         ), ExerciseHistoryPayload::build($exercise, $sets, $unit)->sessions);

@@ -2,9 +2,9 @@
 
 namespace App\Capabilities\Reads\WeighIns;
 
-use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Reads\Today\TodayWords;
 use App\Capabilities\Support\Line;
+use App\Capabilities\Support\Status;
 use App\Capabilities\WeighIns\Data\StepsRow;
 use App\Capabilities\WeighIns\Data\StepsSection;
 use App\Capabilities\WeighIns\Data\Weekday;

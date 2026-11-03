@@ -10,8 +10,8 @@ use App\Capabilities\Mesocycles\Data\TrainMesocycleSection;
 use App\Capabilities\Mesocycles\Data\TrainNextMesocycle;
 use App\Capabilities\Mesocycles\Data\TrainShowOutput;
 use App\Capabilities\Mesocycles\Data\TrainTodaySession;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
-use App\Capabilities\Train\Data\Pill;
 use App\Domain\Mesocycle\MesocycleCalendar;
 use App\Domain\Model\PhaseType;
 use App\Enums\MesocycleRoute;
@@ -121,8 +121,8 @@ final class TrainPayload
                 template_phase: self::templatePhase($snapshot->phaseCovering($next->start)?->type),
                 priority_notice: self::priorityNotice($snapshot, $mesocycle, $next->start),
                 active_rest: match (true) {
-                    $next->tookActiveRest => new Pill(self::ACTIVE_REST_TAKEN, Tone::Good->value),
-                    $next->recommendsActiveRest => new Pill(self::ACTIVE_REST, Tone::Info->value),
+                    $next->tookActiveRest => new Status(self::ACTIVE_REST_TAKEN, Tone::Good->value),
+                    $next->recommendsActiveRest => new Status(self::ACTIVE_REST, Tone::Info->value),
                     default => null,
                 },
             ),

@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Tokens\Data;
 
-use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Support\CapabilityData;
 
 /** A personal access token, without its secret (CAP-021). */

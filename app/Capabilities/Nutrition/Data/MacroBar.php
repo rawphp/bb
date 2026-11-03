@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
-use App\Capabilities\Support\Tone;
+use App\Capabilities\Support\DomainValues;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -16,7 +16,7 @@ final class MacroBar extends CapabilityData
         public readonly string $value_text,
         #[Field(minimum: 0, maximum: 1)]
         public readonly float $fraction,
-        #[Field(enum: [Tone::Good->value, Tone::Neutral->value, Tone::Warning->value, Tone::Info->value])]
+        #[Field(enum: DomainValues::TONES)]
         public readonly string $tone,
     ) {}
 }

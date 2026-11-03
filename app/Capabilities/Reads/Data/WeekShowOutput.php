@@ -3,9 +3,9 @@
 namespace App\Capabilities\Reads\Data;
 
 use App\Capabilities\Reads\Data\Today\CalendarRange;
-use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Reads\Data\Today\StripDay;
 use App\Capabilities\Reads\Data\Today\WeekAction;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 

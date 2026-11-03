@@ -8,8 +8,8 @@ use App\Capabilities\Plan\Data\PhaseShowOutput;
 use App\Capabilities\Plan\Data\PlanLengthChoice;
 use App\Capabilities\Plan\Data\PlanLengthFix;
 use App\Capabilities\Plan\Data\PlanTextLine;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
-use App\Capabilities\Train\Data\Pill;
 use App\Domain\Phases\PhaseWarning;
 use App\Domain\Phases\PhaseWarnings;
 use App\Models\Phase;
@@ -101,7 +101,7 @@ final class PhasePayload
             length_text: $goal->weeks === null ? 'No end' : PlanWords::weeks($goal->weeks),
             rate_text: $plan->trainingOnly() ? null : PlanWords::rate($goal->ratePercentPerWeek),
             refusal: $goal->refusal,
-            warnings: array_map(fn (PhaseWarning $w) => new Pill(PhaseChanges::warningText($w), Tone::Warning->value), $goal->warnings),
+            warnings: array_map(fn (PhaseWarning $w) => new Status(PhaseChanges::warningText($w), Tone::Warning->value), $goal->warnings),
             training_lines: array_map(fn (string $line) => new PlanTextLine($line), $goal->trainingLines),
             progression_text: $goal->progressionFromWeek === null ? null
                 : "{$goal->runningMesocycleName} follows {$goal->type->title()} progression from week {$goal->progressionFromWeek}.",
@@ -109,9 +109,9 @@ final class PhasePayload
     }
 
     /** PH-042. */
-    private static function pastEvent(Phase $phase): Pill
+    private static function pastEvent(Phase $phase): Status
     {
-        return new Pill('This phase ends after your event on '.PlanWords::day(PlanSnapshot::day($phase->event_date)).'.', Tone::Warning->value);
+        return new Status('This phase ends after your event on '.PlanWords::day(PlanSnapshot::day($phase->event_date)).'.', Tone::Warning->value);
     }
 
     /** The last day before an exclusive end. */

@@ -3,7 +3,7 @@
 namespace App\Capabilities\Plan\Data;
 
 use App\Capabilities\Support\DomainValues;
-use App\Capabilities\Train\Data\Pill;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -23,7 +23,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class PhaseShowOutput extends CapabilityData
 {
     /**
-     * @param  list<Pill>  $warnings
+     * @param  list<Status>  $warnings
      * @param  list<PlanLengthChoice>  $lengths
      * @param  list<PhaseGoalChoice>  $goals
      */
@@ -43,7 +43,7 @@ final class PhaseShowOutput extends CapabilityData
         public readonly ?string $change_text,
         public readonly ?string $event_date,
         public readonly ?string $event_text,
-        #[Field(items: Pill::class)]
+        #[Field(items: Status::class)]
         public readonly array $warnings,
         public readonly ?PhaseEventOffer $event_offer,
         public readonly bool $can_end,

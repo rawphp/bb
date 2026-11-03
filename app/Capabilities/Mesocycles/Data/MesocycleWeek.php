@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Mesocycles\Data;
 
-use App\Capabilities\Train\Data\Pill;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -19,8 +19,8 @@ final class MesocycleWeek extends CapabilityData
     public function __construct(
         public readonly int $number,
         public readonly string $title,
-        public readonly ?Pill $now,
-        public readonly ?Pill $diet_break,
+        public readonly ?Status $now,
+        public readonly ?Status $diet_break,
         public readonly ?string $calories_text,
         #[Field(items: MesocycleMuscleSets::class)]
         public readonly array $muscle_sets,

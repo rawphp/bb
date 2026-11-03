@@ -5,15 +5,15 @@ namespace App\Capabilities\Reads\Onboarding;
 use App\Capabilities\Onboarding\Data\OnboardingChoice;
 use App\Capabilities\Onboarding\Data\OnboardingDateField;
 use App\Capabilities\Onboarding\Data\OnboardingSlider;
-use App\Capabilities\Onboarding\Data\OnboardingStatus;
 use App\Capabilities\Onboarding\Data\OnboardingTime;
+use App\Capabilities\Support\Status;
 use App\Domain\Onboarding\OnboardingText;
 use DateTimeImmutable;
 
 /** The small shapes every onboarding_show section is built from. */
 final class OnboardingParts
 {
-    /** @param  list<OnboardingStatus>  $badges */
+    /** @param  list<Status>  $badges */
     public static function choice(string $value, string $title, bool $selected, string $detail = '', bool $enabled = true, array $badges = []): OnboardingChoice
     {
         return new OnboardingChoice(
@@ -21,9 +21,9 @@ final class OnboardingParts
         );
     }
 
-    public static function status(string $text, string $tone): OnboardingStatus
+    public static function status(string $text, string $tone): Status
     {
-        return new OnboardingStatus(text: $text, tone: $tone);
+        return new Status(text: $text, tone: $tone);
     }
 
     public static function time(int $minutes): OnboardingTime

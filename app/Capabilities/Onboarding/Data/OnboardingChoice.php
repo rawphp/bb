@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Onboarding\Data;
 
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -11,14 +12,14 @@ use Rawphp\Capabilities\Support\CapabilityData;
  */
 final class OnboardingChoice extends CapabilityData
 {
-    /** @param  list<OnboardingStatus>  $badges  such as "Recommended" */
+    /** @param  list<Status>  $badges  such as "Recommended" */
     public function __construct(
         public readonly string $value,
         public readonly string $title,
         public readonly string $detail,
         public readonly bool $is_selected,
         public readonly bool $is_enabled,
-        #[Field(items: OnboardingStatus::class)]
+        #[Field(items: Status::class)]
         public readonly array $badges,
     ) {}
 }

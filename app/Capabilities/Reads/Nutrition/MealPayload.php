@@ -11,10 +11,10 @@ use App\Capabilities\Nutrition\Data\MealHint;
 use App\Capabilities\Nutrition\Data\MealShowOutput;
 use App\Capabilities\Nutrition\Data\MenuItem;
 use App\Capabilities\Nutrition\Data\PeriWorkout;
-use App\Capabilities\Nutrition\Data\Pill;
 use App\Capabilities\Reads\Today\MealMenu;
 use App\Capabilities\Reads\Today\TodayPayload;
 use App\Capabilities\Reads\Today\TodayWords;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\MealFit\Food as FitFood;
 use App\Domain\MealFit\MealFit;
@@ -81,8 +81,8 @@ final class MealPayload
                 self::pill('Calories', $planned->kcal, $meal->target->kcal, ''),
                 self::pill('Protein', $planned->proteinG, $meal->target->proteinG, ' g'),
             ],
-            targets_met: $entries !== [] && $mealFit->targetsMet($planned, $meal->target) ? new Pill(self::TARGETS_MET, Tone::Good->value) : null,
-            adjust_badge: $meal->showsAdjustBadge() ? new Pill(TodayPayload::ADJUST_BADGE, Tone::Warning->value) : null,
+            targets_met: $entries !== [] && $mealFit->targetsMet($planned, $meal->target) ? new Status(self::TARGETS_MET, Tone::Good->value) : null,
+            adjust_badge: $meal->showsAdjustBadge() ? new Status(TodayPayload::ADJUST_BADGE, Tone::Warning->value) : null,
             peri_workout: self::periWorkout($snapshot, $day, $meals, $meal),
             check_in: NutritionPayload::checkIn($meal->checkInState()),
             hints: $entries === [] ? [] : array_map(self::hint(...), $mealFit->fit($fit, $meal->target)->shortfalls),
@@ -119,14 +119,14 @@ final class MealPayload
     }
 
     /** MEAL-011: "on track" within 10% of the target, otherwise how far under or over, to a whole number. */
-    private static function pill(string $macro, float $planned, float $target, string $unit): Pill
+    private static function pill(string $macro, float $planned, float $target, string $unit): Status
     {
         if (Adherence::within($planned, $target)) {
-            return new Pill("{$macro} on track", Tone::Good->value);
+            return new Status("{$macro} on track", Tone::Good->value);
         }
         $amount = (int) round(abs($planned - $target));
 
-        return new Pill("{$macro} {$amount}{$unit} ".($planned < $target ? 'under' : 'over'), Tone::Warning->value);
+        return new Status("{$macro} {$amount}{$unit} ".($planned < $target ? 'under' : 'over'), Tone::Warning->value);
     }
 
     /** MEAL-007: "Short 32 g carbs. Add a food from Carbs · Recommended." */

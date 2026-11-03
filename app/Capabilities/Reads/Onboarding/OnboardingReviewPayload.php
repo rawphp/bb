@@ -5,7 +5,7 @@ namespace App\Capabilities\Reads\Onboarding;
 use App\Capabilities\Onboarding\Data\OnboardingReviewBlock;
 use App\Capabilities\Onboarding\Data\OnboardingReviewRow;
 use App\Capabilities\Onboarding\Data\OnboardingReviewSection;
-use App\Capabilities\Onboarding\Data\OnboardingStatus;
+use App\Capabilities\Support\Status;
 use App\Domain\Onboarding\OnboardingReview;
 use App\Domain\Onboarding\ReviewBlock;
 use App\Domain\Onboarding\ReviewRow;
@@ -33,7 +33,7 @@ final class OnboardingReviewPayload
     }
 
     /** "Recommended" is good news; "Selected" is information. */
-    private static function badge(string $text): OnboardingStatus
+    private static function badge(string $text): Status
     {
         return OnboardingParts::status($text, $text === 'Recommended' ? 'good' : 'info');
     }

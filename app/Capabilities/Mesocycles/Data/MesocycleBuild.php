@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Mesocycles\Data;
 
-use App\Capabilities\Train\Data\Pill;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -17,7 +17,7 @@ final class MesocycleBuild extends CapabilityData
      * @param  list<MesocycleOption>  $weeks_options
      * @param  list<MesocycleOption>  $days_per_week_options
      * @param  list<MesocyclePriorityRow>  $priorities
-     * @param  list<Pill>  $warnings
+     * @param  list<Status>  $warnings
      * @param  list<MesocycleBuildDayRow>  $days
      * @param  list<MesocycleOption>  $sets_options
      * @param  list<MesocycleMuscleExercises>  $exercise_options
@@ -37,15 +37,15 @@ final class MesocycleBuild extends CapabilityData
         public readonly bool $weekdays_available,
         public readonly ?string $phase_title,
         public readonly ?string $rep_range_text,
-        public readonly ?Pill $phase_warning,
+        public readonly ?Status $phase_warning,
         public readonly int $days_per_week,
         #[Field(items: MesocycleOption::class)]
         public readonly array $days_per_week_options,
         #[Field(items: MesocyclePriorityRow::class)]
         public readonly array $priorities,
-        #[Field(items: Pill::class)]
+        #[Field(items: Status::class)]
         public readonly array $warnings,
-        public readonly ?Pill $priority_notice,
+        public readonly ?Status $priority_notice,
         #[Field(items: MesocycleBuildDayRow::class)]
         public readonly array $days,
         #[Field(items: MesocycleOption::class)]

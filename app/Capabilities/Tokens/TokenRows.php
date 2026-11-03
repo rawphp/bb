@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Tokens;
 
-use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Capabilities\Tokens\Data\TokenRow;
 use App\Models\PersonalAccessToken;

@@ -3,7 +3,7 @@
 namespace App\Capabilities\Workout\Data;
 
 use App\Capabilities\Support\DomainValues;
-use App\Capabilities\Train\Data\Pill;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -45,9 +45,9 @@ final class WorkoutShowOutput extends CapabilityData
         #[Field(enum: DomainValues::WEIGHT_UNITS)]
         public readonly string $weight_unit,
         /** PROG-043, deload weeks only. */
-        public readonly ?Pill $deload_banner,
+        public readonly ?Status $deload_banner,
         /** WO-040 "Your feedback is required" while unanswered feedback blocks Finish. */
-        public readonly ?Pill $feedback_banner,
+        public readonly ?Status $feedback_banner,
         /** WO-040. */
         public readonly bool $can_finish,
         /** WO-009 "Next: Meal 3 at 7:00 PM · 95 g carbs". */
