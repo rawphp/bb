@@ -48,6 +48,7 @@ final class ExercisesShowCapability implements HostCapability
             ->whereNull('workout_sessions.deleted_at')
             ->groupBy('workout_sets.exercise_id')
             ->selectRaw('workout_sets.exercise_id as exercise_id, max(coalesce(workout_sessions.actual_start_at, workout_sessions.planned_start_at)) as newest')
+            ->toBase()
             ->get();
 
         $dates = [];
