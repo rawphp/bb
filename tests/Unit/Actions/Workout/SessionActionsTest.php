@@ -718,6 +718,22 @@ it('SCH-053 a skip leaves the meals of a day Today gives to another session', fu
         ->and(WorkoutSession::query()->where('week', 3)->sole()->is_skipped)->toBeTrue();
 });
 
+it('SCH-053 SCH-060 skipping the session Today shows after a paused away week re-targets the day it shows it on', function () {
+    // The pause on 14 September moves week 2's Upper A from Monday 14 to Monday 21 September.
+    [$user, $mesocycle] = saWorld('2026-09-21 09:00:00');
+    PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-14', 'is_away' => true, 'away_training' => 'pause']);
+    $monday = SheetSeed::day($user, '2026-09-21');
+
+    $skipped = app(SkipWorkout::class)($user, WorkoutIds::workout($mesocycle->id, 2, 1));
+
+    $row = WorkoutSession::query()->sole();
+    expect($skipped['dates'])->toBe(['2026-09-21'])
+        ->and($skipped['toast'])->toBe('Meals updated for the skipped workout')
+        ->and($monday->fresh()->day_type)->toBe(DayType::Rest)
+        ->and([$row->week, $row->day, $row->is_skipped])->toBe([2, 1, true])
+        ->and($row->planned_start_at->format('Y-m-d H:i'))->toBe('2026-09-21 17:30');
+});
+
 it('SCH-053 a workout skipped after its day has passed leaves that day\'s targets as they were', function () {
     [$user, $mesocycle] = saWorld('2026-09-22 09:00:00');
     $monday = SheetSeed::day($user, '2026-09-21');

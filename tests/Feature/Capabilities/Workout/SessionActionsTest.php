@@ -4,6 +4,7 @@ use App\Capabilities\Support\HostDefinition;
 use App\Domain\Model\MuscleGroup;
 use App\Models\Exercise;
 use App\Models\Mesocycle;
+use App\Models\PlanWeek;
 use App\Models\User;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
@@ -299,4 +300,15 @@ it('SCH-051 a rest-of-mesocycle swap refreshes Today of the day a later session 
         ->assertOk()->json('data.invalidates');
 
     expect($keys)->toContain('today_show{"date":"2026-09-29"}');
+});
+
+it('SCH-060 a skip of the session Today shows after a paused away week refreshes today', function () {
+    Carbon::setTestNow('2026-09-21 09:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+    PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-14', 'is_away' => true, 'away_training' => 'pause']);
+
+    $keys = actOver($user, 'workout_skip', ['workout_id' => WorkoutIds::workout($mesocycle->id, 2, 1)])->assertOk()->json('data.invalidates');
+
+    expect($keys)->toContain('today_show{}', 'today_show{"date":"2026-09-21"}', 'week_show{}');
 });
