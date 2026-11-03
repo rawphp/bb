@@ -29,11 +29,14 @@ function launch(): Promise<BrowserContext> {
 test('PWA-004 a cold start of the installed app shows the cached Today screen within 1 second on slow 4G and a 4x slower CPU', async ({}, testInfo) => {
     // Install: the first launch signs in, the worker precaches the shell and build, and Today's read is cached.
     const install = await launch();
-    const first = install.pages()[0] ?? (await install.newPage());
-    await signIn(first);
-    await first.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
-    await first.waitForLoadState('networkidle');
-    await install.close();
+    try {
+        const first = install.pages()[0] ?? (await install.newPage());
+        await signIn(first);
+        await first.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
+        await first.waitForLoadState('networkidle');
+    } finally {
+        await install.close();
+    }
 
     // Cold start: the browser launches again on that profile, with no worker running and nothing in memory.
     // The page is throttled before it loads anything and records when the first meal card is painted.

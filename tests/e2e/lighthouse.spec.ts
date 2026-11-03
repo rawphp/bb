@@ -1,6 +1,6 @@
 import { chromium, expect, test, type BrowserContext } from '@playwright/test';
 import lighthouse from 'lighthouse';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { seeded, signIn } from './support';
@@ -23,7 +23,9 @@ test.beforeAll(async () => {
         viewport: { width: 390, height: 844 },
         baseURL: test.info().project.use.baseURL,
     });
-    port = Number(readFileSync(join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]);
+    const activePort = join(profile, 'DevToolsActivePort');
+    await expect.poll(() => existsSync(activePort), { message: 'Chromium wrote its debugging port' }).toBe(true);
+    port = Number(readFileSync(activePort, 'utf8').split('\n')[0]);
     await signIn(context.pages()[0] ?? (await context.newPage()));
 });
 
