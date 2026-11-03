@@ -3,6 +3,7 @@
 use App\Capabilities\Reads\Learn\LearnLibrary;
 use App\Domain\Learn\LearnSection;
 use App\Domain\Learn\LearnTopic;
+use Illuminate\Support\Facades\File;
 
 // The bundled articles in resources/learn and the payloads built from them.
 // The articles are the content under test, so these read the real files.
@@ -52,6 +53,30 @@ it('LRN-001 LRN-002 builds the Learn index: each section in order, each article 
             'title' => 'Reps in reserve (RIR)',
             'summary' => 'RIR means reps in reserve: how many more good reps you could have done when you stopped a set. The app lowers your target RIR week by week, so you work harder as the block goes on.',
         ]);
+});
+
+it('LRN-002 builds the index summaries once and rebuilds them when an article file changes', function () {
+    $dir = sys_get_temp_dir().'/learn-'.bin2hex(random_bytes(6));
+    File::copyDirectory(resource_path('learn'), $dir);
+    $path = "{$dir}/rir.md";
+    $summary = fn (): string => (new LearnLibrary($dir))->index()->toArray()['sections'][2]['articles'][1]['summary'];
+
+    try {
+        $old = $summary();
+        $mtime = filemtime($path);
+        file_put_contents($path, str_replace('RIR means', 'RIR MEANS', file_get_contents($path)));
+        touch($path, $mtime);
+        clearstatcache();
+
+        expect($summary())->toBe($old);
+
+        touch($path, $mtime + 60);
+        clearstatcache();
+
+        expect($summary())->toBe(str_replace('RIR means', 'RIR MEANS', $old));
+    } finally {
+        File::deleteDirectory($dir);
+    }
 });
 
 it('LRN-001 shows an article by its slug, in blocks of styled spans', function () {
