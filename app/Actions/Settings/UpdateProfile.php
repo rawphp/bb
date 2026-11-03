@@ -17,13 +17,20 @@ final class UpdateProfile
 {
     public const HEIGHT_MISSING = 'Enter your height.';
 
+    public const NAME_MISSING = 'Enter your name.';
+
     public function __construct(private readonly SaveProfile $save) {}
 
     /** @return list<string> the dates the rebuild wrote, Y-m-d */
     public function __invoke(User $user, ProfileUpdateInput $input): array
     {
+        $name = trim($input->name);
+        if ($name === '') {
+            throw new FieldRefused('name', self::NAME_MISSING);
+        }
+
         return ($this->save)($user, [
-            'name' => trim($input->name),
+            'name' => $name,
             'sex' => $input->sex,
             'birth_date' => $input->birth_date,
             'height_cm' => self::heightCm($input->height->unit, $input->height->cm, $input->height->feet, $input->height->inches),

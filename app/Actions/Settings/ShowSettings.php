@@ -35,6 +35,7 @@ use App\Domain\Model\Sex;
 use App\Domain\Model\UnitConversion;
 use App\Domain\Model\WeightUnit;
 use App\Domain\Notifications\ReminderKind;
+use App\Domain\Onboarding\OnboardingText;
 use App\Models\NotificationPref;
 use App\Models\PersonalAccessToken;
 use App\Models\Plan;
@@ -49,7 +50,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * settings_show (SET-001 to SET-011): every row of Settings and every value its edit screens start from, worded here
- * so the screen computes nothing. Ported from rp-clone's SettingsModel, HeightDisplay and AppearanceSettings.
+ * so the screen computes nothing. Ported from rp-clone's SettingsModel, HeightDisplay and AppearanceSettings; heights
+ * and weekdays read as onboarding words them (OnboardingText).
  */
 final class ShowSettings
 {
@@ -114,22 +116,6 @@ final class ShowSettings
         );
     }
 
-    /** SET-001: "178 cm", or "5 ft 10 in" to the whole inch, as rp-clone's HeightDisplay reads it. */
-    public static function heightText(float $cm, HeightUnit $unit): string
-    {
-        if ($unit === HeightUnit::Cm) {
-            return ((int) round($cm)).' cm';
-        }
-        [$feet, $inches] = UnitConversion::cmToFeetInches($cm);
-        $whole = (int) round($inches);
-        if ($whole === (int) UnitConversion::INCHES_PER_FOOT) {
-            $feet++;
-            $whole = 0;
-        }
-
-        return "{$feet} ft {$whole} in";
-    }
-
     private static function profile(Profile $profile): ProfileRow
     {
         $sex = Sex::from($profile->sex);
@@ -158,7 +144,7 @@ final class ShowSettings
     private static function height(float $cm, HeightUnit $unit): Height
     {
         if ($unit === HeightUnit::Cm) {
-            return new Height($unit->value, self::heightText($cm, $unit), round($cm, 1), null, null);
+            return new Height($unit->value, OnboardingText::heightText($cm, $unit), round($cm, 1), null, null);
         }
         [$feet, $inches] = UnitConversion::cmToFeetInches($cm);
         $inches = round($inches, 1);
@@ -167,7 +153,7 @@ final class ShowSettings
             $inches = 0.0;
         }
 
-        return new Height($unit->value, self::heightText($cm, $unit), null, $feet, $inches);
+        return new Height($unit->value, OnboardingText::heightText($cm, $unit), null, $feet, $inches);
     }
 
     /** @param  list<Choice>  $choices */
@@ -212,9 +198,9 @@ final class ShowSettings
             meal_count: (int) $profile->meal_count,
             meal_count_min: self::MEAL_COUNT_MIN,
             meal_count_max: self::MEAL_COUNT_MAX,
-            weekdays: array_map(fn (int $day) => new Weekday($day, self::dayName($day), self::dayName($day, short: true)), range(1, 7)),
+            weekdays: array_map(fn (int $day) => new Weekday($day, OnboardingText::weekdayFullName($day), OnboardingText::weekdayName($day)), range(1, 7)),
             training_days: array_map(fn (array $day) => new TrainingDay(
-                weekday: (int) $day['weekday'], label: self::dayName((int) $day['weekday']), start: (string) $day['start'], minutes: (int) $day['minutes'],
+                weekday: (int) $day['weekday'], label: OnboardingText::weekdayFullName((int) $day['weekday']), start: (string) $day['start'], minutes: (int) $day['minutes'],
             ), TodaySnapshot::json($profile->training_days)),
             new_training_day_start: self::NEW_TRAINING_DAY_START,
             new_training_day_minutes: self::NEW_TRAINING_DAY_MINUTES,
@@ -225,7 +211,7 @@ final class ShowSettings
             new_busy_period: self::busyPeriod(self::NEW_BUSY_PERIOD),
             step_plan: array_map(fn (int $day) => new StepRange(
                 weekday: $day,
-                label: self::dayName($day),
+                label: OnboardingText::weekdayFullName($day),
                 min: isset($steps[$day]) ? (int) $steps[$day]['min'] : null,
                 max: isset($steps[$day]) ? (int) $steps[$day]['max'] : null,
             ), range(1, 7)),
@@ -242,15 +228,8 @@ final class ShowSettings
             label: $period['label'],
             start: $period['start'],
             end: $period['end'],
-            days: array_map(fn (int $day) => new WeekdayChip($day, self::dayName($day, short: true), in_array($day, $on, true)), range(1, 7)),
+            days: array_map(fn (int $day) => new WeekdayChip($day, OnboardingText::weekdayName($day), in_array($day, $on, true)), range(1, 7)),
         );
-    }
-
-    /** ISO weekday: 1 is Monday. */
-    private static function dayName(int $isoWeekday, bool $short = false): string
-    {
-        // 5 January 2026 is a Monday.
-        return CarbonImmutable::create(2026, 1, 4 + $isoWeekday)->format($short ? 'D' : 'l');
     }
 
     /** @return list<NotificationSwitch> NOTIF-007: each switch, from the defaults until the user changes it */

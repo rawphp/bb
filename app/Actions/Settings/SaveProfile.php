@@ -4,11 +4,13 @@ namespace App\Actions\Settings;
 
 use App\Actions\Plan\RebuildTargets;
 use App\Domain\Plan\PlanRebuildRefused;
+use App\Models\Plan;
 use App\Models\Profile;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Closure;
 use DomainException;
+use Illuminate\Database\DeadlockException;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -19,7 +21,11 @@ use Throwable;
  *
  * - it runs, or the rules refuse it (the targets stay as they were): nothing is pending;
  * - anything else: the failure is reported, and `targets_rebuild_failed_at` holds the time until a later save
- *   rebuilds, which settings_show shows as "Tap Save to try again".
+ *   rebuilds, which settings_show shows as "Tap Save to try again";
+ * - except a deadlock or lock wait: MySQL has then rolled back more than the savepoint, the profile save included, so
+ *   the whole write fails, and is tried again when this is the outermost transaction.
+ *
+ * The plan row is locked before the profile, the order RebuildTargets takes them in.
  *
  * Every profile field is a target input except the ones in NOT_TARGET_INPUTS, rp-clone's
  * `SettingsModel.targetInputs`, so a field added later rebuilds by default.
@@ -33,6 +39,9 @@ final class SaveProfile
         'name', 'weight_unit', 'height_unit', 'appearance', 'consumed_totals', 'micro_plates', 'diet_filters', 'weigh_in_days',
     ];
 
+    /** Tries of the whole write when the database breaks a deadlock or lock wait. */
+    private const ATTEMPTS = 3;
+
     /** Bookkeeping, not answers. */
     private const NOT_FIELDS = ['id', 'user_id', 'created_at', 'updated_at', 'targets_rebuild_failed_at'];
 
@@ -45,6 +54,7 @@ final class SaveProfile
     public function __invoke(User $user, array $changes, ?Closure $check = null): array
     {
         return DB::transaction(function () use ($user, $changes, $check): array {
+            Plan::query()->where('user_id', $user->id)->lockForUpdate()->first();
             $profile = Profile::query()->where('user_id', $user->id)->lockForUpdate()->first()
                 ?? throw new DomainException(self::NO_PROFILE);
             if ($check !== null) {
@@ -64,7 +74,7 @@ final class SaveProfile
             $profile->forceFill(['targets_rebuild_failed_at' => $failedAt])->save();
 
             return $dates;
-        });
+        }, self::ATTEMPTS);
     }
 
     /**
@@ -103,6 +113,8 @@ final class SaveProfile
             return [DB::transaction(fn (): array => app(RebuildTargets::class)($user, beforeStartBuildsFirstWeek: true)), null];
         } catch (PlanRebuildRefused) {
             return [[], null];
+        } catch (DeadlockException $e) {
+            throw $e;
         } catch (Throwable $e) {
             report($e);
 

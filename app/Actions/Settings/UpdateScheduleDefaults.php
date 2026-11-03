@@ -65,7 +65,8 @@ final class UpdateScheduleDefaults
     /** Runs under the profile's lock, before anything saves. */
     private static function check(User $user, Profile $profile, ScheduleDefaultsUpdateInput $input): void
     {
-        $plan = PlanSnapshot::load($user);
+        // The plan row is already locked by SaveProfile; a locking read sees the plan as it is now.
+        $plan = PlanSnapshot::load($user, lock: true);
 
         if ($input->review_weekday !== null) {
             if ($plan === null) {
