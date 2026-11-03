@@ -2,9 +2,13 @@
 
 export interface ReviewAnswerInput {
   week_start: string;
-  option: "recommendation" | "repeat_this_week" | "choose_own" | "drop_fatigue" | "cut_calories" | "add_steps";
   /**
-   * Average kcal a day for choose_own.
+   * The calorie option; left out, the answer only sets own_kcal on the stored choose_own.
+   */
+  option?:
+    ("recommendation" | "repeat_this_week" | "choose_own" | "drop_fatigue" | "cut_calories" | "add_steps") | null;
+  /**
+   * Average kcal a day for choose_own; null leaves it to be sent, and review_complete waits for it.
    */
   own_kcal?: number | null;
   /**

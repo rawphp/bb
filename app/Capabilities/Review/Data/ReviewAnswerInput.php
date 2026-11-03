@@ -8,7 +8,8 @@ use Rawphp\Capabilities\Support\CapabilityData;
 /**
  * The review's answers so far, sent whole each time: the calorie option, its
  * own amount, the deload answer, the step plan offer and the calorie moves.
- * Nothing is applied until review_complete (REV-031).
+ * Only an amount may come alone, for the stored choose_own. Nothing is
+ * applied until review_complete (REV-031).
  */
 final class ReviewAnswerInput extends CapabilityData
 {
@@ -16,9 +17,9 @@ final class ReviewAnswerInput extends CapabilityData
     public function __construct(
         #[Field(format: 'date')]
         public readonly string $week_start,
-        #[Field(enum: ['recommendation', 'repeat_this_week', 'choose_own', 'drop_fatigue', 'cut_calories', 'add_steps'])]
-        public readonly string $option,
-        #[Field(description: 'Average kcal a day for choose_own.', minimum: 0)]
+        #[Field(description: 'The calorie option; left out, the answer only sets own_kcal on the stored choose_own.', enum: ['recommendation', 'repeat_this_week', 'choose_own', 'drop_fatigue', 'cut_calories', 'add_steps'])]
+        public readonly ?string $option = null,
+        #[Field(description: 'Average kcal a day for choose_own; null leaves it to be sent, and review_complete waits for it.', minimum: 0)]
         public readonly ?int $own_kcal = null,
         #[Field(description: 'REV-011: "Make this your deload week too?"; null for the default.')]
         public readonly ?bool $deload_too = null,

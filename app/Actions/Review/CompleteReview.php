@@ -29,11 +29,14 @@ use Illuminate\Support\Facades\DB;
  * Saves the weekly review (REV-001, rp-clone WeeklyReviewModel+Save): applies the week's stored answers, or the
  * unanswered defaults, and writes in one transaction next week's plan week and days, the diet break and the moved
  * deload (REV-011), the step plan (REV-027, REV-050) and, last, the reviewed week's stamp. Nothing before it applies
- * an answer (REV-031). A refused save writes nothing; a row this save finds is updated, never added to.
+ * an answer (REV-031). Choose my own with no amount yet is refused (REV-010). A refused save writes nothing; a row
+ * this save finds is updated, never added to.
  */
 final class CompleteReview
 {
     public const NOTHING_CHOSEN = 'Choose next week\'s calories first.';
+
+    public const NEEDS_AMOUNT = 'Enter how many calories a day you want for Choose my own before saving.';
 
     /**
      * @return array{dates: list<string>, mesocycle: ?string} next week's days, Y-m-d, and the mesocycle whose deload moved
@@ -49,7 +52,11 @@ final class CompleteReview
     private function save(User $user, string $weekStart): array
     {
         $analysis = OpenReview::analysis($user, $weekStart);
-        $choices = new ReviewChoices($analysis, ReviewAnswer::forWeek($user, $weekStart)?->answers() ?? ReviewAnswers::defaults());
+        $stored = ReviewAnswer::forWeek($user, $weekStart);
+        if ($stored?->needsAmount()) {
+            throw new DomainException(self::NEEDS_AMOUNT);
+        }
+        $choices = new ReviewChoices($analysis, $stored?->answers() ?? ReviewAnswers::defaults());
         $week = $choices->saveWeek();
         if (! $week instanceof BuiltWeek) {
             throw new DomainException($week instanceof WeekBuildRefusal ? ReviewMessages::refusal($week) : self::NOTHING_CHOSEN);

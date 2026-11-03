@@ -36,6 +36,15 @@ class ReviewAnswer extends Model
             ->first();
     }
 
+    /**
+     * REV-010: Choose my own answered with no amount yet, a draft. Every write that applies the answers refuses it, so
+     * the suggested amount review_show fills in is never applied in the user's place.
+     */
+    public function needsAmount(): bool
+    {
+        return $this->option === 'choose_own' && $this->own_kcal === null;
+    }
+
     /** The row as the review's rules read it. */
     public function answers(): ReviewAnswers
     {

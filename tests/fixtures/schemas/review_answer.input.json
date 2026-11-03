@@ -8,7 +8,11 @@
             "format": "date"
         },
         "option": {
-            "type": "string",
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The calorie option; left out, the answer only sets own_kcal on the stored choose_own.",
             "enum": [
                 "recommendation",
                 "repeat_this_week",
@@ -23,7 +27,7 @@
                 "integer",
                 "null"
             ],
-            "description": "Average kcal a day for choose_own.",
+            "description": "Average kcal a day for choose_own; null leaves it to be sent, and review_complete waits for it.",
             "minimum": 0
         },
         "deload_too": {
@@ -69,7 +73,6 @@
         }
     },
     "required": [
-        "week_start",
-        "option"
+        "week_start"
     ]
 }
