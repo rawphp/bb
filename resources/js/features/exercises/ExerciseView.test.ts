@@ -209,6 +209,19 @@ describe('ExerciseView', () => {
         expect(field.element.parentElement!.textContent!.trim()).toBe('kg');
     });
 
+    it('EX-012 a user who logs in pounds saves the load step in pounds', async () => {
+        const inPounds = { ...bench, load_step: { step: null, default_text: '5 lb', unit: 'lb' as const } };
+        const view = show({ payload: inPounds });
+
+        await view.get('input[aria-label="Load step in lb"]').setValue('2.5');
+        await view.get('[data-step-save]').trigger('click');
+        await flushPromises();
+
+        const input = writeMock.mock.calls[0]![1];
+        expect(input).toEqual({ exercise_id: bench.id, step: 2.5, unit: 'lb' });
+        expect(inputViolations('exercise_load_step_set', input)).toEqual([]);
+    });
+
     it('EX-005 an exercise with no load to step says it is reps only', () => {
         const view = show({ payload: { ...landmine, load_type: 'bodyweight', load_type_text: 'Bodyweight', load_step: null } });
 
