@@ -7,6 +7,7 @@ import type { AwayWeekSetInput } from '@/contracts/away_week_set';
 import type { AwayWeekShowOutput } from '@/contracts/away_week_show';
 import BottomSheet from '@/design/BottomSheet.vue';
 import ChoiceList from '@/design/ChoiceList.vue';
+import ToggleSwitch from '@/design/ToggleSwitch.vue';
 import { toneClasses } from '@/design/tones';
 
 // Mark plan weeks away (SCH-060, PLAN-025): which weeks, what happens to training and
@@ -133,15 +134,8 @@ async function notAway(): Promise<void> {
                 <li v-for="note in data.notes" :key="note.text" class="rounded-xl p-3 text-sm" :class="toneClasses[note.tone]">{{ note.text }}</li>
             </ul>
 
-            <div v-if="data.shows_keep_phase_end" class="space-y-1">
-                <label class="flex min-h-tap items-center justify-between gap-3" data-test="keep-phase-end">
-                    <span>Keep the phase end date</span>
-                    <input v-model="keepPhaseEnd" type="checkbox" role="switch" class="peer sr-only" :disabled="busy" />
-                    <span
-                        aria-hidden="true"
-                        class="relative h-8 w-13 shrink-0 rounded-full bg-tone-neutral-bg transition-colors peer-checked:bg-accent peer-disabled:opacity-60 peer-focus-visible:ring-2 peer-focus-visible:ring-accent after:absolute after:top-0.5 after:left-0.5 after:size-7 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"
-                    />
-                </label>
+            <div v-if="data.shows_keep_phase_end" class="space-y-1" data-test="keep-phase-end">
+                <ToggleSwitch :model-value="keepPhaseEnd === true" label="Keep the phase end date" :disabled="busy" @update:model-value="keepPhaseEnd = $event" />
                 <!-- The server's notes say what happens when the end date moves; this line is the switch's own (rp-clone's footnote). -->
                 <p v-if="keepPhaseEnd" class="text-sm text-secondary-text" data-test="keeps-end">The phase keeps its end date.</p>
             </div>

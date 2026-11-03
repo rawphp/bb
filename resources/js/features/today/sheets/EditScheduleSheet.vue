@@ -3,12 +3,13 @@ import { computed, reactive, ref } from 'vue';
 import type { ScheduleUpdateInput } from '@/contracts/schedule_update';
 import type { TodayShowOutput } from '@/contracts/today_show';
 import BottomSheet from '@/design/BottomSheet.vue';
+import SegmentedPicker from '@/design/SegmentedPicker.vue';
+import TimeField from '@/design/TimeField.vue';
+import ToggleSwitch from '@/design/ToggleSwitch.vue';
 import Stepper from '@/features/onboarding/parts/Stepper.vue';
 import FormSection from './FormSection.vue';
 import ScheduleSheetMessage from './ScheduleSheetMessage.vue';
-import SegmentedPicker from './SegmentedPicker.vue';
 import SheetBody from './SheetBody.vue';
-import TimeField from './TimeField.vue';
 import { useDaySheet, type DaySheetProps } from './useDaySheet';
 import { useWeekdayChange } from './useWeekdayChange';
 import WeekdayChangeSheet from './WeekdayChangeSheet.vue';
@@ -164,20 +165,7 @@ const field = 'min-h-tap w-full bg-transparent py-2 text-primary-text placeholde
                     <Stepper v-model="current.meal_count" label="Meals a day" :text="`Meals a day: ${current.meal_count}`" :min="2" :max="6" :step="1" :disabled="busy" />
                 </FormSection>
                 <FormSection v-if="future || showsTrainingTime" header="Training">
-                    <label v-if="future && iso !== undefined" class="flex min-h-tap items-center justify-between gap-3 py-1">
-                        <span class="text-primary-text">Train on {{ weekday }}s</span>
-                        <button
-                            type="button"
-                            role="switch"
-                            :aria-checked="trains"
-                            :disabled="busy"
-                            class="relative h-8 w-13 shrink-0 rounded-full transition-colors disabled:opacity-50"
-                            :class="trains ? 'bg-tone-good' : 'bg-secondary-text/30'"
-                            @click="trains = !trains"
-                        >
-                            <span class="absolute top-0.5 left-0.5 size-7 rounded-full bg-white shadow transition-transform" :class="trains ? 'translate-x-5' : ''" />
-                        </button>
-                    </label>
+                    <ToggleSwitch v-if="future && iso !== undefined" v-model="trains" :label="`Train on ${weekday}s`" :disabled="busy" class="py-1 text-primary-text" />
                     <TimeField v-if="showsTrainingTime" v-model="current.training_start" label="Starts" :disabled="busy" />
                 </FormSection>
                 <FormSection header="Busy periods">

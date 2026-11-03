@@ -8,6 +8,7 @@ import type { CoachConversationClearInput } from '@/contracts/coach_conversation
 import type { CoachEnabledSetInput } from '@/contracts/coach_enabled_set';
 import BottomSheet from '@/design/BottomSheet.vue';
 import Toast, { type ToastResult } from '@/design/Toast.vue';
+import ToggleSwitch from '@/design/ToggleSwitch.vue';
 import ReadState from '@/app/ReadState.vue';
 import { toneClasses } from '@/design/tones';
 
@@ -69,23 +70,7 @@ async function clear(): Promise<void> {
         <h1 class="text-center text-lg font-semibold">Coach</h1>
 
         <template v-if="status">
-            <label v-if="on !== null" class="flex min-h-tap items-center justify-between gap-3 rounded-2xl bg-surface px-4 py-2">
-                <span>Coach</span>
-                <input
-                    type="checkbox"
-                    role="switch"
-                    class="peer sr-only"
-                    :checked="on"
-                    :disabled="busy"
-                    :aria-busy="busy"
-                    @change="toggle"
-                />
-                <!-- The knob is white in both appearances, as an iOS switch's is; a surface-coloured knob would vanish on the dark track. -->
-                <span
-                    aria-hidden="true"
-                    class="relative h-8 w-13 shrink-0 rounded-full bg-tone-neutral-bg transition-colors peer-checked:bg-accent peer-disabled:opacity-60 peer-focus-visible:ring-2 peer-focus-visible:ring-accent after:absolute after:top-0.5 after:left-0.5 after:size-7 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-5"
-                />
-            </label>
+            <ToggleSwitch v-if="on !== null" label="Coach" :model-value="on" :disabled="busy" :busy="busy" class="rounded-2xl bg-surface px-4 py-2" @change="toggle" />
             <p v-if="on !== null" class="px-4 text-sm text-secondary-text">Turning the Coach off hides it everywhere. Your conversation stays until you clear it.</p>
             <p v-else class="rounded-2xl bg-surface p-4 text-sm text-secondary-text" data-test="no-switch">
                 Turning the Coach off for your account isn't available on this server yet.
