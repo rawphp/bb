@@ -11,6 +11,9 @@ const EVAL_RESULT = 'tests/Agent/results/2031-01-02.json';
 
 beforeEach(function () {
     Carbon::setTestNow('2031-01-02 10:00:00');
+    // The app's .env, as a developer's checkout has one.
+    $this->envFile = [app()->environmentPath(), app()->environmentFile()];
+    app()->useEnvironmentPath(base_path('tests/fixtures/agent-eval'))->loadEnvironmentFrom('app.env');
     config(['capabilities-ai.llm.anthropic.api_key' => 'live-key', 'capabilities-ai.llm.anthropic.model' => 'claude-opus-5-5']);
     Process::fake(function (PendingProcess $process) {
         $command = (array) $process->command;
@@ -19,11 +22,11 @@ beforeEach(function () {
             <testsuites>
               <testsuite name="Agent" tests="3" failures="1" errors="0">
                 <testsuite name="Tests\Agent\TrainingTest" tests="3" failures="1" errors="0">
-                  <testcase name="AGT-050 &quot;move tomorrow's workout to Saturday&quot;" file="tests/Agent/TrainingTest.php"/>
-                  <testcase name="AGT-050 &quot;swap bench for dumbbell press&quot;" file="tests/Agent/TrainingTest.php">
+                  <testcase name="it AGT-050 &quot;move tomorrow's workout to Saturday&quot;" file="tests/Agent/TrainingTest.php"/>
+                  <testcase name="it AGT-050 &quot;swap bench for dumbbell press&quot;" file="tests/Agent/TrainingTest.php">
                     <failure type="PHPUnit\Framework\ExpectationFailedException">The Coach should call exercise_swap with {"scope":"this_session"}, and the app accept it.</failure>
                   </testcase>
-                  <testcase name="AGT-050 &quot;undo that&quot;" file="tests/Agent/TrainingTest.php"/>
+                  <testcase name="it AGT-050 &quot;undo that&quot;" file="tests/Agent/TrainingTest.php"/>
                 </testsuite>
               </testsuite>
             </testsuites>
@@ -35,6 +38,7 @@ beforeEach(function () {
 
 afterEach(function () {
     Carbon::setTestNow();
+    app()->useEnvironmentPath($this->envFile[0])->loadEnvironmentFrom($this->envFile[1]);
     @unlink(base_path(EVAL_RESULT));
 });
 
@@ -48,7 +52,10 @@ it('AGT-050 agent:eval --live runs the eval set on the real model and records it
 
         return in_array('tests/Agent', $command, true)
             && ($process->environment['AGENT_EVAL_LIVE'] ?? null) === '1'
-            && ($process->environment['ANTHROPIC_API_KEY'] ?? null) === 'live-key';
+            && ($process->environment['ANTHROPIC_API_KEY'] ?? null) === 'live-key'
+            // The app's own environment stays out, so phpunit.xml's pins hold.
+            && ($process->environment['APP_ENV'] ?? null) === false
+            && ($process->environment['CAPABILITIES_AI_LLM_DRIVER'] ?? null) === false;
     });
     expect(json_decode((string) file_get_contents(base_path(EVAL_RESULT)), true))->toBe([
         'date' => '2031-01-02',
