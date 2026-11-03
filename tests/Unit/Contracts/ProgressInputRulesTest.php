@@ -56,6 +56,8 @@ function progressValidInputs(): array
         'weigh_in_schedule_set two entries of one day' => [WeighInScheduleSetInput::class, ['entries' => [['weekdays' => [1], 'time' => '07:00'], ['weekdays' => [4], 'time' => '18:00']]]],
         'steps_log' => [StepsLogInput::class, ['date' => '2026-10-12', 'steps' => 6100]],
         'review_answer' => [ReviewAnswerInput::class, ['week_start' => '2026-10-05', 'option' => 'choose_own', 'own_kcal' => 2300, 'moves' => [['from_index' => 0, 'to_index' => 6, 'kcal' => 100]]]],
+        'review_answer with only an amount, for a stored Choose my own' => [ReviewAnswerInput::class, ['week_start' => '2026-10-05', 'own_kcal' => 2300]],
+        'review_answer with only an amount and option null' => [ReviewAnswerInput::class, ['week_start' => '2026-10-05', 'option' => null, 'own_kcal' => 2300]],
         'review_complete' => [ReviewCompleteInput::class, ['week_start' => '2026-10-05']],
     ];
 }
@@ -105,7 +107,10 @@ it('CAP-012 refuses a Progress input and names the field', function (string $cas
     'steps on 30 February' => ['steps_log', ['date' => '2026-02-30'], 'date'],
     'negative steps' => ['steps_log', ['steps' => -1], 'steps'],
     'an unknown review option' => ['review_answer', ['option' => 'skip'], 'option'],
+    'an own amount of 0' => ['review_answer', ['own_kcal' => 0], 'own_kcal'],
+    'an own amount of 20,000 kcal a day' => ['review_answer', ['own_kcal' => 20000], 'own_kcal'],
     'a move of 10 kcal' => ['review_answer', ['moves' => [['from_index' => 0, 'to_index' => 1, 'kcal' => 10]]], 'moves.0.kcal'],
+    'more than 20 moves' => ['review_answer', ['moves' => array_fill(0, 21, ['from_index' => 0, 'to_index' => 1, 'kcal' => 25])], 'moves'],
     'a move to day 7' => ['review_answer', ['moves' => [['from_index' => 0, 'to_index' => 7, 'kcal' => 100]]], 'moves.0.to_index'],
     'a review of 2026-02-30' => ['review_complete', ['week_start' => '2026-02-30'], 'week_start'],
 ]);

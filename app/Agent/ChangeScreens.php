@@ -74,6 +74,8 @@ final class ChangeScreens
         'push_unsubscribe' => '/more',
         'recipe_delete' => '/nutrition',
         'recipe_save' => '/nutrition',
+        'review_answer' => '/today',
+        'review_complete' => '/today',
         'rough_week_set' => '/today',
         'saved_meal_delete' => '/more',
         'saved_meal_rename' => '/more',
