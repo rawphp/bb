@@ -35,6 +35,11 @@ export const WARM_FRESH_MS = 60_000;
 // stalled server ends in a CapabilityError instead of a screen stuck on loading.
 export const TIMEOUT_MS = 15_000;
 
+// The deadline for a read that waits on the server's AI call (recipe_generate,
+// recipe_import): longer than the 60 s AiJson gives that call, so the device does not
+// give up on an answer the server is still working out.
+export const AI_TIMEOUT_MS = 75_000;
+
 export class CapabilityError extends Error {
     constructor(
         readonly capability: string,
@@ -80,8 +85,8 @@ export async function read<T = unknown>(
  * an old one (MESO-007: whether a draft would be replaced). The answer is cached as
  * read() caches it. Offline it fails with status 0 and the cached copy stays.
  */
-export function readFresh<T = unknown>(name: string, input: CapabilityInput = {}): Promise<T> {
-    return fetchRead<T>(name, input, readKey(name, input));
+export function readFresh<T = unknown>(name: string, input: CapabilityInput = {}, options: { timeoutMs?: number } = {}): Promise<T> {
+    return fetchRead<T>(name, input, readKey(name, input), options.timeoutMs);
 }
 
 // The statuses after which a cached copy may not be shown. A gone session clears
@@ -216,16 +221,16 @@ async function learnAffects(): Promise<void> {
     }
 }
 
-async function fetchRead<T>(name: string, input: CapabilityInput, key: string): Promise<T> {
+async function fetchRead<T>(name: string, input: CapabilityInput, key: string, timeoutMs = TIMEOUT_MS): Promise<T> {
     const since = stamp();
-    const data = await invoke<T>(name, input).catch(async (error: unknown) => {
+    const data = await invoke<T>(name, input, {}, timeoutMs).catch(async (error: unknown) => {
         if (hasStatus(error, READ_GONE)) await drop([key]).catch(() => undefined);
 
         throw error;
     });
     // A write, a clear or a new owner came while this was in flight, so the answer
     // may predate it: ask again rather than show or store it.
-    if (!isCurrent(key, since)) return fetchRead(name, input, key);
+    if (!isCurrent(key, since)) return fetchRead(name, input, key, timeoutMs);
 
     await store(key, data).catch(() => {
         // No IndexedDB (a private window, say): the read still answers.
@@ -471,9 +476,9 @@ export async function discardEntry(entry: OutboxEntry): Promise<void> {
     void replay();
 }
 
-async function invoke<T>(name: string, input: CapabilityInput, headers: Record<string, string> = {}): Promise<T> {
+async function invoke<T>(name: string, input: CapabilityInput, headers: Record<string, string> = {}, timeoutMs = TIMEOUT_MS): Promise<T> {
     const deadline = new AbortController();
-    const timer = setTimeout(() => deadline.abort(), TIMEOUT_MS);
+    const timer = setTimeout(() => deadline.abort(), timeoutMs);
 
     try {
         return await send<T>(name, input, deadline.signal, headers);

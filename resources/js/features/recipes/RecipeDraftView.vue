@@ -40,19 +40,12 @@ function useFood(foods: PickedFood[]): void {
     changing.value = null;
 }
 
-// Why Continue waits, in rp-clone's words, or null when every item has a food and an amount.
-const blocked = computed<string | null>(() => {
-    if (entries.value.length === 0) return 'Keep at least one ingredient.';
-    for (const entry of entries.value) {
-        if (entry.food_id === null) return `Pick a food for "${entry.name}", or remove it.`;
-        const grams = typedNumber(entry.grams);
-        if (grams === null || grams <= 0) return `Give "${entry.name}" an amount above 0 g.`;
-    }
-    return null;
-});
+// Continue waits until the editor can be given every item: each has a food and an amount
+// typed as a number. Whether the amounts are allowed is recipe_save's to say (CAP-012).
+const ready = computed(() => entries.value.length > 0 && entries.value.every((entry) => entry.food_id !== null && typedNumber(entry.grams) !== null));
 
 function proceed(): void {
-    if (blocked.value) return;
+    if (!ready.value) return;
     editing.value = {
         name: props.draft.name,
         servings: props.draft.servings,
@@ -119,12 +112,11 @@ const stepsText = computed(() => `${props.draft.steps.length} ${props.draft.step
         </section>
 
         <div class="sticky bottom-0 -mx-4 mt-auto flex flex-col gap-1.5 bg-background/90 px-4 py-2 backdrop-blur">
-            <p v-if="blocked" data-test="blocked" class="text-sm text-secondary-text">{{ blocked }}</p>
             <button
                 type="button"
                 data-test="continue"
                 class="min-h-tap w-full rounded-full bg-accent font-semibold text-on-accent disabled:opacity-40"
-                :disabled="blocked !== null"
+                :disabled="!ready"
                 @click="proceed"
             >
                 Continue

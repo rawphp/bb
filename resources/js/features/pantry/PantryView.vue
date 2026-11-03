@@ -8,6 +8,7 @@ import type { MealFoodAddInput } from '@/contracts/meal_food_add';
 import type { MealSavedMealLoadInput } from '@/contracts/meal_saved_meal_load';
 import ReadState from '@/app/ReadState.vue';
 import { screenRead, type ReadFailure } from '@/app/screenRead';
+import { onScreenReturn } from '@/app/screenTop';
 import { ulid } from '@/app/ulid';
 import { useWrite } from '@/app/useWrite';
 import PantryFilterBar from './PantryFilterBar.vue';
@@ -122,6 +123,11 @@ onMounted(() => {
     if (!data.value) void load();
 });
 onUnmounted(() => clearTimeout(typing));
+// Back on top after a screen it opened (a recipe made from its Recipes list, say), it reads
+// again, so what that screen saved shows here.
+onScreenReturn(() => {
+    if (props.payload === undefined) void load();
+});
 
 const favorites = useWrite(load);
 const diets = useWrite(load);
@@ -389,6 +395,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                             :picked="isPicked(`food-${food.food_id}`)"
                             :pickable="picking"
                             :destination="destination"
+                            :weighs="!forRecipe"
                             :pending="pending"
                             :favorite-disabled="favorites.busy.value"
                             @pick="toggleFood(food)"
@@ -412,7 +419,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
             <p v-if="data.empty_text" data-test="empty" class="text-secondary-text">{{ data.empty_text }}</p>
             <!-- FOOD-062: after the empty note, as rp-clone puts it. -->
             <RouterLink
-                v-if="collection === null && data.create_custom_food"
+                v-if="!forRecipe && collection === null && data.create_custom_food"
                 :to="{ path: '/nutrition/custom-foods/new', query: { name: data.create_custom_food.name } }"
                 class="flex min-h-tap items-center self-start text-sm font-semibold text-accent"
             >

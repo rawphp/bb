@@ -24,8 +24,10 @@ const props = withDefaults(
         favoriteDisabled?: boolean;
         /** What a pick adds to, for its label: the meal or the recipe. */
         destination?: 'meal' | 'recipe';
+        /** Off for a recipe: its pick does not carry how the food is weighed. */
+        weighs?: boolean;
     }>(),
-    { pickable: true, pending: false, favoriteDisabled: false, destination: 'meal' },
+    { pickable: true, pending: false, favoriteDisabled: false, destination: 'meal', weighs: true },
 );
 
 const emit = defineEmits<{ pick: []; favorite: []; weighing: [weighing: Weighing] }>();
@@ -109,7 +111,7 @@ function favoriteFromSwipe(): void {
                         <template v-else>{{ nutritionText }} <span class="whitespace-nowrap">{{ row.basis_text }}</span></template>
                     </span>
                 </component>
-                <div v-if="row.cooked" role="group" :aria-label="`${row.name} weighed`" class="flex max-w-50 rounded-full bg-secondary-text/15 p-0.5">
+                <div v-if="weighs && row.cooked" role="group" :aria-label="`${row.name} weighed`" class="flex max-w-50 rounded-full bg-secondary-text/15 p-0.5">
                     <button
                         v-for="option in (['raw', 'cooked'] as const)"
                         :key="option"

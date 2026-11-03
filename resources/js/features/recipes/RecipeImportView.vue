@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { readFresh } from '@/app/call';
-import { failureMessage } from '@/app/errors';
+import { AI_TIMEOUT_MS, readFresh } from '@/app/call';
+import { failureMessage, isTimeout } from '@/app/errors';
 import type { RecipeImportInput, RecipeImportOutput } from '@/contracts/recipe_import';
 import RecipeDraftView from './RecipeDraftView.vue';
 
@@ -26,9 +26,10 @@ async function importRecipe(): Promise<void> {
     busy.value = true;
     error.value = null;
     try {
-        draft.value = await readFresh<RecipeImportOutput>('recipe_import', { url: address } satisfies RecipeImportInput);
+        draft.value = await readFresh<RecipeImportOutput>('recipe_import', { url: address } satisfies RecipeImportInput, { timeoutMs: AI_TIMEOUT_MS });
     } catch (failure) {
-        error.value = failureMessage(failure, "Couldn't read that page. Try again.");
+        // The AI call can outlast a normal read; past its deadline the device is not offline.
+        error.value = isTimeout(failure) ? 'The recipe took too long. Try again.' : failureMessage(failure, "Couldn't read that page. Try again.");
     } finally {
         busy.value = false;
     }

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { readFresh } from '@/app/call';
-import { failureMessage } from '@/app/errors';
+import { AI_TIMEOUT_MS, readFresh } from '@/app/call';
+import { failureMessage, isTimeout } from '@/app/errors';
 import type { RecipeGenerateInput, RecipeGenerateOutput } from '@/contracts/recipe_generate';
 import RecipeDraftView from './RecipeDraftView.vue';
 import { COMPLEXITIES, MEAL_TYPES, typedNumber, type RecipeComplexity, type RecipeMealType } from './options';
@@ -65,9 +65,10 @@ async function generate(): Promise<void> {
     busy.value = true;
     error.value = null;
     try {
-        draft.value = await readFresh<RecipeGenerateOutput>('recipe_generate', { ...input.value });
+        draft.value = await readFresh<RecipeGenerateOutput>('recipe_generate', { ...input.value }, { timeoutMs: AI_TIMEOUT_MS });
     } catch (failure) {
-        error.value = failureMessage(failure, "Couldn't generate a recipe. Try again.");
+        // The AI call can outlast a normal read; past its deadline the device is not offline.
+        error.value = isTimeout(failure) ? 'The recipe took too long. Try again.' : failureMessage(failure, "Couldn't generate a recipe. Try again.");
     } finally {
         busy.value = false;
     }

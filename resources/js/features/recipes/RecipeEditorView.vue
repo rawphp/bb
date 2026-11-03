@@ -106,6 +106,9 @@ if (props.draft) {
     steps.value = stepsOf(props.draft.steps);
 }
 
+// A saved recipe's form shows only while its copy is on screen: a read that takes the copy
+// away (signed out, or the recipe gone) shows why instead (OFF-003).
+const shown = computed(() => ready.value && (!isSaved || data.value !== undefined));
 const readOnly = computed(() => data.value?.is_read_only === true);
 const title = computed(() => data.value?.name ?? 'New recipe');
 
@@ -174,7 +177,7 @@ async function remove(): Promise<void> {
             <span v-else />
             <h1 class="truncate text-center text-base font-semibold">{{ title }}</h1>
             <button
-                v-if="ready && !readOnly"
+                v-if="shown && !readOnly"
                 type="button"
                 data-test="save"
                 class="min-h-tap justify-self-end font-semibold text-accent disabled:opacity-40"
@@ -187,7 +190,7 @@ async function remove(): Promise<void> {
 
         <p v-if="saving.error.value" role="alert" class="text-sm text-tone-warning">{{ saving.error.value }}</p>
 
-        <template v-if="ready">
+        <template v-if="shown">
             <!-- RCP-020: a library recipe is read, not changed. -->
             <section v-if="readOnly && data" class="flex flex-col gap-2" aria-label="Details">
                 <StatusPill text="Library recipe" tone="info" class="self-start" />
