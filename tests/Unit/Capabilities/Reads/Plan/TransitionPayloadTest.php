@@ -185,11 +185,19 @@ it('PH-031 PLAN-007 a training-only Maintenance after a long cut opens on its sh
         ->and(collect($lengths)->firstWhere('is_selected')['weeks'])->toBe(9);
 });
 
-it('SAFE-001 neither Add a phase nor the prebuilt plans offer a cut while the user is trying to conceive', function () {
+it('SAFE-001 Add a phase offers and opens on no cut while the user is trying to conceive, and the prebuilt plans say why they cannot be added', function () {
     $payload = PlanPayload::build(W::snapshot(profile: ['screening' => ['tryingToConceive']]))->toArray();
     $trainingOnly = PlanPayload::build(W::snapshot(trainingOnly: true, profile: ['screening' => ['tryingToConceive']]))->toArray();
 
+    $empty = PlanPayload::build(W::snapshot(phases: [], mesocycles: [], profile: ['screening' => ['tryingToConceive']]))->toArray();
+
     expect(array_column($payload['add_phase']['types'], 'type'))->toBe(['muscleGain', 'maintenance'])
-        ->and($payload['prebuilt_plans'])->toBe([])
+        ->and($payload['add_phase']['default_type'])->toBe('maintenance')
+        ->and($empty['add_phase']['default_type'])->toBe('muscleGain')
+        ->and(array_column($payload['prebuilt_plans'], 'refusal'))->toBe([
+            "Fat loss isn't available while you're trying to conceive or in fertility treatment. Pick Maintenance or Muscle gain.",
+            "Fat loss isn't available while you're trying to conceive or in fertility treatment. Pick Maintenance or Muscle gain.",
+        ])
+        ->and(array_column(newPhases()['prebuilt_plans'], 'refusal'))->toBe([null, null])
         ->and(array_column($trainingOnly['add_phase']['types'], 'type'))->toHaveCount(4);
 });
