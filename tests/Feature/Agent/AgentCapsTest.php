@@ -270,10 +270,10 @@ it('AGT-005 AGT-020 keeps a cleared conversation\'s turns and tokens in the day\
         ->assertJsonPath('error.code', 'rate_limited');
 });
 
-it('AGT-005 SET-012 prunes a cleared turn a day after its month is over', function () {
+it('AGT-005 SET-012 prunes a cleared turn two days after its month is over', function () {
     $user = User::factory()->create();
-    ClearedCoachTurn::query()->create(['user_id' => $user->id, 'tokens' => 100, 'created_at' => '2026-10-30 23:59:59']);
-    $kept = ClearedCoachTurn::query()->create(['user_id' => $user->id, 'tokens' => 100, 'created_at' => '2026-10-31 00:00:00']);
+    ClearedCoachTurn::query()->create(['user_id' => $user->id, 'tokens' => 100, 'created_at' => '2026-10-29 23:59:59']);
+    $kept = ClearedCoachTurn::query()->create(['user_id' => $user->id, 'tokens' => 100, 'created_at' => '2026-10-30 00:00:00']);
 
     Artisan::call('model:prune', ['--model' => [ClearedCoachTurn::class]]);
 
@@ -336,3 +336,75 @@ it('SET-012 says the Coach\'s daily cap resets at the user\'s local midnight', f
     'Australia/Brisbane' => ['Australia/Brisbane', '2026-11-04T00:00:00+10:00', 'You\'ve reached today\'s Coach limit. It resets at 00:00 AEST on 4 Nov. Everything else still works.'],
     'UTC' => ['UTC', '2026-11-03T00:00:00+00:00', 'You\'ve reached today\'s Coach limit. It resets at 00:00 UTC on 3 Nov. Everything else still works.'],
 ]);
+
+it('AGT-005 SET-012 a time zone change gives no fresh daily allowance for 24 hours', function () {
+    config(['agent.turns_per_day' => 3]);
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => 'Australia/Brisbane'])->save();
+    // 00:30 on 3 Nov in Brisbane; the user is at the cap.
+    pastTurns($user, [100, 100, 100], at: '2026-11-02 14:30:00');
+
+    // In Tokyo it is 00:30 on 3 Nov, a day that began at 15:00 UTC, after the three turns.
+    $this->actingAs($user)->postJson('/capabilities/time_zone_set', ['time_zone' => 'Asia/Tokyo'], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+
+    $this->actingAs($user)->postJson('/capabilities/agent_status_show')
+        ->assertOk()
+        ->assertJsonPath('data.turns_left', 0)
+        ->assertJsonPath('data.at_cap', true)
+        ->assertJsonPath('data.resets_at', '2026-11-04T00:30:00+09:00');
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])
+        ->assertStatus(429)
+        ->assertJsonPath('error.message', 'You\'ve reached today\'s Coach limit. It resets at 00:30 JST on 4 Nov. Everything else still works.');
+
+    CarbonImmutable::setTestNow('2026-11-03 15:29:59');
+    $this->actingAs($user)->postJson('/capabilities/agent_status_show')->assertOk()->assertJsonPath('data.turns_left', 0);
+
+    CarbonImmutable::setTestNow('2026-11-03 15:30:00');
+    $this->actingAs($user)->postJson('/capabilities/agent_status_show')->assertOk()->assertJsonPath('data.turns_left', 3);
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertCreated();
+});
+
+it('AGT-005 SET-012 after a time zone change the daily cap resets at the later of a day after the change and the next local midnight', function (string $turnsAt, string $resetsAt, array $turnsLeftAfter) {
+    config(['agent.turns_per_day' => 3]);
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => 'Australia/Brisbane'])->save();
+    CarbonImmutable::setTestNow('2026-11-02 05:00:00');
+    $this->actingAs($user)->postJson('/capabilities/time_zone_set', ['time_zone' => 'Asia/Tokyo'], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+
+    // 00:30 on 3 Nov in Tokyo.
+    CarbonImmutable::setTestNow('2026-11-02 15:30:00');
+    pastTurns($user, [100, 100, 100], at: $turnsAt);
+
+    $this->actingAs($user)->postJson('/capabilities/agent_status_show')
+        ->assertOk()
+        ->assertJsonPath('data.turns_left', 0)
+        ->assertJsonPath('data.resets_at', $resetsAt);
+
+    foreach ($turnsLeftAfter as $at => $turnsLeft) {
+        CarbonImmutable::setTestNow($at);
+        $this->actingAs($user)->postJson('/capabilities/agent_status_show')->assertOk()->assertJsonPath('data.turns_left', $turnsLeft);
+    }
+})->with([
+    'turns before local midnight' => ['2026-11-02 14:30:00', '2026-11-03T14:00:00+09:00', ['2026-11-03 05:00:00' => 3]],
+    'turns after local midnight' => ['2026-11-02 15:10:00', '2026-11-04T00:00:00+09:00', ['2026-11-03 05:00:00' => 0, '2026-11-03 15:00:00' => 3]],
+]);
+
+it('AGT-005 SET-012 keeps a cleared turn from before the month inside a time zone change window', function () {
+    config(['agent.turns_per_day' => 3]);
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => 'Australia/Brisbane'])->save();
+    CarbonImmutable::setTestNow('2026-10-31 22:00:00');
+    $this->actingAs($user)->postJson('/capabilities/time_zone_set', ['time_zone' => 'Asia/Tokyo'], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+
+    // The window counts from 22:00 on 30 Oct, more than a day before the app's month.
+    CarbonImmutable::setTestNow('2026-11-01 10:00:00');
+    pastTurns($user, [100, 100, 100], at: '2026-10-30 23:00:00');
+    $turnsLeft = fn () => $this->actingAs($user)->postJson('/capabilities/agent_status_show')->assertOk()->json('data.turns_left');
+    expect($turnsLeft())->toBe(0);
+
+    $this->actingAs($user)->postJson('/capabilities/coach_conversation_clear', [], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+    expect($turnsLeft())->toBe(0);
+
+    Artisan::call('model:prune', ['--model' => [ClearedCoachTurn::class]]);
+    expect($turnsLeft())->toBe(0);
+});
