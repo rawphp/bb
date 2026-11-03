@@ -332,7 +332,7 @@ Screens. Each API row follows the API template and each V_ row the VIEW template
 | EVALS | test: agent eval set | COACH_CTX, ONB_CHAT, A_TODAY2, A_TODAY3, A_WO3, A_MEAL, UNDO | AGT-050 |
 | AUDIT_UI | test: Lighthouse and installability on Today, Workout and Meal | V_TODAY1, V_WO1, V_NUTRITION, SHELL_PWA | PWA-051, PWA-004 |
 
-Playwright runs on a 390 × 844 viewport, with the seeders and the clock fixed (CLOCK), in `tests/e2e/`.
+Playwright runs on a 390 × 844 viewport, with the seeders and the clock fixed (CLOCK), in `tests/e2e/`. The AUDIT_UI specs are the exception to the fixed clock: `X-BB-Now` only walks forward, so `Tests\Support\AuditSeeder` seeds dates around the server's real today (UTC), and the audits score markup and load paths, not dates.
 
 - **E2E_ONB:** a new account completes stepper onboarding, sees Today, starts today's workout, logs every set, answers the feedback and finishes. The test asserts the sets saved and Today's meals re-targeted.
 - **E2E_OFFLINE:** OFF-050 step by step, with the browser context set offline after the workout starts and back online at the end. It asserts each set is stored exactly once, with the offline `occurred_at` times.

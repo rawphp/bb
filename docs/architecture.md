@@ -121,7 +121,7 @@ The `~/EA/projects/AGENTS.md` testing rules apply: unit first, thin feature test
 - Pest for PHP. Domain and Actions are unit tests with mocked I/O. Feature tests cover the capability HTTP seam, cross-user 404s, token scopes, idempotency and the Stripe webhook.
 - Warp (`rawphp/warp`) with `WARP_MODE` and `WARP_DB` on, against MySQL, from M0.
 - Vitest for components and `call.ts` (cache, outbox order, retry, the 4xx tray, the user switch in OFF-012).
-- Playwright on a 390 × 844 viewport for three journeys only:
+- Playwright on a 390 × 844 viewport for three journeys, plus the screen audits below:
   1. stepper onboarding to the first finished workout;
   2. the offline workout (OFF-050);
   3. chat onboarding against the fake LLM driver.
