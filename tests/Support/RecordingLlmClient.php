@@ -6,7 +6,7 @@ use Rawphp\CapabilitiesAi\Contracts\LlmClient;
 use Rawphp\CapabilitiesAi\Support\LlmClientDefaults;
 use Throwable;
 
-/** A scripted model that keeps every request it was sent, for the AI food tests. */
+/** A scripted model that keeps every request it was sent, for the AI food tests and Coach turns that call tools. */
 final class RecordingLlmClient implements LlmClient
 {
     use LlmClientDefaults;
@@ -30,6 +30,12 @@ final class RecordingLlmClient implements LlmClient
         app()->instance(LlmClient::class, $this);
 
         return $this;
+    }
+
+    /** It answers each round from its script, so a turn may send it tool results. */
+    public function supportsToolRounds(): bool
+    {
+        return true;
     }
 
     public function complete(array $messages, array $tools = []): array

@@ -30,21 +30,35 @@ final class ListActivity
     {
         $result = $record->result ?? [];
         $ok = ($result['ok'] ?? false) === true;
-        $toast = $result['summary']['toast'] ?? null;
-        $name = $record->capability === null ? 'Change' : Str::ucfirst(str_replace('_', ' ', $record->capability));
         $at = CarbonImmutable::instance($record->created_at);
         // __invoke lists only rows with one of the five channels.
         $channel = Channel::from((string) $record->channel);
 
         return new ActivityEntry(
             id: $record->id,
-            title: $ok && is_string($toast) && $toast !== '' ? $toast : $name,
+            title: self::title($record),
             channel: $channel->value,
             channel_label: $channel->label(),
             occurred_at: $at->toIso8601String(),
             when_text: self::when($at, CarbonImmutable::instance($now)),
             result: self::status($record, $result, $ok),
         );
+    }
+
+    /**
+     * A write's title: its toast when it succeeded with one, else its capability name in words.
+     * The Coach's change cards use it too (AGT-013).
+     */
+    public static function title(AuditRecord $record): string
+    {
+        $result = $record->result ?? [];
+        $toast = $result['summary']['toast'] ?? null;
+
+        if (($result['ok'] ?? false) === true && is_string($toast) && $toast !== '') {
+            return $toast;
+        }
+
+        return $record->capability === null ? 'Change' : Str::ucfirst(str_replace('_', ' ', $record->capability));
     }
 
     /**

@@ -17,3 +17,7 @@ it('CAP-031 lets the agent call everything else', function () {
         ->and(Exclusions::reason('token_list'))->toBeNull()
         ->and(Exclusions::reason('meal_billing_note'))->toBeNull();
 });
+
+it('CAP-031 keeps the Coach\'s own settings and history away from the agent', function () {
+    expect(Exclusions::reason('coach_changes_list'))->toBe('The Coach\'s own settings and history belong to the person.');
+});

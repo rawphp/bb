@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Support;
 
+use App\Agent\CurrentTurn;
 use Rawphp\Capabilities\Contracts\CapabilityBus;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\Capabilities\Schema\CatalogPresenter;
@@ -15,7 +16,8 @@ use Rawphp\Capabilities\Support\CapabilityResult;
  * Over http the caller is the one derived from the credential: a claimed
  * X-Capabilities-Caller is ignored, so Activity's channel stays the server's (CAP-022).
  * A rate limit's refusal before the run gives the write's idempotency key back
- * ({@see IdempotencyKeys::releaseRateLimited()}).
+ * ({@see IdempotencyKeys::releaseRateLimited()}). An agent tool call's turn is held in
+ * {@see CurrentTurn} for the length of the invoke, so its audit row names the turn (AGT-013).
  */
 final class HostBus implements CapabilityBus
 {
@@ -23,6 +25,7 @@ final class HostBus implements CapabilityBus
         private readonly CapabilityRegistry $registry,
         private readonly Ownership $ownership,
         private readonly IdempotencyKeys $keys,
+        private readonly CurrentTurn $turn,
     ) {}
 
     public function invoke(string $nameOrAlias, array $input = [], array $options = []): CapabilityResult
@@ -32,8 +35,14 @@ final class HostBus implements CapabilityBus
             $options['caller'] = $options['derived_caller'];
         }
 
+        // Set by the package's TurnRunner only; a tool call's input never reaches it.
+        $turn = $options['agent']['turn_ulid'] ?? null;
+
         [[$result, $denied], $refused] = FieldRefused::watch(
-            fn (): array => $this->ownership->watch(fn (): CapabilityResult => $this->registry->invoke($nameOrAlias, $input, $options)),
+            fn (): array => $this->ownership->watch(fn (): CapabilityResult => $this->turn->during(
+                is_string($turn) ? $turn : null,
+                fn (): CapabilityResult => $this->registry->invoke($nameOrAlias, $input, $options),
+            )),
         );
 
         if ($denied && $result->errorCode() === 'forbidden') {
