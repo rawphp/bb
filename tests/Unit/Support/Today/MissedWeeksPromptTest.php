@@ -166,3 +166,24 @@ it('SCH-058 SCH-060 a paused away week inside the mesocycle moves the restart on
         ->and($prompt->shift)->toBe(1)
         ->and($prompt->restartStart->format('Y-m-d'))->toBe('2026-09-19');
 });
+
+// The last started week is the plan week of the session's start as stored: a wall-clock day read as UTC, like every day
+// the app reads (TrainSnapshot::day; config/app.php pins UTC and there is no per-user time zone yet,
+// docs/architecture.md). Plan week 1 ends on Friday 25 September and week 2 starts on Saturday 26th; today is the first
+// day of week 3.
+
+it('SCH-058 a session started at 23:30 on the last day of a plan week counts for that week, so the whole week after it asks', function () {
+    $prompt = missedPrompt('2026-10-03', [W::session('late', 2, 3, '2026-09-25 23:30:00', '2026-09-26 00:30:00')]);
+
+    // Week 2 (26 Sep to 2 Oct) ended with nothing started; the user stopped in meso week 2, whose first two sessions
+    // were never logged.
+    expect($prompt)->not->toBeNull()
+        ->and($prompt->stoppedWeek)->toBe(2)
+        ->and($prompt->shift)->toBe(2);
+});
+
+it('SCH-058 a session started at 00:30 on the first day of the next plan week counts for that week, so nothing asks yet', function () {
+    expect(missedPrompt('2026-10-03', [W::session('late', 2, 3, '2026-09-26 00:30:00', '2026-09-26 01:30:00')]))->toBeNull()
+        // A whole week later, the week after it has ended with nothing started.
+        ->and(missedPrompt('2026-10-10', [W::session('late', 2, 3, '2026-09-26 00:30:00', '2026-09-26 01:30:00')])?->stoppedWeek)->toBe(3);
+});
