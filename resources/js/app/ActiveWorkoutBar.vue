@@ -26,7 +26,6 @@ function open(): void {
         <button
             type="button"
             class="flex min-h-tap w-full items-center gap-2.5 rounded-[14px] bg-accent px-4 text-sm font-semibold text-on-accent active:opacity-80"
-            :aria-label="`Workout in progress, ${bar.text}`"
             aria-description="Opens the workout"
             data-test="active-workout"
             @click="open"
@@ -34,10 +33,15 @@ function open(): void {
             <svg viewBox="0 0 24 24" class="size-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
                 <path d="M3 12h18M6 8v8M9 9v6M15 9v6M18 8v8" />
             </svg>
+            <!-- Named by what it shows, so a voice command saying those words finds it (PWA-051).
+                 The spaces keep the words apart in that name; the flex layout ignores them. -->
+            <span class="sr-only">Workout in progress,</span>
+            {{ ' ' }}
             <span class="min-w-0 flex-1 truncate text-left">
                 <PendingMark v-if="pending" derived class="text-on-accent">{{ bar.text }}</PendingMark>
                 <template v-else>{{ bar.text }}</template>
             </span>
+            {{ ' ' }}
             <span>Open</span>
             <svg viewBox="0 0 24 24" class="size-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true">
                 <path d="m6 15 6-6 6 6" />
