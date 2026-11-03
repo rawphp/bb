@@ -282,7 +282,7 @@ describe('WorkoutView', () => {
         await flushPromises();
 
         expect(sent()).toEqual([['workout_finish', { workout_id: '01JB8W3Q000000000000000901' }]]);
-        expect(releaseWakeLock).toHaveBeenCalled();
+        expect(releaseWakeLock).toHaveBeenCalledWith('01JB8W3Q000000000000000901');
     });
 
     it('OFF-006 says why a change could not be stored', async () => {
@@ -451,6 +451,44 @@ describe('WorkoutView', () => {
         await show({ mesocycleId: 'm', week: 3, day: 1 });
         expect(holdWakeLock).not.toHaveBeenCalled();
         expect(releaseWakeLock).toHaveBeenCalled();
+    });
+
+    it('PWA-030 a session started offline holds the wake lock while its start waits to sync (OFF-021)', async () => {
+        vi.mocked(pendingInput).mockImplementation(((name: string) => (name === 'workout_start' ? { workout_id: '01JB8W3Q000000000000000901' } : undefined)) as never);
+        readMock.mockResolvedValueOnce(workout());
+        await show({ mesocycleId: 'm', week: 3, day: 1 });
+
+        expect(holdWakeLock).toHaveBeenCalledWith('01JB8W3Q000000000000000901');
+    });
+
+    it('PWA-030 a session finished offline lets the wake lock go while its finish waits to sync, and takes it no more', async () => {
+        vi.mocked(pendingInput).mockImplementation(((name: string) => (name === 'workout_finish' ? { workout_id: '01JB8W3Q000000000000000901' } : undefined)) as never);
+        readMock.mockResolvedValueOnce(workout('warning'));
+        await show({ mesocycleId: 'm', week: 3, day: 1 });
+
+        expect(holdWakeLock).not.toHaveBeenCalled();
+        expect(releaseWakeLock).toHaveBeenCalledWith('01JB8W3Q000000000000000901');
+    });
+
+    it('PWA-030 a finished session lets go only its own wake lock, by its id', async () => {
+        readMock.mockResolvedValueOnce({ ...workout('warning'), workout_id: 'earlier', status: 'finished', active_bar_text: null });
+        await show({ mesocycleId: 'm', week: 2, day: 1 });
+
+        expect(releaseWakeLock).toHaveBeenCalledWith('earlier');
+        expect(releaseWakeLock).not.toHaveBeenCalledWith();
+    });
+
+    it('OFF-021 Finish is on while changes wait to sync, as workout_finish has the last word', async () => {
+        const wrapper = await show({ payload: workout('warning'), pending: true });
+
+        expect(wrapper.get('[data-test="finish"]').attributes('disabled')).toBeUndefined();
+    });
+
+    it('OFF-021 Finish is off while a finish for this session waits to sync, so it is not sent twice', async () => {
+        vi.mocked(pendingInput).mockImplementation(((name: string) => (name === 'workout_finish' ? { workout_id: '01JB8W3Q000000000000000901' } : undefined)) as never);
+        const wrapper = await show({ payload: { ...workout('warning'), can_finish: true }, pending: true });
+
+        expect(wrapper.get('[data-test="finish"]').attributes('disabled')).toBeDefined();
     });
 
     it('NAV-004 a session under way puts its bar text up, and finishing it takes it down', async () => {

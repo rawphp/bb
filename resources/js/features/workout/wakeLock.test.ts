@@ -20,28 +20,41 @@ describe('wake lock', () => {
     });
 
     afterEach(() => {
-        releaseWakeLock();
+        releaseWakeLock('w1');
         vi.useRealTimers();
     });
 
     it('PWA-030 holds a screen wake lock during the workout and lets it go on finish', async () => {
         const { lock, request } = fakeLock();
 
-        holdWakeLock();
+        holdWakeLock('w1');
         await vi.waitFor(() => expect(request).toHaveBeenCalledWith('screen'));
         await Promise.resolve();
-        releaseWakeLock();
+        releaseWakeLock('w1');
 
         expect(lock.release).toHaveBeenCalled();
     });
 
-    it('PWA-030 leaving the workout lets it go after 30 minutes, not before', async () => {
+    it('PWA-030 another workout (an earlier one looked back at, a finished one) never drops or leaves the lock this one holds', async () => {
         const { lock, request } = fakeLock();
-        holdWakeLock();
+        holdWakeLock('w1');
         await vi.waitFor(() => expect(request).toHaveBeenCalled());
         await Promise.resolve();
 
-        leaveWakeLock();
+        releaseWakeLock('w0');
+        leaveWakeLock('w0');
+        vi.advanceTimersByTime(LEAVE_AFTER_MS);
+
+        expect(lock.release).not.toHaveBeenCalled();
+    });
+
+    it('PWA-030 leaving the workout lets it go after 30 minutes, not before', async () => {
+        const { lock, request } = fakeLock();
+        holdWakeLock('w1');
+        await vi.waitFor(() => expect(request).toHaveBeenCalled());
+        await Promise.resolve();
+
+        leaveWakeLock('w1');
         vi.advanceTimersByTime(LEAVE_AFTER_MS - 1);
         expect(lock.release).not.toHaveBeenCalled();
         vi.advanceTimersByTime(1);
@@ -52,13 +65,13 @@ describe('wake lock', () => {
 
     it('PWA-030 coming back within 30 minutes keeps it', async () => {
         const { lock, request } = fakeLock();
-        holdWakeLock();
+        holdWakeLock('w1');
         await vi.waitFor(() => expect(request).toHaveBeenCalled());
         await Promise.resolve();
 
-        leaveWakeLock();
+        leaveWakeLock('w1');
         vi.advanceTimersByTime(LEAVE_AFTER_MS / 2);
-        holdWakeLock();
+        holdWakeLock('w1');
         vi.advanceTimersByTime(LEAVE_AFTER_MS);
 
         expect(lock.release).not.toHaveBeenCalled();
@@ -66,7 +79,7 @@ describe('wake lock', () => {
 
     it('PWA-030 a page hidden for over 30 minutes lets it go; back sooner, it takes the lock again', async () => {
         const { lock, request } = fakeLock();
-        holdWakeLock();
+        holdWakeLock('w1');
         await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(1));
         await Promise.resolve();
         // The browser drops the lock while hidden.
@@ -89,6 +102,6 @@ describe('wake lock', () => {
         // @ts-expect-error removing the API
         delete navigator.wakeLock;
 
-        expect(() => holdWakeLock()).not.toThrow();
+        expect(() => holdWakeLock('w1')).not.toThrow();
     });
 });

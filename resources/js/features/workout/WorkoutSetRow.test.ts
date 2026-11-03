@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ref } from 'vue';
 import { pendingInput } from '@/app/outbox';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
@@ -185,6 +186,42 @@ describe('WorkoutSetRow', () => {
         expect(wrapper.get('[data-test="log"]').attributes('aria-checked')).toBe('true');
         expect(wrapper.get('[data-test="pending"]').text()).toContain('Waiting to sync');
         expect(pendingInput).toHaveBeenCalledWith('workout_set_log', expect.any(Function));
+    });
+
+    it('OFF-009 once a log is sent, the row keeps what the user typed and Logged until the next read brings the set', async () => {
+        const waiting = ref<unknown>(undefined);
+        vi.mocked(pendingInput).mockImplementation((() => waiting.value) as never);
+        const wrapper = row();
+
+        await weight(wrapper).setValue('85');
+        await reps(wrapper).setValue('8');
+        await wrapper.get('[data-test="log"]').trigger('click');
+        const [change] = wrapper.emitted('send')!.at(-1) as [WorkoutWrite];
+        // The outbox holds it, then replay sends it and drops the entry before the read comes back.
+        waiting.value = change.input;
+        await wrapper.vm.$nextTick();
+        waiting.value = undefined;
+        await wrapper.vm.$nextTick();
+
+        expect(weight(wrapper).element.value).toBe('85');
+        expect(reps(wrapper).element.value).toBe('8');
+        expect(wrapper.get('[data-test="log"]').attributes('aria-checked')).toBe('true');
+
+        const next = workout().exercises[0]!.sets[0]!;
+        await wrapper.setProps({ set: { ...next, weight: { value: 85, unit: 'kg', text: '85 kg' }, reps: 8, is_logged: true } });
+
+        expect(weight(wrapper).element.value).toBe('85');
+        expect(wrapper.get('[data-test="log"]').attributes('aria-checked')).toBe('true');
+    });
+
+    it('WO-003 a new read of the set shows the server\'s values in the fields', async () => {
+        const wrapper = row();
+
+        await wrapper.setProps({ set: { ...workout().exercises[0]!.sets[0]!, weight: { value: 90, unit: 'kg', text: '90 kg' }, reps: 6, is_logged: true } });
+
+        expect(weight(wrapper).element.value).toBe('90');
+        expect(reps(wrapper).element.value).toBe('6');
+        expect(wrapper.get('[data-test="log"]').attributes('aria-checked')).toBe('true');
     });
 
     it('OFF-009 a set with nothing waiting shows no pending mark', () => {
