@@ -738,15 +738,17 @@ describe('WorkoutView', () => {
     describe('offline, with the sets waiting to sync (OFF-020, OFF-021)', () => {
         const BENCH_SETS = ['01JB8W3Q000000000000000100', '01JB8W3Q000000000000000101', '01JB8W3Q000000000000000102'];
 
-        /** The newest waiting set_log and set_skip of each set, as the outbox holds them. */
-        function waitingSets(logged: string[], skipped: string[] = []): void {
+        /** The newest waiting set_log, set_skip and feedback answer of each set or muscle, as the outbox holds them. */
+        function waitingSets(logged: string[], skipped: string[] = [], answered: string[] = [], isLogged = true, isSkipped = true): void {
             vi.mocked(pendingInput).mockImplementation(((name: string, match: (input: unknown) => boolean) => {
-                const inputs =
+                const inputs: unknown[] =
                     name === 'workout_set_log'
-                        ? logged.map((set_id) => ({ set_id, weight: { value: 60, unit: 'kg' }, reps: 10, is_logged: true }))
+                        ? logged.map((set_id) => ({ set_id, weight: { value: 60, unit: 'kg' }, reps: 10, is_logged: isLogged }))
                         : name === 'workout_set_skip'
-                          ? skipped.map((set_id) => ({ set_id, is_skipped: true }))
-                          : [];
+                          ? skipped.map((set_id) => ({ set_id, is_skipped: isSkipped }))
+                          : name === 'workout_feedback_answer'
+                            ? answered.map((muscle_group) => ({ workout_id: '01JB8W3Q000000000000000901', muscle_group }))
+                            : [];
                 return inputs.filter(match).at(-1);
             }) as never);
         }
@@ -776,6 +778,48 @@ describe('WorkoutView', () => {
                     ? [...BENCH_SETS.slice(0, 2).map((set_id) => ({ set_id, is_logged: true })), { set_id: BENCH_SETS[2], is_logged: false }].filter(match).at(-1)
                     : undefined) as never);
             expect(dialog(await show({ payload: unlogged }))).toBeNull();
+        });
+
+        it('OFF-021 FB-001 sets the server already holds as logged or skipped count with the one still waiting', async () => {
+            const read = workout();
+            read.exercises[0]!.sets[0]!.is_logged = true;
+            read.exercises[0]!.sets[1]!.is_skipped = true;
+            waitingSets([BENCH_SETS[2]!]);
+            const wrapper = await show({ payload: read });
+
+            expect(dialog(wrapper)).toBe('Chest');
+        });
+
+        it('OFF-021 FB-001 a waiting unlog or unskip closes feedback the server read as due', async () => {
+            const logged = workout('warning');
+            waitingSets([BENCH_SETS[2]!], [], [], false);
+            expect(dialog(await show({ payload: logged }))).toBeNull();
+
+            const skipped = workout('warning');
+            Object.assign(skipped.exercises[0]!.sets[2]!, { is_logged: false, is_skipped: true });
+            waitingSets([], [BENCH_SETS[2]!], [], true, false);
+            expect(dialog(await show({ payload: skipped }))).toBeNull();
+        });
+
+        it('OFF-021 FB-001 the feedback banner opens a muscle whose waiting sets are all done', async () => {
+            const read = workout();
+            read.feedback_banner = { text: 'Your feedback is required', tone: 'warning' };
+            waitingSets(BENCH_SETS);
+            const wrapper = await show({ payload: read });
+            await wrapper.get('[data-cancel]').trigger('click');
+
+            await wrapper.get('[data-test="feedback-banner"]').trigger('click');
+
+            expect(dialog(wrapper)).toBe('Chest');
+        });
+
+        it('OFF-009 FB-009 an answer waiting to sync shows on the feedback button as answered', async () => {
+            waitingSets(BENCH_SETS, [], ['chest']);
+            const wrapper = await show();
+
+            const button = exercise(wrapper, BENCH).get('[data-test="feedback"]');
+            expect(button.text()).toBe('Chest feedback');
+            expect(button.classes()).toContain('text-accent');
         });
 
         it('OFF-021 FB-009 the feedback button shows under the exercise whose waiting sets are all done', async () => {
