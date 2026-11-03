@@ -10,7 +10,9 @@ use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Workout\WorkoutIds;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Tests\Support\SheetSeed;
@@ -312,3 +314,25 @@ it('SCH-060 a skip of the session Today shows after a paused away week refreshes
 
     expect($keys)->toContain('today_show{}', 'today_show{"date":"2026-09-21"}', 'week_show{}');
 });
+
+it('EX-008 WO-022 WO-031 a session action locks its mesocycle before it reads anything in its transaction', function (string $capability) {
+    [$user, $mesocycle, $shown] = actStarted(withIncline: true);
+    $input = match ($capability) {
+        'exercise_swap' => ['workout_exercise_id' => $shown['exercises'][0]['id'], 'new_workout_exercise_id' => strtolower((string) Str::ulid()), 'exercise_id' => actIncline(), 'scope' => 'this_session'],
+        'workout_exercise_add' => ['workout_id' => $shown['workout_id'], 'workout_exercise_id' => strtolower((string) Str::ulid()), 'exercise_id' => actIncline(), 'remaining_weeks' => false],
+        'workout_exercise_remove' => ['workout_exercise_id' => $shown['exercises'][0]['id']],
+        'workout_exercise_reorder' => ['workout_exercise_id' => $shown['exercises'][1]['id'], 'position' => 1, 'remaining_weeks' => false],
+    };
+    $level = DB::transactionLevel();
+    $first = null;
+    DB::listen(function (QueryExecuted $query) use (&$first, $level) {
+        // The action's transaction is the only one the request opens: the first query inside it.
+        if ($first === null && DB::transactionLevel() > $level) {
+            $first = $query->sql;
+        }
+    });
+
+    actOver($user, $capability, $input)->assertOk();
+
+    expect($first)->toContain('from `mesocycles`')->toContain('for update');
+})->with(['exercise_swap', 'workout_exercise_add', 'workout_exercise_remove', 'workout_exercise_reorder']);

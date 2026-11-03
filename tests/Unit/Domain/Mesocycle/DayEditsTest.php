@@ -48,20 +48,11 @@ it('MESO-045 an exercise twice in the session ranks by its first place', functio
     expect(array_column(DayEdits::following(upperA(), [40, 12, 40, 25]), 'exercise_id'))->toBe([40, 12, 25]);
 });
 
-it('EX-008 a rest-of-mesocycle swap changes the first slot of the old exercise and drops its carried load', function () {
+it('EX-008 a rest-of-mesocycle swap changes the day\'s one slot of the old exercise and drops its carried load', function () {
     $slots = DayEdits::swapping(upperA(), 12, 14);
 
     expect(array_column($slots, 'exercise_id'))->toBe([14, 25, 40])
         ->and($slots[0])->toBe(['id' => 'slot-12', 'exercise_id' => 14, 'muscle_group' => 'chest', 'sets' => 3, 'carried' => null]);
-});
-
-it('EX-008 a day that holds the exercise twice swaps only its first slot', function () {
-    $slots = [...upperA(), ['id' => 'slot-12b', 'exercise_id' => 12, 'muscle_group' => 'chest', 'sets' => 2, 'carried' => ['weight_kg' => 60.0, 'reps' => 12]]];
-
-    $swapped = DayEdits::swapping($slots, 12, 14);
-
-    expect(array_column($swapped, 'exercise_id'))->toBe([14, 25, 40, 12])
-        ->and($swapped[3]['carried'])->toBe(['weight_kg' => 60.0, 'reps' => 12]);
 });
 
 it('EX-008 a swap of the slot a session exercise was planned from changes that slot, and changes nothing once it has', function () {
@@ -71,6 +62,12 @@ it('EX-008 a swap of the slot a session exercise was planned from changes that s
 
     expect(array_column($swapped, 'exercise_id'))->toBe([12, 25, 40, 14])
         ->and(DayEdits::swapping($swapped, 12, 14, 'slot-12b'))->toBe($swapped);
+});
+
+it('EX-008 with no slot named, a day that runs the exercise twice is left alone: which slot is meant is unknown', function () {
+    $slots = [...upperA(), ['id' => 'slot-12b', 'exercise_id' => 12, 'muscle_group' => 'chest', 'sets' => 2, 'carried' => null]];
+
+    expect(DayEdits::swapping($slots, 12, 14))->toBe($slots);
 });
 
 it('EX-008 a swap of an exercise the day does not hold leaves the day alone', function () {
