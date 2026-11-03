@@ -45,9 +45,11 @@ final readonly class ReviewData
      *                                                                             weeks back (not before the plan start) to
      *                                                                             today, by its lower-case id and Y-m-d date,
      *                                                                             with the calories checked in
-     * @param  Collection<int, WeighIn>  $weighIns  oldest first
+     * @param  Collection<int, WeighIn>  $weighIns  every one, oldest first: the trend weight (WT-010) runs from the
+     *                                              first weigh-in, so a date bound would change it
      * @param  Collection<int, WeighInScheduleEntry>  $weighInSchedule
-     * @param  Collection<int, WorkoutSession>  $sessions
+     * @param  Collection<int, WorkoutSession>  $sessions  every one: PROG-050 reads each muscle's latest sessions,
+     *                                                     however long ago they ran
      * @param  Collection<int, WorkoutSet>  $sets  of those sessions, by position
      * @param  Collection<int, Exercise>  $exercises  the ones the sets, the feedback and the mesocycles name, keyed by id
      * @param  Collection<int, MuscleFeedback>  $muscleFeedback
@@ -105,7 +107,7 @@ final readonly class ReviewData
             dayTargets: $dayTargets,
             otherActivities: OtherActivity::query()->where('user_id', $user->id)->where('date', '>=', $from)->get(),
             meals: self::meals($user, $dayTargets, $mealsFrom, $today),
-            weighIns: WeighIn::query()->where('user_id', $user->id)->orderBy('weighed_at')->get(),
+            weighIns: WeighIn::query()->where('user_id', $user->id)->orderBy('weighed_at')->get(['id', 'user_id', 'weight_kg', 'weighed_at']),
             weighInSchedule: WeighInScheduleEntry::query()->where('user_id', $user->id)->orderBy('id')->get(),
             sessions: $sessions,
             sets: $sets,

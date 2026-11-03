@@ -184,8 +184,13 @@ final readonly class ReviewAnalysis
             );
         }
 
-        // Step 3, training.
+        // Step 3, training. The sessions are grouped by day and the feedback by session once, for every week read.
         $logged = self::loggedSessions($data);
+        $sessionsByDay = self::sessionsByDay($data);
+        $feedbackBySession = [];
+        foreach ($data->muscleFeedback as $f) {
+            $feedbackBySession[strtolower((string) $f->workout_session_id)][] = $f;
+        }
         $reviewedCovering = $context->coveringMesocycle($reviewedIndex, $fallback);
         $reviewedRow = $context->row($period->reviewed->start);
         $reviewedSessions = WeekSessions::build(
@@ -194,7 +199,7 @@ final readonly class ReviewAnalysis
             awayTraining: ReviewPlanRebuild::away($reviewedRow)?->training, flaggedDeload: (bool) ($reviewedRow->is_deload ?? false),
             pausedWeeks: $reviewedCovering['pausedWeeks'],
         );
-        $inReviewed = self::sessionsIn($data->sessions->all(), $period->reviewed);
+        $inReviewed = self::sessionsIn($sessionsByDay, $period->reviewed);
         $plannedByMuscle = [];
         foreach ($reviewedSessions->scheduled as $item) {
             foreach ($item->session->slots as $slot) {
@@ -239,8 +244,14 @@ final readonly class ReviewAnalysis
         // Step 4, progress.
         $progress = $phase === null ? null : ReviewProgressRules::make($phase, $trend, $period->reviewed->end() ?? $period->reviewed->start);
 
-        // Step 6, the calorie rules' inputs. REV-040: a week's training fatigue, as the fatigue rules count it.
-        $fatigueWeek = fn (DomainPlanWeek $week): FatigueWeek => self::fatigueWeek($data, $logged, $week);
+        // Step 6, the calorie rules' inputs. REV-040: a week's training fatigue, as the fatigue rules count it, worked
+        // out once per week for both the calorie weeks and the phase's fatigue weeks.
+        $fatigueByWeek = [];
+        $fatigueWeek = function (DomainPlanWeek $week) use (&$fatigueByWeek, $data, $logged, $sessionsByDay, $feedbackBySession): FatigueWeek {
+            $key = implode('|', [$week->start->format('Y-m-d'), $week->dayCount, (int) $week->isDeload, (int) $week->isDietBreak, (int) $week->isAway]);
+
+            return $fatigueByWeek[$key] ??= self::fatigueWeek($data, $logged, $sessionsByDay, $feedbackBySession, $week);
+        };
         $weeks = $context->reviewWeeks(
             $reviewedIndex, ReviewData::MEAL_WEEKS, $fallback, $data->meals,
             fn (DomainPlanWeek $week): bool => Fatigue::training($fatigueWeek($week))->isHigh(),
@@ -366,12 +377,24 @@ final readonly class ReviewAnalysis
     /**
      * A week as the fatigue rules read it (REV-040).
      *
-     * @param  list<array{date: DateTimeImmutable, exercises: list<LoggedExercise>}>  $logged
+     * @param  list<array{date: DateTimeImmutable, day: string, exercises: list<LoggedExercise>}>  $logged
+     * @param  array<string, list<WorkoutSession>>  $sessionsByDay
+     * @param  array<string, list<MuscleFeedback>>  $feedbackBySession
      */
-    private static function fatigueWeek(ReviewData $data, array $logged, DomainPlanWeek $week): FatigueWeek
-    {
-        $inWeek = self::sessionsIn($data->sessions->all(), $week);
-        $ids = self::ids($inWeek);
+    private static function fatigueWeek(
+        ReviewData $data, array $logged, array $sessionsByDay, array $feedbackBySession, DomainPlanWeek $week,
+    ): FatigueWeek {
+        $inWeek = self::sessionsIn($sessionsByDay, $week);
+        $feedback = [];
+        foreach (self::ids($inWeek) as $id) {
+            foreach ($feedbackBySession[$id] ?? [] as $f) {
+                $feedback[] = new FeedbackAnswers(
+                    soreness: Soreness::tryFrom((string) $f->soreness),
+                    pump: Pump::tryFrom((string) $f->pump),
+                    volume: VolumeFeedback::tryFrom((string) $f->volume),
+                );
+            }
+        }
         $days = array_map(fn (DateTimeImmutable $day) => $day->format('Y-m-d'), $week->days());
         $loggedDays = array_unique(array_column(
             array_filter($data->meals, fn (array $meal) => $meal['checkInKcal'] !== null && in_array($meal['date'], $days, true)),
@@ -381,33 +404,44 @@ final readonly class ReviewAnalysis
         return new FatigueWeek(
             week: $week,
             underperformingMuscles: self::underperforming($logged, $week),
-            feedback: array_values($data->muscleFeedback
-                ->filter(fn (MuscleFeedback $f) => in_array(strtolower((string) $f->workout_session_id), $ids, true))
-                ->map(fn (MuscleFeedback $f) => new FeedbackAnswers(
-                    soreness: Soreness::tryFrom((string) $f->soreness),
-                    pump: Pump::tryFrom((string) $f->pump),
-                    volume: VolumeFeedback::tryFrom((string) $f->volume),
-                ))->all()),
+            feedback: $feedback,
             skippedSessions: count(array_filter($inWeek, fn (WorkoutSession $s) => $s->is_skipped && ! self::isDone($s))),
             loggedDays: count($loggedDays),
         );
     }
 
     /**
+     * Every session by the Y-m-d of the day it ran, or was planned for; a session with neither is on no day.
+     *
+     * @return array<string, list<WorkoutSession>>
+     */
+    private static function sessionsByDay(ReviewData $data): array
+    {
+        $byDay = [];
+        foreach ($data->sessions as $session) {
+            $date = TodaySnapshot::instant($session->actual_start_at ?? $session->planned_start_at);
+            if ($date !== null) {
+                $byDay[TrainSnapshot::day($date)->format('Y-m-d')][] = $session;
+            }
+        }
+
+        return $byDay;
+    }
+
+    /**
      * The sessions that belong to a plan week: by the day they ran, or were planned for.
      *
-     * @param  list<WorkoutSession>  $all
+     * @param  array<string, list<WorkoutSession>>  $sessionsByDay
      * @return list<WorkoutSession>
      */
-    private static function sessionsIn(array $all, DomainPlanWeek $week): array
+    private static function sessionsIn(array $sessionsByDay, DomainPlanWeek $week): array
     {
-        $days = array_map(fn (DateTimeImmutable $day) => $day->format('Y-m-d'), $week->days());
+        $sessions = [];
+        foreach ($week->days() as $day) {
+            array_push($sessions, ...($sessionsByDay[$day->format('Y-m-d')] ?? []));
+        }
 
-        return array_values(array_filter($all, function (WorkoutSession $session) use ($days) {
-            $date = TodaySnapshot::instant($session->actual_start_at ?? $session->planned_start_at);
-
-            return $date !== null && in_array(TrainSnapshot::day($date)->format('Y-m-d'), $days, true);
-        }));
+        return $sessions;
     }
 
     /**
@@ -428,7 +462,7 @@ final readonly class ReviewAnalysis
     /**
      * Every finished session with its logged working sets, oldest first (PROG-050).
      *
-     * @return list<array{date: DateTimeImmutable, exercises: list<LoggedExercise>}>
+     * @return list<array{date: DateTimeImmutable, day: string, exercises: list<LoggedExercise>}>
      */
     private static function loggedSessions(ReviewData $data): array
     {
@@ -460,7 +494,7 @@ final readonly class ReviewAnalysis
                     $exercises[] = new LoggedExercise($exercise->name, $exercise->muscle_group, new ClosedRange(0, 0), $byExercise[$id]);
                 }
             }
-            $sessions[] = ['date' => $date, 'exercises' => $exercises];
+            $sessions[] = ['date' => $date, 'day' => TrainSnapshot::day($date)->format('Y-m-d'), 'exercises' => $exercises];
         }
         usort($sessions, fn (array $a, array $b) => $a['date'] <=> $b['date']);
 
@@ -470,7 +504,7 @@ final readonly class ReviewAnalysis
     /**
      * PROG-052: the muscles a session of this week flagged.
      *
-     * @param  list<array{date: DateTimeImmutable, exercises: list<LoggedExercise>}>  $sessions
+     * @param  list<array{date: DateTimeImmutable, day: string, exercises: list<LoggedExercise>}>  $sessions
      * @return list<MuscleGroup>
      */
     private static function underperforming(array $sessions, DomainPlanWeek $week): array
@@ -482,7 +516,7 @@ final readonly class ReviewAnalysis
         $after = $end->modify('+1 day');
         $upToWeek = array_values(array_filter($sessions, fn (array $s) => $s['date'] < $after));
         $days = array_map(fn (DateTimeImmutable $day) => $day->format('Y-m-d'), $week->days());
-        $inWeek = count(array_filter($upToWeek, fn (array $s) => in_array(TrainSnapshot::day($s['date'])->format('Y-m-d'), $days, true)));
+        $inWeek = count(array_filter($upToWeek, fn (array $s) => in_array($s['day'], $days, true)));
         if ($inWeek === 0) {
             return [];
         }
