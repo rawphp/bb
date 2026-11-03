@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Onboarding\AnswerOnboarding;
+use App\Actions\Onboarding\DraftAnswers;
 use App\Capabilities\Onboarding\Data\OnboardingAnswerInput;
 use App\Capabilities\Support\FieldRefused;
 use App\Domain\Model\BodyFatBucket;
@@ -488,6 +489,16 @@ it('ONB-014 saves the eating window, the meal count and the busy periods', funct
         ->and($draft->step)->toBe(12);
 });
 
+it('ONB-014 a busy period with no weekday in 1 to 7 keeps its saved weekdays, and a new one is refused', function () {
+    $saved = F::atStep11()->with(busyPeriods: [new BusyPeriodChoice('gym', 'Gym', 17 * 60, 18 * 60, [1, 3])]);
+    $kept = answerDraft($saved, ['answers' => ['busy_periods' => [['id' => 'gym', 'label' => 'Gym', 'start_minutes' => 17 * 60, 'end_minutes' => 18 * 60, 'weekdays' => [9]]]]]);
+    $refused = answerRefusal($saved, ['answers' => ['busy_periods' => [['label' => 'Nap', 'start_minutes' => 14 * 60, 'end_minutes' => 15 * 60, 'weekdays' => [0, 9]]]]]);
+
+    expect($kept->busyPeriods)->toEqual([new BusyPeriodChoice('gym', 'Gym', 17 * 60, 18 * 60, [1, 3])])
+        ->and($refused->field)->toBe('answers.busy_periods')
+        ->and($refused->getMessage())->toBe(DraftAnswers::BUSY_PERIOD_NEEDS_A_DAY);
+});
+
 it('ONB-014 refuses Next when the eating window cannot hold the meals', function () {
     $refused = answerRefusal(F::atStep11(), ['answers' => ['first_meal_minutes' => 12 * 60, 'last_meal_minutes' => 13 * 60, 'meal_count' => 6], 'move' => 'next']);
 
@@ -555,7 +566,8 @@ it('ONB-020 entering the review moves a start date in the past to tomorrow and k
 
     expect($draft->step)->toBe(OnboardingSteps::REVIEW_STEP)
         ->and($draft->startDate)->toEqual(F::tomorrow())
-        ->and($draft->weeks)->toBe($stale->weeks);
+        ->and($draft->weeks)->toBe($stale->weeks)
+        ->and(answerDraft($stale->with(startDate: F::date(2026, 10, 20)), ['move' => 'next'])->startDate)->toEqual(F::date(2026, 10, 20));
 });
 
 it('ONB-018 Next on the review saves and stays: "Start my plan" is onboarding_complete', function () {
