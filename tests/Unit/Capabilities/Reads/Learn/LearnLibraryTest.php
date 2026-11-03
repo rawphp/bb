@@ -4,6 +4,7 @@ use App\Capabilities\Reads\Learn\LearnLibrary;
 use App\Domain\Learn\LearnArticle;
 use App\Domain\Learn\LearnSection;
 use App\Domain\Learn\LearnTopic;
+use App\Domain\Progression\VolumeProgression;
 use App\Domain\Safety\SafetyWarnings;
 use App\Domain\Safety\Screening;
 use Illuminate\Support\Facades\File;
@@ -54,7 +55,7 @@ it('LRN-001 LRN-002 builds the Learn index: each section in order, each article 
         ->and($sections[2]['articles'][1])->toBe([
             'slug' => 'rir',
             'title' => 'Reps in reserve (RIR)',
-            'summary' => 'RIR stands for reps in reserve, the number of clean reps you had left at the point you stopped. Each week asks for a smaller number than the last, so effort climbs through the block.',
+            'summary' => 'RIR stands for reps in reserve, the number of clean reps you had left at the point you stopped. The target works its way down over the block, so effort climbs toward the last training week.',
         ]);
 });
 
@@ -191,7 +192,7 @@ it('SAFE-013 says what changes for someone on a GLP-1 drug', function () {
 
 it('PROG-018 says joint pain stops added sets and a lot of pain cuts the next load by 10%', function () {
     expect(learnArticleText(LearnTopic::FeedbackQuestions))->toContain('a moderate answer or worse stops new sets being added to that exercise')
-        ->toContain('drops its next load by 10%');
+        ->toContain('answering "A lot" also drops its next load by '.VolumeProgression::LOAD_CUT_PERCENT.'%');
 });
 
 it('SAFE-015 says when the step target warning shows', function () {
@@ -213,7 +214,7 @@ it('LRN-001 keeps each health article\'s doctor note with every condition it nam
     'body fat' => [LearnTopic::BodyFat, ['pregnancy', 'illness']],
     'alcohol' => [LearnTopic::Alcohol, ['medication', 'health issue']],
     'coffee' => [LearnTopic::Coffee, ['pregnant', 'heart condition', 'medication']],
-    'training while sick' => [LearnTopic::TrainingWhileSick, ['whatever your doctor tells you', 'your doctor is the person to ask', 'your doctor has given you specific advice', 'sicker', 'fever', 'chest', 'vomiting', 'diarrhea', 'too weak', 'feeling worse is your cue to stop']],
+    'training while sick' => [LearnTopic::TrainingWhileSick, ['whatever your doctor tells you', 'your doctor is the person to ask', 'your doctor has given you specific advice', 'sicker', 'fever', 'chest', 'vomiting', 'diarrhea', 'too weak', 'feeling worse is your cue to stop', 'none of the signs above apply']],
 ]);
 
 it('FOOD-081 guides on alcohol and coffee', function () {
