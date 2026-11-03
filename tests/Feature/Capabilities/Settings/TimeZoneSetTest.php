@@ -84,3 +84,16 @@ it('SET-012 sending the zone the user already has changes nothing', function () 
         ->assertJsonPath('data.invalidates', []);
     expect($user->fresh()->updated_at->toIso8601String())->toBe($stamp);
 });
+
+it('SET-012 records when the time zone last changed', function () {
+    $user = User::factory()->create();
+    expect($user->fresh()->time_zone_changed_at)->toBeNull();
+
+    Carbon::setTestNow('2026-11-02 15:30:00');
+    timeZoneSet($user, ['time_zone' => 'Australia/Brisbane'])->assertOk();
+    expect($user->fresh()->time_zone_changed_at->toDateTimeString())->toBe('2026-11-02 15:30:00');
+
+    Carbon::setTestNow('2026-11-02 16:00:00');
+    timeZoneSet($user, ['time_zone' => 'Australia/Brisbane'])->assertOk();
+    expect($user->fresh()->time_zone_changed_at->toDateTimeString())->toBe('2026-11-02 15:30:00');
+});
