@@ -172,6 +172,30 @@ it('AGT-031 SAFE-001 refuses the Coach onboarding_complete before the review, ev
         ->and(OnboardingDraft::query()->where('user_id', $user->id)->exists())->toBeTrue();
 });
 
+it('ONB-005 AGT-031 SAFE-001 a sheet Done that rules out Fat loss sends setup back to the goal, and the Coach still cannot pass the health check', function () {
+    $user = User::factory()->create();
+    StartWorld::draft($user, ['step' => 3, 'goal' => 'fatLoss']);
+
+    sheetAnswers($user, ['answers' => ['screening' => [['item' => 'tryingToConceive', 'is_on' => true]]], 'move' => 'stay'])->assertOk();
+    sheetAnswers($user, ['answers' => [], 'move' => 'next'])->assertOk();
+
+    $draft = OnboardingDraft::query()->where('user_id', $user->id)->first();
+    expect($draft->step)->toBe(1)
+        ->and($draft->goal)->toBeNull()
+        ->and(setupShown($user)['step']['key'])->toBe('goal');
+
+    // The Coach picks another goal and walks back to the health check, where it is refused again.
+    $results = coachOnboards($user, "I've answered the health check. Setup is now at: What's your goal?", [
+        ['onboarding_answer', ['answers' => ['goal' => 'maintenance'], 'move' => 'next']],
+        ['onboarding_answer', ['answers' => [], 'move' => 'next']],
+        ['onboarding_answer', ['answers' => [], 'move' => 'next']],
+    ]);
+
+    expect(collect($results)->pluck('ok')->all())->toBe([true, true, false])
+        ->and(setupShown($user)['step']['key'])->toBe('screening')
+        ->and(collect(setupShown($user)['screening']['rows'])->firstWhere('item', 'tryingToConceive')['is_on'])->toBeTrue();
+});
+
 it('AGT-032 lets the Coach go back from the review to edit a step', function () {
     $user = User::factory()->create();
     StartWorld::draft($user);

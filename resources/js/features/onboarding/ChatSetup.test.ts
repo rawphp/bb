@@ -1,6 +1,6 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, writeNow } from '@/app/call';
+import { CapabilityError, readFresh, writeNow } from '@/app/call';
 import { offerInstall } from '@/app/install';
 import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
 import { inputViolations } from '@/testing/schemas';
@@ -8,13 +8,15 @@ import ChatSetup from './ChatSetup.vue';
 import { fixture } from './onboardingTesting';
 import ScreeningRowView from './ScreeningRowView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), writeNow: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), readFresh: vi.fn(), writeNow: vi.fn() }));
 vi.mock('@/app/install', () => ({ offerInstall: vi.fn(async () => undefined) }));
 
 const writeMock = vi.mocked(writeNow);
+const readFreshMock = vi.mocked(readFresh);
 const screening = fixture('screening');
 const review = fixture();
 const goal = fixture('empty');
+const glp1 = fixture('glp1');
 
 function mountSetup(setup: OnboardingShowOutput, busy = false): VueWrapper {
     return mount(ChatSetup, { props: { setup, busy }, attachTo: document.body, global: { stubs: { teleport: true } } });
@@ -38,6 +40,8 @@ describe('ChatSetup', () => {
 
     beforeEach(() => {
         writeMock.mockReset().mockResolvedValue({});
+        // Where setup is after a Done: the step after the health check, unless a test says otherwise.
+        readFreshMock.mockReset().mockResolvedValue(glp1);
         vi.mocked(offerInstall).mockClear();
     });
 
@@ -74,15 +78,50 @@ describe('ChatSetup', () => {
         expect(wrapper.emitted('say')).toBeUndefined();
     });
 
-    it('AGT-031 Done moves setup on from the sheet, closes it and tells the Coach', async () => {
+    it('AGT-031 Done moves setup on from the sheet, closes it and tells the Coach where setup is now', async () => {
         wrapper = mountSetup(screening);
 
         await wrapper.get('[data-save]').trigger('click');
         await flushPromises();
 
         expect(sent()).toEqual([{ answers: {}, move: 'next' }]);
+        expect(readFreshMock).toHaveBeenCalledWith('onboarding_show', {});
         expect(sheet(wrapper).exists()).toBe(false);
         expect(wrapper.emitted('changed')).toHaveLength(1);
+        expect(wrapper.emitted('say')).toEqual([[`I've answered the health check. Setup is now at: ${glp1.step.title}`]]);
+    });
+
+    it('ONB-005 AGT-031 a Done that sends setup back to the goal tells the Coach so, not that setup moved on', async () => {
+        // The answers ruled out Fat loss, so the server cleared the goal and went back to step 1.
+        readFreshMock.mockResolvedValue(goal);
+        wrapper = mountSetup(screening);
+
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(sheet(wrapper).exists()).toBe(false);
+        expect(wrapper.emitted('say')).toEqual([[`I've answered the health check. Setup is now at: ${goal.step.title}`]]);
+    });
+
+    it('AGT-031 a Done after which setup is still on the health check keeps the sheet open and tells the Coach nothing', async () => {
+        readFreshMock.mockResolvedValue(screening);
+        wrapper = mountSetup(screening);
+
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(sheet(wrapper).exists()).toBe(true);
+        expect(wrapper.emitted('say')).toBeUndefined();
+    });
+
+    it('AGT-031 a Done whose setup cannot be read again still tells the Coach the check is answered, and nothing more', async () => {
+        readFreshMock.mockRejectedValue(new CapabilityError('onboarding_show', 0, { reason: 'network' }));
+        wrapper = mountSetup(screening);
+
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(sheet(wrapper).exists()).toBe(false);
         expect(wrapper.emitted('say')).toEqual([["I've answered the health check."]]);
     });
 
