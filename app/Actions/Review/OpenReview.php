@@ -5,6 +5,8 @@ namespace App\Actions\Review;
 use App\Models\Plan;
 use App\Models\User;
 use App\Support\Review\ReviewAnalysis;
+use App\Support\Review\ReviewAnswers;
+use App\Support\Review\ReviewChoices;
 use App\Support\Review\ReviewData;
 use Carbon\CarbonImmutable;
 use DomainException;
@@ -28,5 +30,16 @@ final class OpenReview
         }
 
         return $analysis;
+    }
+
+    /**
+     * The calorie option ids the review offers (REV-010, REV-012, REV-027). An away or training-only review lists none,
+     * so it takes only the unanswered one.
+     *
+     * @return list<string>
+     */
+    public static function offered(ReviewAnalysis $analysis): array
+    {
+        return (new ReviewChoices($analysis, ReviewAnswers::defaults()))->layout()['ids'] ?? [ReviewAnswers::defaults()->option];
     }
 }

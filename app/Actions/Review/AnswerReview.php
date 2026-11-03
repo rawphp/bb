@@ -19,13 +19,14 @@ use Illuminate\Support\Facades\DB;
  * each answer. Nothing is applied until review_complete.
  *
  * An answer the review cannot take is refused and nothing is written: a week other than the one open now, an option
- * the review does not offer (REV-010, REV-012, REV-027), or an own amount below 1 kcal. An answer it can take is
+ * the review does not offer (REV-010, REV-012, REV-027), or an amount sent alone with no Choose my own to set. An answer it can take is
  * stored even when next week will not build with it, with the reason (NUT-022), as rp-clone's moveCalories refuses a
  * move: the moves stay at the last set that built, and an option that will not build itself is kept as sent.
  *
  * Choose my own with no amount is stored as sent, a draft that review_complete refuses until an amount comes
  * ({@see ReviewAnswer::needsAmount()}). The amount may come alone, with no option: it is set on the stored Choose my
- * own, which keeps its other answers and drops its moves, as a new amount does on the screen.
+ * own, which keeps its other answers and drops its moves, as a new amount does on the screen. The suggested amount
+ * review_show fills a draft's field with, sent back with another answer, leaves the draft a draft.
  */
 final class AnswerReview
 {
@@ -55,18 +56,18 @@ final class AnswerReview
             [$option, $deloadToo, $updateStepPlan] = [$input->option, $input->deload_too, $input->update_step_plan];
             $sent = array_map(fn (ReviewMoveInput $move) => ['from_index' => $move->from_index, 'to_index' => $move->to_index, 'kcal' => $move->kcal], $input->moves);
         }
-        if ($input->own_kcal !== null && $input->own_kcal < 1) {
-            throw new DomainException(self::NO_AMOUNT);
-        }
-        $answers = fn (array $moves) => new ReviewAnswers(
-            $option, $input->own_kcal, $deloadToo, $updateStepPlan, ReviewAnswer::calorieMoves($moves), null,
-        );
-
-        // An away or training-only review lists no calorie option, so it answers only under the unanswered one.
-        $layout = (new ReviewChoices($analysis, $answers([])))->layout();
-        if (! in_array($option, $layout['ids'] ?? [ReviewAnswers::defaults()->option], true)) {
+        if (! in_array($option, OpenReview::offered($analysis), true)) {
             throw new DomainException(self::NOT_OFFERED);
         }
+        $ownKcal = $input->own_kcal;
+        // REV-010: review_show fills a draft's field with the suggested amount, and the screen sends the field back with
+        // every answer. That echo is not an amount the user typed, so the draft stays one; an amount sent alone counts.
+        if ($input->option === 'choose_own' && $row?->needsAmount() && $ownKcal === self::prefill($analysis, $row)) {
+            $ownKcal = null;
+        }
+        $answers = fn (array $moves) => new ReviewAnswers(
+            $option, $ownKcal, $deloadToo, $updateStepPlan, ReviewAnswer::calorieMoves($moves), null,
+        );
 
         $moves = $sent;
         $refusal = self::refusal($analysis, $answers([]));
@@ -84,7 +85,7 @@ final class AnswerReview
         $row->week_start = $input->week_start;
         $row->fill([
             'option' => $option,
-            'own_kcal' => $input->own_kcal,
+            'own_kcal' => $ownKcal,
             'deload_too' => $deloadToo,
             'update_step_plan' => $updateStepPlan,
             'moves' => $moves,
@@ -92,6 +93,14 @@ final class AnswerReview
         ])->save();
 
         return $row;
+    }
+
+    /** The amount review_show shows in a draft's own-calories field, as ReviewCaloriesPayload rounds it. */
+    private static function prefill(ReviewAnalysis $analysis, ReviewAnswer $draft): ?int
+    {
+        $own = (new ReviewChoices($analysis, $draft->answers()))->ownKcal();
+
+        return $own === null ? null : (int) round($own);
     }
 
     /**

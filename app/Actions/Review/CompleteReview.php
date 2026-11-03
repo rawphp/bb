@@ -2,6 +2,7 @@
 
 namespace App\Actions\Review;
 
+use App\Actions\Onboarding\StartRows;
 use App\Domain\Model\StepPlanDay;
 use App\Domain\Review\ReviewMode;
 use App\Domain\Review\StepPlanUpdate;
@@ -29,14 +30,16 @@ use Illuminate\Support\Facades\DB;
  * Saves the weekly review (REV-001, rp-clone WeeklyReviewModel+Save): applies the week's stored answers, or the
  * unanswered defaults, and writes in one transaction next week's plan week and days, the diet break and the moved
  * deload (REV-011), the step plan (REV-027, REV-050) and, last, the reviewed week's stamp. Nothing before it applies
- * an answer (REV-031). Choose my own with no amount yet is refused (REV-010). A refused save writes nothing; a row
- * this save finds is updated, never added to.
+ * an answer (REV-031). Choose my own with no amount yet is refused (REV-010), and so is an answered option the review
+ * no longer offers. A refused save writes nothing; a row this save finds is updated, never added to.
  */
 final class CompleteReview
 {
     public const NOTHING_CHOSEN = 'Choose next week\'s calories first.';
 
     public const NEEDS_AMOUNT = 'Enter how many calories a day you want for Choose my own before saving.';
+
+    public const OUT_OF_DATE = 'Your review has changed since you answered. Choose next week\'s calories again.';
 
     /**
      * @return array{dates: list<string>, mesocycle: ?string} next week's days, Y-m-d, and the mesocycle whose deload moved
@@ -55,6 +58,10 @@ final class CompleteReview
         $stored = ReviewAnswer::forWeek($user, $weekStart);
         if ($stored?->needsAmount()) {
             throw new DomainException(self::NEEDS_AMOUNT);
+        }
+        // An answer the review stopped offering (a stall that has cleared) is refused, not swapped for another option.
+        if ($stored !== null && ! in_array($stored->option, OpenReview::offered($analysis), true)) {
+            throw new DomainException(self::OUT_OF_DATE);
         }
         $choices = new ReviewChoices($analysis, $stored?->answers() ?? ReviewAnswers::defaults());
         $week = $choices->saveWeek();
@@ -120,8 +127,7 @@ final class CompleteReview
             ->keyBy(fn (DayTarget $row): string => TrainSnapshot::day($row->date)->format('Y-m-d'));
 
         foreach ($week->days as $index => $day) {
-            $target = $day->target;
-            if ($target === null) {
+            if ($day->target === null) {
                 continue;
             }
             $row = $stored->get($dates[$index]);
@@ -130,22 +136,7 @@ final class CompleteReview
                 $row->user_id = $user->id;
             }
             $mealIds = array_column($row->meals ?? [], 'id');
-            $row->fill([
-                'day_type' => $day->day->type,
-                'kcal' => $target->kcal,
-                'protein_g' => $target->proteinG,
-                'fat_g' => $target->fatG,
-                'carbs_g' => $target->carbsG,
-                'meals' => array_map(fn (WeekMeal $meal, int $position) => [
-                    'id' => $mealIds[$position] ?? $meal->id(),
-                    'name' => $meal->meal->name,
-                    'time' => (string) $meal->time,
-                    'kcal' => $meal->meal->target->kcal,
-                    'protein_g' => $meal->meal->target->proteinG,
-                    'fat_g' => $meal->meal->target->fatG,
-                    'carbs_g' => $meal->meal->target->carbsG,
-                ], $day->meals, array_keys($day->meals)),
-            ])->save();
+            $row->fill(StartRows::day($day, fn (WeekMeal $meal, int $position) => $mealIds[$position] ?? $meal->id()))->save();
         }
 
         return $dates;

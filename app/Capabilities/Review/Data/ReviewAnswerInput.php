@@ -19,7 +19,7 @@ final class ReviewAnswerInput extends CapabilityData
         public readonly string $week_start,
         #[Field(description: 'The calorie option; left out, the answer only sets own_kcal on the stored choose_own.', enum: ['recommendation', 'repeat_this_week', 'choose_own', 'drop_fatigue', 'cut_calories', 'add_steps'])]
         public readonly ?string $option = null,
-        #[Field(description: 'Average kcal a day for choose_own; null leaves it to be sent, and review_complete waits for it.', minimum: 0)]
+        #[Field(description: 'Average kcal a day for choose_own; null leaves it to be sent, and review_complete waits for it.', minimum: 1, maximum: 10000)]
         public readonly ?int $own_kcal = null,
         #[Field(description: 'REV-011: "Make this your deload week too?"; null for the default.')]
         public readonly ?bool $deload_too = null,
