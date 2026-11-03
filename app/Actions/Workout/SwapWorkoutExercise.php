@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  * a block for the new exercise under the client's ULID (CAP-019), right after it, and take the new exercise's targets
  * at their places (PROG-020). With nothing done, an exercise with no sets too, the old block goes and the new one
  * takes its place; with everything done nothing moves. `$restOfMesocycle` also writes the swap to the day's slot from
- * this week on, to the slot the exercise was planned from (else the day's first slot of it), so sent again it finds
+ * this week on, to the slot the exercise was planned from (else the day's one slot of it), so sent again it finds
  * that slot changed. A replay of the ULID changes nothing, also once the old block has gone.
  */
 final class SwapWorkoutExercise

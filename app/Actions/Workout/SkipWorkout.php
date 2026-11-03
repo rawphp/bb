@@ -42,7 +42,7 @@ final class SkipWorkout
             // The day Today shows it on: where it started, else where it was moved, else where Today places it.
             $at = $row->actual_start_at ?? $row?->planned_start_at;
             $date = $at !== null ? DayPlans::day($at) : self::shownOn($user, $snapshot);
-            $retarget = $date === null ? null : self::retarget($user, $date->format('Y-m-d'));
+            $retarget = $date === null ? null : self::retarget($user, $date->format('Y-m-d'), $snapshot);
 
             if ($row === null) {
                 // Saved on the day Today showed it, so the skipped session stays there (SCH-051).
@@ -100,16 +100,22 @@ final class SkipWorkout
      * SCH-053 on `$date`, read before the session is saved skipped; null when there is nothing to re-target, and the
      * skip goes through without it: a past day (its targets stay, as SCH-057's skip leaves them), a day with no meals
      * planned, a user the re-target rule cannot work for yet (no eating window or weight), or a day Today shows no
-     * session on. Retargeting::skip refuses nothing else. `$date` is a day Today shows this session on: where it started,
-     * where it was moved, or {@see shownOn()}.
+     * session on. Retargeting::skip refuses nothing else. A day Today gives to another session is left alone too: a
+     * session started early, in another plan week, has its start on a day Today places a different session on.
      *
      * @return ?array{RetargetableDay, MealRetarget}
      */
-    private static function retarget(User $user, string $date): ?array
+    private static function retarget(User $user, string $date, WorkoutSnapshot $session): ?array
     {
         try {
             $day = RetargetableDay::load($user, $date);
-
+        } catch (DomainException) {
+            return null;
+        }
+        if (! self::shows($day->snapshot, DayPlans::day($date), $session)) {
+            return null;
+        }
+        try {
             return [$day, Retargeting::skip($day->day, $day->context)];
         } catch (DomainException) {
             return null;

@@ -56,8 +56,9 @@ final class DayEdits
 
     /**
      * EX-008: a slot of `$from` runs `$to` instead: slot `$slotId`, the one the session's exercise was planned from, else
-     * the day's first slot of `$from`. The carried load was the old exercise's (MESO-061), so it goes. A slot that no
-     * longer runs `$from`, as after the same swap, is left as it is, so the swap can be sent again.
+     * the day's one slot of `$from`. A day that runs `$from` more than once, with no slot named, is left as it is: which
+     * slot is meant is not known. The carried load was the old exercise's (MESO-061), so it goes. A slot that no longer
+     * runs `$from`, as after the same swap, is left as it is, so the swap can be sent again.
      *
      * @template TSlot of array{id: string, exercise_id: ?int, carried?: mixed}
      *
@@ -66,17 +67,12 @@ final class DayEdits
      */
     public static function swapping(array $slots, int $from, int $to, ?string $slotId = null): array
     {
-        foreach ($slots as $index => $slot) {
-            if (($slotId === null || $slot['id'] === $slotId) && $slot['exercise_id'] === $from) {
-                $slots[$index]['exercise_id'] = $to;
-                $slots[$index]['carried'] = null;
-
-                return $slots;
-            }
-            if ($slotId !== null && $slot['id'] === $slotId) {
-                return $slots;
-            }
+        $candidates = array_keys(array_filter($slots, fn (array $slot) => $slot['exercise_id'] === $from && ($slotId === null || $slot['id'] === $slotId)));
+        if (count($candidates) !== 1) {
+            return $slots;
         }
+        $slots[$candidates[0]]['exercise_id'] = $to;
+        $slots[$candidates[0]]['carried'] = null;
 
         return $slots;
     }
