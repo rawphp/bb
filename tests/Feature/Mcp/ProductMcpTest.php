@@ -14,6 +14,7 @@ use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Rawphp\CapabilitiesAi\Contracts\ToolCatalog;
 use Tests\Support\Fixtures\Rail\TallyAddCapability;
 use Tests\Support\Fixtures\Rail\TallyInput;
+use Tests\Support\TrainSeed;
 
 // Registers a test-only capability, so each test gets its own application.
 uses()->group('warp-isolated');
@@ -230,4 +231,31 @@ it('AGT-040 capabilities:mcp-status says when the MCP surface is off', function 
 
     expect($exit)->toBe(0)
         ->and(Artisan::output())->toContain('MCP: off')->toContain('CAPABILITIES_SURFACE_MCP')->toContain('Tools: 0');
+});
+
+it('AGT-010 AGT-040 refuses a destructive tool call over MCP in plain words, and the mesocycle runs on', function () {
+    $this->travelTo('2026-09-23 10:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => TrainSeed::phase($user, 'fatLoss', '2026-08-31')->id]);
+
+    $result = mcpCall(mcpToken($user), 'tools/call', ['name' => 'mesocycle_end', 'arguments' => ['mesocycle_id' => $mesocycle->id]])->assertOk()->json('result');
+
+    expect($result['isError'])->toBeTrue()
+        ->and($result['content'][0]['text'])->toBe('You can\'t do that.')
+        ->and($mesocycle->fresh()->ended_on)->toBeNull();
+});
+
+it('AGT-010 AGT-040 still runs a write that is not destructive over MCP with the same token', function () {
+    $this->travelTo('2026-09-22 10:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => TrainSeed::phase($user, 'fatLoss', '2026-08-31')->id]);
+
+    $result = mcpCall(mcpToken($user), 'tools/call', ['name' => 'mesocycle_length_set', 'arguments' => ['mesocycle_id' => $mesocycle->id, 'weeks' => 6]])->assertOk()->json('result');
+
+    expect($result['isError'])->toBeFalse()
+        ->and($mesocycle->fresh()->weeks)->toBe(6);
+});
+
+it('AGT-010 AGT-040 still lists the destructive tools over MCP', function () {
+    expect(array_column(mcpTools(mcpToken(TrainSeed::user())), 'name'))->toContain('mesocycle_end');
 });
