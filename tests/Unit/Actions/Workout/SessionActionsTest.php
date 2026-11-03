@@ -14,6 +14,7 @@ use App\Actions\Workout\SwapWorkoutExercise;
 use App\Capabilities\Support\FieldRefused;
 use App\Capabilities\Today\Data\MissedSessionResolveInput;
 use App\Domain\Model\DayType;
+use App\Domain\Model\ExerciseLoadType;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\WeightUnit;
 use App\Models\Exercise;
@@ -51,6 +52,8 @@ function saWorld(string $now = '2026-09-21 17:45:00'): array
     $squat = TrainSeed::exercise('Back Squat', MuscleGroup::Quads);
     TrainSeed::exercise('Incline Dumbbell Press', MuscleGroup::Chest);
     TrainSeed::exercise('Standing Calf Raise', MuscleGroup::Calves);
+    // Loaded exercises, so every set has a weight to target and log.
+    Exercise::query()->update(['load_type' => ExerciseLoadType::Dumbbell]);
     $user = TrainSeed::user();
     $mesocycle = TrainSeed::mesocycle($user, ['days' => [
         ['id' => SA_UPPER, 'label' => 'Upper A', 'weekday' => 1, 'slots' => [
@@ -499,11 +502,12 @@ it('SCH-053 skipping today\'s workout makes today a rest day and re-targets its 
 it('SCH-053 a workout skipped after its day has passed leaves that day\'s targets as they were', function () {
     [$user, $mesocycle] = saWorld('2026-09-22 09:00:00');
     $monday = SheetSeed::day($user, '2026-09-21');
+    $before = $monday->fresh()->only(['day_type', 'kcal', 'meals']);
 
     $skipped = app(SkipWorkout::class)($user, WorkoutIds::workout($mesocycle->id, 3, 1));
 
     expect($skipped['toast'])->toBeNull()
-        ->and($monday->fresh()->only(['day_type', 'kcal', 'meals']))->toBe($monday->only(['day_type', 'kcal', 'meals']))
+        ->and($monday->fresh()->only(['day_type', 'kcal', 'meals']))->toBe($before)
         ->and(WorkoutSession::query()->sole()->is_skipped)->toBeTrue();
 });
 
