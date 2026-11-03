@@ -128,7 +128,7 @@
                         "text",
                         "tone"
                     ],
-                    "description": "\"Missing · Add\", on each row marked is_missing."
+                    "description": "\"Missing \u00b7 Add\", on each row marked is_missing."
                 },
                 "add_title": {
                     "type": "string"
@@ -674,7 +674,7 @@
                             },
                             "detail": {
                                 "type": "string",
-                                "description": "\"Training · Push A\"."
+                                "description": "\"Training \u00b7 Push A\"."
                             },
                             "kcal_label": {
                                 "type": [
@@ -701,6 +701,36 @@
                             "is_locked"
                         ]
                     }
+                },
+                "moves": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "from_index": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 6
+                            },
+                            "to_index": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 6
+                            },
+                            "kcal": {
+                                "type": "integer",
+                                "minimum": 25,
+                                "maximum": 500
+                            }
+                        },
+                        "required": [
+                            "from_index",
+                            "to_index",
+                            "kcal"
+                        ]
+                    },
+                    "description": "REV-004: the answered moves, in order; review_answer sends them back whole."
                 },
                 "hint": {
                     "type": "string"
@@ -739,6 +769,7 @@
             },
             "required": [
                 "days",
+                "moves",
                 "hint",
                 "move"
             ]

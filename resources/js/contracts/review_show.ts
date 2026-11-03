@@ -206,6 +206,14 @@ export interface ReviewShowOutput {
        */
       is_locked: boolean;
     }[];
+    /**
+     * REV-004: the answered moves, in order; review_answer sends them back whole.
+     */
+    moves: {
+      from_index: number;
+      to_index: number;
+      kcal: number;
+    }[];
     hint: string;
     /**
      * Why the week or the last move was refused; null when it builds.
@@ -222,4 +230,4 @@ export interface ReviewShowOutput {
   save_title: string;
 }
 
-export const outputVersion = '980852ddf282';
+export const outputVersion = '0a22a8a2c088';

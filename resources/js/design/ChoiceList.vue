@@ -131,7 +131,7 @@ function move(event: KeyboardEvent, from: number): void {
                 </svg>
                 <span class="flex min-w-0 grow flex-col gap-0.5">
                     <span class="text-base text-primary-text">{{ choice.title }}</span>
-                    <span v-if="choice.detail" :id="`${uid}-${index}`" class="text-sm text-secondary-text">
+                    <span v-if="choice.detail" :id="`${uid}-${index}`" class="whitespace-pre-line text-sm text-secondary-text">
                         {{ choice.detail }}
                     </span>
                     <PendingMark v-if="pending && selected(choice)" :id="`${uid}-${index}-pending`" />

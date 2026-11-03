@@ -8,6 +8,8 @@ import ProgressScreen from './ProgressScreen.vue';
 import { sharePng, toPng } from './share';
 
 vi.mock('./share', () => ({ toPng: vi.fn(), sharePng: vi.fn() }));
+const push = vi.fn();
+vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ push }) }));
 
 const full = content as ProgressShowOutput;
 
@@ -95,13 +97,13 @@ describe('ProgressScreen', () => {
         expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('Edit schedule');
     });
 
-    it('ANA-004 shows the weekly review card when a review is available', async () => {
+    it('ANA-004 shows the weekly review card when a review is available, and it opens the review', async () => {
         const wrapper = render();
         const card = wrapper.get('[data-review-card]');
 
         expect(card.text()).toContain('Weekly review available');
         await card.get('button').trigger('click');
-        expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('Weekly review');
+        expect(push).toHaveBeenCalledWith('/review');
     });
 
     it('ANA-005 shows steps against the target range', () => {
