@@ -1,12 +1,16 @@
 <?php
 
 use App\Http\Middleware\AgentGate;
+use App\Models\ClearedCoachTurn;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Rawphp\CapabilitiesAi\Contracts\ConversationStore;
 use Rawphp\CapabilitiesAi\Contracts\TurnClaim;
+use Rawphp\CapabilitiesAi\Models\Conversation;
 use Rawphp\CapabilitiesAi\Models\Turn;
 
 beforeEach(function () {
@@ -74,6 +78,8 @@ it('AGT-005 says how much is left near the cap, and the chat still takes the mes
         ->assertOk()
         ->assertJsonPath('data', [
             'enabled' => true,
+            'on' => true,
+            'conversation_ulid' => Conversation::query()->where('user_id', (string) $user->id)->value('ulid'),
             'turns_left' => 2,
             'tokens_left' => 992_000,
             'at_cap' => false,
@@ -240,4 +246,35 @@ it('AGT-002 says the agent is off without the anthropic driver and an API key, a
 it('AGT-002 keeps the package\'s chat routes signed in only', function () {
     $this->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])->assertUnauthorized();
     $this->postJson('/capabilities/agent_status_show')->assertUnauthorized();
+});
+
+it('AGT-005 AGT-020 keeps a cleared conversation\'s turns and tokens in the day\'s and month\'s caps', function () {
+    config(['agent.turns_per_day' => 3, 'agent.tokens_per_month' => 10_000]);
+    $user = User::factory()->create();
+    pastTurns($user, [2_000, 2_000]);
+    pastTurns($user, [3_000], at: '2026-11-01 08:00:00');
+    pastTurns($user, [50_000], at: '2026-10-31 08:00:00');
+    $before = $this->actingAs($user)->postJson('/capabilities/agent_status_show')->assertOk()->json('data');
+    expect($before)->toMatchArray(['turns_left' => 1, 'tokens_left' => 3_000]);
+
+    $this->actingAs($user)->postJson('/capabilities/coach_conversation_clear', [], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+
+    expect(Turn::query()->count())->toBe(0)
+        ->and($this->actingAs($user)->postJson('/capabilities/agent_status_show')->assertOk()->json('data'))
+        ->toMatchArray(['turns_left' => 1, 'tokens_left' => 3_000, 'conversation_ulid' => null]);
+
+    pastTurns($user, [3_000]);
+    $this->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => 'Hi'])
+        ->assertStatus(429)
+        ->assertJsonPath('error.code', 'rate_limited');
+});
+
+it('AGT-005 prunes a cleared turn once its month is over', function () {
+    $user = User::factory()->create();
+    ClearedCoachTurn::query()->create(['user_id' => $user->id, 'tokens' => 100, 'created_at' => '2026-10-31 23:00:00']);
+    $kept = ClearedCoachTurn::query()->create(['user_id' => $user->id, 'tokens' => 100, 'created_at' => '2026-11-01 00:00:00']);
+
+    Artisan::call('model:prune', ['--model' => [ClearedCoachTurn::class]]);
+
+    expect(ClearedCoachTurn::query()->pluck('id')->all())->toBe([$kept->id]);
 });

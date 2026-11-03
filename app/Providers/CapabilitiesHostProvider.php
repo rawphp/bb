@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Agent\CoachContext;
 use App\Agent\ConfirmationPolicy;
+use App\Agent\CurrentTurn;
 use App\Agent\MeteredTurnClaim;
 use App\Agent\RegistryToolCatalog;
 use App\Agent\TurnLinkingStore;
@@ -59,6 +60,7 @@ final class CapabilitiesHostProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(Ownership::class);
+        $this->app->singleton(CurrentTurn::class);
         $this->app->singletonIf(BillingGate::class, config('billing.enabled') ? StripeBilling::class : NoBilling::class);
         $this->app->singletonIf(StripeGateway::class, function (): StripeClientGateway {
             // Short timeouts and no retry: a slow Stripe fails the call rather than hold a request for 80 seconds.
@@ -76,7 +78,7 @@ final class CapabilitiesHostProvider extends ServiceProvider
         $this->app->singleton(AuditWriter::class, AuditRecordWriter::class);
 
         // Replaces the package's alias of CapabilityBus to the registry (CAP-012, CAP-014).
-        $this->app->singleton(CapabilityBus::class, fn (Container $app): HostBus => new HostBus($app->make(CapabilityRegistry::class), $app->make(Ownership::class), $app->make(IdempotencyKeys::class)));
+        $this->app->singleton(CapabilityBus::class, fn (Container $app): HostBus => new HostBus($app->make(CapabilityRegistry::class), $app->make(Ownership::class), $app->make(IdempotencyKeys::class), $app->make(CurrentTurn::class)));
 
         // A replay never shows a secret again, so the store never keeps one (CAP-014, CAP-021).
         $this->app->extend(IdempotencyStore::class, fn (IdempotencyStore $store): ShownOnceIdempotencyStore => new ShownOnceIdempotencyStore($store));
