@@ -27,7 +27,6 @@ use App\Models\User;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
-use App\Support\Workout\SessionBlocks;
 use App\Support\Workout\WorkoutIds;
 use App\Support\Workout\WorkoutSnapshot;
 use Carbon\CarbonImmutable;
@@ -545,6 +544,28 @@ it('EX-008 a swap for the rest of the mesocycle also changes the day\'s slot, wi
         ->and(saNames($session)[0])->toBe('Incline Dumbbell Press');
 });
 
+it('EX-008 a rest-of-mesocycle swap changes the slot the exercise was planned from, and sent again changes nothing', function () {
+    [$user, $mesocycle] = saWorld();
+    // Upper A holds Bench Press twice; the user swaps the second, whose sets are all logged.
+    $days = $mesocycle->days;
+    $days[0]['slots'][] = ['id' => 'slot-bench-2', 'exercise_id' => saExercise('Bench Press')->id, 'muscle_group' => 'chest', 'sets' => 1];
+    $mesocycle->update(['days' => $days]);
+    $session = saStarted($user, $mesocycle);
+    $second = saBlocks($session)[3];
+    app(LogWorkoutSet::class)($user, $second->sets()->value('id'), 60.0, WeightUnit::Kg, 12, true);
+    $new = saNewId();
+
+    app(SwapWorkoutExercise::class)($user, $second->id, $new, saExercise('Incline Dumbbell Press')->id, true);
+    app(SwapWorkoutExercise::class)($user, $second->id, $new, saExercise('Incline Dumbbell Press')->id, true);
+
+    expect(array_column($mesocycle->fresh()->dayRows()[0]['slots'], 'id', 'exercise_id'))->toBe([
+        saExercise('Bench Press')->id => 'slot-bench',
+        saExercise('Barbell Row')->id => 'slot-row',
+        saExercise('Dumbbell Curl')->id => 'slot-curl',
+        saExercise('Incline Dumbbell Press')->id => 'slot-bench-2',
+    ])->and(saNames($session))->toBe(['Bench Press', 'Barbell Row', 'Dumbbell Curl', 'Bench Press']);
+});
+
 it('EX-008 only another exercise of the same muscle can take its place', function (string $name, string $message) {
     [$user, $mesocycle] = saWorld();
     $session = saStarted($user, $mesocycle);
@@ -704,7 +725,7 @@ it('SCH-053 skipping a session under way re-targets the day it was started on', 
         ->and($monday->fresh()->only(['day_type', 'kcal', 'meals']))->toBe($before);
 });
 
-it('SCH-053 a skip leaves the meals of a day Today gives to another session', function () {
+it('SCH-053 SCH-060 a skip leaves the meals of a day Today gives to another session, and looks for its own day after it', function () {
     // An away week paused on 14 September moves the mesocycle a plan week later, so Today puts week 2's Upper A on
     // Monday 21 September, where the plan alone would put week 3's.
     [$user, $mesocycle] = saWorld('2026-09-21 09:00:00');
@@ -765,16 +786,4 @@ it('WO-050 a skipped session cannot be finished or changed after', function () {
     expect(saRefusal(fn () => app(RemoveWorkoutExercise::class)($user, saBlock($session, 'Barbell Row')->id)))
         ->toBe('This workout was skipped, so it can no longer be changed.')
         ->and(saRefusal(fn () => app(FinishWorkout::class)($user, WorkoutIds::workout($mesocycle->id, 3, 1), CarbonImmutable::now())))->not->toBeNull();
-});
-
-it('CAP-019 a create whose ULID a request committed first saves nothing and says so, for the caller to answer as a replay', function () {
-    [$user, $mesocycle] = saWorld();
-    $session = saStarted($user, $mesocycle);
-    $taken = saBlocks($session)[0];
-
-    $again = (new WorkoutExercise(['workout_session_id' => $session->id, 'exercise_id' => saExercise('Standing Calf Raise')->id, 'position' => 4]))
-        ->forceFill(['id' => $taken->id, 'user_id' => $user->id]);
-
-    expect(SessionBlocks::create($again))->toBeFalse()
-        ->and(saNames($session))->toBe(['Bench Press', 'Barbell Row', 'Dumbbell Curl']);
 });

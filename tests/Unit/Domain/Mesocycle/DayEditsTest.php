@@ -64,6 +64,15 @@ it('EX-008 a day that holds the exercise twice swaps only its first slot', funct
         ->and($swapped[3]['carried'])->toBe(['weight_kg' => 60.0, 'reps' => 12]);
 });
 
+it('EX-008 a swap of the slot a session exercise was planned from changes that slot, and changes nothing once it has', function () {
+    $slots = [...upperA(), ['id' => 'slot-12b', 'exercise_id' => 12, 'muscle_group' => 'chest', 'sets' => 2, 'carried' => null]];
+
+    $swapped = DayEdits::swapping($slots, 12, 14, 'slot-12b');
+
+    expect(array_column($swapped, 'exercise_id'))->toBe([12, 25, 40, 14])
+        ->and(DayEdits::swapping($swapped, 12, 14, 'slot-12b'))->toBe($swapped);
+});
+
 it('EX-008 a swap of an exercise the day does not hold leaves the day alone', function () {
     expect(DayEdits::swapping(upperA(), 99, 14))->toBe(upperA());
 });
