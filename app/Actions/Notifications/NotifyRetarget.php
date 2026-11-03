@@ -12,7 +12,7 @@ use App\Models\DayTargetMeal;
 use App\Models\NotificationPref;
 use App\Models\User;
 use App\Support\Mesocycles\TrainSnapshot;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 
 /**
  * NOTIF-006: after a re-target is saved, tells the user when it changed a meal they planned foods for. Sent after the
@@ -32,7 +32,7 @@ final class NotifyRetarget
             ->pluck('id')->map(fn (mixed $id): string => strtolower((string) $id))->all();
 
         $notice = ReminderPlanner::retargetNotice(self::meals($before), self::meals($row->meals ?? []), $planned,
-            TrainSnapshot::day($row->date), CarbonImmutable::now()->toDateTimeImmutable());
+            TrainSnapshot::day($row->date), UserDay::now($user));
         if ($notice !== null) {
             SendPushNotification::dispatch($user, $notice->title, $notice->body, $notice->url)->afterCommit();
         }
