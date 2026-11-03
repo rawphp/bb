@@ -47,6 +47,8 @@ for _ in $(seq 1 60); do "$bin/mysqladmin" --no-defaults -uroot -S "$socket" pin
 export APP_ENV=local APP_DEBUG=false APP_URL="http://127.0.0.1:$port"
 export DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT="$db_port" DB_DATABASE=bodybuilder DB_USERNAME=root DB_PASSWORD=
 export SESSION_DRIVER=file CACHE_STORE=file QUEUE_CONNECTION=sync MAIL_MAILER=array BILLING_ENABLED=false
+# A week: the file session's expiry reads the request clock, so a clock walked days ahead (X-BB-Now) would sign out.
+export SESSION_LIFETIME=10080
 
 php artisan migrate --seed --force --no-interaction >/dev/null
 php artisan db:seed --class='Tests\Support\AuditSeeder' --force --no-interaction >/dev/null
