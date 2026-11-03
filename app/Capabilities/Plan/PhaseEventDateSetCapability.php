@@ -20,7 +20,7 @@ final class PhaseEventDateSetCapability implements HostCapability, OwnsInput
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('phase_event_date_set', affects: PlanReads::AFFECTS)
-            ->description('Set the date of an event the phase leads up to (a competition, wedding or holiday), or clear it with null. The Plan screen counts down to it, and phase_show then warns when the phase runs past it and offers to end the phase in the event\'s week. Use it when the user names an event for a phase that is not over; the date cannot be in the past.')
+            ->description('Set the date of an event the phase leads up to (a competition, wedding or holiday), or clear it with null. The Plan screen counts down to it, and phase_show then warns when the phase runs past it and offers to end the phase in the event\'s week. Use it when the user names an event for a phase or wants it cleared.')
             ->cli('phase', 'event-date-set')
             ->input(PhaseEventDateSetInput::class)
             ->run(function (PhaseEventDateSetInput $input, CapabilityContext $context): WriteResult {

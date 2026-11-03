@@ -40,8 +40,14 @@ final class HostBus implements CapabilityBus
             $result = CapabilityResult::failure(code: 'not_found', message: 'Not found.', meta: $result->meta);
         }
 
-        // A run that refused one field answers like a rule that failed on it (CAP-012).
+        // A run that refused one field answers like a rule that failed on it (CAP-012), and a retry under its key runs
+        // again rather than replaying the stored answer without the field.
+        $key = $options['idempotency_key'] ?? null;
+        $actor = $options['actor'] ?? null;
         if ($refused !== null && $result->errorCode() === 'domain_error' && ($result->error['message'] ?? null) === $refused->getMessage()) {
+            if (is_string($key) && $key !== '' && is_object($actor)) {
+                $this->keys->releaseRefused($actor, $this->registry->get($nameOrAlias)->name, $key);
+            }
             $result = CapabilityResult::failure(
                 code: 'validation_failed',
                 message: $refused->getMessage(),
@@ -51,8 +57,6 @@ final class HostBus implements CapabilityBus
         }
 
         // A write the rate limit refused before it ran must not spend its key (OFF-011).
-        $key = $options['idempotency_key'] ?? null;
-        $actor = $options['actor'] ?? null;
         if ($result->errorCode() === 'rate_limited' && is_string($key) && $key !== '' && is_object($actor)) {
             $this->keys->releaseRateLimited($actor, $this->registry->get($nameOrAlias)->name, $key);
         }

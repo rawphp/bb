@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * PLAN-006: add a phase at the end of the plan, where the last one ends (this week for an empty plan), as `plan_show`'s
  * Add a phase offers it. TBL-010 limits its length and rate (PH-003 to PH-005), a cut's diet-break weeks not counting
- * (PLAN-025). A null rate takes the type's default (PH-004); training-only mode stores none (PLAN-007).
+ * (PLAN-025), and SAFE-001 refuses a cut while the user is trying to conceive. A null rate takes the type's default
+ * (PH-004); training-only mode stores none (PLAN-007).
  */
 final class AddPhase
 {
@@ -21,7 +22,7 @@ final class AddPhase
      * `$replay` is the user's phase already saved under `$phaseId`, if any (CAP-019): the add ran before when it is the
      * plan's last phase, of this type, and nothing is written again.
      *
-     * @return list<string> the id of the phase added
+     * @return list<string> the ids of the phase added and of the phase before it, whose "No end" length it takes away
      */
     public function __invoke(User $user, string $phaseId, PhaseType $type, ?int $weeks, ?float $rate, ?Phase $replay = null): array
     {
@@ -42,6 +43,7 @@ final class AddPhase
             if ($refusal !== null) {
                 throw new DomainException($refusal);
             }
+            $before = $new->last();
             $start = (int) $new->startWeek();
             $phase = new Phase([
                 'type' => $type,
@@ -53,7 +55,7 @@ final class AddPhase
             $phase->user_id = $user->id;
             $phase->save();
 
-            return [$phaseId];
+            return $before === null ? [$phaseId] : [(string) $before->id, $phaseId];
         });
     }
 }

@@ -13,6 +13,7 @@ use App\Domain\Model\PhaseType;
 use App\Domain\Model\Profile as DomainProfile;
 use App\Domain\Model\Sex;
 use App\Domain\Model\StepPlanDay;
+use App\Domain\Phases\CalorieStepUp;
 use App\Domain\Phases\MaintenanceLength;
 use App\Domain\Phases\NextPhase;
 use App\Domain\Phases\NextPhaseOption;
@@ -22,9 +23,7 @@ use App\Domain\Phases\PhaseTraining;
 use App\Domain\Phases\PhaseWarnings;
 use App\Domain\Phases\ReadinessFailure;
 use App\Domain\Phases\StartingCalories;
-use App\Domain\Plan\MesocycleAlignment;
 use App\Domain\Plan\PhaseRules;
-use App\Domain\Plan\PlannedMesocycle;
 use App\Domain\Review\StepPlanUpdate;
 use App\Models\Phase;
 use App\Support\Today\TodaySnapshot;
@@ -35,20 +34,24 @@ use DateTimeZone;
  * The phase transition (PH-030 to PH-046): rp-clone's PhaseTransitionModel. A transition is due once the last phase
  * of the plan is in its final week or over, so it opens when the phase reaches its end and when `phase_end` ends it
  * at the next boundary (PH-007). Nothing is due while a phase follows it: what comes next is already saved.
+ * Options the screening forbids are left out (SAFE-001).
  * `plan_show` lists what these offer and `phase_transition_complete` refuses what they do not.
  */
 final class PhaseTransitions
 {
-    public const FAT_LOSS_AFTER_FAT_LOSS = 'Fat loss right after Fat loss is not recommended. Run a Maintenance phase between them.';
+    public const RESENSITIZATION = 'resensitization';
 
-    /** PH-036 */
-    public const TEMPLATES_AFTER_FAT_LOSS = ['resensitization', 'balanced'];
+    public const BALANCED = 'balanced';
 
     public const STANDARD = 'standard';
 
     private ?Phase $due;
 
     private int $endWeek = 0;
+
+    private ?PhaseSummary $summary = null;
+
+    private ?StartingCalories $startingCalories = null;
 
     public function __construct(public readonly PlanSnapshot $plan, public readonly PhaseIntake $intake = new PhaseIntake)
     {
@@ -87,6 +90,11 @@ final class PhaseTransitions
 
     public function summary(): PhaseSummary
     {
+        return $this->summary ??= $this->makeSummary();
+    }
+
+    private function makeSummary(): PhaseSummary
+    {
         $phase = $this->ending();
         $weights = (new PhaseChanges($this->plan))->weights($phase);
         $profileKg = (float) ($this->plan->profile->weight_kg ?? 0);
@@ -108,15 +116,20 @@ final class PhaseTransitions
     // MARK: PH-030 to PH-034 the next phase
 
     /**
-     * The recommendation first (the first is the default), then every other phase type.
+     * The recommendation first (the first is the default), then every other phase type the screening allows: none
+     * that cuts while the user is trying to conceive (SAFE-001).
      *
      * @return list<NextPhaseOption>
      */
     public function options(): array
     {
         $transition = NextPhase::transition($this->summary());
+        $allowed = NewPhases::allowedTypes($this->plan);
 
-        return [...$transition->recommendation, ...array_map(fn (PhaseType $type) => NextPhaseOption::phase($type), $transition->alternatives)];
+        return array_values(array_filter(
+            [...$transition->recommendation, ...array_map(fn (PhaseType $type) => NextPhaseOption::phase($type), $transition->alternatives)],
+            fn (NextPhaseOption $option) => in_array(self::firstType($option), $allowed, true),
+        ));
     }
 
     public function isRecommended(NextPhaseOption $option): bool
@@ -192,31 +205,26 @@ final class PhaseTransitions
         return NextPhase::maintenanceAfterFatLoss($weeks, $cuts, false, $this->mesocycleWeeks());
     }
 
-    /** The length the option opens on; null for Gain first, whose phases have their own. */
+    /**
+     * The length the option opens on, one it offers: PH-031's whole mesocycles for Maintenance after a cut, else what a
+     * new phase of the type opens on (one mesocycle in training-only mode). Null for Gain first, whose phases have
+     * their own.
+     */
     public function defaultWeeks(NextPhaseOption $option): ?int
     {
         if ($option->isGainFirst()) {
             return null;
         }
-        if ($this->plan->trainingOnly()) {
-            return $this->mesocycleWeeks();
-        }
-        $length = $this->maintenanceLength($option);
-        if ($length !== null) {
-            return $length->defaultWeeks;
-        }
-        $type = self::firstType($option);
-        $row = TBL010Phases::row($type);
+        $weeks = $this->plan->trainingOnly() ? null : $this->maintenanceLength($option)?->defaultWeeks;
+        $weeks ??= NewPhases::openingWeeks($this->plan, self::firstType($option));
+        $lengths = $this->lengths($option);
 
-        return match ($type) {
-            PhaseType::Maintenance => $this->endingType() === PhaseType::MuscleGain ? NextPhase::maintenanceAfterGainWeeks()->lower : 4,
-            PhaseType::MiniCut => 4,
-            PhaseType::FatLoss, PhaseType::MuscleGain => (int) ($row->recommendedWeeks->lower ?? $row->minWeeks),
-        };
+        return $lengths === [] || in_array($weeks, $lengths, true) ? $weeks : min(max($weeks, $lengths[0]), $lengths[count($lengths) - 1]);
     }
 
     /**
-     * The lengths the option's phase may have (PH-031, PH-033, TBL-010, PLAN-025); none for Gain first.
+     * The lengths the option's phase may have (PH-031 after a cut, PH-033 after a gain, TBL-010 and PLAN-025 from where
+     * it starts); none for Gain first. Every phase here gets an end.
      *
      * @return list<int>
      */
@@ -226,22 +234,13 @@ final class PhaseTransitions
             return [];
         }
         $type = self::firstType($option);
-        $row = TBL010Phases::row($type);
-        $length = $this->maintenanceLength($option);
-        [$lower, $upper] = match (true) {
-            $length !== null => [$length->allowedWeeks->lower, $length->allowedWeeks->upper],
-            $type === PhaseType::Maintenance && $this->endingType() === PhaseType::MuscleGain => [NextPhase::maintenanceAfterGainWeeks()->lower, NextPhase::maintenanceAfterGainWeeks()->upper],
-            $row->maxWeeks === null => [$row->minWeeks, NewPhases::LONGEST],
-            default => [$row->minWeeks, $type->isFatLoss() && ! $this->plan->trainingOnly() ? $row->maxWeeks + 12 : $row->maxWeeks],
-        };
-        $lengths = [];
-        foreach (range((int) $lower, (int) $upper) as $weeks) {
-            if (PhaseRules::validate($type, $weeks, null, $this->dietBreaks($type, $this->endWeek, $weeks)) === null) {
-                $lengths[] = $weeks;
-            }
-        }
+        $range = $this->maintenanceLength($option)->allowedWeeks
+            ?? ($type === PhaseType::Maintenance && $this->endingType() === PhaseType::MuscleGain ? NextPhase::maintenanceAfterGainWeeks() : null);
 
-        return $lengths;
+        return array_values(array_filter(
+            NewPhases::lengthsAt($this->plan, $type, $this->endWeek),
+            fn (?int $weeks) => $weeks !== null && ($range === null || $range->contains($weeks)),
+        ));
     }
 
     /**
@@ -278,7 +277,7 @@ final class PhaseTransitions
         foreach ($this->planned($option, $weeks) as $phase) {
             $refused = PhaseRules::validate(
                 $phase['type'], $phase['weeks'], $this->plan->trainingOnly() ? null : $this->rate($phase['type']),
-                $this->dietBreaks($phase['type'], $phase['start_week'], $phase['weeks']),
+                NewPhases::dietBreaksAt($this->plan, $phase['type'], $phase['start_week'], $phase['weeks']),
             );
             if ($refused !== null) {
                 return PlanWords::refusal($refused, $phase['type']);
@@ -286,17 +285,6 @@ final class PhaseTransitions
         }
 
         return null;
-    }
-
-    /** PLAN-025: the deloads of the mesocycles that would fill a cut fall inside it at maintenance calories. */
-    private function dietBreaks(PhaseType $type, int $startWeek, int $weeks): int
-    {
-        if (! $type->isFatLoss() || $this->plan->trainingOnly() || $weeks < 1) {
-            return 0;
-        }
-        $mesocycles = MesocycleAlignment::mesocycles(MesocycleAlignment::proposal($type, $weeks, $this->plan->experience()), $startWeek);
-
-        return count(array_filter($mesocycles, fn (PlannedMesocycle $m) => $m->deloadWeek() < $startWeek + $weeks));
     }
 
     // MARK: PH-036, PH-039 training
@@ -310,13 +298,13 @@ final class PhaseTransitions
     public function templates(NextPhaseOption $option): array
     {
         return $option->phase === PhaseType::Maintenance && PhaseTraining::maintenanceDefaultsToResensitization($this->endingType())
-            ? self::TEMPLATES_AFTER_FAT_LOSS : [self::STANDARD];
+            ? [self::RESENSITIZATION, self::BALANCED] : [self::STANDARD];
     }
 
     /** @return list<string> */
     public static function trainingLines(NextPhaseOption $option, string $template): array
     {
-        return PlanWords::trainingLines(PhaseTraining::mesocycleDefaults(self::firstType($option), $template === 'resensitization')->row);
+        return PlanWords::trainingLines(PhaseTraining::mesocycleDefaults(self::firstType($option), $template === self::RESENSITIZATION)->row);
     }
 
     // MARK: PH-035 starting calories
@@ -328,6 +316,9 @@ final class PhaseTransitions
         if ($profile === null || $this->plan->trainingOnly()) {
             return null;
         }
+        if ($this->startingCalories !== null) {
+            return $this->startingCalories;
+        }
         $summary = $this->summary();
         $bmr = EnergyRules::bmr($profile, $summary->endTrendWeightKg, $this->plan->today, new DateTimeZone('UTC'));
         $steps = [];
@@ -337,7 +328,7 @@ final class PhaseTransitions
         }
         $formula = EnergyRules::dailyExpenditure($bmr, EnergyRules::activityFactor(StepPlanUpdate::plannedDailySteps($steps)), 0);
 
-        return StartingCalories::resolve(null, $summary->weeks, false, $formula);
+        return $this->startingCalories = StartingCalories::resolve(null, $summary->weeks, false, $formula);
     }
 
     // MARK: PH-044 step up
@@ -348,10 +339,12 @@ final class PhaseTransitions
         return $this->isMaintenanceAfterFatLoss($option) && ! $this->plan->trainingOnly();
     }
 
-    /** @return list<int> the step sizes offered, kcal a day */
+    /** @return list<int> the step sizes offered, kcal a day: PH-044's smallest and largest */
     public static function steps(): array
     {
-        return [250, 500];
+        $range = CalorieStepUp::stepRange();
+
+        return [(int) $range->lower, (int) $range->upper];
     }
 
     // MARK: PH-037, PH-040, PH-046 warnings
@@ -368,7 +361,7 @@ final class PhaseTransitions
         $warnings = [];
         if ($type->isFatLoss()) {
             if ($ending->type->isFatLoss()) {
-                $warnings[] = self::FAT_LOSS_AFTER_FAT_LOSS;
+                $warnings[] = NewPhases::FAT_LOSS_AFTER_FAT_LOSS;
             } elseif ($ending->type === PhaseType::Maintenance) {
                 $phases = $this->plan->phases->values();
                 $before = $phases->count() >= 2 ? $phases[$phases->count() - 2] : null;
@@ -386,9 +379,9 @@ final class PhaseTransitions
             }
         }
         if ($type === PhaseType::FatLoss) {
-            array_push($warnings, ...self::fatLossLengthWarnings($weeks));
+            array_push($warnings, ...NewPhases::fatLossLengthWarnings($weeks));
             $loss = $this->plan->trainingOnly() ? null
-                : self::lossOverTenPercent($this->rate($type), $weeks - $this->dietBreaks($type, $this->endWeek, $weeks));
+                : NewPhases::lossOverTenPercent($this->rate($type), $weeks - NewPhases::dietBreaksAt($this->plan, $type, $this->endWeek, $weeks));
             if ($loss !== null) {
                 $warnings[] = $loss;
             }
@@ -454,26 +447,6 @@ final class PhaseTransitions
             ['Is your training fatigue low?', 'Training fatigue is not low. Run Maintenance first.'],
             ['Is your calendar clear for the next phase?', 'Your calendar is not clear for the next phase. Run Maintenance first.'],
         ];
-    }
-
-    // MARK: shared TBL-010 warnings
-
-    /** @return list<string> */
-    public static function fatLossLengthWarnings(int $weeks): array
-    {
-        return array_values(array_filter([
-            $weeks < TBL010Phases::MINI_CUT_SUGGESTED_BELOW_FAT_LOSS_WEEKS
-                ? 'Under '.TBL010Phases::MINI_CUT_SUGGESTED_BELOW_FAT_LOSS_WEEKS.' weeks, a Mini-cut is a better fit than Fat loss.' : null,
-            $weeks > TBL010Phases::FAT_LOSS_WARN_ABOVE_WEEKS
-                ? 'Fat loss over '.TBL010Phases::FAT_LOSS_WARN_ABOVE_WEEKS.' weeks is a long diet. Consider a shorter phase.' : null,
-        ]));
-    }
-
-    /** TBL-010: the planned loss over the counted weeks passes 10% of starting bodyweight. */
-    public static function lossOverTenPercent(float $rate, int $countedWeeks): ?string
-    {
-        return abs($rate) * max(0, $countedWeeks) > TBL010Phases::MAX_FAT_LOSS_PERCENT_OF_START_BODYWEIGHT
-            ? 'This phase plans to lose more than '.(int) TBL010Phases::MAX_FAT_LOSS_PERCENT_OF_START_BODYWEIGHT.'% of your starting bodyweight.' : null;
     }
 
     /** The profile as the energy and macro rules read it; null without the answers they need. */

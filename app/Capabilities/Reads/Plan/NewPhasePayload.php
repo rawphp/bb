@@ -42,8 +42,12 @@ final class NewPhasePayload
             return [];
         }
         $recommended = $new->recommendedTypes();
+        $allowed = NewPhases::allowedTypes($new->plan);
 
-        return array_map(fn (PhaseType $type) => self::type($new, $type, in_array($type, $recommended, true)), PhaseChanges::TYPES);
+        return array_values(array_map(
+            fn (PhaseType $type) => self::type($new, $type, in_array($type, $recommended, true)),
+            array_filter(PhaseChanges::TYPES, fn (PhaseType $type) => in_array($type, $allowed, true)),
+        ));
     }
 
     private static function type(NewPhases $new, PhaseType $type, bool $recommended): PlanAddPhaseType
@@ -101,7 +105,7 @@ final class NewPhasePayload
             ends_text: $weeks === null ? 'No end date' : 'Ends '.PlanWords::day($new->plan->dayOfWeek($start + $weeks)->modify('-1 day')),
             is_selected: $selected,
             warnings: array_map(fn (string $text) => new Pill($text, Tone::Warning->value), $new->warnings($type, $weeks, $rate)),
-            mesocycles: array_map(fn (PlannedMesocycle $m, int $i) => self::mesocycle($new->plan, $m, $i), $new->mesocycles($type, $weeks), array_keys($new->mesocycles($type, $weeks))),
+            mesocycles: array_map(fn (PlannedMesocycle $m, int $i) => self::mesocycle($new->plan, $m, $i), $mesocycles = $new->mesocycles($type, $weeks), array_keys($mesocycles)),
             fixes: [],
         );
     }
@@ -125,14 +129,14 @@ final class NewPhasePayload
 
     /**
      * Both prebuilt plans laid out from where the plan ends; none for a user without a plan or when the last phase
-     * has no end (PLAN-006).
+     * has no end (PLAN-006). Both hold a Fat loss, so none while the screening blocks one (SAFE-001).
      *
      * @return list<PlanPrebuilt>
      */
     public static function prebuilt(NewPhases $new): array
     {
         $start = $new->startWeek();
-        if ($start === null) {
+        if ($start === null || NewPhases::screeningRefusal($new->plan, PhaseType::FatLoss) !== null) {
             return [];
         }
 
@@ -142,7 +146,10 @@ final class NewPhasePayload
     private static function prebuiltPlan(PlanSnapshot $plan, PrebuiltPlan $prebuilt, int $start): PlanPrebuilt
     {
         $layout = $prebuilt->layout($start, $plan->grid, fn () => '');
-        $segments = array_map(fn (PlannedMesocycle $m, int $i) => new PlanPrebuiltSegment('mesocycle', 'Mesocycle '.($i + 1), $m->startWeek - $start, $m->weeks), $layout->mesocycles, array_keys($layout->mesocycles));
+        $segments = [];
+        foreach ($layout->mesocycles as $i => $m) {
+            $segments[] = new PlanPrebuiltSegment('mesocycle', 'Mesocycle '.($i + 1), $m->startWeek - $start, $m->weeks);
+        }
         if ($layout->activeRestWeeks !== []) {
             $segments[] = new PlanPrebuiltSegment('active_rest', 'Active rest', min($layout->activeRestWeeks) - $start, count($layout->activeRestWeeks));
         }

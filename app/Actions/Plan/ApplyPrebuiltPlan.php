@@ -2,6 +2,7 @@
 
 namespace App\Actions\Plan;
 
+use App\Domain\Model\PhaseType;
 use App\Domain\Plan\PrebuiltPlan;
 use App\Models\Phase;
 use App\Models\User;
@@ -23,7 +24,7 @@ final class ApplyPrebuiltPlan
      * `$replay` is the user's phase already saved under `$firstPhaseId`, if any: the plan was applied before when it is
      * the first of the last phases the plan would add, and nothing is written again.
      *
-     * @return list<string> the ids of the phases added
+     * @return list<string> the ids of the phases added, after the phase before them, whose "No end" length they take away
      */
     public function __invoke(User $user, PrebuiltPlan $prebuilt, string $firstPhaseId, ?Phase $replay = null): array
     {
@@ -33,7 +34,8 @@ final class ApplyPrebuiltPlan
                 return self::replayed($plan, $prebuilt, $replay);
             }
             $new = new NewPhases($plan);
-            $refusal = $new->refusal();
+            // SAFE-001: both plans hold a Fat loss.
+            $refusal = $new->refusal() ?? NewPhases::screeningRefusal($plan, PhaseType::FatLoss);
             if ($refusal !== null) {
                 throw new DomainException($refusal);
             }
@@ -41,7 +43,8 @@ final class ApplyPrebuiltPlan
             $layout = $prebuilt->layout((int) $new->startWeek(), $plan->grid, function () use (&$ids): string {
                 return array_shift($ids) ?? (string) Str::ulid();
             });
-            $added = [];
+            $before = $new->last();
+            $added = $before === null ? [] : [(string) $before->id];
             foreach ($layout->phases as $planned) {
                 $phase = new Phase([
                     'type' => $planned->type,

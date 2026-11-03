@@ -73,7 +73,7 @@ final class TransitionPayload
             is_selected: $selected,
             lengths: array_map(fn (int $weeks) => self::length($transitions, $option, $weeks, $weeks === $default), $transitions->lengths($option)),
             note: $option->isGainFirst()
-                ? 'A Muscle gain needs an end date here, so the last Muscle gain is saved at its shortest recommended length. The resensitization training default is applied when you build that Maintenance mesocycle.'
+                ? 'A Muscle gain needs an end date here, so the last Muscle gain is saved at its shortest recommended length.'
                 : null,
             starting_calories_text: match ($starting?->source) {
                 null => null,
@@ -115,11 +115,11 @@ final class TransitionPayload
         return new PlanTransitionTemplate(
             template: $template,
             title: match ($template) {
-                'resensitization' => 'Resensitization',
-                'balanced' => 'Balanced',
+                PhaseTransitions::RESENSITIZATION => 'Resensitization',
+                PhaseTransitions::BALANCED => 'Balanced',
                 default => PhaseTransitions::firstType($option)->title(),
             },
-            detail: $template !== 'resensitization' ? null
+            detail: $template !== PhaseTransitions::RESENSITIZATION ? null
                 : "A resensitization mesocycle: every muscle at Maintain, {$sessions->lower} to {$sessions->upper} full-body sessions a week, {$perMuscle->lower} to {$perMuscle->upper} sessions per muscle per week, near maintenance volume, {$weeks->lower} to {$weeks->upper} weeks.",
             training_lines: array_map(fn (string $line) => new PlanTextLine($line), PhaseTransitions::trainingLines($option, $template)),
             is_selected: $selected,

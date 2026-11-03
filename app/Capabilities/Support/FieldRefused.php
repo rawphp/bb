@@ -9,7 +9,11 @@ use DomainException;
  * A refusal that names the input field at fault (CAP-012), for a check only the run can make, such as a choice that
  * must be one the current plan offers. The package answers any exception from a run with a message-only
  * `domain_error`, so {@see HostBus} runs each invoke inside {@see watch()} and turns that answer into a 422 whose
- * violation names the field. Invokes that bypass the bus (the job and MCP surfaces) keep the message without it.
+ * violation names the field. The run wrote nothing, so the bus also gives its idempotency key back: a retry runs again
+ * and names the field too. Invokes that bypass the bus (the job and MCP surfaces) keep the message without it.
+ *
+ * The refusal is recorded when it is made, so the bus checks that the answer carries its message: one made and
+ * caught, followed by another refusal, is not the answer.
  */
 final class FieldRefused extends DomainException
 {
