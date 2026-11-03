@@ -176,7 +176,7 @@ describe('TodayView', () => {
         const wrapper = await show({ payload: day(), week: week('warning') });
 
         const notice = wrapper.get('[data-test="week-warnings"] [role="status"]');
-        expect(notice.text()).toBe(week('warning').warnings[0].text);
+        expect(notice.text()).toBe(week('warning').warnings[0]!.text);
         expect(wrapper.getComponent(WeekStrip).element.nextElementSibling).toBe(wrapper.get('[data-test="week-warnings"]').element);
     });
 
