@@ -38,9 +38,8 @@ function tickButton(view: VueWrapper, name: string) {
 }
 
 async function setDate(view: VueWrapper, which: 'from' | 'to', value: string): Promise<void> {
-    const field = view.get(`input[name="${which}"]`);
-    await field.setValue(value);
-    await field.trigger('change');
+    // setValue sends input then change, as a picked date does.
+    await view.get(`input[name="${which}"]`).setValue(value);
     await flushPromises();
 }
 
@@ -48,7 +47,7 @@ async function typeItem(view: VueWrapper, value: string): Promise<void> {
     await view.get('input[name="shopping-item"]').setValue(value);
 }
 
-async function pointer(target: ReturnType<VueWrapper['find']>, type: string, clientX: number): Promise<void> {
+async function pointer(target: { element: Element }, type: string, clientX: number): Promise<void> {
     target.element.dispatchEvent(new MouseEvent(type, { clientX, clientY: 10, bubbles: true }));
     await flushPromises();
 }

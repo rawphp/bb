@@ -39,6 +39,23 @@ function remove(): void {
     open.value = false;
     emit('delete');
 }
+
+// A tap on the line while Delete shows only hides it, as in SwiftUI: the click that
+// follows that tap does not tick the line.
+let closing = false;
+
+function down(event: PointerEvent): void {
+    closing = open.value;
+    pointerDown(event);
+}
+
+function tick(): void {
+    if (closing) {
+        closing = false;
+        return;
+    }
+    emit('tick');
+}
 </script>
 
 <template>
@@ -57,10 +74,11 @@ function remove(): void {
             Delete
         </button>
         <div
+            data-test="swipe"
             class="relative touch-pan-y bg-surface"
             :class="drag === null ? 'transition-transform duration-200 motion-reduce:transition-none' : ''"
             :style="{ transform: `translateX(${shift}px)` }"
-            @pointerdown="pointerDown"
+            @pointerdown="down"
             @pointermove="pointerMove"
             @pointerup="pointerUp"
             @pointercancel="pointerCancel"
@@ -71,7 +89,7 @@ function remove(): void {
                 class="flex min-h-tap w-full items-center gap-3 px-4 py-3 text-left active:opacity-70 disabled:opacity-60"
                 :aria-pressed="ticked"
                 :disabled="disabled"
-                @click="emit('tick')"
+                @click="tick"
             >
                 <svg v-if="ticked" aria-hidden="true" viewBox="0 0 24 24" class="size-6 shrink-0 text-accent">
                     <circle cx="12" cy="12" r="10" fill="currentColor" />
