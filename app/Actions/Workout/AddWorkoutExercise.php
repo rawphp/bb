@@ -24,7 +24,11 @@ final class AddWorkoutExercise
 {
     public function __invoke(User $user, string $workoutId, string $blockId, int $exerciseId, bool $remainingWeeks): WorkoutSession
     {
-        return DB::transaction(function () use ($user, $workoutId, $blockId, $exerciseId, $remainingWeeks) {
+        // The mesocycle is found before the transaction and locked first, so the replay check below sees the latest commit.
+        [$mesocycle] = WorkoutSnapshot::locate($user, $workoutId);
+
+        return DB::transaction(function () use ($user, $workoutId, $blockId, $exerciseId, $remainingWeeks, $mesocycle) {
+            SessionBlocks::lock((string) $mesocycle->id);
             $snapshot = WorkoutSnapshot::lockFor($user, $workoutId);
             $session = $snapshot->session();
             $refusal = $snapshot->status()->refusal();
@@ -37,14 +41,11 @@ final class AddWorkoutExercise
             }
             $exercise = Exercise::query()->visibleTo($user)->findOrFail($exerciseId);
 
-            $block = (new WorkoutExercise([
+            (new WorkoutExercise([
                 'workout_session_id' => $session->id,
                 'exercise_id' => $exercise->id,
                 'position' => count(SessionBlocks::blocks($session)) + 1,
-            ]))->forceFill(['id' => $id, 'user_id' => $user->id]);
-            if (! SessionBlocks::create($block)) {
-                return $session;
-            }
+            ]))->forceFill(['id' => $id, 'user_id' => $user->id])->save();
             foreach ($snapshot->plannedLoads($exercise, DayEdits::ADDED_SETS) as $index => $load) {
                 (new WorkoutSet([
                     'workout_session_id' => $session->id,

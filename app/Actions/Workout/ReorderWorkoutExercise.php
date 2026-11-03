@@ -20,7 +20,10 @@ final class ReorderWorkoutExercise
 {
     public function __invoke(User $user, string $blockId, int $position, bool $remainingWeeks): WorkoutSession
     {
-        return DB::transaction(function () use ($user, $blockId, $position, $remainingWeeks) {
+        $mesocycleId = SessionBlocks::mesocycleOf($user, $blockId);
+
+        return DB::transaction(function () use ($user, $blockId, $position, $remainingWeeks, $mesocycleId) {
+            SessionBlocks::lock($mesocycleId);
             $block = SessionBlocks::block($user, $blockId);
             $session = $block->session;
             $blocks = SessionBlocks::blocks($session);

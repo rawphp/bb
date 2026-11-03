@@ -55,21 +55,25 @@ final class DayEdits
     }
 
     /**
-     * EX-008: the day's first slot of `$from` runs `$to` instead. The carried load was the old exercise's (MESO-061),
-     * so it goes. A day without `$from` is left as it is.
+     * EX-008: a slot of `$from` runs `$to` instead: slot `$slotId`, the one the session's exercise was planned from, else
+     * the day's first slot of `$from`. The carried load was the old exercise's (MESO-061), so it goes. A slot that no
+     * longer runs `$from`, as after the same swap, is left as it is, so the swap can be sent again.
      *
-     * @template TSlot of array{exercise_id: ?int, carried?: mixed}
+     * @template TSlot of array{id: string, exercise_id: ?int, carried?: mixed}
      *
      * @param  list<TSlot>  $slots
      * @return list<TSlot>
      */
-    public static function swapping(array $slots, int $from, int $to): array
+    public static function swapping(array $slots, int $from, int $to, ?string $slotId = null): array
     {
         foreach ($slots as $index => $slot) {
-            if ($slot['exercise_id'] === $from) {
+            if (($slotId === null || $slot['id'] === $slotId) && $slot['exercise_id'] === $from) {
                 $slots[$index]['exercise_id'] = $to;
                 $slots[$index]['carried'] = null;
 
+                return $slots;
+            }
+            if ($slotId !== null && $slot['id'] === $slotId) {
                 return $slots;
             }
         }

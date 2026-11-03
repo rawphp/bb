@@ -12,7 +12,10 @@ final class RemoveWorkoutExercise
 {
     public function __invoke(User $user, string $blockId): WorkoutSession
     {
-        return DB::transaction(function () use ($user, $blockId) {
+        $mesocycleId = SessionBlocks::mesocycleOf($user, $blockId);
+
+        return DB::transaction(function () use ($user, $blockId, $mesocycleId) {
+            SessionBlocks::lock($mesocycleId);
             $block = SessionBlocks::block($user, $blockId);
             $session = $block->session;
             foreach (SessionBlocks::sets($block) as $set) {

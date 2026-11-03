@@ -11,7 +11,8 @@ use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Workout\MesocycleDay;
 use App\Support\Workout\SessionBlocks;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Support\Workout\WorkoutIds;
+use App\Support\Workout\WorkoutSnapshot;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,30 +21,23 @@ use Illuminate\Support\Facades\DB;
  * a block for the new exercise under the client's ULID (CAP-019), right after it, and take the new exercise's targets
  * at their places (PROG-020). With nothing done, an exercise with no sets too, the old block goes and the new one
  * takes its place; with everything done nothing moves. `$restOfMesocycle` also writes the swap to the day's slot from
- * this week on. A replay of the ULID changes nothing, also once the old block has gone.
+ * this week on, to the slot the exercise was planned from (else the day's first slot of it), so sent again it finds
+ * that slot changed. A replay of the ULID changes nothing, also once the old block has gone.
  */
 final class SwapWorkoutExercise
 {
     public function __invoke(User $user, string $blockId, string $newBlockId, int $exerciseId, bool $restOfMesocycle): WorkoutSession
     {
-        return DB::transaction(function () use ($user, $blockId, $newBlockId, $exerciseId, $restOfMesocycle) {
+        $mesocycleId = SessionBlocks::mesocycleOf($user, $blockId);
+
+        return DB::transaction(function () use ($user, $blockId, $newBlockId, $exerciseId, $restOfMesocycle, $mesocycleId) {
+            SessionBlocks::lock($mesocycleId);
             $newId = strtolower($newBlockId);
-            SessionBlocks::lock($user, $blockId);
             $made = SessionBlocks::made($user, $newId);
             if ($made !== null) {
                 return WorkoutSession::query()->findOrFail($made->workout_session_id);
             }
-            try {
-                $block = SessionBlocks::block($user, $blockId);
-            } catch (ModelNotFoundException $gone) {
-                // A swap sent again while the first, which moved every set and removed the block, was running.
-                $made = SessionBlocks::made($user, $newId, locked: true);
-                if ($made === null) {
-                    throw $gone;
-                }
-
-                return WorkoutSession::query()->findOrFail($made->workout_session_id);
-            }
+            $block = SessionBlocks::block($user, $blockId);
             $session = $block->session;
             $exercise = Exercise::query()->visibleTo($user)->findOrFail($exerciseId);
             $old = $block->exercise;
@@ -63,9 +57,7 @@ final class SwapWorkoutExercise
                 $index = SessionBlocks::indexOf($blocks, $block);
                 $new = (new WorkoutExercise(['workout_session_id' => $session->id, 'exercise_id' => $exercise->id, 'position' => $index + 1]))
                     ->forceFill(['id' => $newId, 'user_id' => $user->id]);
-                if (! SessionBlocks::create($new)) {
-                    return $session;
-                }
+                $new->save();
                 // Each set takes the target of its place among the exercise's sets (rp-clone plannedSets).
                 $planned = $sets === [] ? [] : $snapshot->plannedLoads($exercise, count($sets));
                 foreach ($undone as $place => $set) {
@@ -91,10 +83,26 @@ final class SwapWorkoutExercise
             }
 
             if ($restOfMesocycle) {
-                MesocycleDay::slots($snapshot, fn (array $slots) => DayEdits::swapping($slots, (int) $old->id, (int) $exercise->id));
+                $slotId = self::plannedFrom($snapshot, (string) $block->id);
+                MesocycleDay::slots($snapshot, fn (array $slots) => DayEdits::swapping($slots, (int) $old->id, (int) $exercise->id, $slotId));
             }
 
             return $session;
         });
+    }
+
+    /** The id of the day's slot the session's exercise `$blockId` was planned from (OFF-021); null for one added or swapped in. */
+    private static function plannedFrom(WorkoutSnapshot $snapshot, string $blockId): ?string
+    {
+        $days = $snapshot->mesocycle->earlierWeekRows()[$snapshot->week - 1] ?? $snapshot->mesocycle->dayRows();
+        foreach ($days as $day) {
+            foreach ($day['id'] === $snapshot->plan()->id ? $day['slots'] : [] as $slot) {
+                if (WorkoutIds::block($snapshot->workoutId(), $slot['id']) === strtolower($blockId)) {
+                    return $slot['id'];
+                }
+            }
+        }
+
+        return null;
     }
 }
