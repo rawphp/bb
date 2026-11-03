@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { findNavigation } from '@/app/navigation';
 import type { WeighInsShowOutput } from '@/contracts/weigh_ins_show';
 import HelpButton from '@/design/HelpButton.vue';
 import ItemCard from '@/design/ItemCard.vue';
@@ -30,6 +31,7 @@ const props = withDefaults(
 );
 
 const router = useRouter();
+const nav = findNavigation(router);
 
 /** The weigh-in sheet: the row to edit, or a new one starting at `at` (now when null). */
 const weighIn = ref<{ row: Row | null; at: string | null } | null>(props.log === undefined ? null : { row: null, at: props.log || null });
@@ -44,10 +46,11 @@ function openRow(row: Row): void {
 
 function closeWeighIn(): void {
     weighIn.value = null;
-    if (fromRoute.value) {
-        fromRoute.value = false;
-        router.back();
-    }
+    if (!fromRoute.value) return;
+    fromRoute.value = false;
+    // Back down the stack it was opened on; opened as the first screen, stay on Weigh-ins.
+    if (nav && nav.state.stacks[nav.state.active].length > 1) nav.back();
+    else void router.replace('/weigh-ins');
 }
 </script>
 

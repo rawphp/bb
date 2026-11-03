@@ -25,6 +25,8 @@ const emit = defineEmits<{ cancel: []; done: [] }>();
 
 const date = ref('');
 const steps = ref('');
+/** The opening was for a day's count: its day stays, as steps_log changes the day it is sent. */
+const editing = ref(false);
 
 const { send, busy, error } = useWrite((options) => props.reload(options));
 
@@ -32,6 +34,7 @@ watch(
     () => props.open,
     (open) => {
         if (!open) return;
+        editing.value = props.row !== null;
         date.value = props.row?.date ?? props.defaultDate;
         steps.value = props.row ? String(props.row.steps) : '';
         error.value = null;
@@ -55,7 +58,7 @@ const fieldClass = 'rounded-lg bg-background px-3 py-1.5 tabular-nums text-prima
 <template>
     <BottomSheet
         :open="open"
-        :title="row ? 'Edit steps' : 'Log steps'"
+        :title="editing ? 'Edit steps' : 'Log steps'"
         :heights="['half', 'full']"
         :save-disabled="input === null || busy"
         :cancel-disabled="busy"
@@ -67,7 +70,7 @@ const fieldClass = 'rounded-lg bg-background px-3 py-1.5 tabular-nums text-prima
         <form class="flex flex-col gap-4 p-4" @submit.prevent="save">
             <label class="flex min-h-tap items-center justify-between gap-3">
                 <span class="text-primary-text">Day</span>
-                <input v-model="date" name="date" type="date" required :disabled="busy" :class="fieldClass" />
+                <input v-model="date" name="date" type="date" required :readonly="editing" :disabled="busy" :class="fieldClass" />
             </label>
             <label class="flex min-h-tap items-center justify-between gap-3">
                 <span class="text-primary-text">Steps</span>

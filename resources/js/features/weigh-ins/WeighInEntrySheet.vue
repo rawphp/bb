@@ -30,6 +30,8 @@ const props = withDefaults(
 const emit = defineEmits<{ cancel: []; done: [] }>();
 
 const id = ref('');
+/** The weigh-in this opening edits, kept while the sheet slides away after its row is gone. */
+const editing = ref<Row | null>(null);
 const weight = ref('');
 const waist = ref('');
 /** The date and time field's value, "2026-10-10T08:35", read in `offset`. */
@@ -64,6 +66,7 @@ function split(iso: string): { field: string; offset: string } {
 
 // Each opening starts from the weigh-in, or blank with a new id (CAP-019).
 function reset(): void {
+    editing.value = props.row;
     id.value = props.row?.id ?? ulid();
     weight.value = props.row?.weight_field ?? '';
     waist.value = props.row?.waist_field ?? '';
@@ -105,12 +108,11 @@ async function finish(outcome: Promise<string | null>): Promise<void> {
 
 function save(): void {
     if (!input.value) return;
-    const editing = props.row !== null;
-    void finish(send(editing ? 'weigh_in_update' : 'weigh_in_log', { ...input.value }, 'The weigh-in could not be saved. Try again.'));
+    void finish(send(editing.value ? 'weigh_in_update' : 'weigh_in_log', { ...input.value }, 'The weigh-in could not be saved. Try again.'));
 }
 
 function remove(): void {
-    if (props.row) void finish(send('weigh_in_delete', { id: props.row.id }, 'The weigh-in could not be deleted. Try again.'));
+    if (editing.value) void finish(send('weigh_in_delete', { id: editing.value.id }, 'The weigh-in could not be deleted. Try again.'));
 }
 
 const fieldClass = 'min-h-tap w-full rounded-xl bg-background px-3.5 text-primary-text placeholder:text-secondary-text';
@@ -119,7 +121,7 @@ const fieldClass = 'min-h-tap w-full rounded-xl bg-background px-3.5 text-primar
 <template>
     <BottomSheet
         :open="open"
-        :title="row ? 'Edit weigh-in' : 'Log weigh-in'"
+        :title="editing ? 'Edit weigh-in' : 'Log weigh-in'"
         :heights="['half', 'full']"
         :save-disabled="input === null || busy"
         :cancel-disabled="busy"
@@ -171,7 +173,7 @@ const fieldClass = 'min-h-tap w-full rounded-xl bg-background px-3.5 text-primar
                 />
             </label>
             <button
-                v-if="row"
+                v-if="editing"
                 type="button"
                 data-test="delete-weigh-in"
                 :disabled="busy"
