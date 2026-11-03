@@ -24,10 +24,12 @@ use App\Domain\Plan\PlanRebuild;
 use App\Domain\Plan\PlanRebuildRefusal;
 use App\Domain\Plan\PlanRebuildRefusal\Reason;
 use App\Domain\Plan\PlanRebuildRefused;
+use App\Domain\WeekBuilder\MealNames;
 use App\Domain\WeekBuilder\NutritionSchedule;
 use App\Domain\WeekBuilder\WeekBuildRefusal;
 use App\Domain\WeekBuilder\WeekDay;
 use App\Domain\WeekBuilder\WeekMeal;
+use App\Domain\WeekBuilder\WeekMealKind;
 use App\Domain\WeekBuilder\WeekSchedule;
 use Tests\Unit\Domain\Plan\PlanFixtures;
 
@@ -77,6 +79,45 @@ function rebuildMesocycle(): Mesocycle
         id: 'meso', phase: PhaseType::FatLoss, weeks: 4, musclePriorities: [],
         sessions: [new Session('push', 'Push', [new ExerciseSlot('slot', 'Bench press', MuscleGroup::Chest, 12)])],
     );
+}
+
+/** A mesocycle with one 22-set session: over an hour, so the training day gets an intra-workout shake (SCH-043). */
+function rebuildLongMesocycle(): Mesocycle
+{
+    return new Mesocycle(
+        id: 'meso', phase: PhaseType::FatLoss, weeks: 4, musclePriorities: [],
+        sessions: [new Session('long', 'Long', [
+            new ExerciseSlot('chest', 'Bench press', MuscleGroup::Chest, 12),
+            new ExerciseSlot('back', 'Row', MuscleGroup::Back, 8),
+            new ExerciseSlot('traps', 'Shrug', MuscleGroup::Traps, 2),
+        ])],
+    );
+}
+
+/** @return array<string, mixed> named arguments of PlanRebuild::days() with the long session on Thursday 15 Oct */
+function rebuildShakeWith(array $stored): array
+{
+    return ['mesocycle' => rebuildLongMesocycle(), 'mesocycleStartWeek' => 5, 'storedMeals' => ['2026-10-15' => $stored]];
+}
+
+/** @param  list<string>  $ids */
+function rebuildStoredMeals(array $ids, ?string $shakeId = null): array
+{
+    $meals = array_map(fn (string $id) => ['id' => $id, 'name' => 'Meal'], $ids);
+    if ($shakeId !== null) {
+        $meals[] = ['id' => $shakeId, 'name' => MealNames::INTRA_WORKOUT_SHAKE];
+    }
+
+    return $meals;
+}
+
+/**
+ * @param  list<WeekDay>  $days
+ * @return list<WeekMeal>
+ */
+function rebuildDayMeals(array $days, string $date): array
+{
+    return array_values(array_filter($days, fn (WeekDay $d) => $d->day->date->format('Y-m-d') === $date))[0]->meals;
 }
 
 /** A fresh id for every meal the builder makes: "new-1", "new-2", ... */
@@ -186,6 +227,35 @@ it('SET-004 a rebuilt day keeps the ids of its stored meals in the stored order'
     expect(rebuildMealIds($days, '2026-10-15'))->toBe(['id-3', 'id-1', 'id-4', 'id-2'])
         // A day with no stored target gets fresh ids.
         ->and(rebuildMealIds($days, '2026-10-16'))->each->toStartWith('new-');
+});
+
+it('NUT-030 a shake stored last keeps its id and the regular meals keep theirs in order', function () {
+    $days = rebuildDays(rebuildShakeWith(rebuildStoredMeals(['m1', 'm2', 'm3', 'm4'], 's')));
+    $meals = rebuildDayMeals($days, '2026-10-15');
+    $regular = array_values(array_filter($meals, fn (WeekMeal $m) => $m->kind !== WeekMealKind::IntraWorkoutShake));
+    $shake = array_values(array_filter($meals, fn (WeekMeal $m) => $m->kind === WeekMealKind::IntraWorkoutShake));
+
+    expect($meals)->toHaveCount(5)
+        ->and(array_map(fn (WeekMeal $m) => $m->id(), $regular))->toBe(['m1', 'm2', 'm3', 'm4'])
+        ->and($shake)->toHaveCount(1)
+        ->and($shake[0]->id())->toBe('s');
+});
+
+it('SET-004 a day that loses its shake drops only the shake id', function () {
+    $days = rebuildDays(['storedMeals' => ['2026-10-15' => rebuildStoredMeals(['m1', 'm2', 'm3', 'm4'], 's')]]);
+
+    expect(rebuildMealIds($days, '2026-10-15'))->toBe(['m1', 'm2', 'm3', 'm4']);
+});
+
+it('SET-004 a day that gains a shake gives it a new id and keeps the regular ids', function () {
+    $days = rebuildDays(rebuildShakeWith(rebuildStoredMeals(['m1', 'm2', 'm3', 'm4'])));
+    $meals = rebuildDayMeals($days, '2026-10-15');
+    $regular = array_values(array_filter($meals, fn (WeekMeal $m) => $m->kind !== WeekMealKind::IntraWorkoutShake));
+    $shake = array_values(array_filter($meals, fn (WeekMeal $m) => $m->kind === WeekMealKind::IntraWorkoutShake));
+
+    expect(array_map(fn (WeekMeal $m) => $m->id(), $regular))->toBe(['m1', 'm2', 'm3', 'm4'])
+        ->and($shake)->toHaveCount(1)
+        ->and($shake[0]->id())->not->toBeIn(['m1', 'm2', 'm3', 'm4']);
 });
 
 it('SET-004 a window crossing midnight keeps the ids position by position', function () {
