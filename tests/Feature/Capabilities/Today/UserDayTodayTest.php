@@ -1,9 +1,10 @@
 <?php
 
-use App\Capabilities\Today\TodayReads;
 use App\Capabilities\Support\ReadKey;
+use App\Capabilities\Today\TodayReads;
 use App\Models\User;
 use App\Models\WeighIn;
+use App\Models\WeighInScheduleEntry;
 use App\Support\Today\TodayWeight;
 use Illuminate\Support\Carbon;
 use Tests\Support\TodaySeed;
@@ -39,6 +40,8 @@ it('SET-012 opens Today and the week strip on the user\'s local day', function (
 it('SET-012 shows a weigh-in on the user\'s local day', function (string $zone, string $shownOn, string $notOn) {
     Carbon::setTestNow('2026-10-09 21:58:00');
     $user = zonedTodayUser($zone);
+    // Today shows a weigh-in row on scheduled days only; the seed's are Wednesday and Saturday.
+    WeighInScheduleEntry::query()->where('user_id', $user->id)->firstOrFail()->update(['weekdays' => [1, 2, 3, 4, 5, 6, 7]]);
     WeighIn::factory()->for($user)->create(['weight_kg' => 81.3, 'weighed_at' => '2026-10-09 21:58:00']);
 
     $on = test()->actingAs($user)->postJson('/capabilities/today_show', ['date' => $shownOn])->assertOk()->json('data');

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { Component } from 'vue';
+import { onMounted, type Component } from 'vue';
+import { writeNow } from './call';
 import { SHEET_HOST_ID, TOAST_HOST_ID } from './hosts';
 import { useNavigation } from './navigation';
 import TabBar from './TabBar.vue';
@@ -16,6 +17,13 @@ const ActiveWorkoutBar = found['./ActiveWorkoutBar.vue'];
 const CoachButton = found['./CoachButton.vue'];
 
 const nav = useNavigation();
+
+// SET-012: the server counts the user's days in the device's time zone, so send it on
+// each load. It is never kept in the outbox and a failure shows nothing: the next load
+// sends it again, and until then the server keeps the zone it has.
+onMounted(() => {
+    writeNow('time_zone_set', { time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone }).catch(() => undefined);
+});
 </script>
 
 <template>

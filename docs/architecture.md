@@ -114,6 +114,15 @@ Carried over from rp-clone so a tester can live through weeks in minutes. Local 
 - The in-app agent's turns run on the queue, so the turn records the request's clock and the job sets it before running tools.
 - The queue keeps real time. The `database` and `redis` queues (`App\Queue`) take every time they stamp from the clock before the walk: a push, a delay, a bulk push and a walked job's own `release()`. A normal worker therefore finds the job.
 
+## Days and time zones
+
+Each user has an IANA time zone in `users.time_zone` (SET-012), `UTC` until the device sends one. The signed-in shell sends `Intl.DateTimeFormat().resolvedOptions().timeZone` through `time_zone_set` on each load, so the zone follows the device when the user travels.
+
+- The date convention does not change. A calendar day is midnight UTC of its `Y-m-d` (`TrainSnapshot::day`, `DayPlans::day`), and a wall-clock time is read as UTC, as `ClockTime` and the plan's meal and session times are. Calendar-day maths stays in UTC.
+- `App\Support\UserDay` is the only place a real instant becomes a user's day or clock time. `now()` is the user's wall-clock time labelled UTC, `today()` its day, `dayOf()` the local day of a stored instant, and `bounds()` the first and last second of a local day as UTC instants, for querying stored instants such as `weighed_at`. It reads `CarbonImmutable::now()`, so the time-walk clock applies.
+- Moved so far: `TrainSnapshot` and `TodaySnapshot`'s today and now, the Adjust and Redistribute sheets and their writes, Today's weigh-ins and current weight.
+- Not moved yet, still counting UTC days: the weigh-ins screen (missed days, `weigh_ins_show`), reminder due times, `ProgressSnapshot::zone()` and the Progress chart and history weigh-in buckets, `PlanSnapshot` and `PhaseChanges` weigh-in days, `PhaseWarnings`' default zone, the agent's "turns today" (`AgentStatus`, `Allowance`) and its `TurnContext` "Now" line, and a Settings row showing the zone.
+
 ## Tests
 
 The `~/EA/projects/AGENTS.md` testing rules apply: unit first, thin feature tests for HTTP and auth seams, and schema changes last.

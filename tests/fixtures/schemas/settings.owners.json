@@ -20,6 +20,7 @@
     "profile_update": 90,
     "schedule_defaults_update": 90,
     "settings_update": 90,
+    "time_zone_set": 229,
     "token_create": 11,
     "token_revoke": 11
 }

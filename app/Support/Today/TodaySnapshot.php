@@ -46,6 +46,7 @@ use App\Models\WeighInScheduleEntry;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\UserDay;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -110,7 +111,7 @@ final class TodaySnapshot
 
     private static function read(User $user, ?string $date, bool $wholeDay): self
     {
-        $today = TrainSnapshot::day(CarbonImmutable::now());
+        $today = UserDay::today($user);
         $plan = Plan::query()->where('user_id', $user->id)->first();
         $profile = Profile::query()->where('user_id', $user->id)->first();
         $mesocycles = Mesocycle::query()->where('user_id', $user->id)->get();
@@ -143,11 +144,11 @@ final class TodaySnapshot
             offPlan: OffPlanEntry::query()->where('user_id', $user->id)->whereBetween('date', $range)->orderBy('time')->get(),
             otherActivities: $wholeDay ? OtherActivity::query()->where('user_id', $user->id)->whereBetween('date', $range)->get() : new Collection,
             weighIns: $wholeDay ? WeighIn::query()->where('user_id', $user->id)
-                ->whereBetween('weighed_at', [$day->format('Y-m-d 00:00:00'), $day->format('Y-m-d 23:59:59')])
+                ->whereBetween('weighed_at', array_map(fn (DateTimeImmutable $at) => $at->format('Y-m-d H:i:s'), UserDay::bounds($user, $day)))
                 ->orderBy('weighed_at')->get() : new Collection,
             weighInSchedule: $wholeDay ? WeighInScheduleEntry::query()->where('user_id', $user->id)->orderBy('id')->get() : new Collection,
             steps: $wholeDay ? Step::query()->where('user_id', $user->id)->whereDate('date', $day->format('Y-m-d'))->first() : null,
-            nowTime: CarbonImmutable::now()->format('H:i'),
+            nowTime: UserDay::now($user)->format('H:i'),
         );
     }
 

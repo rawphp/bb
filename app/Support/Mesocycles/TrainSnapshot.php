@@ -33,7 +33,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use Closure;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -100,7 +100,7 @@ final class TrainSnapshot
     public static function load(User $user, ?string $mesocycleId = null, bool $locked = false): self
     {
         $base = new self(
-            today: self::day(CarbonImmutable::now()),
+            today: UserDay::today($user),
             plan: self::read(Plan::query()->where('user_id', $user->id), $locked)->first(),
             profile: self::read(Profile::query()->where('user_id', $user->id), $locked)->first(),
             mesocycles: self::read(Mesocycle::query()->where('user_id', $user->id), $locked)->get(),

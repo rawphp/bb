@@ -11,7 +11,7 @@ use App\Capabilities\Support\OwnsInput;
 use App\Models\DayTargetMeal;
 use App\Models\User;
 use App\Support\Today\DayPlans;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -31,7 +31,7 @@ final class DayRedistributeShowCapability implements HostCapability, OwnsInput
                 return DayRedistributePayload::build(
                     $input->date,
                     DayPlans::load($user, [$input->date])->plan($input->date),
-                    CarbonImmutable::now(),
+                    UserDay::now($user),
                     array_map(strtolower(...), $input->excluded_meal_ids),
                 );
             });

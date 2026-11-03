@@ -7,7 +7,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * The read keys a Today write invalidates (CAP-010, CAP-017): each changed day's Today and the sheets that read it.
- * A day that is today also drops the read without a date, which shows today.
+ * A day that may be today also drops the read without a date, which shows today. Today is the user's local day
+ * (SET-012), which in any time zone is the UTC day or one either side of it, so all three count.
  *
  * A sheet is named by its key as first opened, with only the date. The reads it makes as the user fills it in carry
  * their other inputs, which no write can name; the client must not serve those from its cache (#98).
@@ -45,7 +46,7 @@ final class TodayReads
         $keys = [];
         foreach (array_values(array_unique($dates)) as $date) {
             $keys[] = ReadKey::for('today_show', ['date' => $date]);
-            if ($date === Carbon::now()->format('Y-m-d')) {
+            if (in_array($date, self::mayBeToday(), true)) {
                 $keys[] = ReadKey::for('today_show');
             }
             foreach ($sheets as $sheet) {
@@ -66,10 +67,18 @@ final class TodayReads
     public static function weekKeys(array $weekDates): array
     {
         $keys = array_map(fn (string $date) => ReadKey::for('week_show', ['date' => $date]), $weekDates);
-        if (in_array(Carbon::now()->format('Y-m-d'), $weekDates, true)) {
+        if (array_intersect(self::mayBeToday(), $weekDates) !== []) {
             $keys[] = ReadKey::for('week_show');
         }
 
         return $keys;
+    }
+
+    /** @return list<string> the days, Y-m-d, that are today in some time zone */
+    private static function mayBeToday(): array
+    {
+        $now = Carbon::now('UTC');
+
+        return [$now->copy()->subDay()->format('Y-m-d'), $now->format('Y-m-d'), $now->copy()->addDay()->format('Y-m-d')];
     }
 }

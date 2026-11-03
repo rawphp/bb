@@ -18,6 +18,9 @@ use Laravel\Sanctum\Contracts\HasAbilities;
 use Laravel\Sanctum\HasApiTokens;
 use LogicException;
 
+/**
+ * @property string $time_zone the IANA zone the user's days are counted in (SET-012), UTC until their device sends one
+ */
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -31,6 +34,9 @@ class User extends Authenticatable
 
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    /** @var array<string, mixed> */
+    protected $attributes = ['time_zone' => 'UTC'];
 
     /**
      * Deleting a user cascades through every user_id (ACC-005). MySQL refuses a cascade that also
