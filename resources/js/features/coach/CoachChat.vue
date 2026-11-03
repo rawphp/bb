@@ -21,7 +21,9 @@ const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ close: [] }>();
 
 type TurnState = 'running' | 'done' | 'cancelled' | 'failed';
-type Turn = { ulid: string; lines: string[]; state: TurnState; cursor: number };
+// `ended` is set once the terminal event or a cancel lands; `state` follows once the
+// reply and its cards are on screen, so nothing is sent in between.
+type Turn = { ulid: string; lines: string[]; state: TurnState; cursor: number; ended: boolean };
 type Changes = CoachChangesListOutput['changes'];
 
 const POLL_MS = 1000;
@@ -36,10 +38,14 @@ const cards = ref<{ after: string | null; changes: Changes }[]>([]);
 const draft = ref('');
 const sending = ref(false);
 const error = ref<string | null>(null);
+// The device's own word: a request that gets no answer while online is an error, not offline.
 const offline = ref(typeof navigator !== 'undefined' && navigator.onLine === false);
 const end = ref<HTMLElement | null>(null);
 let timer: ReturnType<typeof setTimeout> | undefined;
 let unmounted = false;
+// Bumped by each send, so a status or history answer asked for before it can't undo it.
+let sends = 0;
+let historyAsked = 0;
 
 const conversation = computed(() => status.value?.conversation_ulid ?? null);
 const running = computed(() => turn.value?.state === 'running');
@@ -48,45 +54,59 @@ const canSend = computed(() => !offline.value && !sending.value && !running.valu
 
 async function load(): Promise<void> {
     error.value = null;
+    const at = sends;
+    let answer: AgentStatusShowOutput;
     try {
-        status.value = await read<AgentStatusShowOutput>('agent_status_show', {}, (fresh) => {
+        answer = await read<AgentStatusShowOutput>('agent_status_show', {}, (fresh) => {
+            if (sends !== at) return;
             const before = conversation.value;
             status.value = fresh;
             if (conversation.value !== before) void loadHistory();
         });
     } catch (failed) {
-        noteOffline(failed);
         if (!offline.value) error.value = failureMessage(failed, 'The Coach could not be loaded.');
         return;
     }
+    if (sends !== at) return;
+    status.value = answer;
     await loadHistory();
 }
 
-/** The cached history at once, then the server's. Offline, the cached one stays. */
+/** The server's status now; false when it did not answer, and what is shown stays. */
+async function refreshStatus(): Promise<boolean> {
+    try {
+        status.value = await readFresh<AgentStatusShowOutput>('agent_status_show', {});
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * The cached history at once, then the server's; offline, the cached one stays. Only the
+ * newest ask, and none from before a send, changes what is shown. With no conversation
+ * there is none to show.
+ */
 async function loadHistory(): Promise<ChatHistory | undefined> {
     const ulid = conversation.value;
+    const ticket = ++historyAsked;
     if (ulid === null) {
         messages.value = [];
         return undefined;
     }
     const hit = await cached(historyKey(ulid)).catch(() => undefined);
-    if (hit !== undefined && messages.value.length === 0) messages.value = (hit.data as ChatHistory).messages;
+    if (hit !== undefined && ticket === historyAsked && messages.value.length === 0) messages.value = (hit.data as ChatHistory).messages;
     try {
         const fresh = await history(ulid);
-        offline.value = false;
+        if (ticket !== historyAsked) return undefined;
         messages.value = fresh.messages;
         await store(historyKey(ulid), fresh).catch(() => undefined);
         scrollToEnd();
         return fresh;
     } catch (failed) {
-        noteOffline(failed);
-        if (!offline.value) error.value = failureMessage(failed, 'The conversation could not be loaded.');
+        if (ticket === historyAsked && !offline.value) error.value = failureMessage(failed, 'The conversation could not be loaded.');
         return undefined;
     }
-}
-
-function noteOffline(failed: unknown): void {
-    if (failed instanceof CapabilityError && failed.status === 0 && (failed.body as { reason?: unknown } | null)?.reason === 'network') offline.value = true;
 }
 
 async function submit(): Promise<void> {
@@ -94,21 +114,28 @@ async function submit(): Promise<void> {
     if (!canSend.value) return;
     sending.value = true;
     error.value = null;
+    // A message sent before has a conversation, which a failed status read may not show yet.
+    if (conversation.value === null && sends > 0 && !(await refreshStatus())) {
+        error.value = "The Coach couldn't take that message. Try again.";
+        sending.value = false;
+        return;
+    }
     let sent;
     try {
         sent = await send(content, conversation.value);
     } catch (failed) {
-        noteOffline(failed);
         error.value = failureMessage(failed, "The Coach couldn't take that message. Try again.");
         sending.value = false;
         return;
     }
+    sends++;
+    historyAsked++;
     draft.value = '';
     messages.value = [...messages.value, { ulid: sent.message_ulid, role: 'user', content, created_at: null }];
-    turn.value = { ulid: sent.turn_ulid, lines: [], state: 'running', cursor: 0 };
+    turn.value = { ulid: sent.turn_ulid, lines: [], state: 'running', cursor: 0, ended: false };
     scrollToEnd();
     // The next message carries the conversation the server now names (AGT-024).
-    status.value = await readFresh<AgentStatusShowOutput>('agent_status_show', {}).catch(() => status.value);
+    await refreshStatus();
     sending.value = false;
     poll(turn.value);
 }
@@ -119,11 +146,11 @@ function poll(current: Turn): void {
 }
 
 async function tick(current: Turn): Promise<void> {
-    if (unmounted || turn.value !== current || current.state !== 'running') return;
+    if (unmounted || turn.value !== current || current.ended) return;
     try {
         const answer = await events(current.ulid, current.cursor);
         for (const event of answer.events) {
-            if (event.index < current.cursor || current.state !== 'running') continue;
+            if (event.index < current.cursor || current.ended) continue;
             current.cursor = event.index + 1;
             if (event.kind === 'tool') {
                 current.lines.push(toolLine(String((event.data as { name?: unknown } | null)?.name ?? '')));
@@ -135,34 +162,38 @@ async function tick(current: Turn): Promise<void> {
             }
         }
     } catch (failed) {
-        // No answer: ask again on the next tick. Any other answer ends the turn here.
-        if (!(failed instanceof CapabilityError && failed.status === 0)) {
+        // No answer, a server or gateway error, or a limit: ask again on the next tick. The
+        // turn runs on the server either way. A refusal (signed out, not this user's turn) ends it here.
+        if (!(failed instanceof CapabilityError && (failed.status === 0 || failed.status === 429 || failed.status >= 500))) {
             await finish(current, 'failed');
             return;
         }
     }
-    if (turn.value === current && current.state === 'running') poll(current);
+    if (turn.value === current && !current.ended) poll(current);
 }
 
 /** The turn ended: its reply from a fresh history, then its change cards under it. */
 async function finish(current: Turn, state: TurnState): Promise<void> {
-    if (current.state !== 'running') return;
-    current.state = state;
+    if (current.ended) return;
+    current.ended = true;
     clearTimeout(timer);
-    await loadHistory();
-    const reply = shown.value.at(-1);
+    if (conversation.value === null) await refreshStatus();
+    // Still none: what is shown stays rather than being cleared for want of a ULID.
+    const fresh = conversation.value === null ? undefined : await loadHistory();
+    const reply = (fresh?.messages ?? shown.value).filter((message) => message.role === 'assistant' && message.content).at(-1);
     try {
         const { changes } = await readFresh<CoachChangesListOutput>('coach_changes_list', { turn: current.ulid } satisfies CoachChangesListInput);
         if (changes.length > 0) cards.value = [...cards.value, { after: reply?.ulid ?? null, changes }];
     } catch {
         // The reply stands without its cards; every change is also in Activity (AGT-013).
     }
+    current.state = state;
     scrollToEnd();
 }
 
 async function stop(): Promise<void> {
     const current = turn.value;
-    if (current === null || current.state !== 'running') return;
+    if (current === null || current.ended) return;
     try {
         await cancel(current.ulid);
     } catch (failed) {
@@ -253,6 +284,7 @@ watch(
                     <button
                         v-if="running"
                         type="button"
+                        :disabled="turn?.ended"
                         data-test="cancel-turn"
                         class="min-h-tap min-w-tap rounded-xl px-3 text-sm font-semibold text-accent"
                         @click="stop"
