@@ -735,6 +735,59 @@ describe('WorkoutView', () => {
         expect(dialog(wrapper)).toBeNull();
     });
 
+    describe('offline, with the sets waiting to sync (OFF-020, OFF-021)', () => {
+        const BENCH_SETS = ['01JB8W3Q000000000000000100', '01JB8W3Q000000000000000101', '01JB8W3Q000000000000000102'];
+
+        /** The newest waiting set_log and set_skip of each set, as the outbox holds them. */
+        function waitingSets(logged: string[], skipped: string[] = []): void {
+            vi.mocked(pendingInput).mockImplementation(((name: string, match: (input: unknown) => boolean) => {
+                const inputs =
+                    name === 'workout_set_log'
+                        ? logged.map((set_id) => ({ set_id, weight: { value: 60, unit: 'kg' }, reps: 10, is_logged: true }))
+                        : name === 'workout_set_skip'
+                          ? skipped.map((set_id) => ({ set_id, is_skipped: true }))
+                          : [];
+                return inputs.filter(match).at(-1);
+            }) as never);
+        }
+
+        it('OFF-021 FB-001 the feedback opens by itself once every set of its exercise is logged and waiting', async () => {
+            waitingSets(BENCH_SETS);
+            const wrapper = await show();
+
+            expect(dialog(wrapper)).toBe('Chest');
+        });
+
+        it('OFF-021 FB-001 a set skipped and waiting counts as done', async () => {
+            waitingSets(BENCH_SETS.slice(0, 2), [BENCH_SETS[2]!]);
+            const wrapper = await show();
+
+            expect(dialog(wrapper)).toBe('Chest');
+        });
+
+        it('OFF-021 FB-001 a set still to do, or logged and then unlogged, keeps the feedback closed', async () => {
+            waitingSets(BENCH_SETS.slice(0, 2));
+            expect(dialog(await show())).toBeNull();
+
+            const unlogged = workout();
+            unlogged.exercises[0]!.sets[2]!.is_logged = true;
+            vi.mocked(pendingInput).mockImplementation(((name: string, match: (input: unknown) => boolean) =>
+                name === 'workout_set_log'
+                    ? [...BENCH_SETS.slice(0, 2).map((set_id) => ({ set_id, is_logged: true })), { set_id: BENCH_SETS[2], is_logged: false }].filter(match).at(-1)
+                    : undefined) as never);
+            expect(dialog(await show({ payload: unlogged }))).toBeNull();
+        });
+
+        it('OFF-021 FB-009 the feedback button shows under the exercise whose waiting sets are all done', async () => {
+            waitingSets(BENCH_SETS);
+            const wrapper = await show();
+            await wrapper.get('[data-cancel]').trigger('click');
+
+            expect(exercise(wrapper, BENCH).get('[data-test="feedback"]').text()).toBe('Chest feedback needed');
+            expect(exercise(wrapper, ROW).find('[data-test="feedback"]').exists()).toBe(false);
+        });
+    });
+
     it('FB-009 a feedback button sits under the exercise the feedback is due after: needed while unanswered', async () => {
         const wrapper = await show({ payload: workout('warning') });
         await wrapper.get('[data-cancel]').trigger('click');
