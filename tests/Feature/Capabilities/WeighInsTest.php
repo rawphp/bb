@@ -694,3 +694,23 @@ it('SET-012 pages the weigh-ins by the user\'s local days', function (string $zo
     'Brisbane' => ['Australia/Brisbane', ['early'], '2026-07-13', ['late']],
     'UTC' => ['UTC', ['early', 'late'], null, []],
 ]);
+
+it('SET-012 starts the missed days and the paging at the first weigh-in\'s local day', function (string $zone, array $ids) {
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    $scanned = User::factory()->create();
+    $scanned->forceFill(['time_zone' => $zone])->save();
+    WeighInScheduleEntry::factory()->for($scanned)->create(['weekdays' => [3, 5, 6], 'time' => '07:00']);
+    // Thursday 8 October 07:00 in Brisbane: Wednesday 7 is the day before the first weigh-in there.
+    $first = WeighIn::factory()->for($scanned)->create(['weighed_at' => '2026-10-07 21:00:00']);
+    $paged = User::factory()->create();
+    $paged->forceFill(['time_zone' => $zone])->save();
+    // Monday 13 July 00:30 in Brisbane, the first day of the newest page there, and 12 July, its first day, in UTC.
+    WeighIn::factory()->for($paged)->create(['weighed_at' => '2026-07-12 14:30:00']);
+
+    expect(array_column(weighInCall($scanned, 'weigh_ins_show')->assertOk()->json('data.rows'), 'id'))
+        ->toBe(str_replace('first', (string) $first->id, $ids))
+        ->and(weighInCall($paged, 'weigh_ins_show')->assertOk()->json('data.next_before'))->toBeNull();
+})->with([
+    'Brisbane' => ['Australia/Brisbane', ['missed-2026-10-09', 'first']],
+    'UTC' => ['UTC', ['first']],
+]);
