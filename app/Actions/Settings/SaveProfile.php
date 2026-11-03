@@ -47,8 +47,10 @@ final class SaveProfile
 
     /**
      * @param  array<string, mixed>  $changes  profile attributes
-     * @param  (Closure(Profile): void)|null  $check  runs on the locked, unchanged profile before anything saves; it
-     *                                                refuses by throwing
+     * @param  (Closure(Profile): ?bool)|null  $check  runs on the locked, unchanged profile before anything saves; it
+     *                                                 refuses by throwing, and returns true when it changed a target
+     *                                                 input outside the profile (the targets rebuild then, as for a
+     *                                                 profile field that is one); void or null changed none
      * @return list<string> the dates the rebuild wrote, Y-m-d; empty when it did not run or did not finish
      */
     public function __invoke(User $user, array $changes, ?Closure $check = null): array
@@ -57,12 +59,10 @@ final class SaveProfile
             Plan::query()->where('user_id', $user->id)->lockForUpdate()->first();
             $profile = Profile::query()->where('user_id', $user->id)->lockForUpdate()->first()
                 ?? throw new DomainException(self::NO_PROFILE);
-            if ($check !== null) {
-                $check($profile);
-            }
+            $forced = $check !== null && $check($profile) === true;
 
             $profile->fill($changes);
-            $changesTargets = array_diff(self::changed($profile), self::NOT_TARGET_INPUTS, self::NOT_FIELDS) !== [];
+            $changesTargets = $forced || array_diff(self::changed($profile), self::NOT_TARGET_INPUTS, self::NOT_FIELDS) !== [];
             $pending = $profile->targets_rebuild_failed_at !== null;
             $profile->save();
 

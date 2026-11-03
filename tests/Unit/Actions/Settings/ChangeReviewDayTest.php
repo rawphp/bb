@@ -161,7 +161,7 @@ it('PLAN-008 two changes in a row keep both', function () {
     changeReviewDay($user, 1);
 
     expect(reviewRows($user))->toBe([['2026-09-28', 4], ['2026-10-15', 1]])
-        ->and(PlanReviewDayChange::query()->orderBy('effective_on')->first()->only(['id', 'updated_at']))->toBe($first->only(['id', 'updated_at']));
+        ->and(PlanReviewDayChange::query()->orderBy('effective_on')->first()->only(['id', 'updated_at']))->toEqual($first->only(['id', 'updated_at']));
 });
 
 it('PLAN-008 changing the day and changing it back before the boundary leaves no change behind', function () {
@@ -188,7 +188,8 @@ it('PLAN-008 SET-005 resending the same day is a no-op', function (?int $first) 
     $dates = reviewDates($user);
     $writes = [];
     DB::listen(function ($query) use (&$writes) {
-        if (preg_match('/^\s*(insert|update|delete)/i', $query->sql)) {
+        // The profile's own save is SET-004's; the plan, its changes and what sits on its grid are this test's.
+        if (preg_match('/^\s*(insert|update|delete)/i', $query->sql) && ! str_contains($query->sql, '`profiles`')) {
             $writes[] = $query->sql;
         }
     });
