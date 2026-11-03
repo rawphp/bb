@@ -27,7 +27,7 @@ const busy = ref(false);
 const error = ref<string | null>(null);
 
 const choices = computed<Choice<Plan>[]>(() =>
-    (billing.value?.plans ?? []).map((plan) => ({ id: plan.plan, title: plan.title, detail: plan.detail ? `${plan.price_text}\n${plan.detail}` : plan.price_text })),
+    (billing.value?.plans ?? []).map((plan) => ({ id: plan.plan, title: plan.title, detail: plan.detail ? `${plan.price_text} · ${plan.detail}` : plan.price_text })),
 );
 // The user's pick, else the server's first choice while it is on sale.
 const selected = computed<Plan | null>(() => {
@@ -60,11 +60,11 @@ function retry(): void {
 </script>
 
 <template>
-    <section class="space-y-4 p-4">
+    <section class="space-y-3 p-4">
         <template v-if="billing">
             <div class="space-y-1">
-                <h1 class="text-2xl font-bold">Unlock your plan</h1>
-                <p class="text-secondary-text">One subscription unlocks every feature.</p>
+                <h1 class="text-xl font-bold">Unlock your plan</h1>
+                <p class="text-sm text-secondary-text">One subscription unlocks every feature.</p>
             </div>
 
             <template v-if="choices.length > 0">
