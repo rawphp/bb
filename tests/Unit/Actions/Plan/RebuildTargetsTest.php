@@ -282,6 +282,40 @@ it('SET-012 the rebuild starts after the user\'s local today, not the UTC day', 
         ->and($rows['2026-10-15']->kcal)->toBe(2000.0);
 });
 
+it('SET-012 a local Monday ahead of the UTC Sunday rebuilds the local plan week and leaves the UTC week alone', function () {
+    // 20:00 Sunday 18 Oct UTC is 06:00 Monday 19 Oct in Brisbane: the plan week that reviews on Mondays has turned over.
+    Carbon::setTestNow('2026-10-18 20:00:00');
+    $user = rebuildUser();
+    $user->forceFill(['time_zone' => 'Australia/Brisbane'])->save();
+    $stored = [];
+    foreach (['2026-10-17', '2026-10-18', '2026-10-19'] as $date) {
+        $stored[$date] = DayTarget::factory()->for($user)->create(['date' => $date]);
+    }
+    $before = array_map(fn (DayTarget $row) => rebuildRowState($row), $stored);
+
+    expect(rebuildRun($user))->toBe(['2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-24', '2026-10-25']);
+
+    expect(array_map(fn (DayTarget $row) => rebuildRowState($row), $stored))->toBe($before)
+        ->and(rebuildRows($user)->keys()->all())->toBe(['2026-10-17', '2026-10-18', '2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-24', '2026-10-25']);
+});
+
+it('SET-012 a local Sunday behind the UTC Monday is the plan week\'s last day, so nothing is rebuilt', function () {
+    // 03:00 Monday 19 Oct UTC is 20:00 Sunday 18 Oct in Los Angeles: locally the week has not turned over yet.
+    Carbon::setTestNow('2026-10-19 03:00:00');
+    $user = rebuildUser();
+    $user->forceFill(['time_zone' => 'America/Los_Angeles'])->save();
+    $stored = [];
+    foreach (['2026-10-18', '2026-10-20'] as $date) {
+        $stored[$date] = DayTarget::factory()->for($user)->create(['date' => $date]);
+    }
+    $before = array_map(fn (DayTarget $row) => rebuildRowState($row), $stored);
+
+    expect(rebuildRun($user))->toBe([]);
+
+    expect(array_map(fn (DayTarget $row) => rebuildRowState($row), $stored))->toBe($before)
+        ->and(rebuildRows($user)->keys()->all())->toBe(['2026-10-18', '2026-10-20']);
+});
+
 it('SCH-053 a skipped session leaves a rest day', function () {
     $user = rebuildUser();
     rebuildSeedMesocycle($user);
