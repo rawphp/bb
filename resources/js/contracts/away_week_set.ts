@@ -9,7 +9,7 @@ export interface AwayWeekSetInput {
   training?: "pause" | "deload";
   calories?: "rest" | "maintenance";
   /**
-   * Leave the phase end date where it is (PLAN-025). Left out, each week keeps what it was saved with.
+   * True leaves the phase end where it is when a week becomes a diet break (PLAN-025). Left out (null, not false), each week keeps what it was saved with. A diet break that moved the end always gives that week back once it is no longer one.
    */
   keep_phase_end?: boolean | null;
 }
