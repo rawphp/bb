@@ -356,38 +356,10 @@ final class PhaseTransitions
      */
     public function lengthWarnings(NextPhaseOption $option, int $weeks): array
     {
+        // What comes next starts where the plan's last phase ends, as a phase added there does.
         $type = self::firstType($option);
-        $ending = $this->ending();
-        $warnings = [];
-        if ($type->isFatLoss()) {
-            if ($ending->type->isFatLoss()) {
-                $warnings[] = NewPhases::FAT_LOSS_AFTER_FAT_LOSS;
-            } elseif ($ending->type === PhaseType::Maintenance) {
-                $phases = $this->plan->phases->values();
-                $before = $phases->count() >= 2 ? $phases[$phases->count() - 2] : null;
-                $short = $before !== null && $before->type->isFatLoss()
-                    ? PhaseWarnings::shortMaintenanceWarning($this->summary()->weeks, $this->plan->weeksOf($before)->count()) : null;
-                if ($short !== null) {
-                    $warnings[] = PhaseChanges::warningText($short);
-                }
-            }
-        }
-        if ($type === PhaseType::MiniCut && $ending->type === PhaseType::MuscleGain) {
-            $ratio = PhaseWarnings::miniCutLength($this->summary()->weeks, $weeks);
-            if ($ratio !== null) {
-                $warnings[] = PhaseChanges::warningText($ratio);
-            }
-        }
-        if ($type === PhaseType::FatLoss) {
-            array_push($warnings, ...NewPhases::fatLossLengthWarnings($weeks));
-            $loss = $this->plan->trainingOnly() ? null
-                : NewPhases::lossOverTenPercent($this->rate($type), $weeks - NewPhases::dietBreaksAt($this->plan, $type, $this->endWeek, $weeks));
-            if ($loss !== null) {
-                $warnings[] = $loss;
-            }
-        }
 
-        return $warnings;
+        return (new NewPhases($this->plan))->warnings($type, $weeks, $this->rate($type));
     }
 
     /**

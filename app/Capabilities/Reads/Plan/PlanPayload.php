@@ -193,7 +193,7 @@ final class PlanPayload
         return new PlanAddPhase(
             starts_text: $startWeek === null ? 'After the current phase' : 'Starts '.PlanWords::day($plan->dayOfWeek($startWeek)),
             refusal: $new->refusal(),
-            default_type: ($new->last() === null ? PhaseType::FatLoss : $new->recommendedTypes()[0] ?? PhaseType::FatLoss)->value,
+            default_type: $new->defaultType()->value,
             types: NewPhasePayload::types($new),
         );
     }

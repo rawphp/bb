@@ -129,21 +129,22 @@ final class NewPhasePayload
 
     /**
      * Both prebuilt plans laid out from where the plan ends; none for a user without a plan or when the last phase
-     * has no end (PLAN-006). Both hold a Fat loss, so none while the screening blocks one (SAFE-001).
+     * has no end (PLAN-006). Both hold a Fat loss, so while the screening blocks one each says why (SAFE-001).
      *
      * @return list<PlanPrebuilt>
      */
     public static function prebuilt(NewPhases $new): array
     {
         $start = $new->startWeek();
-        if ($start === null || NewPhases::screeningRefusal($new->plan, PhaseType::FatLoss) !== null) {
+        if ($start === null) {
             return [];
         }
+        $refusal = NewPhases::screeningRefusal($new->plan, PhaseType::FatLoss);
 
-        return array_map(fn (PrebuiltPlan $plan) => self::prebuiltPlan($new->plan, $plan, $start), PrebuiltPlan::cases());
+        return array_map(fn (PrebuiltPlan $plan) => self::prebuiltPlan($new->plan, $plan, $start, $refusal), PrebuiltPlan::cases());
     }
 
-    private static function prebuiltPlan(PlanSnapshot $plan, PrebuiltPlan $prebuilt, int $start): PlanPrebuilt
+    private static function prebuiltPlan(PlanSnapshot $plan, PrebuiltPlan $prebuilt, int $start, ?string $refusal): PlanPrebuilt
     {
         $layout = $prebuilt->layout($start, $plan->grid, fn () => '');
         $segments = [];
@@ -160,7 +161,7 @@ final class NewPhasePayload
             title: $prebuilt === PrebuiltPlan::MuscleGain ? 'Muscle gain plan' : 'Fat loss plan',
             summary: PrebuiltPlan::LENGTH_IN_WEEKS." weeks from RP's 6-month guide",
             starts_text: 'Starts '.PlanWords::day($plan->dayOfWeek($start)),
-            refusal: null,
+            refusal: $refusal,
             phases: array_map(fn ($phase) => new PlanPrebuiltPhase(
                 type: $phase->type->value,
                 title: $phase->type->title(),

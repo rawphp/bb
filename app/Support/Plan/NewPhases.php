@@ -83,6 +83,19 @@ final class NewPhases
         return array_values(array_filter(array_map(fn (NextPhaseOption $option) => $option->phase, NextPhase::recommendation($last->type))));
     }
 
+    /** The type the form opens on: the first recommended one the screening allows (SAFE-001). */
+    public function defaultType(): PhaseType
+    {
+        $allowed = self::allowedTypes($this->plan);
+        foreach ([...$this->recommendedTypes(), ...PhaseChanges::TYPES] as $type) {
+            if (in_array($type, $allowed, true)) {
+                return $type;
+            }
+        }
+
+        return PhaseType::Maintenance;
+    }
+
     /** The length a type opens on: one mesocycle in training-only mode (PLAN-007), else TBL-010's shortest recommended. */
     public function defaultWeeks(PhaseType $type): int
     {
