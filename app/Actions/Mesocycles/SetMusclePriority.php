@@ -57,9 +57,11 @@ final class SetMusclePriority
                     $mesocycle->earlierWeekRows(),
                     $mesocycle->laterWeekIds(),
                     $current - 1,
-                    $snapshot->sessions
-                        ->filter(fn (WorkoutSession $s) => $s->mesocycle_id === $mesocycle->id && $s->week === $current && ($s->actual_start_at !== null || $s->is_skipped))
-                        ->map(fn (WorkoutSession $s) => (int) $s->day)->values()->all(),
+                    // A current read under the mesocycle lock, which workout writes take first: a session started
+                    // while this write waited keeps what it ran with.
+                    WorkoutSession::query()->where('mesocycle_id', $mesocycle->id)->where('week', $current)
+                        ->where(fn ($query) => $query->whereNotNull('actual_start_at')->orWhere('is_skipped', true))
+                        ->sharedLock()->pluck('day')->map(fn ($day) => (int) $day)->values()->all(),
                 );
             }
             $stored[$muscle->value] = $priority?->value;
