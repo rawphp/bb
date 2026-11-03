@@ -115,3 +115,103 @@ it('CAP-019 restores auto-increment ids on down() and drops the undo tokens that
         $this->warpRecycleDatabase();
     }
 });
+
+/** A planned food under the old schema: its integer id. */
+function plannedUlidOldFood(User $user, string $mealId, int $position): int
+{
+    return DB::table('planned_foods')->insertGetId([
+        'user_id' => $user->id, 'meal_id' => $mealId, 'food_id' => Food::factory()->create()->id, 'position' => $position,
+        'grams' => 10.0 + $position, 'is_cooked' => false, 'is_locked' => false, 'unit' => 'g', 'created_at' => now(), 'updated_at' => now(),
+    ]);
+}
+
+function plannedUlidKeyIsUlid(string $table): bool
+{
+    $column = collect(Schema::getColumns($table))->firstWhere('name', 'id');
+
+    return $column['type_name'] === 'char' && ! $column['nullable']
+        && collect(Schema::getIndexes($table))->firstWhere('primary', true)['columns'] === ['id']
+        && DB::table($table)->pluck('id')->every(fn ($id) => Str::isUlid((string) $id));
+}
+
+it('CAP-019 finishes a run that stopped after the ULID column was added and partly filled', function () {
+    $migration = require database_path('migrations/2026_11_10_000000_give_planned_foods_and_recipes_ulid_ids.php');
+    try {
+        $migration->down();
+        $user = User::factory()->create();
+        $meal = DayTarget::factory()->for($user)->create()->mealIndex()->firstOrFail();
+        $first = plannedUlidOldFood($user, $meal->id, 0);
+        plannedUlidOldFood($user, $meal->id, 1);
+        // What a run that died mid-way leaves: the column, one row filled, the old key still there.
+        Schema::table('planned_foods', fn ($table) => $table->char('ulid', 26)->nullable());
+        $kept = strtolower((string) Str::ulid());
+        DB::table('planned_foods')->where('id', $first)->update(['ulid' => $kept]);
+
+        $migration->up();
+
+        expect(plannedUlidKeyIsUlid('planned_foods'))->toBeTrue()
+            ->and(plannedUlidKeyIsUlid('planned_recipes'))->toBeTrue()
+            ->and(Schema::hasColumn('planned_foods', 'ulid'))->toBeFalse()
+            ->and(DB::table('planned_foods')->orderBy('position')->pluck('grams')->map(fn ($g) => (float) $g)->all())->toBe([10.0, 11.0])
+            ->and(DB::table('planned_foods')->where('position', 0)->value('id'))->toBe($kept);
+
+        // Run again on finished tables: nothing changes.
+        $ids = DB::table('planned_foods')->orderBy('position')->pluck('id')->all();
+        $migration->up();
+        expect(DB::table('planned_foods')->orderBy('position')->pluck('id')->all())->toBe($ids);
+    } finally {
+        $this->warpRecycleDatabase();
+    }
+});
+
+it('CAP-019 swaps a table\'s key in one statement, so a row left without a ULID stops it and the table keeps its old key', function () {
+    $migration = require database_path('migrations/2026_11_10_000000_give_planned_foods_and_recipes_ulid_ids.php');
+    try {
+        $migration->down();
+        $user = User::factory()->create();
+        $meal = DayTarget::factory()->for($user)->create()->mealIndex()->firstOrFail();
+        plannedUlidOldFood($user, $meal->id, 0);
+        plannedUlidOldFood($user, $meal->id, 1);
+        Schema::table('planned_foods', fn ($table) => $table->char('ulid', 26)->nullable());
+        DB::table('planned_foods')->update(['ulid' => DB::raw('NULL')]);
+
+        // A row an old process inserts between the fill and the swap has no ULID.
+        expect(fn () => $migration->swapKey('planned_foods'))->toThrow(Illuminate\Database\QueryException::class);
+
+        $id = collect(Schema::getColumns('planned_foods'))->firstWhere('name', 'id');
+        expect($id['auto_increment'])->toBeTrue()
+            ->and(Schema::hasColumn('planned_foods', 'ulid'))->toBeTrue()
+            ->and(DB::table('planned_foods')->count())->toBe(2);
+
+        // The next run fills it and finishes.
+        $migration->up();
+        expect(plannedUlidKeyIsUlid('planned_foods'))->toBeTrue()
+            ->and(DB::table('planned_foods')->count())->toBe(2);
+    } finally {
+        $this->warpRecycleDatabase();
+    }
+});
+
+it('CAP-019 finishes a down() that stopped part way, and a second down() changes nothing', function () {
+    $migration = require database_path('migrations/2026_11_10_000000_give_planned_foods_and_recipes_ulid_ids.php');
+    try {
+        $user = User::factory()->create();
+        $meal = DayTarget::factory()->for($user)->create()->mealIndex()->firstOrFail();
+        foreach ([0, 1] as $position) {
+            DB::table('planned_foods')->insert(['id' => strtolower((string) Str::ulid()), 'user_id' => $user->id, 'meal_id' => $meal->id, 'food_id' => Food::factory()->create()->id, 'position' => $position, 'grams' => 20.0 + $position, 'is_cooked' => false, 'is_locked' => false, 'unit' => 'g', 'created_at' => now(), 'updated_at' => now()]);
+        }
+        Schema::table('planned_foods', fn ($table) => $table->unsignedBigInteger('number')->nullable());
+        DB::table('planned_foods')->where('position', 0)->update(['number' => 1]);
+
+        $migration->down();
+        $migration->down();
+
+        $id = collect(Schema::getColumns('planned_foods'))->firstWhere('name', 'id');
+        expect($id['auto_increment'])->toBeTrue()
+            ->and(Schema::hasColumn('planned_foods', 'number'))->toBeFalse()
+            ->and(DB::table('planned_foods')->orderBy('position')->pluck('id')->map(fn ($k) => (int) $k)->all())->toBe([1, 2])
+            ->and(DB::table('planned_foods')->orderBy('position')->pluck('grams')->map(fn ($g) => (float) $g)->all())->toBe([20.0, 21.0]);
+    } finally {
+        $this->warpRecycleDatabase();
+    }
+});
