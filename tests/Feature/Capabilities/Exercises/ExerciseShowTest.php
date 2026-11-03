@@ -57,7 +57,7 @@ it('EX-002 answers 422 naming exercise_id when it is missing', function () {
 it('EX-002 EX-007 EX-010 EX-012 shows a seeded exercise in the fixture\'s shape', function () {
     $user = TrainSeed::user();
     $bench = TrainSeed::exercise('Bench Press', MuscleGroup::Chest);
-    $bench->update(['video_url' => 'https://example.com/bench', 'rep_range_min' => 5, 'rep_range_max' => 10]);
+    $bench->update(['load_type' => 'barbell', 'video_url' => 'https://example.com/bench', 'rep_range_min' => 5, 'rep_range_max' => 10]);
     TrainSeed::mesocycle($user);
     ExerciseNote::factory()->create(['user_id' => $user->id, 'exercise_id' => $bench->id, 'note' => 'Shoulder blades back.']);
     ExerciseLoadStep::factory()->create(['user_id' => $user->id, 'exercise_id' => $bench->id, 'step_kg' => 1.25]);
@@ -81,7 +81,7 @@ it('EX-002 EX-007 EX-010 EX-012 shows a seeded exercise in the fixture\'s shape'
 it('EX-002 EX-004 shows the user\'s own exercise, not in the mesocycle and never trained, in the empty fixture\'s shape', function () {
     $user = TrainSeed::user();
     TrainSeed::mesocycle($user);
-    $custom = Exercise::factory()->custom($user)->create(['name' => 'Landmine Press (my gym)', 'video_url' => null]);
+    $custom = Exercise::factory()->custom($user)->create(['name' => 'Landmine Press (my gym)', 'video_url' => null, 'load_type' => 'barbell']);
 
     $data = exerciseShowFor($this, $user, $custom)->assertOk()->json('data');
 
@@ -109,7 +109,7 @@ it('EX-012 shows the load step in pounds, and no step for bodyweight', function 
 it('EX-010 shows each user their own note, step and history of a shared exercise', function () {
     $user = TrainSeed::user();
     $other = TrainSeed::user();
-    $bench = Exercise::factory()->create();
+    $bench = Exercise::factory()->create(['load_type' => 'barbell']);
     ExerciseNote::factory()->create(['user_id' => $other->id, 'exercise_id' => $bench->id, 'note' => 'Theirs']);
     ExerciseLoadStep::factory()->create(['user_id' => $other->id, 'exercise_id' => $bench->id, 'step_kg' => 3]);
     exerciseLogged($other, $bench, '2026-10-01 09:00:00', [[100, 5]]);

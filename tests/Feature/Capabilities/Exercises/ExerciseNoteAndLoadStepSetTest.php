@@ -2,6 +2,7 @@
 
 use App\Capabilities\Support\ReadKey;
 use App\Models\Exercise;
+use App\Models\Mesocycle;
 use App\Models\ExerciseLoadStep;
 use App\Models\ExerciseNote;
 use App\Models\Profile;
@@ -55,7 +56,7 @@ it('EX-010 EX-012 answer 422 naming the field for one bad input', function (stri
 it('EX-010 pins a trimmed note, clears it with null, and names the exercise and the sessions holding it', function () {
     $user = User::factory()->create();
     $exercise = Exercise::factory()->create();
-    $session = WorkoutSession::factory()->for($user)->create(['mesocycle_id' => (string) Str::uuid(), 'week' => 3, 'day' => 2]);
+    $session = WorkoutSession::factory()->for($user)->create(['mesocycle_id' => Mesocycle::factory()->for($user)->create()->id, 'week' => 3, 'day' => 2]);
     WorkoutExercise::factory()->create(['workout_session_id' => $session->id, 'exercise_id' => $exercise->id]);
 
     $set = exerciseWriteCall($user, 'exercise_note_set', ['exercise_id' => (string) $exercise->id, 'note' => '  Pause  '])->assertOk();

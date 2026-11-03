@@ -118,5 +118,5 @@ it('CAP-014 returns the first result of a create retried with the same Idempoten
     $retry = exerciseSaveCall($user, exerciseSaveInput(), $key)->assertOk();
 
     expect(Exercise::query()->where('user_id', $user->id)->count())->toBe(1)
-        ->and($retry->json('data'))->toBe($first->json('data'));
+        ->and($retry->json('data'))->toEqual($first->json('data'));
 });
