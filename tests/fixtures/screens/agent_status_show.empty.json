@@ -1,5 +1,7 @@
 {
     "enabled": false,
+    "on": true,
+    "conversation_ulid": null,
     "turns_left": null,
     "tokens_left": null,
     "at_cap": false,

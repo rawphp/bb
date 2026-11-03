@@ -18,6 +18,7 @@ abstract class TestCase extends BaseTestCase
 {
     use InteractsWithWarmApplication {
         createApplication as createWarmApplication;
+        warpRecycleDatabase as recycleWarpDatabase;
     }
 
     public function createApplication(): Application
@@ -52,6 +53,22 @@ abstract class TestCase extends BaseTestCase
         }
 
         return $app;
+    }
+
+    /**
+     * Recycling the database ends every session on it, the package stores' too, and no
+     * migrate:fresh follows to reconnect them (above). Their first query would then find its
+     * connection lost and reconnect through the manager, which drops the live connection with
+     * the next test's RefreshDatabase transaction in it. So reconnect them now, onto the live one.
+     */
+    protected function warpRecycleDatabase(): void
+    {
+        $this->recycleWarpDatabase();
+
+        $connection = $this->app->make(CapabilityRegistry::class)->transactionConnection();
+        if ($connection instanceof Connection) {
+            $connection->reconnect();
+        }
     }
 
     private static function reconnectPackageStores(Application $app): void

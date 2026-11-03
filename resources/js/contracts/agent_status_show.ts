@@ -4,6 +4,8 @@ export interface AgentStatusShowInput {}
 
 export interface AgentStatusShowOutput {
   enabled: boolean;
+  on: boolean;
+  conversation_ulid?: string | null;
   turns_left?: number | null;
   tokens_left?: number | null;
   at_cap: boolean;
@@ -15,4 +17,4 @@ export interface AgentStatusShowOutput {
   } | null;
 }
 
-export const outputVersion = 'e0f5b7c815c9';
+export const outputVersion = '0306ae3f160d';
