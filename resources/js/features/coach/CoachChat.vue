@@ -48,6 +48,10 @@ const sending = ref(false);
 const error = ref<string | null>(null);
 // A message whose send got no answer but which history shows the Coach received.
 const landed = ref(false);
+// A message whose send got no answer and whose fate the conversation has not shown yet,
+// with the messages on screen before it. Nothing is sent until a check settles it.
+let unanswered: { content: string; before: Set<string> } | null = null;
+const UNCHECKED = "Couldn't check whether the Coach got your message, so it was not sent again. Try again once you're connected.";
 // The device's own word: a request that gets no answer while online is an error, not offline.
 const offline = ref(typeof navigator !== 'undefined' && navigator.onLine === false);
 const end = ref<HTMLElement | null>(null);
@@ -133,13 +137,23 @@ async function submit(): Promise<void> {
         sending.value = false;
         return;
     }
+    if (unanswered !== null) {
+        const earlier = unanswered;
+        const outcome = await settle(earlier);
+        if (outcome !== 'absent') {
+            if (outcome === 'landed' && content === earlier.content) draft.value = '';
+            sending.value = false;
+            return;
+        }
+    }
     let sent;
     try {
         sent = await send(content, conversation.value);
     } catch (failed) {
-        if (failed instanceof CapabilityError && failed.status === 0 && (await reached(content))) {
-            draft.value = '';
-            landed.value = true;
+        if (failed instanceof CapabilityError && failed.status === 0) {
+            const outcome = await settle({ content, before: new Set(messages.value.map((message) => message.ulid)) });
+            if (outcome === 'landed') draft.value = '';
+            if (outcome === 'absent') error.value = writeFailureMessage(failed, "The Coach couldn't take that message. Try again.");
         } else {
             error.value = writeFailureMessage(failed, "The Coach couldn't take that message. Try again.");
         }
@@ -160,17 +174,32 @@ async function submit(): Promise<void> {
 
 /**
  * A send with no answer may still have reached the package, and sending it again would
- * run a second turn. So the conversation is read again: true when it now holds this
- * message, which was not on screen before. Its turn is not known, so it is not polled;
- * its reply shows on the next open.
+ * run a second turn. So the conversation is read again. `landed`: it now holds this
+ * message, which was not on screen before; its turn is not known, so it is not polled, and
+ * its reply shows on the next open. `absent`: the conversation answered without it, so it
+ * may be sent again. `unknown`: the conversation could not be read, so the message is kept
+ * unanswered and the next Send checks again before sending anything.
  */
-async function reached(content: string): Promise<boolean> {
-    const before = new Set(messages.value.map((message) => message.ulid));
-    if (conversation.value === null) await refreshStatus();
-    const fresh = conversation.value === null ? undefined : await loadHistory();
-    const found = fresh?.messages.some((message) => message.role === 'user' && message.content === content && !before.has(message.ulid)) ?? false;
-    if (found) sends++;
-    return found;
+async function settle(message: { content: string; before: Set<string> }): Promise<'landed' | 'absent' | 'unknown'> {
+    unanswered = message;
+    let outcome: 'landed' | 'absent' | 'unknown';
+    if (conversation.value === null && !(await refreshStatus())) {
+        outcome = 'unknown';
+    } else if (conversation.value === null) {
+        // No conversation yet: the package makes one with the first message, so it did not land.
+        outcome = 'absent';
+    } else {
+        const fresh = await loadHistory();
+        if (fresh === undefined) outcome = 'unknown';
+        else outcome = fresh.messages.some((m) => m.role === 'user' && m.content === message.content && !message.before.has(m.ulid)) ? 'landed' : 'absent';
+    }
+    if (outcome !== 'unknown') unanswered = null;
+    if (outcome === 'landed') {
+        sends++;
+        landed.value = true;
+    }
+    if (outcome === 'unknown') error.value = UNCHECKED;
+    return outcome;
 }
 
 function poll(current: Turn, delayMs = POLL_MS): void {
