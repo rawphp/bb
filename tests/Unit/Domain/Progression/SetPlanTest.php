@@ -15,13 +15,13 @@ use App\Domain\Progression\SetPlanInputs;
  * @param  list<SetLoad>  $lastWeek
  * @return list<PlannedLoad>
  */
-function setPlanTargets(int $sets = 3, array $lastWeek = [], ?SetLoad $carried = null, ?int $rir = 2, ?DeloadHalf $deload = null): array
+function setPlanTargets(int $sets = 3, array $lastWeek = [], ?SetLoad $carried = null, ?int $rir = 2, ?DeloadHalf $deload = null, bool $rough = false): array
 {
     $rules = new LoadRules(LoadType::BarbellOrSmithMachine, WeightUnit::Kg, false, 2.5, new ClosedRange(6, 30));
 
     return SetPlan::targets(new SetPlanInputs(
         sets: $sets, lastWeek: $lastWeek, carried: $carried, rir: $rir, deloadHalf: $deload, isFatLoss: false,
-        experience: ExperienceLevel::Intermediate, rules: $rules,
+        experience: ExperienceLevel::Intermediate, rules: $rules, lastWeekWasRough: $rough,
     ));
 }
 
@@ -59,4 +59,42 @@ it('PROG-041 a deload with no last week is empty', function () {
 it('MESO-061 a copied mesocycle starts from the old week 1', function () {
     expect(setPlanTargets(sets: 2, carried: new SetLoad(60, 12)))
         ->toEqual([new PlannedLoad(62.5, 12), new PlannedLoad(62.5, 10)]);
+});
+
+it('SCH-063 after a rough week the target weight does not rise', function () {
+    $lastWeek = [new SetLoad(100, 10), new SetLoad(100, 8)];
+
+    expect(setPlanTargets(sets: 2, lastWeek: $lastWeek, rough: true))->toEqual([new PlannedLoad(100, 10), new PlannedLoad(100, 8)]);
+});
+
+it('SCH-063 after a rough week no rep is added where rounding holds the weight', function () {
+    // 2% on 20 kg rounds back to 20 kg on a 2.5 kg step, so a normal week adds a rep (PROG-022).
+    expect(setPlanTargets(sets: 1, lastWeek: [new SetLoad(20, 10)]))->toEqual([new PlannedLoad(20, 11)])
+        ->and(setPlanTargets(sets: 1, lastWeek: [new SetLoad(20, 10)], rough: true))->toEqual([new PlannedLoad(20, 10)]);
+});
+
+it('SCH-063 after a rough week there is no step up past the top of the range', function () {
+    // 30 reps is the top of the range: a normal week steps the weight up and goes back to the middle (PROG-027).
+    expect(setPlanTargets(sets: 1, lastWeek: [new SetLoad(40, 30)]))->not->toEqual([new PlannedLoad(40, 30)])
+        ->and(setPlanTargets(sets: 1, lastWeek: [new SetLoad(40, 30)], rough: true))->toEqual([new PlannedLoad(40, 30)]);
+});
+
+it('SCH-063 after a rough week an added set still drops reps like the sets before it', function () {
+    expect(setPlanTargets(sets: 3, lastWeek: [new SetLoad(100, 10)], rough: true))
+        ->toEqual([new PlannedLoad(100, 10), new PlannedLoad(100, 8), new PlannedLoad(100, 6)]);
+});
+
+it('SCH-063 a rough week leaves a deload and an empty last week as they were', function () {
+    $lastWeek = [new SetLoad(82.5, 9), new SetLoad(80, 1)];
+
+    expect(setPlanTargets(sets: 3, lastWeek: $lastWeek, rir: null, deload: DeloadHalf::First, rough: true))
+        ->toEqual(setPlanTargets(sets: 3, lastWeek: $lastWeek, rir: null, deload: DeloadHalf::First))
+        ->and(setPlanTargets(sets: 2, carried: new SetLoad(60, 12), rough: true))->toEqual(setPlanTargets(sets: 2, carried: new SetLoad(60, 12)));
+});
+
+it('SCH-063 a week that is not rough progresses exactly as before', function () {
+    $lastWeek = [new SetLoad(100, 10), new SetLoad(100, 8)];
+
+    expect(setPlanTargets(sets: 3, lastWeek: $lastWeek, rough: false))
+        ->toEqual([new PlannedLoad(102.5, 10), new PlannedLoad(102.5, 8), new PlannedLoad(102.5, 6)]);
 });
