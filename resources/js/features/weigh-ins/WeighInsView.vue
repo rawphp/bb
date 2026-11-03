@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { read, readFresh } from '@/app/call';
 import ReadState from '@/app/ReadState.vue';
 import { useRead } from '@/app/useRead';
@@ -23,7 +23,7 @@ const MORE_FAILED = 'Older weigh-ins could not be loaded.';
 const { data, failure, load } = useRead<WeighInsShowOutput>('weigh_ins_show', {}, 'Your weigh-ins could not be loaded.', props.payload);
 
 /** The older pages shown, oldest last, each under the `before` it was read with. */
-const older = ref<{ before: string; page: WeighInsShowOutput }[]>([]);
+const older = shallowRef<{ before: string; page: WeighInsShowOutput }[]>([]);
 const loadingMore = ref(false);
 const moreError = ref<string | null>(null);
 
@@ -50,10 +50,13 @@ async function more(): Promise<void> {
     loadingMore.value = true;
     moreError.value = null;
     const index = older.value.length;
+    // The refresh replaces the cached copy only while it is still shown, not a re-read since.
+    let cachedPage: WeighInsShowOutput | undefined;
     try {
         const page = await read<WeighInsShowOutput>('weigh_ins_show', { before }, (fresh) => {
-            if (older.value[index]?.before === before) replacePage(index, before, fresh);
+            if (cachedPage !== undefined && older.value[index]?.page === cachedPage) replacePage(index, before, fresh);
         });
+        cachedPage = page;
         older.value = [...older.value, { before, page }];
     } catch {
         moreError.value = MORE_FAILED;
