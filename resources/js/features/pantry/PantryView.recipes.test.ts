@@ -1,4 +1,4 @@
-import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { provideScreenTop } from '@/app/screenTop';
@@ -32,6 +32,9 @@ function row(wrapper: ReturnType<typeof show>, name: string) {
 async function pick(wrapper: ReturnType<typeof show>, name: string): Promise<void> {
     await row(wrapper, name).find('[data-test="pick"]').trigger('click');
 }
+
+// Every PantryView is unmounted after its test, so no search timer it left fires during a later one.
+enableAutoUnmount(afterEach);
 
 describe('PantryView for a recipe', () => {
     beforeEach(() => {
