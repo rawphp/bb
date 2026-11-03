@@ -93,7 +93,7 @@ final class WorkoutReads
         );
     }
 
-    private static function dayOf(?DateTimeInterface $at): ?DateTimeImmutable
+    private static function dayOf(DateTimeInterface|string|null $at): ?DateTimeImmutable
     {
         return $at === null ? null : TrainSnapshot::day($at);
     }
