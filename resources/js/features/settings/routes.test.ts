@@ -30,7 +30,7 @@ describe('settings routes', () => {
         expect(await screen(name)).toBe(component);
     });
 
-    it('SET-009 every Settings screen opens in the More tab', () => {
+    it('NAV-002 every Settings screen opens in the More tab', () => {
         for (const route of routes.filter((r) => r.meta.screen === 'settings_show')) expect(route.meta).toMatchObject({ tab: 'more' });
     });
 });
