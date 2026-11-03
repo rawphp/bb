@@ -97,7 +97,7 @@ const editing = computed(() => {
             <ExerciseDetailContent v-show="tab === 'detail'" :exercise="data" :reload="load" :pending="pending" />
 
             <div v-show="tab === 'history'" class="flex flex-col gap-3">
-                <p v-if="!data.history.length" class="text-sm text-secondary-text">No sessions logged yet.</p>
+                <p v-if="!data.history.length" data-no-sessions class="text-sm text-secondary-text">No sessions logged yet.</p>
                 <ItemCard v-for="session in data.history" :key="session.workout_id" data-session :title="session.date_text" :pending="pending">
                     <template #icon>
                         <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">

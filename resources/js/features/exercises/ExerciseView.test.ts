@@ -59,6 +59,7 @@ describe('ExerciseView', () => {
             ['Detail', 'true'],
             ['History', 'false'],
         ]);
+        expect(view.get('[data-session]').isVisible()).toBe(false);
         const video = view.get('a[href="https://www.youtube.com/watch?v=example-bench"]');
         expect(video.text()).toContain('Watch on YouTube');
         expect(video.attributes('target')).toBe('_blank');
@@ -228,7 +229,7 @@ describe('ExerciseView', () => {
 
     it('CAP-014 a note save with no final answer keeps the typed note while the screen reads the server again', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('exercise_note_set', 502, null));
-        readFreshMock.mockResolvedValue({ ...bench, pinned_note: 'Changed elsewhere.' });
+        readFreshMock.mockResolvedValue({ ...bench, pinned_note: 'Changed elsewhere.', load_step: { ...bench.load_step!, step: { value: 6, unit: 'kg', text: '6 kg' } } });
         const view = show({ payload: bench });
 
         await view.get('textarea[aria-label="Pinned note"]').setValue('Typed here');
@@ -238,6 +239,7 @@ describe('ExerciseView', () => {
         expect(readFreshMock).toHaveBeenCalledWith('exercise_show', { exercise_id: bench.id });
         expect(view.get('[role="alert"]').text()).toContain('may have worked');
         expect(noteValue(view)).toBe('Typed here');
+        expect(stepValue(view)).toBe('6');
     });
 
     it('EX-012 after a load step save the field shows the server\'s step', async () => {
@@ -299,15 +301,20 @@ describe('ExerciseView', () => {
     it('EX-002 the History tab says when no session is logged yet', async () => {
         const view = show({ payload: landmine });
 
+        expect(view.get('[data-no-sessions]').isVisible()).toBe(false);
         await openHistory(view);
         expect(view.findAll('[data-session]')).toHaveLength(0);
-        expect(view.text()).toContain('No sessions logged yet.');
+        expect(view.get('[data-no-sessions]').text()).toBe('No sessions logged yet.');
+        expect(view.get('[data-no-sessions]').isVisible()).toBe(true);
     });
 
     it('EX-002 can open on the History tab', () => {
         const view = show({ payload: bench, tab: 'history' });
 
         expect(view.findAll('[data-session]')).toHaveLength(2);
+        expect(view.get('[data-session]').isVisible()).toBe(true);
+        expect(view.get('textarea').isVisible()).toBe(false);
+        expect(view.findAll('[role="tab"]').map((t) => t.attributes('aria-selected'))).toEqual(['false', 'true']);
     });
 
     it('CAP-004 shows a skeleton while it reads exercise_show for the exercise in the route', async () => {
@@ -338,6 +345,7 @@ describe('ExerciseView', () => {
 
         expect(card(view, 'details').text()).toContain('Waiting to sync');
         await openHistory(view);
+        expect(view.get('[data-session]').isVisible()).toBe(true);
         expect(view.findAll('[data-session]').every((s) => s.text().includes('Waiting to sync'))).toBe(true);
     });
 
