@@ -33,6 +33,7 @@ use App\Models\PushSubscription;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\ReminderMorning;
+use App\Models\ReviewAnswer;
 use App\Models\SavedMeal;
 use App\Models\SavedMealFood;
 use App\Models\SentReminder;
@@ -77,6 +78,7 @@ function fillAccount(User $user): void
     $phase = Phase::factory()->for($user)->create();
     Mesocycle::factory()->for($user)->create(['phase_id' => $phase->id]);
     PlanWeek::factory()->for($user)->create();
+    ReviewAnswer::factory()->for($user)->create();
     OtherActivity::factory()->for($user)->create();
 
     $day = DayTarget::factory()->for($user)->create();
