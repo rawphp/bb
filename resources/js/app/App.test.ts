@@ -1,3 +1,5 @@
+// The shell's Coach button reads agent_status_show through the IndexedDB cache.
+import 'fake-indexeddb/auto';
 import { mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it } from 'vitest';
 import { defineComponent, h, nextTick } from 'vue';
