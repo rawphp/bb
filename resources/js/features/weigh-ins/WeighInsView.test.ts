@@ -201,6 +201,34 @@ describe('WeighInsView', () => {
         expect(inputViolations('weigh_in_update', input)).toEqual([]);
     });
 
+    it('WT-004 the date field shows the time as the server wrote it, and a save keeps the server\'s offset', async () => {
+        const view = show({ payload: content });
+
+        await view.findAll('[data-test="weigh-in"]')[0]!.trigger('click');
+        expect(field('weighed_at').value).toBe('2026-10-10T08:35');
+        await type('weighed_at', '2026-10-10T09:05');
+        await save();
+
+        expect((writeMock.mock.calls[0]![1] as { weighed_at: string }).weighed_at).toBe('2026-10-10T09:05:00+00:00');
+    });
+
+    it('WT-002 a new weigh-in for now starts at the device\'s time, with its offset', async () => {
+        vi.useFakeTimers({ now: new Date('2026-10-11T06:30:00Z'), toFake: ['Date'] });
+        try {
+            const view = show({ payload: content });
+
+            await view.get('button[aria-label="Log weigh-in"]').trigger('click');
+            await type('weight', '82');
+            await save();
+
+            const sent = (writeMock.mock.calls[0]![1] as { weighed_at: string }).weighed_at;
+            expect(sent).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00[+-]\d{2}:\d{2}$/);
+            expect(Date.parse(sent)).toBe(Date.parse('2026-10-11T06:30:00Z'));
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('WT-004 Delete weigh-in deletes it and closes the sheet', async () => {
         const view = show({ payload: content });
 
