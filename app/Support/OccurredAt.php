@@ -15,7 +15,7 @@ use Throwable;
  *
  * No Action calls this yet: the writes that record when a user acted arrive with
  * their own issues (sets and a workout's start #83, finishing #84, meal check-ins
- * #71, weigh-ins and steps #88), and each must read the instant here.
+ * #239, weigh-ins and steps #88), and each must read the instant here.
  */
 final class OccurredAt
 {
