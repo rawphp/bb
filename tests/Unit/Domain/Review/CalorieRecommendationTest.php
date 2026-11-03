@@ -4,6 +4,7 @@ use App\Domain\Model\PhaseType;
 use App\Domain\Phases\StartingCalories;
 use App\Domain\Review\RecommendationReason;
 use App\Domain\Review\RecommendationReasonKind;
+use App\Domain\Review\ReviewWeek;
 use Tests\Unit\Domain\Review\CalorieFixtures as F;
 use Tests\Unit\Domain\Review\CalorieScenario;
 
@@ -313,4 +314,71 @@ it('REV-031 asking for a recommendation changes nothing', function () {
     $first = $scenario->recommend();
     expect($scenario->recommend())->toEqual($first, 'a pure value: asking twice gives the same answer')
         ->and($first->kcal)->not->toBe(3000.0);
+});
+
+// REV-046 and SCH-064 have no Swift: they are bb's own.
+
+/** The week with the SCH-064 and REV-046 marks set. */
+function recMarked(ReviewWeek $week, bool $rough = false, bool $fatigued = false): ReviewWeek
+{
+    return new ReviewWeek(
+        week: $week->week, loggedIntakeKcal: $week->loggedIntakeKcal, targetKcal: $week->targetKcal,
+        hadHigherCarbDayShift: $week->hadHigherCarbDayShift, isRough: $rough, trainingFatigueHigh: $fatigued,
+    );
+}
+
+/** Four weeks at 1,800 kcal on the formula's 2,600; the last loses 1.2% a week, past the band. */
+function recLosingFast(bool $rough = false, bool $fatigued = true): CalorieScenario
+{
+    $weeks = F::weeks(4, 1800, false);
+    $weeks[3] = recMarked($weeks[3], $rough, $fatigued);
+
+    return new CalorieScenario(weeks: $weeks, rates: [-0.5, -0.5, -0.5, -1.2]);
+}
+
+it('REV-046 losing faster than the band with high training fatigue goes back to the target rate in one step', function () {
+    $scenario = recLosingFast();
+    $recommendation = $scenario->recommend();
+
+    expect($recommendation->reason)->toEqual(RecommendationReason::losingTooFast())
+        ->and($recommendation->kcal)->toEqualWithDelta(recFormulaLevel($scenario), 1e-6)
+        ->and($recommendation->changeKcal)->toBeGreaterThan(250);
+});
+
+it('REV-046 REV-023 without high training fatigue the same week moves by at most 250 kcal', function () {
+    $recommendation = recLosingFast(fatigued: false)->recommend();
+
+    expect($recommendation->reason)->toEqual(RecommendationReason::towardTargetRate())
+        ->and($recommendation->kcal)->toEqualWithDelta(2050, 1e-6);
+});
+
+it('REV-046 the week after a break returns to the corrected target of the week that lost too fast', function () {
+    $scenario = function (bool $fatigued): CalorieScenario {
+        $weeks = F::weeks(3, 1800, false);
+        $weeks[2] = recMarked($weeks[2], fatigued: $fatigued);
+        $weeks[] = F::week(3, intake: 2600, target: 2600, dietBreak: true);
+
+        return new CalorieScenario(weeks: $weeks, rates: [-0.5, -0.5, -1.2, -0.5]);
+    };
+    $fast = $scenario(true);
+    $corrected = $fast->formulaKcal + F::kcal(-0.5, $fast->trend()->trendKg(F::day(20)));
+
+    expect($fast->recommend()->reason)->toEqual(RecommendationReason::returnFromBreak())
+        ->and($fast->recommend()->kcal)->toEqualWithDelta($corrected, 1e-6)
+        ->and($corrected)->toBeGreaterThan(1800 + 250)
+        ->and($scenario(false)->recommend()->kcal)->toEqualWithDelta(1800, 1e-9);
+});
+
+it('SCH-064 a rough week repeats the week, over REV-046', function () {
+    $recommendation = recLosingFast(rough: true)->recommend();
+
+    expect($recommendation->reason)->toEqual(RecommendationReason::roughWeek())
+        ->and($recommendation->kcal)->toEqualWithDelta(1800, 1e-9);
+});
+
+it('SCH-064 REV-030 a rough week still meets the SAFE-011 check first', function () {
+    $scenario = recLosingFast(rough: true);
+    $scenario->heightCm = 220;
+
+    expect($scenario->recommend()->reason->kind)->toBe(RecommendationReasonKind::Safety);
 });
