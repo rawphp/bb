@@ -2,6 +2,7 @@
 
 use App\Capabilities\Reads\Review\ReviewShowPayload;
 use App\Capabilities\Reads\Review\ReviewUnavailable;
+use App\Domain\WeekBuilder\CalorieMove;
 use App\Models\User;
 use App\Support\Review\ReviewAnswers;
 use App\Support\Review\ReviewData;
@@ -110,4 +111,30 @@ it('REV-001 an unavailable review has a message, no steps and no section', funct
         ->and(reviewSections($payload))->toBe([])
         ->and($payload['can_save'])->toBeFalse()
         ->and($payload['save_title'])->toBe('Save');
+});
+
+it('SAFE-012 REV-010 a ready review whose chosen amount safety refuses cannot be saved, and says why', function () {
+    $payload = reviewShown(answers: new ReviewAnswers('choose_own', 900, null, false, [], null));
+
+    expect($payload['state'])->toBe('ready')
+        ->and($payload['preview']['days'])->toBe([])
+        ->and($payload['preview']['error'])->toBe('That is too few calories to fit your protein, fat and carbs. Choose a higher average.')
+        ->and($payload['can_save'])->toBeFalse();
+});
+
+it('NUT-022 REV-004 a ready review whose moves the rules refuse cannot be saved, and says why', function () {
+    $moves = [new CalorieMove(0, 1, 500), new CalorieMove(0, 1, 500)];
+    $payload = reviewShown(answers: new ReviewAnswers('recommendation', null, null, false, $moves, null));
+
+    expect($payload['preview']['days'])->toBe([])
+        ->and($payload['preview']['error'])->toBe('A day stays between 80% and 125% of the week\'s average, and a day already past can\'t change.')
+        ->and($payload['can_save'])->toBeFalse();
+});
+
+it('REV-010 a ready review with Choose my own and no amount cannot be saved and shows no error', function () {
+    $payload = reviewShown(answers: new ReviewAnswers('choose_own', 0, null, false, [], null));
+
+    expect($payload['preview']['days'])->toBe([])
+        ->and($payload['preview']['error'])->toBeNull()
+        ->and($payload['can_save'])->toBeFalse();
 });
