@@ -58,7 +58,8 @@ final class OpenReview
      * unanswered defaults when there are none, and `blocked`, the reason review_complete refuses them, which review_show
      * shows as the preview's error. A full review blocks a Choose my own draft with no amount (REV-010) and an answered
      * option it no longer offers. Stored moves that no longer build, though the option does (a day has passed since,
-     * NUT-024), are left out with the reason, as review_answer leaves out a refused move.
+     * NUT-024), are cut back to the longest run from the first that still builds, with the reason, as review_answer
+     * keeps out a refused move.
      *
      * @return array{answers: ReviewAnswers, blocked: ?string}
      */
@@ -69,26 +70,27 @@ final class OpenReview
             return ['answers' => ReviewAnswers::defaults(), 'blocked' => null];
         }
         $answers = $row->answers();
+        $with = fn (array $moves, ?string $refusal) => new ReviewAnswers(
+            $answers->option, $answers->ownKcal, $answers->deloadToo, $answers->updateStepPlan, $moves, $refusal,
+        );
+        $week = $answers->moves === [] ? null : (new ReviewChoices($analysis, $answers))->saveWeek();
+        if ($week instanceof WeekBuildRefusal) {
+            for ($count = count($answers->moves) - 1; $count >= 0; $count--) {
+                $kept = $with(array_slice($answers->moves, 0, $count), ReviewMessages::refusal($week));
+                if ((new ReviewChoices($analysis, $kept))->saveWeek() instanceof BuiltWeek) {
+                    $answers = $kept;
+                    break;
+                }
+            }
+        }
         $blocked = match (true) {
             $analysis->mode !== ReviewMode::Full => null,
             $row->needsAmount() => self::NEEDS_AMOUNT,
             ! self::offers($analysis, $row->option) => self::OUT_OF_DATE,
             default => null,
         };
-        $with = fn (array $moves, ?string $refusal) => new ReviewAnswers(
-            $answers->option, $answers->ownKcal, $answers->deloadToo, $answers->updateStepPlan, $moves, $refusal,
-        );
-        if ($blocked !== null) {
-            return ['answers' => $with($answers->moves, $blocked), 'blocked' => $blocked];
-        }
-        if ($answers->moves !== []) {
-            $week = (new ReviewChoices($analysis, $answers))->saveWeek();
-            if ($week instanceof WeekBuildRefusal && (new ReviewChoices($analysis, $with([], null)))->saveWeek() instanceof BuiltWeek) {
-                $answers = $with([], ReviewMessages::refusal($week));
-            }
-        }
 
-        return ['answers' => $answers, 'blocked' => null];
+        return ['answers' => $blocked === null ? $answers : $with($answers->moves, $blocked), 'blocked' => $blocked];
     }
 
     /** The stored answers as review_show shows them ({@see stored()}). */

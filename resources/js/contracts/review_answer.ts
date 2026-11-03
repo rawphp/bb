@@ -5,10 +5,9 @@ export interface ReviewAnswerInput {
   /**
    * The calorie option; left out, the answer sets own_kcal on the stored choose_own and clears its moves, as a new amount does.
    */
-  option?:
-    ("recommendation" | "repeat_this_week" | "choose_own" | "drop_fatigue" | "cut_calories" | "add_steps") | null;
+  option?: "recommendation" | "repeat_this_week" | "choose_own" | "drop_fatigue" | "cut_calories" | "add_steps" | null;
   /**
-   * Average kcal a day for choose_own; null leaves it to be sent, and review_complete waits for it. While choose_own waits for it, the suggested amount sent with other changes is read as not yet chosen; send it alone, or with no other change, to choose it.
+   * Average kcal a day for choose_own; null leaves it to be sent, and review_complete waits for it. While choose_own waits for it, the suggested amount sent with a new step offer or deload answer, or new moves, is read as not yet chosen; send it alone, or with no change but cleared moves, to choose it.
    */
   own_kcal?: number | null;
   /**
