@@ -25,6 +25,8 @@ beforeEach(function () {
                   <testcase name="it AGT-050 &quot;move tomorrow's workout to Saturday&quot;" file="tests/Agent/TrainingTest.php"/>
                   <testcase name="it AGT-050 &quot;swap bench for dumbbell press&quot;" file="tests/Agent/TrainingTest.php">
                     <failure type="PHPUnit\Framework\ExpectationFailedException">it AGT-050 "swap bench for dumbbell press"The Coach should call exercise_swap with {"scope":"this_session"}, and the app accept it.
+            Its reply: Swapped it, see you at 5:30 PM.
+            at 5:30 the gym is busy.
             Failed asserting that null is not null.
             at tests/Agent/Coach.php:128</failure>
                   </testcase>
@@ -74,7 +76,7 @@ it('AGT-050 agent:eval --live runs the eval set on the real model and records it
         'pass_rate' => 0.4,
         'cases' => [
             ['name' => 'AGT-050 "move tomorrow\'s workout to Saturday"', 'passed' => true],
-            ['name' => 'AGT-050 "swap bench for dumbbell press"', 'passed' => false, 'failure' => "The Coach should call exercise_swap with {\"scope\":\"this_session\"}, and the app accept it.\nFailed asserting that null is not null."],
+            ['name' => 'AGT-050 "swap bench for dumbbell press"', 'passed' => false, 'failure' => "The Coach should call exercise_swap with {\"scope\":\"this_session\"}, and the app accept it.\nIts reply: Swapped it, see you at 5:30 PM.\nat 5:30 the gym is busy.\nFailed asserting that null is not null."],
             ['name' => 'AGT-050 "undo that"', 'passed' => false, 'failure' => 'RuntimeException: The Coach made no successful workout_time_set call.'],
             ['name' => 'AGT-050 "add a set of bench"', 'passed' => false],
             ['name' => 'AGT-050 "start my workout"', 'passed' => true],

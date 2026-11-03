@@ -25,3 +25,18 @@ it('AGT-050 the eval harness fails a case in which the Coach changes something i
     expect(fn () => Coach::says($user, 'How many steps did I walk?', refused: [['steps_log', ['date' => '2026-09-23', 'steps' => 9000]]]))
         ->toThrow(ExpectationFailedException::class, 'The Coach changed something it was not asked to: steps_log');
 });
+
+it('AGT-050 the eval harness lets the Coach read on the way to the expected call, but not skip it', function () {
+    $user = User::factory()->create();
+    $log = ['steps_log', ['date' => '2026-09-23', 'steps' => 9000]];
+    $readThenLog = [
+        ['tool_calls' => [['name' => 'today_show', 'arguments' => []]]],
+        ['tool_calls' => [['name' => $log[0], 'arguments' => $log[1]]]],
+        ['content' => 'Logged.'],
+    ];
+
+    Coach::says($user, 'I walked 9,000 steps today', calls: [$log], script: $readThenLog);
+
+    expect(fn () => Coach::says($user, 'I walked 9,000 steps today', calls: [$log], script: [$readThenLog[0], $readThenLog[2]]))
+        ->toThrow(ExpectationFailedException::class, 'The Coach should call steps_log');
+});
