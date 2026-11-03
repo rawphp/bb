@@ -27,8 +27,9 @@ A Laravel 13 app owns every rule and exposes every action as a capability. A Vue
 
 - One breakpoint: 768 px. Script uses `WIDE_MIN_PX` / `WIDE_QUERY` from `resources/js/app/layout.ts`, Tailwind uses `md:`, CSS uses `@media (min-width: 768px)`.
 - At that width the shell (`resources/js/app/shell.css`) turns the tab bar into a left rail and gives every screen a centred 40rem column. A screen that needs more room (two columns, a wider table) widens its own root with `md:` classes and says why in a comment.
-- No screen uses `position: fixed`, `100dvh`/`100vh`/`min-h-dvh`/`h-screen`, or a fixed `max-w-*` cap on its root for page layout. A bar pinned to the bottom of a screen uses `sticky` inside the screen, not `fixed` to the viewport.
-- Sheets, menus and overlays go through the shared components in `resources/js/design/` and the sheet host, not their own `fixed` layers.
+- A new or changed screen must not use `position: fixed`, `100dvh`/`100vh`/`min-h-dvh`/`h-screen`, or a fixed `max-w-*` cap on its root for page layout. A bar pinned to the bottom of a screen uses `sticky` inside the screen, not `fixed` to the viewport.
+- New or changed sheets, menus and overlays must go through the shared components in `resources/js/design/` and the sheet host, not their own `fixed` layers.
+- Existing screens do not all follow these rules yet. The per-area sweep split from #246 fixes them. Until it lands, these are the known exceptions: `design/BottomSheet.vue`, `design/HelpButton.vue` and `app/PwaOverlay.vue` (`fixed`, `dvh`), `features/today/sheets/TodayTourOverlay.vue` and `features/onboarding/StartingPlanView.vue` (`fixed inset-0`), `features/onboarding/IntroView.vue`, `features/learn/LearnIndexView.vue` and `features/learn/ArticleView.vue` (`min-h-dvh`), `features/onboarding/SetupDoors.vue` (`min-h-[70dvh]`), and the root `max-w-*` caps on `features/onboarding/IntroView.vue`, `features/onboarding/OnboardingView.vue` and `features/account/SignInView.vue`. When you change one of these screens, bring it in line with this section.
 - A new or changed screen is checked at 390 × 844 and at 1440 × 900 before it ships, and its issue says what it shows on a wide screen.
 - Adding a second breakpoint means editing this section first.
 
