@@ -181,15 +181,53 @@ describe('ShoppingListView', () => {
         expect(readMock).toHaveBeenCalledWith('shopping_show', { from: '2026-11-02', to: '2026-11-02' }, expect.any(Function), expect.any(Function));
     });
 
-    it('CAP-004 when the list for new dates does not load, it says why and the picked dates stay to pick again', async () => {
-        readMock.mockReset().mockRejectedValueOnce(new CapabilityError('shopping_show', 500, null));
+    it('CAP-004 when the list for new dates does not load, it says why and the list before comes back with its dates', async () => {
+        readMock.mockReset().mockRejectedValueOnce(new CapabilityError('shopping_show', 500, null)).mockResolvedValueOnce(content);
         const view = show({ payload: content });
 
         await setDate(view, 'from', '2026-11-04');
 
+        expect(readMock).toHaveBeenLastCalledWith('shopping_show', {}, expect.any(Function), expect.any(Function));
         expect(view.getComponent(ShoppingStatus).get('[role="alert"]').text()).toContain('Your shopping list could not be loaded.');
-        expect((view.get('input[name="from"]').element as HTMLInputElement).value).toBe('2026-11-04');
-        expect(view.find('input[name="to"]').exists()).toBe(true);
+        expect(row(view, 'White rice').exists()).toBe(true);
+        expect((view.get('input[name="from"]').element as HTMLInputElement).value).toBe('2026-11-02');
+    });
+
+    it('OFF-003 offline, the list for new dates says it needs a connection, and the list before comes back from its kept copy', async () => {
+        readMock.mockReset().mockResolvedValueOnce({ ...content, from: '2026-11-04' }).mockRejectedValueOnce(new CapabilityError('shopping_show', 0, null)).mockResolvedValueOnce({ ...content, from: '2026-11-04' });
+        const view = show({ payload: content });
+
+        await setDate(view, 'from', '2026-11-04');
+        await setDate(view, 'to', '2026-11-12');
+
+        expect(readMock.mock.calls.map((call) => call[1])).toEqual([
+            { from: '2026-11-04', to: '2026-11-08' },
+            { from: '2026-11-04', to: '2026-11-12' },
+            { from: '2026-11-04', to: '2026-11-08' },
+        ]);
+        expect(view.getComponent(ShoppingStatus).get('[role="alert"]').text()).toContain('The list for those dates needs a connection.');
+        expect(row(view, 'White rice').exists()).toBe(true);
+        expect((view.get('input[name="to"]').element as HTMLInputElement).value).toBe('2026-11-08');
+    });
+
+    it('OFF-003 when the list cannot load at all, it says why once and reads nothing more', async () => {
+        readMock.mockReset().mockRejectedValue(new CapabilityError('shopping_show', 0, null));
+        const view = show();
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledTimes(1);
+        expect(view.text()).toContain('will load when you\'re back online');
+    });
+
+    it('OFF-003 signed out while new dates load, the list goes', async () => {
+        readMock.mockReset().mockRejectedValueOnce(new CapabilityError('shopping_show', 401, null));
+        const view = show({ payload: content });
+
+        await setDate(view, 'from', '2026-11-04');
+
+        expect(readMock).toHaveBeenCalledTimes(1);
+        expect(row(view, 'White rice')).toBeUndefined();
+        expect(view.text()).toContain('You are signed out.');
     });
 
     it('SHOP-001 dates the user picks are always asked for, the server\'s own included', async () => {
@@ -319,6 +357,8 @@ describe('ShoppingListView', () => {
         expect(tickButton(view, 'Egg whites').attributes('aria-pressed')).toBe('false');
     });
 
+    // Replay sends one entry at a time, oldest first, so this order cannot happen; it pins that
+    // the mark and the tick come from one source, so they cannot disagree.
     it('OFF-009 a refused later tick takes the mark and the tick off its line together', async () => {
         const line = { ...RANGE, key: 'food:01JBX5F0000000000000000007' };
         await queue({ name: 'shopping_item_check', input: { ...line, ticked: true }, label: 'Ticked Egg whites off the shopping list' });
