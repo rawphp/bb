@@ -219,10 +219,10 @@ const select = 'max-w-[60%] rounded-lg bg-transparent text-right text-secondary-
         <section aria-labelledby="settings-account">
             <h2 id="settings-account" :class="heading">Account</h2>
             <div :class="card">
-                <div :class="row">
-                    <span>Signed in as</span>
-                    <span class="truncate text-secondary-text">{{ settings.account_email }}</span>
-                </div>
+                <RouterLink to="/account" :class="row">
+                    <span class="shrink-0">Signed in as</span>
+                    <span class="flex min-w-0 items-center gap-2 text-secondary-text"><span class="truncate">{{ settings.account_email }}</span><span aria-hidden="true">›</span></span>
+                </RouterLink>
                 <button type="button" :class="[row, 'w-full text-left disabled:opacity-60']" data-test="sign-out" :disabled="acting" @click="signOut">Sign out</button>
                 <RouterLink to="/settings/delete-account" :class="[row, 'text-tone-warning']">Delete account</RouterLink>
             </div>
