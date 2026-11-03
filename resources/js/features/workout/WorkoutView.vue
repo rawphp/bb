@@ -9,7 +9,6 @@ import { useScreenTop } from '@/app/screenTop';
 import { useHoldUpdates } from '@/app/updates';
 import { useRead } from '@/app/useRead';
 import type { WorkoutFinishInput } from '@/contracts/workout_finish';
-import type { WorkoutFeedbackAnswerInput } from '@/contracts/workout_feedback_answer';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
 import type { WorkoutSkipInput } from '@/contracts/workout_skip';
 import type { WorkoutStartInput } from '@/contracts/workout_start';
@@ -19,7 +18,7 @@ import HelpButton from '@/design/HelpButton.vue';
 import PendingMark from '@/design/PendingMark.vue';
 import { toneClasses } from '@/design/tones';
 import { showWorkout } from './activeWorkout';
-import { isFeedbackDue } from './feedbackDue';
+import { isAnswerWaiting, isFeedbackDue } from './feedbackDue';
 import { holdWakeLock, leaveWakeLock, releaseWakeLock } from './wakeLock';
 import FeedbackSheet from './sheets/FeedbackSheet.vue';
 import LookBackSheet from './sheets/LookBackSheet.vue';
@@ -170,10 +169,10 @@ function closeSheet(): void {
 
 // FB-001: the first feedback that is due and unanswered, with no answer waiting in the outbox. Due counts the sets
 // waiting to sync, so feedback is asked offline too (OFF-021).
-const answerWaiting = (muscle: string) =>
-    data.value !== undefined &&
-    pendingInput<WorkoutFeedbackAnswerInput>('workout_feedback_answer', (input) => input.workout_id === data.value!.workout_id && input.muscle_group === muscle) !== undefined;
-const dueFeedback = computed(() => data.value?.feedback.find((entry) => isFeedbackDue(data.value!, entry) && !entry.is_answered)?.muscle_group);
+const answerWaiting = (muscle: string) => data.value !== undefined && isAnswerWaiting(data.value, muscle);
+const dueFeedback = computed(
+    () => data.value?.feedback.find((entry) => isFeedbackDue(data.value!, entry) && !entry.is_answered && !answerWaiting(entry.muscle_group))?.muscle_group,
+);
 // What opens by itself: the first due, unanswered muscle the user has not cancelled and whose answer is not waiting.
 const autoFeedback = computed(() =>
     data.value?.is_editable

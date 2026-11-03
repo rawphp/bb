@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { pendingInput } from '@/app/outbox';
 import { ulid } from '@/app/ulid';
 import type { WorkoutExerciseRemoveInput } from '@/contracts/workout_exercise_remove';
-import type { WorkoutFeedbackAnswerInput } from '@/contracts/workout_feedback_answer';
 import type { WorkoutExerciseReorderInput } from '@/contracts/workout_exercise_reorder';
 import type { WorkoutSetAddInput } from '@/contracts/workout_set_add';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
 import ActionMenu, { type ActionMenuItem } from '@/design/ActionMenu.vue';
 import { toneClasses } from '@/design/tones';
-import { isFeedbackDue } from './feedbackDue';
+import { isAnswerWaiting, isFeedbackDue } from './feedbackDue';
 import WorkoutSetRow from './WorkoutSetRow.vue';
 import type { WorkoutSheet, WorkoutWrite } from './workoutWrite';
 
@@ -41,12 +39,7 @@ const feedback = computed(() =>
 );
 
 // OFF-009: an answer waiting to sync shows as answered.
-const answered = computed(() => {
-    const entry = feedback.value;
-    if (!entry) return false;
-    const waiting = pendingInput<WorkoutFeedbackAnswerInput>('workout_feedback_answer', (input) => input.workout_id === props.workout.workout_id && input.muscle_group === entry.muscle_group);
-    return entry.is_answered || waiting !== undefined;
-});
+const answered = computed(() => feedback.value !== undefined && (feedback.value.is_answered || isAnswerWaiting(props.workout, feedback.value.muscle_group)));
 
 // WO-006: the first set's weight as typed, shown on later sets that have none.
 const firstTyped = ref<string | null>(null);
