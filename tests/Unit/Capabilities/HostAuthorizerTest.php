@@ -234,7 +234,10 @@ it('AGT-010 refuses a destructive capability to the agent when the turn carries 
         ->and($policy->allows($definition, [], new CapabilityContext(caller: 'agent', actor: authorizerUser())))->toBeFalse()
         ->and(hostAuthorizer()->authorize($capability, [], new CapabilityContext(caller: 'agent', actor: authorizerUser())))->toBeFalse();
 
-    foreach (['http', 'mcp', 'cli', 'job'] as $caller) {
+    expect($policy->allows($definition, [], new CapabilityContext(caller: 'mcp', actor: authorizerUser())))->toBeFalse()
+        ->and(hostAuthorizer()->authorize($capability, [], new CapabilityContext(caller: 'mcp', actor: authorizerUser())))->toBeFalse();
+
+    foreach (['http', 'cli', 'job'] as $caller) {
         expect($policy->allows($definition, [], new CapabilityContext(caller: $caller, actor: authorizerUser())))->toBeTrue();
     }
 })->with(['mesocycle_end', 'mesocycle_copy']);

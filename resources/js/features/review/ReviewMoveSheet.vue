@@ -4,7 +4,7 @@ import type { ReviewAnswerInput } from '@/contracts/review_answer';
 import type { ReviewShowOutput } from '@/contracts/review_show';
 import BottomSheet from '@/design/BottomSheet.vue';
 import Stepper from '@/features/onboarding/parts/Stepper.vue';
-import SegmentedPicker from '@/features/today/sheets/SegmentedPicker.vue';
+import SegmentedPicker from '@/design/SegmentedPicker.vue';
 
 type Preview = NonNullable<ReviewShowOutput['preview']>;
 type Day = Preview['days'][number];

@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { AI_TIMEOUT_MS, readNow } from '@/app/call';
 import { failureMessage, isTimeout } from '@/app/errors';
 import type { RecipeGenerateInput, RecipeGenerateOutput } from '@/contracts/recipe_generate';
-import SegmentedPicker from '@/features/today/sheets/SegmentedPicker.vue';
+import SegmentedPicker from '@/design/SegmentedPicker.vue';
 import RecipeDraftView from './RecipeDraftView.vue';
 import { COMPLEXITIES, MEAL_TYPES, typedNumber, type RecipeComplexity, type RecipeMealType } from './options';
 

@@ -172,7 +172,7 @@ describe('EditScheduleSheet', () => {
         await allFuture(wrapper);
 
         expect(wrapper.text()).toContain('Training time and new busy periods apply to Wednesdays only.');
-        expect(wrapper.find('[role="switch"]').attributes('aria-checked')).toBe('true');
+        expect(wrapper.get<HTMLInputElement>('[role="switch"]').element.checked).toBe(true);
         expect(wrapper.text()).toContain('Train on Wednesdays');
         await save(wrapper);
 
@@ -260,7 +260,7 @@ describe('EditScheduleSheet', () => {
 
         await allFuture(wrapper);
         expect(wrapper.text()).toContain('Train on Saturdays');
-        expect(wrapper.find('[role="switch"]').attributes('aria-checked')).toBe('false');
+        expect(wrapper.get<HTMLInputElement>('[role="switch"]').element.checked).toBe(false);
         await wrapper.find('[role="switch"]').trigger('click');
         await save(wrapper);
 

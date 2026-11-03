@@ -11,6 +11,8 @@ use App\Capabilities\Reads\Data\Settings\LearnSection as LearnSectionData;
 use App\Domain\Learn\LearnArticle;
 use App\Domain\Learn\LearnSection;
 use App\Domain\Learn\LearnTopic;
+use Illuminate\Support\Facades\Cache;
+use ReflectionClass;
 use RuntimeException;
 
 /** The Learn articles bundled in resources/learn, one Markdown file per {@see LearnTopic}, and the payloads built from them. */
@@ -45,14 +47,41 @@ final readonly class LearnLibrary
     /** learn_show: each section in order, each article with its title and summary (LRN-001, LRN-002). */
     public function index(): LearnShowOutput
     {
+        $summaries = $this->summaries();
+
         return new LearnShowOutput(array_map(fn (LearnSection $section): LearnSectionData => new LearnSectionData(
             title: $section->title(),
             articles: array_map(fn (LearnTopic $topic): LearnArticleRow => new LearnArticleRow(
                 slug: $topic->value,
                 title: $topic->title(),
-                summary: $this->article($topic)->summary(),
+                summary: $summaries[$topic->value],
             ), $section->topics()),
         ), LearnSection::cases()));
+    }
+
+    /**
+     * Every article's summary by slug, parsed once and cached under a key built from the files,
+     * so changing, adding or removing an article, or changing the parser, rebuilds it.
+     *
+     * @return array<string, string>
+     */
+    private function summaries(): array
+    {
+        $files = glob("{$this->directory}/*.md") ?: [];
+        sort($files);
+        $files[] = (string) (new ReflectionClass(LearnArticle::class))->getFileName();
+        $fingerprint = array_map(fn (string $path): string => basename($path).':'.filemtime($path).':'.filesize($path), $files);
+
+        return Cache::rememberForever('learn.summaries.'.sha1($this->directory."\n".implode("\n", $fingerprint)), function (): array {
+            $summaries = [];
+            foreach (LearnSection::cases() as $section) {
+                foreach ($section->topics() as $topic) {
+                    $summaries[$topic->value] = $this->article($topic)->summary();
+                }
+            }
+
+            return $summaries;
+        });
     }
 
     /** article_show: one article in blocks of styled spans (LRN-001). */
