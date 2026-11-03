@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
+use Tests\Support\SheetSeed;
 use Tests\Support\TrainSeed;
 
 // The HTTP seam of busy_period_set, schedule_update and training_weekdays_change. The rules are unit tests:
@@ -41,7 +42,7 @@ function scheduleInputs(): array
 $writes = [
     'busy_period_set' => [['busy-period', 'set'], false, false],
     'schedule_update' => [['schedule', 'update'], true, false],
-    'training_weekdays_change' => [['training-weekdays', 'change'], false, true],
+    'training_weekdays_change' => [['training-weekdays', 'change'], true, true],
 ];
 
 it('SCH-033 SCH-037 SCH-039 registers each schedule write on every host surface, affecting Today and the week strip', function (string $name, array $cli, bool $reversible, bool $destructive) {
@@ -83,6 +84,20 @@ it('SCH-037 SCH-039 schedule_update and training_weekdays_change change only the
 
     expect(Profile::query()->where('user_id', $them->id)->sole()->only(['eating_window', 'meal_count', 'training_days']))->toEqual($theirs);
 })->with(['schedule_update', 'training_weekdays_change']);
+
+it('SCH-039 SCH-056 CAP-013 training_weekdays_change re-targets today with a toast, and undo puts the weekdays and today back', function () {
+    $user = TrainSeed::user();
+    $today = SheetSeed::day($user, '2026-09-22', ['day_type' => 'rest', 'kcal' => 2200.0]);
+    $before = [Profile::query()->where('user_id', $user->id)->sole()->training_days, $today->fresh()->meals];
+
+    $response = schedulePost($user, 'training_weekdays_change', ['weekdays' => [2, 5], 'fewer_days' => null])
+        ->assertOk()->assertJsonPath('data.toast', 'Meals updated for your new schedule');
+    expect($response->json('data.invalidates'))->toContain('today_show{"date":"2026-09-22"}', 'week_show{"date":"2026-09-22"}');
+
+    schedulePost($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
+
+    expect([Profile::query()->where('user_id', $user->id)->sole()->training_days, $today->fresh()->meals])->toEqual($before);
+});
 
 it('SCH-033 SCH-037 SCH-039 answers 422 naming the bad field', function (string $name, array $bad, string $field) {
     $user = TrainSeed::user();

@@ -108,17 +108,31 @@ it('SCH-037 SCH-055 this day with fewer meals takes off the last unchecked ones,
         ->and($meals->firstWhere('id', SheetSeed::DINNER)['kcal'])->toEqual($dinner['kcal']);
 });
 
-it('SCH-037 SCH-050 this day with a new training time moves the session\'s row as workout_time_set does', function () {
+it('SCH-037 this day with a new training time moves the session\'s row as workout_time_set does, and places the meals around it', function () {
     [$user, $mesocycle] = editWorld();
-    SheetSeed::day($user, '2026-09-24');
+    $day = SheetSeed::day($user, '2026-09-24');
 
-    $edited = editSchedule($user, ['date' => '2026-09-24', 'training_start' => '07:00', 'window_start' => '05:00']);
+    $edited = editSchedule($user, ['date' => '2026-09-24', 'training_start' => '12:00']);
 
     $row = WorkoutSession::query()->where('mesocycle_id', $mesocycle->id)->sole();
     expect([$row->week, $row->day])->toBe([3, 2])
-        ->and($row->planned_start_at->format('Y-m-d H:i'))->toBe('2026-09-24 07:00')
-        ->and($edited['toast'])->toBe('Meals updated for your 7:00 AM workout')
-        ->and($edited['dates'])->toBe(['2026-09-24']);
+        ->and($row->planned_start_at->format('Y-m-d H:i'))->toBe('2026-09-24 12:00')
+        ->and($edited['toast'])->toBe('Meals updated for your 12:00 PM workout')
+        ->and($edited['dates'])->toBe(['2026-09-24'])
+        // SCH-042: a post-workout meal starts within an hour of the 1 PM end, not around the old 5:30 PM.
+        ->and(array_filter(mealMinutes($day), fn (int $minute) => $minute >= 13 * 60 && $minute <= 14 * 60))->not->toBeEmpty();
+});
+
+it('SCH-038 this day keeps the time of a session already started, and still places the meals', function () {
+    [$user, $mesocycle] = editWorld();
+    SheetSeed::day($user, '2026-09-24');
+    $started = WorkoutSession::factory()->for($user)->create(['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 2, 'actual_start_at' => '2026-09-24 07:00:00']);
+
+    $edited = editSchedule($user, ['date' => '2026-09-24', 'training_start' => '12:00']);
+
+    expect($edited['toast'])->toBe(UpdateSchedule::RETARGETED)
+        ->and($edited['session'])->toBeNull()
+        ->and(WorkoutSession::query()->sole()->only(['planned_start_at', 'actual_start_at']))->toEqual($started->fresh()->only(['planned_start_at', 'actual_start_at']));
 });
 
 it('SCH-037 this day keeps the training time when it is unchanged, and saves no session row', function () {
@@ -194,6 +208,35 @@ it('SCH-037 all future days leaves busy periods of other weekdays alone, and kee
         ['id' => 'b1', 'label' => 'Team meeting', 'start' => '09:00', 'end' => '10:30', 'weekdays' => [1, 2, 3]],
         ['label' => 'Tennis', 'start' => '18:00', 'end' => '19:00', 'weekdays' => [6]],
     ]);
+});
+
+it('SCH-037 all future days removes the period taken off and edits the one kept by its label, on every day each repeats', function () {
+    [$user] = editWorld();
+    Profile::query()->where('user_id', $user->id)->update(['busy_periods' => json_encode([
+        ['label' => 'Run', 'start' => '06:00', 'end' => '07:00', 'weekdays' => [3]],
+        ['label' => 'Work', 'start' => '09:00', 'end' => '17:00', 'weekdays' => [1, 2, 3, 4, 5]],
+    ])]);
+    FakeRebuild::bind();
+
+    editSchedule($user, ['apply_to' => 'all_future_days', 'busy_periods' => [['label' => 'Work', 'start' => '09:00', 'end' => '13:00']]]);
+
+    expect(editProfile($user)->busy_periods)->toEqual([
+        ['label' => 'Work', 'start' => '09:00', 'end' => '13:00', 'weekdays' => [1, 2, 3, 4, 5]],
+    ]);
+});
+
+it('SCH-037 refuses a busy period with no label or no length, naming it', function () {
+    [$user] = editWorld();
+    SheetSeed::day($user, '2026-09-23');
+
+    $refusal = null;
+    try {
+        editSchedule($user, ['busy_periods' => [['label' => 'Gym', 'start' => '06:00', 'end' => '07:00'], ['label' => ' ', 'start' => '09:00', 'end' => '10:00']]]);
+    } catch (FieldRefused $e) {
+        $refusal = $e;
+    }
+
+    expect($refusal?->field)->toBe('busy_periods.1.label');
 });
 
 it('SCH-037 all future days sets the training time of the day\'s weekday only, keeping its minutes', function () {
