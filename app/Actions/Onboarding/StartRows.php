@@ -13,7 +13,7 @@ use App\Domain\Onboarding\WeighInChoice;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Safety\ScreeningItem;
 use App\Domain\WeekBuilder\WeekDay;
-use App\Domain\WeekBuilder\WeekMeal;
+use App\Support\Plan\DayTargetRow;
 use Closure;
 
 /**
@@ -147,24 +147,7 @@ final class StartRows
      */
     public static function dayTargets(OnboardingStart $start, Closure $newId): array
     {
-        return array_map(fn (WeekDay $day) => [
-            'id' => $newId(),
-            'date' => $day->day->date->format('Y-m-d'),
-            'day_type' => $day->day->type->value,
-            'kcal' => $day->target?->kcal,
-            'protein_g' => $day->target?->proteinG,
-            'fat_g' => $day->target?->fatG,
-            'carbs_g' => $day->target?->carbsG,
-            'meals' => array_map(fn (WeekMeal $meal) => [
-                'id' => $meal->id(),
-                'name' => $meal->meal->name,
-                'time' => (string) $meal->time,
-                'kcal' => $meal->meal->target->kcal,
-                'protein_g' => $meal->meal->target->proteinG,
-                'fat_g' => $meal->meal->target->fatG,
-                'carbs_g' => $meal->meal->target->carbsG,
-            ], $day->meals),
-        ], $start->targetDays);
+        return array_map(fn (WeekDay $day) => ['id' => $newId(), ...DayTargetRow::from($day)], $start->targetDays);
     }
 
     private static function startDate(OnboardingStart $start): string
