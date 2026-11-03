@@ -71,3 +71,12 @@ it('SET-012 says the daily cap resets at the end of the user\'s day, in their zo
     'Australia/Brisbane' => ['2026-11-04 00:00:00', 'Australia/Brisbane', '2026-11-04T00:00:00+10:00', '00:00 AEST on 4 Nov'],
     'UTC' => ['2026-11-03 00:00:00', 'UTC', '2026-11-03T00:00:00+00:00', '00:00 UTC on 3 Nov'],
 ]);
+
+it('SET-012 AGT-005 says the later reset when both caps are reached and the user\'s day ends after the month', function () {
+    // 12:00 on 30 Nov in Los Angeles: the app's month ends at 00:00 UTC, the user's day eight hours later.
+    $allowance = Allowance::check(50, 1_000_000, turnsToday: 50, tokensThisMonth: 1_000_000, now: CarbonImmutable::parse('2026-11-30 20:00:00', 'UTC'), dayEndsAt: CarbonImmutable::parse('2026-12-01 00:00:00', 'America/Los_Angeles'));
+
+    expect($allowance->atCap)->toBeTrue()
+        ->and($allowance->resetsAt->toIso8601String())->toBe('2026-12-01T00:00:00-08:00')
+        ->and($allowance->notice)->toBe('You\'ve reached today\'s Coach limit. It resets at 00:00 PST on 1 Dec. Everything else still works.');
+});
