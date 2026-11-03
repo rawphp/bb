@@ -178,9 +178,9 @@ it('PLAN-008 changing the day and changing it back before the boundary leaves no
         ->and(reviewWeekStarts($user, 6))->toBe(['2026-09-07', '2026-09-14', '2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12']);
 });
 
-it('PLAN-008 SET-005 resending the same day is a no-op', function (?int $first) {
-    FakeRebuild::bind();
-    $user = reviewDayUser();
+it('PLAN-008 SET-005 resending the same day is a no-op', function (?int $first, string $start) {
+    $rebuild = FakeRebuild::bind();
+    $user = reviewDayUser($start);
     if ($first !== null) {
         changeReviewDay($user, $first);
     }
@@ -198,8 +198,34 @@ it('PLAN-008 SET-005 resending the same day is a no-op', function (?int $first) 
 
     expect($writes)->toBe([])
         ->and(DB::table('plan_review_day_changes')->get()->all())->toEqual($rows->all())
-        ->and(reviewDates($user))->toBe($dates);
-})->with(['the starting day' => [null], 'a pending day' => [4]]);
+        ->and(reviewDates($user))->toBe($dates)
+        ->and(Plan::query()->where('user_id', $user->id)->value('review_weekday'))->toBe(1)
+        ->and($rebuild->calls)->toBe([]);
+})->with([
+    'the starting day' => [null, '2026-09-07'],
+    'a pending day' => [4, '2026-09-07'],
+    'the starting day of a plan that has not started' => [null, '2026-09-30'],
+]);
+
+it('PLAN-008 a change that took effect today is history and stays when the day changes again', function (int $iso, ?array $pending) {
+    FakeRebuild::bind();
+    Carbon::setTestNow('2026-09-28 12:00:00');
+    $user = reviewDayUser();
+    $planId = Plan::query()->where('user_id', $user->id)->value('id');
+    $today = new PlanReviewDayChange(['effective_on' => '2026-09-28', 'review_weekday' => 4]);
+    $today->plan_id = $planId;
+    $today->save();
+
+    changeReviewDay($user, $iso);
+
+    // Thursday is in force from today, so week 3 runs 09-28 to 10-07 and the next boundary is 10-08.
+    expect(PlanReviewDayChange::query()->findOrFail($today->id)->only(['effective_on', 'review_weekday']))->toEqual(['effective_on' => $today->effective_on, 'review_weekday' => 4])
+        ->and(reviewRows($user))->toBe($pending === null ? [['2026-09-28', 4]] : [['2026-09-28', 4], $pending]);
+})->with([
+    'Friday' => [5, ['2026-10-08', 5]],
+    'back to Monday' => [1, ['2026-10-08', 1]],
+    'the day in force' => [4, null],
+]);
 
 it('PLAN-008 ONB-016 before the plan starts a change sets the starting review day', function () {
     $rebuild = FakeRebuild::bind();
