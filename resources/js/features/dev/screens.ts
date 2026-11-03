@@ -28,3 +28,8 @@ export function routeProps(name: string, routes: RouteRecordRaw[], view?: string
 export function takesFixture(name: string, routes: RouteRecordRaw[], view?: string): boolean {
     return screenRoute(name, routes, view)?.meta?.fixture !== false;
 }
+
+/** The second reads a screen shows (meta.fixtures): the prop that takes each, and the read whose fixture it gets. */
+export function screenFixtures(name: string, routes: RouteRecordRaw[], view?: string): Record<string, string> {
+    return screenRoute(name, routes, view)?.meta?.fixtures ?? {};
+}
