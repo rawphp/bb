@@ -323,6 +323,22 @@ it('PLAN-025 keeping the end date on a diet break that already moved it leaves i
     expect(endOf($phase))->toBe('2026-12-05');
 });
 
+it('PLAN-025 a diet break that moved the end gives the week back when it stops being one, even with keep_phase_end sent', function () {
+    [$user, $phase, $later] = awayWorld();
+    setAway($user, ['2026-09-26'], calories: 'maintenance', keep: false);
+    expect(endOf($phase))->toBe('2026-12-12');
+
+    setAway($user, ['2026-09-26'], calories: 'rest', keep: true);
+    expect([endOf($phase), startOf($later)])->toBe(['2026-12-05', '2026-12-05']);
+
+    // Made a diet break again, it moves the end once, not twice.
+    setAway($user, ['2026-09-26'], calories: 'maintenance', keep: false);
+    expect(endOf($phase))->toBe('2026-12-12');
+
+    setAway($user, ['2026-09-26'], away: false, keep: true);
+    expect([endOf($phase), startOf($later)])->toBe(['2026-12-05', '2026-12-05']);
+});
+
 it('PLAN-025 marking with keep_phase_end and clearing without it, again and again, leaves the end date where it was', function () {
     [$user, $phase] = awayWorld();
 
