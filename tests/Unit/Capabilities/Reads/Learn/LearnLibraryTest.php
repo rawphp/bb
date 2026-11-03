@@ -4,6 +4,8 @@ use App\Capabilities\Reads\Learn\LearnLibrary;
 use App\Domain\Learn\LearnArticle;
 use App\Domain\Learn\LearnSection;
 use App\Domain\Learn\LearnTopic;
+use App\Domain\Safety\SafetyWarnings;
+use App\Domain\Safety\Screening;
 use Illuminate\Support\Facades\File;
 
 // The bundled articles in resources/learn and the payloads built from them.
@@ -52,7 +54,7 @@ it('LRN-001 LRN-002 builds the Learn index: each section in order, each article 
         ->and($sections[2]['articles'][1])->toBe([
             'slug' => 'rir',
             'title' => 'Reps in reserve (RIR)',
-            'summary' => 'RIR stands for reps in reserve, meaning how many good reps you had left when a set ended. The target falls over the block, so every week asks slightly more effort than the one before.',
+            'summary' => 'RIR stands for reps in reserve: the clean reps still left in you at the moment you rack the weight. Your target drops as the weeks go by, so effort climbs across the block.',
         ]);
 });
 
@@ -133,9 +135,35 @@ it('SAFE-014 says in Learn that medical diets are not supported and metabolic co
         ->toContain('metabolic condition')->toContain('physician');
 });
 
+it('SAFE-001 SAFE-002 lists in Learn every screening answer that needs medical clearance first', function () {
+    $text = learnArticleText(LearnTopic::IsItRightForMe);
+
+    expect($text)->toContain('medical clearance')
+        ->toContain('younger than '.Screening::MINIMUM_AGE)->toContain('older than '.Screening::MAXIMUM_AGE)
+        ->toContain('trying to conceive, which blocks only fat loss');
+    foreach (['baby is on the way', 'breastfeeding', 'diabetes', 'PCOS', 'autoimmune', 'gallbladder', 'heart', 'thyroid', 'weight-loss surgery', '5 years', 'hormone therapy', 'eating disorder'] as $item) {
+        expect($text)->toContain($item);
+    }
+});
+
+it('SAFE-005 states the 1.0% weekly fat-loss ceiling', function () {
+    expect(learnArticleText(LearnTopic::ChoosingAGoal))->toContain('1.0% as the ceiling');
+});
+
+it('SAFE-015 says when the step target warning shows', function () {
+    expect(learnArticleText(LearnTopic::TrainingOnACut))->toContain('above '.number_format(SafetyWarnings::MAX_STEP_TARGET_WITHOUT_WARNING));
+});
+
+it('LRN-001 keeps the follow-your-doctor note in each article that gives health advice', function (LearnTopic $topic) {
+    expect(strtolower(learnArticleText($topic)))->toContain('doctor');
+})->with([
+    LearnTopic::IsItRightForMe, LearnTopic::FatLoss, LearnTopic::MiniCut, LearnTopic::Maintenance, LearnTopic::MuscleGain,
+    LearnTopic::BodyFat, LearnTopic::Alcohol, LearnTopic::Coffee, LearnTopic::TrainingWhileSick,
+]);
+
 it('FOOD-081 guides on alcohol and coffee', function () {
     expect(learnArticleText(LearnTopic::Alcohol))->toContain('avoid alcohol while dieting')->toContain('1 to 2 drinks a week')
-        ->and(learnArticleText(LearnTopic::Coffee))->toContain('coffee and caffeine are fine');
+        ->and(learnArticleText(LearnTopic::Coffee))->toContain('keep drinking coffee')->toContain('caffeine is fine');
 });
 
 it('FOOD-007 says to measure cooking oil', function () {
