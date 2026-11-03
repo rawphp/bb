@@ -1,19 +1,17 @@
-Pick anywhere from 2 to 6 meals a day. The default is 5, but the best number is whichever one you will keep up.
+Anywhere from 2 to 6 meals a day works, and the right count is whichever you'll stick to. How many meals you eat matters far less than hitting your total calories and protein.
 
-## Which number to choose
+## Trade-offs
 
-Meal count matters much less than your total calories and protein. Fewer, larger meals can keep you fuller while cutting. More, smaller ones make it easier to spread protein out and to get enough food when you are gaining.
+The app sets 5 by default. On a cut, fewer and larger meals can leave you feeling fuller. A gain often goes better with more, smaller meals, which spread protein out and help you get enough food in.
 
-## How the app builds your day
+## How meals get placed
 
-- Your daily targets are divided across your meals.
-- Meals are spaced evenly through your eating window, never closer than 2 hours, and kept clear of busy periods.
-- Your workout gets a meal on either side of it on training days.
-- Those two get the largest share of carbs and the smallest share of fat, which supports performance and recovery.
-- The rest of the fat goes to whichever meals sit furthest from training.
+Your daily targets are shared out across meals, placed at even intervals through your eating window with 2 hours or more between them, and kept clear of your busy periods. When you train, a meal is set before the workout and another after it. That pair carries the largest share of carbs and the smallest amount of fat to support performance and recovery, while the meals furthest from training absorb the remaining fat.
 
 ## Making changes
 
-Edit schedule is where you change how many meals you eat, your eating window and your busy periods. A change can apply to one day or every future day. Add meal squeezes in an extra one, and the app spreads whatever macros you have left over the meals still to come.
+"Edit schedule" covers busy periods, your eating window and meal count, and an edit can apply to just one day or every day going forward. To slot in one more meal, use "Add meal". Whatever macros remain for the day are then spread over the meals still to come.
 
-Precision isn't required. A day that ends 10% or less away from your calorie and protein targets is a success.
+## Success
+
+A good day lands within 10% of your calorie and protein targets. Missing by a little is fine.

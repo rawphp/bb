@@ -1,34 +1,36 @@
-A mesocycle is a training block lasting between 4 and 8 weeks, and it finishes with a light deload. Blocks chain together, and each starts from where the last one ended.
+Your training runs in blocks called mesocycles, each lasting 4 to 8 weeks and finishing with an easy deload week. The next block then begins fresh and carries on from where you left off.
 
-## What a block does
+## Across one block
 
-Weights and reps trend upward. Sets end nearer to failure as the weeks pass. A muscle gets extra sets only when your feedback shows it is recovering well. The deload comes last, so the following block begins rested.
+- Your weights and reps creep up.
+- Your target RIR drops as the weeks go on, which puts you nearer to failure.
+- A muscle earns extra sets only when your feedback shows it's recovering and can take them.
 
-Each block is linked to a diet phase, and the phase shapes the plan. It decides your starting muscle priorities, your rep ranges and the speed at which volume can grow. Fat loss and muscle gain blocks are not built alike.
+A diet phase goes with every mesocycle. It sets which muscles get priority at the start, which rep ranges you use, and the pace at which volume may rise. So a block for losing fat looks different from one for gaining muscle.
 
-## Length
+## Block length
 
-The deload week counts toward the total.
+These totals count the deload week too.
 
-- **Beginner:** starts at 6 weeks and can be set anywhere from 5 through 8.
-- **Intermediate:** starts at 5 weeks and can be set from 5 through 8.
-- **Advanced:** starts at 5 weeks and can be set from 4 through 7.
+- Beginner: default of 6, range 5 to 8
+- Intermediate: default of 5, range 5 to 8
+- Advanced: default of 5, range 4 to 7
 
-The calendar icon lets you resize a running block, and the deload always stays at the end. The menu also lets you finish a block ahead of schedule. Intermediate and advanced lifters are warned off skipping the deload.
+To resize a block that's underway, tap the calendar icon; the deload remains last. The menu also lets you close a block out early. Intermediate and advanced lifters get a warning first, since dropping the deload isn't recommended for them.
 
-## Creating a block
+## Making a new block
 
-Press + on the Mesocycles screen and choose how to begin.
+Start one with the "+" on the Mesocycles screen, then decide how to fill it.
 
-- **Template:** a finished plan. Narrow the list by diet phase, sex, how many days you train, and whether you want a whole-body split or a muscle emphasis.
-- **Copy previous mesocycle:** your last block again, same layout, same weights.
-- **Meso Builder:** you enter your available training days and label each muscle Emphasize, Grow or Maintain. The app drafts the layout.
-- **Build from scratch.**
+- Pick a **Template** for a finished plan, with filters for sex, days per week, emphasis or whole body, and diet phase.
+- **"Copy previous mesocycle"** brings back the block you just ran, weights and all, laid out the same way.
+- **Meso Builder** asks which days you're free and whether each muscle is Emphasize, Grow or Maintain, then drafts the plan.
+- **Build from scratch** if you'd rather set up every day yourself.
 
-Whichever you choose, the training days should be ones that work for you every single week. Sessions go in sequence, beginning with Day 1.
+Choose days you'll manage every week. The app works through them in order, so Day 1 always comes before Day 2.
 
-## What follows
+## When the block wraps up
 
-The deload week is when the app nudges you toward the next block, with copying as the default. Copied weights begin roughly 5% higher than your old week 1 weights, and 2 to 2.5% higher for advanced lifters. Your equipment's available steps decide the rounding.
+During your deload week, a prompt appears to set up what comes next, and copying is preselected. A copied block opens roughly 5% heavier than the old week 1. Advanced lifters get a smaller bump of 2 to 2.5%. Either way, loads round to your equipment's step.
 
-Unfinished builds are kept as drafts. Begin another build and the app cautions that the draft will be replaced.
+Leave a build half done and it waits as a draft. Begin a different one and you'll be warned that the draft gets replaced.

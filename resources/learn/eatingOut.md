@@ -1,20 +1,20 @@
-Meals at a restaurant can still fit your targets. It takes a little preparation.
+A meal out can still fit your targets if you plan a little.
 
-## Before you go
+## Plan ahead
 
-Read the menu ahead of time. The food database includes restaurant dishes, so look yours up and place it in the meal where it belongs. You will see how it measures against your targets, and the rest of that meal is rebalanced around it.
+Check what's on the menu ahead of time. Restaurant items are in the food database, so find your dish and put it in the meal where you'll eat it. The app then shows the dish against your targets and adjusts the rest of that meal to fit.
 
-## No match? Use the camera
+## Not in the database?
 
-Tap the camera button and photograph the plate. The app estimates what is on it and how much, and the list is yours to edit. Typing also works, for instance "grilled salmon with potatoes". To resize the whole meal at once, use the portion control.
+Use the camera button to photograph the plate. From the photo, the app estimates what's there and in what portions, and the resulting list is yours to edit. Or describe it in words, for example "chicken burrito bowl with rice". To make the whole meal bigger or smaller, use portion control.
 
-## Ordering well
+## At the table
 
-- Build the order around a clear protein.
-- Ask for sauce and dressing separately.
-- Skip fried, and go grilled or baked.
-- If the main is what you want, leave the bread basket alone.
+- Order something with an obvious protein source as its base
+- Get dressings and sauces brought separately
+- When there's a choice of cooking method, grilled or baked beats fried
+- Save your appetite for the main by leaving the bread basket alone
 
-## When you overshoot
+## Going over
 
-You won't know a restaurant meal's numbers exactly, and you don't need to. Check the meal in with your best estimate, then tap Redistribute to spread the day's remaining budget across later meals. Skipping a meal to compensate backfires. Finish within 10% on calories and protein and the day is still a success.
+Restaurant figures rarely match reality exactly, and you don't need them to. Do your best when you check the meal in. Afterward, tapping "Redistribute" spreads the rest of the day's budget over your later meals. Skipping meals to compensate isn't the answer. You're on track when each day lands within 10% of calories and protein.

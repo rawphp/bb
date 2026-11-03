@@ -1,25 +1,36 @@
-The biggest carb portions go into the pre- and post-workout meals, where they help training most.
+Carbs are concentrated in two meals: the one leading into your workout and the one that follows it. Those are the spots where carbs do the most for your workout.
 
-## Setting the day's numbers
+## Why training days get more
 
-Calories are based on projected burn, so training days get more than rest days. Protein and fat don't differ between them, so the extra is all carbs. A session with more planned sets adds more still.
+Calorie targets are built from how much energy you're expected to burn, which means more food on days you train than on days you rest. Your protein and fat don't change between the two, so carbs account for the entire gap. A session with more sets planned earns a bigger carb allowance.
 
-## When you eat
+## When to eat
 
-- A pre-workout meal finishes 1 to 3 hours ahead of the session, with about 90 minutes the target.
-- A post-workout meal gets going no more than 60 minutes after the session ends.
-- For sessions over an hour, the app suggests a shake during the session containing carbs and protein.
+- Finish your pre-workout meal somewhere between 1 and 3 hours before you start training, with roughly 90 minutes as the sweet spot.
+- Begin your post-workout meal no later than an hour after the session ends.
+- Planned sessions running past 60 minutes come with the option of a carb-and-protein shake to drink while you train.
 
-Both meals are tagged Pre-workout or Post-workout along with the session time, and they move whenever the workout moves.
+Look for the "Pre-workout" and "Post-workout" tags on those meals, shown with the time of your session. Reschedule the workout and both meals shift to match.
 
-## Dividing carbs
+## The carb split
 
-Carbs go first to post-workout, next to pre-workout and bedtime. With four meals, you get 25% before, 35% after, 25% at night and 15% in the remaining one. With more meals, the rest is shared among remaining slots. Rest days divide carbs equally.
+After training gets the biggest portion, followed by before training and the meal at bedtime. On a 4-meal day, carbs divide like this:
 
-Fat is the reverse. Meals near training get the least, and those farthest away get the most. Protein is equal across meals, with a bit extra at the final one.
+- Pre-workout: 25%
+- Post-workout: 35%
+- Bedtime: 25%
+- Other meal: 15%
 
-## Starving before bed?
+Add more meals and the leftover share gets spread among the extra slots. Rest days divide carbs equally across meals.
 
-Evening-weighted carbs are the option for a cut where hunger keeps you awake. Bedtime then gets some of the carbs that would have gone pre-workout. You'll have slightly less energy in the morning.
+## Fat and protein
 
-Get the day's totals right first. Timing adds a small bonus.
+Fat follows the reverse pattern. Meals near your session carry the least, and the bigger portions go to meals furthest from it. Protein, by contrast, stays level across the day, though your last meal gets slightly more.
+
+## Late-night hunger on a cut
+
+There's an evening-weighted carbs option for this. It takes part of the carbs from before your workout and puts them into your bedtime meal instead. You may feel a bit less energetic in the morning as a result.
+
+## Keep perspective
+
+Getting the day's totals right counts for more than nailing the timing, which only adds a modest bonus on top.

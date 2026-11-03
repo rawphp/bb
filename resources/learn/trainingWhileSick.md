@@ -1,28 +1,35 @@
-When you are ill, rest and listen to your doctor. Training can wait, since a few missed sessions cost you very little.
+Being sick calls for rest before anything else, and whatever your doctor tells you overrides this article. Workouts are optional for now, and missing a few does little harm.
 
 ## Signs to stay home
 
-Feeling properly unwell means no gym. Fever, chest symptoms, vomiting, diarrhea, or weakness that gets in the way of ordinary movement all count. Lifting while ill can make you worse and slow your recovery. If you aren't sure, ask your doctor, whose word beats anything on this page.
+Sit training out when any of these apply:
 
-## Skipping in the app
+- a fever
+- symptoms in your chest
+- vomiting or diarrhea
+- feeling too weak to move around normally
 
-The day menu has **Skip workout**. Choose it and confirm. There is no undo, and the day becomes a nutrition rest day. Leave a session unlogged instead and the app checks in the following morning, asking if it should be moved or dropped.
+Pushing through sickness risks dragging your recovery out, and it can leave you sicker than before. Not sure if training is wise? Your doctor is the person to ask. That holds for any illness: what your doctor advises comes ahead of anything written here.
 
-Stay away a week or longer and you choose between restarting the week you were in and building a new mesocycle.
+## Telling the app
 
-## Food while ill
+- In the day menu, tap "Skip workout", then confirm. There's no undo, and nutrition treats that day as a rest day.
+- Leave the workout unlogged and the following morning brings a prompt to move or skip it.
+- Out for a week or longer? You'll be offered a choice between restarting the week you were in and building a fresh mesocycle.
 
-Hunger often fades. Have what you can manage, and keep fluids up. Exact targets don't matter now, and a few days off-plan won't erase your progress. Where your doctor has given specific advice, follow it.
+## Food and fluids
 
-## Training through something mild
+Appetite may dip while you're unwell. Eat whatever you manage, and keep your fluids high. Your targets can be loose for now, and a few off-plan days won't wipe out your progress. Where your doctor has given you specific advice on food or fluids, follow it ahead of anything in this section.
 
-A lighter workout can be fine for a very mild bug. If you go ahead:
+## Very mild symptoms
 
-- Weights will likely feel heavier and reps tougher.
-- Work below the plan rather than chase targets.
-- Be truthful in the feedback questions so a bad day doesn't earn extra sets. Choosing "Pushed my limits" keeps that muscle's volume from growing.
-- Call it off if you start to feel worse.
+If your illness is very mild, a gentler workout may be okay; that's the one exception. Should you train:
 
-## Returning
+- Loads will seem heavier than usual, and reps will take more out of you.
+- Forget the targets and go lighter than your plan says.
+- Answer feedback honestly so one rough day doesn't earn extra sets. Choosing "Pushed my limits" keeps that muscle's volume from going up.
+- Feeling worse is your cue to stop.
 
-Return once you are well, at the point the plan has reached. If reps fall under target over a couple of workouts, you may see an underperformance flag along with advice to hold sets and repeat weights. Take that as permission to ease back in.
+## Getting back
+
+Once you've recovered, resume wherever your plan has got to. If two or so sessions in a row come in under your rep targets, you may get an underperformance flag from the app, along with a proposal to keep your sets level and repeat your weights. That's a good time to ease back in.

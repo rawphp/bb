@@ -1,29 +1,27 @@
-Marking a meal as eaten does two jobs. Your day's totals stay correct, and the plan can set fresh targets for the meals still ahead.
+Checking in is how you mark a meal as eaten. Each one keeps the day's running totals accurate and gives the plan what it needs to reset targets for your later meals.
 
-## Three ways to do it
+## Where to do it
 
-- On Today, each meal card has a checkbox.
-- Check in meal sits in each meal's menu, and ticking an open meal works too.
-- Swipe the card to the right and enter your real intake, covering time, calories and macros.
+- Today screen: tap the box on the card for that meal.
+- A meal's own page: there's a tick there, and the menu offers "Check in meal" as well.
+- Any meal card: drag it to the right, then record the time you ate along with the real calories and macros.
 
-## How it counts
+## How a meal is scored
 
-- Eat the foods you planned and a single tap does it. If the meal's protein, carbs and fat each end up no more than 5 g off target, it shows as on track.
-- With no foods planned, checking in credits the meal's full targets. The app presumes you hit them.
-- For anything unplanned, use Save food macros. It goes in as an extra entry for the day, outside any meal slot.
+When the foods were already planned and you stuck to them, a single tap finishes the job. A meal is judged on track if protein, carbs and fat all come within 5 g of their targets. The comparison uses the totals for the whole meal, so individual foods don't matter here.
 
-## Status icons and undoing
+Checking in an empty meal, one with no foods added, records its whole target as eaten. The app takes it that you hit those macros. Ate something that was never in the plan? Log it with "Save food macros". That creates a separate entry for the day that sits outside your meal slots.
 
-Every meal carries an icon for its state: still open, checked in, or checked in yet under or over target. To undo an error, use the meal menu and remove the check-in.
+## Status icons
+
+You'll see one of four icons beside each meal: not checked in, checked in, checked in under target, and checked in over target. Tapped the wrong one? The meal's menu lets you take the check-in back off.
 
 ## The orange badge
 
-Redistributing calories to a meal with foods already in it puts an orange Adjust foods badge on it. Fixing the foods, or marking the meal Done planning foods, unlocks check-in again.
+Say you redistribute calories and some land on a meal whose foods you'd already picked. That meal now wears an orange "Adjust foods" badge. That badge locks out check-in. To clear it, correct the foods, or choose "Done planning foods" for that meal.
 
-## Which totals show
+## Totals and reminders
 
-Day totals count planned meals even before they're checked in. You can change a setting so they only count checked-in meals.
+Out of the box, planned meals still waiting for a check-in are counted in your day totals. Prefer to see only what you've confirmed? There's a setting for that, so the totals only reflect checked-in meals. Reminders at mealtimes exist too, but start switched off, and turning them on is up to you.
 
-Reminders at mealtimes exist but are off unless you turn them on, so nothing nags.
-
-Perfection isn't the goal. A day that ends within 10% on both calories and protein counts as a success.
+Close enough is good enough. Any day where calories and protein each stay inside a 10% margin counts as a success.

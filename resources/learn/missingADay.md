@@ -1,29 +1,32 @@
-Skipping a day is normal. There is nothing to repay, and piling extra work onto later days is not needed.
+Everyone misses a session now and then. There's nothing to make up, and no extra work gets piled on later as punishment.
 
-## Workouts you didn't log
+## The morning after
 
-When a day ends without a logged workout, the next morning the app offers options. Which ones you see depends on today.
+End a day without logging its workout and the app checks in with you first thing the next morning. The choices you see depend on your week.
 
-- **On a rest day:** **Do it today** is offered. Just this session moves, and every later one stays where it was.
-- **On a training day with a rest day still ahead this week:** **Do it on the next rest day this week** is offered.
-- **Any day:** **Skip it**, and the workout gets a skipped label.
+- On a rest day, you can pick "Do it today". Only the missed session shifts, and everything after it stays put.
+- On a training day with a rest day still ahead before the week is out, "Do it on the next rest day this week" is offered.
+- At any time, "Skip it" marks the session as skipped.
 
-Sessions can't carry over into next week. If neither move is possible, you only see Skip.
+Nothing ever spills into next week. When neither move fits, Skip is your only choice.
 
-Choosing to skip from the day menu brings a confirmation, since you can't reverse it. Nutrition then treats that day as a rest day. The calories the session would have burned vanish rather than moving to other days.
+## Choosing to skip
 
-## Longer gaps
+You can also skip from the day menu. Because there's no undo, you'll be asked to confirm. For nutrition it counts as a rest day. Whatever that workout would have burned is subtracted from your calories, not shifted onto other days.
 
-A gap of a week or more brings a different choice: restart this week, or close the mesocycle and start a new one. A restart suits a gap of about a week. A new block suits a longer absence or a lost routine.
+## A longer break
 
-## Eating off plan
+After a week or more off, the app gives you two paths. One repeats the week you were in. The other wraps up this mesocycle so you can build its replacement. Go with the restart when about a week is all you missed. If the break ran longer, or your routine has slipped, go with a new block.
 
-Don't skip meals to even things out, and don't double up tomorrow. Record everything, including off-plan food, then eat your next planned meal as normal. A single day makes only a small dent in your weekly average.
+## When eating goes off plan
 
-Staying inside 10% for daily calories and protein counts as hitting your target. Slips of that size are fine.
+- Resist skipping meals to compensate, and keep the next day normal instead of doubling it.
+- Log every bite, including what wasn't planned, then eat your next planned meal as usual.
+- A single day hardly shifts the weekly average.
+- If both your calories and protein for the day land within 10%, call it a success.
 
-Weeks of steady effort produce results. A perfect single day does not.
+What drives results is weeks of consistency, not a flawless day.
 
-## Building consistency
+## A week you can keep
 
-Choose training days you can keep up weekly. A reliable two to four beats five or six that repeatedly fall apart.
+Settle on days your life allows week after week. Holding 2 to 4 days reliably beats aiming for 5 or 6 and missing them.

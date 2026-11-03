@@ -1,30 +1,30 @@
-Rest until you can do the next set properly. There is no rest timer in the app, and that is on purpose.
+Start your next set once you can do it well, whatever the clock says. You won't find a rest timer in the app, and that's a deliberate choice.
 
-## Signs you're ready
+## Are you ready?
 
-Go again once all four of these hold.
+Check four things, and go again only when every one is true:
 
-- Your breathing has settled.
-- Your focus is back.
-- The assisting muscles have recovered. Before a press, your arms should feel fresh.
-- The next set still holds 3 to 5 reps or more.
+- You've caught your breath.
+- Your head is back in the lift.
+- Helper muscles feel recovered, such as your arms before a press.
+- There's still enough left in you for 3 to 5 reps at the very least.
 
-## What to expect
+## Typical rest
 
-Waits range from about 30 seconds up to 5 minutes. Heavy squats and deadlifts push toward the top. Small muscles and isolation moves sit near the bottom.
+In practice the wait usually runs from around 30 seconds at the short end up to 5 minutes at the long end. Squats, deadlifts and other heavy compound lifts lean toward the longer side. Smaller muscles and isolation exercises lean shorter.
 
-Short rests leave your later sets under target. Very long rests eat time and slow the workout.
+Short-change your rest and the sets that follow miss their targets. Overdo it and the session drags while you burn time.
 
-## Why not a timer
+## No timer, by design
 
-A countdown can hurry you into a set you are not ready for, or make you sit when you are fine. Reps and effort are the measure, not time.
+A countdown would either hurry you back before you're set or hold you up when you're good to go. The app cares about the reps and effort you put in, not how many seconds passed.
 
-## Special cases
+## Odd ones out
 
-- **Myorep sets:** mini-sets with just 5 to 15 seconds between them, logged as one total.
-- **Myorep match sets:** go on with brief mini-sets until you have caught up with the first set's rep count.
-- **Supersets:** the app has no set type for them, so alternate the two exercises back to back yourself. Leave yourself a reminder in the exercise notes, or use the day menu to put the pair next to each other.
+- With myorep sets, the breaks between mini-sets are just 5 to 15 seconds. Log the reps added together.
+- In a myorep match set, you keep adding short-rest mini-sets until you've equaled the reps from the first one.
+- For supersets there isn't a dedicated set type. Go back and forth between the two exercises on your own.
 
-## If sessions drag
+A note on the exercise can remind you of a pairing. You could also use the day menu to reorder things so the two sit side by side.
 
-Read the long workouts article. Trimming rest below your needs generally hurts your lifting more than the minutes help.
+Workouts taking too long? The long workouts article covers that. Shaving off rest you actually need usually costs more in performance than it gains in minutes.

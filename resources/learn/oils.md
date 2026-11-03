@@ -1,18 +1,18 @@
-Oil is food. It adds to your calories and your fat, which is why you should measure it.
+Cooking oil counts as food, adding to your calories and your fat, so measure it.
 
-## Why oil sneaks up on you
+## Small pour, big number
 
-Oil packs a lot of energy into a small volume. A tablespoon holds roughly 120 calories, every one of them fat. Two or three tablespoons can slip out in one quick splash from the bottle, and you would never notice. Repeat that daily and a deficit disappears, or a surplus appears that you never planned.
+About 120 kcal sits in each tablespoon, all from fat. Tip the bottle for a quick splash and 2 to 3 tablespoons can land in the pan unnoticed. Left uncounted, that much oil can wipe out a day's deficit or tip you into a surplus you never meant to eat.
 
-## Habits that help
+## Good habits
 
-- **Measure oil.** A spoon works. So does setting the pan on the scale, then pouring by weight.
-- Find your oil in the food database and add it to the meal, just like chicken or rice. It counts toward your fat target.
-- Cooking for several people? Weigh what went into the pan and divide by the servings.
-- Spraying, or cooking in a non-stick pan, means less oil goes in.
+- Weigh as you pour with the pan sitting on a scale, or use a measuring spoon
+- Treat oil in the app like chicken or rice: search the food database, add it to the meal, and it counts toward your fat target
+- Cooking for a crowd? Divide the weight of oil you used by how many servings you made
+- Sprays and non-stick pans mean using less
 
-## How it fits the meal
+## Where it fits
 
-Whatever oil you use takes up room in that meal's fat target. Use extra and the app makes up for it by cutting back the meal's other fat sources, keeping the total on track.
+Oil draws from the meal's fat target like any other fat source does. Pour in extra and the app cuts back the meal's other fats to keep you on target.
 
-Butter, mayo and dressings deserve the same care. People miss them in their counts just as often.
+Treat butter, mayonnaise and dressings with the same care, since they're just as easy to under-count.

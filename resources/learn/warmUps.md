@@ -1,27 +1,25 @@
-Ramp up with a few easy sets before the real work, and keep them out of your log. Anything in the log is counted as hard training.
+A few easy sets that build up to your working weight get you ready to lift, but they don't belong in your log. The app treats anything you log as real, hard training.
 
-## The ramp
+## Building up
 
-On your first visit to an exercise in a session, a guide appears.
+You'll see a guide on your first visit to each exercise in a workout. It lays out three sets.
 
-- **First:** 12 reps, with a load light enough to manage 30 or more.
-- **Second:** 8 reps, with a load you'd run out of reps on at around 20.
-- **Third:** 4 reps, with a load you'd run out of reps on at around 10.
+- Set 1: 12 reps using something you could move 30-plus times
+- Set 2: 8 reps, at roughly your 20-rep weight
+- Set 3: 4 reps, at about your 10-rep weight
 
-After that, working sets begin at 3 RIR, meaning three reps in reserve.
+After the third, you go straight into working sets at 3 RIR, so 3 reps in reserve. Think of the ramp as rehearsal: the movement gets practiced while joints and muscles warm up. These sets should leave you fresh, so stop each one long before it starts to feel like effort.
 
-Their job is to loosen you up and let you rehearse the motion. They are not meant to fatigue you, so stop far from effort.
+## Keep them out of the log
 
-## The reason for leaving them out
+Two things depend on your log: the volume tally, and what next week asks of you. Warm-ups entered there pass for hard work and distort both numbers.
 
-Your volume count and next week's targets are built from logged sets. A logged warm-up would look like hard training and skew both.
+## Your opening weight
 
-## Finding where to start
+Week 1 starts with blank weight boxes, except when the mesocycle is a copy of an earlier one. Let your warm-up guide you toward a weight where hitting the target reps would leave roughly 3 more in you. Type it into set one, and the later sets fill in with the same number. Edit any of them if you need to.
 
-Week 1 opens with blank weight boxes, unless your block was copied from the previous one. Let your warm-up guide you to a load where the target reps leave about three in reserve. Type that weight into the first set and it fills the sets after it, any of which you can change.
+## Scaling it down
 
-## Keep it proportionate
+Not every exercise needs all three ramp-up sets. When a muscle has already been warmed by an earlier exercise, the next one for it may only call for 1 or 2 lighter sets. Heavy lifts and stiff joints are when the full ramp earns its place.
 
-Not every exercise needs the full ramp. Once one exercise has warmed a muscle, a later exercise for that muscle might want just a couple of lighter sets. Reach for the full ramp on heavy lifts or when joints feel stiff.
-
-The exercise library holds the technique videos, so that is where to open an exercise and see how it is done.
+Technique videos are in the exercise library, so that's the place to open an exercise if you want to check your form.

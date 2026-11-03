@@ -1,21 +1,30 @@
-Your body fat estimate feeds two parts of your plan, your protein and the lowest fat intake the app allows. A rough match is all you need.
+Two of your targets, protein and minimum fat intake, are worked out from your body-fat estimate. A rough match is plenty, and the photo you choose beats any number from a scale.
+
+## What it feeds
+
+- Protein target
+- Minimum fat intake
+- The baseline for checking body fat during muscle gain
+
+None of these needs precision.
 
 ## Choosing a photo
 
-Find the photo you resemble most. Torn between two? Take whichever seems nearer. Each photo stands for a range:
-- **Women:** under 20%, 20 to 27%, 27 to 35%, over 35%.
-- **Men:** under 15%, 15 to 22%, 22 to 30%, over 30%.
+Pick whichever photo resembles you best. Torn between a pair? Trust your sense of which one is nearer.
 
-## Why a rough guess is fine
+- Under 20%, 20–27%, 27–35% and over 35% for women
+- Under 15%, 15–22%, 22–30% and over 30% for men
 
-Being a little off hardly changes your plan. The weekly review bases calorie changes on how your trend weight really moves, which corrects a slightly wrong estimate as you go.
+## Why rough is fine
 
-## Skip the scale's number
+Being slightly off barely changes the plan. Calorie recommendations from the weekly review follow how your trend weight really moves, which means a guess that's a little wrong gets fixed as the weeks pass.
 
-Body-fat readings from bathroom scales and smart scales are unreliable. They infer fat from weak electrical signals, and your hydration shifts the result a lot. Photos hold steadier.
+## Ignore scale readings
 
-## Where else it counts
+A bathroom or smart scale guesses body fat by sending tiny electrical signals through you, and the result swings with your hydration. Photos stay steadier.
 
-When you start a muscle gain phase, the app uses this number as the starting point for tracking your body fat. A new photo picked in Settings later becomes the fresh starting point for the app's estimate.
+## Changing your pick
 
-If pregnancy, illness or another health matter complicates your goal, follow your doctor's advice.
+Head to Settings to choose again, and the app rebuilds its estimate around whatever you select.
+
+Get advice from a doctor if your health or goal brings complications, pregnancy or illness among them.

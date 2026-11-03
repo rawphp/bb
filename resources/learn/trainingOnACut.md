@@ -1,24 +1,24 @@
-The aim during a cut is holding onto muscle and strength while fat drops. Keep training hard and raise the load gradually. Doing less isn't the answer.
+While you're cutting, your training has one job: protect the muscle and strength you've built as body fat comes down. You get there by keeping the work hard and the progress gradual, with no need to scale back.
 
-## Recovery on less food
+## What a deficit does to training
 
-Recovery is slower when you eat less. You can tolerate less total volume, and without extra food there's little fuel for growth. Training and diet should agree, so a fat-loss phase makes the app reshape your program.
+Eating below maintenance slows recovery. Your body tolerates fewer sets before they turn counterproductive, and without spare calories there's nothing extra to build with. Food and training work best when they're aimed at the same outcome, which is why the app reshapes your program for a fat-loss phase.
 
-## Program changes
+## How the program shifts
 
-- All muscles begin at Emphasize, so nothing is specialized by default on a cut.
-- You start with slightly more volume than usual but reach a lower ceiling than a gain phase allows, leaving a tight band between.
-- Each week, a session gains one set at most, so volume grows slowly.
-- Weight increases about 1% weekly, in jumps your smallest plate allows.
-- Reps skew high, generally 10 to 20 and sometimes as far as 30, since heavy work taxes joints and recovery more when dieting.
-- You train every muscle two or more times a week.
+- All muscles begin the phase set to Emphasize. Specialization is off by default during a cut.
+- You start with a touch more volume than usual, but the upper limit sits below what a gain phase allows, so the usable range is tight.
+- New sets come in gradually. Any given muscle picks up 1 set per session per week at most, with that limit applied muscle by muscle rather than to the session as a whole.
+- Weights go up roughly 1% each week, moving by your lightest plate at a time.
+- Rep targets lean high. Most sets fall between 10 and 20 reps, and some reach as many as 30, because heavy loading wears harder on joints and recovery while you're in a deficit.
+- No muscle gets fewer than 2 sessions a week.
 
-You get a warning if you give one muscle Grow or Maintain and leave others on Emphasize. Specializing on a cut undermines recovery.
+Putting a few muscles on Grow or Maintain, with the others left at Emphasize, is allowed. Expect a warning when you do, since specializing mid-cut fights your ability to recover.
 
-## Limit extra activity
+## Cardio and other activity
 
-Excess cardio cuts into lifting. The app warns you when your daily step target is above 12,000, or when one week holds over 4 sessions of hard sport or HIIT.
+Piling on cardio drags your lifting down. Set a step target above 12,000 a day and the app flags it. The same happens if a week holds more than 4 hard sport or HIIT sessions.
 
 ## Deloads
 
-Maintenance calories apply in deload weeks, which makes them diet breaks. For the details, read Deloads at maintenance.
+Every deload week on a cut is set at maintenance calories, so it also works as a break from dieting. You'll find more on how those weeks work under "Deloads at maintenance".

@@ -1,22 +1,26 @@
-Dieting gets harder when you drink, so keep it simple and avoid alcohol while dieting.
+Alcohol works against a diet in several ways, so the guidance is simple: avoid alcohol while dieting. If you drink anyway, keep under a firm ceiling and log it.
 
-## What alcohol costs you
+## Why it hurts
 
-- Calories arrive with no protein and very little nutrition.
-- Your resolve weakens, so you end up eating more than planned.
-- Sleep and recovery suffer, and training follows.
-- Drinks are easy to forget when you log.
+- Every drink brings calories yet zero protein, and almost nothing besides
+- Willpower drops, and eating past your plan gets easier
+- Sleep and recovery both take a hit, and training follows
+- Under-counting drinks is easy
 
-## If you do drink
+## Your upper limit
 
-Anyone who does drink should treat 1 to 2 drinks a week as the most, a ceiling to stay under rather than a number to hit. Your results do better still with none at all.
+Cap yourself at 1 to 2 drinks a week, no more. Stay under it instead of aiming for it. Zero drinks will give you better results.
 
-## In the app
+## Logging
 
-- Look up each drink in the food database and log it.
-- Something you drank or ate off-plan goes in with Save food macros.
-- Tapping Redistribute then pulls those calories from your later meals, and you choose which ones absorb it.
+Logging works like any other food: search the database for your drink and add it. For anything you didn't plan to drink or eat, use "Save food macros", and then tap "Redistribute" to pull those calories from the meals still ahead. Which meals take the hit is up to you.
 
-When you know a night out is coming, plan for it. Leave room in the day's calories and keep protein high. Don't skip meals to bank calories. A little extra carbs and fat that evening beats showing up ravenous after a missed meal.
+## Planning ahead
 
-Your doctor's advice comes first if you take medication. The same goes if a health condition changes how your body deals with alcohol.
+- Leave space in the day for it
+- Hold protein high
+- Don't go without meals to bank calories
+
+A missed meal leaves you ravenous, so you're better off eating more carbs and fat that evening.
+
+Ask a doctor for advice if you take medication or have a health issue that changes the way your body processes alcohol.

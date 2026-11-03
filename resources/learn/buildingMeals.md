@@ -1,23 +1,24 @@
-You pick the foods and the app works out the amounts, so each meal lands on its targets for calories, protein, carbs and fat.
+Pick the foods you want and the app works out how much of each, so every meal hits its targets for calories, protein, carbs and fat.
 
-## Choose from the Pantry
+## Picking foods
 
-Try to bring something from every group below into the meal.
-- **Protein:** eggs, tofu, Greek yogurt, fish, chicken, lean cuts of meat.
-- **Carbs:** fruit, bread, oats, potatoes, rice.
-- **Fat:** cheese, olive oil, avocado, nuts.
-- **Veggies:** any amount you want.
+Everything comes from your Pantry. Try to cover each group at every meal:
 
-Pantry foods carry a label, either recommended or use sparingly. Reach for the recommended foods first.
+- Protein: eggs, tofu, chicken, Greek yogurt, fish or lean meat
+- Carbs: oats, fruit, rice, bread or potatoes
+- Fat: cheese, olive oil, avocado or nuts
+- Veggies, with no limit
+
+Start with Pantry foods labeled recommended rather than those marked use sparingly.
 
 ## How the amounts work
 
-Whenever you add a food, the app rescales the grams across the whole meal. A "Targets met" badge shows up once each macro is no more than 5 g off. Sometimes a target can't be reached, for instance when nothing in the meal supplies carbs. The app then names the macro that falls short and points you to a food group worth adding.
+Adding something new makes the app redo the grams for the whole meal. Once each macro lands within 5 g of target, a "Targets met" badge appears. If no mix of your foods can reach a target, say because nothing in the meal supplies carbs, you'll be told which macro is short and which food group to pull from.
 
-## Weigh what you eat
+## Weighing
 
-Use a food scale, since estimated portions drift fast. Foods come with raw and cooked modes, since cooking changes what meat, rice and pasta weigh. Choose raw when you weigh before cooking a single meal. Choose cooked when you weigh after batch cooking.
+Portions you eyeball drift fast, so use a food scale. Cooking makes some foods heavier or lighter, meat, rice and pasta among them. That's why every food in the app gives you a raw option and a cooked option. Weighing before you cook one meal? Use raw. Weighing after batch cooking? Use cooked.
 
-## Lock, rebalance, check in
+## Locking and rebalancing
 
-Lock a food to hold its exact amount, then tap Rebalance and the rest of the meal refits around it. When it looks right, check it in. Close enough is fine.
+To fix a food at its exact amount, lock it, then tap "Rebalance" so the others refit around it. Finished? Check the meal in. Being slightly off is fine.

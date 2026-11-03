@@ -1,24 +1,24 @@
-Bodybuilder is a planner more than a diary. It decides what you should eat and lift next, and it reshapes that plan as your week shifts.
+Bodybuilder works out your next meals and lifts for you, and redoes that plan whenever your week shifts. Think of it as a planner, not a food log.
 
-## The plan comes first
+## Planner versus tracker
 
-Most tracking apps sit empty until you enter food, then add it up. In Bodybuilder your phase has already set the day's calories and macros, divided them into meals, and timed those meals around training. You open it and the day is laid out.
+Most food apps stay blank until you type in what you ate, and then they report a sum. Bodybuilder has your plan written before your first entry. It starts from your phase, turns that into a calorie and macro target for each day, divides the day among your meals, and lines those meals up with your training. Open it any morning and today's food and today's session are already laid out.
 
-## Food and training share a plan
+## Lifting and eating, joined up
 
-Nothing needs syncing, and you set up only one app.
+A single plan drives both your training and your nutrition. You don't need a second app, and you never copy numbers from one place to another.
 
-- Each session has its own time slot in the day's schedule.
-- On a harder training day, calories go up and carbs are placed around the session.
-- If a workout moves, gets skipped or ends early, the meals still ahead get new targets.
-- Deload weeks switch to maintenance calories on their own.
+- Each session sits on your daily schedule at its planned time.
+- Tougher sessions earn more calories that day, and the carbs land on either side of the workout.
+- Move a session, skip it or cut it short, and the meals still ahead of you get new targets.
+- Deload weeks drop to maintenance calories automatically, every time.
 
-## One review a week
+## A weekly look back
 
-Weekly, the app weighs your trend, meals, lifts and recovery together. On a cut, if your lifts fall, it raises diet fatigue as a cause before suggesting less volume. These are only suggestions. You decide.
+Every week, a review weighs four things at once: how your weight is trending, how you ate, how your lifts went and how well you recovered. Say you're cutting and your strength is sliding. The review raises diet fatigue as a question first, and only after that would it propose fewer sets. Everything it says is a suggestion. Your plan stays as it is until you pick an option.
 
-## What's left for you
+## What you bring
 
-Your part is the weigh-ins, meal check-ins, workouts and the weekly review. The plan only responds to what you've told it, so logging still matters. Your entries feed decisions here instead of piling up in a log.
+Your side is simple: step on the scale, mark meals as eaten, get your workouts done and sit down for the weekly review. You do still log, since the plan has no way to react to things it was never told. What changes is the purpose. Each entry goes toward a decision about what happens next.
 
-You don't have to be exact. Get calories and protein within 10% on a day and call it a good day.
+By the app's measure, a good day is one where calories and protein both finish within 10% of target.

@@ -1,28 +1,28 @@
-Every exercise in your plan comes with a rep range for your working sets to land in. Muscle grows from light and heavy weights alike, and the range is there to keep each lift practical and safe.
+Each exercise has a suggested number of reps per set, and your working sets aim to finish within it. Heavy weights and light ones can both build size. What the range does is keep each movement practical and safe.
 
-## Where each range fits
+## Which range fits which lift
 
-The workout screen shows an exercise's range in its header.
+- Squats, presses, rows and other big multi-joint lifts: 5 to 10
+- Isolation and machine exercises: 10 to 20
+- Smaller muscles, and exercises that are tricky to load: 20 to 30
 
-- **Squats, presses, rows and other big compound lifts:** 5 to 10 reps.
-- **Isolation work and machines:** 10 to 20 reps.
-- **Small muscles, and anything awkward to load:** 20 to 30 reps.
+The exercise header on your workout screen shows which range applies.
 
-Your diet phase shifts the balance. A fat loss phase leans on the two higher ranges, since they spare your joints and recovery, while a muscle gain phase mixes all three and does more at 5 to 10.
+The mix tilts with your diet phase. During fat loss, most work sits in the 20 to 30 and 10 to 20 bands, because they're kinder on joints and recovery. A muscle-gain phase uses every band but leans hardest on 5 to 10.
 
-## How the targets climb
+## How targets progress
 
-Starting in week 2, the app hands each set a weight and a rep count to hit.
+Each set has its own weight and rep target from week 2 onward.
 
-- **Weight:** climbs around 2% per week (1% in fat loss), then rounds to what your equipment can load.
-- **Step too big to take:** you get one more rep instead.
-- **Top of the range:** once another rep would go past it, the load jumps a step and your reps start again from mid-range.
-- **Later sets of an exercise:** slightly fewer reps, since fatigue builds.
+- Load climbs roughly 2% each week, or 1% during fat loss, then rounds to a step your equipment allows.
+- If that jump would be too large, the target adds a rep and leaves the weight alone.
+- When the rep target would overshoot the range, you move up a weight step instead, with reps starting again from mid-range.
+- Fatigue builds within an exercise, so its later sets aim slightly lower on reps.
 
-## When reps miss the range
+## Drifting out of range
 
-Two sessions in a row with most sets outside the range, and the app moves the following target weight a step back toward it. Coming in under the range lowers it, going over raises it, and a note tells you why.
+Two sessions in a row with most sets outside the range will move the next target weight one step back toward it. Reps that kept coming in low bring the weight down, and reps that ran high push it up. A note tells you what happened and why.
 
-## Overriding the weight
+## Typing your own weight
 
-Choose any weight you like and the app reworks your rep target so the effort stays the same. Pick something far from last week's weight and it shows only a target RIR, and you log whatever you manage.
+Any weight you enter is fine. Reps get recalculated to keep the effort the same. Enter something a long way off last week's number and you'll get just the target RIR instead, so log whatever you end up doing.

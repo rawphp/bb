@@ -1,21 +1,22 @@
-You can keep drinking coffee whether you are losing fat or building muscle, and caffeine is fine too.
+Whether you're losing fat or building muscle, you can keep drinking coffee, and caffeine is fine. The extras you stir in are all you need to track.
 
-## Why it works
+## Why it's okay
 
-Black coffee has next to no calories. Caffeine can sharpen focus and help you push harder in training. A typical amount suits most people. Watch what it does to your sleep, and if sleep is poor, move your last cup earlier.
+A cup of black coffee carries almost no calories. Caffeine can sharpen your alertness and help you push harder in training, and most people do well on a normal amount. Keep an eye on sleep, though. If you're sleeping badly, stop drinking it late.
 
-## The extras are what count
+## The extras
 
-Milk, cream, sugar, syrups and flavored creamers all carry calories. With several cups a day they pile up.
+Add-ins carry calories of their own: think sugar, syrup, flavored creamer, milk and cream. Over several cups a day, they mount up.
 
-- Log what goes in the cup, from milk and cream to sugar and syrup.
-- Look up your regular order from your coffee shop. Cafe drinks often hold far more calories than you would guess.
+- Log milk and cream
+- Likewise sugar and syrup
+- Cafe drinks often have more calories than you'd guess, so look up your usual coffee-shop order in the database
 
-Drinks sit in the food database next to everything else. Put one in a meal and the app fits it around your targets.
+The food database holds drinks just as it holds any food. Put one in a meal and the app fits everything around your targets.
 
 ## Tips
 
-- A big milky coffee every day belongs in your first meal's plan.
-- Energy drinks and pre-workout powder are fine as well. Just log any sugar or calories inside them.
+- Start the day with a big milky coffee? Build it into your first meal
+- There's no problem with pre-workout powder or an energy drink, but log whatever sugar or calories it carries
 
-Your doctor should set your caffeine amount if you are pregnant, live with a heart condition, or are on a medication caffeine interacts with.
+Get your doctor's view on a sensible caffeine amount if you're pregnant, live with a heart condition, or take a medication that caffeine interacts with.

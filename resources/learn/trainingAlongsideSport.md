@@ -1,29 +1,27 @@
-Lifting and playing a sport both draw from one shared pool of recovery. The aim is to stop them competing.
+Your sport and your lifting pull from one shared supply of recovery. The aim is to set them up so they don't fight over it.
 
-## Put the sport on your schedule
+## Getting sport into the app
 
-Each sport session belongs on your schedule as an **Other activity**. It needs a name, how long it lasts, and whether it was light, moderate or hard. Your nutrition plan counts it, so the extra work shows up in your calories and carbs. It doesn't count toward the lifting plan.
+Put sport on your schedule as an "Other activity". Give it a name, how long it lasts, and whether it's light, moderate or hard. The nutrition side picks it up and raises calories and carbs to cover the effort, while your lifting plan leaves it out.
 
-During fat loss, a week with more than 4 hard sessions of this kind, HIIT or sport for example, triggers a warning. Nothing is blocked. Heavy cardio piles up and cuts into how well you recover from lifting.
+In a fat loss phase, logging over 4 hard Other-activity sessions in one week, HIIT or sport for example, triggers a warning. You can still go ahead. The concern is that a lot of hard cardio eats into how well you recover from lifting.
 
-## Look after recovery
+## Guard your recovery
 
-Different sports tire different muscles. Runners load their legs and swimmers their shoulders. To plan for this:
+Certain muscles take more of a beating from a given sport, like legs for runners and shoulders for swimmers.
 
-- Give the feedback questions the truth. If sport has left your legs aching, say it, and the app will hold sets or cut them.
-- Find **Progression rates** under the day menu and set muscles your sport already hammers to a lower priority. Any muscle set to Maintain gains no sets.
-- Give higher priority to muscles your sport barely touches.
+- Tell the truth in your feedback. When sport has left your legs sore, report it, and the app will hold sets or trim them.
+- Muscles that your sport already hammers can go down in priority through the day menu's "Progression rates" setting. Maintain never adds sets.
+- Muscles your sport hardly uses can go up in priority instead.
 
 ## Shaping the week
 
-- Where the schedule allows, a hard sport session should sit away from any lifting day that works those same muscles.
-- Your training days should be ones that fit every week.
-- Long sessions or repeated underperformance flags mean the total load is too high. Bring down volume or priority, or move the deload earlier.
+When the calendar allows, keep a hard sport session well apart from the lifting day that trains those same muscles. Lift on days you're able to hold steady from one week to the next.
 
-## During the season
+Workouts that run long, or underperformance flags that keep coming back, are signs of too much total load. Ease off by cutting volume, dropping priority, or taking your deload sooner.
 
-You might want less lifting when the season is busy. Putting most muscles on Maintain keeps your gains with little added fatigue.
+## In season
 
-## When sport comes first
+A busy season means less lifting. With most muscles on Maintain, you hold onto your gains without adding much fatigue.
 
-If the sport matters most, lift to serve it and don't chase the most volume you can handle.
+When sport comes first, treat lifting as support for it and skip the hunt for maximum volume.

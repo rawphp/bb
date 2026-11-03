@@ -6,12 +6,12 @@
                 {
                     "slug": "notATracker",
                     "title": "How this app differs from a tracker",
-                    "summary": "Bodybuilder is a planner more than a diary. It decides what you should eat and lift next, and it reshapes that plan as your week shifts."
+                    "summary": "Bodybuilder works out your next meals and lifts for you, and redoes that plan whenever your week shifts. Think of it as a planner, not a food log."
                 },
                 {
                     "slug": "toolsYouNeed",
                     "title": "Tools you need",
-                    "summary": "A gym, a bathroom scale and a gram food scale are all the plan asks for. Each one sharpens the numbers it gives you."
+                    "summary": "Before you start, make sure you have a bathroom scale, access to a gym and a gram food scale. Each of the three sharpens the accuracy of your plan."
                 }
             ]
         },
@@ -21,7 +21,7 @@
                 {
                     "slug": "weighingIn",
                     "title": "Weighing in",
-                    "summary": "Almost every call the app makes starts from your trend weight. Weigh in often, and let that trend matter more than any single morning."
+                    "summary": "Weigh in often. Almost every call the app makes comes from your trend weight rather than one reading."
                 }
             ]
         },
@@ -31,7 +31,7 @@
                 {
                     "slug": "rir",
                     "title": "Reps in reserve (RIR)",
-                    "summary": "RIR stands for reps in reserve: the clean reps still left in you at the moment you rack the weight. Your target drops as the weeks go by, so effort climbs across the block."
+                    "summary": "RIR stands for reps in reserve, the number of clean reps you had left at the point you stopped. Your target falls as the weeks pass, which makes the work harder as a block goes on."
                 }
             ]
         },
@@ -41,7 +41,7 @@
                 {
                     "slug": "trainingOnACut",
                     "title": "Training on a cut",
-                    "summary": "The aim during a cut is holding onto muscle and strength while fat drops. Keep training hard and raise the load gradually. Doing less isn't the answer."
+                    "summary": "While you're cutting, your training has one job: protect the muscle and strength you've built as body fat comes down. You get there by keeping the work hard and the progress gradual, with no need to scale back."
                 }
             ]
         }
