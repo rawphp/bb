@@ -115,8 +115,10 @@ function closeWeighIn(): void {
                                 <path d="M9 9a3 3 0 0 1 6 0M12 9l1.5-2" stroke-linecap="round" />
                             </svg>
                         </template>
-                        <StatusPill v-if="row.is_missed" data-test="missed" :text="data.missed.text" :tone="data.missed.tone" />
-                        <p v-else-if="row.waist_label" data-test="waist" class="text-sm text-secondary-text">Waist {{ row.waist_label }}</p>
+                        <template v-if="row.is_missed || row.waist_label" #default>
+                            <StatusPill v-if="row.is_missed" data-test="missed" :text="data.missed.text" :tone="data.missed.tone" />
+                            <p v-else data-test="waist" class="text-sm text-secondary-text">Waist {{ row.waist_label }}</p>
+                        </template>
                     </ItemCard>
                 </button>
             </li>

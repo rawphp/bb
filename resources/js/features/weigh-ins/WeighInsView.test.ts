@@ -84,6 +84,7 @@ describe('WeighInsView', () => {
         const rows = view.findAll('[data-test="weigh-in"]');
         expect(rows[0]!.get('[data-test="waist"]').text()).toBe('Waist 86 cm');
         expect(rows[3]!.find('[data-test="waist"]').exists()).toBe(false);
+        expect(rows[3]!.findAll('article > div')).toHaveLength(1);
     });
 
     it('WT-001 the schedule row says the server\'s summary and opens the schedule', async () => {
