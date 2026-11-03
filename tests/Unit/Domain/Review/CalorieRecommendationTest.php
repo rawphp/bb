@@ -380,6 +380,27 @@ it('REV-046 the week after a break returns to the corrected target of the week t
         ->and($scenario(false)->recommend()->kcal)->toEqualWithDelta(1800, 1e-9);
 });
 
+it('REV-046 PLAN-023 after a deload run in a deficit the corrected target uses the formula maintenance', function () {
+    // The deload's diet break was turned off, so it is stored at the deficit's 1,800, not at maintenance: the
+    // expenditure REV-046 used for the fast week was NUT-002's maintenance, 2,600.
+    $scenario = recBreakAfterFastWeek(fn (ReviewWeek $week) => recMarked($week, fatigued: true));
+    $scenario->weeks[3] = F::week(3, intake: 1800, target: 1800, deload: true);
+    $corrected = 2600 + F::kcal(-0.5, $scenario->trend()->trendKg(F::day(20)));
+
+    expect($scenario->recommend()->reason)->toEqual(RecommendationReason::returnFromBreak())
+        ->and($scenario->recommend()->kcal)->toEqualWithDelta($corrected, 1e-6)
+        ->and($corrected)->toBeGreaterThan(1800);
+});
+
+it('REV-046 REV-032 a phase\'s first week that lost too fast is not corrected after the break that follows', function () {
+    $scenario = recBreakAfterFastWeek(fn (ReviewWeek $week) => recMarked($week, fatigued: true));
+    $scenario->phaseStartDay = 14;
+    $recommendation = $scenario->recommend();
+
+    expect($recommendation->reason)->toEqual(RecommendationReason::returnFromBreak())
+        ->and($recommendation->kcal)->toEqualWithDelta(1800, 1e-9);
+});
+
 it('SCH-064 a rough week repeats the week, over REV-046', function () {
     $recommendation = recLosingFast(rough: true)->recommend();
 
