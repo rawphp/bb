@@ -8,8 +8,8 @@ use DateTimeZone;
 
 /**
  * SET-012: stores the IANA time zone the user's days are counted in. Only a name PHP knows is taken, including the
- * backward-compatible links Chrome reports for some devices (Asia/Calcutta, Europe/Kiev); offsets and abbreviations
- * are refused.
+ * backward-compatible links Chrome reports for some devices (Asia/Calcutta, Europe/Kiev) and the few legacy names PHP
+ * still lists (EST, MST); an offset such as +10:00, or an abbreviation PHP does not list such as AEST, is refused.
  */
 final class SetTimeZone
 {
