@@ -48,14 +48,14 @@ final class MesocycleDay
     /** @param  Closure(array<string, mixed>, array<string, mixed>): array<string, mixed>  $edit  the stored day and the day as it reads → the stored day changed */
     private static function change(Mesocycle $mesocycle, string $dayId, int $fromWeek, Closure $edit): bool
     {
-        $days = self::edited(array_values($mesocycle->days ?? []), $mesocycle->dayRows(), $dayId, $edit);
-        $earlier = array_values($mesocycle->earlier_weeks ?? []);
+        $days = self::edited($mesocycle->days ?? [], $mesocycle->dayRows(), $dayId, $edit);
+        $earlier = $mesocycle->earlier_weeks ?? [];
         foreach ($mesocycle->earlierWeekRows() as $week => $rows) {
             if ($week + 1 >= $fromWeek) {
-                $earlier[$week] = self::edited(array_values($earlier[$week] ?? []), $rows, $dayId, $edit);
+                $earlier[$week] = self::edited($earlier[$week] ?? [], $rows, $dayId, $edit);
             }
         }
-        if ($days === array_values($mesocycle->days ?? []) && $earlier === array_values($mesocycle->earlier_weeks ?? [])) {
+        if ($days === ($mesocycle->days ?? []) && $earlier === ($mesocycle->earlier_weeks ?? [])) {
             return false;
         }
         $mesocycle->update(['days' => $days, 'earlier_weeks' => $mesocycle->earlier_weeks === null ? null : $earlier]);
