@@ -106,11 +106,12 @@ it('MESO-042 a second length change from a stale screen is refused once the firs
     $queries = array_column(DB::getQueryLog(), 'query');
     DB::flushQueryLog();
 
+    // Only the mesocycle row is locked, and before anything else on mesocycles is read: the snapshot reads plainly,
+    // so the change waits on no other row (MesocycleWritesRaceTest proves what the locked row is then used for).
     $onMesocycles = array_values(preg_grep('/`mesocycles`/', $queries));
-    $selects = array_values(preg_grep('/^select /', $onMesocycles));
-    expect(preg_grep('/for update$/', $onMesocycles))->toHaveCount(1)
+    expect(preg_grep('/for update|lock in share mode/', $queries))->toHaveCount(1)
         ->and($onMesocycles[0])->toEndWith('for update')
-        ->and(array_filter($selects, fn (string $sql) => ! preg_match('/(for update|lock in share mode)$/', $sql)))->toBe([])
+        ->and($onMesocycles[0])->toContain('`user_id`')
         ->and($mesocycle->fresh()->weeks)->toBe(6);
 
     $before = $mesocycle->fresh()->getAttributes();
