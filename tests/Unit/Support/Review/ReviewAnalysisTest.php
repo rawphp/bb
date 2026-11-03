@@ -290,6 +290,37 @@ it('REV-040 PROG-050 two muscles missing their rep targets make training fatigue
         ->and($two->training->underperformingMuscles)->toBe([MuscleGroup::Back, MuscleGroup::Chest]);
 });
 
+it('REV-040 PROG-050 the loader reads the sessions of the weeks reviewed, and each muscle\'s latest two before them', function () {
+    // The window starts a week before the plan's first week (2026-09-14); the March sessions are long before it.
+    $seed = new ReviewSeed;
+    $seed->earlierSessionDates = ['2026-03-02', '2026-03-09', '2026-03-16'];
+    $user = $seed->seed();
+    $data = ReviewData::load($user, ReviewSeed::TODAY);
+    $loaded = $data->sessions->modelKeys();
+
+    expect($loaded)->not->toContain($seed->sessionIds[ReviewSeed::earlierKey(0)])
+        ->and($loaded)->toContain($seed->sessionIds[ReviewSeed::earlierKey(1)])
+        ->and($loaded)->toContain($seed->sessionIds[ReviewSeed::earlierKey(2)])
+        ->and($loaded)->toContain($seed->sessionIds[ReviewSeed::sessionKey(1)])
+        ->and($data->sets->pluck('workout_session_id')->unique()->values()->all())->not->toContain($seed->sessionIds[ReviewSeed::earlierKey(0)]);
+});
+
+it('REV-040 PROG-050 a run of missed sessions that starts before the weeks reviewed still flags the muscle', function () {
+    // One chest session in the week reviewed; the run of two is completed by the last chest session before the window.
+    $analysis = reviewed(function (ReviewSeed $seed) {
+        $seed->earlierSessionDates = ['2026-03-02', '2026-03-09', '2026-03-16'];
+        $seed->sessionsDone = 1;
+        $seed->chestUnderperforms = true;
+    });
+    $alone = reviewed(function (ReviewSeed $seed) {
+        $seed->sessionsDone = 1;
+        $seed->chestUnderperforms = true;
+    });
+
+    expect($analysis->training->underperformingMuscles)->toBe([MuscleGroup::Chest])
+        ->and($alone->training->underperformingMuscles)->toBe([]);
+});
+
 it('REV-041 high training fatigue recommends Drop fatigue with the spec\'s words', function () {
     $analysis = reviewed(fn (ReviewSeed $seed) => $seed->muscleFeedback = [
         ['session' => ReviewSeed::sessionKey(1), 'muscle' => 'chest', 'soreness' => 'stillSore', 'volume' => 'tooMuch'],
