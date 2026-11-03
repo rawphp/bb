@@ -146,6 +146,16 @@ it('SAFE-001 ONB-005 refuses a Fat loss goal while trying to conceive', function
         ->and(answerDraft($blocked, ['answers' => ['goal' => 'muscleGain']])->goal)->toBe(PhaseType::MuscleGain);
 });
 
+it('SAFE-001 ONB-005 checks a goal against the screening sent with it', function () {
+    $blocked = F::atStep3(PhaseType::Maintenance)->with(step: 1, screening: [ScreeningItem::TryingToConceive]);
+    $draft = answerDraft($blocked, ['answers' => ['goal' => 'fatLoss', 'screening' => [['item' => 'tryingToConceive', 'is_on' => false]]]]);
+    $refused = answerRefusal(F::atStep3(PhaseType::Maintenance)->with(step: 1), ['answers' => ['goal' => 'fatLoss', 'screening' => [['item' => 'tryingToConceive', 'is_on' => true]]]]);
+
+    expect($draft->goal)->toBe(PhaseType::FatLoss)
+        ->and($draft->screening)->toBe([])
+        ->and($refused->field)->toBe('answers.goal');
+});
+
 // Step 2 (ONB-004)
 
 it('ONB-004 saves name, sex, date of birth, height and weight', function () {
