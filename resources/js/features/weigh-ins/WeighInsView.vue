@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { readFresh } from '@/app/call';
+import { read, readFresh } from '@/app/call';
 import ReadState from '@/app/ReadState.vue';
 import { useRead } from '@/app/useRead';
 import type { WeighInsShowOutput } from '@/contracts/weigh_ins_show';
@@ -11,9 +11,11 @@ import WeighInsScreen from './WeighInsScreen.vue';
 // user's units, so a unit change shows at the next read (SET-001). `log` is set when
 // /weigh-ins/log opened it (WT-002): a new weigh-in opens at once, at that time, or now
 // when it is empty. `pending` marks the server's numbers as waiting to sync (OFF-008).
-// The read is 90 days at a time: Show older reads the page before `next_before` and adds
-// its rows after the ones shown. When the newest page reads again (a write changed it),
-// each older page shown reads again, in order, so an edit there shows in place.
+// The read is 90 days at a time: Show older reads the page before `next_before` (a cached
+// copy at once, then the server's, OFF-003) and adds its rows after the ones shown. When
+// the newest page reads again (a write changed it, or the day moved on), the older pages
+// shown read again from the server as a chain, each from the `next_before` of the one
+// above it, so an edit there shows in place and no day falls between two pages.
 const props = withDefaults(defineProps<{ payload?: WeighInsShowOutput; pending?: boolean; log?: string }>(), { pending: false, log: undefined });
 
 const MORE_FAILED = 'Older weigh-ins could not be loaded.';
@@ -38,8 +40,8 @@ const shown = computed<WeighInsShowOutput | undefined>(() => {
     };
 });
 
-function readPage(before: string): Promise<WeighInsShowOutput> {
-    return readFresh<WeighInsShowOutput>('weigh_ins_show', { before });
+function replacePage(index: number, before: string, page: WeighInsShowOutput): void {
+    older.value = older.value.map((shownPage, at) => (at === index ? { before, page } : shownPage));
 }
 
 async function more(): Promise<void> {
@@ -47,8 +49,11 @@ async function more(): Promise<void> {
     if (!before || loadingMore.value) return;
     loadingMore.value = true;
     moreError.value = null;
+    const index = older.value.length;
     try {
-        const page = await readPage(before);
+        const page = await read<WeighInsShowOutput>('weigh_ins_show', { before }, (fresh) => {
+            if (older.value[index]?.before === before) replacePage(index, before, fresh);
+        });
         older.value = [...older.value, { before, page }];
     } catch {
         moreError.value = MORE_FAILED;
@@ -57,21 +62,28 @@ async function more(): Promise<void> {
     }
 }
 
-// Each newest read starts a new round; an older round's answers are dropped.
+// Each newest read starts a new round; an older round's answers are dropped. A page that
+// fails keeps its old rows, and the chain goes on from them.
 let round = 0;
-watch(data, async () => {
-    if (older.value.length === 0) return;
+watch(data, async (newest) => {
+    if (newest === undefined || older.value.length === 0) return;
     const mine = ++round;
     moreError.value = null;
-    for (const { before } of older.value) {
+    let before = newest.next_before ?? null;
+    for (let index = 0; index < older.value.length; index++) {
+        if (before === null) {
+            older.value = older.value.slice(0, index);
+            return;
+        }
         try {
-            const page = await readPage(before);
+            const page = await readFresh<WeighInsShowOutput>('weigh_ins_show', { before });
             if (mine !== round) return;
-            older.value = older.value.map((shownPage) => (shownPage.before === before ? { before, page } : shownPage));
+            replacePage(index, before, page);
         } catch {
             if (mine !== round) return;
             moreError.value = MORE_FAILED;
         }
+        before = older.value[index]!.page.next_before ?? null;
     }
 });
 </script>

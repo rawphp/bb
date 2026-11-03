@@ -135,19 +135,17 @@ function closeWeighIn(): void {
             </li>
         </ul>
         <p v-else-if="data.empty_message" class="px-1 text-secondary-text">{{ data.empty_message }}</p>
-        <template v-if="data.next_before || moreError">
-            <button
-                v-if="data.next_before"
-                type="button"
-                data-test="show-older"
-                class="min-h-tap w-full rounded-2xl bg-surface px-4 font-medium text-accent active:opacity-70 disabled:opacity-50"
-                :disabled="loadingMore"
-                @click="emit('more')"
-            >
-                Show older
-            </button>
-            <p v-if="moreError" class="rounded-2xl p-4 text-sm" :class="toneClasses.warning" role="alert">{{ moreError }}</p>
-        </template>
+        <button
+            v-if="data.next_before"
+            type="button"
+            data-test="show-older"
+            class="min-h-tap w-full rounded-2xl bg-surface px-4 font-medium text-accent active:opacity-70 disabled:opacity-50"
+            :disabled="loadingMore"
+            @click="emit('more')"
+        >
+            Show older
+        </button>
+        <p v-if="moreError" class="rounded-2xl p-4 text-sm" :class="toneClasses.warning" role="alert">{{ moreError }}</p>
 
         <section data-test="steps" class="flex flex-col gap-2">
             <div class="flex items-center justify-between gap-2 px-1">
@@ -183,19 +181,17 @@ function closeWeighIn(): void {
                     </button>
                 </li>
             </ul>
-            <template v-if="data.next_before || moreError">
-                <button
-                    v-if="data.next_before"
-                    type="button"
-                    data-test="show-older"
-                    class="min-h-tap w-full rounded-2xl bg-surface px-4 font-medium text-accent active:opacity-70 disabled:opacity-50"
-                    :disabled="loadingMore"
-                    @click="emit('more')"
-                >
-                    Show older
-                </button>
-                <p v-if="moreError" class="rounded-2xl p-4 text-sm" :class="toneClasses.warning" role="alert">{{ moreError }}</p>
-            </template>
+            <button
+                v-if="data.next_before"
+                type="button"
+                data-test="show-older"
+                class="min-h-tap w-full rounded-2xl bg-surface px-4 font-medium text-accent active:opacity-70 disabled:opacity-50"
+                :disabled="loadingMore"
+                @click="emit('more')"
+            >
+                Show older
+            </button>
+            <p v-if="moreError" class="rounded-2xl p-4 text-sm" :class="toneClasses.warning" role="alert">{{ moreError }}</p>
         </section>
 
         <WeighInEntrySheet
