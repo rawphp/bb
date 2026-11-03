@@ -15,11 +15,7 @@ const press = useLongPress(() => emit('menu'));
     <div
         data-test="activity-card"
         class="touch-pan-y"
-        @pointerdown="press.pointerDown"
-        @pointermove="press.pointerMove"
-        @pointerup="press.pointerEnd"
-        @pointercancel="press.pointerEnd"
-        @click.capture="press.click"
+        v-bind="press.listeners"
         @contextmenu.prevent="emit('menu')"
     >
         <ItemCard :title="activity.name" :time="activity.time_text">

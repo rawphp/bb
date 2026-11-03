@@ -47,5 +47,18 @@ export function useLongPress(onPress: () => void) {
 
     onBeforeUnmount(cancel);
 
-    return { pointerDown, pointerMove, pointerEnd: cancel, click };
+    return {
+        pointerDown,
+        pointerMove,
+        pointerEnd: cancel,
+        click,
+        /** Every listener at once, for an element with no pointer handling of its own: `v-bind="press.listeners"`. */
+        listeners: {
+            onPointerdown: pointerDown,
+            onPointermove: pointerMove,
+            onPointerup: cancel,
+            onPointercancel: cancel,
+            onClickCapture: click,
+        },
+    };
 }

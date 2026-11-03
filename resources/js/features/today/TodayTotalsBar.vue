@@ -11,7 +11,7 @@ withDefaults(defineProps<{ totals: NonNullable<TodayShowOutput['totals']>; pendi
 
 const emit = defineEmits<{ redistribute: []; saveFood: []; adjust: [] }>();
 
-const iconButton = 'flex h-8 min-w-tap items-center justify-center rounded-lg bg-accent/15 text-accent disabled:bg-background disabled:text-secondary-text';
+const iconButton = 'flex min-h-tap min-w-tap items-center justify-center rounded-lg bg-accent/15 text-accent disabled:bg-background disabled:text-secondary-text';
 </script>
 
 <template>
@@ -28,7 +28,7 @@ const iconButton = 'flex h-8 min-w-tap items-center justify-center rounded-lg bg
                     <path d="M12 5v14M5 12h14" />
                 </svg>
             </button>
-            <button type="button" class="h-8 rounded-lg bg-accent/15 px-3 text-accent" data-test="adjust" @click="emit('adjust')">Adjust</button>
+            <button type="button" class="min-h-tap rounded-lg bg-accent/15 px-3 text-accent" data-test="adjust" @click="emit('adjust')">Adjust</button>
         </div>
         <div class="flex flex-wrap gap-2">
             <StatusPill :text="totals.day_type.text" :tone="totals.day_type.tone" />

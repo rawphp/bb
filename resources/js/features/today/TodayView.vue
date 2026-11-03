@@ -171,11 +171,14 @@ const manualError = ref<string | null>(null);
 // see it, so a second tap would be decided from the old state. It waits instead.
 const storing = ref(new Set<string>());
 
-async function queue(meal: Meal, name: string, body: Record<string, unknown>, label: string): Promise<boolean> {
+// The two writes the box sends through the outbox, each with its own input.
+type CheckInWrite = { name: 'meal_check_in'; body: MealCheckInInput } | { name: 'meal_check_in_undo'; body: MealCheckInUndoInput };
+
+async function queue(meal: Meal, { name, body }: CheckInWrite, label: string): Promise<boolean> {
     if (storing.value.has(meal.id)) return false;
     storing.value.add(meal.id);
     try {
-        await write(name, body, { label });
+        await write(name, { ...body }, { label });
         return true;
     } catch (failure) {
         notice.value = { mealId: meal.id, text: writeFailureMessage(failure, 'The check-in could not be saved.') };
@@ -195,13 +198,13 @@ function checkIn(meal: Meal): void {
     notice.value = null;
     if (checkedIn(meal)) return;
     if (meal.check_in.blocked_message) notice.value = { mealId: meal.id, text: meal.check_in.blocked_message };
-    else void queue(meal, 'meal_check_in', { meal_id: meal.id } satisfies MealCheckInInput, `Checked in ${meal.name}`);
+    else void queue(meal, { name: 'meal_check_in', body: { meal_id: meal.id } }, `Checked in ${meal.name}`);
 }
 
 function removeCheckIn(meal: Meal): void {
     notice.value = null;
     if (!checkedIn(meal)) return;
-    void queue(meal, 'meal_check_in_undo', { meal_id: meal.id } satisfies MealCheckInUndoInput, `Removed the check-in of ${meal.name}`);
+    void queue(meal, { name: 'meal_check_in_undo', body: { meal_id: meal.id } }, `Removed the check-in of ${meal.name}`);
 }
 
 function toggle(meal: Meal): void {
@@ -211,7 +214,7 @@ function toggle(meal: Meal): void {
 
 async function saveManual(meal: Meal, body: MealCheckInInput): Promise<void> {
     manualError.value = null;
-    if (await queue(meal, 'meal_check_in', { ...body }, `Checked in ${meal.name} at manual macros`)) {
+    if (await queue(meal, { name: 'meal_check_in', body }, `Checked in ${meal.name} at manual macros`)) {
         sheet.value = null;
     } else if (notice.value?.mealId === meal.id) {
         // The sheet says why, not the card under it.
@@ -240,6 +243,9 @@ function mealAction(meal: Meal, action: MealAction): void {
         case 'remove_check_in':
             return removeCheckIn(meal);
         case 'check_in_manual':
+            // MEAL-045: a manual check-in is a check-in, so a blocked meal says why instead.
+            notice.value = meal.check_in.blocked_message ? { mealId: meal.id, text: meal.check_in.blocked_message } : null;
+            if (notice.value) return;
             manualError.value = null;
             sheet.value = { kind: 'manual', meal };
             return;
@@ -274,7 +280,14 @@ function workoutMenu(workout: TodayShowOutput['workouts'][number]): void {
 function activityMenu(activity: TodayShowOutput['other_activities'][number]): void {
     menu.value = {
         title: activity.name,
-        items: activity.menu.map((item) => ({ key: item.action, label: item.label, enabled: true, destructive: item.action === 'delete' })),
+        // Edit opens the Add workout sheet, which edits the day's one activity (add_workout.activity);
+        // with none offered (a past day, NUT-024) there is nothing for it to edit.
+        items: activity.menu.map((item) => ({
+            key: item.action,
+            label: item.label,
+            enabled: item.action !== 'edit' || data.value?.add_workout?.activity?.id === activity.id,
+            destructive: item.action === 'delete',
+        })),
         run: (key) => {
             if (key === 'edit') sheet.value = { kind: 'add-workout' };
             else if (key === 'delete') void send('other_activity_delete', { id: activity.id } satisfies OtherActivityDeleteInput, 'The activity could not be deleted.');

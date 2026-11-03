@@ -22,11 +22,7 @@ const status = computed<ItemCardStatus>(() =>
     <div
         data-test="workout-card"
         class="touch-pan-y"
-        @pointerdown="press.pointerDown"
-        @pointermove="press.pointerMove"
-        @pointerup="press.pointerEnd"
-        @pointercancel="press.pointerEnd"
-        @click.capture="press.click"
+        v-bind="press.listeners"
         @contextmenu.prevent="emit('menu')"
     >
         <ItemCard
