@@ -15,6 +15,7 @@ use App\Models\DayTarget;
 use App\Models\DayTargetMeal;
 use App\Models\Food;
 use App\Models\MealCheckIn;
+use App\Models\Plan;
 use App\Models\PlannedFood;
 use App\Models\PlannedRecipe;
 use App\Models\Recipe;
@@ -397,6 +398,29 @@ it('SCH-035 a day with no target in the next week is skipped, and a checked-in m
     $written = app(CopyWeek::class)($user, '2026-09-19');
 
     expect(array_map(fn (DayTargetMeal $m) => $m->id, $written))->toBe([copyActionMeal($user, '2026-09-30', 3)]);
+});
+
+it('SCH-035 never writes a day of the next week that is before the plan', function () {
+    $user = copyActionUser();
+    // The plan now starts Wednesday 23rd, part-way through the week of the 19th; the days before it keep their targets.
+    Plan::query()->where('user_id', $user->id)->update(['start_date' => '2026-09-23']);
+    copyActionDinner($user, '2026-09-16');
+    copyActionFood(copyActionMeal($user, '2026-09-14', 1));
+
+    $written = app(CopyWeek::class)($user, '2026-09-12');
+
+    // Wednesday 16th goes to Wednesday 23rd, the plan's first day; Monday 21st is before the plan and keeps nothing.
+    expect(array_map(fn (DayTargetMeal $m) => $m->id, $written))->toBe([copyActionMeal($user, '2026-09-23', 3)])
+        ->and(PlannedFood::query()->where('meal_id', copyActionMeal($user, '2026-09-21', 1))->exists())->toBeFalse();
+});
+
+it('SCH-035 a user with no plan has no next week to copy to', function () {
+    $user = copyActionUser();
+    copyActionDinner($user);
+    Plan::query()->where('user_id', $user->id)->delete();
+
+    expect(fn () => app(CopyWeek::class)($user, '2026-09-19'))->toThrow(DomainException::class, 'There is no next week in the plan to copy to.')
+        ->and(PlannedFood::query()->where('meal_id', copyActionMeal($user, '2026-09-30', 3))->exists())->toBeFalse();
 });
 
 it('SCH-035 the last plan week has no next week to copy to', function () {
