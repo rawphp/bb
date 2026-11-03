@@ -180,10 +180,11 @@ final class UpdateSchedule
 
     /**
      * SCH-037 all future days: the busy periods on `$weekday` as edited. The input carries no period's id, so each sent
-     * period is matched to one stored on the weekday: the same label, start and end first (unchanged), then the same
-     * label (edited), then the same start and end (renamed). A matched one edited keeps the weekdays it repeats on, as
-     * Edit schedule says ("A busy period you edit or remove changes on every day it repeats"); a stored one left over
-     * was removed; a sent one left over is new on `$weekday` only. Periods not on the weekday are left alone.
+     * period is matched to one stored on the weekday: the same label, start and end (unchanged); the same label with a
+     * start or end in common; the same label; the same start and end; and, when one of each is left, that one (renamed
+     * and re-timed). A matched one edited keeps the weekdays it repeats on, as Edit schedule says ("A busy period you
+     * edit or remove changes on every day it repeats"); a stored one left over was removed; a sent one left over is new
+     * on `$weekday` only. Periods not on the weekday are left alone.
      *
      * @param  array<array-key, mixed>  $stored
      * @param  list<ScheduleBusyPeriod>  $sent
@@ -195,23 +196,30 @@ final class UpdateSchedule
         $on = array_keys(array_filter($stored, fn (mixed $period) => is_array($period) && in_array($weekday, $period['weekdays'] ?? range(1, 7), false)));
         $label = fn (array $period, ScheduleBusyPeriod $edit) => (string) ($period['label'] ?? '') === trim($edit->label);
         $times = fn (array $period, ScheduleBusyPeriod $edit) => (string) ($period['start'] ?? '') === $edit->start && (string) ($period['end'] ?? '') === $edit->end;
+        $oneTime = fn (array $period, ScheduleBusyPeriod $edit) => (string) ($period['start'] ?? '') === $edit->start || (string) ($period['end'] ?? '') === $edit->end;
         $matchers = [
             fn (array $period, ScheduleBusyPeriod $edit) => $label($period, $edit) && $times($period, $edit),
+            fn (array $period, ScheduleBusyPeriod $edit) => $label($period, $edit) && $oneTime($period, $edit),
             $label,
             $times,
         ];
 
         $left = $sent;
+        $pair = function (int $match, int $position) use (&$stored, &$on, &$left): void {
+            $sent = $left[$position];
+            $stored[$on[$match]] = array_replace($stored[$on[$match]], ['label' => trim($sent->label), 'start' => $sent->start, 'end' => $sent->end]);
+            unset($on[$match], $left[$position]);
+        };
         foreach ($matchers as $matches) {
-            foreach ($left as $position => $edit) {
-                $match = array_find_key($on, fn (int $index) => $matches($stored[$index], $edit));
-                if ($match === null) {
-                    continue;
+            foreach ($left as $position => $sent) {
+                $match = array_find_key($on, fn (int $index) => $matches($stored[$index], $sent));
+                if ($match !== null) {
+                    $pair($match, $position);
                 }
-                $index = $on[$match];
-                $stored[$index] = array_replace($stored[$index], ['label' => trim($edit->label), 'start' => $edit->start, 'end' => $edit->end]);
-                unset($on[$match], $left[$position]);
             }
+        }
+        if (count($on) === 1 && count($left) === 1) {
+            $pair((int) array_key_first($on), (int) array_key_first($left));
         }
         $added = array_map(fn (ScheduleBusyPeriod $edit) => [
             'id' => Str::lower((string) Str::ulid()), 'label' => trim($edit->label), 'start' => $edit->start, 'end' => $edit->end, 'weekdays' => [$weekday],

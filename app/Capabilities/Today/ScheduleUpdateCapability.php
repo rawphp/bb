@@ -21,7 +21,7 @@ final class ScheduleUpdateCapability implements HostCapability
     {
         // SCH-056, UI-010: this day's re-target shows a toast with Undo.
         return HostDefinition::write('schedule_update', affects: [...SettingsReads::REBUILDS, 'train_show', 'mesocycle_show', 'workout_show', ...TodayReads::SHEETS], reversible: true)
-            ->description('Edit the schedule of a day: the eating window, meals a day (2 to 6), the busy periods on it and, on a training day, the session\'s start time ("HH:MM", 24-hour). apply_to this_day changes that day only, from today on: its unchecked meals are placed again and nothing is stored as a default. apply_to all_future_days saves the window and meal count for every day, and the busy periods and training time for that weekday, then recalculates the targets from tomorrow. Checked-in and locked meals never change.')
+            ->description('Edit a day\'s eating window, meals a day (2 to 6), busy periods and, on a training day, the session\'s start ("HH:MM", 24-hour). apply_to this_day places that day\'s unchecked meals again from today on and stores no default; all_future_days saves the window and meal count for every day and the busy periods and training time for that weekday, then recalculates the targets from tomorrow. Checked-in and locked meals never change.')
             ->cli('schedule', 'update')
             ->input(ScheduleUpdateInput::class)
             ->run(function (ScheduleUpdateInput $input, CapabilityContext $context): WriteResult {

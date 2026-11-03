@@ -566,7 +566,10 @@ final class TrainSnapshot
         $weekdays = [];
         foreach ([$mesocycle->dayRows(), ...$mesocycle->earlierWeekRows()] as $days) {
             foreach ($days as $day) {
-                $weekdays[$day['id']] ??= $day['weekday'];
+                // The rotation's weekday wins, a floating one (null) too (SCH-039); an earlier week names only its own days.
+                if (! array_key_exists($day['id'], $weekdays)) {
+                    $weekdays[$day['id']] = $day['weekday'];
+                }
             }
         }
 

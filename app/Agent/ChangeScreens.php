@@ -16,6 +16,7 @@ final class ChangeScreens
     /** @var array<string, string|null> capability name => tab root */
     public const SCREENS = [
         'away_week_set' => '/today',
+        'busy_period_set' => '/today',
         'custom_exercise_save' => '/train',
         'custom_food_delete' => '/more',
         'custom_food_save' => '/more',
@@ -81,12 +82,14 @@ final class ChangeScreens
         'saved_meal_rename' => '/more',
         'saved_meal_save' => '/more',
         'schedule_defaults_update' => '/more',
+        'schedule_update' => '/today',
         'settings_update' => '/more',
         'shopping_item_add' => '/nutrition',
         'shopping_item_check' => '/nutrition',
         'shopping_item_delete' => '/nutrition',
         'steps_log' => '/progress',
         'time_zone_set' => '/today',
+        'training_weekdays_change' => '/today',
         'undo_apply' => null,
         'week_copy' => '/today',
         'weigh_in_delete' => '/progress',
