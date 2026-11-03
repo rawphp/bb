@@ -10,7 +10,9 @@ use App\Models\PlannedRecipe;
 use App\Models\Recipe;
 use App\Models\User;
 use Illuminate\Database\Connection;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\Events\TransactionBeginning;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -62,21 +64,32 @@ function racedCopyRows(string $mealId): array
     ];
 }
 
-it('MEAL-060 a destination meal checked in after the first read and before the writes is not overwritten', function () {
-    [$racer, $user, $source, $destination] = racedCopyMeals();
-    $before = racedCopyRows($destination);
+/** Checks the meal in through the second connection, committed at once, as CheckInMeal's updateOrCreate is. */
+function racedCopyCheckIn(Connection $racer, User $user, string $mealId): void
+{
+    $racer->table('meal_check_ins')->insert([
+        'id' => strtolower((string) Str::ulid()), 'meal_id' => $mealId, 'user_id' => $user->id, 'time' => '19:35',
+        'kcal' => 900, 'protein_g' => 60, 'fat_g' => 25, 'carbs_g' => 110, 'is_manual' => false,
+        'created_at' => '2026-09-23 06:00:00', 'updated_at' => '2026-09-23 06:00:00',
+    ]);
+}
+
+/**
+ * Copies the source meal into the destination inside an outer transaction that reads first, as UndoLog's does. The
+ * first `$event` on the copy's connection that `$when` accepts runs `$race`, once. Removes what racedCopyMeals() made.
+ *
+ * @param  class-string  $event
+ * @return array{written: list<string>, rows: array{foods: list<array<string, mixed>>, recipes: list<array<string, mixed>>}, checkedIn: bool}
+ */
+function racedCopy(Connection $racer, User $user, string $source, string $destination, string $event, Closure $when, Closure $race): array
+{
     $armed = false;
     // Left registered and disarmed after: Event::forget would also drop the framework's own listeners.
-    Event::listen(TransactionBeginning::class, function (TransactionBeginning $began) use (&$armed, $racer, $user, $destination) {
-        if (! $armed || $began->connectionName === 'racer') {
-            return;
+    Event::listen($event, function (object $fired) use (&$armed, $when, $race) {
+        if ($armed && $fired->connectionName !== 'racer' && $when($fired)) {
+            $armed = false;
+            $race();
         }
-        $armed = false;
-        $racer->table('meal_check_ins')->insert([
-            'id' => strtolower((string) Str::ulid()), 'meal_id' => $destination, 'user_id' => $user->id, 'time' => '19:35',
-            'kcal' => 900, 'protein_g' => 60, 'fat_g' => 25, 'carbs_g' => 110, 'is_manual' => false,
-            'created_at' => '2026-09-23 06:00:00', 'updated_at' => '2026-09-23 06:00:00',
-        ]);
     });
 
     try {
@@ -86,8 +99,12 @@ it('MEAL-060 a destination meal checked in after the first read and before the w
 
             return app(CopyMeals::class)($user, [[$source, $destination]], new CopyOptions);
         });
-        $after = racedCopyRows($destination);
-        $checkedIn = DB::table('meal_check_ins')->where('meal_id', $destination)->exists();
+
+        return [
+            'written' => array_map(fn (DayTargetMeal $meal) => $meal->id, $written),
+            'rows' => racedCopyRows($destination),
+            'checkedIn' => DB::table('meal_check_ins')->where('meal_id', $destination)->exists(),
+        ];
     } finally {
         $armed = false;
         $racer->table('planned_foods')->where('user_id', $user->id)->delete();
@@ -95,10 +112,62 @@ it('MEAL-060 a destination meal checked in after the first read and before the w
         $racer->table('users')->where('id', $user->id)->delete();
         DB::purge('racer');
     }
+}
 
-    expect(array_map(fn (DayTargetMeal $meal) => $meal->id, $written))->toBe([])
-        ->and($after)->toBe($before)
+it('MEAL-060 a destination meal checked in after the first read and before the writes is not overwritten', function () {
+    [$racer, $user, $source, $destination] = racedCopyMeals();
+    $before = racedCopyRows($destination);
+
+    // The check-in commits as the copy's own transaction opens: after UndoLog's first read, before the copy reads.
+    $copied = racedCopy($racer, $user, $source, $destination, TransactionBeginning::class, fn () => true,
+        fn () => racedCopyCheckIn($racer, $user, $destination));
+
+    expect($copied['written'])->toBe([])
+        ->and($copied['rows'])->toBe($before)
         ->and($before['foods'])->toHaveCount(1)
         ->and($before['recipes'])->toHaveCount(1)
-        ->and($checkedIn)->toBeTrue();
+        ->and($copied['checkedIn'])->toBeTrue();
+});
+
+it('MEAL-060 a check-in made while the copy holds the meals waits for the copy, which writes its plan', function () {
+    [$racer, $user, $source, $destination] = racedCopyMeals();
+    $sourceFoods = array_column(racedCopyRows($source)['foods'], 'food_id');
+    $waited = null;
+
+    // The check-in's foreign-key check needs the meal row the copy has locked, so it waits; a second is enough.
+    $copied = racedCopy($racer, $user, $source, $destination, QueryExecuted::class,
+        fn (QueryExecuted $query) => str_contains($query->sql, 'from `day_target_meals`') && str_ends_with($query->sql, 'for update'),
+        function () use ($racer, $user, $destination, &$waited) {
+            $racer->statement('SET SESSION innodb_lock_wait_timeout = 1');
+            try {
+                racedCopyCheckIn($racer, $user, $destination);
+            } catch (QueryException $timedOut) {
+                $waited = $timedOut->errorInfo[1] ?? null;
+            } finally {
+                $racer->statement('SET SESSION innodb_lock_wait_timeout = 50');
+            }
+        });
+
+    expect($waited)->toBe(1205)
+        ->and($copied['written'])->toBe([$destination])
+        ->and(array_column($copied['rows']['foods'], 'food_id'))->toBe($sourceFoods)
+        ->and($copied['rows']['recipes'])->toBe([])
+        ->and($copied['checkedIn'])->toBeFalse();
+});
+
+it('MEAL-060 a food added to the destination after the first read is replaced by the copy, not left beside it', function () {
+    [$racer, $user, $source, $destination] = racedCopyMeals();
+    $sourceFoods = array_column(racedCopyRows($source)['foods'], 'food_id');
+    $added = racedCopyRows($destination)['foods'][0]['food_id'];
+
+    $copied = racedCopy($racer, $user, $source, $destination, TransactionBeginning::class, fn () => true,
+        fn () => $racer->table('planned_foods')->insert([
+            'id' => strtolower((string) Str::ulid()), 'user_id' => $user->id, 'meal_id' => $destination, 'food_id' => $added,
+            'position' => 2, 'grams' => 40, 'is_cooked' => false, 'is_locked' => false, 'unit' => 'g',
+            'created_at' => '2026-09-23 06:00:00', 'updated_at' => '2026-09-23 06:00:00',
+        ]));
+
+    expect($copied['written'])->toBe([$destination])
+        ->and(array_column($copied['rows']['foods'], 'food_id'))->toBe($sourceFoods)
+        ->and($copied['rows']['recipes'])->toBe([]);
 });
