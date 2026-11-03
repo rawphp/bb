@@ -143,6 +143,16 @@ describe('ExerciseView', () => {
         expect(inputViolations('exercise_load_step_set', input)).toEqual([]);
     });
 
+    it('EX-012 an empty load step shows the default with its unit once, and a typed one beside the unit', async () => {
+        const view = show({ payload: landmine });
+        const field = view.get('input[aria-label="Load step in kg"]');
+
+        expect(field.attributes('placeholder')).toBe('2.5 kg');
+        expect(field.element.parentElement!.textContent!.trim()).toBe('');
+        await field.setValue('5');
+        expect(field.element.parentElement!.textContent!.trim()).toBe('kg');
+    });
+
     it('EX-005 an exercise with no load to step says it is reps only', () => {
         const view = show({ payload: { ...landmine, load_type: 'bodyweight', load_type_text: 'Bodyweight', load_step: null } });
 
