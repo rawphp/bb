@@ -71,21 +71,21 @@ it('DOM_001 a profile holds every field', function () {
 
 it('DOM_002 a phase holds every field, with or without an event date', function () {
     $end = modelDate()->modify('+28 days');
-    $miniCut = new Phase(id: 'p-1', type: PhaseType::MiniCut, start: modelDate(), end: $end, targetRatePercentPerWeek: 1.0, eventDate: modelDate());
+    $miniCut = new Phase(id: 'p-1', type: PhaseType::MiniCut, start: modelDate(), end: $end, targetRatePercentPerWeek: -1.0, eventDate: modelDate());
     $maintenance = new Phase(id: 'p-2', type: PhaseType::Maintenance, start: modelDate(), end: modelDate(), targetRatePercentPerWeek: 0);
 
     expect($miniCut->id)->toBe('p-1')
         ->and($miniCut->type)->toBe(PhaseType::MiniCut)
         ->and($miniCut->start)->toEqual(modelDate())
         ->and($miniCut->end)->toEqual($end)
-        ->and($miniCut->targetRatePercentPerWeek)->toBe(1.0)
+        ->and($miniCut->targetRatePercentPerWeek)->toBe(-1.0)
         ->and($miniCut->eventDate)->toEqual(modelDate())
         ->and($maintenance->targetRatePercentPerWeek)->toBe(0.0)
         ->and($maintenance->eventDate)->toBeNull();
 });
 
 it('DOM_003 a plan holds its phases and review-day changes', function () {
-    $phase = new Phase(id: 'p-1', type: PhaseType::FatLoss, start: modelDate(), end: modelDate(), targetRatePercentPerWeek: 0.75);
+    $phase = new Phase(id: 'p-1', type: PhaseType::FatLoss, start: modelDate(), end: modelDate(), targetRatePercentPerWeek: -0.75);
     $plain = new Plan(id: 'plan-1', start: modelDate(), reviewWeekday: 2, phases: [$phase]);
     $changed = new Plan(
         id: 'plan-2', start: modelDate(), reviewWeekday: 2,

@@ -21,6 +21,7 @@ use App\Domain\Weight\TrendWeight;
 use App\Models\Phase;
 use App\Models\WeighIn;
 use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\UserDay;
 use DateTimeZone;
 
 /**
@@ -100,7 +101,7 @@ final class PhaseChanges
         }
         $trend = new TrendWeight(
             $this->plan->weighInsSince($start->modify('-'.self::TREND_LEAD_DAYS.' days'))
-                ->map(fn (WeighIn $w) => new DomainWeighIn((string) $w->id, TrainSnapshot::day($w->weighed_at), (float) $w->weight_kg))->values()->all(),
+                ->map(fn (WeighIn $w) => new DomainWeighIn((string) $w->id, UserDay::clockIn($this->plan->zone, $w->weighed_at), (float) $w->weight_kg))->values()->all(),
             new DateTimeZone('UTC'),
         );
         $last = $phase->end_date === null ? $this->plan->today : min(PlanSnapshot::day($phase->end_date), $this->plan->today);
