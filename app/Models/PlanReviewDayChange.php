@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Database\Factories\PlanReviewDayChangeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -10,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['effective_on', 'review_weekday'])]
 class PlanReviewDayChange extends Model
 {
+    /** @use HasFactory<PlanReviewDayChangeFactory> */
+    use HasFactory;
+
     /** @return BelongsTo<Plan, $this> */
     public function plan(): BelongsTo
     {
