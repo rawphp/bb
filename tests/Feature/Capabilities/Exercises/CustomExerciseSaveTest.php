@@ -1,17 +1,23 @@
 <?php
 
+use App\Capabilities\Mesocycles\MesocycleReads;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\ReadKey;
 use App\Models\Exercise;
+use App\Models\Mesocycle;
 use App\Models\User;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Tests\Support\TrainSeed;
 
 // The HTTP seam of custom_exercise_save. The rules are unit tests (SaveCustomExerciseTest, TrainInputRulesTest).
+
+beforeEach(fn () => Carbon::setTestNow('2026-10-10 12:00:00'));
+afterEach(fn () => Carbon::setTestNow());
 
 function exerciseSaveCall(?User $user, array $input, ?string $key = null): TestResponse
 {
@@ -26,7 +32,7 @@ function exerciseSaveInput(array $changes = []): array
     return ['name' => 'Landmine Press', 'muscle_group' => 'frontDelts', 'equipment' => 'barbell', 'load_type' => 'barbell', ...$changes];
 }
 
-it('CAP-013 AGT-010 none of the four exercise writes is reversible or destructive, and each names the reads it changes', function () {
+it('CAP-013 AGT-010 none of the three exercise writes is reversible or destructive, and each names the reads it changes', function () {
     $registry = app(CapabilityRegistry::class);
 
     foreach (['custom_exercise_save', 'exercise_note_set', 'exercise_load_step_set'] as $name) {
@@ -34,7 +40,7 @@ it('CAP-013 AGT-010 none of the four exercise writes is reversible or destructiv
             ->and(HostDefinition::isDestructive($registry->get($name)))->toBeFalse($name);
     }
 
-    expect(HostDefinition::affects($registry->get('custom_exercise_save')))->toBe(['exercises_show', 'exercise_show', 'exercise_history_show', 'mesocycle_show', 'workout_show'])
+    expect(HostDefinition::affects($registry->get('custom_exercise_save')))->toBe(['exercises_show', 'exercise_show', 'exercise_history_show', 'train_show', 'mesocycle_show', 'workout_show', 'today_show', 'progress_show'])
         ->and(HostDefinition::affects($registry->get('exercise_note_set')))->toBe(['exercise_show', 'workout_show'])
         ->and(HostDefinition::affects($registry->get('exercise_load_step_set')))->toBe(['exercise_show', 'workout_show']);
 });
@@ -52,7 +58,7 @@ it('EX-004 creates the user\'s exercise from no exercise_id, and from a null one
     $created = Exercise::query()->where('user_id', $user->id)->sole();
     expect(Exercise::query()->count())->toBe($before + 1)
         ->and($created)->name->toBe('Landmine Press')->sfr_rating->value->toBe('medium')->rep_range_min->toBe(10)->rep_range_max->toBe(20)->is_compound->toBeFalse()
-        ->and($response->json('data.invalidates'))->toBe([ReadKey::for('exercises_show')]);
+        ->and($response->json('data.invalidates'))->toEqualCanonicalizing([ReadKey::for('exercises_show'), ...MesocycleReads::keys()]);
 })->with(['left out' => [[]], 'null' => [['exercise_id' => null]]]);
 
 it('EX-004 EX-005 edits the user\'s own exercise in place, inserting nothing, and names the reads it changes', function () {
@@ -70,14 +76,47 @@ it('EX-004 EX-005 edits the user\'s own exercise in place, inserting nothing, an
 
     expect(Exercise::query()->count())->toBe($before)
         ->and($exercise->fresh())->name->toBe('Flat Press')->muscle_group->value->toBe('triceps')
-        ->and($response->json('data.invalidates'))->toBe([
+        ->and($response->json('data.invalidates'))->toEqualCanonicalizing([
             ReadKey::for('exercises_show'),
             ReadKey::for('exercise_show', ['exercise_id' => (string) $exercise->id]),
             ReadKey::for('exercise_history_show', ['exercise_id' => (string) $exercise->id]),
             ReadKey::for('train_show'),
             ReadKey::for('mesocycle_show', ['mesocycle_id' => (string) $mesocycle->id]),
-            ReadKey::for('workout_show', ['mesocycle_id' => (string) $mesocycle->id, 'week' => 2, 'day' => 1]),
+            ...array_map(fn (int $week) => ReadKey::for('workout_show', ['mesocycle_id' => (string) $mesocycle->id, 'week' => $week, 'day' => 1]), [1, 2, 3, 4, 5]),
+            ReadKey::for('today_show', ['date' => '2026-10-10']),
+            ReadKey::for('today_show'),
+            ReadKey::for('progress_show'),
+            ReadKey::for('progress_show', ['scope' => 'phase']),
+            ReadKey::for('progress_show', ['scope' => 'plan']),
         ]);
+});
+
+it('EX-004 a create also invalidates the mesocycle_show of a draft, whose builder lists the whole library', function () {
+    $user = TrainSeed::user();
+    $draft = Mesocycle::factory()->for($user)->create(['is_draft' => true]);
+
+    $response = exerciseSaveCall($user, exerciseSaveInput())->assertOk();
+
+    expect($response->json('data.invalidates'))->toContain(ReadKey::for('train_show'), ReadKey::for('mesocycle_show', ['mesocycle_id' => (string) $draft->id]));
+});
+
+it('EX-004 an edit names the sessions of this user only, not another user\'s holding the same exercise', function () {
+    $user = TrainSeed::user();
+    $other = TrainSeed::user();
+    $mine = TrainSeed::mesocycle($user);
+    $theirs = TrainSeed::mesocycle($other);
+    $exercise = Exercise::factory()->custom($user)->create();
+    $session = WorkoutSession::factory()->for($other)->create(['mesocycle_id' => $theirs->id, 'week' => 1, 'day' => 1]);
+    WorkoutExercise::factory()->create(['workout_session_id' => $session->id, 'exercise_id' => $exercise->id]);
+    $mine->update(['days' => [['id' => '01JB6Q400A2B3C4D5E6F7G8H9J', 'label' => 'Upper', 'weekday' => 1, 'slots' => [
+        ['id' => '01JB6Q401A2B3C4D5E6F7G8H9J', 'exercise_id' => $exercise->id, 'muscle_group' => 'chest', 'sets' => 3],
+    ]]]]);
+    $theirs->update(['days' => $mine->days]);
+
+    $keys = exerciseSaveCall($user, exerciseSaveInput(['exercise_id' => (string) $exercise->id]))->assertOk()->json('data.invalidates');
+
+    expect($keys)->toContain(ReadKey::for('workout_show', ['mesocycle_id' => (string) $mine->id, 'week' => 1, 'day' => 1]))
+        ->and(implode(' ', $keys))->not->toContain("\"mesocycle_id\":\"{$theirs->id}\"");
 });
 
 it('EX-004 answers 404 for a library exercise, another user\'s, an unknown id and an id with a leading zero', function () {

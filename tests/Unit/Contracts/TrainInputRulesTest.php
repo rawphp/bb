@@ -312,3 +312,13 @@ it('CAP-002 uses the domain enums\' values in every train contract', function ()
 
     expect($checked)->toBeGreaterThan(20);
 });
+
+it('EX-004 refuses a custom exercise name that is only whitespace, and still accepts a real one', function () {
+    $input = CustomExerciseSaveInput::class;
+    $create = trainInputExample($input);
+    unset($create['exercise_id']);
+
+    expect(trainInputViolations($input, [...$create, 'name' => '   ']))->toBe(['name'])
+        ->and(trainInputViolations($input, [...$create, 'name' => "\t\n "]))->toBe(['name'])
+        ->and(trainInputViolations($input, [...$create, 'name' => 'Landmine press']))->toBe([]);
+});

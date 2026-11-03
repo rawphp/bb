@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
 use Illuminate\Support\Str;
+use Tests\Support\TrainSeed;
 use Illuminate\Testing\TestResponse;
 
 // The HTTP seam of exercise_note_set and exercise_load_step_set. The rules are unit tests (SetExerciseNoteTest, SetExerciseLoadStepTest).
@@ -95,3 +96,25 @@ it('EX-012 accepts a step for a reps-only exercise: it is stored and has no effe
 
     expect(ExerciseLoadStep::query()->where('user_id', $user->id)->value('step_kg'))->toBe(2.5);
 });
+
+it('EX-010 EX-012 name the workout_show of each day of a saved, not-started mesocycle that holds the exercise, and no other', function (string $name, array $input) {
+    $user = TrainSeed::user();
+    $other = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user, ['weeks' => 2]);
+    TrainSeed::mesocycle($other);
+    $bench = Exercise::query()->where('name', 'Bench Press')->sole();
+    $mesocycle->update(['earlier_weeks' => [0 => [
+        ['id' => 'a', 'label' => 'Old', 'weekday' => 2, 'slots' => [['id' => 'b', 'exercise_id' => $bench->id, 'muscle_group' => 'chest', 'sets' => 3]]],
+        ['id' => 'c', 'label' => 'Old 2', 'weekday' => 5, 'slots' => []],
+    ]]]);
+    $key = fn (int $week, int $day) => ReadKey::for('workout_show', ['mesocycle_id' => (string) $mesocycle->id, 'week' => $week, 'day' => $day]);
+
+    $keys = exerciseWriteCall($user, $name, ['exercise_id' => (string) $bench->id, ...$input])->assertOk()->json('data.invalidates');
+
+    expect($keys)->toContain($key(1, 1), $key(2, 1))
+        ->not->toContain($key(1, 2))->not->toContain($key(2, 2))
+        ->and(implode(' ', $keys))->not->toContain('"mesocycle_id":"'.Mesocycle::query()->where('user_id', $other->id)->value('id').'"');
+})->with([
+    'exercise_note_set' => ['exercise_note_set', ['note' => 'x']],
+    'exercise_load_step_set' => ['exercise_load_step_set', ['step' => 2.5, 'unit' => 'kg']],
+]);
