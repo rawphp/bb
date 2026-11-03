@@ -57,6 +57,13 @@ it('SET-004 a height with no number for its unit is refused on height', function
     'feet and inches missing' => [['unit' => 'feetInches', 'cm' => 170.0, 'feet' => null, 'inches' => null]],
 ]);
 
+it('SET-004 a name of only spaces is refused on name', function () {
+    FakeRebuild::bind();
+
+    expect(fn () => app(UpdateProfile::class)(profileOwner(), profileInput(['unit' => 'cm', 'cm' => 170.0, 'feet' => null, 'inches' => null], ['name' => '   '])))
+        ->toThrow(fn (FieldRefused $refused) => expect($refused->field)->toBe('name'));
+});
+
 it('SET-004 the profile form keeps the height unit setting and rebuilds only for a target input', function () {
     $rebuild = FakeRebuild::bind();
     $user = profileOwner();

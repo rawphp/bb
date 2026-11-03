@@ -6,6 +6,7 @@ use App\Domain\Plan\PlanRebuildRefused;
 use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Database\DeadlockException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Support\FakeRebuild;
@@ -136,6 +137,20 @@ it('SET-004 a rebuild that fails keeps the saved profile, rolls back only the re
         ->and($profile->meal_count)->toBe(4)
         ->and($profile->targets_rebuild_failed_at?->toDateTimeString())->toBe('2026-10-14 12:00:00')
         ->and($reported)->toBe([$failure]);
+});
+
+it('SET-004 a deadlock or lock wait in the rebuild fails the whole write rather than counting as a failed rebuild', function () {
+    // MySQL has rolled back the whole transaction by then, profile save included, so nothing may be recorded as saved.
+    FakeRebuild::bind(new DeadlockException('Deadlock found when trying to get lock; try restarting transaction'));
+    $reported = [];
+    app(ExceptionHandler::class)->reportable(function (Throwable $e) use (&$reported) {
+        $reported[] = $e;
+
+        return false;
+    });
+
+    expect(fn () => saveProfile(saveProfileUser(), ['experience' => 'advanced']))->toThrow(DeadlockException::class)
+        ->and($reported)->toBe([]);
 });
 
 it('SET-004 a rebuild that runs after a failure clears the notice', function () {

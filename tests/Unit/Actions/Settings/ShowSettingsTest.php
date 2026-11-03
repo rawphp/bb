@@ -44,13 +44,13 @@ it('SET-004 shows the warning while a rebuild that failed is pending, pointing a
         ->toBe(['Your changes are saved, but your targets could not be updated. Tap Save to try again.', 'warning']);
 });
 
-it('SET-001 height reads in whole centimetres, or feet and whole inches', function (float $cm, string $unit, string $text, ?float $shownCm, ?int $feet, ?float $inches) {
+it('SET-001 height reads in centimetres to a tenth, or feet and whole inches, as onboarding shows it', function (float $cm, string $unit, string $text, ?float $shownCm, ?int $feet, ?float $inches) {
     $height = showSettings(settingsUser(['height_cm' => $cm, 'height_unit' => $unit]))->profile->height;
 
     expect([$height->unit, $height->text, $height->cm, $height->feet, $height->inches])->toBe([$unit, $text, $shownCm, $feet, $inches]);
 })->with([
     'cm' => [178.0, 'cm', '178 cm', 178.0, null, null],
-    'cm rounds' => [177.6, 'cm', '178 cm', 177.6, null, null],
+    'cm to a tenth' => [177.64, 'cm', '177.6 cm', 177.6, null, null],
     'ft and in' => [167.64, 'feetInches', '5 ft 6 in', null, 5, 6.0],
     '11.8 in reads as the next foot' => [182.4, 'feetInches', '6 ft 0 in', null, 5, 11.8],
 ]);
