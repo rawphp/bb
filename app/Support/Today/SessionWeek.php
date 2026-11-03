@@ -69,7 +69,7 @@ final readonly class SessionWeek
                 day: $session->day,
                 isSkipped: $session->is_skipped,
                 plannedStartAt: $session->planned_start_at === null ? null : DayPlans::instant($session->planned_start_at),
-                actualStartAt: $session->actual_start_at === null ? null : DayPlans::instant($session->actual_start_at),
+                actualStartAt: $snapshot->startedAt($session),
             ))->values()->all(), $mesocycle->id),
         );
 

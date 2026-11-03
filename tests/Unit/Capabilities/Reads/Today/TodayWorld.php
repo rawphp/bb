@@ -28,6 +28,7 @@ use App\Models\WorkoutSet;
 use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Today\TodaySnapshot;
 use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Support\Collection;
 
 /**
@@ -79,6 +80,7 @@ final class TodayWorld
         ?int $steps = null,
         bool $withPlan = true,
         array $phases = [],
+        string $zone = 'UTC',
     ): TodaySnapshot {
         $train = new TrainSnapshot(
             today: TrainSnapshot::day($today),
@@ -106,6 +108,7 @@ final class TodayWorld
             planWeeks: new Collection($planWeeks ?? [self::planWeek('2026-09-26', away: true), self::planWeek('2026-10-03', deload: true)]),
             dayTargets: new Collection,
             exercises: new Collection(self::exercises()),
+            zone: new DateTimeZone($zone),
         );
         $targets = array_map(fn (string $day) => self::dayTarget($day), self::planDays());
         $meals = [];

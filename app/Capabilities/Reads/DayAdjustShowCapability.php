@@ -11,8 +11,7 @@ use App\Capabilities\Support\OwnsInput;
 use App\Models\DayTargetMeal;
 use App\Models\User;
 use App\Support\Today\AdjustWeek;
-use App\Support\Today\DayPlans;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -29,7 +28,7 @@ final class DayAdjustShowCapability implements HostCapability, OwnsInput
                 /** @var User $user */
                 $user = $context->user();
 
-                return DayAdjustPayload::build($input, AdjustWeek::load($user, $input->date), DayPlans::day(CarbonImmutable::now()));
+                return DayAdjustPayload::build($input, AdjustWeek::load($user, $input->date), UserDay::today($user));
             });
     }
 
