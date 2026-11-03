@@ -133,6 +133,15 @@ it('MESO-034 a session skipped this week keeps what it had when a muscle goes Of
         ->and(priorityWeek($mesocycle, 3))->toBe([['chest'], ['calves']]);
 });
 
+it('MESO-034 SCH-051 a session this week that was only moved takes the Off change', function () {
+    $mesocycle = priorityMeso();
+    WorkoutSession::factory()->for($mesocycle->user)->create(['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 2, 'planned_start_at' => '2026-09-25 17:30:00']);
+
+    prioritySet($mesocycle, MuscleGroup::Quads, null);
+
+    expect(priorityWeek($mesocycle, 2))->toBe([['chest'], ['calves']]);
+});
+
 it('MESO-032 MESO-034 a mesocycle that has ended takes no priority change', function (?Priority $priority) {
     $mesocycle = priorityMeso();
     Carbon::setTestNow('2026-11-02 10:00:00');
