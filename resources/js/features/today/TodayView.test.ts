@@ -52,8 +52,8 @@ const entry = (seq: number, name: string, mealId: string, refused = false) => ({
 });
 
 /** The day with one meal's menu item turned on or off, as the server would send it. */
-function withMenu(mealId: string, action: string, enabled: boolean): TodayShowOutput {
-    const payload = day();
+function withMenu(mealId: string, action: string, enabled: boolean, state?: string): TodayShowOutput {
+    const payload = day(state);
     const found = payload.meals.find((m) => m.id === mealId)!;
     const item = found.menu.find((i) => i.action === action);
     if (item) item.enabled = enabled;
@@ -338,6 +338,25 @@ describe('TodayView', () => {
         expect(sent()).toEqual([]);
     });
 
+    it('MEAL-045 Check in meal from the menu says why a blocked meal cannot be checked in, and sends nothing', async () => {
+        const wrapper = await show({ payload: withMenu(LUNCH, 'check_in_meal', true, 'warning'), week: week() });
+
+        await menuItem(wrapper, LUNCH, 'check_in_meal');
+
+        expect(sent()).toEqual([]);
+        expect(wrapper.get('[role="alert"]').text()).toBe("Fix this meal's foods or mark it done planning before you check it in.");
+    });
+
+    it('MEAL-045 a blocked meal opens no manual check-in either: it says why instead', async () => {
+        const wrapper = await show({ payload: day('warning'), week: week() });
+
+        await menuItem(wrapper, LUNCH, 'check_in_manual');
+
+        expect(wrapper.findComponent(ManualCheckInSheet).exists()).toBe(false);
+        expect(sent()).toEqual([]);
+        expect(wrapper.get('[role="alert"]').text()).toBe("Fix this meal's foods or mark it done planning before you check it in.");
+    });
+
     it('MEAL-009 Done planning foods marks the meal planned', async () => {
         const wrapper = await show({ payload: withMenu(LUNCH, 'done_planning', true), week: week() });
 
@@ -464,15 +483,30 @@ describe('TodayView', () => {
         expect(readMock).toHaveBeenCalledWith('week_show', {}, expect.any(Function), expect.any(Function));
     });
 
-    it('SCH-032 Edit opens the activity in the Add workout sheet and deletes nothing', async () => {
+    it('SCH-032 Edit opens that activity in the Add workout sheet, filled in, and saves it under its own id', async () => {
         const wrapper = await show();
 
         await wrapper.get('[data-test="activity-card"]').trigger('contextmenu');
         await wrapper.get('[data-test="menu-edit"]').trigger('click');
         await flushPromises();
 
+        expect(wrapper.findComponent(AddWorkoutSheet).exists()).toBe(true);
         expect(sent()).toEqual([]);
-        expect(wrapper.getComponent(AddWorkoutSheet).props('payload')).toEqual(day());
+        expect(wrapper.text()).toContain('Edit activity');
+        expect(wrapper.get<HTMLInputElement>('input[aria-label="Name"]').element.value).toBe('Tennis');
+        await wrapper.get('[data-save]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([['other_activity_save', expect.objectContaining({ id: '01JBX0A1B2C3D4E5F6G7H8J9K0', date: '2026-09-23', name: 'Tennis' })]]);
+    });
+
+    it('SCH-032 Edit is off when the server offers no activity to edit on the day (NUT-024)', async () => {
+        const wrapper = await show({ payload: { ...day(), add_workout: null }, week: week() });
+
+        await wrapper.get('[data-test="activity-card"]').trigger('contextmenu');
+
+        expect(wrapper.get('[data-test="menu-edit"]').attributes('disabled')).toBeDefined();
+        expect(wrapper.get('[data-test="menu-delete"]').attributes('disabled')).toBeUndefined();
     });
 
     it('SCH-051 the workout menu opens the move sheet for that workout', async () => {
