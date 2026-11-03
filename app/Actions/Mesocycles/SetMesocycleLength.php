@@ -14,16 +14,17 @@ use Illuminate\Support\Facades\DB;
  * length. The lengths allowed are the ones mesocycle_show offers ({@see MesocycleCalendar}). `$expectedWeeks` is the
  * length the user saw: when the mesocycle's length has moved since, the change is refused, so a step from a stale screen
  * never adds or removes weeks the user did not choose. The check and the write happen under the mesocycle row's lock,
- * so two changes take turns: the second waits for the first to commit, reads what it saved and is refused.
+ * so two changes take turns: the second waits for the first to commit, reads what it saved and is refused. Only that
+ * row is locked, so the change waits on no other write.
  */
 final class SetMesocycleLength
 {
     public function __invoke(User $user, string $mesocycleId, int $weeks, int $expectedWeeks): Mesocycle
     {
         return DB::transaction(function () use ($user, $mesocycleId, $weeks, $expectedWeeks): Mesocycle {
-            Mesocycle::query()->where('user_id', $user->id)->whereKey($mesocycleId)->lockForUpdate()->first();
-            $snapshot = TrainSnapshot::load($user, $mesocycleId, locked: true);
-            $mesocycle = $snapshot->mesocycle($mesocycleId);
+            $locked = Mesocycle::query()->where('user_id', $user->id)->whereKey($mesocycleId)->lockForUpdate()->first();
+            $snapshot = TrainSnapshot::load($user, $mesocycleId);
+            $mesocycle = $snapshot->lockedMesocycle($mesocycleId, $locked);
 
             if ($mesocycle->weeks !== $expectedWeeks) {
                 throw new DomainException("This mesocycle's length changed to {$mesocycle->weeks} weeks since the screen was loaded, so nothing was changed.");
