@@ -4,6 +4,7 @@ import { CapabilityError, read, writeNow } from '@/app/call';
 import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
 import { toneIcons } from '@/design/toneIcons';
 import { inputViolations, screenFixture } from '@/testing/schemas';
+import AboutYouStep from './AboutYouStep.vue';
 import BucketCard from './BucketCard.vue';
 import OnboardingView from './OnboardingView.vue';
 import ScreeningRowView from './ScreeningRowView.vue';
@@ -444,6 +445,29 @@ describe('OnboardingView', () => {
 
             expect(writeMock).not.toHaveBeenCalled();
             expect(weight.element.value).toBe('176.4');
+        });
+
+        it('CAP-010 while an answer is out the Sex, Height unit and Weight unit pickers are locked, and a tap on one sends nothing', async () => {
+            writeMock.mockReturnValueOnce(new Promise(() => {}));
+            wrapper = view(aboutYou);
+            const step = wrapper.findComponent(AboutYouStep);
+
+            await radio(wrapper, 'Sex', 'Male').trigger('click');
+            expect(step.emitted('answer')).toHaveLength(1);
+
+            for (const group of ['Sex', 'Height unit', 'Weight unit']) {
+                const radios = wrapper.get(`[role="radiogroup"][aria-label="${group}"]`).findAll('[role="radio"]');
+                expect(radios.length).toBeGreaterThan(1);
+                for (const option of radios) {
+                    expect(option.attributes('disabled'), `${group} ${option.text()}`).toBeDefined();
+                    // Past test-utils' own skip of disabled elements, so only the picker's guard stops it.
+                    option.element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                }
+            }
+            await flushPromises();
+
+            expect(step.emitted('answer')).toHaveLength(1);
+            expect(writeMock).toHaveBeenCalledOnce();
         });
 
         it('ONB-004 an option the server does not offer is disabled', () => {

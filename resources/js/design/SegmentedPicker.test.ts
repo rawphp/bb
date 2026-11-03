@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import SegmentedPicker from '@/design/SegmentedPicker.vue';
@@ -53,6 +53,19 @@ describe('SegmentedPicker', () => {
 
         expect(some.findAll('[role="radio"]').map((radio) => radio.attributes('disabled') !== undefined)).toEqual([false, false, true]);
         expect(all.findAll('[role="radio"]').every((radio) => radio.attributes('disabled') !== undefined)).toBe(true);
+    });
+
+    it('ONB-004 a disabled option, or any option of a disabled group, sends nothing even when a click reaches it', async () => {
+        const some = picker();
+        const all = picker({ disabled: true });
+
+        // Dispatched directly, past test-utils' own skip of disabled elements.
+        segment(some, 'm').element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        segment(all, 'ft/in').element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        await flushPromises();
+
+        expect(some.emitted('update:modelValue')).toBeUndefined();
+        expect(all.emitted('update:modelValue')).toBeUndefined();
     });
 
     it('VIEW-004 has a gallery entry', () => {
