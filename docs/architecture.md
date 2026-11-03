@@ -120,7 +120,7 @@ Each user has an IANA time zone in `users.time_zone` (SET-012), `UTC` until the 
 
 - The date convention does not change. A calendar day is midnight UTC of its `Y-m-d` (`TrainSnapshot::day`, `DayPlans::day`), and a wall-clock time is read as UTC, as `ClockTime` and the plan's meal and session times are. Calendar-day maths stays in UTC.
 - `App\Support\UserDay` is the only place a real instant becomes a user's day or clock time. `now()` is the user's wall-clock time labelled UTC, `today()` its day, `dayOf()` the local day of a stored instant, and `bounds()` the first and last second of a local day as UTC instants, for querying stored instants such as `weighed_at`. It reads `CarbonImmutable::now()`, so the time-walk clock applies.
-- Moved so far: `TrainSnapshot` and `TodaySnapshot`'s today and now, the Adjust and Redistribute sheets and their writes, Today's weigh-ins and current weight.
+- Moved so far: `TrainSnapshot` and `TodaySnapshot`'s today and now, the Adjust and Redistribute sheets and their writes, Today's weigh-ins and current weight, and `TodayReads`, which drops the undated `today_show` and `week_show` for the signed-in user's local today.
 - Not moved yet, still counting UTC days: the weigh-ins screen (missed days, `weigh_ins_show`), reminder due times, `ProgressSnapshot::zone()` and the Progress chart and history weigh-in buckets, `PlanSnapshot` and `PhaseChanges` weigh-in days, `PhaseWarnings`' default zone, the agent's "turns today" (`AgentStatus`, `Allowance`) and its `TurnContext` "Now" line, and a Settings row showing the zone.
 
 ## Tests

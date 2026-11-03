@@ -3,12 +3,16 @@
 namespace App\Capabilities\Today;
 
 use App\Capabilities\Support\ReadKey;
+use App\Models\User;
+use App\Support\UserDay;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * The read keys a Today write invalidates (CAP-010, CAP-017): each changed day's Today and the sheets that read it.
- * A day that may be today also drops the read without a date, which shows today. Today is the user's local day
- * (SET-012), which in any time zone is the UTC day or one either side of it, so all three count.
+ * A day that is today also drops the read without a date, which shows today. Today is the signed-in user's local day
+ * (SET-012), as today_show counts it: a write's keys are built inside the run of the user it changed. With no one
+ * signed in it is the UTC day.
  *
  * A sheet is named by its key as first opened, with only the date. The reads it makes as the user fills it in carry
  * their other inputs, which no write can name; the client must not serve those from its cache (#98).
@@ -46,7 +50,7 @@ final class TodayReads
         $keys = [];
         foreach (array_values(array_unique($dates)) as $date) {
             $keys[] = ReadKey::for('today_show', ['date' => $date]);
-            if (in_array($date, self::mayBeToday(), true)) {
+            if ($date === self::today()) {
                 $keys[] = ReadKey::for('today_show');
             }
             foreach ($sheets as $sheet) {
@@ -67,18 +71,18 @@ final class TodayReads
     public static function weekKeys(array $weekDates): array
     {
         $keys = array_map(fn (string $date) => ReadKey::for('week_show', ['date' => $date]), $weekDates);
-        if (array_intersect(self::mayBeToday(), $weekDates) !== []) {
+        if (in_array(self::today(), $weekDates, true)) {
             $keys[] = ReadKey::for('week_show');
         }
 
         return $keys;
     }
 
-    /** @return list<string> the days, Y-m-d, that are today in some time zone */
-    private static function mayBeToday(): array
+    /** Y-m-d */
+    private static function today(): string
     {
-        $now = Carbon::now('UTC');
+        $user = Auth::user();
 
-        return [$now->copy()->subDay()->format('Y-m-d'), $now->format('Y-m-d'), $now->copy()->addDay()->format('Y-m-d')];
+        return $user instanceof User ? UserDay::today($user)->format('Y-m-d') : Carbon::now()->format('Y-m-d');
     }
 }

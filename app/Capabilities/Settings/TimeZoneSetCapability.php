@@ -20,7 +20,7 @@ final class TimeZoneSetCapability implements HostCapability
     {
         // A new zone can move the user's "today", so every read built on it refetches.
         return HostDefinition::write('time_zone_set', affects: PlanReads::AFFECTS)
-            ->description('Set the IANA time zone the user\'s days are counted in, such as Australia/Brisbane. The app sends the device\'s zone on each load, so it follows the user when they travel; until then it is UTC. Today, its week strip and its weigh-ins count days in it. Sending the zone already set changes nothing.')
+            ->description('Set the IANA time zone the user\'s days are counted in, such as Australia/Brisbane; until one is set it is UTC. The app sends the device\'s zone on each load, so Today, its week strip and its weigh-ins follow the user when they travel. Sending the zone already set changes nothing.')
             ->cli('time-zone', 'set')
             ->input(TimeZoneSetInput::class)
             ->run(function (TimeZoneSetInput $input, CapabilityContext $context): WriteResult {
