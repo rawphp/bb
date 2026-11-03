@@ -25,7 +25,7 @@ final class TokenCreateCapability implements HostCapability
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('token_create', affects: ['token_list'])
+        return HostDefinition::write('token_create', affects: ['token_list', 'health_bridge_show'])
             ->description('Create a personal access token for MCP, the CLI or the Health bridge, with a name, an expiry and a scope. Only the signed-in user can call it, never a token (CAP-031). It returns the token\'s secret, which is shown this once.')
             // CAP-003 maps every capability to a CLI command. With a token, this one answers 403.
             ->cli('token', 'create')
@@ -57,7 +57,7 @@ final class TokenCreateCapability implements HostCapability
                 scope_text: $token->scope->label(),
                 expires_text: TokenRows::expiresText($token),
             ),
-            result: new WriteResult(invalidates: [ReadKey::for('token_list')]),
+            result: new WriteResult(invalidates: [ReadKey::for('token_list'), ReadKey::for('health_bridge_show')]),
         );
     }
 }

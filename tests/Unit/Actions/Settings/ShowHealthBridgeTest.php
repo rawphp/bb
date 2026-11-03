@@ -5,8 +5,11 @@ use App\Domain\Tokens\TokenScope;
 use App\Models\AuditRecord;
 use App\Models\PersonalAccessToken;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Carbon;
 
 // The Health bridge page's rules (INT-001, INT-004), on in-memory rows: no database.
+
+afterEach(fn () => Carbon::setTestNow());
 
 const BRIDGE_ENDPOINT = 'https://bb.example/capabilities';
 
@@ -52,6 +55,9 @@ function bridgeSteps(string $at, int $steps = 8412, string $date = '2026-11-01')
 /** @param  list<AuditRecord>  $posts */
 function bridgePage(?PersonalAccessToken $token, array $posts = [], string $now = '2026-11-02T09:00:00Z', string $shortcut = 'https://www.icloud.com/shortcuts/abc'): array
 {
+    // Token words (TokenRows) read the clock.
+    test()->travelTo($now);
+
     return ShowHealthBridge::page($token, $posts, CarbonImmutable::parse($now), $shortcut, BRIDGE_ENDPOINT)->toArray();
 }
 
@@ -97,7 +103,7 @@ it('INT-001 says the token has expired, since the Shortcut can no longer post wi
     $page = bridgePage(bridgeToken(['expires_at' => CarbonImmutable::parse('2026-11-01T00:00:00Z')]), [bridgeSteps('2026-11-02T06:02:00Z')]);
 
     expect($page['status'])->toBe(['text' => 'The token has expired. Revoke it and set up the bridge again.', 'tone' => 'warning'])
-        ->and($page['token']['expires_text'])->toBe('Expires 1 November 2026');
+        ->and($page['token']['expires_text'])->toBe('Expired 1 November 2026');
 });
 
 it('INT-004 waits for the first post once the token exists', function () {

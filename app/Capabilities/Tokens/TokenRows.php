@@ -38,7 +38,7 @@ final class TokenRows
         return ($expires->isPast() ? 'Expired ' : 'Expires ').self::date($expires);
     }
 
-    private static function lastUsedText(?CarbonInterface $used): string
+    public static function lastUsedText(?CarbonInterface $used): string
     {
         if ($used === null) {
             return 'Never used';
