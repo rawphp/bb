@@ -135,6 +135,30 @@ final class TrainSnapshot
         );
     }
 
+    /**
+     * The light snapshot of a calendar only: today and the mesocycles, with the plan and the profile when the caller
+     * read them, and nothing else. It answers {@see current()}, {@see calendar()}, {@see domain()} (every slot named
+     * "Exercise not chosen yet") and {@see trainingWeekdays()}. The caller gives today, so this reads no clock.
+     *
+     * @param  Collection<int, Mesocycle>  $mesocycles
+     */
+    public static function calendarOnly(DateTimeImmutable $today, Collection $mesocycles, ?Plan $plan = null, ?Profile $profile = null): self
+    {
+        return new self(
+            today: $today,
+            plan: $plan,
+            profile: $profile,
+            mesocycles: $mesocycles,
+            phases: new Collection,
+            sessions: new Collection,
+            sets: new Collection,
+            feedback: new Collection,
+            planWeeks: new Collection,
+            dayTargets: new Collection,
+            exercises: new Collection,
+        );
+    }
+
     /** The start of the day a date falls on, as midnight UTC. */
     public static function day(DateTimeInterface|string $date): DateTimeImmutable
     {
