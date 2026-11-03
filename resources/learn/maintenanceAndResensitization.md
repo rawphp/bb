@@ -7,7 +7,7 @@ Coming off a cut, appetite, energy levels and recovery all lag behind for a whil
 ## How long it lasts
 
 - Following a fat-loss phase, expect roughly two-thirds of the cut's duration, or up to the full duration.
-- Cut twice or more in the last 12 months? Then go for the full duration. Frequent dieters need longer breaks.
+- Cut twice or more in the last 12 months? Then go for the full duration. Longer breaks suit frequent dieters.
 - Still seeing the scale drop on maintenance calories? A far briefer break may be all you need.
 
 ## Raising calories

@@ -13,7 +13,7 @@ Start with Pantry foods labeled recommended rather than those marked use sparing
 
 ## How the amounts work
 
-Adding something new makes the app redo the grams for the whole meal. Once each macro lands within 5 g of target, a "Targets met" badge appears. If no mix of your foods can reach a target, say because nothing in the meal supplies carbs, you'll be told which macro is short and which food group to pull from.
+Adding something new makes the app redo the grams for the whole meal. Once each macro lands within 5 g of target, a "Targets met" badge appears. Sometimes a target is out of reach, such as when the meal has no carb source. The app then names the short macro and a food group that can fill it.
 
 ## Weighing
 

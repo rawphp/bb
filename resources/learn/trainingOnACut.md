@@ -10,7 +10,7 @@ Eating below maintenance slows recovery. Your body tolerates fewer sets before t
 - You start with a touch more volume than usual, but the upper limit sits below what a gain phase allows, so the usable range is tight.
 - New sets come in gradually. Any given muscle picks up 1 set per session per week at most, with that limit applied muscle by muscle rather than to the session as a whole.
 - Weights go up roughly 1% each week, moving by your lightest plate at a time.
-- Rep targets lean high. Most sets fall between 10 and 20 reps, and some reach as many as 30, because heavy loading wears harder on joints and recovery while you're in a deficit.
+- Rep targets lean high. Most sets fall between 10 and 20 reps, and some reach as many as 30. A deficit leaves your joints and recovery less able to handle very heavy loads.
 - No muscle gets fewer than 2 sessions a week.
 
 Putting a few muscles on Grow or Maintain, with the others left at Emphasize, is allowed. Expect a warning when you do, since specializing mid-cut fights your ability to recover.

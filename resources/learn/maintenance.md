@@ -1,4 +1,4 @@
-During maintenance your weight stays put. You get a pause from dieting or gaining while you hang on to the progress you've made.
+During maintenance your weight stays put. Think of it as a breather between diets and gains, one that protects what those phases built.
 
 ## Calories and the corridor
 
@@ -18,6 +18,6 @@ The point here is to hold the lower weight you worked for, not slide back to whe
 
 ## Your next phase
 
-From maintenance you move into either muscle gain or fat loss. Fat loss straight after fat loss is never on the app's list of suggestions, and you'll get a warning when maintenance ran too short.
+From maintenance you move into either muscle gain or fat loss. A second fat loss phase right behind the first won't appear among the suggestions. A maintenance stretch that was too short brings a warning.
 
 Talk with a doctor before starting if a medical condition, pregnancy or weight-loss medication applies to you.

@@ -13,7 +13,7 @@ Cap yourself at 1 to 2 drinks a week, no more. Stay under it instead of aiming f
 
 ## Logging
 
-Logging works like any other food: search the database for your drink and add it. For anything you didn't plan to drink or eat, use "Save food macros", and then tap "Redistribute" to pull those calories from the meals still ahead. Which meals take the hit is up to you.
+Logging works like any other food: search the database for your drink and add it. For anything you didn't plan to drink or eat, use "Save food macros", and then tap "Redistribute". You decide which of the day's remaining meals give up calories to cover it.
 
 ## Planning ahead
 

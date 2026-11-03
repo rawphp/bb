@@ -1,4 +1,4 @@
-RIR stands for reps in reserve, the number of clean reps you had left at the point you stopped. Your target falls as the weeks pass, which makes the work harder as a block goes on.
+RIR stands for reps in reserve, the number of clean reps you had left at the point you stopped. Each week asks for a smaller number than the last, so effort climbs through the block.
 
 ## Reading the scale
 

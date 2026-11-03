@@ -18,7 +18,7 @@ Open the Adjust sheet to shuffle calories from one meal to another inside a sing
 
 Some guardrails stay in place:
 
-- No day drops under 80% or climbs over 125% of your average day for the week.
+- Every day stays inside a band of 80% to 125% of the week's average day.
 - Your protein is fixed and can't be shifted.
 - Days that are already over can't be edited.
 - Fat and carbs can't go under 5 g in any one meal.

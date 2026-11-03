@@ -2,7 +2,7 @@ Carbs are concentrated in two meals: the one leading into your workout and the o
 
 ## Why training days get more
 
-Calorie targets are built from how much energy you're expected to burn, which means more food on days you train than on days you rest. Your protein and fat don't change between the two, so carbs account for the entire gap. A session with more sets planned earns a bigger carb allowance.
+Calorie targets are built from how much energy you're expected to burn, which means more food on days you train than on days you rest. That difference is all carbs. Protein and fat hold steady from day to day. A session with more sets planned earns a bigger carb allowance.
 
 ## When to eat
 
@@ -25,7 +25,7 @@ Add more meals and the leftover share gets spread among the extra slots. Rest da
 
 ## Fat and protein
 
-Fat follows the reverse pattern. Meals near your session carry the least, and the bigger portions go to meals furthest from it. Protein, by contrast, stays level across the day, though your last meal gets slightly more.
+Fat is shifted away from training, so your biggest fat portions sit in the meals farthest from the session. Protein gets an even split, with a small bump at the last meal.
 
 ## Late-night hunger on a cut
 

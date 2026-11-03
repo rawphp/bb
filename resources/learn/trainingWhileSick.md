@@ -19,11 +19,11 @@ Pushing through sickness risks dragging your recovery out, and it can leave you 
 
 ## Food and fluids
 
-Appetite may dip while you're unwell. Eat whatever you manage, and keep your fluids high. Your targets can be loose for now, and a few off-plan days won't wipe out your progress. Where your doctor has given you specific advice on food or fluids, follow it ahead of anything in this section.
+Appetite may dip while you're unwell. Drinking plenty matters more than eating to plan, so take in what food you can. Progress survives a few loose days. Where your doctor has given you specific advice on food or fluids, follow it ahead of anything in this section.
 
 ## Very mild symptoms
 
-If your illness is very mild, a gentler workout may be okay; that's the one exception. Should you train:
+If none of the signs above apply and your illness is very mild, a gentler workout may be okay. Should you train:
 
 - Loads will seem heavier than usual, and reps will take more out of you.
 - Forget the targets and go lighter than your plan says.

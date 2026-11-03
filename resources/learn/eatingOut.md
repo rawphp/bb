@@ -2,7 +2,7 @@ A meal out can still fit your targets if you plan a little.
 
 ## Plan ahead
 
-Check what's on the menu ahead of time. Restaurant items are in the food database, so find your dish and put it in the meal where you'll eat it. The app then shows the dish against your targets and adjusts the rest of that meal to fit.
+Check what's on the menu ahead of time. Many restaurant dishes are listed in the food database. Put yours in the meal you'll eat it with. You'll see how it stacks up against your targets, and the other foods in that meal shift to make room.
 
 ## Not in the database?
 
@@ -12,7 +12,7 @@ Use the camera button to photograph the plate. From the photo, the app estimates
 
 - Order something with an obvious protein source as its base
 - Get dressings and sauces brought separately
-- When there's a choice of cooking method, grilled or baked beats fried
+- When the menu offers a cooking method, skip fried in favor of grilled or baked
 - Save your appetite for the main by leaving the bread basket alone
 
 ## Going over

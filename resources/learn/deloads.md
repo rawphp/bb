@@ -1,4 +1,4 @@
-Every mesocycle ends on a deload, a week kept easy on purpose. The app puts it in automatically, and its job is to shed fatigue so the next block can open with hard training again.
+Every mesocycle ends on a deload, a week kept easy on purpose. You never have to schedule it, and its job is to shed fatigue so the next block can open with hard training again.
 
 ## How the week is cut back
 
@@ -14,7 +14,7 @@ Feeling like you've barely trained is a sign it's working. The benefit will prob
 
 ## Finish the block hard
 
-Go into your 0 RIR week, the last one of training, aiming to bring every set as close to 0 RIR as clean form allows. A deload gives back more when the weeks before it were genuinely hard. Pair a soft block with a deload and you've wasted it.
+Go into your 0 RIR week, the last one of training, aiming to bring every set as close to 0 RIR as clean form allows. A deload gives back more when the weeks before it were genuinely hard. Ease off in that final week and the deload that follows is wasted.
 
 ## Cutting a block short
 

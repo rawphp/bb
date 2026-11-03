@@ -1,4 +1,4 @@
-Each exercise has a suggested number of reps per set, and your working sets aim to finish within it. Heavy weights and light ones can both build size. What the range does is keep each movement practical and safe.
+Each exercise has a suggested number of reps per set, and your working sets aim to finish within it. Muscle responds to a wide spread of loads, so the band isn't about growth. Its job is to keep the exercise workable and low-risk.
 
 ## Which range fits which lift
 
@@ -8,7 +8,7 @@ Each exercise has a suggested number of reps per set, and your working sets aim 
 
 The exercise header on your workout screen shows which range applies.
 
-The mix tilts with your diet phase. During fat loss, most work sits in the 20 to 30 and 10 to 20 bands, because they're kinder on joints and recovery. A muscle-gain phase uses every band but leans hardest on 5 to 10.
+The mix tilts with your diet phase. During fat loss, most work sits in the 20 to 30 and 10 to 20 bands, because they're kinder on joints and recovery. A muscle-gain phase uses every band, with a little extra weight on 5 to 10.
 
 ## How targets progress
 

@@ -2,7 +2,7 @@ Your training runs in blocks called mesocycles, each lasting 4 to 8 weeks and fi
 
 ## Across one block
 
-- Your weights and reps creep up.
+- Load and reps rise.
 - Your target RIR drops as the weeks go on, which puts you nearer to failure.
 - A muscle earns extra sets only when your feedback shows it's recovering and can take them.
 
@@ -16,18 +16,18 @@ These totals count the deload week too.
 - Intermediate: default of 5, range 5 to 8
 - Advanced: default of 5, range 4 to 7
 
-To resize a block that's underway, tap the calendar icon; the deload remains last. The menu also lets you close a block out early. Intermediate and advanced lifters get a warning first, since dropping the deload isn't recommended for them.
+To resize a block that's underway, tap the calendar icon; the deload remains last. The menu also lets you close a block out early, with a warning: intermediate and advanced lifters are better off keeping the deload.
 
 ## Making a new block
 
 Start one with the "+" on the Mesocycles screen, then decide how to fill it.
 
 - Pick a **Template** for a finished plan, with filters for sex, days per week, emphasis or whole body, and diet phase.
-- **"Copy previous mesocycle"** brings back the block you just ran, weights and all, laid out the same way.
-- **Meso Builder** asks which days you're free and whether each muscle is Emphasize, Grow or Maintain, then drafts the plan.
+- **"Copy previous mesocycle"** brings back the block you just ran in the same layout, with its weights carried forward.
+- **Meso Builder** drafts the plan once you've given it your weekly training days and an Emphasize, Grow or Maintain setting for each muscle.
 - **Build from scratch** if you'd rather set up every day yourself.
 
-Choose days you'll manage every week. The app works through them in order, so Day 1 always comes before Day 2.
+The days you pick should be ones your week can always hold. The app works through them in order, so Day 1 always comes before Day 2.
 
 ## When the block wraps up
 

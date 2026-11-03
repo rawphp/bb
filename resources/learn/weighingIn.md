@@ -13,7 +13,7 @@ Your schedule has to include 2 or more weigh-in days per week. A reminder arrive
 
 ## About trend weight
 
-It's your daily weights, averaged and smoothed. Each weigh-in tugs the line only slightly, which is why one odd morning barely registers. This line feeds the weekly review, sets your protein target and measures how fast you're changing. Once you've logged 4 weigh-ins, the Progress tab shows the trend, charting daily weights and the trend line against the goal range for your phase.
+It's your daily weights, averaged and smoothed. Because every reading carries only a small weight in the average, a strange morning hardly shifts it. This line feeds the weekly review, sets your protein target and measures how fast you're changing. From your 4th weigh-in on, the Progress tab draws the trend, with your daily weights plotted around it and your phase's goal range behind both.
 
 ## Gaps
 

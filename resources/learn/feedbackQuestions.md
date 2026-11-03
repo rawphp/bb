@@ -2,14 +2,14 @@ Once a muscle's work is done for the day, a few quick questions pop up. Be truth
 
 ## What gets asked
 
-- **Joint pain**, per exercise. Choices are "None", "Low", "Moderate" and "A lot".
+- **Joint pain**, per exercise. You answer none, low, moderate or a lot.
 - **Soreness**, per muscle. It looks back: had the muscle healed from last time before today began?
-- **Pump** is about today: how swollen with blood did the muscle get? Choices are "Low", "Moderate" and "Amazing".
+- **Pump** is about today: how swollen with blood did the muscle get? You answer low, moderate or amazing.
 - **Volume** asks whether the hard sets added up to the right amount. Choices are "Not enough", "Just right", "Pushed my limits" and "Too much".
 
 Every question has a "?" icon that opens help for it.
 
-On joint pain, a moderate answer or worse stops new sets being added to that exercise, and answering "A lot" drops its next load by 10% as well.
+On joint pain, a moderate answer or worse stops new sets being added to that exercise, and a lot drops its next load by 10% as well.
 
 ## Turning answers into sets
 

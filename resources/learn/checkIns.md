@@ -1,4 +1,4 @@
-Checking in is how you mark a meal as eaten. Each one keeps the day's running totals accurate and gives the plan what it needs to reset targets for your later meals.
+Checking in is how you mark a meal as eaten. With every check-in, the plan learns what you actually ate, keeps the day's totals true and re-targets the meals that follow.
 
 ## Where to do it
 

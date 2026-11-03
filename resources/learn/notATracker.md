@@ -11,7 +11,7 @@ A single plan drives both your training and your nutrition. You don't need a sec
 - Each session sits on your daily schedule at its planned time.
 - Tougher sessions earn more calories that day, and the carbs land on either side of the workout.
 - Move a session, skip it or cut it short, and the meals still ahead of you get new targets.
-- Deload weeks drop to maintenance calories automatically, every time.
+- Deload weeks move to maintenance calories by default.
 
 ## A weekly look back
 

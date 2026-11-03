@@ -16,7 +16,7 @@ You can also skip from the day menu. Because there's no undo, you'll be asked to
 
 ## A longer break
 
-After a week or more off, the app gives you two paths. One repeats the week you were in. The other wraps up this mesocycle so you can build its replacement. Go with the restart when about a week is all you missed. If the break ran longer, or your routine has slipped, go with a new block.
+Once you've been away for a week or longer, the app gives you two paths. One repeats the week you were in. The other wraps up this mesocycle so you can build its replacement. Go with the restart when about a week is all you missed. If the break ran longer, or your routine has slipped, go with a new block.
 
 ## When eating goes off plan
 

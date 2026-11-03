@@ -13,11 +13,11 @@ Training already tires you out, and losing fat piles a second load of fatigue on
 
 ## What the review suggests
 
-During a cut, you'll see this message: "Your lifts are dropping. It might be the diet, not the training."
+On a cut, the weekly review may tell you: "Your lifts are dropping. It might be the diet, not the training."
 
 Alongside it, Drop fatigue carries the recommended mark. Pick it, and next week you eat at maintenance as a diet break, ideally timed with a deload. Accepting it or not is up to you.
 
-If a diet break and a deload together still leave fatigue high, the app's next suggestion is to close out the phase and go to Maintenance.
+Fatigue that survives both a diet break and a deload points to one more step: the app suggests ending the phase in favor of Maintenance.
 
 ## Reducing volume instead
 

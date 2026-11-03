@@ -1,4 +1,4 @@
-When the scale shows a higher number one morning, it's almost never fat. Daily weight bounces around, and the trend is the only thing that shows your real direction.
+When the scale shows a higher number one morning, it's almost never fat. Day-to-day readings are noisy, so judge your direction by the trend.
 
 ## Things that move the number
 

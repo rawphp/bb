@@ -16,12 +16,12 @@ Certain muscles take more of a beating from a given sport, like legs for runners
 
 ## Shaping the week
 
-When the calendar allows, keep a hard sport session well apart from the lifting day that trains those same muscles. Lift on days you're able to hold steady from one week to the next.
+If your calendar gives you a choice, separate a hard sport session from any lifting day aimed at the same muscles. Lift on days you're able to hold steady from one week to the next.
 
-Workouts that run long, or underperformance flags that keep coming back, are signs of too much total load. Ease off by cutting volume, dropping priority, or taking your deload sooner.
+Two signals say the combined load is too much: workouts running long, and the same underperformance flags turning up again and again. Answer them by trimming volume, lowering priority or deloading early.
 
 ## In season
 
-A busy season means less lifting. With most muscles on Maintain, you hold onto your gains without adding much fatigue.
+When the season gets busy, lifting may need to take a back seat. Switching most muscles to Maintain protects your gains and adds little fatigue.
 
 When sport comes first, treat lifting as support for it and skip the hunt for maximum volume.

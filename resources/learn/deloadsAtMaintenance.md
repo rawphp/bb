@@ -22,7 +22,7 @@ Your last week of real training comes right before it, so drive it toward 0 RIR,
 
 ## Scale readings that week
 
-Expect the number to creep up slightly. Water accounts for most of it, carried in by the added food and carbs. Your review expects this and won't cut calories in response. They stay where they are.
+The number may creep up slightly. Water accounts for most of it, carried in by the added food and carbs. Your review expects this and won't cut calories in response. They stay where they are.
 
 ## Gaining or maintaining
 
