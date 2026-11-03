@@ -214,7 +214,8 @@ it('REV-001 refuses a week that is not the review open now, or one already revie
 
 it('NUT-022 refuses to save answers that do not build, and writes nothing', function () {
     $user = rqcUser();
-    rqcAnswer($user, ['option' => 'choose_own', 'own_kcal' => 1000]);
+    // The option itself will not build, so leaving its moves out does not help: the save is refused.
+    rqcAnswer($user, ['option' => 'choose_own', 'own_kcal' => 1000, 'moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
     $before = rqcStored($user);
 
     expect(fn () => rqcSave($user))->toThrow(DomainException::class, 'That is too few calories to fit your protein, fat and carbs. Choose a higher average.')
@@ -323,6 +324,38 @@ it('REV-010 a typed amount stays the amount when the screen sends it back with a
     rqcSave($user);
 
     expect(rqcAverage($user))->toEqualWithDelta(2100, 1e-6);
+});
+
+it('NUT-024 REV-004 a save keeps the stored moves that still build, in order, and leaves out the rest', function () {
+    $moves = [['from_index' => 3, 'to_index' => 4, 'kcal' => 100], ['from_index' => 0, 'to_index' => 5, 'kcal' => 100]];
+    $user = rqcUser();
+    rqcAnswer($user, ['moves' => $moves]);
+    $plain = rqcUser();
+
+    Carbon::setTestNow('2026-10-14 10:00:00');
+    $analysis = ReviewAnalysis::for($user, '2026-10-14');
+    $shown = ReviewShowPayload::build($analysis, OpenReview::answers($user, $analysis))->toArray();
+    rqcSave($user);
+    rqcSave($plain);
+
+    expect($shown['preview']['moves'])->toBe([$moves[0]])
+        ->and($shown['preview']['error'])->toBe('A day stays between 80% and 125% of the week\'s average, and a day already past can\'t change.')
+        ->and(rqcKcal($user)[3])->toEqualWithDelta(rqcKcal($plain)[3] - 100, 1e-6)
+        ->and(rqcKcal($user)[4])->toEqualWithDelta(rqcKcal($plain)[4] + 100, 1e-6)
+        ->and(rqcKcal($user)[5])->toEqualWithDelta(rqcKcal($plain)[5], 1e-6);
+});
+
+it('REV-010 NUT-024 a blocked draft with moves that no longer build shows the draft\'s reason with the week, as Save gives it', function () {
+    $user = rqcUser();
+    rqcAnswer($user, ['option' => 'choose_own', 'moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
+
+    Carbon::setTestNow('2026-10-13 10:00:00');
+    $analysis = ReviewAnalysis::for($user, '2026-10-13');
+    $shown = ReviewShowPayload::build($analysis, OpenReview::answers($user, $analysis))->toArray();
+
+    expect($shown['preview']['error'])->toBe(CompleteReview::NEEDS_AMOUNT)
+        ->and($shown['preview']['days'])->toHaveCount(7)
+        ->and(fn () => rqcSave($user))->toThrow(DomainException::class, CompleteReview::NEEDS_AMOUNT);
 });
 
 it('REV-010 Choose my own in two steps: the option, then its amount, then Save applies the amount', function () {

@@ -57,6 +57,7 @@ function progressValidInputs(): array
         'steps_log' => [StepsLogInput::class, ['date' => '2026-10-12', 'steps' => 6100]],
         'review_answer' => [ReviewAnswerInput::class, ['week_start' => '2026-10-05', 'option' => 'choose_own', 'own_kcal' => 2300, 'moves' => [['from_index' => 0, 'to_index' => 6, 'kcal' => 100]]]],
         'review_answer with only an amount, for a stored Choose my own' => [ReviewAnswerInput::class, ['week_start' => '2026-10-05', 'own_kcal' => 2300]],
+        'review_answer with only an amount and option null' => [ReviewAnswerInput::class, ['week_start' => '2026-10-05', 'option' => null, 'own_kcal' => 2300]],
         'review_complete' => [ReviewCompleteInput::class, ['week_start' => '2026-10-05']],
     ];
 }
