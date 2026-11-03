@@ -3,6 +3,7 @@
 use App\Actions\Mesocycles\AddMesocycleDay;
 use App\Actions\Mesocycles\FillMesocycleSlots;
 use App\Actions\Mesocycles\GenerateMesocycleStructure;
+use App\Actions\Mesocycles\SetMesocycleLength;
 use App\Actions\Mesocycles\SetMusclePriority;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\Priority;
@@ -64,6 +65,19 @@ dataset('mesocycle writes', [
         fn (User $user, string $id) => app(SetMusclePriority::class)($user, $id, MuscleGroup::Chest, null),
         // Week 3's Upper A was started with chest, so it keeps it; Lower A is still to come.
         fn (Mesocycle $saved) => expect(array_column($saved->earlierWeekRows()[2][0]['slots'], 'muscle_group'))->toBe(['chest']),
+    ],
+    'length set from a stale screen is refused once another write made it 6 weeks' => [
+        [],
+        fn (Connection $racer, Mesocycle $m) => $racer->table('mesocycles')->where('id', $m->id)->update(['weeks' => 6]),
+        function (User $user, string $id) {
+            // The screen showed 5 weeks. Without the race the minus goes ahead.
+            try {
+                app(SetMesocycleLength::class)($user, $id, 4, 5);
+            } catch (DomainException $refused) {
+                expect($refused->getMessage())->toBe('This mesocycle\'s length changed to 6 weeks since the screen was loaded, so nothing was changed.');
+            }
+        },
+        fn (Mesocycle $saved) => expect($saved->weeks)->toBe(6),
     ],
 ]);
 
