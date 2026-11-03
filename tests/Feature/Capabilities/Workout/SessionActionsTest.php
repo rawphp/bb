@@ -77,7 +77,7 @@ it('WO-022 WO-031 WO-050 answers 422 naming the field for one bad input', functi
 
 it('WO-031 EX-008 answers 404 for another user\'s custom exercise', function (string $capability, Closure $input) {
     [$user, , $shown] = actStarted();
-    $theirs = Exercise::factory()->ownedBy(User::factory()->create())->create(['muscle_group' => MuscleGroup::Chest]);
+    $theirs = Exercise::factory()->custom(User::factory()->create())->create(['muscle_group' => MuscleGroup::Chest]);
 
     actOver($user, $capability, ['exercise_id' => (string) $theirs->id] + $input($shown['workout_id'], $shown['exercises'][0]['id']))->assertNotFound();
 
