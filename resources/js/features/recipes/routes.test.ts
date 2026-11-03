@@ -54,7 +54,7 @@ describe('recipe routes', () => {
         expect(read).not.toHaveBeenCalled();
     });
 
-    it('RCP-010 /nutrition/recipes/generate takes ?meal=, as the Pantry links it', async () => {
+    it('RCP-010 /nutrition/recipes/generate opens from the Pantry\'s link with ?meal=', async () => {
         const { router, wrapper } = await open('/nutrition/recipes/generate?meal=01JBX5M0000000000000000001');
 
         expect(router.currentRoute.value.meta.tab).toBe('nutrition');

@@ -1,6 +1,6 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh } from '@/app/call';
+import { AI_TIMEOUT_MS, CapabilityError, read, readFresh } from '@/app/call';
 import type { RecipeGenerateOutput } from '@/contracts/recipe_generate';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import RecipeDraftView from './RecipeDraftView.vue';
@@ -106,6 +106,7 @@ describe('RecipeGenerateView', () => {
             preferences: 'Mexican',
         });
         expect(inputViolations('recipe_generate', input)).toEqual([]);
+        expect(freshMock.mock.calls[0]![2]).toEqual({ timeoutMs: AI_TIMEOUT_MS });
         expect(view.getComponent(RecipeDraftView).props('draft')).toEqual(draft);
     });
 
@@ -145,6 +146,17 @@ describe('RecipeGenerateView', () => {
 
         expect(view.get('[role="alert"]').text()).toContain('Name up to 20 ingredients.');
         expect(view.findComponent(RecipeDraftView).exists()).toBe(false);
+    });
+
+    it('RCP-010 a generation past the deadline says it took too long, not that the device is offline', async () => {
+        freshMock.mockReset().mockRejectedValueOnce(new CapabilityError('recipe_generate', 0, { reason: 'timeout' }));
+        const view = show();
+
+        await fillMacros(view);
+        await generate(view).trigger('click');
+        await flushPromises();
+
+        expect(view.get('[role="alert"]').text()).toBe('The recipe took too long. Try again.');
     });
 
     it('OFF-031 offline it says Generate needs a connection', async () => {

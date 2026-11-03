@@ -98,6 +98,22 @@ describe('RecipeEditorView', () => {
         expect(field(view, 'Name').element.value).toBe('Chicken burrito bowl');
     });
 
+    it('CAP-004 a re-read that loses the recipe (signed out, or deleted elsewhere) takes the form away and says why', async () => {
+        readMock.mockReset().mockImplementation((_name, _input, _onUpdate, onError) => {
+            setTimeout(() => onError?.(new CapabilityError('recipe_show', 401, null)));
+            return Promise.resolve(library);
+        });
+        const view = show({ recipeId: ID });
+        await flushPromises();
+        await new Promise((resolve) => setTimeout(resolve));
+        await flushPromises();
+
+        expect(view.find('[data-test="save"]').exists()).toBe(false);
+        expect(view.find('input').exists()).toBe(false);
+        expect(view.text()).not.toContain('Overnight oats');
+        expect(view.get('[role="alert"]').text()).toContain('You are signed out.');
+    });
+
     it('OFF-008 marks the per-serving macros as waiting to sync', () => {
         expect(show({ payload: saved, pending: true }).get('[data-test="per-serving"]').text()).toContain('Waiting to sync');
         wrapper!.unmount();
@@ -257,6 +273,30 @@ describe('RecipeEditorView', () => {
         expect(lastWrite()).toEqual(['recipe_delete', { recipe_id: ID }]);
         expect(inputViolations('recipe_delete', lastWrite()[1])).toEqual([]);
         expect(back).toHaveBeenCalledOnce();
+    });
+
+    it('CAP-012 a refused delete stays open with the server\'s words, and does not go back', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('recipe_delete', 404, { error: { message: 'That recipe is gone.' } }));
+        const view = show();
+
+        await view.get('[data-test="delete"]').trigger('click');
+        document.body.querySelector<HTMLButtonElement>('[data-test="confirm-delete"]')!.click();
+        await flushPromises();
+
+        expect(document.body.querySelector('[role="dialog"] [role="alert"]')!.textContent).toContain('That recipe is gone.');
+        expect(back).not.toHaveBeenCalled();
+    });
+
+    it('RCP-001 Save waits while the servings or an amount is not a number', async () => {
+        const view = show();
+
+        await field(view, 'Servings').setValue('');
+        expect(saveButton(view).attributes('disabled')).toBeDefined();
+        await field(view, 'Servings').setValue('2');
+        await field(view, 'Black beans grams').setValue('');
+        expect(saveButton(view).attributes('disabled')).toBeDefined();
+        await field(view, 'Black beans grams').setValue('250');
+        expect(saveButton(view).attributes('disabled')).toBeUndefined();
     });
 
     it('RCP-001 a recipe the server says cannot be deleted has no Delete', () => {

@@ -1,5 +1,7 @@
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, ref } from 'vue';
+import { provideScreenTop } from '@/app/screenTop';
 import { read, writeNow } from '@/app/call';
 import type { FoodSearchInput, FoodSearchOutput } from '@/contracts/food_search';
 import { screenFixture } from '@/testing/schemas';
@@ -73,12 +75,24 @@ describe('PantryView for a recipe', () => {
             expect(wrapper.text()).not.toContain('Already in meal');
         });
 
-        it('RCP-001 RCP-003 searches foods for no meal, and its rows add to the recipe', async () => {
-            const wrapper = show({ purpose });
+        it('RCP-001 RCP-003 searches foods for no meal, even if given one, and its rows add to the recipe', async () => {
+            const wrapper = show({ purpose, mealId: '01JBX5M0000000000000000001' });
             await flushPromises();
 
             expect((readMock.mock.calls.at(-1)![1] as FoodSearchInput).meal_id).toBeNull();
             expect(row(wrapper, 'Egg whites').find('[data-test="pick"]').attributes('aria-label')).toBe('Add Egg whites to recipe');
+        });
+
+        it('RCP-001 RCP-003 offers no custom food link, which would leave the recipe under the sheet', () => {
+            const wrapper = show({ payload: search, purpose });
+
+            expect(wrapper.text()).not.toContain("Can't find it? Create a custom food");
+        });
+
+        it('RCP-001 RCP-003 offers no Raw or Cooked choice, which a recipe pick does not carry', () => {
+            const wrapper = show({ payload: curated, purpose });
+
+            expect(row(wrapper, 'Chicken breast').find('[data-test="weighing-cooked"]').exists()).toBe(false);
         });
 
         it('RCP-001 RCP-003 the basket says it adds to the recipe', async () => {
@@ -92,11 +106,31 @@ describe('PantryView for a recipe', () => {
         it('RCP-001 RCP-003 the basket does not say Raw or Cooked: the recipe takes the food, not how it was weighed', async () => {
             const wrapper = show({ payload: curated, purpose });
 
-            await row(wrapper, 'Chicken breast').find('[data-test="weighing-cooked"]').trigger('click');
             await pick(wrapper, 'Chicken breast');
 
             expect(wrapper.find('[data-test="basket"] li').text()).toBe('Chicken breast');
         });
+    });
+
+    it('RCP-010 RCP-003 back on top after a recipe was made from its Recipes list, the Pantry reads again', async () => {
+        const top = ref(true);
+        const Host = defineComponent({
+            setup() {
+                provideScreenTop(top);
+                return () => h(PantryView, { mealId: '01JBX5M0000000000000000001' });
+            },
+        });
+        mount(Host, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub, teleport: true } } });
+        await flushPromises();
+        const reads = readMock.mock.calls.length;
+
+        top.value = false;
+        await flushPromises();
+        top.value = true;
+        await flushPromises();
+
+        expect(readMock.mock.calls.length).toBe(reads + 1);
+        expect(readMock.mock.calls.at(-1)![0]).toBe('food_search');
     });
 
     it('RCP-001 recipeIngredients takes several foods, and the button counts them', async () => {

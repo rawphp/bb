@@ -1,6 +1,6 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, readFresh } from '@/app/call';
+import { AI_TIMEOUT_MS, CapabilityError, read, readFresh } from '@/app/call';
 import type { RecipeImportOutput } from '@/contracts/recipe_import';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import RecipeDraftView from './RecipeDraftView.vue';
@@ -58,7 +58,7 @@ describe('RecipeImportView', () => {
         await importButton(view).trigger('click');
         await flushPromises();
 
-        expect(freshMock).toHaveBeenCalledWith('recipe_import', { url: 'https://example.com/turkey-chili' });
+        expect(freshMock).toHaveBeenCalledWith('recipe_import', { url: 'https://example.com/turkey-chili' }, { timeoutMs: AI_TIMEOUT_MS });
         expect(inputViolations('recipe_import', freshMock.mock.calls[0]![1])).toEqual([]);
         expect(view.getComponent(RecipeDraftView).props('draft')).toEqual(draft);
     });
@@ -88,6 +88,17 @@ describe('RecipeImportView', () => {
 
         await address(view).setValue('https://example.com');
         expect(view.find('[role="alert"]').exists()).toBe(false);
+    });
+
+    it('RCP-003 an import past the deadline says it took too long, not that the device is offline', async () => {
+        freshMock.mockReset().mockRejectedValueOnce(new CapabilityError('recipe_import', 0, { reason: 'timeout' }));
+        const view = show();
+
+        await address(view).setValue('https://example.com/r');
+        await importButton(view).trigger('click');
+        await flushPromises();
+
+        expect(view.get('[role="alert"]').text()).toBe('The recipe took too long. Try again.');
     });
 
     it('RCP-003 opened with an imported recipe it shows the confirm step', () => {

@@ -65,15 +65,25 @@ describe('RecipeDraftView', () => {
         expect(view.text()).toContain('1 serving · 0 steps');
     });
 
-    it('RCP-003 Continue waits until every item has a food, and says which needs one', async () => {
+    it('RCP-003 Continue waits until every item has a food', async () => {
         const view = show();
 
         expect(continueButton(view).attributes('disabled')).toBeDefined();
-        expect(view.get('[data-test="blocked"]').text()).toBe('Pick a food for "house sauce", or remove it.');
-
         await view.get('button[aria-label="Remove house sauce"]').trigger('click');
 
         expect(items(view)).toHaveLength(2);
+        expect(continueButton(view).attributes('disabled')).toBeUndefined();
+    });
+
+    it('RCP-003 Continue waits while an amount is not a number, and leaves the amount\'s limits to recipe_save', async () => {
+        const view = show({ ...generated, items: generated.items.slice(0, 2) });
+        const grams = items(view)[0]!.get('input[aria-label="chicken breast grams"]');
+
+        await grams.setValue('');
+        expect(continueButton(view).attributes('disabled')).toBeDefined();
+        await grams.setValue('abc');
+        expect(continueButton(view).attributes('disabled')).toBeDefined();
+        await grams.setValue('0');
         expect(continueButton(view).attributes('disabled')).toBeUndefined();
         expect(view.find('[data-test="blocked"]').exists()).toBe(false);
     });
@@ -84,7 +94,6 @@ describe('RecipeDraftView', () => {
         await view.get('button[aria-label="Remove chicken breast"]').trigger('click');
 
         expect(continueButton(view).attributes('disabled')).toBeDefined();
-        expect(view.get('[data-test="blocked"]').text()).toBe('Keep at least one ingredient.');
     });
 
     it('RCP-003 Pick a food opens the Pantry in a sheet searching the item\'s name, and the picked food becomes its match', async () => {

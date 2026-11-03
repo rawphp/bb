@@ -1,8 +1,12 @@
 import { flushPromises, mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils';
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, ref } from 'vue';
+import { provideScreenTop } from '@/app/screenTop';
 import { CapabilityError, read } from '@/app/call';
 import type { RecipesShowInput, RecipesShowOutput } from '@/contracts/recipes_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
+import { DIETS } from './options';
 import RecipesView from './RecipesView.vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
@@ -128,6 +132,54 @@ describe('RecipesView', () => {
         dietButton('Vegan').click();
         await flushPromises();
         expect(lastInput().diets).toEqual(['gluten_free']);
+    });
+
+    it('RCP-020 the client\'s diet keys are the server\'s DietFilter values, in its order', () => {
+        const schema = JSON.parse(readFileSync('tests/fixtures/schemas/diet_filters_set.input.json', 'utf8')) as {
+            properties: { filters: { items: { properties: { filter: { enum: string[] } } } } };
+        };
+
+        expect(DIETS.map((diet) => diet.value)).toEqual(schema.properties.filters.items.properties.filter.enum);
+    });
+
+    it('RCP-020 back on top after a recipe was saved or deleted, the list reads again with the same choices', async () => {
+        const top = ref(true);
+        const Host = defineComponent({
+            setup() {
+                provideScreenTop(top);
+                return () => h(RecipesView);
+            },
+        });
+        wrapper = mount(Host, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub } } });
+        await flushPromises();
+        await wrapper.findAll('[role="tab"]')[1]!.trigger('click');
+        await flushPromises();
+        const reads = readMock.mock.calls.length;
+
+        top.value = false;
+        await flushPromises();
+        top.value = true;
+        await flushPromises();
+
+        expect(readMock.mock.calls.length).toBe(reads + 1);
+        expect(lastInput()).toEqual({ segment: 'library', meal_type: null, diets: [] });
+    });
+
+    it('RCP-020 a fixture screen does not read again on return', async () => {
+        const top = ref(true);
+        const Host = defineComponent({
+            setup() {
+                provideScreenTop(top);
+                return () => h(RecipesView, { payload: content });
+            },
+        });
+        wrapper = mount(Host, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub } } });
+        top.value = false;
+        await flushPromises();
+        top.value = true;
+        await flushPromises();
+
+        expect(readMock).not.toHaveBeenCalled();
     });
 
     it('RCP-020 the Library segment and a meal type chip narrow the list', async () => {

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cached, clearReads, MAX_AGE_MS, store } from './cache';
-import { CapabilityError, keepSynced, postHost, read, readFresh, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, writeNow } from './call';
+import { AI_TIMEOUT_MS, CapabilityError, keepSynced, postHost, read, readFresh, TIMEOUT_MS, WARM_CONCURRENCY, WARM_FRESH_MS, warm, writeNow } from './call';
 import { clearWalk, walkDays } from './clock';
 
 function json(body: unknown, status = 200): Response {
@@ -149,6 +149,27 @@ describe('call', () => {
         expect(await error).toBeInstanceOf(CapabilityError);
         expect(await error).toMatchObject({ capability: 'account_show', status: 0, body: { reason: 'timeout' } });
         expect(fetchMock.mock.calls[0]![1]?.signal).toBeInstanceOf(AbortSignal);
+        vi.useRealTimers();
+    });
+
+    it('RCP-010 a fresh read told to wait for the server\'s AI gives up only after that deadline', async () => {
+        vi.useFakeTimers();
+        document.cookie = 'XSRF-TOKEN=t; path=/';
+        fetchMock.mockImplementation(
+            (_url, init) =>
+                new Promise<Response>((_resolve, reject) => {
+                    init?.signal?.addEventListener('abort', () => reject(init.signal!.reason));
+                }),
+        );
+
+        let settled = false;
+        const error = readFresh('recipe_generate', {}, { timeoutMs: AI_TIMEOUT_MS }).catch((e: unknown) => e).finally(() => (settled = true));
+        await vi.advanceTimersByTimeAsync(AI_TIMEOUT_MS - 1);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+
+        expect(AI_TIMEOUT_MS).toBeGreaterThan(60_000);
+        expect(await error).toMatchObject({ capability: 'recipe_generate', status: 0, body: { reason: 'timeout' } });
         vi.useRealTimers();
     });
 
