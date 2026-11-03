@@ -18,6 +18,7 @@ use App\Domain\Model\Soreness;
 use App\Domain\Model\StepPlanDay;
 use App\Domain\Model\VolumeFeedback;
 use App\Domain\Model\WeighIn as DomainWeighIn;
+use App\Domain\Model\WeightUnit;
 use App\Domain\Plan\PlanRules;
 use App\Domain\Progression\LoggedExercise;
 use App\Domain\Progression\LoggedSet;
@@ -87,6 +88,8 @@ final readonly class ReviewAnalysis
      * @param  list<ReviewWeek>  $weeks  finished weeks with a stored target, oldest first; the last is the reviewed week
      *                                   when it has one
      * @param  ?string  $deloadMesocycleID  the mesocycle the deload would be moved in
+     * @param  DateTimeImmutable  $today  the review day, a whole day at midnight UTC
+     * @param  WeightUnit  $weightUnit  the unit the user's weights are shown in
      */
     private function __construct(
         public ReviewMode $mode,
@@ -108,6 +111,8 @@ final readonly class ReviewAnalysis
         public ?CalorieOptions $options,
         public DeloadPlan $deload,
         public ?string $deloadMesocycleID,
+        public DateTimeImmutable $today,
+        public WeightUnit $weightUnit,
     ) {}
 
     /** The review open for the user on `$today`; null when none is (no plan, no finished week, too few weigh-ins, or done). */
@@ -328,6 +333,8 @@ final readonly class ReviewAnalysis
                 reviewedWeek: $reviewedIndex, nextWeek: $nextIndex, nextIsDeload: $nextWeek->isDeload,
             ) : DeloadPlan::dietBreakOnly(),
             deloadMesocycleID: $sameMesocycle ? (string) $coveringReviewed->id : null,
+            today: $data->today,
+            weightUnit: WeightUnit::tryFrom((string) $profile->weight_unit) ?? WeightUnit::Kg,
         );
     }
 
