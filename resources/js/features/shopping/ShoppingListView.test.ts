@@ -188,7 +188,7 @@ describe('ShoppingListView', () => {
         await setDate(view, 'from', '2026-11-04');
 
         expect(readMock).toHaveBeenLastCalledWith('shopping_show', {}, expect.any(Function), expect.any(Function));
-        expect(view.getComponent(ShoppingStatus).get('[role="alert"]').text()).toContain('Your shopping list could not be loaded.');
+        expect(view.getComponent(ShoppingStatus).get('[role="alert"]').text()).toContain('The list for those dates could not be loaded.');
         expect(row(view, 'White rice').exists()).toBe(true);
         expect((view.get('input[name="from"]').element as HTMLInputElement).value).toBe('2026-11-02');
     });
@@ -208,6 +208,23 @@ describe('ShoppingListView', () => {
         expect(view.getComponent(ShoppingStatus).get('[role="alert"]').text()).toContain('The list for those dates needs a connection.');
         expect(row(view, 'White rice').exists()).toBe(true);
         expect((view.get('input[name="to"]').element as HTMLInputElement).value).toBe('2026-11-08');
+    });
+
+    it('OFF-003 a list for a new first day alone that does not load gives back the list before', async () => {
+        const picked = { ...content, to: '2026-11-12' };
+        readMock.mockReset().mockResolvedValueOnce(picked).mockRejectedValueOnce(new CapabilityError('shopping_show', 0, null)).mockResolvedValueOnce(picked);
+        const view = show({ payload: content });
+
+        await setDate(view, 'to', '2026-11-12');
+        await setDate(view, 'from', '2026-11-03');
+
+        expect(readMock.mock.calls.map((call) => call[1])).toEqual([
+            { from: '2026-11-02', to: '2026-11-12' },
+            { from: '2026-11-03', to: '2026-11-12' },
+            { from: '2026-11-02', to: '2026-11-12' },
+        ]);
+        expect(view.getComponent(ShoppingStatus).get('[role="alert"]').text()).toContain('The list for those dates needs a connection.');
+        expect((view.get('input[name="from"]').element as HTMLInputElement).value).toBe('2026-11-02');
     });
 
     it('OFF-003 when the list cannot load at all, it says why once and reads nothing more', async () => {
