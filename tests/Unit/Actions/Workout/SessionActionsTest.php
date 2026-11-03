@@ -18,10 +18,10 @@ use App\Domain\Model\DayType;
 use App\Domain\Model\ExerciseLoadType;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\WeightUnit;
-use App\Models\PlanWeek;
 use App\Models\Exercise;
 use App\Models\ExerciseFeedback;
 use App\Models\Mesocycle;
+use App\Models\PlanWeek;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutExercise;
@@ -196,9 +196,10 @@ it('WO-031 PROG-018 an added exercise takes the recovery flags as the day would:
         }
         saWithInclineSlot($mesocycle);
         $session = saStarted($user, $mesocycle);
+        $planned = saTargets(saBlock($session, 'Incline Dumbbell Press')->id);
         app(AddWorkoutExercise::class)($user, WorkoutIds::workout($mesocycle->id, 3, 1), $id = saNewId(), $incline->id, false);
 
-        return [saTargets(saBlock($session, 'Incline Dumbbell Press')->id), saTargets($id)];
+        return [$planned, saTargets($id)];
     };
 
     [$plainPlanned, $plainAdded] = $targets(false);
