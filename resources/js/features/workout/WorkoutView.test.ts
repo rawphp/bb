@@ -5,6 +5,7 @@ import { CapabilityError, read, write } from '@/app/call';
 import { isPending, pendingInput } from '@/app/outbox';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
+import { useHoldUpdates } from '@/app/updates';
 import { activeWorkout } from './activeWorkout';
 import { holdWakeLock, leaveWakeLock, releaseWakeLock } from './wakeLock';
 import WorkoutView from './WorkoutView.vue';
@@ -16,6 +17,7 @@ vi.mock('@/app/outbox', async (original) => ({
     pendingInput: vi.fn(() => undefined),
 }));
 vi.mock('./wakeLock', () => ({ holdWakeLock: vi.fn(), leaveWakeLock: vi.fn(), releaseWakeLock: vi.fn() }));
+vi.mock('@/app/updates', () => ({ useHoldUpdates: vi.fn() }));
 
 const readMock = vi.mocked(read);
 const writeMock = vi.mocked(write);
@@ -525,6 +527,25 @@ describe('WorkoutView', () => {
         const wrapper = await show({ payload: { ...workout('warning'), can_finish: true }, pending: true });
 
         expect(wrapper.get('[data-test="finish"]').attributes('disabled')).toBeDefined();
+    });
+
+    it('PWA-035 holds app updates for the length of a session under way, and not before or after', async () => {
+        const holding = () => (vi.mocked(useHoldUpdates).mock.calls.at(-1)![0] as () => boolean)();
+
+        readMock.mockResolvedValueOnce(workout('warning'));
+        await show({ mesocycleId: 'm', week: 3, day: 1 });
+        expect(holding()).toBe(true);
+
+        readMock.mockResolvedValueOnce(workout());
+        await show({ mesocycleId: 'm', week: 3, day: 1 });
+        expect(holding()).toBe(false);
+
+        readMock.mockResolvedValueOnce({ ...workout('warning'), status: 'finished', active_bar_text: null });
+        await show({ mesocycleId: 'm', week: 3, day: 1 });
+        expect(holding()).toBe(false);
+
+        await show({ payload: workout('warning') });
+        expect(holding()).toBe(false);
     });
 
     it('NAV-004 a session under way puts its bar text up, and finishing it takes it down', async () => {
