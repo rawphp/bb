@@ -84,3 +84,18 @@ it('NUT-022 answers 422 when the stored answers do not build, and writes nothing
         ->assertJsonPath('error.message', 'That is too few calories to fit your protein, fat and carbs. Choose a higher average.');
     expect(PlanWeek::query()->where('user_id', $user->id)->count())->toBe(0);
 });
+
+it('REV-010 refuses to save a Choose my own with no amount, saying an amount is needed, then saves once the amount is sent', function () {
+    $user = (new ReviewSeed)->seed();
+    $answer = fn (array $input) => $this->actingAs($user)->postJson('/capabilities/review_answer', ['week_start' => '2026-10-05', ...$input], ['Idempotency-Key' => (string) Str::ulid()]);
+    $answer(['option' => 'choose_own'])->assertOk();
+
+    reviewCompleteAs($user)
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', 'Enter how many calories a day you want for Choose my own before saving.');
+    expect(PlanWeek::query()->where('user_id', $user->id)->count())->toBe(0);
+
+    $answer(['own_kcal' => 2300])->assertOk();
+    reviewCompleteAs($user)->assertOk();
+    expect(DayTarget::query()->where('user_id', $user->id)->whereBetween('date', ['2026-10-12', '2026-10-18'])->avg('kcal'))->toEqualWithDelta(2300, 1e-6);
+});

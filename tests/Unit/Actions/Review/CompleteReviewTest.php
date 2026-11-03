@@ -206,6 +206,26 @@ it('NUT-022 refuses to save answers that do not build, and writes nothing', func
         ->and(rqcStored($user))->toBe($before);
 });
 
+it('REV-010 refuses to save a Choose my own draft with no amount, and writes nothing', function () {
+    $user = rqcUser();
+    rqcAnswer($user, ['option' => 'choose_own']);
+    $before = rqcStored($user);
+
+    expect(fn () => rqcSave($user))->toThrow(DomainException::class, CompleteReview::NEEDS_AMOUNT)
+        ->and(rqcStored($user))->toBe($before)
+        ->and(ReviewAnalysis::for($user, ReviewSeed::TODAY))->not->toBeNull();
+});
+
+it('REV-010 Choose my own in two steps: the option, then its amount, then Save applies the amount', function () {
+    $user = rqcUser();
+    rqcAnswer($user, ['option' => 'choose_own']);
+    rqcAnswer($user, ['option' => null, 'own_kcal' => 2300]);
+
+    rqcSave($user);
+
+    expect(rqcAverage($user))->toEqualWithDelta(2300, 1e-6);
+});
+
 // MARK: REV-004, REV-031
 
 it('REV-004 moving calories between days changes what is saved, and the weekly total holds', function () {
@@ -351,6 +371,26 @@ it('SCH-061 an away review returns to the last ordinary week\'s calories', funct
     rqcSave($user);
 
     expect(rqcAverage($user))->toEqualWithDelta(2400, 1e-6);
+});
+
+it('SCH-061 REV-005 completing an away or training-only review answered under the only option it takes changes no calories', function () {
+    $awayWeek = fn (ReviewSeed $seed) => $seed->planWeekRows = [
+        ['start_date' => '2026-10-05', 'is_away' => true, 'away_training' => 'pause', 'away_calories' => 'maintenance'],
+    ];
+    $unanswered = rqcUser($awayWeek);
+    rqcSave($unanswered);
+    $answered = rqcUser($awayWeek);
+    rqcAnswer($answered, ['option' => 'recommendation', 'update_step_plan' => true]);
+    rqcSave($answered);
+    $trainingOnly = rqcUser(fn (ReviewSeed $seed) => $seed->trainingOnly = true);
+    rqcAnswer($trainingOnly, ['option' => 'recommendation', 'update_step_plan' => true]);
+    rqcSave($trainingOnly);
+
+    expect(rqcKcal($answered))->toBe(rqcKcal($unanswered))
+        ->and(rqcAverage($answered))->toEqualWithDelta(2400, 1e-6, 'the last ordinary week\'s calories')
+        ->and(rqcStepPlan($answered))->toBe(array_fill(0, 7, ['min' => 6000, 'max' => 8000]))
+        ->and(rqcDays($trainingOnly))->toBe([])
+        ->and(rqcStepPlan($trainingOnly))->toBe(array_fill(0, 7, ['min' => 6000, 'max' => 8000]));
 });
 
 // MARK: MESO-044

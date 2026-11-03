@@ -56,6 +56,7 @@ function progressValidInputs(): array
         'weigh_in_schedule_set two entries of one day' => [WeighInScheduleSetInput::class, ['entries' => [['weekdays' => [1], 'time' => '07:00'], ['weekdays' => [4], 'time' => '18:00']]]],
         'steps_log' => [StepsLogInput::class, ['date' => '2026-10-12', 'steps' => 6100]],
         'review_answer' => [ReviewAnswerInput::class, ['week_start' => '2026-10-05', 'option' => 'choose_own', 'own_kcal' => 2300, 'moves' => [['from_index' => 0, 'to_index' => 6, 'kcal' => 100]]]],
+        'review_answer with only an amount, for a stored Choose my own' => [ReviewAnswerInput::class, ['week_start' => '2026-10-05', 'own_kcal' => 2300]],
         'review_complete' => [ReviewCompleteInput::class, ['week_start' => '2026-10-05']],
     ];
 }

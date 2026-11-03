@@ -196,9 +196,49 @@ it('REV-027 refuses a stall\'s options when progress has not stalled', function 
     rqaRefused(rqaUser(), ['option' => 'add_steps'], 'That option is not one this review offers.');
 });
 
-it('REV-010 refuses Choose my own with no amount, and writes nothing', function () {
-    rqaRefused(rqaUser(), ['option' => 'choose_own'], 'Enter the average calories a day you want.');
-    rqaRefused(rqaUser(), ['option' => 'choose_own', 'own_kcal' => 0], 'Enter the average calories a day you want.');
+it('REV-010 Choose my own with no amount is stored as sent, a draft that applies nothing yet', function () {
+    $user = rqaUser();
+
+    $row = rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => null, 'update_step_plan' => true]);
+
+    expect($row->fresh()->only(['option', 'own_kcal', 'update_step_plan', 'refusal']))->toBe([
+        'option' => 'choose_own', 'own_kcal' => null, 'update_step_plan' => true, 'refusal' => null,
+    ])
+        ->and($row->fresh()->needsAmount())->toBeTrue()
+        ->and(rqaAnswer(rqaUser(), ['option' => 'choose_own', 'own_kcal' => 2300])->needsAmount())->toBeFalse();
+});
+
+it('REV-010 an answer with only an amount sets it on the stored Choose my own, keeping the rest of the answer', function () {
+    $user = rqaUser();
+    rqaAnswer($user, ['option' => 'choose_own', 'update_step_plan' => true, 'moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
+
+    $row = rqaAnswer($user, ['option' => null, 'own_kcal' => 2300]);
+
+    expect($row->fresh()->only(['option', 'own_kcal', 'update_step_plan', 'refusal']))->toBe([
+        'option' => 'choose_own', 'own_kcal' => 2300, 'update_step_plan' => true, 'refusal' => null,
+    ])
+        ->and($row->fresh()->moves)->toBe([], 'a new amount changes the week the moves were made on')
+        ->and(ReviewAnswer::query()->where('user_id', $user->id)->count())->toBe(1);
+});
+
+it('REV-010 an answer with no option is refused unless it sends an amount for a stored Choose my own', function () {
+    rqaRefused(rqaUser(), ['option' => null, 'own_kcal' => 2300], AnswerReview::AMOUNT_ONLY);
+
+    $repeat = rqaUser();
+    rqaAnswer($repeat, ['option' => 'repeat_this_week']);
+    rqaRefused($repeat, ['option' => null, 'own_kcal' => 2300], AnswerReview::AMOUNT_ONLY);
+
+    $own = rqaUser();
+    rqaAnswer($own, ['option' => 'choose_own']);
+    rqaRefused($own, ['option' => null], AnswerReview::AMOUNT_ONLY);
+});
+
+it('REV-010 refuses an own amount that is not a positive whole number, and writes nothing', function () {
+    rqaRefused(rqaUser(), ['option' => 'choose_own', 'own_kcal' => 0], AnswerReview::NO_AMOUNT);
+
+    $draft = rqaUser();
+    rqaAnswer($draft, ['option' => 'choose_own']);
+    rqaRefused($draft, ['option' => null, 'own_kcal' => 0], AnswerReview::NO_AMOUNT);
 });
 
 it('REV-001 refuses a week that is not the review open now, a week already reviewed, and a user with no review', function () {
