@@ -11,6 +11,7 @@ use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Workout\MesocycleDay;
 use App\Support\Workout\SessionBlocks;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -32,7 +33,17 @@ final class SwapWorkoutExercise
             if ($made !== null) {
                 return WorkoutSession::query()->findOrFail($made->workout_session_id);
             }
-            $block = SessionBlocks::block($user, $blockId);
+            try {
+                $block = SessionBlocks::block($user, $blockId);
+            } catch (ModelNotFoundException $gone) {
+                // A swap sent again while the first, which moved every set and removed the block, was running.
+                $made = SessionBlocks::made($user, $newId, locked: true);
+                if ($made === null) {
+                    throw $gone;
+                }
+
+                return WorkoutSession::query()->findOrFail($made->workout_session_id);
+            }
             $session = $block->session;
             $exercise = Exercise::query()->visibleTo($user)->findOrFail($exerciseId);
             $old = $block->exercise;
@@ -52,7 +63,9 @@ final class SwapWorkoutExercise
                 $index = SessionBlocks::indexOf($blocks, $block);
                 $new = (new WorkoutExercise(['workout_session_id' => $session->id, 'exercise_id' => $exercise->id, 'position' => $index + 1]))
                     ->forceFill(['id' => $newId, 'user_id' => $user->id]);
-                $new->save();
+                if (! SessionBlocks::create($new)) {
+                    return $session;
+                }
                 // Each set takes the target of its place among the exercise's sets (rp-clone plannedSets).
                 $planned = $sets === [] ? [] : $snapshot->plannedLoads($exercise, count($sets));
                 foreach ($undone as $place => $set) {

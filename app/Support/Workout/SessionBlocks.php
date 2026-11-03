@@ -10,6 +10,7 @@ use App\Models\WorkoutSet;
 use DomainException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 /**
  * The rows the session actions change (WO-022, WO-031, EX-008), in a session under way. The mesocycle row is locked
@@ -63,12 +64,29 @@ final class SessionBlocks
     }
 
     /**
-     * The user's exercise under `$id`, removed ones too: a create's ULID is spent once used (CAP-019). Read with a lock
-     * after the mesocycle's, so a retry that waited on it sees the first request's exercise.
+     * The user's exercise under `$id`, removed ones too: a create's ULID is spent once used (CAP-019). A plain read: a
+     * locking read of an id not there yet takes a gap lock, and two creates in different mesocycles would then deadlock
+     * on their inserts. It can miss a request that committed while this one waited on the mesocycle lock; the insert's
+     * primary key refuses that one ({@see create()}). `$locked` reads the latest commit, for when the row is known to be
+     * there or nothing is inserted after.
      */
-    public static function made(User $user, string $id): ?WorkoutExercise
+    public static function made(User $user, string $id, bool $locked = false): ?WorkoutExercise
     {
-        return WorkoutExercise::query()->withTrashed()->where('user_id', $user->id)->whereKey(strtolower($id))->sharedLock()->first();
+        $query = WorkoutExercise::query()->withTrashed()->where('user_id', $user->id)->whereKey(strtolower($id));
+
+        return ($locked ? $query->sharedLock() : $query)->first();
+    }
+
+    /** Saves a new exercise; false when its ULID is already taken, by a request that committed first (a replay). */
+    public static function create(WorkoutExercise $block): bool
+    {
+        try {
+            $block->save();
+
+            return true;
+        } catch (UniqueConstraintViolationException) {
+            return false;
+        }
     }
 
     /** @param  list<WorkoutExercise>  $blocks */

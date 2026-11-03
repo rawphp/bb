@@ -37,11 +37,14 @@ final class AddWorkoutExercise
             }
             $exercise = Exercise::query()->visibleTo($user)->findOrFail($exerciseId);
 
-            (new WorkoutExercise([
+            $block = (new WorkoutExercise([
                 'workout_session_id' => $session->id,
                 'exercise_id' => $exercise->id,
                 'position' => count(SessionBlocks::blocks($session)) + 1,
-            ]))->forceFill(['id' => $id, 'user_id' => $user->id])->save();
+            ]))->forceFill(['id' => $id, 'user_id' => $user->id]);
+            if (! SessionBlocks::create($block)) {
+                return $session;
+            }
             foreach ($snapshot->plannedLoads($exercise, DayEdits::ADDED_SETS) as $index => $load) {
                 (new WorkoutSet([
                     'workout_session_id' => $session->id,
