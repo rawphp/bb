@@ -2,16 +2,16 @@
 
 use App\Capabilities\Support\ReadKey;
 use App\Models\Exercise;
-use App\Models\Mesocycle;
 use App\Models\ExerciseLoadStep;
 use App\Models\ExerciseNote;
+use App\Models\Mesocycle;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
 use Illuminate\Support\Str;
-use Tests\Support\TrainSeed;
 use Illuminate\Testing\TestResponse;
+use Tests\Support\TrainSeed;
 
 // The HTTP seam of exercise_note_set and exercise_load_step_set. The rules are unit tests (SetExerciseNoteTest, SetExerciseLoadStepTest).
 
@@ -104,15 +104,16 @@ it('EX-010 EX-012 name the workout_show of each day of a saved, not-started meso
     TrainSeed::mesocycle($other);
     $bench = Exercise::query()->where('name', 'Bench Press')->sole();
     $mesocycle->update(['earlier_weeks' => [0 => [
-        ['id' => 'a', 'label' => 'Old', 'weekday' => 2, 'slots' => [['id' => 'b', 'exercise_id' => $bench->id, 'muscle_group' => 'chest', 'sets' => 3]]],
-        ['id' => 'c', 'label' => 'Old 2', 'weekday' => 5, 'slots' => []],
+        // Week 1 ran with bench on its second day; the rotation (TrainSeed) has it on the first.
+        ['id' => 'a', 'label' => 'Old', 'weekday' => 2, 'slots' => []],
+        ['id' => 'c', 'label' => 'Old 2', 'weekday' => 5, 'slots' => [['id' => 'b', 'exercise_id' => $bench->id, 'muscle_group' => 'chest', 'sets' => 3]]],
     ]]]);
     $key = fn (int $week, int $day) => ReadKey::for('workout_show', ['mesocycle_id' => (string) $mesocycle->id, 'week' => $week, 'day' => $day]);
 
     $keys = exerciseWriteCall($user, $name, ['exercise_id' => (string) $bench->id, ...$input])->assertOk()->json('data.invalidates');
 
-    expect($keys)->toContain($key(1, 1), $key(2, 1))
-        ->not->toContain($key(1, 2))->not->toContain($key(2, 2))
+    expect($keys)->toContain($key(1, 2), $key(2, 1))
+        ->not->toContain($key(1, 1))->not->toContain($key(2, 2))
         ->and(implode(' ', $keys))->not->toContain('"mesocycle_id":"'.Mesocycle::query()->where('user_id', $other->id)->value('id').'"');
 })->with([
     'exercise_note_set' => ['exercise_note_set', ['note' => 'x']],

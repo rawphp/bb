@@ -121,7 +121,7 @@ it('EX-010 shows each user their own note, step and history of a shared exercise
         ->and($data['history'])->toBe([]);
 });
 
-it('EX-007 gives a rep range only to an exercise in the current mesocycle, not one in a saved mesocycle that starts later or one an older mesocycle held', function () {
+it('EX-007 gives a rep range only to an exercise in the current mesocycle, not one in a saved mesocycle that starts later, one an older mesocycle held, or one in another user\'s mesocycle', function () {
     $user = TrainSeed::user();
     $current = Exercise::factory()->create(['rep_range_min' => 10, 'rep_range_max' => 20]);
     $future = Exercise::factory()->create(['rep_range_min' => 10, 'rep_range_max' => 20]);
@@ -132,6 +132,8 @@ it('EX-007 gives a rep range only to an exercise in the current mesocycle, not o
     TrainSeed::mesocycle($user, ['start_date' => '2026-08-03', 'weeks' => 4, 'days' => $days($older)]);
     TrainSeed::mesocycle($user, ['start_date' => '2026-09-07', 'days' => $days($current)]);
     TrainSeed::mesocycle($user, ['start_date' => '2026-11-02', 'days' => $days($future)]);
+    // Another user's mesocycle, started after the user's own, is never the user's current one.
+    TrainSeed::mesocycle(TrainSeed::user(), ['start_date' => '2026-10-05', 'days' => $days($older)]);
 
     expect(exerciseShowFor($this, $user, $current)->assertOk()->json('data.rep_range_text'))->toBe('10–20 reps')
         ->and(exerciseShowFor($this, $user, $future)->assertOk()->json('data.rep_range_text'))->toBeNull()
