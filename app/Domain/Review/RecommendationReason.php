@@ -88,6 +88,16 @@ final readonly class RecommendationReason
         return new self(RecommendationReasonKind::Safety, refusal: $refusal);
     }
 
+    public static function losingTooFast(): self
+    {
+        return new self(RecommendationReasonKind::LosingTooFast);
+    }
+
+    public static function roughWeek(): self
+    {
+        return new self(RecommendationReasonKind::RoughWeek);
+    }
+
     /** The spec's own messages (REV-026, REV-027); other reasons have no fixed copy. */
     public function message(): ?string
     {
