@@ -24,15 +24,18 @@ use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WeighInScheduleEntry;
 use App\Support\Today\TodayWeight;
+use App\Support\UserDay;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * The Weigh-ins screen (WT-001 to WT-021), every value ready to show in the user's units (CAP-015). Times and days
- * are in the app's time zone, as Today shows them.
+ * are the user's (SET-012), as Today shows them: a reading is labelled and counted on its local day at its local clock
+ * time, through UserDay. The days themselves are midnight UTC of their Y-m-d, as everywhere.
  *
  * WT-004: the weigh-ins, missed days and step counts come a page of PAGE_DAYS calendar days at a time, newest first.
- * A page is the days [start, end): end is the `before` day, or tomorrow for the newest page, which also holds
+ * A page is the user's days [start, end): end is the `before` day, or tomorrow for the newest page, which also holds
  * anything dated later. Each day lands on one page. The trend, schedule and the rest are the whole set on every page.
  */
 final class WeighInsPayload
@@ -52,20 +55,24 @@ final class WeighInsPayload
         $weightUnit = $profile?->weight_unit === 'lb' ? 'lb' : 'kg';
         $waistUnit = BodyMeasures::waistUnit((string) ($profile->height_unit ?? 'cm'));
 
-        $today = $now->utc()->startOfDay();
+        $zone = UserDay::zone($user);
+        $today = CarbonImmutable::instance(UserDay::dayOf($user, $now));
         $tomorrow = $today->addDay();
         $end = $before === null ? $tomorrow : CarbonImmutable::createFromFormat('!Y-m-d', $before, 'UTC')->min($tomorrow);
         $start = $end->subDays(self::PAGE_DAYS);
-        // The newest page also holds anything dated after today (steps for a day ahead of UTC, a weigh-in typed ahead).
+        // The newest page also holds anything dated after today (steps for a day ahead of the user's, a weigh-in typed ahead).
         $until = $end->eq($tomorrow) ? null : $end;
+        // The stored instants the page's local days start at.
+        $startAt = UserDay::bounds($user, $start)[0];
+        $untilAt = $until === null ? null : UserDay::bounds($user, $until)[0];
 
         $first = WeighIn::query()->where('user_id', $user->id)->min('weighed_at');
-        $firstAt = $first === null ? null : CarbonImmutable::parse($first, 'UTC');
+        $firstDay = $first === null ? null : CarbonImmutable::instance(UserDay::dayOf($user, (string) $first));
         $weighIns = WeighIn::query()->where('user_id', $user->id)
-            ->where('weighed_at', '>=', $start)->when($until, fn ($query) => $query->where('weighed_at', '<', $until))
+            ->where('weighed_at', '>=', $startAt)->when($untilAt, fn ($query) => $query->where('weighed_at', '<', $untilAt))
             ->orderByDesc('weighed_at')->orderByDesc('id')->get()->all();
         $olderSteps = Step::query()->where('user_id', $user->id)->where('date', '<', $start->format('Y-m-d'))->exists();
-        $hasOlder = ($firstAt !== null && $firstAt->lt($start)) || $olderSteps;
+        $hasOlder = ($firstDay !== null && $firstDay->lt($start)) || $olderSteps;
         $entries = WeighInScheduleEntry::query()->where('user_id', $user->id)->orderBy('id')->get()->all();
         $weekdays = array_map(fn (WeighInScheduleEntry $entry) => array_map('intval', $entry->weekdays ?? []), $entries);
         $trendKg = TodayWeight::trendKg($user);
@@ -76,18 +83,12 @@ final class WeighInsPayload
             help: new WeighInHelp(self::HELP_TITLE, self::HELP),
             units: new WeighInUnits($weightUnit, $waistUnit),
             schedule: self::schedule($entries, $weekdays),
-            rows: self::rows($weighIns, $entries, $weekdays, self::missedFrom($firstAt, $start), $end->min($today), $weightUnit, $waistUnit),
+            rows: self::rows($zone, $weighIns, $entries, $weekdays, $firstDay?->max($start), $end->min($today), $weightUnit, $waistUnit),
             missed: new Status('Missed', 'warning'),
-            empty_message: $firstAt === null ? 'No weigh-ins yet. Tap + to log your first.' : null,
+            empty_message: $firstDay === null ? 'No weigh-ins yet. Tap + to log your first.' : null,
             steps: self::steps($user, $now, $start, $until),
             next_before: $hasOlder ? $start->format('Y-m-d') : null,
         );
-    }
-
-    /** Missed days start at the first weigh-in's day, and on this page no earlier than its start. Null before one. */
-    private static function missedFrom(?CarbonImmutable $firstAt, CarbonImmutable $start): ?CarbonImmutable
-    {
-        return $firstAt === null ? null : $firstAt->startOfDay()->max($start);
     }
 
     /**
@@ -121,18 +122,22 @@ final class WeighInsPayload
     }
 
     /**
-     * WT-004: the page's weigh-ins and the missed scheduled days in [$from, $until), newest first.
+     * WT-004: the page's weigh-ins and the missed scheduled days in [$from, $until), newest first on the user's clock.
+     * Missed days start at the first weigh-in's day, and on this page no earlier than its start: $from is null before one.
      *
+     * @param  DateTimeZone  $zone  the user's
      * @param  list<WeighIn>  $weighIns  every weigh-in on the page
      * @param  list<WeighInScheduleEntry>  $entries
      * @param  list<list<int>>  $weekdays  each entry's
      * @return list<WeighInRow>
      */
-    private static function rows(array $weighIns, array $entries, array $weekdays, ?CarbonImmutable $from, CarbonImmutable $until, string $weightUnit, string $waistUnit): array
+    private static function rows(DateTimeZone $zone, array $weighIns, array $entries, array $weekdays, ?CarbonImmutable $from, CarbonImmutable $until, string $weightUnit, string $waistUnit): array
     {
         $rows = [];
+        $clocks = [];
         foreach ($weighIns as $weighIn) {
-            $at = $weighIn->weighed_at->toDateTimeImmutable();
+            // The user's clock time, labelled UTC, for the labels, the missed-day scan and the sort.
+            $at = $clocks[] = UserDay::clockIn($zone, $weighIn->weighed_at);
             $waist = $weighIn->waist_cm === null ? null : (float) $weighIn->waist_cm;
             $rows[] = [$at, new WeighInRow(
                 id: (string) $weighIn->id,
@@ -141,7 +146,7 @@ final class WeighInsPayload
                 time_label: self::timeLabel($at),
                 weight_label: BodyMeasures::weightLabel((float) $weighIn->weight_kg, $weightUnit),
                 waist_label: $waist === null ? '' : BodyMeasures::waistLabel($waist, $waistUnit),
-                weighed_at: $at->format(DATE_ATOM),
+                weighed_at: $weighIn->weighed_at->toDateTimeImmutable()->setTimezone($zone)->format(DATE_ATOM),
                 weight_field: BodyMeasures::weightField((float) $weighIn->weight_kg, $weightUnit),
                 waist_field: $waist === null ? '' : BodyMeasures::waistField($waist, $waistUnit),
             )];
@@ -156,7 +161,7 @@ final class WeighInsPayload
         }
         $missedDays = $from === null ? [] : WeighInSchedule::missedDaysBetween(
             array_keys($times),
-            array_map(fn (WeighIn $w) => $w->weighed_at->toDateTimeImmutable(), $weighIns),
+            $clocks,
             $from->toDateTimeImmutable(),
             $until->toDateTimeImmutable(),
         );
@@ -170,7 +175,8 @@ final class WeighInsPayload
                 time_label: '',
                 weight_label: '',
                 waist_label: '',
-                weighed_at: $at->format(DATE_ATOM),
+                // That local day at its reminder time, with the zone's offset on that day.
+                weighed_at: (new DateTimeImmutable($at->format('Y-m-d H:i:s'), $zone))->format(DATE_ATOM),
                 weight_field: '',
                 waist_field: '',
             )];
@@ -204,7 +210,7 @@ final class WeighInsPayload
 
         return new StepsSection(
             title: 'Steps',
-            default_date: StepCounts::defaultDate($now->toDateTimeImmutable())->format('Y-m-d'),
+            default_date: StepCounts::defaultDate(UserDay::clockOf($user, $now))->format('Y-m-d'),
             rows: $rows,
         );
     }
