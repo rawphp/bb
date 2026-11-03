@@ -8,7 +8,7 @@ use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Workout\Data\WorkoutStartInput;
 use App\Models\User;
-use Carbon\CarbonImmutable;
+use App\Support\OccurredAt;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -25,8 +25,8 @@ final class WorkoutStartCapability implements HostCapability
             ->run(function (WorkoutStartInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */
                 $user = $context->user();
-                // The request clock until #195 lands; then this is OccurredAt::get(), the instant the user acted.
-                $session = ($this->start)($user, $input->workout_id, CarbonImmutable::now());
+                // OFF-007: the instant the user started, so a replayed start keeps its time.
+                $session = ($this->start)($user, $input->workout_id, OccurredAt::get()->utc());
 
                 return new WriteResult(invalidates: WorkoutReads::keys($user, $session));
             });

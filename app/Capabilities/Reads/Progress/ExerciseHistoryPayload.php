@@ -16,11 +16,14 @@ use App\Support\Plan\PlanWords;
 use App\Support\Today\TodaySnapshot;
 use Illuminate\Support\Collection;
 
-/** Every session of one exercise, newest first, the best e1RM of each marked (ANA-009, EX-002). */
+/** Sessions of one exercise, newest first, the best e1RM of each marked (ANA-009, EX-002). */
 final class ExerciseHistoryPayload
 {
-    /** @param  Collection<int, WorkoutSet>  $sets  the logged sets in position order, each with its session loaded */
-    public static function build(Exercise $exercise, Collection $sets, WeightUnit $unit): ExerciseHistoryShowOutput
+    /**
+     * @param  Collection<int, WorkoutSet>  $sets  the logged sets in position order, each with its session loaded
+     * @param  string|null  $nextBefore  the session to read older ones after, when there are any
+     */
+    public static function build(Exercise $exercise, Collection $sets, WeightUnit $unit, ?string $nextBefore = null): ExerciseHistoryShowOutput
     {
         $sessions = [];
         foreach ($sets->groupBy('workout_session_id') as $inSession) {
@@ -43,14 +46,15 @@ final class ExerciseHistoryPayload
                 ),
             ];
         }
-        // Newest first, the undated last; the sort is stable, so ties keep their position order.
-        usort($sessions, fn (array $a, array $b) => ($b['time'] ?? PHP_INT_MIN) <=> ($a['time'] ?? PHP_INT_MIN));
+        // Newest first, the undated last, ties by session id descending: the order ExerciseHistorySnapshot pages in.
+        usort($sessions, fn (array $a, array $b) => (($b['time'] ?? PHP_INT_MIN) <=> ($a['time'] ?? PHP_INT_MIN)) ?: strcmp($b['row']->id, $a['row']->id));
 
         return new ExerciseHistoryShowOutput(
             title: $exercise->name,
             subtitle: $exercise->muscle_group->title(),
             best: new Status('Best e1RM', Tone::Good->value),
             sessions: array_column($sessions, 'row'),
+            next_before: $nextBefore,
         );
     }
 

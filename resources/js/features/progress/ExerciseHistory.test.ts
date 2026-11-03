@@ -17,6 +17,12 @@ vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@
 const readMock = vi.mocked(read);
 const content = contentFixture as ExerciseHistoryShowOutput;
 const empty = emptyFixture as ExerciseHistoryShowOutput;
+const paged: ExerciseHistoryShowOutput = { ...content, next_before: 'x' };
+const older: ExerciseHistoryShowOutput = {
+    ...content,
+    sessions: [{ ...content.sessions[0]!, id: 'older', date_label: 'Mon, 1 Jun 2026' }],
+    next_before: null,
+};
 const stubs = { global: { stubs: { RouterLink: RouterLinkStub } } };
 
 describe('ExerciseHistoryContent', () => {
@@ -53,6 +59,30 @@ describe('ExerciseHistoryContent', () => {
         expect(mount(ExerciseHistoryContent, { props: { offline: true } }).text()).toContain('Exercise history needs a connection.');
     });
 
+    it('EX-002 shows no Show older sessions button when there are no older sessions', () => {
+        expect(mount(ExerciseHistoryContent, { props: { payload: content } }).find('[data-more]').exists()).toBe(false);
+    });
+
+    it('EX-002 shows Show older sessions under the last session when there are older ones, and asks for them', async () => {
+        const wrapper = mount(ExerciseHistoryContent, { props: { payload: paged } });
+        const button = wrapper.get('[data-more]');
+
+        expect(button.text()).toBe('Show older sessions');
+        expect(button.element.tagName).toBe('BUTTON');
+        expect(button.classes()).toEqual(expect.arrayContaining(['w-full', 'min-h-tap']));
+        expect(wrapper.findAll('[data-session], [data-more]').at(-1)!.attributes('data-more')).toBeDefined();
+        await button.trigger('click');
+        expect(wrapper.emitted('more')).toHaveLength(1);
+    });
+
+    it('EX-002 disables Show older sessions while a page loads, and keeps it with the reason when one fails', () => {
+        expect(mount(ExerciseHistoryContent, { props: { payload: paged, loadingMore: true } }).get('[data-more]').attributes('disabled')).toBeDefined();
+
+        const failed = mount(ExerciseHistoryContent, { props: { payload: paged, moreError: 'Older sessions could not be loaded.' } });
+        expect(failed.get('[data-more]').attributes('disabled')).toBeUndefined();
+        expect(failed.get('[role="alert"]').text()).toBe('Older sessions could not be loaded.');
+    });
+
     it('OFF-008 dims the sessions and says they are waiting to sync', () => {
         const wrapper = mount(ExerciseHistoryContent, { props: { payload: content, pending: true } });
 
@@ -81,6 +111,91 @@ describe('ExerciseHistoryView', () => {
         expect(input).toEqual({ exercise_id: '01JA000000000000000000EX01' });
         expectMatchesInputSchema(schema, input);
         expect(wrapper.get('h1').text()).toBe('Bench Press');
+    });
+
+    it('EX-002 reads the older sessions after the last one shown and adds them below', async () => {
+        readMock.mockResolvedValueOnce(paged).mockResolvedValueOnce(older);
+        const wrapper = mount(ExerciseHistoryView, { props: { exerciseId: '01JA000000000000000000EX01' } });
+        await flushPromises();
+
+        await wrapper.get('[data-more]').trigger('click');
+        await flushPromises();
+
+        const input = readMock.mock.calls[1]![1]!;
+        expect(readMock.mock.calls[1]![0]).toBe('exercise_history_show');
+        expect(input).toEqual({ exercise_id: '01JA000000000000000000EX01', before: 'x' });
+        expectMatchesInputSchema(schema, input);
+        expect(wrapper.findAll('[data-session]')).toHaveLength(3);
+        expect(wrapper.findAll('[data-session]').at(-1)!.text()).toContain('Mon, 1 Jun 2026');
+        expect(wrapper.findAll('[data-session]')[0]!.text()).toContain('Thu, 8 Oct 2026');
+        expect(wrapper.find('[data-more]').exists()).toBe(false);
+    });
+
+    it('EX-002 keeps the sessions shown and says so when the older ones fail to load', async () => {
+        readMock.mockResolvedValueOnce(paged).mockRejectedValueOnce(new CapabilityError('exercise_history_show', 500, null));
+        const wrapper = mount(ExerciseHistoryView, { props: { exerciseId: '01JA000000000000000000EX01' } });
+        await flushPromises();
+
+        await wrapper.get('[data-more]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.findAll('[data-session]')).toHaveLength(2);
+        expect(wrapper.get('[role="alert"]').text()).toBe('Older sessions could not be loaded.');
+        expect(wrapper.get('[data-more]').attributes('disabled')).toBeUndefined();
+    });
+
+    it('EX-002 asks for older sessions once while a page loads, and clears the alert when a retry works', async () => {
+        let answer!: (page: ExerciseHistoryShowOutput) => void;
+        readMock
+            .mockResolvedValueOnce(paged)
+            .mockRejectedValueOnce(new CapabilityError('exercise_history_show', 500, null))
+            .mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+        const wrapper = mount(ExerciseHistoryView, { props: { exerciseId: '01JA000000000000000000EX01' } });
+        await flushPromises();
+        await wrapper.get('[data-more]').trigger('click');
+        await flushPromises();
+
+        await wrapper.get('[data-more]').trigger('click');
+        await flushPromises();
+        expect(wrapper.get('[data-more]').attributes('disabled')).toBeDefined();
+        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+        await wrapper.get('[data-more]').trigger('click');
+        expect(readMock).toHaveBeenCalledTimes(3);
+
+        answer(older);
+        await flushPromises();
+        expect(wrapper.findAll('[data-session]')).toHaveLength(3);
+    });
+
+    it('EX-002 drops an older page that answers after the first page was refreshed', async () => {
+        let refresh!: (data: ExerciseHistoryShowOutput) => void;
+        let answer!: (page: ExerciseHistoryShowOutput) => void;
+        readMock
+            .mockImplementationOnce(async (_name, _input, onUpdate) => {
+                refresh = onUpdate as typeof refresh;
+                return paged;
+            })
+            .mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+        const wrapper = mount(ExerciseHistoryView, { props: { exerciseId: '01JA000000000000000000EX01' } });
+        await flushPromises();
+        await wrapper.get('[data-more]').trigger('click');
+
+        refresh({ ...paged, sessions: paged.sessions.slice(0, 1), next_before: 'y' });
+        answer(older);
+        await flushPromises();
+
+        expect(wrapper.findAll('[data-session]')).toHaveLength(1);
+        expect(wrapper.text()).not.toContain('Mon, 1 Jun 2026');
+        expect(wrapper.get('[data-more]').attributes('disabled')).toBeUndefined();
+    });
+
+    it('CAP-001 reads nothing for older sessions when it was given a payload and no exercise', async () => {
+        const wrapper = mount(ExerciseHistoryView, { props: { payload: paged } });
+
+        await wrapper.get('[data-more]').trigger('click');
+        await flushPromises();
+
+        expect(readMock).not.toHaveBeenCalled();
     });
 
     it.each([
