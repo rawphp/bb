@@ -22,7 +22,7 @@ use App\Support\Plan\DayTargetRow;
 use App\Support\Plan\PlanRebuildRows;
 use App\Support\Plan\PlanSnapshot;
 use App\Support\Today\TodayWeight;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use DateTimeImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -60,7 +60,7 @@ final class RebuildTargets
             throw new PlanRebuildRefused(PlanRebuildRefusal::planNotStarted());
         }
 
-        $today = TrainSnapshot::day(CarbonImmutable::now());
+        $today = UserDay::today($user);
         $phases = Phase::query()->where('user_id', $user->id)->orderBy('start_date')->sharedLock()->get();
         $mesocycles = Mesocycle::query()->where('user_id', $user->id)->sharedLock()->get();
         $planWeeks = PlanWeek::query()->where('user_id', $user->id)->sharedLock()->get();
@@ -72,7 +72,7 @@ final class RebuildTargets
         );
         $train = new TrainSnapshot(
             $today, $plan, $profile, $mesocycles, $phases, new Collection, new Collection, new Collection, $planWeeks,
-            new Collection, new Collection,
+            new Collection, new Collection, UserDay::zone($user),
         );
 
         $week = PlanRebuild::week($snapshot->domain, $today, $beforeStartBuildsFirstWeek);
