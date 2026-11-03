@@ -244,7 +244,7 @@ it('SCH-037 all future days keeps two periods renamed at once, each by its times
     ]);
 });
 
-it('SCH-037 all future days reads a period that shares nothing with the one taken off as new on the weekday only', function () {
+it('SCH-037 all future days reads a period with another name and other times as new on the weekday only', function () {
     [$user] = editWorld();
     Profile::query()->where('user_id', $user->id)->update(['busy_periods' => json_encode([
         ['id' => 'w1', 'label' => 'Work', 'start' => '09:00', 'end' => '17:00', 'weekdays' => [1, 2, 3, 4, 5]],
@@ -254,7 +254,7 @@ it('SCH-037 all future days reads a period that shares nothing with the one take
 
     editSchedule($user, ['apply_to' => 'all_future_days', 'busy_periods' => [
         ['label' => 'Work', 'start' => '09:00', 'end' => '17:00'],
-        ['label' => 'Dentist', 'start' => '14:00', 'end' => '15:00'],
+        ['label' => 'Dentist', 'start' => '08:00', 'end' => '09:00'],
     ]]);
 
     $periods = editProfile($user)->busy_periods;
@@ -263,7 +263,7 @@ it('SCH-037 all future days reads a period that shares nothing with the one take
         ->and($periods[1]['id'])->not->toBe('s1');
 });
 
-it('SCH-037 all future days keeps a renamed period, re-timed or not, with its id on every day it repeats', function (array $sent) {
+it('SCH-037 all future days keeps a renamed period, or a re-timed one, with its id on every day it repeats', function (array $sent) {
     [$user] = editWorld();
     Profile::query()->where('user_id', $user->id)->update(['busy_periods' => json_encode([
         ['id' => 'w1', 'label' => 'Work', 'start' => '09:00', 'end' => '17:00', 'weekdays' => [1, 2, 3, 4, 5]],
@@ -275,7 +275,7 @@ it('SCH-037 all future days keeps a renamed period, re-timed or not, with its id
     expect(editProfile($user)->busy_periods)->toEqual([['id' => 'w1', ...$sent, 'weekdays' => [1, 2, 3, 4, 5]]]);
 })->with([
     'renamed' => [['label' => 'Office', 'start' => '09:00', 'end' => '17:00']],
-    'renamed and re-timed' => [['label' => 'Office', 'start' => '09:00', 'end' => '13:00']],
+    're-timed' => [['label' => 'Work', 'start' => '08:00', 'end' => '13:00']],
 ]);
 
 it('SCH-037 all future days takes the same-named period that shares a time as the one edited', function () {

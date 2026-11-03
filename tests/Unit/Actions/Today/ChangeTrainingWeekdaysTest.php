@@ -99,8 +99,11 @@ it('SCH-039 a re-map gives the mesocycle\'s days the new weekdays in plan-week o
     expect(array_column($mesocycle->fresh()->days, 'weekday'))->toBe([5, 2]);
 });
 
-it('SCH-039 Train and Workout date next week\'s sessions on the new weekdays and this week\'s where they are', function (array $weekdays, ?string $fewerDays, array $nextWeek) {
+it('SCH-039 Train and Workout date next week\'s sessions on the new weekdays and this week\'s where they are', function (array $weekdays, ?string $fewerDays, array $nextWeek, bool $floating) {
     [$user, $mesocycle] = weekdayWorld();
+    if ($floating) {
+        $mesocycle->update(['days' => array_map(fn (array $day) => [...$day, 'weekday' => null], $mesocycle->days)]);
+    }
     FakeRebuild::bind();
 
     changeWeekdays($user, $weekdays, $fewerDays);
@@ -112,8 +115,9 @@ it('SCH-039 Train and Workout date next week\'s sessions on the new weekdays and
         ->and([$date(1, 1), $date(1, 2)])->toBe(['2026-09-07', '2026-09-10'])
         ->and(array_map(fn (int $day) => $date(4, $day), array_keys($nextWeek)))->toBe(array_values($nextWeek));
 })->with([
-    're-map' => [[2, 5], null, [1 => '2026-09-29', 2 => '2026-10-02']],
-    'extend' => [[3], 'extend', [1 => '2026-09-30']],
+    're-map' => [[2, 5], null, [1 => '2026-09-29', 2 => '2026-10-02'], false],
+    'extend' => [[3], 'extend', [1 => '2026-09-30'], false],
+    're-map of a floating mesocycle' => [[2, 5], null, [1 => '2026-09-29', 2 => '2026-10-02'], true],
 ]);
 
 it('SCH-039 a weekday that stays keeps its start time and minutes', function () {
