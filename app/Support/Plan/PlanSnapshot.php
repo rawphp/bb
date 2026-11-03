@@ -22,7 +22,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Support\Mesocycles\TrainSnapshot;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use Closure;
 use DateTimeImmutable;
 use Illuminate\Support\Collection;
@@ -126,7 +126,7 @@ final class PlanSnapshot
         }
 
         return new self(
-            today: self::day(CarbonImmutable::now()),
+            today: UserDay::today($user),
             plan: $plan,
             profile: Profile::query()->where('user_id', $user->id)->first(),
             phases: Phase::query()->where('user_id', $user->id)->orderBy('start_date')->get(),

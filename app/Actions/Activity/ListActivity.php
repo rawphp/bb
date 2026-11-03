@@ -4,6 +4,7 @@ namespace App\Actions\Activity;
 
 use App\Capabilities\Reads\Data\Settings\ActivityEntry;
 use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Settings\TimeZoneSetCapability;
 use App\Capabilities\Support\Channel;
 use App\Capabilities\Support\ErrorWording;
 use App\Capabilities\Support\Tone;
@@ -24,6 +25,9 @@ final class ListActivity
 
     /** The audit events of a capability invoke. Approval and tool-boundary events have no write of their own to show. */
     public const INVOKE_EVENTS = ['capability.invoked', 'capability.failed', 'capability.output_invalid'];
+
+    /** Writes the app makes on its own, audited but not the user's doing: the device's time zone (SET-012). */
+    public const HIDDEN = [TimeZoneSetCapability::NAME];
 
     /** One audit record in plain words (CAP-022). */
     public static function entry(AuditRecord $record, CarbonInterface $now): ActivityEntry
@@ -71,6 +75,7 @@ final class ListActivity
         $records = AuditRecord::query()
             ->whereBelongsTo($user)
             ->whereIn('event', self::INVOKE_EVENTS)
+            ->where(fn ($query) => $query->whereNull('capability')->orWhereNotIn('capability', self::HIDDEN))
             ->whereIn('channel', array_column(Channel::cases(), 'value'))
             ->latest()
             ->latest('id')

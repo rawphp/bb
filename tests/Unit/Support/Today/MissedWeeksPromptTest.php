@@ -187,3 +187,13 @@ it('SCH-058 a session started at 00:30 on the first day of the next plan week co
         // A whole week later, the week after it has ended with nothing started.
         ->and(missedPrompt('2026-10-10', [W::session('late', 2, 3, '2026-09-26 00:30:00', '2026-09-26 01:30:00')])?->stoppedWeek)->toBe(3);
 });
+
+it('SET-012 reads the last started session\'s week on the user\'s local day', function () {
+    // Friday 25 Sep at 21:00 in New York, the last day of plan week 1, is Saturday 26 Sep, plan week 2, in UTC. Plan
+    // week 2 then passes with nothing started.
+    $friday = W::session('s23', 2, 3, '2026-09-26 01:00:00', '2026-09-26 02:00:00');
+    $prompt = fn (string $zone) => MissedWeeksPrompt::from(W::snapshot(today: '2026-10-03', planWeeks: [], sessions: [$friday], zone: $zone));
+
+    expect($prompt('America/New_York'))->not->toBeNull()
+        ->and($prompt('UTC'))->toBeNull();
+});

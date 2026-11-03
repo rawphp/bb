@@ -71,7 +71,7 @@ final readonly class MissedWeeksPrompt
 
         $lastStarted = $train->sessions
             ->filter(fn (WorkoutSession $s) => $s->mesocycle_id === $mesocycle->id && $s->actual_start_at !== null)
-            ->map(fn (WorkoutSession $s) => TodaySnapshot::instant($s->actual_start_at))
+            ->map(fn (WorkoutSession $s) => $train->startedAt($s))
             ->max();
         $lastStartedWeek = $lastStarted === null ? null : $grid->weekIndexCountingBack(TrainSnapshot::day($lastStarted));
 

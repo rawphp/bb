@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { Component } from 'vue';
+import { onMounted, type Component } from 'vue';
 import { SHEET_HOST_ID, TOAST_HOST_ID } from './hosts';
 import { useNavigation } from './navigation';
 import TabBar from './TabBar.vue';
 import TabStack from './TabStack.vue';
 import { TABS } from './tabs';
+import { syncTimeZone } from './timeZone';
 
 // The shell (19-views.md, "Shell"): one stack per tab, the tab bar, and above it
 // the ActiveWorkoutBar (NAV-004) and the Coach button (NAV-001). Those two fill
@@ -16,6 +17,11 @@ const ActiveWorkoutBar = found['./ActiveWorkoutBar.vue'];
 const CoachButton = found['./CoachButton.vue'];
 
 const nav = useNavigation();
+
+// SET-012: send the device's time zone when the server may not have it (timeZone.ts).
+onMounted(() => {
+    void syncTimeZone();
+});
 </script>
 
 <template>
