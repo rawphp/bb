@@ -4,6 +4,8 @@ use App\Actions\Today\PlannedSession;
 use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Today\TodayReads;
 use App\Models\DayTarget;
+use App\Models\DayTargetMeal;
+use App\Models\MealCheckIn;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WeighInScheduleEntry;
@@ -265,3 +267,18 @@ it('SET-012 a plan-week write refreshes Today from the user\'s local today on, f
 
     expect($invalidates)->toContain(ReadKey::for('today_show', ['date' => '2026-10-07']));
 });
+
+it('SET-012 a meal checked in with no time records the user\'s clock', function (string $zone, string $date, string $time) {
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    $user = zonedTodayUser($zone);
+    $meal = DayTargetMeal::query()->where('user_id', $user->id)->whereHas('dayTarget', fn ($query) => $query->whereDate('date', $date))
+        ->orderBy('id')->firstOrFail();
+
+    test()->actingAs($user)->postJson('/capabilities/meal_check_in', ['meal_id' => $meal->id, 'kcal' => 500, 'protein_g' => 30, 'fat_g' => 15, 'carbs_g' => 60], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertOk();
+
+    expect(MealCheckIn::query()->where('meal_id', $meal->id)->sole()->time)->toStartWith($time);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', '2026-10-10', '07:58'],
+    'UTC' => ['UTC', '2026-10-09', '21:58'],
+]);
