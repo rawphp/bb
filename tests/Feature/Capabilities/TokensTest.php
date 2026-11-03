@@ -58,7 +58,7 @@ it('CAP-021 creates a token that is shown once and lists it without its secret',
         'capabilities' => [],
     ], ['Idempotency-Key' => (string) Str::ulid()])
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['token_list{}'])
+        ->assertJsonPath('data.invalidates', ['token_list{}', 'health_bridge_show{}'])
         ->assertJsonPath('data.token.id', TOKEN_ID)
         ->assertJsonPath('data.token.scope_text', 'Read only');
 
@@ -176,7 +176,7 @@ it('CAP-021 revokes a token, which stops working at once', function () {
 
     $this->actingAs($user)->postJson('/capabilities/token_revoke', ['id' => TOKEN_ID], ['Idempotency-Key' => (string) Str::ulid()])
         ->assertOk()
-        ->assertJsonPath('data.invalidates', ['token_list{}']);
+        ->assertJsonPath('data.invalidates', ['token_list{}', 'health_bridge_show{}']);
     Auth::forgetGuards();
 
     withToken($secret)->postJson('/capabilities/account_show')->assertUnauthorized();
@@ -250,7 +250,7 @@ it('CAP-014 replays a token create without its secret, and stores no secret', fu
         ->assertJsonPath('meta.idempotent_replay', true)
         ->assertJsonPath('data.token.id', TOKEN_ID)
         ->assertJsonPath('data.token.plain_text', null)
-        ->assertJsonPath('data.invalidates', ['token_list{}']);
+        ->assertJsonPath('data.invalidates', ['token_list{}', 'health_bridge_show{}']);
 
     expect($secret)->not->toBe('')
         ->and(json_encode(DB::table('capabilities_idempotency')->get()))->not->toContain($secret)
@@ -353,8 +353,9 @@ it('CAP-020 makes every capability that takes an existing row\'s ID check its ow
     // a session that may have no row yet (OFF-021); the action finds it among the user's mesocycles or answers 404, as do
     // workout_feedback_answer's and workout_finish's.
     // workout_set_add creates under the client's ULID (ownedOrNew). meal_add adds a meal under the client's ULID and
-    // other_activity_save creates or edits under it (ownedOrNew).
-    $exempt = ['token_create' => ['id'], 'mesocycle_copy' => ['mesocycle_id'], 'mesocycle_build' => ['mesocycle_id', 'days.*.day_id', 'days.*.slots.*.slot_id'], 'mesocycle_day_add' => ['day_id'], 'custom_food_save' => ['id'], 'off_plan_log' => ['id'], 'saved_meal_save' => ['id'], 'recipe_save' => ['id'], 'phase_goal_change' => ['new_phase_id'], 'workout_start' => ['workout_id'], 'workout_feedback_answer' => ['workout_id'], 'workout_finish' => ['workout_id'], 'workout_set_add' => ['set_id'], 'shopping_item_add' => ['id'], 'meal_add' => ['id'], 'other_activity_save' => ['id'], 'weigh_in_log' => ['id']];
+    // other_activity_save creates or edits under it (ownedOrNew). phase_add's phase_id, prebuilt_plan_apply's
+    // first_phase_id and phase_transition_complete's next_phase_id name the phase each creates (ownedOrNew).
+    $exempt = ['token_create' => ['id'], 'mesocycle_copy' => ['mesocycle_id'], 'mesocycle_build' => ['mesocycle_id', 'days.*.day_id', 'days.*.slots.*.slot_id'], 'mesocycle_day_add' => ['day_id'], 'custom_food_save' => ['id'], 'off_plan_log' => ['id'], 'saved_meal_save' => ['id'], 'recipe_save' => ['id'], 'phase_goal_change' => ['new_phase_id'], 'workout_start' => ['workout_id'], 'workout_feedback_answer' => ['workout_id'], 'workout_finish' => ['workout_id'], 'workout_set_add' => ['set_id'], 'shopping_item_add' => ['id'], 'meal_add' => ['id'], 'other_activity_save' => ['id'], 'weigh_in_log' => ['id'], 'phase_add' => ['phase_id'], 'prebuilt_plan_apply' => ['first_phase_id'], 'phase_transition_complete' => ['next_phase_id']];
     $declared = (fn (): array => $this->capabilities)->call(app(Ownership::class));
 
     foreach (app(CapabilityRegistry::class)->all() as $name => $definition) {
@@ -443,7 +444,7 @@ it('CAP-014 replays a token revoke retried under its key, though the token is go
     $this->actingAs($user)->postJson('/capabilities/token_revoke', ['id' => TOKEN_ID], $key)
         ->assertOk()
         ->assertJsonPath('meta.idempotent_replay', true)
-        ->assertJsonPath('data.invalidates', ['token_list{}']);
+        ->assertJsonPath('data.invalidates', ['token_list{}', 'health_bridge_show{}']);
 
     expect(PersonalAccessToken::query()->count())->toBe(0);
 });
