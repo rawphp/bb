@@ -737,6 +737,7 @@ describe('WorkoutView', () => {
 
     describe('offline, with the sets waiting to sync (OFF-020, OFF-021)', () => {
         const BENCH_SETS = ['01JB8W3Q000000000000000100', '01JB8W3Q000000000000000101', '01JB8W3Q000000000000000102'];
+        const ROW_SETS = ['01JB8W3Q000000000000000110', '01JB8W3Q000000000000000111', '01JB8W3Q000000000000000112'];
 
         /** The newest waiting set_log, set_skip and feedback answer of each set or muscle, as the outbox holds them. */
         function waitingSets(logged: string[], skipped: string[] = [], answered: string[] = [], isLogged = true, isSkipped = true): void {
@@ -813,13 +814,27 @@ describe('WorkoutView', () => {
             expect(dialog(wrapper)).toBe('Chest');
         });
 
-        it('OFF-009 FB-009 an answer waiting to sync shows on the feedback button as answered', async () => {
-            waitingSets(BENCH_SETS, [], ['chest']);
+        it('OFF-009 FB-009 an answer waiting to sync shows on its own muscle\'s feedback button as answered', async () => {
+            waitingSets([...BENCH_SETS, ...ROW_SETS], [], ['chest']);
             const wrapper = await show();
+            await wrapper.get('[data-cancel]').trigger('click');
 
             const button = exercise(wrapper, BENCH).get('[data-test="feedback"]');
             expect(button.text()).toBe('Chest feedback');
             expect(button.classes()).toContain('text-accent');
+            expect(exercise(wrapper, ROW).get('[data-test="feedback"]').text()).toBe('Back feedback needed');
+        });
+
+        it('OFF-009 FB-001 the feedback banner passes over a muscle whose answer waits to sync', async () => {
+            const read = workout('warning');
+            read.feedback.push({ ...read.feedback[0]!, muscle_group: 'back', title: 'Back', due_after_exercise_id: ROW });
+            waitingSets(ROW_SETS, [], ['chest']);
+            const wrapper = await show({ payload: read });
+            await wrapper.get('[data-cancel]').trigger('click');
+
+            await wrapper.get('[data-test="feedback-banner"]').trigger('click');
+
+            expect(dialog(wrapper)).toBe('Back');
         });
 
         it('OFF-021 FB-009 the feedback button shows under the exercise whose waiting sets are all done', async () => {
