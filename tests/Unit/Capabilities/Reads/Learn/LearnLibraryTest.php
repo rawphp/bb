@@ -64,6 +64,7 @@ it('LRN-002 builds the index summaries once and rebuilds them when an article fi
 
     try {
         $old = $summary();
+        expect($old)->toContain('RIR stands');
         $mtime = filemtime($path);
         file_put_contents($path, str_replace('RIR stands', 'RIR STANDS', file_get_contents($path)));
         touch($path, $mtime);
@@ -90,6 +91,7 @@ it('LRN-002 rebuilds the index summaries when the article parser changes', funct
 
     try {
         $old = $summary();
+        expect($old)->toContain('RIR stands');
         $mtime = filemtime($path);
         file_put_contents($path, str_replace('RIR stands', 'RIR STANDS', file_get_contents($path)));
         touch($path, $mtime);
@@ -124,6 +126,11 @@ it('LRN-006 tells users to hold off cheat foods for 1 to 4 weeks after a cut end
     foreach ([LearnTopic::FatLoss, LearnTopic::MiniCut, LearnTopic::Maintenance] as $topic) {
         expect(learnArticleText($topic))->toContain('1 to 4 weeks');
     }
+});
+
+it('SAFE-014 says in Learn that medical diets are not supported and metabolic conditions need a physician', function () {
+    expect(learnArticleText(LearnTopic::IsItRightForMe))->toContain('Medical diets are unsupported')
+        ->toContain('metabolic condition')->toContain('physician');
 });
 
 it('FOOD-081 guides on alcohol and coffee', function () {
