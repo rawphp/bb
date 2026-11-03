@@ -24,6 +24,7 @@ use App\Domain\Plan\PlanWeekGrid;
 use App\Domain\Progress\PlanWeekDays;
 use App\Domain\Progression\ActiveRest;
 use App\Domain\WeekBuilder\AwayWeek\Training;
+use App\Domain\WeekBuilder\WorkoutSessionRecord;
 use App\Models\DayTarget;
 use App\Models\Exercise;
 use App\Models\Mesocycle;
@@ -35,6 +36,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
+use App\Support\Today\DayPlans;
 use App\Support\UserDay;
 use Closure;
 use DateTimeImmutable;
@@ -147,6 +149,20 @@ final class TrainSnapshot
     public function startedAt(?WorkoutSession $session): ?DateTimeImmutable
     {
         return $session?->actual_start_at === null ? null : UserDay::clockIn($this->zone, $session->actual_start_at);
+    }
+
+    /** A stored session as the week's placement reads it (SCH-050 to SCH-057), its start read by {@see startedAt()}. */
+    public function record(WorkoutSession $session): WorkoutSessionRecord
+    {
+        return new WorkoutSessionRecord(
+            id: (string) $session->id,
+            mesocycleId: $session->mesocycle_id,
+            week: $session->week,
+            day: $session->day,
+            isSkipped: $session->is_skipped,
+            plannedStartAt: $session->planned_start_at === null ? null : DayPlans::instant($session->planned_start_at),
+            actualStartAt: $this->startedAt($session),
+        );
     }
 
     /**
