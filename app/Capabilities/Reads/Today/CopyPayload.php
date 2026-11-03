@@ -40,8 +40,6 @@ final class CopyPayload
 
     public const CHECKED_IN = 'Checked in';
 
-    private const LETTERS = [1 => 'M', 2 => 'T', 3 => 'W', 4 => 'T', 5 => 'F', 6 => 'S', 7 => 'S'];
-
     /**
      * @param  TodaySnapshot  $source  read around `$sourceDay`
      * @param  TodaySnapshot  $shown  read around `$shownDay`; the same snapshot when both days are in one week
@@ -141,7 +139,7 @@ final class CopyPayload
 
             return new CopyStripDay(
                 date: $day->format('Y-m-d'),
-                letter: self::LETTERS[(int) $day->format('N')],
+                letter: WeekPayload::LETTERS[(int) $day->format('N')],
                 number: $day->format('j'),
                 calories_text: $target === null ? '–' : (string) (int) round($target->kcal),
                 is_today: $day == $snapshot->today(),

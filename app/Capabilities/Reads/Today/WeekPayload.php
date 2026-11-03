@@ -15,7 +15,8 @@ use App\Support\Today\TodayWorkoutItem;
 /** The week strip above Today's timeline (rp-clone TodayModel and +Timeline, SCH-020 to SCH-023). */
 final class WeekPayload
 {
-    private const LETTERS = [1 => 'M', 2 => 'T', 3 => 'W', 4 => 'T', 5 => 'F', 6 => 'S', 7 => 'S'];
+    /** A week strip day's letter, by ISO weekday. */
+    public const LETTERS = [1 => 'M', 2 => 'T', 3 => 'W', 4 => 'T', 5 => 'F', 6 => 'S', 7 => 'S'];
 
     public static function build(TodaySnapshot $snapshot): WeekShowOutput
     {

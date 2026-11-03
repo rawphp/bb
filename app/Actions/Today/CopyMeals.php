@@ -9,13 +9,13 @@ use App\Domain\Copy\CopyPlanner;
 use App\Domain\Copy\CopyWrite;
 use App\Domain\MealFit\MealFood;
 use App\Domain\MealFit\Weighing;
-use App\Domain\Model\MealTarget;
 use App\Domain\Recipe\RecipeServing;
 use App\Models\DayTarget;
 use App\Models\DayTargetMeal;
 use App\Models\PlannedFood;
 use App\Models\PlannedRecipe;
 use App\Models\User;
+use App\Support\Today\DayPlans;
 use App\Support\Today\TodaySnapshot;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -150,12 +150,7 @@ final class CopyMeals
             id: strtolower((string) $row->id),
             name: ($target['name'] ?? null) ?: 'Meal '.($index + 1),
             time: isset($target['time']) ? (string) $target['time'] : null,
-            target: new MealTarget(
-                kcal: (float) ($target['kcal'] ?? 0),
-                proteinG: (float) ($target['protein_g'] ?? 0),
-                fatG: (float) ($target['fat_g'] ?? 0),
-                carbsG: (float) ($target['carbs_g'] ?? 0),
-            ),
+            target: DayPlans::target($target),
             isCheckedIn: $row->checkIn !== null,
             entries: array_map(fn (array $entry) => $entry[1], $entries),
         );
