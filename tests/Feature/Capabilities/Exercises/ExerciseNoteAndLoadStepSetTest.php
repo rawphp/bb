@@ -88,13 +88,16 @@ it('EX-012 SET-001 stores a step typed in pounds as kilograms, and clears it wit
     expect(ExerciseLoadStep::query()->count())->toBe(0);
 });
 
-it('EX-012 accepts a step for a reps-only exercise: it is stored and has no effect', function () {
+it('EX-012 refuses a step for a reps-only exercise with a 422 on step, and still lets null clear one', function () {
     $user = User::factory()->create();
     $pushUp = Exercise::factory()->create(['load_type' => 'bodyweight']);
 
-    exerciseWriteCall($user, 'exercise_load_step_set', ['exercise_id' => (string) $pushUp->id, 'step' => 2.5, 'unit' => 'kg'])->assertOk();
+    exerciseWriteCall($user, 'exercise_load_step_set', ['exercise_id' => (string) $pushUp->id, 'step' => 2.5, 'unit' => 'kg'])
+        ->assertStatus(422)
+        ->assertJsonPath('error.violations.0.field', 'step');
+    expect(ExerciseLoadStep::query()->count())->toBe(0);
 
-    expect(ExerciseLoadStep::query()->where('user_id', $user->id)->value('step_kg'))->toBe(2.5);
+    exerciseWriteCall($user, 'exercise_load_step_set', ['exercise_id' => (string) $pushUp->id, 'step' => null, 'unit' => 'kg'])->assertOk();
 });
 
 it('EX-010 EX-012 name the workout_show of each day of a saved, not-started mesocycle that holds the exercise, and no other', function (string $name, array $input) {
