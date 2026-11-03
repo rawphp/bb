@@ -6,6 +6,7 @@ use App\Models\Food;
 use App\Models\Recipe;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -176,7 +177,7 @@ it('CAP-019 swaps a table\'s key in one statement, so a row left without a ULID 
         DB::table('planned_foods')->update(['ulid' => DB::raw('NULL')]);
 
         // A row an old process inserts between the fill and the swap has no ULID.
-        expect(fn () => $migration->swapKey('planned_foods'))->toThrow(Illuminate\Database\QueryException::class);
+        expect(fn () => $migration->swapKey('planned_foods'))->toThrow(QueryException::class);
 
         $id = collect(Schema::getColumns('planned_foods'))->firstWhere('name', 'id');
         expect($id['auto_increment'])->toBeTrue()

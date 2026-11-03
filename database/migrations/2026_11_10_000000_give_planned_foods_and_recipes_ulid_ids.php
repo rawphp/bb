@@ -10,7 +10,11 @@ use Illuminate\Support\Str;
  * CAP-019: planned foods and recipe servings are keyed by a ULID, so the outbox can queue a create and then an edit of
  * the same row. Each row keeps every other column and gets a fresh ULID. Nothing points at either key, and the undo
  * tokens that name these tables hold the old keys, so they go (an undo of one then answers 404, as an expired one does).
- * MySQL only.
+ *
+ * Each table's key changes in one ALTER, which MySQL applies whole or not at all, so a run that stops leaves every table
+ * with a working key. Every step checks the schema first, so running again finishes the job. A row inserted between the
+ * fill and the swap has no ULID: the swap's NOT NULL refuses it, the table keeps its old key, and the next run fills it.
+ * The old integer keys are not kept: nothing reads them, so down() numbers the rows again. MySQL only.
  */
 return new class extends Migration
 {
@@ -18,20 +22,29 @@ return new class extends Migration
 
     public function up(): void
     {
-        foreach (self::TABLES as $table) {
-            Schema::table($table, fn (Blueprint $t) => $t->char('ulid', 26)->nullable());
+        $this->forgetUndoTokens();
 
-            foreach (DB::table($table)->orderBy('id')->pluck('id') as $id) {
+        foreach (self::TABLES as $table) {
+            if ($this->keyType($table) === 'char') {
+                continue;
+            }
+            if (! Schema::hasColumn($table, 'ulid')) {
+                Schema::table($table, fn (Blueprint $t) => $t->char('ulid', 26)->nullable());
+            }
+            foreach (DB::table($table)->whereNull('ulid')->orderBy('id')->pluck('id') as $id) {
                 DB::table($table)->where('id', $id)->update(['ulid' => strtolower((string) Str::ulid())]);
             }
-
-            Schema::table($table, fn (Blueprint $t) => $t->dropColumn('id'));
-            Schema::table($table, fn (Blueprint $t) => $t->renameColumn('ulid', 'id'));
-            DB::statement("ALTER TABLE `{$table}` MODIFY `id` CHAR(26) NOT NULL, ADD PRIMARY KEY (`id`)");
+            $this->swapKey($table);
         }
 
-        // After the swap, so a token an old process wrote while the tables changed goes too (DDL commits on its own).
+        // Again after the swap, so a token an old process wrote while the tables changed goes too.
         $this->forgetUndoTokens();
+    }
+
+    /** The ULID column becomes the key, in one statement; it fails, changing nothing, while any row has no ULID. */
+    public function swapKey(string $table): void
+    {
+        DB::statement("ALTER TABLE `{$table}` DROP PRIMARY KEY, DROP COLUMN `id`, CHANGE `ulid` `id` CHAR(26) NOT NULL FIRST, ADD PRIMARY KEY (`id`)");
     }
 
     public function down(): void
@@ -40,17 +53,24 @@ return new class extends Migration
         $this->forgetUndoTokens();
 
         foreach (self::TABLES as $table) {
-            Schema::table($table, fn (Blueprint $t) => $t->unsignedBigInteger('number')->nullable());
-
-            $number = 0;
-            foreach (DB::table($table)->orderBy('created_at')->orderBy('id')->pluck('id') as $id) {
+            if ($this->keyType($table) !== 'char') {
+                continue;
+            }
+            if (! Schema::hasColumn($table, 'number')) {
+                Schema::table($table, fn (Blueprint $t) => $t->unsignedBigInteger('number')->nullable());
+            }
+            $number = (int) DB::table($table)->max('number');
+            foreach (DB::table($table)->whereNull('number')->orderBy('created_at')->orderBy('id')->pluck('id') as $id) {
                 DB::table($table)->where('id', $id)->update(['number' => ++$number]);
             }
-
-            Schema::table($table, fn (Blueprint $t) => $t->dropColumn('id'));
-            Schema::table($table, fn (Blueprint $t) => $t->renameColumn('number', 'id'));
-            DB::statement("ALTER TABLE `{$table}` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT, ADD PRIMARY KEY (`id`)");
+            DB::statement("ALTER TABLE `{$table}` DROP PRIMARY KEY, DROP COLUMN `id`, CHANGE `number` `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (`id`)");
         }
+    }
+
+    /** The key column's type: `char` once swapped, `bigint` before. */
+    private function keyType(string $table): string
+    {
+        return (string) collect(Schema::getColumns($table))->firstWhere('name', 'id')['type_name'];
     }
 
     /** Deletes every undo token with a change to one of the tables, matched on the change's table. */
