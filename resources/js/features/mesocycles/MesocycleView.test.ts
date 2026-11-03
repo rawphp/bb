@@ -100,7 +100,7 @@ describe('MesocycleView', () => {
         await flushPromises();
         expect(lastWrite()).toEqual(['mesocycle_length_set', { mesocycle_id: meso.id, weeks: 5, expected_weeks: 6 }]);
         expect(wrapper.find('[data-test="error"]').text()).toContain(moved);
-        expect(readFreshMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id }, expect.any(Function), expect.any(Function));
+        expect(readFreshMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id });
         expect(wrapper.find('[aria-label="7 weeks"]').exists()).toBe(true);
 
         await wrapper.find('[data-test="shorten"]').trigger('click');
