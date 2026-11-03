@@ -16,7 +16,7 @@ Different sports tire different muscles. Runners load their legs and swimmers th
 
 ## Shaping the week
 
-- When possible, keep hard sport away from lifting days that work the same muscles.
+- Try not to put a hard sport session next to a lifting day for the same muscles.
 - Pick training days that repeat every week.
 - Long sessions or repeated underperformance flags mean the total load is too high. Cut volume or priority, or deload sooner.
 
@@ -26,4 +26,4 @@ You might want less lifting when the season is busy. Putting most muscles on Mai
 
 ## When sport comes first
 
-If the sport is your main goal, let lifting support it instead of going after maximum volume.
+If the sport matters most, lift to serve it and don't chase the most volume you can handle.

@@ -2,8 +2,8 @@ A deload is a purposely light week that ends every mesocycle. Fatigue drains awa
 
 ## Changes in the week
 
-- **Early sessions:** sets and reps are cut in half, with weights unchanged.
-- **Later sessions:** sets and reps are halved and so are the weights.
+- **First half of the week:** sets and reps are cut in half, with weights unchanged.
+- **Second half of the week:** sets and reps are halved and so are the weights.
 - **Trap and forearm work:** dropped.
 - **Feedback:** not requested.
 
@@ -19,7 +19,7 @@ Give the final training week, the one at 0 RIR, everything you have while keepin
 
 ## Ending early
 
-A mesocycle can be closed from the menu. Intermediate and advanced lifters see a caution against dropping the deload. Beginners carry less fatigue as a rule, though the deload stays the default.
+A mesocycle can be closed from the menu. Intermediate and advanced lifters see a caution against dropping the deload. Beginners build up less fatigue, yet the deload is kept in their plan by default.
 
 ## Deloading ahead of schedule
 

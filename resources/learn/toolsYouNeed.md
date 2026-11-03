@@ -1,4 +1,4 @@
-Three things make the plan work: a gram food scale, a bathroom scale and a gym.
+Three things make the plan work: a gram food scale, a bathroom scale and a gym. All three make the plan's numbers more accurate.
 
 ## Gram food scale
 

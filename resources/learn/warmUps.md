@@ -22,6 +22,6 @@ New to a block without a copied mesocycle? Week 1 weight boxes are blank. Let yo
 
 ## Keep it proportionate
 
-You can skip the full ramp on most exercises. After one exercise has warmed a muscle, a second exercise for it might want just a couple of lighter sets. Reach for the full ramp on heavy lifts or when joints feel stiff.
+Not every exercise needs the full ramp. Once one exercise has warmed a muscle, a later exercise for that muscle might want just a couple of lighter sets. Reach for the full ramp on heavy lifts or when joints feel stiff.
 
-For technique, the exercise library has videos on each lift.
+To see how a lift is done, open it in the exercise library, which holds the technique videos.

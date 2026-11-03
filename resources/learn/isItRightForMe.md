@@ -26,4 +26,4 @@ Semaglutide and tirzepatide are examples. Mention it when the app asks. Each mea
 
 ## Not covered
 
-Medical diets are unsupported. Anyone with a metabolic condition should talk to your physician before using the nutrition features.
+Medical diets are unsupported. People with a metabolic condition should check with a physician before using the nutrition features.

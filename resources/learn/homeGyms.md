@@ -20,12 +20,12 @@ Light dumbbell work may hold the same weight while reps go up.
 
 ## When your weights run light
 
-Lean on higher rep ranges for muscles your weights can't challenge. Small muscles, and lifts that are awkward to load, respond to sets of 20 to 30. Lower the weight slowly, hold the stretch for a beat, and stop a few reps short of failure, matching your reps in reserve target.
+Lean on higher rep ranges for muscles your weights can't challenge. Small muscles, and lifts that are awkward to load, respond to sets of 20 to 30. Lower the weight slowly, hold the stretch for a beat, and take each set close to your reps in reserve target.
 
 ## Swapping
 
-Change an exercise for one session or for the remainder of the block only when you have a real reason. Constant changes make progress hard to read.
+Change an exercise for one session or for the remainder of the block only when you have a real reason. Progress is hard to judge when the exercises keep changing.
 
 ## Technique
 
-Every exercise in the library has a technique video on its page.
+Open an exercise in the exercise library to see how it is done. That is where the technique videos are.

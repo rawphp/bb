@@ -6,7 +6,7 @@ Volume rises only when your feedback permits it. If you pick "Just right" or "No
 
 ## Fix 1. Report it
 
-When a session already uses all the time and energy you can spare, pick **Pushed my limits** when asked about volume. That halts growth for the muscle at its next session, whatever pump and soreness you reported. Go with **Too much** if you passed that point, and a set is removed.
+When a session already uses all the time and energy you can spare, pick **Pushed my limits** when asked about volume. The next time that session comes round, the muscle gets no extra sets, whatever pump and soreness you reported. Go with **Too much** if you passed that point, and a set is removed.
 
 ## Fix 2. Lower the priority
 
@@ -15,7 +15,7 @@ Some muscles consume plenty of time without being a goal. Downgrade them.
 - In the workout, open the day menu and choose **Progression rates**.
 - Step the muscle down, Emphasize to Grow or Grow to Maintain.
 
-Your next session picks up the change. Maintain muscles never gain sets.
+Your next session picks up the change. Sets are never added to a muscle on Maintain.
 
 ## Further trimming
 

@@ -10,7 +10,7 @@ Want both lower fat and more muscle? Go with Fat loss, because there's no dual o
 
 ## Rate
 
-You set speed as a share of bodyweight each week. For fat loss that's 0.25% to 1.0%, with 1.0% as the ceiling the app enforces. Gaining is limited to 0.125% up to 0.5%. Going slower is easier to sustain. You get a warning if the pace would strip more than a tenth of your starting weight during fat loss.
+You set speed as a share of bodyweight each week. For fat loss that's 0.25% to 1.0%, with 1.0% as the ceiling the app enforces. Gaining is limited to 0.125% up to 0.5%. Going slower is easier to sustain. You get a warning if a fat-loss phase, at your chosen rate and length, would remove over 10% of your starting weight.
 
 ## Length
 

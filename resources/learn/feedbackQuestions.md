@@ -17,7 +17,7 @@ Each question has a ? icon for specific help.
 
 The change hits the matching session the following week, meaning Day 2 of week 3 shapes Day 2 of week 4.
 
-Two volume answers trump everything else. The first blocks any rise at that muscle's next session. The second takes away a set.
+Two volume answers trump everything else. **Pushed my limits** means no sets are added the next time that session comes round, whatever your pump and soreness were. **Too much** takes a set away.
 
 ## How volume should feel
 

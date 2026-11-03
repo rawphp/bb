@@ -17,4 +17,4 @@ Tap the camera button and photograph the plate. The app estimates what is on it 
 
 ## When you overshoot
 
-Restaurant meals are rarely precise, and that's okay. Log the meal as accurately as you can, then tap Redistribute to spread the day's remaining budget across later meals. Skipping a meal to compensate backfires. Ending the day within 10% of calories and protein still counts as a success.
+You won't know a restaurant meal's numbers exactly, and you don't need to. Check the meal in with your best estimate, then tap Redistribute to spread the day's remaining budget across later meals. Skipping a meal to compensate backfires. Ending the day within 10% of calories and protein still counts as a success.

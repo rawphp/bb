@@ -2,7 +2,7 @@ When you are ill, rest and listen to your doctor. Training is optional, and skip
 
 ## Skip if you feel properly unwell
 
-Fever, chest symptoms, vomiting, diarrhea, or weakness that gets in the way of ordinary movement all mean stay home from the gym. Pushing through can drag the illness out. If you aren't sure, ask your doctor, whose word beats anything on this page.
+Fever, chest symptoms, vomiting, diarrhea, or weakness that gets in the way of ordinary movement all mean stay home from the gym. Pushing through can drag the illness out and leave you sicker. If you aren't sure, ask your doctor, whose word beats anything on this page.
 
 ## Skipping in the app
 

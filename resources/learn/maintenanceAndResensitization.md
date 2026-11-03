@@ -12,7 +12,7 @@ A cut leaves your appetite, energy and recovery lagging, and they take time to r
 
 ## Calorie steps
 
-From your last cut target, calories climb 250 to 500 daily, then step up again every 3 weeks until you hit maintenance. A 12-week diet works out closer to 16 weeks overall. Going directly to maintenance is allowed.
+Starting from your last cut target, daily calories go up by 250 to 500, then rise again every 3 weeks until they reach maintenance. Counting this climb, a 12-week diet works out closer to 16 weeks overall. Going directly to maintenance is allowed.
 
 Weight ought to hold at its new, lower point instead of springing back to the pre-diet figure. The review keeps it inside 1% of its start.
 

@@ -7,9 +7,9 @@ Deloads are for dropping fatigue. Staying in a deficit keeps adding diet fatigue
 ## During the week
 
 - Every day's calories rise to what that day burns.
-- Early in the week, you perform half the usual sets and reps with normal weight.
-- Later in the week, the weight is halved too.
-- It ought to feel easy. Before it starts, try to take your last hard week to nearly 0 reps in reserve.
+- For the week's first half, you do half the usual sets and reps with normal weight.
+- In the second half, the weight is halved too.
+- It ought to feel easy. Before it starts, push your last hard week right to 0 RIR, or as near to it as you can get.
 - The schedule names the week "Deload · maintenance calories".
 
 ## Cuts specifically

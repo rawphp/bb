@@ -15,4 +15,4 @@ Oil packs a lot of energy into a small volume. A tablespoon holds roughly 120 ca
 
 Oil is fat, so it eats into that meal's fat target. Use more and the app reduces the other fats in the meal to keep the total on track.
 
-Butter, mayo and dressings deserve the same care. They are just as easy to undercount.
+Butter, mayo and dressings deserve the same care. People miss them in their counts just as often.

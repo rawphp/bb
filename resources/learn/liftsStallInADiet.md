@@ -7,7 +7,7 @@ Dieting piles fatigue onto what training already causes. Weeks of eating less we
 ## Signals the app uses
 
 - A muscle is flagged after two sessions in a row where most sets miss the rep target by 2 or more reps.
-- Training fatigue is rated high by the weekly review when a week flags at least 2 muscles, or when over 33% of your soreness and volume replies say "Too much" or "I'm still sore!".
+- Training fatigue is rated high by the weekly review when a week flags at least 2 muscles, or when more than a third of the soreness and volume answers you give say "Too much" or "I'm still sore!".
 - Diet fatigue draws on time since the last diet break, a weight trend that has stalled, and adherence that is sliding.
 - After 6 deficit weeks with no break, the app proposes one, even when nothing else is wrong.
 
@@ -19,7 +19,7 @@ Should fatigue stay high past the break and deload, expect advice to end the pha
 
 ## Trimming volume instead
 
-Fine too. Affected muscles lose roughly 33% of sets, or 50% after two "Too much" replies. From there, add a set per muscle weekly until you find the ceiling.
+Fine too. Affected muscles lose about a third of their sets, or half after two "Too much" replies. Sets then come back one per muscle each week, until you reach the most you can recover from.
 
 ## Don't
 

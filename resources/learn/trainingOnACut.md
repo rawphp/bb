@@ -6,7 +6,7 @@ Recovery is slower when you eat less. You can tolerate less total volume, and wi
 
 ## Program changes
 
-- All muscles begin at Emphasize. Specialization is off the table in a cut.
+- All muscles begin at Emphasize. The app doesn't specialize during a cut.
 - You start with slightly more volume than usual but reach a lower ceiling than a gain phase allows, leaving a tight band between.
 - New sets arrive slowly, never more than one extra per session each week.
 - Weight increases about 1% weekly, in jumps your smallest plate allows.
@@ -17,8 +17,8 @@ You get a warning if you give one muscle Grow or Maintain and leave others on Em
 
 ## Limit extra activity
 
-Excess cardio cuts into lifting. The app warns you past 12,000 steps in a day, or when one week has over 4 hard sports or HIIT sessions.
+Excess cardio cuts into lifting. The app warns you when your daily step target is above 12,000, or when one week has over 4 hard sports or HIIT sessions.
 
 ## Deloads
 
-Maintenance calories apply in deload weeks, which makes them diet breaks. The deloads article covers this.
+Maintenance calories apply in deload weeks, which makes them diet breaks. The Deloads at maintenance article covers this.

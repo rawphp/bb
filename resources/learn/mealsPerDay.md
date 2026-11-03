@@ -2,7 +2,7 @@ Pick anywhere from 2 to 6 meals a day. The default is 5, but the best number is 
 
 ## Which number to choose
 
-Meal count matters much less than your total calories and protein. Two or three large meals can keep you fuller while cutting. Five or six smaller ones make it easier to spread protein out and to get enough food when you are gaining.
+Meal count matters much less than your total calories and protein. Fewer, larger meals can keep you fuller while cutting. More, smaller ones make it easier to spread protein out and to get enough food when you are gaining.
 
 ## How the app builds your day
 

@@ -8,9 +8,9 @@ Checking in tells the app a meal happened. Your totals stay correct, and the pla
 
 ## How it counts
 
-- Eat the foods you planned and a single tap does it. When every food comes in at 5 g or less away from its target, the meal is marked on track.
+- Eat the foods you planned and a single tap does it. If the meal's protein, carbs and fat each end up no more than 5 g off target, it shows as on track.
 - With no foods planned, checking in credits the meal's full targets. The app presumes you hit them.
-- Something unplanned goes in as an extra entry for the day, outside any meal slot.
+- For anything unplanned, use Save food macros. It goes in as an extra entry for the day, outside any meal slot.
 
 ## Status icons and undoing
 
@@ -18,7 +18,7 @@ A meal's icon shows whether it is unchecked, checked, or checked but under or ov
 
 ## Adjust foods badge
 
-Calories sent to a meal that holds foods mark it with an orange badge reading Adjust foods. Check-in stays blocked until you correct the foods or mark the meal Done planning foods.
+Redistributing calories to a meal with foods already in it puts an orange Adjust foods badge on it. Check-in stays blocked until you correct the foods or mark the meal Done planning foods.
 
 ## Which totals show
 

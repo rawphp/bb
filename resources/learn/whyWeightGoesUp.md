@@ -8,7 +8,7 @@ A single jump on the scale is nearly never fat. Daily weight jumps around, and o
 - **Food in transit:** a large meal or late dinner weighs on the scale until you digest it.
 - **Hard training:** sore, repairing muscles hold fluid.
 
-Added up, these can put on two pounds by morning. Fat can't build that quickly. Gaining one pound of it takes thousands of calories above what you need.
+Added up, these can put on two pounds by morning. Fat can't build that quickly. A single pound of it needs thousands of extra calories on top of what you burn.
 
 ## Your move
 

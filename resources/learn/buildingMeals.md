@@ -8,7 +8,7 @@ Try to bring something from every group below into the meal.
 - **Fat:** avocado, cheese, nuts, olive oil.
 - **Veggies:** any amount you want.
 
-Pantry foods carry a label, either recommended or use sparingly. Begin with the recommended ones.
+Pantry foods carry a label, either recommended or use sparingly. Reach for the recommended foods first.
 
 ## How the amounts work
 
