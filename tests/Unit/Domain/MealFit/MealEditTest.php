@@ -361,16 +361,17 @@ it('MEAL-008 leaves an empty meal when the last food goes, and ignores an unknow
 // Saved floor
 
 it('MEAL-002 MEAL-004 RCP-002 saves a food fitted or typed to nothing as 1 g and a serving as a tenth', function () {
-    // 300 g of locked rice already overshoots carbs, so the fit gives the stew and the banana nothing.
+    // 400 g of locked rice already overshoots the target, so the fit gives the stew and the banana nothing.
+    $small = new MealTarget(kcal: 400, proteinG: 10, fatG: 1, carbsG: 96);
     $banana = new MealFood('banana', new Food(id: 'banana-food', name: 'Banana', kcal: 89, proteinG: 1.1, fatG: 0.3, carbsG: 23), 0);
-    $meal = mealEdit()->add([mealEditRice(300, locked: true)], [$banana, mealEditStew()], mealEditDinner());
+    $meal = mealEdit()->add([mealEditRice(400, locked: true)], [$banana, mealEditStew()], $small);
     $planned = mealEdit()->planned($meal);
 
     expect($meal[1]->grams)->toBe(0.0)
         ->and($meal[2]->grams)->toBe(0.0)
         ->and($planned[1]->grams)->toBe(1.0)
         ->and(RecipeServing::servings($planned[2]))->toBe(0.1)
-        ->and($planned[0]->grams)->toBe(300.0)
+        ->and($planned[0]->grams)->toBe(400.0)
         ->and(mealEdit()->planned([mealEditRice(0)])[0]->grams)->toBe(RecipeServing::MIN_GRAMS);
 });
 
