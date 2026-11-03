@@ -56,3 +56,21 @@ it('AGT-050 AGT-010 a destructive request asks first: "delete this morning\'s we
 
     expect($weighIn->fresh())->not->toBeNull();
 });
+
+it('AGT-050 AGT-001 a request for an excluded capability: "cancel my subscription"', function () {
+    $user = User::factory()->create();
+
+    Coach::says($user, 'Cancel my subscription', refused: [['billing_portal_open', []]],
+        reply: 'I can\'t manage billing. You can cancel in Settings, under Subscription.');
+
+    expect($user->fresh())->not->toBeNull();
+});
+
+it('AGT-050 AGT-001 a request for an excluded capability: "clear our chat"', function () {
+    $user = User::factory()->create();
+
+    Coach::says($user, 'Clear our chat', refused: [['coach_conversation_clear', []]],
+        reply: 'I can\'t clear the chat. You can do it in Settings, under Coach.');
+
+    expect($user->fresh())->not->toBeNull();
+});
