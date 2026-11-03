@@ -18,7 +18,7 @@ use Tests\Support\TodaySeed;
 beforeEach(fn () => Carbon::setTestNow('2026-09-23 10:00:00'));
 afterEach(fn () => Carbon::setTestNow());
 
-function copyOver(?User $user, string $name, array $input): mixed
+function copyCall(?User $user, string $name, array $input): mixed
 {
     $request = $user === null ? test() : test()->actingAs($user);
 
@@ -40,7 +40,7 @@ function copySeededMeal(User $user, string $date, int $index): string
 }
 
 it('MEAL-060 SCH-034 SCH-035 refuses the copy reads and writes when signed out', function (string $name, array $input) {
-    copyOver(null, $name, $input)->assertUnauthorized();
+    copyCall(null, $name, $input)->assertUnauthorized();
 })->with([
     'copy_show' => ['copy_show', ['source_date' => '2026-09-23']],
     'meal_copy' => ['meal_copy', ['meal_id' => '01JBX0M1N2P3Q4R5S6T7V8W9X0', 'target_meal_ids' => ['01JBX0M1N2P3Q4R5S6T7V8W9X1']]],
@@ -53,7 +53,7 @@ it('MEAL-060 SCH-034 SCH-035 answers 404 for another user\'s meal or day', funct
     $user = TodaySeed::user();
     TodaySeed::targets($user, last: '2026-09-20');
 
-    copyOver($user, $name, $input($other, $user))->assertNotFound();
+    copyCall($user, $name, $input($other, $user))->assertNotFound();
 })->with([
     'copy_show from another user\'s meal' => ['copy_show', fn (User $other) => ['meal_id' => copySeededMeal($other, '2026-09-23', 1)]],
     'copy_show from a day the user has none of' => ['copy_show', fn () => ['source_date' => '2026-09-23']],
@@ -68,7 +68,7 @@ it('MEAL-060 SCH-034 SCH-035 answers 404 for another user\'s meal or day', funct
 ]);
 
 it('MEAL-060 SCH-034 SCH-035 answers 422 naming the bad field', function (string $name, array $input, string $field) {
-    copyOver(User::factory()->create(), $name, $input)
+    copyCall(User::factory()->create(), $name, $input)
         ->assertStatus(422)
         ->assertJsonPath('error.violations.0.field', $field);
 })->with([
@@ -82,8 +82,8 @@ it('MEAL-060 SCH-034 copy_show matches its screen fixtures, copying a meal\'s fo
     $user = copySeeded();
     $breakfast = copySeededMeal($user, '2026-09-23', 1);
 
-    $foods = copyOver($user, 'copy_show', ['meal_id' => strtoupper($breakfast)])->assertOk()->json('data');
-    $day = copyOver($user, 'copy_show', ['source_date' => '2026-09-23', 'shown_date' => '2026-09-24'])->assertOk()->json('data');
+    $foods = copyCall($user, 'copy_show', ['meal_id' => strtoupper($breakfast)])->assertOk()->json('data');
+    $day = copyCall($user, 'copy_show', ['source_date' => '2026-09-23', 'shown_date' => '2026-09-24'])->assertOk()->json('data');
 
     assertMatchesScreenFixture('copy_show', $foods);
     expect(ScreenFixture::differences(ScreenFixture::load('copy_show.day'), $day))->toBe([])
@@ -100,7 +100,7 @@ it('MEAL-060 SCH-034 copy_show matches its screen fixtures, copying a meal\'s fo
 it('MEAL-060 copy_show shows a day in another week with that week\'s strip and meals', function () {
     $user = copySeeded();
 
-    $sheet = copyOver($user, 'copy_show', ['meal_id' => copySeededMeal($user, '2026-09-23', 1), 'shown_date' => '2026-09-30'])
+    $sheet = copyCall($user, 'copy_show', ['meal_id' => copySeededMeal($user, '2026-09-23', 1), 'shown_date' => '2026-09-30'])
         ->assertOk()
         ->json('data');
 
@@ -115,7 +115,7 @@ it('MEAL-060 copy_show lists no meals to copy into on a day before the plan', fu
     // The plan now starts Tuesday 22nd; Monday 21st keeps its target but is not in the plan.
     $user->plan->update(['start_date' => '2026-09-22']);
 
-    $sheet = copyOver($user, 'copy_show', ['meal_id' => copySeededMeal($user, '2026-09-23', 1), 'shown_date' => '2026-09-21'])
+    $sheet = copyCall($user, 'copy_show', ['meal_id' => copySeededMeal($user, '2026-09-23', 1), 'shown_date' => '2026-09-21'])
         ->assertOk()->json('data');
 
     expect($sheet['meals'])->toBe([])
@@ -131,7 +131,7 @@ it('MEAL-060 CAP-010 CAP-013 meal_copy copies, names the reads it changed, and i
     $friday = copySeededMeal($user, '2026-09-25', 1);
     $kept = PlannedFood::factory()->create(['meal_id' => $friday]);
 
-    $response = copyOver($user, 'meal_copy', ['meal_id' => $dinner, 'target_meal_ids' => [$thursday, $friday]])
+    $response = copyCall($user, 'meal_copy', ['meal_id' => $dinner, 'target_meal_ids' => [$thursday, $friday]])
         ->assertOk()
         ->assertJsonPath('data.toast', 'Copied to 2 meals');
 
@@ -144,7 +144,7 @@ it('MEAL-060 CAP-010 CAP-013 meal_copy copies, names the reads it changed, and i
         )
         ->and($response->json('data.invalidates'))->not->toContain('today_show{"date":"2026-09-23"}');
 
-    copyOver($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
+    copyCall($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
 
     expect(PlannedRecipe::query()->whereIn('meal_id', [$thursday, $friday])->count())->toBe(0)
         ->and(PlannedFood::query()->where('meal_id', $friday)->pluck('food_id')->all())->toBe([$kept->food_id]);
@@ -157,7 +157,7 @@ it('MEAL-060 CAP-019 meal_copy copies into a meal the client added, whose id is 
     $thursday->meals = [...$thursday->meals, ['id' => $snack, 'name' => 'Snack', 'time' => '21:00', 'kcal' => 200, 'protein_g' => 10, 'fat_g' => 5, 'carbs_g' => 20]];
     $thursday->save();
 
-    copyOver($user, 'meal_copy', ['meal_id' => copySeededMeal($user, '2026-09-23', 1), 'target_meal_ids' => [$snack]])
+    copyCall($user, 'meal_copy', ['meal_id' => copySeededMeal($user, '2026-09-23', 1), 'target_meal_ids' => [$snack]])
         ->assertOk()
         ->assertJsonPath('data.toast', 'Copied to 1 meal');
 
@@ -167,7 +167,7 @@ it('MEAL-060 CAP-019 meal_copy copies into a meal the client added, whose id is 
 it('SCH-034 CAP-010 day_copy copies a day\'s meals to other days and names their reads', function () {
     $user = copySeeded();
 
-    $response = copyOver($user, 'day_copy', ['source_date' => '2026-09-23', 'target_dates' => ['2026-09-24', '2026-09-30']])
+    $response = copyCall($user, 'day_copy', ['source_date' => '2026-09-23', 'target_dates' => ['2026-09-24', '2026-09-30']])
         ->assertOk()
         ->assertJsonPath('data.toast', 'Copied to 2 days');
 
@@ -184,13 +184,13 @@ it('SCH-034 MEAL-060 CAP-013 day_copy with update meal times moves the times, an
     $thursday->save();
     $times = fn () => array_column($thursday->fresh()->meals, 'time');
 
-    $response = copyOver($user, 'day_copy', ['source_date' => '2026-09-23', 'target_dates' => ['2026-09-24'], 'update_meal_times' => true])
+    $response = copyCall($user, 'day_copy', ['source_date' => '2026-09-23', 'target_dates' => ['2026-09-24'], 'update_meal_times' => true])
         ->assertOk();
 
     // Wednesday's lunch has no foods, so Thursday's lunch keeps its time.
     expect($times())->toBe(['08:00', '13:00', '19:30']);
 
-    copyOver($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
+    copyCall($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
 
     expect($times())->toBe(['09:00', '13:00', '20:00']);
 });
@@ -198,7 +198,7 @@ it('SCH-034 MEAL-060 CAP-013 day_copy with update meal times moves the times, an
 it('SCH-035 CAP-010 week_copy copies the plan week to the next one and names its reads', function () {
     $user = copySeeded();
 
-    $response = copyOver($user, 'week_copy', ['week_start' => '2026-09-19'])
+    $response = copyCall($user, 'week_copy', ['week_start' => '2026-09-19'])
         ->assertOk()
         ->assertJsonPath('data.toast', 'Copied to next week');
 
@@ -209,7 +209,7 @@ it('SCH-035 CAP-010 week_copy copies the plan week to the next one and names its
 it('SCH-035 week_copy answers 422 in plain words when there is no next week to copy to', function () {
     $user = copySeeded();
 
-    copyOver($user, 'week_copy', ['week_start' => '2026-10-03'])
+    copyCall($user, 'week_copy', ['week_start' => '2026-10-03'])
         ->assertStatus(422)
         ->assertJsonPath('error.message', 'There is no next week in the plan to copy to.');
 });
