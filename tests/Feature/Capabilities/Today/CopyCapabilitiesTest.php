@@ -137,6 +137,24 @@ it('SCH-034 CAP-010 day_copy copies a day\'s meals to other days and names their
         ->and($response->json('data.invalidates'))->toContain('today_show{"date":"2026-09-24"}', 'today_show{"date":"2026-09-30"}', 'week_show{"date":"2026-09-26"}');
 });
 
+it('SCH-034 MEAL-060 CAP-013 day_copy with update meal times moves the times, and its undo puts them back', function () {
+    $user = copySeeded();
+    $thursday = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-24')->firstOrFail();
+    $thursday->meals = array_map(fn (array $meal, string $time) => ['time' => $time] + $meal, $thursday->meals, ['09:00', '13:00', '20:00']);
+    $thursday->save();
+    $times = fn () => array_column($thursday->fresh()->meals, 'time');
+
+    $response = copyOver($user, 'day_copy', ['source_date' => '2026-09-23', 'target_dates' => ['2026-09-24'], 'update_meal_times' => true])
+        ->assertOk();
+
+    // Wednesday's lunch has no foods, so Thursday's lunch keeps its time.
+    expect($times())->toBe(['08:00', '13:00', '19:30']);
+
+    copyOver($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
+
+    expect($times())->toBe(['09:00', '13:00', '20:00']);
+});
+
 it('SCH-035 CAP-010 week_copy copies the plan week to the next one and names its reads', function () {
     $user = copySeeded();
 

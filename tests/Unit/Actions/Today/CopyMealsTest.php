@@ -340,6 +340,28 @@ it('SCH-034 copies to days in more than one week, with the MEAL-060 options on e
         ->and(copyActionTimes($user, '2026-09-30'))->toBe(['08:00', '12:30', '19:30']);
 });
 
+it('SCH-034 meal times follow the source and a shake keeps its own', function () {
+    $user = copyActionUser();
+    copyActionDinner($user);
+    copyActionFood(copyActionMeal($user, '2026-09-23', 1));
+    copyActionFood(copyActionMeal($user, '2026-09-23', 2), 'Soup');
+    foreach (['2026-09-24', '2026-09-25'] as $date) {
+        copyActionEditDay($user, $date, [1 => ['time' => '09:00'], 2 => ['time' => '13:00'], 3 => ['time' => '20:00']]);
+    }
+    copyActionEditDay($user, '2026-09-24', [2 => ['name' => MealNames::INTRA_WORKOUT_SHAKE]]);
+    $saves = [];
+    Event::listen('eloquent.saved: '.DayTarget::class, function (DayTarget $day) use (&$saves) {
+        $saves[] = $day->date->format('Y-m-d');
+    });
+
+    app(CopyDay::class)($user, '2026-09-23', ['2026-09-24', '2026-09-25'], new CopyOptions(updateMealTimes: true));
+
+    // One day target save per day, every moved meal in it.
+    expect($saves)->toBe(['2026-09-24', '2026-09-25'])
+        ->and(copyActionTimes($user, '2026-09-24'))->toBe(['08:00', '13:00', '19:30'])
+        ->and(copyActionTimes($user, '2026-09-25'))->toBe(['08:00', '12:30', '19:30']);
+});
+
 it('SCH-034 never writes the source day, a day without a target or a day before the plan', function () {
     $user = copyActionUser();
     copyActionDinner($user);
