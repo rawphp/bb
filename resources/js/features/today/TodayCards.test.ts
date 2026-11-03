@@ -14,19 +14,19 @@ const today = (state?: string) => screenFixture<TodayShowOutput>(state ? `today_
 const breakfast = () => today().meals[0]!;
 
 // jsdom has no PointerEvent: a MouseEvent of the pointer type, with a touch's pointerType and id.
-function touch(element: Element, type: string, clientX: number, clientY: number): void {
+function touch(element: Element, type: string, clientX: number, clientY: number, pointerType = 'touch'): void {
     const event = new MouseEvent(type, { bubbles: true, clientX, clientY });
-    Object.defineProperties(event, { pointerType: { value: 'touch' }, pointerId: { value: 1 } });
+    Object.defineProperties(event, { pointerType: { value: pointerType }, pointerId: { value: 1 } });
     element.dispatchEvent(event);
 }
 
 // A finger held on the card: iPhone Safari sends no contextmenu for it, so the card times the press itself.
-async function holdOn(wrapper: VueWrapper, selector: string, ms: number) {
+async function holdOn(wrapper: VueWrapper, selector: string, ms: number, pointerType = 'touch') {
     vi.useFakeTimers();
     const target = wrapper.get(selector);
-    touch(target.element, 'pointerdown', 100, 100);
+    touch(target.element, 'pointerdown', 100, 100, pointerType);
     vi.advanceTimersByTime(ms);
-    touch(target.element, 'pointerup', 100, 100);
+    touch(target.element, 'pointerup', 100, 100, pointerType);
     await target.trigger('click');
 }
 
@@ -113,6 +113,15 @@ describe('TodayMealCard', () => {
         expect(wrapper.emitted('open')).toHaveLength(1);
     });
 
+    it('SCH-010 a mouse held down is a click; its right click opens the menu', async () => {
+        const wrapper = mount(TodayMealCard, { props: { meal: breakfast(), condensed: false } });
+
+        await holdOn(wrapper, '[data-test="meal-card"]', 600, 'mouse');
+
+        expect(wrapper.emitted('menu')).toBeUndefined();
+        expect(wrapper.emitted('open')).toHaveLength(1);
+    });
+
     it('SCH-010 a finger that moves is a swipe or a scroll, not a long press', async () => {
         vi.useFakeTimers();
         const wrapper = mount(TodayMealCard, { props: { meal: breakfast(), condensed: false } });
@@ -191,7 +200,24 @@ describe('TodayWorkoutCard', () => {
         await holdOn(wrapper, '[data-test="workout-card"]', 600);
 
         expect(wrapper.emitted('menu')).toHaveLength(2);
+    });
+
+    it('SCH-050 a finger held on Start opens the menu, and lifting it does not start the workout', async () => {
+        const wrapper = mount(TodayWorkoutCard, { props: { workout: workout(), condensed: false } });
+
+        await holdOn(wrapper, 'button', 600);
+
+        expect(wrapper.emitted('menu')).toHaveLength(1);
         expect(wrapper.emitted('start')).toBeUndefined();
+    });
+
+    it('SCH-003 a tap on Start starts the workout', async () => {
+        const wrapper = mount(TodayWorkoutCard, { props: { workout: workout(), condensed: false } });
+
+        await holdOn(wrapper, 'button', 150);
+
+        expect(wrapper.emitted('start')).toHaveLength(1);
+        expect(wrapper.emitted('menu')).toBeUndefined();
     });
 });
 

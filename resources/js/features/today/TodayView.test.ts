@@ -641,8 +641,10 @@ describe('TodayView', () => {
         expect(wrapper.findComponent(TodayMissedDaySheet).exists()).toBe(false);
         expect(wrapper.getComponent(TodayMissedWeeksSheet).props('payload')).toEqual(today());
 
+        readMock.mockClear();
         wrapper.getComponent(TodayMissedWeeksSheet).vm.$emit('close');
         await flushPromises();
+        expect(readMock).toHaveBeenCalledWith('today_show', {}, expect.any(Function), expect.any(Function));
         expect(wrapper.findComponent(TodayMissedWeeksSheet).exists()).toBe(false);
         expect(wrapper.findComponent(TodayMissedDaySheet).exists()).toBe(false);
     });

@@ -84,6 +84,17 @@ describe('ManualCheckInSheet', () => {
         expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
     });
 
+    it('MEAL-041 saves the server\'s own amounts as sent, whatever their decimals', async () => {
+        const unrounded = meal();
+        unrounded.check_in.manual = { ...unrounded.check_in.manual, protein_g: 3.875, carbs_g: 70.125 };
+        const wrapper = mount(ManualCheckInSheet, { props: { meal: unrounded }, attachTo: document.body, global: { stubs: { teleport: true } } });
+
+        await wrapper.get('[data-save]').trigger('click');
+
+        const [input] = wrapper.emitted('save')![0] as [Record<string, unknown>];
+        expect(input).toMatchObject({ protein_g: 3.875, carbs_g: 70.125 });
+    });
+
     it('MEAL-041 takes a comma as the decimal point', async () => {
         const wrapper = open();
 
