@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Capabilities\Reads\Review;
+namespace App\Support\Review;
 
 use App\Domain\Model\Mesocycle;
 use App\Domain\Review\BuiltWeekSummary;
@@ -16,13 +16,12 @@ use App\Domain\Review\StallChange;
 use App\Domain\Review\StallOptions;
 use App\Domain\WeekBuilder\BuiltWeek;
 use App\Domain\WeekBuilder\WeekBuildRefusal;
-use App\Support\Review\ReviewAnalysis;
-use App\Support\Review\ReviewAnswers;
 
 /**
  * The calorie step's choices for one set of answers (rp-clone WeeklyReviewModel+Calories): which options it lists, which
- * one is recommended and which selected, and the calories and world each option stands for. The calories builder and
- * the preview builder both read it, so selection, deload and own-amount logic live here once.
+ * one is recommended and which selected, the calories and world each option stands for, and the week Save would write
+ * ({@see saveWeek()}). The review_show builders and #87's Action all read it, so selection, deload, own-amount and
+ * save-week rules live here once.
  *
  * Option ids are the wire ids: `recommendation`, `repeat_this_week`, `choose_own`, `drop_fatigue`, and on a stall
  * `cut_calories` and `add_steps`.
@@ -204,6 +203,46 @@ final class ReviewChoices
         }
 
         return $this->weeks[$id] = $week;
+    }
+
+    /**
+     * The week Save would write for the answers: built; the refusal when the rules refuse it (SAFE-008 to SAFE-012,
+     * NUT-022, NUT-024); null when the selected option stands for no calories yet.
+     */
+    public function saveWeek(): BuiltWeek|WeekBuildRefusal|null
+    {
+        $analysis = $this->analysis;
+        $world = $analysis->world;
+        if ($world === null) {
+            return null;
+        }
+        $repeatKcal = $analysis->repeatKcal;
+        switch ($analysis->mode) {
+            case ReviewMode::TrainingOnly:
+                $calories = NextWeekCalories::planned();
+                $repeatKcal = null;
+                break;
+            case ReviewMode::Away:
+                $calories = $this->repeatCalories();
+                break;
+            case ReviewMode::Full:
+                $selected = $this->selected();
+                $choice = $selected === null ? null : $this->choice($selected);
+                if ($choice === null) {
+                    return null;
+                }
+                $calories = $selected === 'repeat_this_week' ? $this->repeatCalories() : $choice['calories'];
+                $world = $choice['world'];
+                break;
+        }
+
+        try {
+            return ReviewNextWeek::forSave(
+                $world, $calories, $repeatKcal, $this->answers->moves, $analysis->today, $analysis->plannedNextWeek, repeatWorld: $analysis->world,
+            );
+        } catch (WeekBuildRefusal $refusal) {
+            return $refusal;
+        }
     }
 
     /** The world with its mesocycle shortened to the deload move (REV-011); as it was without one. */

@@ -7,6 +7,7 @@ use App\Capabilities\Review\Data\ReviewStep;
 use App\Domain\WeekBuilder\BuiltWeek;
 use App\Support\Review\ReviewAnalysis;
 use App\Support\Review\ReviewAnswers;
+use App\Support\Review\ReviewChoices;
 
 /** The weekly review (REV-001 to REV-050) for the answers so far. A step the mode leaves out is null (REV-005). */
 final class ReviewShowPayload
@@ -33,7 +34,7 @@ final class ReviewShowPayload
         $keys = self::STEPS[$analysis->mode->value];
         $has = fn (string $key) => in_array($key, $keys, true);
         $choices = new ReviewChoices($analysis, $answers);
-        $week = ReviewPreviewPayload::week($choices);
+        $week = $choices->saveWeek();
         $reviewed = $analysis->period->reviewed;
 
         return new ReviewShowOutput(
