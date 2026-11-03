@@ -14,7 +14,7 @@ use Rawphp\CapabilitiesAi\Models\Turn;
  * AGT-020, AGT-024: deletes every conversation the user owns. The package's foreign
  * keys cascade to their messages, turns and proposals. Refused, deleting nothing,
  * while one of the user's turns is queued or running. This month's turns, and the
- * day before's, are kept in ClearedCoachTurn first, so the AGT-005 caps still count them.
+ * two days before's, are kept in ClearedCoachTurn first, so the AGT-005 caps still count them.
  */
 final class ClearCoachConversation
 {
@@ -37,13 +37,13 @@ final class ClearCoachConversation
                 throw CapabilityFailure::conflict(self::BUSY);
             }
 
-            // The longest cap window is the month (AgentStatus::allowance), plus the day before it for a user's
-            // local day that began before the app's month (SET-012).
+            // The longest cap window is the month (AgentStatus::allowance), plus two days before it: a day counted
+            // after a time zone change runs from up to 48 hours back (SET-012), which covers any local day too.
             ClearedCoachTurn::query()->insertUsing(
                 ['user_id', 'tokens', 'created_at'],
                 Turn::query()
                     ->whereIn('conversation_id', $ids)
-                    ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subDay())
+                    ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subDays(2))
                     ->select([DB::raw((string) (int) $user->getKey()), 'tokens', 'created_at']),
             );
 

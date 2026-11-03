@@ -14,7 +14,7 @@ use Illuminate\Support\Carbon;
 /**
  * A turn of a conversation the user cleared, kept so the AGT-005 caps still count
  * it (AgentStatus). Written by ClearCoachConversation; pruned daily once its month,
- * and the day before it, are over.
+ * and the two days before it, are over.
  *
  * @property int $id
  * @property int $user_id
@@ -32,7 +32,7 @@ class ClearedCoachTurn extends Model
     /** @return Builder<static> */
     public function prunable(): Builder
     {
-        return static::query()->where('created_at', '<', now()->startOfMonth()->subDay());
+        return static::query()->where('created_at', '<', now()->startOfMonth()->subDays(2));
     }
 
     /** @return array<string, string> */
