@@ -21,9 +21,9 @@ final class AddMesocycleDay
     public function __invoke(User $user, string $mesocycleId, string $dayId): Mesocycle
     {
         return DB::transaction(function () use ($user, $mesocycleId, $dayId) {
-            // Two writes take turns: each reads, computes and writes the mesocycle under its row lock.
+            // Two writes take turns, and the one that waited reads with locks so it sees what the other saved.
             Mesocycle::query()->where('user_id', $user->id)->whereKey($mesocycleId)->lockForUpdate()->first();
-            $snapshot = TrainSnapshot::load($user, $mesocycleId);
+            $snapshot = TrainSnapshot::load($user, $mesocycleId, locked: true);
             $mesocycle = $snapshot->mesocycle($mesocycleId);
             $days = $mesocycle->dayRows();
 

@@ -27,9 +27,9 @@ final class SetMusclePriority
     public function __invoke(User $user, string $mesocycleId, MuscleGroup $muscle, ?Priority $priority): Mesocycle
     {
         return DB::transaction(function () use ($user, $mesocycleId, $muscle, $priority) {
-            // Two writes take turns: each reads, computes and writes the mesocycle under its row lock.
+            // Two writes take turns, and the one that waited reads with locks so it sees what the other saved.
             Mesocycle::query()->where('user_id', $user->id)->whereKey($mesocycleId)->lockForUpdate()->first();
-            $snapshot = TrainSnapshot::load($user, $mesocycleId);
+            $snapshot = TrainSnapshot::load($user, $mesocycleId, locked: true);
             $mesocycle = $snapshot->mesocycle($mesocycleId);
             $saved = $mesocycle->isSaved();
             if ($priority === null && ! $saved) {
