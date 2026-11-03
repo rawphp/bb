@@ -26,7 +26,7 @@ use App\Models\OnboardingDraft;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Validation\ValidationException;
+use Rawphp\Capabilities\Schema\JsonSchemaValidator;
 use Tests\Unit\Domain\Onboarding\OnboardingFixtures as F;
 
 // onboarding_answer's Action (ONB-002 to ONB-018, SAFE-001, SAFE-013): each answer through the rule of rp-clone's
@@ -199,8 +199,9 @@ it('SAFE-001 ticks and unticks screening items, each by name', function () {
 });
 
 it('SAFE-001 an item measured from step 2 cannot be sent, and stays on whatever is unticked', function () {
-    expect(fn () => OnboardingAnswerInput::from(['answers' => ['screening' => [['item' => 'ageOutOfRange', 'is_on' => false]]]]))
-        ->toThrow(ValidationException::class);
+    $measured = ['answers' => ['screening' => [['item' => 'ageOutOfRange', 'is_on' => true]]]];
+    expect((new JsonSchemaValidator)->validate(OnboardingAnswerInput::jsonSchema(), $measured))->not->toBe([])
+        ->and(answerDraft(F::atStep3(), $measured)->screening)->toBe([]);
 
     $minor = F::atStep3(PhaseType::Maintenance, F::minorBirthDate());
     $draft = answerDraft($minor, ['answers' => ['screening' => [['item' => 'diabetes', 'is_on' => false]]], 'move' => 'next']);
