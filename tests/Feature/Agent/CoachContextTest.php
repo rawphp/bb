@@ -269,3 +269,18 @@ it('AGT-010 AGT-011 gives a user own message to the turn when another user write
 it('AGT-024 fails for a turn that does not exist', function () {
     coachMessages('01JC0NVERSAT10N00000000000', '01JNOSUCHTURN0000000000000');
 })->throws(ModelNotFoundException::class);
+
+it('SET-012 tells the Coach the user\'s local time and last week', function (string $zone, string $now, string $lastWeek) {
+    $this->travelTo('2026-11-08 22:30:00');
+    $user = TrainSeed::user();
+    $user->forceFill(['time_zone' => $zone])->save();
+    [$conversation, $turn] = coachTurn($user, [['user', 'Hi.']]);
+
+    $context = coachMessages($conversation, $turn)[1]['content'];
+
+    expect($context)->toContain($now)
+        ->and($context)->toContain($lastWeek);
+})->with([
+    'Australia/Brisbane' => ['Australia/Brisbane', 'Now: Monday 9 November 2026, 08:30 (Australia/Brisbane)', 'week_show{"date":"2026-11-02"}'],
+    'UTC' => ['UTC', 'Now: Sunday 8 November 2026, 22:30 (UTC)', 'week_show{"date":"2026-11-01"}'],
+]);

@@ -60,3 +60,14 @@ it('AGT-005 says when the monthly cap resets once it is reached, even past it', 
         ->and($allowance->resetsAt->toIso8601String())->toBe('2026-12-01T00:00:00+00:00')
         ->and($allowance->notice)->toBe('You\'ve reached this month\'s Coach limit. It resets at 00:00 UTC on 1 Dec. Everything else still works.');
 });
+
+it('SET-012 says the daily cap resets at the end of the user\'s day, in their zone', function (string $dayEndsAt, string $zone, string $resetsAt, string $at) use ($now) {
+    $allowance = Allowance::check(50, null, turnsToday: 50, tokensThisMonth: 0, now: $now(), dayEndsAt: CarbonImmutable::parse($dayEndsAt, $zone));
+
+    expect($allowance->atCap)->toBeTrue()
+        ->and($allowance->resetsAt->toIso8601String())->toBe($resetsAt)
+        ->and($allowance->notice)->toBe("You've reached today's Coach limit. It resets at {$at}. Everything else still works.");
+})->with([
+    'Australia/Brisbane' => ['2026-11-04 00:00:00', 'Australia/Brisbane', '2026-11-04T00:00:00+10:00', '00:00 AEST on 4 Nov'],
+    'UTC' => ['2026-11-03 00:00:00', 'UTC', '2026-11-03T00:00:00+00:00', '00:00 UTC on 3 Nov'],
+]);
