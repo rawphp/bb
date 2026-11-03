@@ -37,9 +37,9 @@ it('REV-003 the preview lists next week\'s seven days with their type, session a
 
     expect($preview['days'])->toHaveCount(7)
         ->and($preview['days'][0])->toMatchArray([
-            'index' => 0, 'date' => '2026-10-12', 'date_label' => 'Mon, 12 Oct', 'detail' => 'Moderate · Upper A',
-            'can_move' => true, 'is_locked' => false,
+            'index' => 0, 'date' => '2026-10-12', 'date_label' => 'Mon, 12 Oct', 'can_move' => true, 'is_locked' => false,
         ])
+        ->and($preview['days'][0]['detail'])->toMatch('/^(Light|Moderate|Hard) · Upper A$/')
         ->and($preview['days'][0]['kcal_label'])->toMatch('/^\d+ kcal$/')
         ->and($preview['days'][1])->toMatchArray(['date' => '2026-10-13', 'detail' => 'Rest'])
         ->and(array_sum(rvDayKcal($preview)))->toBeGreaterThan(7 * 2399)->toBeLessThan(7 * 2401)

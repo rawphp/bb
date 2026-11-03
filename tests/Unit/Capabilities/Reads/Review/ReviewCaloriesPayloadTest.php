@@ -259,7 +259,7 @@ it('REV-011 Drop fatigue two weeks from the deload is one week: the diet break a
         ->and($calories['deload'])->toBe([
             'kind' => 'deload_now', 'question' => null, 'answer' => null,
             'note' => 'Deload now: the diet break and the deload are one week, starting next week.',
-            'rir_label' => 'Target RIR by week: 3, 2, 1',
+            'rir_label' => 'Target RIR by week: 3, 2, 1, 0',
         ]);
 });
 
@@ -283,9 +283,8 @@ it('REV-011 the answer to the deload moves the deload in the week Drop fatigue b
     $yes = rvOption(rvCalories(fn (ReviewSeed $seed) => $seed->mesocycleWeeks = 8, rvAnswers('drop_fatigue', deloadToo: true)), 'drop_fatigue');
     $no = rvOption(rvCalories(fn (ReviewSeed $seed) => $seed->mesocycleWeeks = 8, rvAnswers('drop_fatigue', deloadToo: false)), 'drop_fatigue');
 
-    // Both are a diet break at maintenance; the deload week also cuts the week's sets, so the lines can differ in macros only.
-    expect($yes['detail'])->toStartWith('Next week: ')
-        ->and($no['detail'])->toStartWith('Next week: ');
+    // Both are a diet break at maintenance; with the deload moved the week also runs the deload's lighter sessions.
+    expect($yes['detail'])->not->toBe($no['detail']);
 });
 
 // MARK: REV-050
