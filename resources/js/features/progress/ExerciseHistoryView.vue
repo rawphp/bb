@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref, shallowRef } from 'vue';
 import type { ExerciseHistoryShowOutput } from '@/contracts/exercise_history_show';
 import ExerciseHistoryContent from './ExerciseHistoryContent.vue';
 import { read } from '@/app/call';
@@ -10,18 +10,34 @@ import { screenRead, type ReadFailure } from '@/app/screenRead';
 // Show older sessions reads the next page after next_before and adds its sessions below (EX-002).
 const props = defineProps<{ exerciseId?: string; payload?: ExerciseHistoryShowOutput; pending?: boolean }>();
 
-const history = ref<ExerciseHistoryShowOutput | undefined>(props.payload);
+const first = ref<ExerciseHistoryShowOutput | undefined>(props.payload);
+// Older pages in the order shown. A new first page drops them: they follow on from the old one.
+// Shallow, so a page kept here is the very copy read() returned.
+const older = shallowRef<ExerciseHistoryShowOutput[]>([]);
 const failure = ref<ReadFailure | null>(null);
+
+const history = computed<ExerciseHistoryShowOutput | undefined>(() => {
+    const newest = first.value;
+    if (newest === undefined || older.value.length === 0) return newest;
+
+    return {
+        ...newest,
+        sessions: [...newest.sessions, ...older.value.flatMap((page) => page.sessions)],
+        next_before: older.value[older.value.length - 1]!.next_before ?? null,
+    };
+});
 
 const load = screenRead<ExerciseHistoryShowOutput>(
     'exercise_history_show',
     'History could not be loaded.',
     (data) => {
         failure.value = null;
-        history.value = data;
+        first.value = data;
+        older.value = [];
     },
     (why) => {
-        history.value = undefined;
+        first.value = undefined;
+        older.value = [];
         failure.value = why;
     },
 );
@@ -34,12 +50,20 @@ async function more() {
     if (!props.exerciseId || !before || loadingMore.value) return;
     loadingMore.value = true;
     moreError.value = null;
+    const index = older.value.length;
+    // The server's answer replaces the cached copy only while that copy is still shown.
+    // One that lands before the copy is placed is placed instead of it.
+    let placed: ExerciseHistoryShowOutput | undefined;
+    let early: ExerciseHistoryShowOutput | undefined;
     try {
-        const page = await read<ExerciseHistoryShowOutput>('exercise_history_show', { exercise_id: props.exerciseId, before });
+        const page = await read<ExerciseHistoryShowOutput>('exercise_history_show', { exercise_id: props.exerciseId, before }, (fresh) => {
+            if (placed === undefined) early = fresh;
+            else if (older.value[index] === placed) older.value = older.value.map((shown, at) => (at === index ? fresh : shown));
+        });
         // A refresh of the first page that landed meanwhile replaced what this page follows on from.
-        const shown = history.value;
-        if (shown?.next_before !== before) return;
-        history.value = { ...shown, sessions: [...shown.sessions, ...page.sessions], next_before: page.next_before ?? null };
+        if (history.value?.next_before !== before) return;
+        placed = early ?? page;
+        older.value = [...older.value, placed];
     } catch {
         moreError.value = 'Older sessions could not be loaded.';
     } finally {
