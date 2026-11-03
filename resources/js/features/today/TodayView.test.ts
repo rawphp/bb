@@ -7,10 +7,16 @@ import type { TodayShowOutput } from '@/contracts/today_show';
 import type { WeekShowOutput } from '@/contracts/week_show';
 import WeekStrip from '@/design/WeekStrip.vue';
 import { inputViolations, screenFixture } from '@/testing/schemas';
+import CopySheet from '@/features/copy/CopySheet.vue';
 import ManualCheckInSheet from './ManualCheckInSheet.vue';
+import AddWorkoutSheet from './sheets/AddWorkoutSheet.vue';
+import BusyPeriodSheet from './sheets/BusyPeriodSheet.vue';
+import EditScheduleSheet from './sheets/EditScheduleSheet.vue';
 import TodayAddMealSheet from './sheets/TodayAddMealSheet.vue';
 import TodayCalendarSheet from './sheets/TodayCalendarSheet.vue';
 import TodayMissedDaySheet from './sheets/TodayMissedDaySheet.vue';
+import TodayMissedWeeksSheet from './sheets/TodayMissedWeeksSheet.vue';
+import TodayMoveDaySheet from './sheets/TodayMoveDaySheet.vue';
 import TodayWorkoutTimeSheet from './sheets/TodayWorkoutTimeSheet.vue';
 import TodayView from './TodayView.vue';
 
@@ -34,6 +40,32 @@ const day = (state?: string): TodayShowOutput => ({ ...today(state), missed_sess
 
 const LUNCH = '01JBX0M1N2P3Q4R5S6T7V8W9X1';
 const BREAKFAST = '01JBX0M1N2P3Q4R5S6T7V8W9X0';
+const PRE_WORKOUT = '01JBX0M1N2P3Q4R5S6T7V8W9X2';
+
+/** An outbox entry for a meal's check-in or its removal, waiting unless refused. */
+const entry = (seq: number, name: string, mealId: string, refused = false) => ({
+    seq,
+    name,
+    input: { meal_id: mealId },
+    affects: ['today_show'],
+    ...(refused ? { refusal: { status: 422, body: {} } } : {}),
+});
+
+/** The day with one meal's menu item turned on or off, as the server would send it. */
+function withMenu(mealId: string, action: string, enabled: boolean): TodayShowOutput {
+    const payload = day();
+    const found = payload.meals.find((m) => m.id === mealId)!;
+    const item = found.menu.find((i) => i.action === action);
+    if (item) item.enabled = enabled;
+    else found.menu.push({ action: action as never, label: action === 'done_planning' ? 'Done planning foods' : action, enabled });
+    return payload;
+}
+
+async function menuItem(wrapper: VueWrapper, mealId: string, action: string) {
+    await meal(wrapper, mealId).get('[data-test="meal-card"]').trigger('contextmenu');
+    await wrapper.get(`[data-test="menu-${action}"]`).trigger('click');
+    await flushPromises();
+}
 
 let router: Router;
 
@@ -203,6 +235,136 @@ describe('TodayView', () => {
         expect(meal(wrapper, LUNCH).text()).toContain('Waiting to sync');
     });
 
+    it('OFF-009 a check-in waiting for one meal leaves the others as the server says', async () => {
+        pendingEntries.value = [entry(1, 'meal_check_in', LUNCH)];
+        const wrapper = await show();
+
+        expect(meal(wrapper, PRE_WORKOUT).get('[role="checkbox"]').attributes('aria-checked')).toBe('false');
+        await meal(wrapper, PRE_WORKOUT).get('[role="checkbox"]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([['meal_check_in', { meal_id: PRE_WORKOUT }]]);
+    });
+
+    it('MEAL-040 a tap on a meal whose check-in waits to sync removes it', async () => {
+        pendingEntries.value = [entry(1, 'meal_check_in', LUNCH)];
+        const wrapper = await show();
+
+        await meal(wrapper, LUNCH).get('[role="checkbox"]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([['meal_check_in_undo', { meal_id: LUNCH }]]);
+    });
+
+    it('OFF-009 the newest waiting entry wins: a check-in then its removal shows unticked', async () => {
+        pendingEntries.value = [entry(1, 'meal_check_in', LUNCH), entry(2, 'meal_check_in_undo', LUNCH)];
+        const wrapper = await show();
+
+        expect(meal(wrapper, LUNCH).get('[role="checkbox"]').attributes('aria-checked')).toBe('false');
+        await meal(wrapper, LUNCH).get('[role="checkbox"]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([['meal_check_in', { meal_id: LUNCH }]]);
+    });
+
+    it('OFF-011 a refused check-in is not shown as made, and the box follows the server', async () => {
+        pendingEntries.value = [entry(1, 'meal_check_in', LUNCH, true)];
+        const wrapper = await show();
+
+        expect(meal(wrapper, LUNCH).get('[role="checkbox"]').attributes('aria-checked')).toBe('false');
+        await meal(wrapper, LUNCH).get('[role="checkbox"]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([['meal_check_in', { meal_id: LUNCH }]]);
+    });
+
+    it('MEAL-047 a tap on a meal checked in under target removes the check-in', async () => {
+        const payload = day();
+        payload.meals[1]!.check_in.state = 'under';
+        const wrapper = await show({ payload, week: week() });
+
+        await meal(wrapper, LUNCH).get('[role="checkbox"]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([['meal_check_in_undo', { meal_id: LUNCH }]]);
+    });
+
+    it('CAP-014 a second tap while the first check-in is still being stored sends nothing more', async () => {
+        let store: (value: never) => void = () => {};
+        writeMock.mockReturnValueOnce(new Promise((resolve) => (store = resolve)));
+        const wrapper = await show();
+
+        await meal(wrapper, LUNCH).get('[role="checkbox"]').trigger('click');
+        await meal(wrapper, LUNCH).get('[role="checkbox"]').trigger('click');
+        store({} as never);
+        await flushPromises();
+
+        expect(sent()).toEqual([['meal_check_in', { meal_id: LUNCH }]]);
+    });
+
+    it('OFF-006 says why a check-in could not be stored, under its meal', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('meal_check_in', 401, null));
+        const wrapper = await show();
+
+        await meal(wrapper, LUNCH).get('[role="checkbox"]').trigger('click');
+        await flushPromises();
+
+        expect(meal(wrapper, LUNCH).element.parentElement!.querySelector('[role="alert"]')?.textContent).toBeTruthy();
+    });
+
+    it('MEAL-009 Check in meal from the menu checks in, and never removes a check-in that waits to sync', async () => {
+        let wrapper = await show({ payload: withMenu(LUNCH, 'check_in_meal', true), week: week() });
+        await menuItem(wrapper, LUNCH, 'check_in_meal');
+        expect(sent()).toEqual([['meal_check_in', { meal_id: LUNCH }]]);
+        wrapper.unmount();
+
+        writeMock.mockClear();
+        pendingEntries.value = [entry(1, 'meal_check_in', LUNCH)];
+        wrapper = await show({ payload: withMenu(LUNCH, 'check_in_meal', true), week: week() });
+        await menuItem(wrapper, LUNCH, 'check_in_meal');
+        expect(sent()).toEqual([]);
+    });
+
+    it('MEAL-009 Remove check-in from the menu removes it, and never checks in a meal whose removal waits', async () => {
+        let wrapper = await show();
+        await menuItem(wrapper, BREAKFAST, 'remove_check_in');
+        expect(sent()).toEqual([['meal_check_in_undo', { meal_id: BREAKFAST }]]);
+        wrapper.unmount();
+
+        writeMock.mockClear();
+        pendingEntries.value = [entry(1, 'meal_check_in_undo', BREAKFAST)];
+        wrapper = await show();
+        await menuItem(wrapper, BREAKFAST, 'remove_check_in');
+        expect(sent()).toEqual([]);
+    });
+
+    it('MEAL-009 Done planning foods marks the meal planned', async () => {
+        const wrapper = await show({ payload: withMenu(LUNCH, 'done_planning', true), week: week() });
+
+        await menuItem(wrapper, LUNCH, 'done_planning');
+
+        expect(sent()).toEqual([['meal_planning_done', { meal_id: LUNCH, done: true }]]);
+    });
+
+    it('MEAL-060 Copy foods opens the copy sheet on that meal', async () => {
+        const wrapper = await show();
+
+        await menuItem(wrapper, LUNCH, 'copy_foods');
+
+        expect(wrapper.getComponent(CopySheet).props('mealId')).toBe(LUNCH);
+    });
+
+    it('MEAL-041 says why a manual check-in could not be stored, and keeps the sheet open', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('meal_check_in', 401, null));
+        const wrapper = await show();
+        await menuItem(wrapper, LUNCH, 'check_in_manual');
+
+        wrapper.getComponent(ManualCheckInSheet).vm.$emit('save', { meal_id: LUNCH, time: '12:45', kcal: 600, protein_g: 40, fat_g: 20, carbs_g: 55 });
+        await flushPromises();
+
+        expect(wrapper.getComponent(ManualCheckInSheet).props('error')).toBeTruthy();
+    });
+
     it('SCH-010 a long press opens the meal menu with the server\'s items, off where it says so', async () => {
         const wrapper = await show();
 
@@ -290,7 +452,7 @@ describe('TodayView', () => {
         expect(wrapper.findComponent(TodayWorkoutTimeSheet).exists()).toBe(false);
     });
 
-    it('SCH-032 an other activity\'s menu deletes it', async () => {
+    it('SCH-032 an other activity\'s menu deletes it, and the week strip reads again', async () => {
         const wrapper = await show();
 
         await wrapper.get('[data-test="activity-card"]').trigger('contextmenu');
@@ -298,6 +460,29 @@ describe('TodayView', () => {
         await flushPromises();
 
         expect(sent()).toEqual([['other_activity_delete', { id: '01JBX0A1B2C3D4E5F6G7H8J9K0' }]]);
+        expect(readMock).toHaveBeenCalledWith('today_show', {}, expect.any(Function), expect.any(Function));
+        expect(readMock).toHaveBeenCalledWith('week_show', {}, expect.any(Function), expect.any(Function));
+    });
+
+    it('SCH-032 Edit opens the activity in the Add workout sheet and deletes nothing', async () => {
+        const wrapper = await show();
+
+        await wrapper.get('[data-test="activity-card"]').trigger('contextmenu');
+        await wrapper.get('[data-test="menu-edit"]').trigger('click');
+        await flushPromises();
+
+        expect(sent()).toEqual([]);
+        expect(wrapper.getComponent(AddWorkoutSheet).props('payload')).toEqual(day());
+    });
+
+    it('SCH-051 the workout menu opens the move sheet for that workout', async () => {
+        const wrapper = await show();
+
+        await wrapper.get('[data-test="workout-card"]').trigger('contextmenu');
+        await wrapper.get('[data-test="menu-move_day"]').trigger('click');
+
+        expect(wrapper.getComponent(TodayMoveDaySheet).props('workoutId')).toBe('workout');
+        expect(wrapper.findComponent(TodayWorkoutTimeSheet).exists()).toBe(false);
     });
 
     it('SCH-004 Add weigh-in opens the weigh-in entry', async () => {
@@ -319,6 +504,29 @@ describe('TodayView', () => {
         await wrapper.get('[data-test="item-add_meal"]').trigger('click');
 
         expect(wrapper.getComponent(TodayAddMealSheet).props('payload')).toEqual(day());
+    });
+
+    it.each([
+        ['add_workout', AddWorkoutSheet],
+        ['add_busy_period', BusyPeriodSheet],
+        ['edit_schedule', EditScheduleSheet],
+    ] as const)('SCH-030 %s opens its sheet on this day', async (action, component) => {
+        const wrapper = await show();
+
+        await wrapper.get('[aria-label="Schedule menu"]').trigger('click');
+        await wrapper.get(`[data-test="item-${action}"]`).trigger('click');
+
+        expect(wrapper.getComponent(component as never).props('payload')).toEqual(day());
+    });
+
+    it('SCH-034 Copy day opens the copy sheet on this day', async () => {
+        const wrapper = await show();
+
+        await wrapper.get('[aria-label="Schedule menu"]').trigger('click');
+        await wrapper.get('[data-test="item-copy_day"]').trigger('click');
+
+        expect(wrapper.getComponent(CopySheet).props('sourceDate')).toBe('2026-09-23');
+        expect(wrapper.getComponent(CopySheet).props('mealId')).toBeUndefined();
     });
 
     it('SCH-035 Copy week asks first, then copies the week shown', async () => {
@@ -349,6 +557,26 @@ describe('TodayView', () => {
         await flushPromises();
 
         expect(path()).toBe('/train/mesocycles/build?route=copy_previous&copy=01JBWZK7Q8R9S0T1V2W3X4Y5Z6');
+    });
+
+    it('MESO-060 a template or the builder starts fresh, not from this mesocycle', async () => {
+        const wrapper = await show();
+
+        await wrapper.findAll('[data-test="option"]')[1]!.trigger('click');
+        await flushPromises();
+
+        expect(path()).toBe('/train/mesocycles/build?route=template');
+    });
+
+    it('CAP-012 a refused delete keeps the question open with the server\'s words', async () => {
+        writeNowMock.mockRejectedValueOnce(new CapabilityError('meal_delete', 422, { error: { code: 'validation_failed', message: 'This meal is already gone.', violations: [] } }));
+        const wrapper = await show();
+
+        await meal(wrapper, LUNCH).get('[data-test="swipe-delete"]').trigger('click');
+        await wrapper.get('[data-test="confirm"] [data-save]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[data-test="confirm"]').text()).toContain('This meal is already gone.');
     });
 
     it('MESO-064 Take an active rest sends it for the mesocycle', async () => {
@@ -401,6 +629,24 @@ describe('TodayView', () => {
         expect(wrapper.getComponent(TodayMissedDaySheet).props('payload')).toEqual({ ...today(), missed_weeks: null });
     });
 
+    it('SCH-058 asks about missed weeks once the missed session is answered, and reads the day after each', async () => {
+        const wrapper = await show({ payload: today(), week: week() });
+
+        expect(wrapper.findComponent(TodayMissedDaySheet).exists()).toBe(true);
+        expect(wrapper.findComponent(TodayMissedWeeksSheet).exists()).toBe(false);
+
+        wrapper.getComponent(TodayMissedDaySheet).vm.$emit('close');
+        await flushPromises();
+        expect(readMock).toHaveBeenCalledWith('today_show', {}, expect.any(Function), expect.any(Function));
+        expect(wrapper.findComponent(TodayMissedDaySheet).exists()).toBe(false);
+        expect(wrapper.getComponent(TodayMissedWeeksSheet).props('payload')).toEqual(today());
+
+        wrapper.getComponent(TodayMissedWeeksSheet).vm.$emit('close');
+        await flushPromises();
+        expect(wrapper.findComponent(TodayMissedWeeksSheet).exists()).toBe(false);
+        expect(wrapper.findComponent(TodayMissedDaySheet).exists()).toBe(false);
+    });
+
     it('CAP-002 reads the day and its week, with skeletons until they come', async () => {
         const wrapper = await show({ date: '2026-09-24' });
 
@@ -433,9 +679,10 @@ describe('TodayView', () => {
     });
 
     it('OFF-008 marks them pending when an outbox entry affects the day', async () => {
-        vi.mocked(isPending).mockImplementation((name) => name === 'today_show');
+        vi.mocked(isPending).mockImplementation((name) => name === 'today_show' || name === 'week_show');
         const wrapper = await show();
 
         expect(wrapper.get('[data-test="totals"]').text()).toContain('Waiting to sync');
+        expect(wrapper.getComponent(WeekStrip).props('pending')).toBe(true);
     });
 });

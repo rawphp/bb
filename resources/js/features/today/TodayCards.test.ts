@@ -1,5 +1,5 @@
-import { mount } from '@vue/test-utils';
-import { describe, expect, it } from 'vitest';
+import { mount, type VueWrapper } from '@vue/test-utils';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TodayShowOutput } from '@/contracts/today_show';
 import { screenFixture } from '@/testing/schemas';
 import TodayBusyCard from './TodayBusyCard.vue';
@@ -12,6 +12,25 @@ import TodayWorkoutCard from './TodayWorkoutCard.vue';
 
 const today = (state?: string) => screenFixture<TodayShowOutput>(state ? `today_show.${state}` : 'today_show');
 const breakfast = () => today().meals[0]!;
+
+// jsdom has no PointerEvent: a MouseEvent of the pointer type, with a touch's pointerType and id.
+function touch(element: Element, type: string, clientX: number, clientY: number): void {
+    const event = new MouseEvent(type, { bubbles: true, clientX, clientY });
+    Object.defineProperties(event, { pointerType: { value: 'touch' }, pointerId: { value: 1 } });
+    element.dispatchEvent(event);
+}
+
+// A finger held on the card: iPhone Safari sends no contextmenu for it, so the card times the press itself.
+async function holdOn(wrapper: VueWrapper, selector: string, ms: number) {
+    vi.useFakeTimers();
+    const target = wrapper.get(selector);
+    touch(target.element, 'pointerdown', 100, 100);
+    vi.advanceTimersByTime(ms);
+    touch(target.element, 'pointerup', 100, 100);
+    await target.trigger('click');
+}
+
+afterEach(() => vi.useRealTimers());
 const preWorkout = () => today().meals[2]!;
 
 describe('TodayMealCard', () => {
@@ -76,6 +95,36 @@ describe('TodayMealCard', () => {
         expect(wrapper.emitted('menu')).toHaveLength(1);
     });
 
+    it('SCH-010 holding a finger on the card opens the meal menu, and the tap that ends the press opens nothing', async () => {
+        const wrapper = mount(TodayMealCard, { props: { meal: breakfast(), condensed: false } });
+
+        await holdOn(wrapper, '[data-test="meal-card"]', 600);
+
+        expect(wrapper.emitted('menu')).toHaveLength(1);
+        expect(wrapper.emitted('open')).toBeUndefined();
+    });
+
+    it('SCH-010 a short tap opens the meal, not the menu', async () => {
+        const wrapper = mount(TodayMealCard, { props: { meal: breakfast(), condensed: false } });
+
+        await holdOn(wrapper, '[data-test="meal-card"]', 150);
+
+        expect(wrapper.emitted('menu')).toBeUndefined();
+        expect(wrapper.emitted('open')).toHaveLength(1);
+    });
+
+    it('SCH-010 a finger that moves is a swipe or a scroll, not a long press', async () => {
+        vi.useFakeTimers();
+        const wrapper = mount(TodayMealCard, { props: { meal: breakfast(), condensed: false } });
+        const card = wrapper.get('[data-test="meal-card"]');
+
+        touch(card.element, 'pointerdown', 100, 100);
+        touch(card.element, 'pointermove', 100, 130);
+        vi.advanceTimersByTime(600);
+
+        expect(wrapper.emitted('menu')).toBeUndefined();
+    });
+
     it('SCH-010 swiping left shows Edit macros and Delete', async () => {
         const wrapper = mount(TodayMealCard, { props: { meal: breakfast(), condensed: false } });
 
@@ -135,12 +184,14 @@ describe('TodayWorkoutCard', () => {
         expect(wrapper.text()).not.toContain('Bench press');
     });
 
-    it('SCH-050 a long press opens the workout menu', async () => {
+    it('SCH-050 a long press opens the workout menu, with a finger or a right click', async () => {
         const wrapper = mount(TodayWorkoutCard, { props: { workout: workout(), condensed: false } });
 
         await wrapper.get('[data-test="workout-card"]').trigger('contextmenu');
+        await holdOn(wrapper, '[data-test="workout-card"]', 600);
 
-        expect(wrapper.emitted('menu')).toHaveLength(1);
+        expect(wrapper.emitted('menu')).toHaveLength(2);
+        expect(wrapper.emitted('start')).toBeUndefined();
     });
 });
 
@@ -153,7 +204,8 @@ describe('TodayOtherActivityCard', () => {
         expect(wrapper.text()).toContain('Moderate');
 
         await wrapper.get('[data-test="activity-card"]').trigger('contextmenu');
-        expect(wrapper.emitted('menu')).toHaveLength(1);
+        await holdOn(wrapper, '[data-test="activity-card"]', 600);
+        expect(wrapper.emitted('menu')).toHaveLength(2);
     });
 });
 

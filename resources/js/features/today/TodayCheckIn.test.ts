@@ -70,6 +70,35 @@ describe('ManualCheckInSheet', () => {
         expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
     });
 
+    it.each([
+        ['kcal', ''],
+        ['protein', '-50'],
+        ['carbs', '1,200'],
+        ['fat', '1.200'],
+        ['time', ''],
+    ])('MEAL-041 keeps Save off while %s reads %j', async (field, text) => {
+        const wrapper = open();
+
+        await wrapper.get(field === 'time' ? 'input[type="time"]' : `input[name="${field}"]`).setValue(text);
+
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
+    });
+
+    it('MEAL-041 takes a comma as the decimal point', async () => {
+        const wrapper = open();
+
+        await wrapper.get('input[name="protein"]').setValue('42,5');
+        await wrapper.get('[data-save]').trigger('click');
+
+        expect((wrapper.emitted('save')![0] as [Record<string, unknown>])[0].protein_g).toBe(42.5);
+    });
+
+    it('CAP-014 keeps Save off while the check-in is being saved', () => {
+        const wrapper = open({ busy: true });
+
+        expect(wrapper.get('[data-save]').attributes('disabled')).toBeDefined();
+    });
+
     it('MEAL-041 Cancel closes without saving', async () => {
         const wrapper = open();
 

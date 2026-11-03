@@ -39,6 +39,18 @@ describe('today routes', () => {
         expect(takesFixture('off_plan_log', featureRoutes)).toBe(false);
     });
 
+    it('SCH-020 /today/<date> reads that day and its week', async () => {
+        vi.mocked(read).mockReturnValue(new Promise(() => {}));
+        const router = createRouter({ history: createMemoryHistory(), routes });
+        await router.push('/today/2026-09-24');
+        mount(RouterView, { global: { plugins: [router], stubs: { teleport: true } } });
+        await flushPromises();
+
+        expect(read).toHaveBeenCalledWith('today_show', { date: '2026-09-24' }, expect.any(Function), expect.any(Function));
+        expect(read).toHaveBeenCalledWith('week_show', { date: '2026-09-24' }, expect.any(Function), expect.any(Function));
+        vi.mocked(read).mockReset();
+    });
+
     it.each([
         ['/today/2026-09-23/adjust', 'day_adjust_show'],
         ['/today/2026-09-23/redistribute', 'day_redistribute_show'],
