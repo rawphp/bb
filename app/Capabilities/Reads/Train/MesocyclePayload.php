@@ -17,8 +17,8 @@ use App\Capabilities\Mesocycles\Data\MesocyclePriorityOption;
 use App\Capabilities\Mesocycles\Data\MesocyclePriorityRow;
 use App\Capabilities\Mesocycles\Data\MesocycleShowOutput;
 use App\Capabilities\Mesocycles\Data\MesocycleWeek;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
-use App\Capabilities\Train\Data\Pill;
 use App\Domain\Defaults\TBL012TrainingDefaults;
 use App\Domain\Defaults\TBL012TrainingDefaults\Column;
 use App\Domain\Defaults\TBL012TrainingDefaults\RepRangeBias;
@@ -174,8 +174,8 @@ final class MesocyclePayload
         return new MesocycleWeek(
             number: $number,
             title: $isLast ? 'Deload' : "Week {$number}",
-            now: $isNow ? new Pill('Now', Tone::Info->value) : null,
-            diet_break: $snapshot->isDietBreakWeek($mesocycle, $calendar, $index) ? new Pill('Diet break', Tone::Info->value) : null,
+            now: $isNow ? new Status('Now', Tone::Info->value) : null,
+            diet_break: $snapshot->isDietBreakWeek($mesocycle, $calendar, $index) ? new Status('Diet break', Tone::Info->value) : null,
             calories_text: self::calories($snapshot, $planWeek->days()),
             muscle_sets: array_values(array_filter(array_map(
                 fn (MuscleGroup $muscle) => ($muscleSets[$muscle->value] ?? 0) > 0
@@ -238,12 +238,12 @@ final class MesocyclePayload
             weekdays_available: $training !== [],
             phase_title: $phase?->type->title(),
             rep_range_text: $phase === null ? null : self::repRanges(TBL012TrainingDefaults::row($column)->repRangeBias),
-            phase_warning: $phase === null ? new Pill(self::NO_PHASE, Tone::Warning->value) : null,
+            phase_warning: $phase === null ? new Status(self::NO_PHASE, Tone::Warning->value) : null,
             days_per_week: $mesocycle->days_per_week ?? MesoBuilder::daysPerWeek($days, $training),
             days_per_week_options: self::options(new ClosedRange(...self::DAYS_PER_WEEK), 'day'),
             priorities: self::priorityRows($priorities),
             warnings: array_map(
-                fn (Warning $warning) => new Pill($warning->message(), Tone::Warning->value),
+                fn (Warning $warning) => new Status($warning->message(), Tone::Warning->value),
                 MesoBuilder::warnings(
                     array_map(Priority::from(...), array_filter($priorities, fn ($p) => $p !== null)),
                     $phase->type ?? PhaseType::Maintenance,
@@ -284,7 +284,7 @@ final class MesocyclePayload
      *
      * @param  array<string, ?string>  $priorities
      */
-    private static function draftPriorityNotice(TrainSnapshot $snapshot, Mesocycle $draft, DateTimeImmutable $start, array $priorities): ?Pill
+    private static function draftPriorityNotice(TrainSnapshot $snapshot, Mesocycle $draft, DateTimeImmutable $start, array $priorities): ?Status
     {
         $source = $draft->copied_from_id === null ? null
             : $snapshot->mesocycles->first(fn (Mesocycle $m) => $m->id === $draft->copied_from_id);
@@ -297,7 +297,7 @@ final class MesocyclePayload
         }
         $preset = array_map(fn (Priority $p) => $p->value, MesoBuilder::defaultPriorities(Column::for($phase->type, $draft->is_resensitization)));
 
-        return $priorities == $preset ? new Pill(TrainPayload::priorityNotice($snapshot, $source, $start) ?? '', Tone::Info->value) : null;
+        return $priorities == $preset ? new Status(TrainPayload::priorityNotice($snapshot, $source, $start) ?? '', Tone::Info->value) : null;
     }
 
     /** PH-008: "10–20 and 20–30 reps", "Mixed rep ranges, with more 5–10". */

@@ -20,25 +20,25 @@
                 "value": "fatLoss",
                 "title": "Fat loss",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": true,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "muscleGain",
                 "title": "Muscle gain",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "maintenance",
                 "title": "Maintenance",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             }
         ],
         "recent_diet": {
@@ -55,17 +55,17 @@
                 "value": "male",
                 "title": "Male",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "female",
                 "title": "Female",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": true,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             }
         ],
         "birth_date": {
@@ -83,17 +83,17 @@
                     "value": "cm",
                     "title": "cm",
                     "detail": "",
+                    "is_recommended": false,
                     "is_selected": true,
-                    "is_enabled": true,
-                    "badges": []
+                    "is_enabled": true
                 },
                 {
                     "value": "feetInches",
                     "title": "ft and in",
                     "detail": "",
+                    "is_recommended": false,
                     "is_selected": false,
-                    "is_enabled": true,
-                    "badges": []
+                    "is_enabled": true
                 }
             ],
             "cm": null,
@@ -108,17 +108,17 @@
                     "value": "kg",
                     "title": "kg",
                     "detail": "",
+                    "is_recommended": false,
                     "is_selected": true,
-                    "is_enabled": true,
-                    "badges": []
+                    "is_enabled": true
                 },
                 {
                     "value": "lb",
                     "title": "lb",
                     "detail": "",
+                    "is_recommended": false,
                     "is_selected": false,
-                    "is_enabled": true,
-                    "badges": []
+                    "is_enabled": true
                 }
             ],
             "value": null,
@@ -242,33 +242,33 @@
                 "value": "lowest",
                 "title": "under 20%",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "low",
                 "title": "20-27%",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": true,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "high",
                 "title": "27-35%",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "highest",
                 "title": "over 35%",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             }
         ]
     },
@@ -278,25 +278,25 @@
                 "value": "Highest success",
                 "title": "Highest success",
                 "detail": "Lose 0.75% of body weight per week",
+                "is_recommended": false,
                 "is_selected": true,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "Slow & steady",
                 "title": "Slow & steady",
                 "detail": "Lose 0.5% of body weight per week",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "Custom",
                 "title": "Custom",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             }
         ],
         "is_custom": false,
@@ -345,25 +345,25 @@
                 "value": "beginner",
                 "title": "Beginner",
                 "detail": "Under 1 year of consistent lifting. Mesocycles start at 6 weeks.",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "intermediate",
                 "title": "Intermediate",
                 "detail": "1 to 4 years. Mesocycles start at 5 weeks.",
+                "is_recommended": false,
                 "is_selected": true,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "advanced",
                 "title": "Advanced",
                 "detail": "Over 4 years. Mesocycles start at 5 weeks.",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             }
         ]
     },
@@ -466,38 +466,33 @@
                 "value": "template:12",
                 "title": "Full Body 3-Day Dumbbells",
                 "detail": "3 days a week · Full body",
+                "is_recommended": true,
                 "is_selected": true,
-                "is_enabled": true,
-                "badges": [
-                    {
-                        "text": "Recommended",
-                        "tone": "good"
-                    }
-                ]
+                "is_enabled": true
             },
             {
                 "value": "template:14",
                 "title": "Upper / Lower 3-Day",
                 "detail": "3 days a week · Upper / lower",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "meso_builder",
                 "title": "Meso Builder",
                 "detail": "Set a priority for each muscle. Its screen comes later, so your plan is built later for now.",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "later",
                 "title": "I'll build it later",
                 "detail": "The schedule shows workout blocks with no exercises until you do.",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             }
         ]
     },
@@ -740,57 +735,57 @@
                 "value": "1",
                 "title": "Mon",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "2",
                 "title": "Tue",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "3",
                 "title": "Wed",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "4",
                 "title": "Thu",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "5",
                 "title": "Fri",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "6",
                 "title": "Sat",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": true,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             },
             {
                 "value": "7",
                 "title": "Sun",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             }
         ]
     },
@@ -800,22 +795,17 @@
                 "value": "recommendation",
                 "title": "RP recommendation",
                 "detail": "1,546 kcal a day",
+                "is_recommended": true,
                 "is_selected": true,
-                "is_enabled": true,
-                "badges": [
-                    {
-                        "text": "Recommended",
-                        "tone": "good"
-                    }
-                ]
+                "is_enabled": true
             },
             {
                 "value": "own",
                 "title": "Choose my own average daily calories",
                 "detail": "",
+                "is_recommended": false,
                 "is_selected": false,
-                "is_enabled": true,
-                "badges": []
+                "is_enabled": true
             }
         ],
         "own_kcal": null,

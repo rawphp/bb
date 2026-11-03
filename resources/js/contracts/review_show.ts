@@ -108,16 +108,16 @@ export interface ReviewShowOutput {
       tone: "good" | "neutral" | "warning" | "info";
     }[];
     options: {
-      id: string;
+      value: string;
       title: string;
       /**
-       * REV-013: next week's calories and macros, then the option's own words or why it is refused. Lines split on "\n".
+       * The row's explanation, or why it is refused. Lines split on "\n".
        */
       detail: string;
       is_recommended: boolean;
       is_selected: boolean;
       /**
-       * False when safety refuses it (SAFE-008 to SAFE-012); detail says why.
+       * False when the server refuses the option; detail says why.
        */
       is_enabled: boolean;
     }[];
@@ -136,16 +136,16 @@ export interface ReviewShowOutput {
       tone: "good" | "neutral" | "warning" | "info";
     }[];
     options: {
-      id: string;
+      value: string;
       title: string;
       /**
-       * REV-013: next week's calories and macros, then the option's own words or why it is refused. Lines split on "\n".
+       * The row's explanation, or why it is refused. Lines split on "\n".
        */
       detail: string;
       is_recommended: boolean;
       is_selected: boolean;
       /**
-       * False when safety refuses it (SAFE-008 to SAFE-012); detail says why.
+       * False when the server refuses the option; detail says why.
        */
       is_enabled: boolean;
     }[];
@@ -230,4 +230,4 @@ export interface ReviewShowOutput {
   save_title: string;
 }
 
-export const outputVersion = '0a22a8a2c088';
+export const outputVersion = '625695843279';

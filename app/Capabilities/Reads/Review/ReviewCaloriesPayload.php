@@ -2,13 +2,13 @@
 
 namespace App\Capabilities\Reads\Review;
 
-use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Review\Data\ReviewCalories;
-use App\Capabilities\Review\Data\ReviewChoice;
 use App\Capabilities\Review\Data\ReviewDeload;
 use App\Capabilities\Review\Data\ReviewOwnCalories;
 use App\Capabilities\Review\Data\ReviewStepOffer;
+use App\Capabilities\Support\Choice;
 use App\Capabilities\Support\Line;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Review\BuiltWeekSummary;
 use App\Domain\Review\CalorieOptionKind;
@@ -67,7 +67,7 @@ final class ReviewCaloriesPayload
     /**
      * @param  array{ids: list<string>, stall: ?StallOptions, recommended: ?string}  $layout
      */
-    private static function option(ReviewChoices $choices, string $id, array $layout, ?string $selected): ReviewChoice
+    private static function option(ReviewChoices $choices, string $id, array $layout, ?string $selected): Choice
     {
         $week = $choices->week($id);
         $lines = [];
@@ -91,8 +91,8 @@ final class ReviewCaloriesPayload
             $lines[] = $words;
         }
 
-        return new ReviewChoice(
-            id: $id,
+        return new Choice(
+            value: $id,
             title: self::title($id, $layout['stall']),
             detail: implode("\n", array_filter($lines, fn (string $line) => $line !== '')),
             is_recommended: $id === $layout['recommended'],

@@ -27,7 +27,7 @@ it('REV-001 REV-003 REV-010 shows a full review with the clock fixed, in the rev
     expect($data['state'])->toBe('ready')
         ->and(array_column($data['steps'], 'key'))->toBe(['weigh_ins', 'meals', 'training', 'progress', 'goal', 'calories', 'preview'])
         ->and(collect(['weigh_ins', 'meals', 'training', 'progress', 'goal', 'calories', 'preview'])->every(fn (string $key) => $data[$key] !== null))->toBeTrue()
-        ->and(array_column($data['calories']['options'], 'id'))->toBe(['recommendation', 'repeat_this_week', 'choose_own', 'drop_fatigue'])
+        ->and(array_column($data['calories']['options'], 'value'))->toBe(['recommendation', 'repeat_this_week', 'choose_own', 'drop_fatigue'])
         ->and($data['calories']['options'][0]['is_recommended'])->toBeTrue()
         ->and($data['calories']['options'][0]['is_selected'])->toBeTrue()
         ->and($data['can_save'])->toBeTrue();
@@ -38,7 +38,7 @@ it('REV-041 REV-011 opens with the recommended Drop fatigue selected while nothi
     $seed->muscleFeedback = ReviewSeed::highFatigue(ReviewSeed::sessionKey(1));
 
     $data = reviewShowFor($seed->seed());
-    $options = collect($data['calories']['options'])->keyBy('id');
+    $options = collect($data['calories']['options'])->keyBy('value');
 
     assertMatchesScreenFixture('review_show', $data);
     expect($options['drop_fatigue']['is_recommended'])->toBeTrue()

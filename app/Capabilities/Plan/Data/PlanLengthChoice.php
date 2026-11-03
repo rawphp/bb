@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Plan\Data;
 
-use App\Capabilities\Train\Data\Pill;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -19,7 +19,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class PlanLengthChoice extends CapabilityData
 {
     /**
-     * @param  list<Pill>  $warnings
+     * @param  list<Status>  $warnings
      * @param  list<PlanProposedMesocycle>  $mesocycles
      * @param  list<PlanLengthFix>  $fixes
      */
@@ -28,7 +28,7 @@ final class PlanLengthChoice extends CapabilityData
         public readonly string $label,
         public readonly string $ends_text,
         public readonly bool $is_selected,
-        #[Field(items: Pill::class)]
+        #[Field(items: Status::class)]
         public readonly array $warnings,
         #[Field(items: PlanProposedMesocycle::class)]
         public readonly array $mesocycles,

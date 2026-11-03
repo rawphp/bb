@@ -23,7 +23,7 @@ function rvCalories(?Closure $change = null, ?ReviewAnswers $answers = null): ar
 /** @param  array<string, mixed>  $calories */
 function rvOption(array $calories, string $id): array
 {
-    $option = array_values(array_filter($calories['options'], fn (array $option) => $option['id'] === $id))[0] ?? null;
+    $option = array_values(array_filter($calories['options'], fn (array $option) => $option['value'] === $id))[0] ?? null;
 
     return $option ?? throw new RuntimeException("No option {$id}.");
 }
@@ -37,13 +37,13 @@ function rvNotes(array $calories): array
 /** @param  array<string, mixed>  $calories */
 function rvSelected(array $calories): array
 {
-    return array_column(array_filter($calories['options'], fn (array $option) => $option['is_selected']), 'id');
+    return array_column(array_filter($calories['options'], fn (array $option) => $option['is_selected']), 'value');
 }
 
 /** @param  array<string, mixed>  $calories */
 function rvRecommended(array $calories): array
 {
-    return array_column(array_filter($calories['options'], fn (array $option) => $option['is_recommended']), 'id');
+    return array_column(array_filter($calories['options'], fn (array $option) => $option['is_recommended']), 'value');
 }
 
 function rvStalled(ReviewSeed $seed): void
@@ -65,7 +65,7 @@ it('REV-010 shows last week\'s target and average and the four options, recommen
         ['label' => 'Last week\'s target', 'value' => '2400 kcal', 'tone' => 'neutral'],
         ['label' => 'Last week\'s average', 'value' => '2400 kcal', 'tone' => 'neutral'],
     ])
-        ->and(array_column($calories['options'], 'id'))->toBe(['recommendation', 'repeat_this_week', 'choose_own', 'drop_fatigue'])
+        ->and(array_column($calories['options'], 'value'))->toBe(['recommendation', 'repeat_this_week', 'choose_own', 'drop_fatigue'])
         ->and(array_column($calories['options'], 'title'))->toBe(['Take the recommendation', 'Repeat this week', 'Choose my own calories', 'Drop fatigue'])
         ->and(rvRecommended($calories))->toBe(['recommendation'])
         ->and(rvSelected($calories))->toBe(['recommendation'])
@@ -88,8 +88,8 @@ it('REV-010 offers Drop fatigue in Fat loss only, and not after a week that was 
     $muscleGain = rvCalories(fn (ReviewSeed $seed) => ReviewShowWorld::muscleGain($seed));
     $afterBreak = rvCalories(fn (ReviewSeed $seed) => $seed->planWeekRows = [['start_date' => '2026-10-05', 'is_diet_break' => true]]);
 
-    expect(array_column($muscleGain['options'], 'id'))->toBe(['recommendation', 'repeat_this_week', 'choose_own'])
-        ->and(array_column($afterBreak['options'], 'id'))->toBe(['recommendation', 'repeat_this_week', 'choose_own']);
+    expect(array_column($muscleGain['options'], 'value'))->toBe(['recommendation', 'repeat_this_week', 'choose_own'])
+        ->and(array_column($afterBreak['options'], 'value'))->toBe(['recommendation', 'repeat_this_week', 'choose_own']);
 });
 
 it('REV-013 shows each option with next week\'s average calories and macro split', function () {
@@ -176,7 +176,7 @@ it('REV-012 a diet break marked ahead is said so and offers only Repeat and Choo
     $calories = rvCalories(fn (ReviewSeed $seed) => $seed->planWeekRows = [['start_date' => '2026-10-12', 'is_diet_break' => true]]);
 
     expect($calories['notes'][0])->toBe(['text' => 'Next week is a diet break at maintenance calories', 'tone' => 'info'])
-        ->and(array_column($calories['options'], 'id'))->toBe(['repeat_this_week', 'choose_own'])
+        ->and(array_column($calories['options'], 'value'))->toBe(['repeat_this_week', 'choose_own'])
         ->and(rvSelected($calories))->toBe(['repeat_this_week'])
         // REV-002: a planned week keeps its own rules, so Repeat shows the break's maintenance calories.
         ->and((int) explode(' ', rvOption($calories, 'repeat_this_week')['detail'])[2])->toBeGreaterThan(2400);
@@ -186,7 +186,7 @@ it('REV-012 a Fat loss deload next week is a diet break at maintenance, and an o
     $deload = rvCalories(fn (ReviewSeed $seed) => $seed->mesocycleWeeks = 5);
 
     expect($deload['notes'][0]['text'])->toBe('Next week is a diet break at maintenance calories')
-        ->and(array_column($deload['options'], 'id'))->toBe(['repeat_this_week', 'choose_own'])
+        ->and(array_column($deload['options'], 'value'))->toBe(['repeat_this_week', 'choose_own'])
         ->and(rvNotes(rvCalories()))->not->toContain('Next week is a diet break at maintenance calories');
 });
 
@@ -196,7 +196,7 @@ it('REV-027 a stall says so and offers cut, add steps, hold, a diet break and Ch
     $calories = rvCalories(fn (ReviewSeed $seed) => rvStalled($seed));
 
     expect($calories['notes'][0])->toBe(['text' => 'Your progress has stalled', 'tone' => 'warning'])
-        ->and(array_column($calories['options'], 'id'))->toBe(['cut_calories', 'add_steps', 'repeat_this_week', 'drop_fatigue', 'choose_own'])
+        ->and(array_column($calories['options'], 'value'))->toBe(['cut_calories', 'add_steps', 'repeat_this_week', 'drop_fatigue', 'choose_own'])
         ->and(rvOption($calories, 'repeat_this_week')['title'])->toBe('Hold for another week')
         ->and(rvOption($calories, 'drop_fatigue')['title'])->toBe('Take a diet break')
         ->and(rvOption($calories, 'cut_calories')['title'])->toBe('Cut 250 calories a day')

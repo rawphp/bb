@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Onboarding\Data;
 
+use App\Capabilities\Support\Choice;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -12,10 +13,10 @@ use Rawphp\Capabilities\Support\CapabilityData;
  */
 final class OnboardingTrainingPlanSection extends CapabilityData
 {
-    /** @param  list<OnboardingChoice>  $options */
+    /** @param  list<Choice>  $options */
     public function __construct(
         public readonly string $note,
-        #[Field(items: OnboardingChoice::class)]
+        #[Field(items: Choice::class)]
         public readonly array $options,
     ) {}
 }

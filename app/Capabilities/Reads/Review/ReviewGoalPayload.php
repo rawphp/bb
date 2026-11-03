@@ -2,9 +2,9 @@
 
 namespace App\Capabilities\Reads\Review;
 
-use App\Capabilities\Reads\Data\Today\Status;
-use App\Capabilities\Review\Data\ReviewChoice;
 use App\Capabilities\Review\Data\ReviewGoal;
+use App\Capabilities\Support\Choice;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Model\PlanWeek;
 use App\Domain\Phases\FinalReviewChoice;
@@ -53,12 +53,12 @@ final class ReviewGoalPayload
         return NextPhase::finalReviewOptions($phase->type, intdiv($days, PlanWeek::LENGTH_IN_DAYS));
     }
 
-    private static function choice(FinalReviewOption $option): ReviewChoice
+    private static function choice(FinalReviewOption $option): Choice
     {
         $keep = $option->choice === FinalReviewChoice::KeepGoal;
 
-        return new ReviewChoice(
-            id: match ($option->choice) {
+        return new Choice(
+            value: match ($option->choice) {
                 FinalReviewChoice::KeepGoal => 'keep_goal',
                 FinalReviewChoice::ChooseNewGoal => 'choose_new_goal',
                 FinalReviewChoice::EndPlan => 'end_plan',

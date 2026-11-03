@@ -3,7 +3,7 @@
 namespace App\Capabilities\Plan\Data;
 
 use App\Capabilities\Support\DomainValues;
-use App\Capabilities\Train\Data\Pill;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -17,7 +17,7 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class PhaseGoalChoice extends CapabilityData
 {
     /**
-     * @param  list<Pill>  $warnings
+     * @param  list<Status>  $warnings
      * @param  list<PlanTextLine>  $training_lines
      */
     public function __construct(
@@ -28,7 +28,7 @@ final class PhaseGoalChoice extends CapabilityData
         public readonly string $length_text,
         public readonly ?string $rate_text,
         public readonly ?string $refusal,
-        #[Field(items: Pill::class)]
+        #[Field(items: Status::class)]
         public readonly array $warnings,
         #[Field(items: PlanTextLine::class)]
         public readonly array $training_lines,

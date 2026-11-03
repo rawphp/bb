@@ -114,7 +114,7 @@ final class OnboardingLifestylePayload
             options: [
                 OnboardingParts::choice(
                     'recommendation', self::RECOMMENDATION, ! $own, $recommended === null ? '' : OnboardingText::kcalText($recommended->averageKcal),
-                    badges: [OnboardingParts::status('Recommended', 'good')],
+                    recommended: true,
                 ),
                 OnboardingParts::choice('own', self::OWN_CALORIES, $own),
             ],

@@ -8,7 +8,7 @@ use App\Capabilities\Reads\Data\Today\AdjustDayOption;
 use App\Capabilities\Reads\Data\Today\AdjustDayTotals;
 use App\Capabilities\Reads\Data\Today\AdjustMealOption;
 use App\Capabilities\Reads\Data\Today\AdjustProjectedMeal;
-use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\DayBalance\DayBalance;
 use App\Domain\Model\MealTarget;

@@ -10,9 +10,9 @@ use App\Capabilities\Plan\Data\PlanPrebuiltSegment;
 use App\Capabilities\Plan\Data\PlanProposedMesocycle;
 use App\Capabilities\Plan\Data\PlanRateChoice;
 use App\Capabilities\Plan\Data\PlanTextLine;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Capabilities\Train\Data\Measure;
-use App\Capabilities\Train\Data\Pill;
 use App\Domain\Defaults\TBL010Phases;
 use App\Domain\Defaults\TBL010Phases\RatePreset;
 use App\Domain\Model\PhaseType;
@@ -104,7 +104,7 @@ final class NewPhasePayload
             label: $weeks === null ? 'No end' : PlanWords::weeks($weeks),
             ends_text: $weeks === null ? 'No end date' : 'Ends '.PlanWords::day($new->plan->dayOfWeek($start + $weeks)->modify('-1 day')),
             is_selected: $selected,
-            warnings: array_map(fn (string $text) => new Pill($text, Tone::Warning->value), $new->warnings($type, $weeks, $rate)),
+            warnings: array_map(fn (string $text) => new Status($text, Tone::Warning->value), $new->warnings($type, $weeks, $rate)),
             mesocycles: array_map(fn (PlannedMesocycle $m, int $i) => self::mesocycle($new->plan, $m, $i), $mesocycles = $new->mesocycles($type, $weeks), array_keys($mesocycles)),
             fixes: [],
         );

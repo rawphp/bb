@@ -11,9 +11,9 @@ use App\Capabilities\Plan\Data\PlanTextLine;
 use App\Capabilities\Plan\Data\PlanTransition;
 use App\Capabilities\Plan\Data\PlanTransitionOption;
 use App\Capabilities\Plan\Data\PlanTransitionTemplate;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Capabilities\Train\Data\Measure;
-use App\Capabilities\Train\Data\Pill;
 use App\Domain\Phases\CalorieStepUp;
 use App\Domain\Phases\CalorieStepUpMode;
 use App\Domain\Phases\MaintenanceHold;
@@ -87,7 +87,7 @@ final class TransitionPayload
             ),
             corridor_text: $transitions->hasStepUp($option) ? self::corridor($transitions) : null,
             step_up: $transitions->hasStepUp($option) ? self::stepUp($transitions, $option) : null,
-            warnings: array_map(fn (string $text) => new Pill($text, Tone::Warning->value), $transitions->optionWarnings($option)),
+            warnings: array_map(fn (string $text) => new Status($text, Tone::Warning->value), $transitions->optionWarnings($option)),
             readiness: array_map(fn (array $q) => new PlanReadinessQuestion($q[0], $q[1]), PhaseTransitions::readiness($option)),
             refusal: $transitions->refusal($option, $default),
         );
@@ -100,7 +100,7 @@ final class TransitionPayload
             label: PlanWords::weeks($weeks),
             ends_text: 'Ends '.PlanWords::day($transitions->start()->modify('+'.(7 * $weeks - 1).' days')),
             is_selected: $selected,
-            warnings: array_map(fn (string $text) => new Pill($text, Tone::Warning->value), $transitions->lengthWarnings($option, $weeks)),
+            warnings: array_map(fn (string $text) => new Status($text, Tone::Warning->value), $transitions->lengthWarnings($option, $weeks)),
             mesocycles: [],
             fixes: [],
         );

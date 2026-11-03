@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -15,13 +16,13 @@ final class MealShowOutput extends CapabilityData
         /** @var list<MacroBar> */
         #[Field(items: MacroBar::class)]
         public readonly array $bars,
-        /** @var list<Pill> */
-        #[Field(items: Pill::class, description: 'MEAL-011: calories, then protein')]
+        /** @var list<Status> */
+        #[Field(items: Status::class, description: 'MEAL-011: calories, then protein')]
         public readonly array $pills,
         #[Field(description: 'MEAL-003')]
-        public readonly ?Pill $targets_met,
+        public readonly ?Status $targets_met,
         #[Field(description: 'DAY-003')]
-        public readonly ?Pill $adjust_badge,
+        public readonly ?Status $adjust_badge,
         public readonly ?PeriWorkout $peri_workout,
         public readonly MealCheckIn $check_in,
         /** @var list<MealHint> */

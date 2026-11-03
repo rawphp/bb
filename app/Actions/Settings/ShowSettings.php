@@ -21,7 +21,7 @@ use App\Capabilities\Reads\Data\Settings\Units;
 use App\Capabilities\Reads\Data\Settings\Weekday;
 use App\Capabilities\Reads\Data\Settings\WeekdayChip;
 use App\Capabilities\Reads\Data\SettingsShowOutput;
-use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Billing\Access;
 use App\Domain\Defaults\TBL001BodyFatBuckets;

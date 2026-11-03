@@ -178,8 +178,8 @@ it('ONB-012 shows step 9, the templates that fit with the recommendation selecte
     onboardingMatchesFixture('training_plan', $shown);
     expect(array_column($options, 'value'))->toBe(["template:{$world['full']}", "template:{$world['upper']}", 'meso_builder', 'later'])
         ->and(onboardingChosen($options))->toBe(["template:{$world['full']}"])
-        ->and($options[0])->toMatchArray(['title' => 'Full Body 3-Day Dumbbells', 'detail' => '3 days a week · Full body', 'badges' => [['text' => 'Recommended', 'tone' => 'good']]])
-        ->and($options[1]['badges'])->toBe([])
+        ->and($options[0])->toMatchArray(['title' => 'Full Body 3-Day Dumbbells', 'detail' => '3 days a week · Full body', 'is_recommended' => true])
+        ->and($options[1]['is_recommended'])->toBeFalse()
         ->and($shown['training_plan']['note'])->toBe('Templates that fit your 3 training days, sex and goal.')
         ->and($shown['step']['can_continue'])->toBeTrue();
 });
@@ -287,7 +287,7 @@ it('ONB-017 shows step 13, the recommendation with its daily average and the wee
     expect($shown['step'])->toMatchArray(['number' => 13, 'counter' => 'Step 13 of 13', 'can_continue' => true])
         ->and(onboardingChosen($calories['options']))->toBe(['recommendation'])
         ->and($calories['options'][0]['detail'])->toMatch('/^[\d,]+ kcal a day$/')
-        ->and($calories['options'][0]['badges'])->toBe([['text' => 'Recommended', 'tone' => 'good']])
+        ->and($calories['options'][0]['is_recommended'])->toBeTrue()
         ->and(array_column($calories['week'], 'name'))->toBe(['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'])
         ->and($calories['week'][0]['kcal_text'])->toMatch('/^[\d,]+ kcal$/')
         ->and($calories)->toMatchArray(['own_kcal' => null, 'own_kcal_max' => 10000, 'own_unit' => 'kcal a day']);

@@ -2,9 +2,9 @@
 
 namespace App\Capabilities\Reads\Workout;
 
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Capabilities\Train\Data\Measure;
-use App\Capabilities\Train\Data\Pill;
 use App\Capabilities\Workout\Data\WorkoutChoice;
 use App\Capabilities\Workout\Data\WorkoutExercise;
 use App\Capabilities\Workout\Data\WorkoutFeedback;
@@ -74,8 +74,8 @@ final class WorkoutPayload
                 ? $plan->name.' · '.count(array_filter($blocks, fn (WorkoutBlock $b) => $b->isDone())).' of '.count($blocks).' exercises'
                 : null,
             weight_unit: $s->unit()->value,
-            deload_banner: $isDeload ? new Pill(WorkoutWords::DELOAD, Tone::Info->value) : null,
-            feedback_banner: $pending ? new Pill(WorkoutWords::FEEDBACK_REQUIRED, Tone::Warning->value) : null,
+            deload_banner: $isDeload ? new Status(WorkoutWords::DELOAD, Tone::Info->value) : null,
+            feedback_banner: $pending ? new Status(WorkoutWords::FEEDBACK_REQUIRED, Tone::Warning->value) : null,
             can_finish: $editable && $allDone && ! $pending,
             next_meal: self::nextMeal($s),
             warm_up: $editable && $blocks !== [] && ! $anyDone ? new WorkoutWarmUp(
@@ -120,8 +120,8 @@ final class WorkoutPayload
             },
             pinned_note: $s->pinnedNote($exercise),
             session_note: $block->note,
-            recovery_note: ($note = $s->recoveryNote($exercise, max(1, count($block->sets)))) === null ? null : new Pill($note, Tone::Neutral->value),
-            swap_suggestion: ($swap = $s->swapSuggestion($exercise)) === null ? null : new Pill($swap, Tone::Warning->value),
+            recovery_note: ($note = $s->recoveryNote($exercise, max(1, count($block->sets)))) === null ? null : new Status($note, Tone::Neutral->value),
+            swap_suggestion: ($swap = $s->swapSuggestion($exercise)) === null ? null : new Status($swap, Tone::Warning->value),
             carries_first_weight: $editable && $exercise->load_type !== ExerciseLoadType::Bodyweight && $block->sets !== []
                 && array_filter($block->sets, fn (WorkoutSetRow $set) => $set->targetKg !== null) === [],
             can_move_up: $index > 0,
@@ -302,9 +302,9 @@ final class WorkoutPayload
                     day: $row->day,
                     title: "Week {$row->week} · Day {$row->day} · {$plan->name}",
                     status: match ($row->status()) {
-                        WorkoutStatus::Skipped => new Pill('Skipped', Tone::Neutral->value),
-                        WorkoutStatus::Finished => new Pill('Done', Tone::Good->value),
-                        default => new Pill('Started', Tone::Info->value),
+                        WorkoutStatus::Skipped => new Status('Skipped', Tone::Neutral->value),
+                        WorkoutStatus::Finished => new Status('Done', Tone::Good->value),
+                        default => new Status('Started', Tone::Info->value),
                     },
                 );
             })

@@ -1,7 +1,7 @@
 <?php
 
-use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Reads\Today\WeekWarnings;
+use App\Capabilities\Support\Status;
 use App\Domain\Model\PhaseType;
 
 // SCH-062: the week strip's "Too much cardio" warning, from the week's Other activity intensities.

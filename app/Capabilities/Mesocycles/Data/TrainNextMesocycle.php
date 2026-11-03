@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Mesocycles\Data;
 
-use App\Capabilities\Train\Data\Pill;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -20,6 +20,6 @@ final class TrainNextMesocycle extends CapabilityData
         #[Field(enum: ['cut', 'gain', 'maintain', 'all'])]
         public readonly string $template_phase,
         public readonly ?string $priority_notice,
-        public readonly ?Pill $active_rest,
+        public readonly ?Status $active_rest,
     ) {}
 }

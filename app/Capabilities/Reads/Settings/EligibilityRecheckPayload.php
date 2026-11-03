@@ -5,7 +5,7 @@ namespace App\Capabilities\Reads\Settings;
 use App\Capabilities\Reads\Data\EligibilityRecheckShowOutput;
 use App\Capabilities\Reads\Data\Settings\ScreeningQuestion;
 use App\Capabilities\Reads\Data\Settings\TextLine;
-use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Safety\EligibilityMode;
 use App\Domain\Safety\Screening;

@@ -9,7 +9,6 @@ use App\Capabilities\Reads\Data\Today\MissedWeeks;
 use App\Capabilities\Reads\Data\Today\NextMesocycle;
 use App\Capabilities\Reads\Data\Today\OffPlanEntry;
 use App\Capabilities\Reads\Data\Today\ScheduleMenuItem;
-use App\Capabilities\Reads\Data\Today\Status;
 use App\Capabilities\Reads\Data\Today\Steps;
 use App\Capabilities\Reads\Data\Today\TimelineEntry;
 use App\Capabilities\Reads\Data\Today\TodayBusy;
@@ -18,6 +17,7 @@ use App\Capabilities\Reads\Data\Today\TodayOtherActivity;
 use App\Capabilities\Reads\Data\Today\TodayWeighIn;
 use App\Capabilities\Reads\Data\Today\TodayWorkout;
 use App\Capabilities\Reads\Data\Today\Totals;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 

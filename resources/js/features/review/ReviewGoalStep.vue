@@ -21,7 +21,7 @@ function choose(option: Option): void {
         <ReviewNote v-for="note in goal.notes" :key="note.text" v-bind="note" />
         <button
             v-for="option in goal.options"
-            :key="option.id"
+            :key="option.value"
             type="button"
             data-test="goal-option"
             class="flex min-h-tap w-full items-center gap-3 rounded-xl border bg-surface px-3.5 py-1.5 text-left active:opacity-70 disabled:opacity-60"

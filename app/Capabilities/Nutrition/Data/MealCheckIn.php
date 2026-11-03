@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Nutrition\Data;
 
-use App\Capabilities\Support\Tone;
+use App\Capabilities\Support\DomainValues;
 use App\Domain\Model\MealCheckInState;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
@@ -14,7 +14,7 @@ final class MealCheckIn extends CapabilityData
         #[Field(enum: [MealCheckInState::NotCheckedIn->value, MealCheckInState::OnTrack->value, MealCheckInState::Under->value, MealCheckInState::Over->value])]
         public readonly string $state,
         public readonly string $text,
-        #[Field(enum: [Tone::Good->value, Tone::Neutral->value, Tone::Warning->value, Tone::Info->value])]
+        #[Field(enum: DomainValues::TONES)]
         public readonly string $tone,
     ) {}
 }

@@ -4,7 +4,7 @@ namespace App\Capabilities\Reads\Today;
 
 use App\Capabilities\Reads\Data\DayRedistributeShowOutput;
 use App\Capabilities\Reads\Data\Today\RedistributeRow;
-use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\DayBalance\DayBalance;
 use App\Support\Today\DayMeal;

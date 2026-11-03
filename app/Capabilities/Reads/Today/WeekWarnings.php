@@ -2,7 +2,7 @@
 
 namespace App\Capabilities\Reads\Today;
 
-use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Energy\EnergyRules;
 use App\Domain\Model\PhaseType;

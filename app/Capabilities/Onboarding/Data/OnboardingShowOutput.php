@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Onboarding\Data;
 
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -12,11 +13,11 @@ use Rawphp\Capabilities\Support\CapabilityData;
  */
 final class OnboardingShowOutput extends CapabilityData
 {
-    /** @param  list<OnboardingStatus>  $notices */
+    /** @param  list<Status>  $notices */
     public function __construct(
         public readonly OnboardingStep $step,
         public readonly bool $training_only,
-        #[Field(items: OnboardingStatus::class)]
+        #[Field(items: Status::class)]
         public readonly array $notices,
         public readonly OnboardingGoalSection $goal,
         public readonly OnboardingAboutYouSection $about_you,

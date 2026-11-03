@@ -5,7 +5,7 @@ namespace App\Capabilities\Reads\Data;
 use App\Capabilities\Reads\Data\Settings\BridgePost;
 use App\Capabilities\Reads\Data\Settings\BridgeToken;
 use App\Capabilities\Reads\Data\Settings\TextLine;
-use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 

@@ -4,7 +4,7 @@ namespace App\Capabilities\Reads\Data;
 
 use App\Capabilities\Reads\Data\Settings\ScreeningQuestion;
 use App\Capabilities\Reads\Data\Settings\TextLine;
-use App\Capabilities\Reads\Data\Today\Status;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 

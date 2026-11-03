@@ -3,7 +3,7 @@
 namespace App\Capabilities\Workout\Data;
 
 use App\Capabilities\Support\DomainValues;
-use App\Capabilities\Train\Data\Pill;
+use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -33,9 +33,9 @@ final class WorkoutExercise extends CapabilityData
         /** WO-022: this session's note. */
         public readonly ?string $session_note,
         /** PROG-051, PROG-053, PROG-018: why this week's targets moved. */
-        public readonly ?Pill $recovery_note,
+        public readonly ?Status $recovery_note,
         /** EX-009 "Barbell Row hurt 2 sessions running. Consider swapping it." */
-        public readonly ?Pill $swap_suggestion,
+        public readonly ?Status $swap_suggestion,
         /** WO-006: a weight typed on set 1 fills the empty weight fields below it. */
         public readonly bool $carries_first_weight,
         public readonly bool $can_move_up,
