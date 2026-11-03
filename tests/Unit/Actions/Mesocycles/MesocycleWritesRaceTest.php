@@ -10,8 +10,10 @@ use App\Models\Exercise;
 use App\Models\Mesocycle;
 use App\Models\User;
 use Illuminate\Database\Connection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\Support\TrainSeed;
 
 // A mesocycle write that waited on the row lock reads what the write before it saved. A reversible write runs inside
@@ -52,6 +54,16 @@ dataset('mesocycle writes', [
         fn (User $user, string $id) => app(AddMesocycleDay::class)($user, $id, '01JC0000000000000000000000'),
         fn (Mesocycle $saved) => expect($saved->days)->toHaveCount(3)
             ->and($saved->days[0]['label'])->toBe('Push'),
+    ],
+    'priority Off keeps this week\'s session another write started' => [
+        [],
+        fn (Connection $racer, Mesocycle $m) => $racer->table('workout_sessions')->insert([
+            'id' => (string) Str::uuid7(), 'user_id' => $m->user_id, 'mesocycle_id' => $m->id, 'week' => 3, 'day' => 1,
+            'actual_start_at' => '2026-09-21 17:30:00', 'is_skipped' => false, 'created_at' => '2026-09-21 17:30:00', 'updated_at' => '2026-09-21 17:30:00',
+        ]),
+        fn (User $user, string $id) => app(SetMusclePriority::class)($user, $id, MuscleGroup::Chest, null),
+        // Week 3's Upper A was started with chest, so it keeps it; Lower A is still to come.
+        fn (Mesocycle $saved) => expect(array_column($saved->earlierWeekRows()[2][0]['slots'], 'muscle_group'))->toBe(['chest']),
     ],
 ]);
 
@@ -128,4 +140,26 @@ it('MESO-032 MESO-034 a mesocycle write does not wait on a write that holds the 
     }
 
     expect($thrown)->toBeNull();
+})->with('mesocycle writes');
+
+it('MESO-032 MESO-034 a mesocycle write answers 404 when the mesocycle was deleted while it waited', function (array $attributes, Closure $race, Closure $write, Closure $kept) {
+    [$racer, $owner, $mesocycle, , $exercisesBefore] = racedMesocycles($attributes);
+
+    try {
+        $thrown = DB::transaction(function () use ($racer, $owner, $mesocycle, $write) {
+            DB::table('users')->count();
+            $racer->table('mesocycles')->where('id', $mesocycle->id)->update(['deleted_at' => '2026-09-22 09:59:00']);
+            try {
+                $write($owner, $mesocycle->id);
+            } catch (ModelNotFoundException $missing) {
+                return $missing->getModel();
+            }
+
+            return null;
+        });
+    } finally {
+        removeRaced($racer, $owner, $exercisesBefore);
+    }
+
+    expect($thrown)->toBe(Mesocycle::class);
 })->with('mesocycle writes');
