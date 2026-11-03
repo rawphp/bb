@@ -7,10 +7,13 @@ use App\Capabilities\Today\Data\TrainingWeekdaysChangeInput;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Placement\WorkoutTime;
 use App\Models\Mesocycle;
+use App\Models\Plan;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutSession;
+use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Today\DayPlans;
+use App\Support\Workout\WorkoutSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Support\FakeRebuild;
@@ -81,6 +84,29 @@ it('SCH-039 the same number of days re-maps: the new weekdays are saved, this we
         ->and(array_column($mesocycle->fresh()->days, 'label'))->toBe(['Upper A', 'Lower A'])
         ->and($mesocycle->fresh()->only(['weeks', 'earlier_weeks', 'later_weeks']))->toEqual($before)
         ->and($rebuild->calls)->toHaveCount(1);
+});
+
+it('SCH-039 a re-map gives the mesocycle\'s days the new weekdays in plan-week order', function () {
+    [$user, $mesocycle] = weekdayWorld();
+    // The plan's weeks start on Thursdays, so Friday comes before Tuesday.
+    Plan::query()->where('user_id', $user->id)->update(['start_date' => '2026-08-27', 'review_weekday' => 4]);
+    $mesocycle->update(['start_date' => '2026-09-10']);
+    FakeRebuild::bind();
+
+    changeWeekdays($user, [2, 5]);
+
+    expect(array_column($mesocycle->fresh()->days, 'weekday'))->toBe([5, 2]);
+});
+
+it('SCH-039 after keeping all sessions, Train and Workout date next week\'s sessions on the new weekday', function () {
+    [$user, $mesocycle] = weekdayWorld();
+    FakeRebuild::bind();
+
+    changeWeekdays($user, [3], 'extend');
+
+    $train = TrainSnapshot::load($user, $mesocycle->id);
+    expect($train->weekdays($train->mesocycle($mesocycle->id)))->toBe(['01JB6Q400A2B3C4D5E6F7G8H9J' => null, '01JB6Q410A2B3C4D5E6F7G8H9J' => null])
+        ->and(WorkoutSnapshot::dateOf($train, $train->mesocycle($mesocycle->id), 4, 1)?->format('Y-m-d'))->toBe('2026-09-30');
 });
 
 it('SCH-039 a weekday that stays keeps its start time and minutes', function () {

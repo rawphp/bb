@@ -3,6 +3,7 @@
 use App\Capabilities\Support\HostDefinition;
 use App\Models\Profile;
 use App\Models\User;
+use App\Models\WorkoutSession;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
@@ -97,6 +98,23 @@ it('SCH-039 SCH-056 CAP-013 training_weekdays_change re-targets today with a toa
     schedulePost($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
 
     expect([Profile::query()->where('user_id', $user->id)->sole()->training_days, $today->fresh()->meals])->toEqual($before);
+});
+
+it('SCH-039 CAP-013 undo of a restructure puts the mesocycle back and removes the pinned rows', function () {
+    $user = TrainSeed::user();
+    TrainSeed::phase($user, 'muscleGain', '2026-08-31');
+    $mesocycle = TrainSeed::mesocycle($user);
+    $before = $mesocycle->fresh()->only(['days', 'weeks', 'earlier_weeks', 'later_weeks', 'days_per_week']);
+
+    $response = schedulePost($user, 'training_weekdays_change', ['weekdays' => [3], 'fewer_days' => 'restructure'])->assertOk();
+    expect($mesocycle->fresh()->days)->toHaveCount(1)
+        ->and(WorkoutSession::query()->count())->toBe(2)
+        ->and($response->json('data.invalidates'))->toContain('workout_show{"day":1,"mesocycle_id":"'.$mesocycle->id.'","week":4}');
+
+    schedulePost($user, 'undo_apply', ['token' => $response->json('data.undo')])->assertOk();
+
+    expect($mesocycle->fresh()->only(['days', 'weeks', 'earlier_weeks', 'later_weeks', 'days_per_week']))->toEqual($before)
+        ->and(WorkoutSession::query()->count())->toBe(0);
 });
 
 it('SCH-033 SCH-037 SCH-039 answers 422 naming the bad field', function (string $name, array $bad, string $field) {

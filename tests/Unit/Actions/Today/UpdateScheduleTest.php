@@ -225,6 +225,34 @@ it('SCH-037 all future days removes the period taken off and edits the one kept 
     ]);
 });
 
+it('SCH-037 all future days keeps a renamed period, re-timed or not, with its id on every day it repeats', function (array $sent) {
+    [$user] = editWorld();
+    Profile::query()->where('user_id', $user->id)->update(['busy_periods' => json_encode([
+        ['id' => 'w1', 'label' => 'Work', 'start' => '09:00', 'end' => '17:00', 'weekdays' => [1, 2, 3, 4, 5]],
+    ])]);
+    FakeRebuild::bind();
+
+    editSchedule($user, ['apply_to' => 'all_future_days', 'busy_periods' => [$sent]]);
+
+    expect(editProfile($user)->busy_periods)->toEqual([['id' => 'w1', ...$sent, 'weekdays' => [1, 2, 3, 4, 5]]]);
+})->with([
+    'renamed' => [['label' => 'Office', 'start' => '09:00', 'end' => '17:00']],
+    'renamed and re-timed' => [['label' => 'Office', 'start' => '09:00', 'end' => '13:00']],
+]);
+
+it('SCH-037 all future days takes the same-named period that shares a time as the one edited', function () {
+    [$user] = editWorld();
+    Profile::query()->where('user_id', $user->id)->update(['busy_periods' => json_encode([
+        ['label' => 'Meeting', 'start' => '10:00', 'end' => '11:00', 'weekdays' => [3]],
+        ['label' => 'Meeting', 'start' => '15:00', 'end' => '16:00', 'weekdays' => [3, 5]],
+    ])]);
+    FakeRebuild::bind();
+
+    editSchedule($user, ['apply_to' => 'all_future_days', 'busy_periods' => [['label' => 'Meeting', 'start' => '15:00', 'end' => '17:00']]]);
+
+    expect(editProfile($user)->busy_periods)->toEqual([['label' => 'Meeting', 'start' => '15:00', 'end' => '17:00', 'weekdays' => [3, 5]]]);
+});
+
 it('SCH-037 refuses a busy period with no label or no length, naming it', function () {
     [$user] = editWorld();
     SheetSeed::day($user, '2026-09-23');
