@@ -579,3 +579,14 @@ it('WT-020 pages back to step rows older than every weigh-in, and for a user wit
     }
     expect(array_column(weighInPages($unweighed), 'empty_message'))->toBe(['No weigh-ins yet. Tap + to log your first.', 'No weigh-ins yet. Tap + to log your first.']);
 });
+
+it('WT-020 pages no further when the only step left is on the page\'s first day', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    $user = weighInScenario();
+    Step::factory()->for($user)->create(['date' => '2026-07-13', 'count' => 5000]);
+
+    $newest = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data');
+
+    expect(array_column($newest['steps']['rows'], 'date'))->toBe(['2026-07-13'])
+        ->and($newest['next_before'])->toBeNull();
+});
