@@ -245,6 +245,12 @@ describe('SettingsView', () => {
         expect(link(wrapper, '/settings/delete-account')).toBeDefined();
     });
 
+    it('SET-009 Signed in as opens the account screen, which the More menu does not list', () => {
+        const wrapper = render(settings);
+
+        expect(link(wrapper, '/account')?.text()).toContain('sam@example.com');
+    });
+
     it('ACC-006 signs out and opens the sign-in screen', async () => {
         postMock.mockResolvedValueOnce();
         const wrapper = render(settings);
