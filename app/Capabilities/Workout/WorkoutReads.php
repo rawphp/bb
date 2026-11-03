@@ -14,12 +14,16 @@ use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Workout\WorkoutSnapshot;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
+use DateTimeInterface;
 use Illuminate\Support\Collection;
 
 /**
  * The reads a workout write changes (CAP-011, CAP-017): the session's workout_show, the Train tab and its mesocycle,
  * and Today and the week strip (SCH-022) of each day the session shows on: the day the plan or a move put it on, and
  * the day it started, which can be another day or plan week (as missed_session_resolve names them).
+ *
+ * A session whose mesocycle is unset or gone (soft-deleted) has no calendar, so a write names only its workout_show and
+ * the Today of its own planned and started days.
  *
  * The days come from the session row and the plan alone: a write runs on every set, so it reads the plan, the profile
  * and the mesocycle, not the mesocycle's sessions and sets a Train snapshot brings.
@@ -36,13 +40,20 @@ final class WorkoutReads
      */
     public static function keys(User $user, WorkoutSession $session, bool $planWeek = false): array
     {
-        $mesocycle = Mesocycle::query()->where('user_id', $user->id)->findOrFail($session->mesocycle_id);
+        $mesocycle = $session->mesocycle_id === null ? null : Mesocycle::query()->where('user_id', $user->id)->find($session->mesocycle_id);
+        if ($mesocycle === null) {
+            return [self::workout($session), ...TodayReads::keys(array_values(array_map(
+                fn (DateTimeImmutable $day) => $day->format('Y-m-d'),
+                array_filter([self::dayOf($session->planned_start_at), self::dayOf($session->actual_start_at)]),
+            )))];
+        }
+
         $train = self::calendarOf($user, $mesocycle);
         $grid = $train->calendar($mesocycle)->grid;
         $days = array_filter([
             WorkoutSnapshot::dateOf($train, $mesocycle, $session->week, $session->day),
-            $session->planned_start_at === null ? null : TrainSnapshot::day($session->planned_start_at),
-            $session->actual_start_at === null ? null : TrainSnapshot::day($session->actual_start_at),
+            self::dayOf($session->planned_start_at),
+            self::dayOf($session->actual_start_at),
         ]);
         $weekDates = [];
         foreach ($days as $day) {
@@ -80,6 +91,11 @@ final class WorkoutReads
             dayTargets: new Collection,
             exercises: new Collection,
         );
+    }
+
+    private static function dayOf(?DateTimeInterface $at): ?DateTimeImmutable
+    {
+        return $at === null ? null : TrainSnapshot::day($at);
     }
 
     public static function workout(WorkoutSession $session): string
