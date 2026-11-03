@@ -221,13 +221,13 @@ final class TodaySnapshot
         return self::weekStartFor($this->train, $day);
     }
 
-    /** From plan week 1 the plan's grid says, with its review-day changes; before that, the plan's review weekday. */
+    /** From plan week 1 the plan's grid says, with its review-day changes, but never more than 6 days before `$day` (a transition week can run past 7); before that, the plan's review weekday. */
     private static function weekStartFor(TrainSnapshot $train, DateTimeImmutable $day): DateTimeImmutable
     {
         $grid = $train->grid();
         $week = $grid?->weekIndexContaining($day);
         if ($grid !== null && $week !== null && $week >= 1) {
-            return $grid->start($week);
+            return max($grid->start($week), $day->modify('-6 days'));
         }
 
         $back = ((int) $day->format('N') - ($train->plan->review_weekday ?? 1) + 7) % 7;
