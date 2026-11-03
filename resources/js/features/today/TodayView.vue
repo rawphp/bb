@@ -44,6 +44,7 @@ import TodayStepRow from './TodayStepRow.vue';
 import TodayTotalsBar from './TodayTotalsBar.vue';
 import TodayWeighInRow from './TodayWeighInRow.vue';
 import TodayWorkoutCard from './TodayWorkoutCard.vue';
+import WeekWarnings from './WeekWarnings.vue';
 
 type Meal = TodayShowOutput['meals'][number];
 type MealAction = Meal['menu'][number]['action'];
@@ -410,6 +411,7 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
                 @select="go"
                 @swipe="(step) => go(step > 0 ? weekData?.next_week : weekData?.previous_week)"
             />
+            <WeekWarnings :warnings="weekData?.warnings ?? []" />
 
             <template v-if="data">
                 <NextMesocycleCard

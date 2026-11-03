@@ -80,6 +80,13 @@
                     "sets"
                 ]
             }
+        },
+        "next_before": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The id to pass as `before` to read older sessions; null when there are none."
         }
     },
     "required": [

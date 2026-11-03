@@ -2,11 +2,13 @@
 
 use App\Models\DayTarget;
 use App\Models\MealCheckIn;
+use App\Models\OtherActivity;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\ScreenFixture;
 use Tests\Support\TodaySeed;
+use Tests\Support\TrainSeed;
 
 // The HTTP seam of week_show and its screen fixtures. The rules are unit tests (WeekPayloadTest).
 
@@ -122,7 +124,51 @@ it('SCH-020 SCH-021 the week strip reads only what it shows, and still finds the
         ->and($sql)->not->toContain('weigh_ins')
         ->and($sql)->not->toContain('weigh_in_schedule_entries')
         ->and($sql)->not->toContain('`steps`')
-        ->and($sql)->not->toContain('other_activities')
+        ->and($sql)->toContain('other_activities')
         ->and($sql)->not->toContain('planned_foods')
         ->and($sql)->not->toContain('planned_recipes');
+});
+
+/** A user in a `$phase` phase from the plan start, with `$hard` hard Other activities and two sessions in week 2. */
+function cardioWeek(string $phase, int $hard): User
+{
+    $user = TodaySeed::user();
+    TrainSeed::phase($user, $phase, '2026-09-12');
+    $mesocycle = TodaySeed::mesocycle($user);
+    TodaySeed::targets($user);
+    TrainSeed::trained($mesocycle, 2, 1, '2026-09-21');
+    TrainSeed::trained($mesocycle, 2, 2, '2026-09-23');
+    foreach (array_slice(['2026-09-19', '2026-09-20', '2026-09-21', '2026-09-22', '2026-09-24'], 0, $hard) as $date) {
+        OtherActivity::factory()->for($user)->create(['date' => $date, 'name' => 'Intervals', 'intensity' => 'hard']);
+    }
+    // Light, outside the week, or deleted: none of these count.
+    OtherActivity::factory()->for($user)->create(['date' => '2026-09-25', 'name' => 'Walk', 'intensity' => 'light']);
+    OtherActivity::factory()->for($user)->create(['date' => '2026-09-18', 'name' => 'Intervals', 'intensity' => 'hard']);
+    OtherActivity::factory()->for($user)->create(['date' => '2026-09-26', 'name' => 'Intervals', 'intensity' => 'hard']);
+    OtherActivity::factory()->for($user)->create(['date' => '2026-09-25', 'name' => 'Intervals', 'intensity' => 'hard'])->delete();
+
+    return $user;
+}
+
+it('SCH-062 warns of too much cardio for more than 4 hard Other activities in a Fat loss week', function () {
+    Carbon::setTestNow('2026-09-23 10:00:00');
+
+    $data = $this->actingAs(cardioWeek('fatLoss', 5))->postJson('/capabilities/week_show')->assertOk()->json('data');
+
+    assertMatchesScreenFixture('week_show', $data);
+    expect(ScreenFixture::differences(ScreenFixture::load('week_show.warning'), $data))->toBe([])
+        ->and($data['warnings'])->toBe([[
+            'text' => 'Too much cardio hurts lifting recovery. That makes 5 hard sessions this week; more than 4 is a lot during fat loss.',
+            'tone' => 'warning',
+        ]]);
+});
+
+it('SCH-062 does not warn for 4 hard Other activities, nor outside Fat loss', function () {
+    Carbon::setTestNow('2026-09-23 10:00:00');
+
+    $four = $this->actingAs(cardioWeek('fatLoss', 4))->postJson('/capabilities/week_show')->assertOk()->json('data');
+    $gain = $this->actingAs(cardioWeek('muscleGain', 5))->postJson('/capabilities/week_show')->assertOk()->json('data');
+
+    expect($four['warnings'])->toBe([])
+        ->and($gain['warnings'])->toBe([]);
 });

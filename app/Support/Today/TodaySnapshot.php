@@ -100,9 +100,9 @@ final class TodaySnapshot
     }
 
     /**
-     * What the week strip shows for the week around `$date`: the plan, its sessions, the targets and what was eaten.
-     * The day's weigh-ins, steps and Other activities and the meals' planned foods and recipes are not read, so
-     * {@see meals()} is not for this snapshot.
+     * What the week strip shows for the week around `$date`: the plan, its sessions, the targets, what was eaten and
+     * the week's Other activities (SCH-062). The day's weigh-ins and steps and the meals' planned foods and recipes
+     * are not read, so {@see meals()} is not for this snapshot.
      */
     public static function loadWeek(User $user, ?string $date = null): self
     {
@@ -142,7 +142,7 @@ final class TodaySnapshot
                 ->with($wholeDay ? ['plannedFoods.food', 'plannedRecipes.sourceRecipe.ingredients.food', 'checkIn', 'planningState'] : ['checkIn'])
                 ->get(),
             offPlan: OffPlanEntry::query()->where('user_id', $user->id)->whereBetween('date', $range)->orderBy('time')->get(),
-            otherActivities: $wholeDay ? OtherActivity::query()->where('user_id', $user->id)->whereBetween('date', $range)->get() : new Collection,
+            otherActivities: OtherActivity::query()->where('user_id', $user->id)->whereBetween('date', $range)->get(),
             weighIns: $wholeDay ? WeighIn::query()->where('user_id', $user->id)
                 ->whereBetween('weighed_at', array_map(fn (DateTimeImmutable $at) => $at->format('Y-m-d H:i:s'), UserDay::bounds($user, $day)))
                 ->orderBy('weighed_at')->get() : new Collection,

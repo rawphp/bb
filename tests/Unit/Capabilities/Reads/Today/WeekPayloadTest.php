@@ -190,3 +190,27 @@ it('SCH-060 the week in progress, past weeks and weeks past the phase offer no a
         ->and(weekActions(weekPayload(W::snapshot(date: '2026-10-06', planWeeks: [], phases: [$phase]))))->toBe([])
         ->and(weekActions(weekPayload(W::snapshot(date: '2026-09-30', planWeeks: [], phases: []))))->toBe([]);
 });
+
+/** Hard Other activities on these days. */
+function hardOn(string ...$dates): array
+{
+    return array_map(fn (int $i, string $date) => W::activity("dddddddd-0000-4000-8000-00000000000{$i}", $date, intensity: 'hard'), array_keys($dates), $dates);
+}
+
+it('SCH-062 PLAN-009 the phase on the strip\'s last day decides the cardio warning', function () {
+    $hard = hardOn('2026-09-19', '2026-09-20', '2026-09-21', '2026-09-22', '2026-09-24');
+    $gainThenCut = [W::phase('muscleGain', end: '2026-09-22'), W::phase('miniCut', start: '2026-09-22')->forceFill(['id' => 'cccccccc-0000-4000-8000-000000000002'])];
+    $cutThenGain = [W::phase('fatLoss', end: '2026-09-22'), W::phase('muscleGain', start: '2026-09-22')->forceFill(['id' => 'cccccccc-0000-4000-8000-000000000002'])];
+
+    expect(weekPayload(W::snapshot(activities: $hard, phases: $gainThenCut))['warnings'])->toBe([[
+        'text' => 'Too much cardio hurts lifting recovery. That makes 5 hard sessions this week; more than 4 is a lot during fat loss.',
+        'tone' => 'warning',
+    ]])
+        ->and(weekPayload(W::snapshot(activities: $hard, phases: $cutThenGain))['warnings'])->toBe([]);
+});
+
+it('SCH-062 counts only the hard Other activities on the strip\'s 7 days', function () {
+    $hard = hardOn('2026-09-18', '2026-09-19', '2026-09-21', '2026-09-23', '2026-09-25', '2026-09-26');
+
+    expect(weekPayload(W::snapshot(activities: $hard, phases: [W::phase()]))['warnings'])->toBe([]);
+});

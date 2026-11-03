@@ -34,7 +34,7 @@ final class ExerciseShowCapability implements HostCapability, OwnsInput
             ->run(function (ExerciseShowInput $input, CapabilityContext $context): ExerciseShowOutput {
                 /** @var User $user */
                 $user = $context->user();
-                $history = ExerciseHistorySnapshot::load($user, $input->exercise_id)
+                $history = ExerciseHistorySnapshot::every($user, $input->exercise_id)
                     ?? throw (new ModelNotFoundException)->setModel(Exercise::class, [$input->exercise_id]);
                 $exercise = $history->exercise;
 
