@@ -19,11 +19,18 @@ const kcal = ref(String(manual.kcal));
 const protein = ref(String(manual.protein_g));
 const fat = ref(String(manual.fat_g));
 const carbs = ref(String(manual.carbs_g));
+// Each field with the server's number it opened on.
+const fields = [
+    { sent: manual.kcal, text: kcal },
+    { sent: manual.protein_g, text: protein },
+    { sent: manual.fat_g, text: fat },
+    { sent: manual.carbs_g, text: carbs },
+];
 
-// Each amount as typed (sheets/amount); here an emptied field keeps Save off, as the
-// sheet opens with every amount filled in.
+// A field left as it opened saves the server's number as sent; a typed one is read as
+// typed (sheets/amount). An emptied field keeps Save off, as every amount opens filled in.
 const input = computed<MealCheckInInput | null>(() => {
-    const [k, p, f, c] = [kcal, protein, fat, carbs].map((field) => (field.value.trim() === '' ? null : amount(field.value)));
+    const [k, p, f, c] = fields.map(({ sent, text }) => (text.value === String(sent) ? sent : text.value.trim() === '' ? null : amount(text.value)));
     if (k == null || p == null || f == null || c == null || !time.value) return null;
     return { meal_id: props.meal.id, time: time.value, kcal: k, protein_g: p, fat_g: f, carbs_g: c };
 });
