@@ -1,0 +1,35 @@
+{
+    "recipe_id": "01JBX5R0000000000000000001",
+    "name": "Overnight oats",
+    "is_read_only": true,
+    "can_delete": false,
+    "servings": 1,
+    "servings_text": "1 serving",
+    "meal_type": "breakfast",
+    "meal_type_title": "Breakfast",
+    "per_serving_text": "330 kcal · P 28 g · F 3 g · C 47 g",
+    "ingredients": [
+        {
+            "id": "01JBX5I0000000000000000011",
+            "food_id": "01JBX5F0000000000000000041",
+            "name": "Rolled oats",
+            "grams": 60,
+            "amount_text": "60 g",
+            "is_cooked": false,
+            "can_toggle_cooked": false
+        },
+        {
+            "id": "01JBX5I0000000000000000012",
+            "food_id": "01JBX5F0000000000000000042",
+            "name": "Greek yogurt, nonfat",
+            "grams": 170,
+            "amount_text": "170 g",
+            "is_cooked": false,
+            "can_toggle_cooked": false
+        }
+    ],
+    "steps": [
+        "Stir the oats into the yogurt.",
+        "Leave in the fridge overnight."
+    ]
+}

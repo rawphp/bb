@@ -1,0 +1,32 @@
+{
+    "name": "Chicken rice bowl",
+    "servings": 2,
+    "meal_type": "dinner",
+    "steps": [
+        "Cook the rice.",
+        "Grill the chicken and slice it."
+    ],
+    "items": [
+        {
+            "name": "chicken breast",
+            "grams": 300,
+            "food_id": "01JBX5F0000000000000000002",
+            "match_text": "Chicken breast",
+            "detail": null
+        },
+        {
+            "name": "jasmine rice",
+            "grams": 150,
+            "food_id": "01JBX5F0000000000000000021",
+            "match_text": "Rice, jasmine",
+            "detail": "Cooked"
+        },
+        {
+            "name": "house sauce",
+            "grams": 40,
+            "food_id": null,
+            "match_text": "No match",
+            "detail": null
+        }
+    ]
+}
