@@ -343,6 +343,8 @@ it('SCH-034 copies to days in more than one week, with the MEAL-060 options on e
 it('SCH-034 never writes the source day, a day without a target or a day before the plan', function () {
     $user = copyActionUser();
     copyActionDinner($user);
+    // Wednesday's breakfast pairs with the old day's only meal, so the pair has something to copy.
+    copyActionFood(copyActionMeal($user, '2026-09-23', 1));
     // A day from before the plan started keeps its target, but is not in the plan.
     $old = DayTarget::factory()->for($user)->create(['date' => '2026-09-05', 'meals' => [['name' => 'Dinner', 'time' => '19:30', 'kcal' => 900, 'protein_g' => 60, 'fat_g' => 30, 'carbs_g' => 90]]]);
 
@@ -350,6 +352,15 @@ it('SCH-034 never writes the source day, a day without a target or a day before 
 
     expect($written)->toBe([])
         ->and(PlannedFood::query()->where('meal_id', $old->meals[0]['id'])->count())->toBe(0);
+});
+
+it('SCH-034 a user with no plan has no day to copy to', function () {
+    $user = copyActionUser();
+    copyActionDinner($user);
+    Plan::query()->where('user_id', $user->id)->delete();
+
+    expect(app(CopyDay::class)($user, '2026-09-23', ['2026-09-24'], new CopyOptions))->toBe([])
+        ->and(PlannedFood::query()->where('meal_id', copyActionMeal($user, '2026-09-24', 3))->exists())->toBeFalse();
 });
 
 it('SCH-034 a source day with no target of the user\'s is not found', function () {
