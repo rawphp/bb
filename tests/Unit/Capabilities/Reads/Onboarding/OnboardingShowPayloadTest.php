@@ -178,8 +178,8 @@ it('ONB-012 shows step 9, the templates that fit with the recommendation selecte
     onboardingMatchesFixture('training_plan', $shown);
     expect(array_column($options, 'value'))->toBe(["template:{$world['full']}", "template:{$world['upper']}", 'meso_builder', 'later'])
         ->and(onboardingChosen($options))->toBe(["template:{$world['full']}"])
-        ->and($options[0])->toMatchArray(['title' => 'Full Body 3-Day Dumbbells', 'detail' => '3 days a week · Full body', 'badges' => [['text' => 'Recommended', 'tone' => 'good']]])
-        ->and($options[1]['badges'])->toBe([])
+        ->and($options[0])->toMatchArray(['title' => 'Full Body 3-Day Dumbbells', 'detail' => '3 days a week · Full body', 'is_recommended' => true])
+        ->and($options[1]['is_recommended'])->toBeFalse()
         ->and($shown['training_plan']['note'])->toBe('Templates that fit your 3 training days, sex and goal.')
         ->and($shown['step']['can_continue'])->toBeTrue();
 });

@@ -172,7 +172,7 @@
         "notes": [],
         "options": [
             {
-                "id": "keep_goal",
+                "value": "keep_goal",
                 "title": "Keep current goal",
                 "detail": "",
                 "is_recommended": true,
@@ -180,7 +180,7 @@
                 "is_enabled": true
             },
             {
-                "id": "choose_new_goal",
+                "value": "choose_new_goal",
                 "title": "Choose a new goal",
                 "detail": "",
                 "is_recommended": false,
@@ -188,7 +188,7 @@
                 "is_enabled": true
             },
             {
-                "id": "end_plan",
+                "value": "end_plan",
                 "title": "End the plan",
                 "detail": "",
                 "is_recommended": false,
@@ -218,7 +218,7 @@
         ],
         "options": [
             {
-                "id": "recommendation",
+                "value": "recommendation",
                 "title": "Take the recommendation",
                 "detail": "Next week: 2400 kcal · P 195 · F 54 · C 283",
                 "is_recommended": false,
@@ -226,7 +226,7 @@
                 "is_enabled": true
             },
             {
-                "id": "repeat_this_week",
+                "value": "repeat_this_week",
                 "title": "Repeat this week",
                 "detail": "Next week: 2400 kcal · P 195 · F 54 · C 283",
                 "is_recommended": false,
@@ -234,7 +234,7 @@
                 "is_enabled": true
             },
             {
-                "id": "choose_own",
+                "value": "choose_own",
                 "title": "Choose my own calories",
                 "detail": "Next week: 2400 kcal · P 195 · F 54 · C 283\nAverage daily calories, within safety limits",
                 "is_recommended": false,
@@ -242,7 +242,7 @@
                 "is_enabled": true
             },
             {
-                "id": "drop_fatigue",
+                "value": "drop_fatigue",
                 "title": "Drop fatigue",
                 "detail": "Next week: 2424 kcal · P 195 · F 67 · C 259\nTake a break. Eating closer to maintenance will drop fatigue and may let you judge your progress better",
                 "is_recommended": true,

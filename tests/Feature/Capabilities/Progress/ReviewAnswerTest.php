@@ -62,7 +62,7 @@ it('REV-004 review_show reads the stored answer: Choose my own with a move, in t
     reviewAnswerAs($user, ['option' => 'choose_own', 'own_kcal' => 2300, 'moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]])->assertOk();
 
     $data = $this->actingAs($user)->postJson('/capabilities/review_show')->assertOk()->json('data');
-    $selected = array_column(array_filter($data['calories']['options'], fn (array $option) => $option['is_selected']), 'id');
+    $selected = array_column(array_filter($data['calories']['options'], fn (array $option) => $option['is_selected']), 'value');
 
     assertMatchesScreenFixture('review_show', $data);
     expect(ScreenFixture::differences(ScreenFixture::load('review_show.choose_own'), $data))->toBe([])

@@ -1,7 +1,7 @@
 <?php
 
 use App\Actions\Onboarding\StartPlan;
-use App\Capabilities\Onboarding\Data\OnboardingChoice;
+use App\Capabilities\Support\Choice;
 use App\Capabilities\Reads\Onboarding\OnboardingShowPayload;
 use App\Capabilities\Reads\Plan\PlanPayload;
 use App\Capabilities\Reads\Today\TodayPayload;
@@ -75,7 +75,7 @@ it('ONB-012 ONB-020 starts the template the review shows while none is picked, w
     W::template('Alpha full body');
     W::draft($user, ['training_plan' => null, 'template_id' => null]);
     $shown = array_values(array_filter(
-        OnboardingShowPayload::for($user)->training_plan->options, fn (OnboardingChoice $option) => $option->is_selected,
+        OnboardingShowPayload::for($user)->training_plan->options, fn (Choice $option) => $option->is_selected,
     ));
 
     app(StartPlan::class)($user);
