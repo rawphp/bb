@@ -3,8 +3,8 @@ import { ref } from 'vue';
 import { ulid } from '@/app/ulid';
 import type { MealAddInput } from '@/contracts/meal_add';
 import BottomSheet from '@/design/BottomSheet.vue';
+import TimeField from '@/design/TimeField.vue';
 import SheetBody from './SheetBody.vue';
-import TimeField from './TimeField.vue';
 import { useDaySheet, type DaySheetProps } from './useDaySheet';
 
 // SCH-031: the schedule menu's Add meal picks the time of an extra meal. The server shares

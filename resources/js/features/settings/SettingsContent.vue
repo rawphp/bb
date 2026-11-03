@@ -8,9 +8,9 @@ import type { SettingsShowOutput } from '@/contracts/settings_show';
 import type { SettingsUpdateInput } from '@/contracts/settings_update';
 import { setAppearance, type Appearance } from '@/design/appearance';
 import StatusPill from '@/design/StatusPill.vue';
+import ToggleSwitch from '@/design/ToggleSwitch.vue';
 import { toneClasses } from '@/design/tones';
 import DeveloperSection from './DeveloperSection.vue';
-import SwitchRow from './SwitchRow.vue';
 
 // The rows of Settings, in rp-clone's sections. Units, display and micro plates save as
 // soon as they change, all five together (settings_update); every other row opens its
@@ -144,7 +144,7 @@ const select = 'max-w-[60%] rounded-lg bg-transparent text-right text-secondary-
         <section aria-labelledby="settings-training">
             <h2 id="settings-training" :class="heading">Training</h2>
             <div :class="card">
-                <SwitchRow label="Micro plates" data-test="micro_plates" :checked="settings.micro_plates" :disabled="busy" @change="change('micro_plates', $event)" />
+                <ToggleSwitch label="Micro plates" data-test="micro_plates" :model-value="settings.micro_plates" :disabled="busy" class="px-4 py-2" @change="change('micro_plates', $event)" />
             </div>
             <p :class="footer">Halves the load step of barbell and smith machine exercises, for example 2.5 kg becomes 1.25 kg.</p>
         </section>

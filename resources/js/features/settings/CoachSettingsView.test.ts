@@ -99,6 +99,18 @@ describe('CoachSettingsView', () => {
         expect(wrapper.get<HTMLInputElement>('[role="switch"]').element.checked).toBe(true);
     });
 
+    it('AGT-020 holds the switch, marked busy, while the change is with the server, so it is sent once', async () => {
+        writeMock.mockReturnValueOnce(new Promise(() => {}));
+        const wrapper = mount(CoachSettingsView, { global, props: { payload: on } });
+
+        await wrapper.get('[role="switch"]').setValue(false);
+
+        const box = wrapper.get('[role="switch"]');
+        expect(box.attributes('disabled')).toBeDefined();
+        expect(box.attributes('aria-busy')).toBe('true');
+        expect(writeMock).toHaveBeenCalledOnce();
+    });
+
     it('CAP-012 puts the switch back and says why when the change is refused', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('coach_enabled_set', 0, { reason: 'network' }));
         const wrapper = mount(CoachSettingsView, { global, props: { payload: on } });

@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import type { MealFoodAmountSetInput } from '@/contracts/meal_food_amount_set';
 import type { MealShowOutput } from '@/contracts/meal_show';
 import BottomSheet from '@/design/BottomSheet.vue';
-import SegmentedPicker from '@/features/today/sheets/SegmentedPicker.vue';
+import SegmentedPicker from '@/design/SegmentedPicker.vue';
 
 // MEAL-004: type a food's amount in its weight unit or in its household unit ("slice").
 // Ported from rp-clone's MealAmountSheet. The server converts the unit and rebalances the
