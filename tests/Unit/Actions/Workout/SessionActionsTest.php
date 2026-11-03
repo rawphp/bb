@@ -27,6 +27,7 @@ use App\Models\User;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
+use App\Support\Workout\SessionBlocks;
 use App\Support\Workout\WorkoutIds;
 use App\Support\Workout\WorkoutSnapshot;
 use Carbon\CarbonImmutable;
@@ -764,4 +765,16 @@ it('WO-050 a skipped session cannot be finished or changed after', function () {
     expect(saRefusal(fn () => app(RemoveWorkoutExercise::class)($user, saBlock($session, 'Barbell Row')->id)))
         ->toBe('This workout was skipped, so it can no longer be changed.')
         ->and(saRefusal(fn () => app(FinishWorkout::class)($user, WorkoutIds::workout($mesocycle->id, 3, 1), CarbonImmutable::now())))->not->toBeNull();
+});
+
+it('CAP-019 a create whose ULID a request committed first saves nothing and says so, for the caller to answer as a replay', function () {
+    [$user, $mesocycle] = saWorld();
+    $session = saStarted($user, $mesocycle);
+    $taken = saBlocks($session)[0];
+
+    $again = (new WorkoutExercise(['workout_session_id' => $session->id, 'exercise_id' => saExercise('Standing Calf Raise')->id, 'position' => 4]))
+        ->forceFill(['id' => $taken->id, 'user_id' => $user->id]);
+
+    expect(SessionBlocks::create($again))->toBeFalse()
+        ->and(saNames($session))->toBe(['Bench Press', 'Barbell Row', 'Dumbbell Curl']);
 });
