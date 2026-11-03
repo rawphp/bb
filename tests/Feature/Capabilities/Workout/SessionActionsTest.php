@@ -27,13 +27,21 @@ function actOver(?User $user, string $capability, array $input): mixed
     return $request->postJson("/capabilities/{$capability}", $input, ['Idempotency-Key' => (string) Str::ulid()]);
 }
 
-/** @return array{0: User, 1: Mesocycle, 2: array<string, mixed>} a user with week 3 day 1 started, its mesocycle and workout_show's payload */
-function actStarted(): array
+/**
+ * @param  bool  $withIncline  Upper A also holds Incline Dumbbell Press, two sets after Bench Press
+ * @return array{0: User, 1: Mesocycle, 2: array<string, mixed>} a user with week 3 day 1 started, its mesocycle and workout_show's payload
+ */
+function actStarted(bool $withIncline = false): array
 {
     Carbon::setTestNow('2026-09-21 17:40:00');
     TrainSeed::exercise('Incline Dumbbell Press', MuscleGroup::Chest);
     $user = TrainSeed::user();
     $mesocycle = TrainSeed::mesocycle($user);
+    if ($withIncline) {
+        $days = $mesocycle->days;
+        $days[0]['slots'][] = ['id' => 'slot-incline', 'exercise_id' => (int) actIncline(), 'muscle_group' => 'chest', 'sets' => 2];
+        $mesocycle->update(['days' => $days]);
+    }
     actOver($user, 'workout_start', ['workout_id' => WorkoutIds::workout($mesocycle->id, 3, 1)])->assertOk();
 
     return [$user, $mesocycle, actOver($user, 'workout_show', ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1])->json('data')];
@@ -149,4 +157,113 @@ it('EX-008 swaps an exercise over HTTP and the new block shows under the client\
     expect(array_column($after, 'id'))->toBe([$new])
         ->and(array_column($after, 'name'))->toBe(['Incline Dumbbell Press'])
         ->and($mesocycle->fresh()->dayRows()[0]['slots'][0]['exercise_id'])->toBe((int) actIncline());
+});
+
+/** @param  list<string>  $keys @return list<int> the weeks whose workout_show is named */
+function actWorkoutWeeks(array $keys): array
+{
+    $weeks = [];
+    foreach ($keys as $key) {
+        if (preg_match('/^workout_show\{.*"week":(\d+)\}$/', $key, $match) === 1) {
+            $weeks[] = (int) $match[1];
+        }
+    }
+
+    return $weeks;
+}
+
+it('EX-008 a swap for this session only leaves the mesocycle alone and refreshes only this workout', function () {
+    [$user, $mesocycle, $shown] = actStarted();
+    $days = $mesocycle->fresh()->days;
+
+    $keys = actOver($user, 'exercise_swap', ['workout_exercise_id' => $shown['exercises'][0]['id'], 'new_workout_exercise_id' => strtolower((string) Str::ulid()), 'exercise_id' => actIncline(), 'scope' => 'this_session'])
+        ->assertOk()->json('data.invalidates');
+
+    expect($mesocycle->fresh()->days)->toBe($days)
+        ->and(actWorkoutWeeks($keys))->toBe([3]);
+});
+
+it('EX-008 a swap for the rest of the mesocycle refreshes the workout and Today of each later week that runs the day', function () {
+    [$user, , $shown] = actStarted();
+
+    $keys = actOver($user, 'exercise_swap', ['workout_exercise_id' => $shown['exercises'][0]['id'], 'new_workout_exercise_id' => strtolower((string) Str::ulid()), 'exercise_id' => actIncline(), 'scope' => 'rest_of_mesocycle'])
+        ->assertOk()->json('data.invalidates');
+
+    // Weeks 4 and 5 run Upper A on Mondays 28 September and 5 October.
+    expect(actWorkoutWeeks($keys))->toBe([3, 4, 5])
+        ->and($keys)->toContain('today_show{"date":"2026-09-28"}', 'today_show{"date":"2026-10-05"}');
+});
+
+it('WO-031 an exercise added to this session only leaves the mesocycle alone', function () {
+    [$user, $mesocycle, $shown] = actStarted();
+    $days = $mesocycle->fresh()->days;
+
+    $keys = actOver($user, 'workout_exercise_add', ['workout_id' => $shown['workout_id'], 'workout_exercise_id' => strtolower((string) Str::ulid()), 'exercise_id' => actIncline(), 'remaining_weeks' => false])
+        ->assertOk()->json('data.invalidates');
+
+    expect($mesocycle->fresh()->days)->toBe($days)
+        ->and(actWorkoutWeeks($keys))->toBe([3])
+        ->and(WorkoutExercise::query()->count())->toBe(2);
+});
+
+it('WO-031 MESO-045 a reorder with remaining weeks writes the order to the day and refreshes the later weeks', function () {
+    [$user, $mesocycle, $shown] = actStarted(withIncline: true);
+
+    $keys = actOver($user, 'workout_exercise_reorder', ['workout_exercise_id' => $shown['exercises'][1]['id'], 'position' => 1, 'remaining_weeks' => true])
+        ->assertOk()->json('data.invalidates');
+
+    expect(array_column($mesocycle->fresh()->dayRows()[0]['slots'], 'id'))->toBe(['slot-incline', '01JB6Q401A2B3C4D5E6F7G8H9J'])
+        ->and(actWorkoutWeeks($keys))->toBe([3, 4, 5])
+        ->and(array_column(actOver($user, 'workout_show', ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1])->json('data.exercises'), 'name'))
+        ->toBe(['Incline Dumbbell Press', 'Bench Press']);
+});
+
+it('WO-022 workout_exercise_remove takes the exercise out of the session', function () {
+    [$user, $mesocycle, $shown] = actStarted(withIncline: true);
+
+    $keys = actOver($user, 'workout_exercise_remove', ['workout_exercise_id' => $shown['exercises'][0]['id']])->assertOk()->json('data.invalidates');
+
+    expect(actWorkoutWeeks($keys))->toBe([3])
+        ->and(array_column(actOver($user, 'workout_show', ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1])->json('data.exercises'), 'name'))
+        ->toBe(['Incline Dumbbell Press']);
+});
+
+it('WO-031 relabelling from a session not started refreshes every week of the day and today, and starts nothing', function () {
+    Carbon::setTestNow('2026-09-20 09:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+
+    $keys = actOver($user, 'workout_day_relabel', ['workout_id' => WorkoutIds::workout($mesocycle->id, 3, 1), 'label' => 'Push'])->assertOk()->json('data.invalidates');
+
+    expect(actWorkoutWeeks($keys))->toBe([3, 1, 2, 4, 5])
+        ->and($keys)->toContain('today_show{"date":"2026-09-20"}', 'today_show{}', 'today_show{"date":"2026-09-28"}')
+        ->and(WorkoutSession::query()->count())->toBe(0);
+});
+
+it('CAP-019 the new exercise id of an add or a swap answers 404 when it is another user\'s, or the caller\'s own removed one', function (string $capability, string $owner) {
+    [, , $theirs] = actStarted();
+    [$user, , $shown] = actStarted(withIncline: true);
+    $id = $owner === 'theirs' ? $theirs['exercises'][0]['id'] : $shown['exercises'][1]['id'];
+    if ($owner === 'removed') {
+        actOver($user, 'workout_exercise_remove', ['workout_exercise_id' => $id])->assertOk();
+    }
+    $before = [WorkoutExercise::query()->withTrashed()->orderBy('id')->get()->toArray(), WorkoutSet::query()->orderBy('id')->get()->toArray()];
+
+    $input = $capability === 'workout_exercise_add'
+        ? ['workout_id' => $shown['workout_id'], 'workout_exercise_id' => $id, 'exercise_id' => actIncline(), 'remaining_weeks' => false]
+        : ['workout_exercise_id' => $shown['exercises'][0]['id'], 'new_workout_exercise_id' => $id, 'exercise_id' => actIncline(), 'scope' => 'this_session'];
+    actOver($user, $capability, $input)->assertNotFound();
+
+    expect([WorkoutExercise::query()->withTrashed()->orderBy('id')->get()->toArray(), WorkoutSet::query()->orderBy('id')->get()->toArray()])->toBe($before);
+})->with(['workout_exercise_add', 'exercise_swap'])->with(['theirs', 'removed']);
+
+it('EX-008 a swap sent again after it moved every set answers as the first did', function () {
+    [$user, $mesocycle, $shown] = actStarted();
+    $swap = ['workout_exercise_id' => $shown['exercises'][0]['id'], 'new_workout_exercise_id' => strtolower((string) Str::ulid()), 'exercise_id' => actIncline(), 'scope' => 'this_session'];
+    actOver($user, 'exercise_swap', $swap)->assertOk();
+
+    actOver($user, 'exercise_swap', $swap)->assertOk();
+
+    expect(array_column(actOver($user, 'workout_show', ['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 1])->json('data.exercises'), 'id'))
+        ->toBe([$swap['new_workout_exercise_id']]);
 });

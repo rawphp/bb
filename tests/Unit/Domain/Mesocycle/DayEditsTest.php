@@ -55,6 +55,15 @@ it('EX-008 a rest-of-mesocycle swap changes the first slot of the old exercise a
         ->and($slots[0])->toBe(['id' => 'slot-12', 'exercise_id' => 14, 'muscle_group' => 'chest', 'sets' => 3, 'carried' => null]);
 });
 
+it('EX-008 a day that holds the exercise twice swaps only its first slot', function () {
+    $slots = [...upperA(), ['id' => 'slot-12b', 'exercise_id' => 12, 'muscle_group' => 'chest', 'sets' => 2, 'carried' => ['weight_kg' => 60.0, 'reps' => 12]]];
+
+    $swapped = DayEdits::swapping($slots, 12, 14);
+
+    expect(array_column($swapped, 'exercise_id'))->toBe([14, 25, 40, 12])
+        ->and($swapped[3]['carried'])->toBe(['weight_kg' => 60.0, 'reps' => 12]);
+});
+
 it('EX-008 a swap of an exercise the day does not hold leaves the day alone', function () {
     expect(DayEdits::swapping(upperA(), 99, 14))->toBe(upperA());
 });
