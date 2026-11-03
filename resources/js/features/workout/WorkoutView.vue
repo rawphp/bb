@@ -157,7 +157,7 @@ watch(
 const finishWaiting = computed(() => finishing.value || waiting('workout_finish'));
 const canFinish = computed(() => !finishWaiting.value && (data.value?.can_finish === true || pending.value));
 
-// The one sheet that is open, and the feedback sheets the user cancelled this visit.
+// The one sheet that is open, and the feedback sheets cancelled or already offered this visit.
 const sheet = ref<WorkoutSheet | null>(null);
 const cancelled = ref<string[]>([]);
 
@@ -171,14 +171,20 @@ const answerWaiting = (muscle: string) =>
     data.value !== undefined &&
     pendingInput<WorkoutFeedbackAnswerInput>('workout_feedback_answer', (input) => input.workout_id === data.value!.workout_id && input.muscle_group === muscle) !== undefined;
 const dueFeedback = computed(() => data.value?.feedback.find((entry) => entry.is_due && !entry.is_answered)?.muscle_group);
-const autoFeedback = computed(() => {
-    const muscle = dueFeedback.value;
-    return data.value?.is_editable && muscle !== undefined && !cancelled.value.includes(muscle) && !answerWaiting(muscle) ? muscle : undefined;
-});
+// What opens by itself: the first due, unanswered muscle the user has not cancelled and whose answer is not waiting.
+const autoFeedback = computed(() =>
+    data.value?.is_editable
+        ? data.value.feedback.find((entry) => entry.is_due && !entry.is_answered && !cancelled.value.includes(entry.muscle_group) && !answerWaiting(entry.muscle_group))?.muscle_group
+        : undefined,
+);
+// Also when the open sheet closes: feedback that came due under another sheet is not lost.
 watch(
-    autoFeedback,
-    (muscle) => {
-        if (muscle !== undefined && sheet.value === null) sheet.value = { name: 'feedback', muscle };
+    [autoFeedback, sheet],
+    ([muscle, open]) => {
+        if (muscle === undefined || open !== null) return;
+        // Offered once per visit: whatever closes it (cancel, or another sheet taking its place) does not bring it back.
+        cancelled.value.push(muscle);
+        sheet.value = { name: 'feedback', muscle };
     },
     { immediate: true },
 );
