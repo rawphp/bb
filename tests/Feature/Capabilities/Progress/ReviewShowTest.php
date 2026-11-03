@@ -33,6 +33,22 @@ it('REV-001 REV-003 REV-010 shows a full review with the clock fixed, in the rev
         ->and($data['can_save'])->toBeTrue();
 });
 
+it('REV-041 REV-011 opens with the recommended Drop fatigue selected while nothing is answered yet', function () {
+    $seed = new ReviewSeed;
+    $seed->muscleFeedback = ReviewSeed::highFatigue(ReviewSeed::sessionKey(1));
+
+    $data = reviewShowFor($seed->seed());
+    $options = collect($data['calories']['options'])->keyBy('id');
+
+    assertMatchesScreenFixture('review_show', $data);
+    expect($options['drop_fatigue']['is_recommended'])->toBeTrue()
+        ->and($options['drop_fatigue']['is_selected'])->toBeTrue()
+        ->and($options['recommendation']['is_selected'])->toBeFalse()
+        ->and($data['calories']['deload'])->not->toBeNull()
+        ->and($data['preview']['days'])->toHaveCount(7)
+        ->and($data['can_save'])->toBeTrue();
+});
+
 it('REV-005 shows a training-only review in the training_only fixture\'s shape, with no calories or preview', function () {
     $seed = new ReviewSeed;
     $seed->trainingOnly = true;
