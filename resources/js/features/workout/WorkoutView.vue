@@ -95,10 +95,12 @@ async function confirmed(): Promise<void> {
 // WO-010: Finish records the end; the server checks every set is done and feedback is in (WO-040).
 function finish(): void {
     const workout = data.value;
-    if (!workout) return;
+    if (!workout || !canFinish.value) return;
+    finishing.value = true;
     const input: WorkoutFinishInput = { workout_id: workout.workout_id };
     void queue({ name: 'workout_finish', input: { ...input }, label: `Finished ${workout.day_label}`, haptic: true }).then((done) => {
         if (done) releaseWakeLock(workout.workout_id);
+        else finishing.value = false;
     });
 }
 
@@ -110,7 +112,11 @@ const waiting = (name: string) => {
     const workout = data.value;
     return workout !== undefined && pendingInput<WorkoutFinishInput>(name, (input) => input.workout_id === workout.workout_id) !== undefined;
 };
-const finishWaiting = computed(() => waiting('workout_finish'));
+// Finish tapped on this screen: from the tap, so a double tap sends one, until a new read,
+// as replay drops the sent entry before that read arrives.
+const finishing = ref(false);
+watch(data, () => (finishing.value = false));
+const finishWaiting = computed(() => finishing.value || waiting('workout_finish'));
 const canFinish = computed(() => !finishWaiting.value && (data.value?.can_finish === true || pending.value));
 
 // WO-008: an earlier session of the mesocycle, opened in place of this one.

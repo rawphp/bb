@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { KEYPAD } from '@/app/keypad';
-import { pendingInput } from '@/app/outbox';
+import { entries, pendingInput } from '@/app/outbox';
 import { ulid } from '@/app/ulid';
 import type { WorkoutSetAddInput } from '@/contracts/workout_set_add';
 import type { WorkoutSetDeleteInput } from '@/contracts/workout_set_delete';
@@ -64,8 +64,8 @@ const repsTyped = ref(false);
 // What a left field last sent, so a second change event before the outbox shows it sends nothing more.
 let lastSent: string | null = null;
 
-// Log as the user last set it, until a new read of the set: replay drops a sent entry
-// before that read arrives, and the row must not flash back to the old set meanwhile.
+// Log as the user's last stored entry set it, until a new read of the set: replay drops a
+// sent entry before that read arrives, and the row must not flash back to the old set meanwhile.
 const loggedSet = ref<boolean | null>(null);
 
 function resync(): void {
@@ -79,6 +79,13 @@ function resync(): void {
 // A new read of the set, or a carried weight, shows in the fields; so does a waiting entry
 // that arrives (from a remount, say). One that goes away leaves the fields as they are.
 watch([() => props.set, () => props.carriedWeight], resync);
+// OFF-011: no read follows a refusal, so a log the server refused gives way to the set as read.
+const refusals = computed(
+    () => entries.value.filter((entry) => entry.name === 'workout_set_log' && entry.refusal !== undefined && entry.input.set_id === props.set.id).length,
+);
+watch(refusals, (now, before) => {
+    if (now > before) resync();
+});
 watch(own, (now) => {
     if (!now) return;
     resync();
@@ -154,8 +161,6 @@ function toggleLog(): void {
     const input = logInput(!logged.value);
     if (input === null) return;
     emit('send', { name: 'workout_set_log', input: { ...input }, label: label(input, input.is_logged ? 'Logged' : 'Unlogged'), haptic: input.is_logged });
-    loggedSet.value = input.is_logged;
-    lastSent = `${weightText.value.trim()}|${repsText.value.trim()}`;
 }
 
 // WO-020, WO-021: the set menu.
