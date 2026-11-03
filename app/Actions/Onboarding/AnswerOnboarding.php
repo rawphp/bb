@@ -32,7 +32,8 @@ final class AnswerOnboarding
     public function __invoke(User $user, OnboardingAnswerInput $input): void
     {
         DB::transaction(function () use ($user, $input): void {
-            // The row is locked, so two answers at once are applied one after the other.
+            // The user is locked first, so two answers at once are applied one after the other, the first one too.
+            User::query()->whereKey($user->id)->lockForUpdate()->first();
             $row = OnboardingDraft::query()->where('user_id', $user->id)->lockForUpdate()->first() ?? OnboardingDraft::for($user);
             $draft = self::answer(
                 $row->toDraft(),

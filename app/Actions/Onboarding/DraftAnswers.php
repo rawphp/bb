@@ -34,6 +34,7 @@ use App\Domain\Onboarding\TemplateOption;
 use App\Domain\Onboarding\TrainingDayChoice;
 use App\Domain\Onboarding\TrainingPlanKind;
 use App\Domain\Onboarding\WeighInChoice;
+use App\Domain\Placement\ClockTime;
 use App\Domain\Safety\Screening;
 use App\Domain\Safety\ScreeningItem;
 use Closure;
@@ -43,7 +44,8 @@ use DateTimeZone;
 /**
  * The mutating members of rp-clone's OnboardingModel, one per answer key: each sets its answer and what it changes.
  * A key left out (null) keeps the saved answer. Answers apply in step order, so a goal resets step 6 before a rate
- * sent with it, and a template is checked against training days sent with it. What a value is worked out from (the
+ * sent with it, and a template is checked against training days sent with it; the screening goes first, as it decides
+ * which goals are allowed. What a value is worked out from (the
  * defaults, the limits, the options a step offers) is read from `App\Domain\Onboarding`.
  */
 final class DraftAnswers
@@ -70,6 +72,11 @@ final class DraftAnswers
         $a = $answers;
         $d = $draft;
 
+        // The screening first: whether a goal is allowed depends on it (SAFE-001).
+        if ($a->screening !== null) {
+            $d = self::screening($d, $a->screening);
+        }
+
         // Step 1 (ONB-003, ONB-021)
         if ($a->goal !== null) {
             $d = self::selectGoal($d, PhaseType::from($a->goal), $today);
@@ -95,10 +102,7 @@ final class DraftAnswers
             $d = self::weight($d, $a->weight);
         }
 
-        // Steps 3 to 5 (SAFE-001, ONB-006, SAFE-013, ONB-007)
-        if ($a->screening !== null) {
-            $d = self::screening($d, $a->screening);
-        }
+        // Steps 4 and 5 (ONB-006, SAFE-013, ONB-007)
         if ($a->uses_glp1 !== null) {
             $d = $d->with(usesGLP1: $a->uses_glp1);
         }
@@ -452,7 +456,7 @@ final class DraftAnswers
 
     private static function minuteOfDay(int $minutes): int
     {
-        return self::clamp($minutes, 0, 24 * 60 - 1);
+        return self::clamp($minutes, 0, ClockTime::MINUTES_PER_DAY - 1);
     }
 
     private static function clamp(int $value, int $lower, int $upper): int
