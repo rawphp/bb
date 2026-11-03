@@ -48,6 +48,8 @@ const { send, busy, error } = useWrite(load);
 // Each sheet's own write, so its refusal shows in the sheet and not on the screen.
 const amountWrite = useWrite(load);
 const nameWrite = useWrite(load);
+// A deleted meal has nothing to read again: its write reads nothing, and the screen goes back.
+const deleteWrite = useWrite(async () => {});
 
 const editing = ref<Entry | null>(null);
 const naming = ref(false);
@@ -56,6 +58,7 @@ const picking = ref(false);
 const copying = ref(false);
 const scanning = ref(false);
 const confirmingDelete = ref(false);
+const confirmingClear = ref(false);
 // The new saved meal's id and the name it went with (CAP-019), kept until the server
 // answers, so a retry of that save after no answer is the same meal and not a second one.
 // Another name is another saved meal, with its own id.
@@ -94,7 +97,8 @@ function onMenu(key: string): void {
 // Today's meal menu hands these to the meal screen as /meals/:id?action=<item> (MEAL-070),
 // as rp-clone opens the meal with the item to run. Once the meal has loaded the item runs
 // as a menu tap would, if the server has it on, and the address drops it so a reload or a
-// return does not run it again. Delete asks first in the menu, so it never runs from here.
+// return does not run it again. An address must not destroy anything by itself: Remove foods
+// from the address asks first, and Delete is never run from here.
 const ON_ARRIVAL: MenuKey[] = ['edit_macros_time', 'load_saved_meal', 'save_as_saved_meal', 'remove_foods'];
 
 let arrival = props.action;
@@ -108,7 +112,9 @@ watch(
         delete query.action;
         void router.replace({ path: route.path, query });
         const item = menuItems.value.find((entry) => entry.key === action);
-        if (ON_ARRIVAL.includes(action as MenuKey) && item && !item.disabled) onMenu(action);
+        if (!ON_ARRIVAL.includes(action as MenuKey) || !item || item.disabled) return;
+        if (action === 'remove_foods') confirmingClear.value = true;
+        else onMenu(action);
     },
     { immediate: true },
 );
@@ -165,9 +171,15 @@ async function saveAsSavedMeal(): Promise<void> {
 }
 
 async function deleteMeal(): Promise<void> {
-    const outcome = await send('meal_delete', { meal_id: mealId } satisfies MealDeleteInput, 'The meal could not be deleted.');
+    const outcome = await deleteWrite.send('meal_delete', { meal_id: mealId } satisfies MealDeleteInput, 'The meal could not be deleted.');
     confirmingDelete.value = false;
     if (outcome === 'done') router.back();
+    else error.value = deleteWrite.error.value;
+}
+
+function clearFoods(): void {
+    confirmingClear.value = false;
+    onMenu('remove_foods');
 }
 
 function closeScanner(added: boolean): void {
@@ -321,8 +333,8 @@ function closeScanner(added: boolean): void {
             :title="`Delete ${data?.title ?? 'meal'}?`"
             :heights="['half']"
             :save-title="null"
-            :cancel-disabled="busy"
-            :dismissible="!busy"
+            :cancel-disabled="deleteWrite.busy.value"
+            :dismissible="!deleteWrite.busy.value"
             @cancel="confirmingDelete = false"
         >
             <div class="flex flex-col gap-3 p-4">
@@ -331,11 +343,20 @@ function closeScanner(added: boolean): void {
                     type="button"
                     class="min-h-tap rounded-2xl font-semibold disabled:opacity-40"
                     :class="toneClasses.warning"
-                    :disabled="busy"
+                    :disabled="deleteWrite.busy.value"
                     data-test="confirm-delete"
                     @click="deleteMeal"
                 >
                     Delete meal
+                </button>
+            </div>
+        </BottomSheet>
+
+        <BottomSheet :open="confirmingClear" :title="`Remove foods from ${data?.title ?? 'meal'}?`" :heights="['half']" :save-title="null" @cancel="confirmingClear = false">
+            <div class="flex flex-col gap-3 p-4">
+                <p class="text-secondary-text">Every food and recipe in it goes.</p>
+                <button type="button" class="min-h-tap rounded-2xl font-semibold disabled:opacity-40" :class="toneClasses.warning" :disabled="busy" data-test="confirm-clear" @click="clearFoods">
+                    Remove foods
                 </button>
             </div>
         </BottomSheet>
