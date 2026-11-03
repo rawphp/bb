@@ -287,6 +287,17 @@ describe('WeeklyReviewView', () => {
             expect(writeNow).not.toHaveBeenCalled();
         });
 
+        it('PH-041 an option the server turns off cannot be picked', async () => {
+            const payload = review();
+            payload.goal!.options[2] = { ...payload.goal!.options[2]!, is_enabled: false };
+            const wrapper = show({ payload, step: 'goal' });
+
+            const option = wrapper.findAll('[data-test="goal-option"]')[2]!;
+            expect(option.attributes('disabled')).toBeDefined();
+            await option.trigger('click');
+            expect(push).not.toHaveBeenCalled();
+        });
+
         it('PH-041 keeping the goal stays in the review, and arrow keys move focus without leaving', async () => {
             const wrapper = show({ payload: review(), step: 'goal' });
 
@@ -339,6 +350,15 @@ describe('WeeklyReviewView', () => {
             expect(sent()).toEqual([
                 ['review_answer', { week_start: '2026-10-05', option: 'repeat_this_week', own_kcal: null, deload_too: null, update_step_plan: false, moves: [] }],
             ]);
+        });
+
+        it('REV-031 a new option after Choose my own drops the own amount', async () => {
+            const wrapper = show({ payload: review('choose_own'), step: 'calories' });
+
+            await radios(wrapper, 'calorie-options')[1]!.trigger('click');
+            await flushPromises();
+
+            expect(sent()[0]![1]).toMatchObject({ option: 'repeat_this_week', own_kcal: null });
         });
 
         it('REV-031 a new own amount or deload answer clears the moves, as the week they were made on changes', async () => {
@@ -588,6 +608,45 @@ describe('WeeklyReviewView', () => {
             await wrapper.find('[role="dialog"] [data-cancel]').trigger('click');
             await wrapper.findAll('[data-test="day"]')[3]!.trigger('click');
             expect(dialog()?.textContent).not.toContain('Monday would drop below your minimum.');
+        });
+
+        it('REV-004 a move the week will not build is kept out: the sheet stays open with the server\'s reason', async () => {
+            const refused = review();
+            refused.preview!.error = 'Monday would drop below your minimum.';
+            answersWith(refused);
+            const wrapper = show({ payload: review(), step: 'preview' });
+
+            await wrapper.findAll('[data-test="day"]')[0]!.trigger('click');
+            await wrapper.find('[role="dialog"] [data-save]').trigger('click');
+            await flushPromises();
+
+            expect(wrapper.find('[data-test="move-sheet"]').exists()).toBe(true);
+            expect(dialog()?.querySelector('[role="alert"]')?.textContent).toContain('Monday would drop below your minimum.');
+        });
+
+        it('CAP-014 a move with no final answer closes the sheet on the re-read week, and the next move builds on what the server holds', async () => {
+            const moved = review();
+            moved.preview!.moves = [{ from_index: 0, to_index: 1, kcal: 100 }];
+            vi.mocked(writeNow).mockRejectedValueOnce(new CapabilityError('review_answer', 502, {}));
+            vi.mocked(readFresh).mockResolvedValue(moved);
+            const wrapper = show({ payload: review(), step: 'preview' });
+
+            await wrapper.findAll('[data-test="day"]')[0]!.trigger('click');
+            await wrapper.find('[role="dialog"] [data-save]').trigger('click');
+            await flushPromises();
+
+            expect(wrapper.find('[data-test="move-sheet"]').exists()).toBe(false);
+            expect(wrapper.find('[data-test="message"]').text()).toContain('may have worked');
+            await wrapper.findAll('[data-test="day"]')[0]!.trigger('click');
+            await wrapper.find('[role="dialog"] [data-save]').trigger('click');
+            await flushPromises();
+            expect(sent().map(([, input]) => input.moves)).toEqual([
+                [{ from_index: 0, to_index: 1, kcal: 100 }],
+                [
+                    { from_index: 0, to_index: 1, kcal: 100 },
+                    { from_index: 0, to_index: 1, kcal: 100 },
+                ],
+            ]);
         });
 
         it('REV-004 Cancel closes the sheet and sends nothing', async () => {
