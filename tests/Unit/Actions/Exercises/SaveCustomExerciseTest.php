@@ -6,6 +6,7 @@ use App\Domain\Model\ExerciseLoadType;
 use App\Domain\Model\MuscleGroup;
 use App\Enums\SfrRating;
 use App\Models\Exercise;
+use App\Models\ExerciseLoadStep;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -50,3 +51,23 @@ it('EX-004 EX-005 edits the name, muscle group, equipment and load type in place
         ->rep_range_min->toBe(5)
         ->is_compound->toBeTrue();
 });
+
+it('EX-012 drops the load step of an exercise edited to bodyweight, which is reps only', function () {
+    $user = User::factory()->create();
+    $exercise = Exercise::factory()->custom($user)->create(['load_type' => 'cable']);
+    ExerciseLoadStep::factory()->create(['user_id' => $user->id, 'exercise_id' => $exercise->id, 'step_kg' => 4.5]);
+
+    (new SaveCustomExercise)($user, $exercise, 'Push-up', 'chest', 'bodyweight', 'bodyweight');
+
+    expect(ExerciseLoadStep::query()->where('exercise_id', $exercise->id)->exists())->toBeFalse();
+});
+
+it('EX-012 keeps the load step of an exercise edited to another loaded type, bodyweight plus load included', function (string $loadType) {
+    $user = User::factory()->create();
+    $exercise = Exercise::factory()->custom($user)->create(['load_type' => 'cable']);
+    ExerciseLoadStep::factory()->create(['user_id' => $user->id, 'exercise_id' => $exercise->id, 'step_kg' => 4.5]);
+
+    (new SaveCustomExercise)($user, $exercise, 'Dip', 'chest', 'bodyweight', $loadType);
+
+    expect(ExerciseLoadStep::query()->where('exercise_id', $exercise->id)->value('step_kg'))->toBe(4.5);
+})->with(['machine', 'bodyweightPlusLoad']);
