@@ -30,7 +30,8 @@ final class WorkoutSkipCapability implements HostCapability
 
                 return new WriteResult(
                     invalidates: array_values(array_unique([
-                        ...WorkoutReads::keys($user, $skipped['session']),
+                        // A skipped session can no longer move, so Today's Add workout sheet stops offering it.
+                        ...WorkoutReads::keys($user, $skipped['session'], planWeek: true),
                         // SCH-053: the day whose meals changed, and the sheets that read it.
                         ...TodayReads::keys($skipped['dates'], TodayReads::SHEETS),
                     ])),

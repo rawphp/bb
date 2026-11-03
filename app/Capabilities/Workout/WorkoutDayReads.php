@@ -19,11 +19,12 @@ final class WorkoutDayReads
 {
     /**
      * @param  ?int  $fromWeek  the first week (from 1) the day changed in; null when only the session changed
+     * @param  bool  $planWeek  also Today on the days left in each session's plan week ({@see WorkoutReads::keys()})
      * @return list<string>
      */
-    public static function keys(User $user, WorkoutSession $session, ?int $fromWeek): array
+    public static function keys(User $user, WorkoutSession $session, ?int $fromWeek, bool $planWeek = false): array
     {
-        $keys = WorkoutReads::keys($user, $session);
+        $keys = WorkoutReads::keys($user, $session, $planWeek);
         if ($fromWeek !== null) {
             $mesocycle = Mesocycle::query()->where('user_id', $user->id)->findOrFail($session->mesocycle_id);
             $rows = WorkoutSession::query()->where('user_id', $user->id)->where('mesocycle_id', $mesocycle->id)->get();
@@ -47,7 +48,7 @@ final class WorkoutDayReads
                     if ($day->id === $dayId) {
                         $row = $rows->first(fn (WorkoutSession $row) => $row->week === $week && $row->day === $index + 1)
                             ?? new WorkoutSession(['mesocycle_id' => $mesocycle->id, 'week' => $week, 'day' => $index + 1]);
-                        $keys = [...$keys, ...WorkoutReads::keys($user, $row)];
+                        $keys = [...$keys, ...WorkoutReads::keys($user, $row, $planWeek)];
                     }
                 }
             }

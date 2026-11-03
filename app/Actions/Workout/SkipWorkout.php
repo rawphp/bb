@@ -38,7 +38,7 @@ final class SkipWorkout
             // The day Today shows it on: where it started, else where it was moved, else where the plan puts it.
             $at = $row->actual_start_at ?? $row?->planned_start_at;
             $date = $at !== null ? DayPlans::day($at) : $snapshot->date();
-            $retarget = $date === null ? null : self::retarget($user, $date->format('Y-m-d'));
+            $retarget = $date === null ? null : self::retarget($user, $date->format('Y-m-d'), $snapshot);
 
             $row ??= (new WorkoutSession([
                 'mesocycle_id' => $snapshot->mesocycle->id,
@@ -62,15 +62,24 @@ final class SkipWorkout
      * SCH-053 on `$date`, read before the session is saved skipped; null when there is nothing to re-target, and the
      * skip goes through without it: a past day (its targets stay, as SCH-057's skip leaves them), a day with no meals
      * planned, a user the re-target rule cannot work for yet (no eating window or weight), or a day Today shows no
-     * session on. Retargeting::skip refuses nothing else.
+     * session on. Retargeting::skip refuses nothing else. A day Today gives to another session is left alone too: the
+     * plan's date for a session does not count paused away weeks (SCH-060) or a later mesocycle that took the week, as
+     * Today's placement does, so it can name a day whose session is not this one.
      *
      * @return ?array{RetargetableDay, MealRetarget}
      */
-    private static function retarget(User $user, string $date): ?array
+    private static function retarget(User $user, string $date, WorkoutSnapshot $session): ?array
     {
         try {
             $day = RetargetableDay::load($user, $date);
-
+        } catch (DomainException) {
+            return null;
+        }
+        $shown = $day->snapshot->workout(DayPlans::day($date));
+        if ($shown === null || (string) $shown->mesocycle->id !== (string) $session->mesocycle->id || $shown->week !== $session->week || $shown->day !== $session->day) {
+            return null;
+        }
+        try {
             return [$day, Retargeting::skip($day->day, $day->context)];
         } catch (DomainException) {
             return null;

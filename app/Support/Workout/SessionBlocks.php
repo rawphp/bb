@@ -28,11 +28,7 @@ final class SessionBlocks
      */
     public static function block(User $user, string $id): WorkoutExercise
     {
-        // The session's mesocycle never changes, so it is found before the lock.
-        $mesocycleId = WorkoutExercise::query()->where('user_id', $user->id)->whereKey($id)->first()?->session?->mesocycle_id;
-        if ($mesocycleId !== null) {
-            Mesocycle::query()->whereKey($mesocycleId)->lockForUpdate()->first();
-        }
+        self::lock($user, $id);
         $block = WorkoutExercise::query()->where('user_id', $user->id)->whereKey($id)->lockForUpdate()->firstOrFail();
         $session = WorkoutSession::query()->whereKey($block->workout_session_id)->lockForUpdate()->first()
             ?? throw (new ModelNotFoundException)->setModel(WorkoutSession::class);
@@ -42,6 +38,16 @@ final class SessionBlocks
         }
 
         return $block->setRelation('session', $session);
+    }
+
+    /** Locks the mesocycle of the user's exercise `$id`, removed or not. Its session's mesocycle never changes, so it is found before the lock. */
+    public static function lock(User $user, string $id): void
+    {
+        $block = WorkoutExercise::query()->withTrashed()->where('user_id', $user->id)->whereKey($id)->first();
+        $mesocycleId = $block === null ? null : WorkoutSession::query()->withTrashed()->whereKey($block->workout_session_id)->value('mesocycle_id');
+        if ($mesocycleId !== null) {
+            Mesocycle::query()->whereKey($mesocycleId)->lockForUpdate()->first();
+        }
     }
 
     /** @return list<WorkoutExercise> the session's exercises in order, locked */
@@ -56,10 +62,13 @@ final class SessionBlocks
         return WorkoutSet::query()->where('workout_exercise_id', $block->id)->orderBy('position')->lockForUpdate()->get()->all();
     }
 
-    /** The user's exercise under `$id`, removed ones too: a create's ULID is spent once used (CAP-019). */
+    /**
+     * The user's exercise under `$id`, removed ones too: a create's ULID is spent once used (CAP-019). Read with a lock
+     * after the mesocycle's, so a retry that waited on it sees the first request's exercise.
+     */
     public static function made(User $user, string $id): ?WorkoutExercise
     {
-        return WorkoutExercise::query()->withTrashed()->where('user_id', $user->id)->whereKey(strtolower($id))->first();
+        return WorkoutExercise::query()->withTrashed()->where('user_id', $user->id)->whereKey(strtolower($id))->sharedLock()->first();
     }
 
     /** @param  list<WorkoutExercise>  $blocks */

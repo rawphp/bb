@@ -27,6 +27,7 @@ final class SwapWorkoutExercise
     {
         return DB::transaction(function () use ($user, $blockId, $newBlockId, $exerciseId, $restOfMesocycle) {
             $newId = strtolower($newBlockId);
+            SessionBlocks::lock($user, $blockId);
             $made = SessionBlocks::made($user, $newId);
             if ($made !== null) {
                 return WorkoutSession::query()->findOrFail($made->workout_session_id);
