@@ -73,3 +73,24 @@ it('DAY-004 MEAL-045 marks a badged meal done planning, which lets it be checked
     mealPlanningDoneCall($user, 'meal_check_in', ['meal_id' => SheetSeed::BREAKFAST])->assertOk();
     expect(MealCheckIn::query()->count())->toBe(1);
 });
+
+it('CAP-013 undo removes a planning state the write created', function () {
+    $user = mealPlanningDoneUser();
+    $token = mealPlanningDoneCall($user, 'meal_planning_done', ['meal_id' => SheetSeed::LUNCH, 'done' => false])->assertOk()->json('data.undo');
+    expect(MealPlanningState::query()->sole()->state)->toBe('still_planning');
+
+    mealPlanningDoneCall($user, 'undo_apply', ['token' => $token])->assertOk();
+
+    expect(MealPlanningState::query()->count())->toBe(0);
+});
+
+it('CAP-013 undo puts back the planning state the write changed', function () {
+    $user = mealPlanningDoneUser();
+    MealPlanningState::factory()->create(['meal_id' => SheetSeed::BREAKFAST, 'state' => 'still_planning']);
+    $token = mealPlanningDoneCall($user, 'meal_planning_done', ['meal_id' => SheetSeed::BREAKFAST, 'done' => true])->assertOk()->json('data.undo');
+    expect(MealPlanningState::query()->sole()->state)->toBe('done_planning');
+
+    mealPlanningDoneCall($user, 'undo_apply', ['token' => $token])->assertOk();
+
+    expect(MealPlanningState::query()->pluck('state', 'meal_id')->all())->toBe([SheetSeed::BREAKFAST => 'still_planning']);
+});

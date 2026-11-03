@@ -127,3 +127,25 @@ it('MEAL-045 refuses a one-tap check-in of a meal with the "Adjust foods" badge,
 
     expect(MealCheckIn::query()->count())->toBe(0);
 });
+
+it('CAP-013 undo removes a fresh check-in', function () {
+    $user = mealCheckInUser();
+    $token = mealCheckInCall($user, ['meal_id' => SheetSeed::DINNER, 'time' => '19:10'])->assertOk()->json('data.undo');
+
+    test()->actingAs($user)->postJson('/capabilities/undo_apply', ['token' => $token], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+
+    expect(MealCheckIn::query()->count())->toBe(0);
+});
+
+it('CAP-013 undo of a check-in that replaced another puts back its time, amounts and manual mark', function () {
+    $user = mealCheckInUser();
+    $before = SheetSeed::checkIn(SheetSeed::BREAKFAST, ['time' => '07:30', 'kcal' => 650, 'protein_g' => 40, 'fat_g' => 18, 'carbs_g' => 80, 'is_manual' => true]);
+    $token = mealCheckInCall($user, ['meal_id' => SheetSeed::BREAKFAST, 'time' => '08:15'])->assertOk()->json('data.undo');
+    expect(MealCheckIn::query()->sole()->only(['time', 'kcal', 'is_manual']))->toBe(['time' => '08:15', 'kcal' => 700.0, 'is_manual' => false]);
+
+    test()->actingAs($user)->postJson('/capabilities/undo_apply', ['token' => $token], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+
+    expect(MealCheckIn::query()->sole()->only(['id', 'time', 'kcal', 'protein_g', 'fat_g', 'carbs_g', 'is_manual']))->toBe([
+        'id' => $before->getKey(), 'time' => '07:30', 'kcal' => 650.0, 'protein_g' => 40.0, 'fat_g' => 18.0, 'carbs_g' => 80.0, 'is_manual' => true,
+    ]);
+});

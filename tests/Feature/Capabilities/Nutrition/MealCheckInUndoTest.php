@@ -71,3 +71,15 @@ it('MEAL-044 OFF-030 removes a check-in the outbox replays under the same idempo
         ->and($first->json('data.undo'))->toBeString()
         ->and(MealCheckIn::query()->count())->toBe(0);
 });
+
+it('CAP-013 undo of a removed check-in brings it back as it was', function () {
+    $user = mealCheckInUndoUser();
+    $before = MealCheckIn::query()->sole();
+    $token = mealCheckInUndoCall($user, ['meal_id' => SheetSeed::BREAKFAST])->assertOk()->json('data.undo');
+    expect(MealCheckIn::query()->count())->toBe(0);
+
+    test()->actingAs($user)->postJson('/capabilities/undo_apply', ['token' => $token], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+
+    expect(MealCheckIn::query()->sole()->only(['id', 'meal_id', 'time', 'kcal', 'protein_g', 'fat_g', 'carbs_g', 'is_manual']))
+        ->toBe($before->only(['id', 'meal_id', 'time', 'kcal', 'protein_g', 'fat_g', 'carbs_g', 'is_manual']));
+});
