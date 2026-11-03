@@ -10,8 +10,7 @@ use App\Capabilities\Reads\Settings\EligibilityRecheckPayload;
 use App\Capabilities\Support\HostDefinition;
 use App\Models\Profile;
 use App\Models\User;
-use App\Support\Plan\PlanSnapshot;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use DomainException;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
@@ -31,7 +30,7 @@ final class EligibilityRecheckShowCapability implements HostCapability
                 $profile = Profile::query()->where('user_id', $user->id)->first()
                     ?? throw new DomainException(RecheckEligibility::NO_PLAN);
 
-                return EligibilityRecheckPayload::build($profile, PlanSnapshot::day(CarbonImmutable::now()));
+                return EligibilityRecheckPayload::build($profile, UserDay::today($user));
             });
     }
 }

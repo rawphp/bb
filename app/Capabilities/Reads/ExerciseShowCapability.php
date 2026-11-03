@@ -16,7 +16,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Progress\ExerciseHistorySnapshot;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
@@ -55,11 +55,11 @@ final class ExerciseShowCapability implements HostCapability, OwnsInput
         return ['exercise_id' => Exercise::query()->visibleTo($user)];
     }
 
-    /** EX-007: a slot of the mesocycle that is current today names the exercise. */
+    /** EX-007: a slot of the mesocycle that is current on the user's local today (SET-012) names the exercise. */
     private function inCurrentMesocycle(User $user, Exercise $exercise): bool
     {
         $current = TrainSnapshot::calendarOnly(
-            TrainSnapshot::day(CarbonImmutable::now()),
+            UserDay::today($user),
             Mesocycle::query()->where('user_id', $user->id)->get(),
         )->current();
 

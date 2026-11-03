@@ -15,7 +15,6 @@ use App\Domain\WeekBuilder\WeekSessions\LoggedDay;
 use App\Domain\WeekBuilder\WeekSessions\Result;
 use App\Domain\WeekBuilder\WeekSessions\SessionRow;
 use App\Domain\WeekBuilder\WeekWorkout;
-use App\Domain\WeekBuilder\WorkoutSessionRecord;
 use App\Models\Mesocycle;
 use App\Models\PlanWeek as PlanWeekRow;
 use App\Models\WorkoutSession;
@@ -62,15 +61,7 @@ final readonly class SessionWeek
             logged: $sessions->filter(fn (WorkoutSession $session) => self::isLogged($session))
                 ->map(fn (WorkoutSession $session) => new LoggedDay($session->week, (int) $session->day))->values()->all(),
             pausedWeeks: $pausedWeeks,
-            rows: SessionRow::rows($sessions->map(fn (WorkoutSession $session) => new WorkoutSessionRecord(
-                id: (string) $session->id,
-                mesocycleId: $session->mesocycle_id,
-                week: $session->week,
-                day: $session->day,
-                isSkipped: $session->is_skipped,
-                plannedStartAt: $session->planned_start_at === null ? null : DayPlans::instant($session->planned_start_at),
-                actualStartAt: $snapshot->startedAt($session),
-            ))->values()->all(), $mesocycle->id),
+            rows: SessionRow::rows($sessions->map(fn (WorkoutSession $session) => $snapshot->record($session))->values()->all(), $mesocycle->id),
         );
 
         return new self($snapshot, $mesocycle, $planWeek, $result, $row);
