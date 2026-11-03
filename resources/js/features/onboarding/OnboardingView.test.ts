@@ -269,7 +269,13 @@ describe('OnboardingView', () => {
         });
 
         it('CAP-004 says setup did not load, and tries again', async () => {
-            readMock.mockRejectedValueOnce(new CapabilityError('onboarding_show', 500, null)).mockResolvedValueOnce(glp1);
+            // Setup fails once, then loads; the Coach's status is another read.
+            let failures = 1;
+            readMock.mockImplementation(async (name) => {
+                if (name !== 'onboarding_show') return goal;
+                if (failures-- > 0) throw new CapabilityError('onboarding_show', 500, null);
+                return glp1;
+            });
             wrapper = view();
             await flushPromises();
             expect(wrapper.text()).toContain('could not be loaded');

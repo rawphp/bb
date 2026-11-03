@@ -102,7 +102,7 @@ it('AGT-024 sends the instructions as the cached block and the context as the la
     });
 });
 
-it('AGT-011 holds today, the current phase and mesocycle, last week and this week, and no read that is not registered', function () {
+it('AGT-011 holds the profile and settings, today, the current phase and mesocycle, last week and this week', function () {
     $this->travelTo('2026-11-03 09:14:00');
     [$conversation, $turn] = coachTurn(TrainSeed::user(), [['user', 'Hi.']]);
 
@@ -113,7 +113,7 @@ it('AGT-011 holds today, the current phase and mesocycle, last week and this wee
         ->and($context)->toContain("week_show{\"date\":\"2026-10-27\"}\n")
         ->and($context)->toContain("week_show{}\n")
         ->and($context)->toContain("plan_show{}\n")
-        ->and($context)->not->toContain('settings_show');
+        ->and($context)->toContain("settings_show{}\n");
 });
 
 it('AGT-011 AGT-004 builds the context from the conversation owner\'s data only, every read as that owner', function () {
@@ -148,7 +148,7 @@ it('AGT-011 AGT-004 builds the context from the conversation owner\'s data only,
 
     expect($context)->toContain('Blair Hypertrophy Block')
         ->and($context)->not->toContain('Alex Strength Block')
-        ->and((array) $actors)->toHaveCount(5)
+        ->and((array) $actors)->toHaveCount(6)
         ->and(array_unique(array_column((array) $actors, 2)))->toBe([$blair->getKey()])
         ->and(array_unique(array_column((array) $actors, 1)))->toBe(['agent']);
 });

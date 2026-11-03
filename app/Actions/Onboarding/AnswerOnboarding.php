@@ -29,12 +29,20 @@ final class AnswerOnboarding
 
     public const STEP_NOT_SHOWN = 'That step is not part of your setup.';
 
-    public function __invoke(User $user, OnboardingAnswerInput $input): void
+    public const SCREENING_ON_SHEET = 'The health check is answered on its own sheet in the app, not in chat.';
+
+    public const CHAT_EDITS_FROM_REVIEW = 'In chat, a step is edited from the review.';
+
+    /** @param  bool  $byChat  a model is answering (the Coach, or an MCP client), not the user on a screen (AGT-031) */
+    public function __invoke(User $user, OnboardingAnswerInput $input, bool $byChat = false): void
     {
-        DB::transaction(function () use ($user, $input): void {
+        DB::transaction(function () use ($user, $input, $byChat): void {
             // The user is locked first, so two answers at once are applied one after the other, the first one too.
             User::query()->whereKey($user->id)->lockForUpdate()->first();
             $row = OnboardingDraft::query()->where('user_id', $user->id)->lockForUpdate()->first() ?? OnboardingDraft::for($user);
+            if ($byChat) {
+                self::checkChat($row->toDraft(), $input);
+            }
             $draft = self::answer(
                 $row->toDraft(),
                 $input,
@@ -67,6 +75,26 @@ final class AnswerOnboarding
             'back' => self::moveTo($draft, $steps->back(), $today),
             default => self::edit($draft, $steps, $input->edit_step),
         };
+    }
+
+    /**
+     * AGT-031, SAFE-001: health screening is never done by chat. A model may not answer it, nor press Next on the
+     * health check, nor Edit from anywhere but the review, which is the only way past step 3 without Next. The user
+     * answers it on its sheet, whose Next moves on.
+     *
+     * @throws FieldRefused (422), saving nothing
+     */
+    public static function checkChat(Draft $draft, OnboardingAnswerInput $input): void
+    {
+        if ($input->answers->screening !== null) {
+            throw new FieldRefused('answers.screening', self::SCREENING_ON_SHEET);
+        }
+        if ($input->move === 'next' && $draft->step === OnboardingSteps::SCREENING_STEP) {
+            throw new FieldRefused('move', self::SCREENING_ON_SHEET);
+        }
+        if ($input->move === 'edit' && $draft->step !== OnboardingSteps::REVIEW_STEP) {
+            throw new FieldRefused('move', self::CHAT_EDITS_FROM_REVIEW);
+        }
     }
 
     /** ONB-005: the screening may send a Fat loss goal back to step 1 with the goal cleared. */
