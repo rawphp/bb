@@ -139,3 +139,17 @@ it('EX-007 gives a rep range only to an exercise in the current mesocycle, not o
         ->and(exerciseShowFor($this, $user, $future)->assertOk()->json('data.rep_range_text'))->toBeNull()
         ->and(exerciseShowFor($this, $user, $older)->assertOk()->json('data.rep_range_text'))->toBeNull();
 });
+
+it('EX-002 shows every logged day of an exercise, not just the 20 newest sessions exercise_history_show pages', function () {
+    $user = User::factory()->create();
+    $exercise = Exercise::factory()->create();
+    foreach (range(1, 25) as $day) {
+        exerciseLogged($user, $exercise, date('Y-m-d 09:00:00', strtotime("2026-10-10 -{$day} days")), [[50 + $day, 8]]);
+    }
+
+    $history = exerciseShowFor($this, $user, $exercise)->assertOk()->json('data.history');
+
+    expect($history)->toHaveCount(25)
+        ->and($history[0]['date_text'])->toBe('Fri, 9 Oct 2026')
+        ->and($history[24]['date_text'])->toBe('Tue, 15 Sep 2026');
+});
