@@ -137,6 +137,20 @@ it('MEAL-060 CAP-010 CAP-013 meal_copy copies, names the reads it changed, and i
         ->and(PlannedFood::query()->where('meal_id', $friday)->pluck('food_id')->all())->toBe([$kept->food_id]);
 });
 
+it('MEAL-060 CAP-019 meal_copy copies into a meal the client added, whose id is a ULID', function () {
+    $user = copySeeded();
+    $thursday = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-24')->firstOrFail();
+    $snack = (string) Str::ulid();
+    $thursday->meals = [...$thursday->meals, ['id' => $snack, 'name' => 'Snack', 'time' => '21:00', 'kcal' => 200, 'protein_g' => 10, 'fat_g' => 5, 'carbs_g' => 20]];
+    $thursday->save();
+
+    copyOver($user, 'meal_copy', ['meal_id' => copySeededMeal($user, '2026-09-23', 1), 'target_meal_ids' => [$snack]])
+        ->assertOk()
+        ->assertJsonPath('data.toast', 'Copied to 1 meal');
+
+    expect(PlannedFood::query()->where('meal_id', strtolower($snack))->count())->toBe(1);
+});
+
 it('SCH-034 CAP-010 day_copy copies a day\'s meals to other days and names their reads', function () {
     $user = copySeeded();
 
