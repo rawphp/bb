@@ -349,6 +349,7 @@
                             "check_in_manual",
                             "remove_check_in",
                             "still_planning",
+                            "done_planning",
                             "delete_meal"
                         ]
                     },
