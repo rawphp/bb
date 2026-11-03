@@ -27,6 +27,10 @@ function field(view: VueWrapper, label: string) {
     return view.get<HTMLInputElement>(`[aria-label="${label}"]`);
 }
 
+function cookedRadio(view: VueWrapper, name: string) {
+    return view.findAll(`[role="radiogroup"][aria-label="${name} weighed"] [role="radio"]`).find((radio) => radio.text() === 'Cooked')!;
+}
+
 function saveButton(view: VueWrapper) {
     return view.get('[data-test="save"]');
 }
@@ -140,7 +144,7 @@ describe('RecipeEditorView', () => {
         await field(view, 'Name').setValue('  Burrito bowl ');
         await field(view, 'Servings').setValue('3');
         await field(view, 'Chicken breast grams').setValue('650');
-        await view.get('[data-test="cooked-Chicken breast"]').trigger('click');
+        await cookedRadio(view, 'Chicken breast').trigger('click');
         await field(view, 'Step 2').setValue('   ');
         await saveButton(view).trigger('click');
         await flushPromises();
@@ -165,8 +169,8 @@ describe('RecipeEditorView', () => {
     it('RCP-001 only a food with a cooked value can be weighed cooked', () => {
         const view = show();
 
-        expect(view.find('[data-test="cooked-Chicken breast"]').exists()).toBe(true);
-        expect(view.find('[data-test="cooked-Black beans"]').exists()).toBe(false);
+        expect(cookedRadio(view, 'Chicken breast').attributes('aria-checked')).toBe('false');
+        expect(view.find('[role="radiogroup"][aria-label="Black beans weighed"]').exists()).toBe(false);
     });
 
     it('CAP-012 a refused save stays with the server\'s words', async () => {

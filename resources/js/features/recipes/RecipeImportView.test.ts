@@ -1,16 +1,16 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AI_TIMEOUT_MS, CapabilityError, read, readFresh } from '@/app/call';
+import { AI_TIMEOUT_MS, CapabilityError, read, readNow } from '@/app/call';
 import type { RecipeImportOutput } from '@/contracts/recipe_import';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import RecipeDraftView from './RecipeDraftView.vue';
 import RecipeImportView from './RecipeImportView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), readNow: vi.fn(), writeNow: vi.fn() }));
 const back = vi.fn();
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back, push: vi.fn() }) }));
 
-const freshMock = vi.mocked(readFresh);
+const freshMock = vi.mocked(readNow);
 const draft = screenFixture<RecipeImportOutput>('recipe_import');
 
 let wrapper: VueWrapper | undefined;

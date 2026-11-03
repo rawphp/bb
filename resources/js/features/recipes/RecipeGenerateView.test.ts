@@ -1,16 +1,16 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AI_TIMEOUT_MS, CapabilityError, read, readFresh } from '@/app/call';
+import { AI_TIMEOUT_MS, CapabilityError, read, readNow } from '@/app/call';
 import type { RecipeGenerateOutput } from '@/contracts/recipe_generate';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import RecipeDraftView from './RecipeDraftView.vue';
 import RecipeGenerateView from './RecipeGenerateView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), readNow: vi.fn(), writeNow: vi.fn() }));
 const back = vi.fn();
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back, push: vi.fn() }) }));
 
-const freshMock = vi.mocked(readFresh);
+const freshMock = vi.mocked(readNow);
 const draft = screenFixture<RecipeGenerateOutput>('recipe_generate');
 
 let wrapper: VueWrapper | undefined;
@@ -53,12 +53,12 @@ describe('RecipeGenerateView', () => {
         for (const label of ['Protein (g)', 'Fat (g)', 'Carbs (g)', 'Calories (optional)', 'Ingredients to use', 'Preferences']) {
             expect(view.find(`[aria-label="${label}"]`).exists()).toBe(true);
         }
-        const meal = view.findAll('[data-test="meal-type"]');
+        const meal = view.findAll('[role="radiogroup"][aria-label="Meal type"] [role="radio"]');
         expect(meal.map((b) => b.text())).toEqual(['Breakfast', 'Lunch', 'Dinner', 'Snack']);
-        expect(meal[2]!.attributes('aria-pressed')).toBe('true');
-        const complexity = view.findAll('[data-test="complexity"]');
+        expect(meal[2]!.attributes('aria-checked')).toBe('true');
+        const complexity = view.findAll('[role="radiogroup"][aria-label="Complexity"] [role="radio"]');
         expect(complexity.map((b) => b.text())).toEqual(['Simple', 'Moderate', 'Elaborate']);
-        expect(complexity[0]!.attributes('aria-pressed')).toBe('true');
+        expect(complexity[0]!.attributes('aria-checked')).toBe('true');
         expect(freshMock).not.toHaveBeenCalled();
     });
 
@@ -86,8 +86,8 @@ describe('RecipeGenerateView', () => {
         const view = show();
 
         await fillMacros(view);
-        await view.findAll('[data-test="meal-type"]')[1]!.trigger('click');
-        await view.findAll('[data-test="complexity"]')[2]!.trigger('click');
+        await view.findAll('[role="radiogroup"][aria-label="Meal type"] [role="radio"]')[1]!.trigger('click');
+        await view.findAll('[role="radiogroup"][aria-label="Complexity"] [role="radio"]')[2]!.trigger('click');
         await field(view, 'Ingredients to use').setValue('chicken breast, rice,\n broccoli ,,');
         await field(view, 'Preferences').setValue('  Mexican  ');
         await generate(view).trigger('click');

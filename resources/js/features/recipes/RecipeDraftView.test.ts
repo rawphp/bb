@@ -153,6 +153,8 @@ describe('RecipeDraftView', () => {
         const [name, input] = writeMock.mock.calls.at(-1)!;
         expect(name).toBe('recipe_save');
         expect(inputViolations('recipe_save', input)).toEqual([]);
+        // A drafted item carries no weighing (its detail is the food's brand), so each is saved raw.
+        expect((input as { ingredients: { is_cooked: boolean }[] }).ingredients.map((i) => i.is_cooked)).toEqual([false, false, false]);
     });
 
     it('RCP-003 Back from the editor returns to the draft as it was', async () => {

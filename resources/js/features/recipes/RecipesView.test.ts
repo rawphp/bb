@@ -152,7 +152,7 @@ describe('RecipesView', () => {
         });
         wrapper = mount(Host, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub } } });
         await flushPromises();
-        await wrapper.findAll('[role="tab"]')[1]!.trigger('click');
+        await wrapper.findAll('[role="radiogroup"][aria-label="List"] [role="radio"]')[1]!.trigger('click');
         await flushPromises();
         const reads = readMock.mock.calls.length;
 
@@ -186,7 +186,7 @@ describe('RecipesView', () => {
         const view = show();
         await flushPromises();
 
-        const segments = view.findAll('[role="tab"]');
+        const segments = view.findAll('[role="radiogroup"][aria-label="List"] [role="radio"]');
         expect(segments.map((s) => s.text())).toEqual(['My recipes', 'Library']);
         await segments[1]!.trigger('click');
         await flushPromises();
