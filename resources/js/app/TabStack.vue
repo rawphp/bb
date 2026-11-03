@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { WIDE_QUERY } from './layout';
 import { EDGE_ZONE_PX, SETTLE_MS, startsSwipeBack, swipeGoesBack, swipeIntent } from './edgeSwipe';
 import { useNavigation } from './navigation';
 import ScreenFrame from './ScreenFrame.vue';
@@ -27,6 +28,8 @@ watch(
 
 // A touch in the edge zone is a candidate. It becomes a swipe on its first move
 // that is clearly sideways; a tap or a vertical scroll goes to the screen as usual.
+// On a wide screen (NAV-003) a touch from the edge is left to the screen: there
+// is no swipe back.
 let touch: { x0: number; y0: number; t0: number; el: HTMLElement } | null = null;
 let drag: { x0: number; t0: number; dx: number; width: number; el: HTMLElement; key?: number } | null = null;
 let settling: ReturnType<typeof setTimeout> | undefined;
@@ -35,6 +38,7 @@ function onTouchStart(event: TouchEvent) {
     touch = null;
     const point = event.touches[0];
     if (!props.active || !root.value || !point || event.touches.length !== 1 || drag) return;
+    if (window.matchMedia?.(WIDE_QUERY).matches) return;
     const box = root.value.getBoundingClientRect();
     const zone = screens.value.at(-1)?.route.meta.edgeZone ?? EDGE_ZONE_PX;
     if (!startsSwipeBack(point.clientX - box.left, zone, screens.value.length)) return;

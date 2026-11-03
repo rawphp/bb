@@ -11,7 +11,7 @@ The two RP apps look and behave differently. Here, training and nutrition use th
   - **Progress**: weight, phases, mesocycles and the review card.
   - **More**: the menu in SET-020.
 - **NAV-002** [I] Tapping a workout card on Today and opening today's session from Train must reach the same workout screen. Tapping a meal on Today or Nutrition must reach the same meal screen.
-- **NAV-003** Deferred. [H] On wide screens (web, iPad), the bottom bar becomes a left rail.
+- **NAV-003** [H] On wide screens (web, iPad; a window 768 px wide or more), the bottom bar must become a left rail with the same tabs in the same order. Narrower windows keep the bottom bar.
 - **NAV-004** [G] An active workout must show a pinned bar above the tab bar ("Upper A · 4 of 6 exercises") so the user can leave the workout and come back.
 
 ## Shared components (UI)

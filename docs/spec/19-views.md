@@ -41,7 +41,7 @@ resources/js/
 
 | rp-clone | Vue | Notes |
 |---|---|---|
-| RootView.swift (RootView) | `app/AppShell.vue`, `app/TabBar.vue`, `app/TabStack.vue` | NAV-001, PWA-020 to PWA-022. Debug screens in RootView are dropped (VIEW-003) |
+| RootView.swift (RootView) | `app/AppShell.vue`, `app/TabBar.vue`, `app/TabStack.vue` | NAV-001, NAV-003, PWA-020 to PWA-022. Debug screens in RootView are dropped (VIEW-003) |
 | RPCloneApp.swift | `app/main.ts` | Boot, service worker registration |
 | (new) | `app/CoachButton.vue`, `features/coach/CoachChat.vue`, `features/coach/ChangeCard.vue` | AGT-002, AGT-013, AGT-021 |
 | (new) | `features/sync/OutboxView.vue` | OFF-010, OFF-011 |

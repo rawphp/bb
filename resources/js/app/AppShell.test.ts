@@ -11,6 +11,7 @@ import { EDGE_ZONE_PX, SETTLE_MS, startsSwipeBack, swipeGoesBack, swipeIntent } 
 import { trackHistory } from './history';
 import { SHEET_HOST, TOAST_HOST } from './hosts';
 import { KEYPAD } from './keypad';
+import { WIDE_MIN_PX, WIDE_QUERY } from './layout';
 import { attachNavigation, type Navigation } from './navigation';
 import { onScreenReturn } from './screenTop';
 import { TABS } from './tabs';
@@ -53,6 +54,24 @@ async function mountShell(slots = {}): Promise<{ wrapper: VueWrapper; router: Ro
     return { wrapper, router, nav };
 }
 
+/** The body of shell.css's one wide-screen block, and the stylesheet without it (the phone rules). */
+function wideBlock(): { inside: string; outside: string } {
+    const open = `@media ${WIDE_QUERY} {`;
+    const start = css.indexOf(open);
+    let depth = 0;
+    for (let i = start + open.length - 1; start >= 0 && i < css.length; i++) {
+        if (css[i] === '{') depth++;
+        else if (css[i] === '}' && --depth === 0) return { inside: css.slice(start + open.length, i), outside: css.slice(0, start) + css.slice(i + 1) };
+    }
+    return { inside: '', outside: css };
+}
+
+function mouse(target: Element, type: string, clientX: number): MouseEvent {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX, clientY: 300, buttons: 1 });
+    target.dispatchEvent(event);
+    return event;
+}
+
 function touch(target: Element, type: string, clientX: number, clientY = 300): Event {
     const event = new Event(type, { bubbles: true, cancelable: true });
     const touches = type === 'touchend' || type === 'touchcancel' ? [] : [{ clientX, clientY }];
@@ -69,6 +88,7 @@ describe('AppShell', () => {
         wrapper?.unmount();
         wrapper = undefined;
         vi.useRealTimers();
+        vi.unstubAllGlobals();
     });
 
     it('NAV-001 shows five tabs, with Today current', async () => {
@@ -315,6 +335,73 @@ describe('AppShell', () => {
         expect(back).not.toHaveBeenCalled();
     });
 
+    it('PWA-022 NAV-003 an edge swipe does not go back on a wide screen', async () => {
+        vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === WIDE_QUERY }));
+        const { wrapper, router, nav } = await mountShell();
+        await router.push('/meals/1');
+        await nextTick();
+        vi.useFakeTimers();
+        const stack = activeStack(wrapper).element;
+        const top = stack.querySelector<HTMLElement>('[data-top]')!;
+        const back = vi.spyOn(router, 'back');
+
+        touch(stack, 'touchstart', 4);
+        expect(touch(stack, 'touchmove', 904).defaultPrevented).toBe(false);
+        touch(stack, 'touchend', 904);
+        vi.advanceTimersByTime(SETTLE_MS);
+
+        expect(top.style.transform).toBe('');
+        expect(back).not.toHaveBeenCalled();
+        vi.useRealTimers();
+        await flushPromises();
+        await nav.idle();
+        expect(nav.state.stacks.today).toHaveLength(2);
+    });
+
+    it('PWA-022 an edge swipe still goes back below 768 px', async () => {
+        vi.stubGlobal('matchMedia', () => ({ matches: false }));
+        const { wrapper, router, nav } = await mountShell();
+        await router.push('/meals/1');
+        await nextTick();
+        vi.useFakeTimers();
+        const stack = activeStack(wrapper).element;
+        const back = vi.spyOn(router, 'back');
+
+        touch(stack, 'touchstart', 4);
+        expect(touch(stack, 'touchmove', 904).defaultPrevented).toBe(true);
+        touch(stack, 'touchend', 904);
+        vi.advanceTimersByTime(SETTLE_MS);
+        vi.useRealTimers();
+        await flushPromises();
+        await nav.idle();
+
+        expect(back).toHaveBeenCalledOnce();
+        expect(nav.state.stacks.today).toHaveLength(1);
+    });
+
+    it('PWA-022 a mouse drag from the edge never goes back', async () => {
+        const { wrapper, router, nav } = await mountShell();
+        await router.push('/meals/1');
+        await nextTick();
+        vi.useFakeTimers();
+        const stack = activeStack(wrapper).element;
+        const top = stack.querySelector<HTMLElement>('[data-top]')!;
+        const back = vi.spyOn(router, 'back');
+
+        mouse(stack, 'mousedown', 4);
+        mouse(stack, 'mousemove', 104);
+        mouse(stack, 'mousemove', 904);
+        mouse(stack, 'mouseup', 904);
+        vi.advanceTimersByTime(SETTLE_MS);
+
+        expect(top.style.transform).toBe('');
+        expect(back).not.toHaveBeenCalled();
+        vi.useRealTimers();
+        await flushPromises();
+        await nav.idle();
+        expect(nav.state.stacks.today).toHaveLength(2);
+    });
+
     it('PWA-022 goes back past a third of the width or on a flick', () => {
         expect(startsSwipeBack(10, EDGE_ZONE_PX, 1)).toBe(false);
         expect(startsSwipeBack(10, EDGE_ZONE_PX, 2)).toBe(true);
@@ -358,8 +445,46 @@ describe('AppShell', () => {
         expect(KEYPAD.steps.inputmode).toBe('numeric');
     });
 
-    it('PLT-002 centres the phone column up to 480 px', () => {
-        expect(css).toMatch(/#app\s*{[^}]*max-width: 480px;[^}]*margin-inline: auto;/);
+    it('PLT-002 keeps the phone column below 768 px', () => {
+        const { outside } = wideBlock();
+
+        expect(WIDE_MIN_PX).toBe(768);
+        expect(WIDE_QUERY).toBe(`(min-width: ${WIDE_MIN_PX}px)`);
+        expect(outside).toMatch(/#app\s*{[^}]*max-width: 480px;[^}]*margin-inline: auto;/);
+        expect(outside).toMatch(/\.bb-shell\s*{[^}]*display: flex;[^}]*flex-direction: column;/);
+        expect(outside).toMatch(/\.bb-tab-bar\s*{[^}]*display: flex;[^}]*border-top: 1px solid/);
+    });
+
+    it('PLT-002 NAV-003 drops the 480 px column at 768 px and wider', () => {
+        const { inside, outside } = wideBlock();
+
+        // One wide-screen block, at the one breakpoint.
+        expect(css.match(/@media [^{]*width[^{]*\)/g)).toEqual([`@media ${WIDE_QUERY}`]);
+        expect(inside).toMatch(/#app\s*{[^}]*max-width: none;/);
+        expect(inside).not.toContain('480px');
+        // The rail on the left at full height; the stacks and the floating layer to its right.
+        expect(inside).toMatch(/\.bb-shell\s*{[^}]*display: grid;[^}]*grid-template-columns: 5\.5rem minmax\(0, 1fr\);/);
+        expect(inside).toMatch(/\.bb-tab-bar\s*{[^}]*grid-column: 1;[^}]*grid-row: 1 \/ -1;[^}]*flex-direction: column;/);
+        expect(inside).toMatch(/\.bb-tab-bar\s*{[^}]*padding-left: env\(safe-area-inset-left\);[^}]*border-top: 0;[^}]*border-right: 1px solid/);
+        expect(inside).toMatch(/\.bb-stacks\s*{[^}]*grid-column: 2;[^}]*grid-row: 1;/);
+        expect(inside).toMatch(/\.bb-above-tabs\s*{[^}]*grid-column: 2;[^}]*grid-row: 2;[^}]*padding-bottom: env\(safe-area-inset-bottom\);/);
+        // Only the rail takes the left inset (PWA-010); the column to its right is already clear of it.
+        expect(inside).toMatch(/\.bb-screen\s*{[^}]*padding-left: 0;/);
+        expect(inside).toMatch(/\.bb-floating\s*{[^}]*padding-left: 1rem;/);
+        // A short window with large text scrolls the rail rather than clipping tabs (UI-030).
+        expect(inside).toMatch(/\.bb-tab-bar\s*{[^}]*overflow-y: auto;/);
+        // Tabs keep their tap target and wrapping labels (UI-030); the sheet host still covers the whole app.
+        expect(inside).not.toMatch(/min-height|overflow-wrap|bb-sheet-host/);
+        expect(outside).toMatch(/\.bb-sheet-host\s*{[^}]*position: absolute;[^}]*inset: 0;/);
+    });
+
+    it('NAV-003 centres each screen in a 40rem column on wide screens', () => {
+        const { inside, outside } = wideBlock();
+
+        // In a layer below Tailwind's utilities, so a screen's own md: classes can widen it.
+        expect(inside).toMatch(/@layer components\s*{\s*\.bb-screen > \*,\s*\.bb-bare > \*\s*{[^}]*max-width: 40rem;[^}]*margin-inline: auto;/);
+        expect(outside).not.toContain('40rem');
+        expect(outside).toMatch(/\.bb-screen\s*{[^}]*background: var\(--bb-background\);/);
     });
 });
 
