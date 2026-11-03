@@ -518,6 +518,19 @@ describe('MealView', () => {
             expect(back).toHaveBeenCalled();
         });
 
+        it('MEAL-009 a deleted meal is not read again: the screen goes back without an error', async () => {
+            readMock.mockReset().mockRejectedValue(new CapabilityError('meal_show', 404, { ok: false, error: { message: 'No such meal.' } }));
+            const view = show({ payload: content });
+
+            await menu(view, 'delete_meal');
+            dialog()!.querySelector<HTMLButtonElement>('[data-test="confirm-delete"]')!.click();
+            await flushPromises();
+
+            expect(readMock).not.toHaveBeenCalled();
+            expect(back).toHaveBeenCalledOnce();
+            expect(view.find('[data-test="error"]').exists()).toBe(false);
+        });
+
         it('MEAL-009 a refused delete stays on the meal and says why', async () => {
             writeMock.mockReset().mockRejectedValueOnce(new CapabilityError('meal_delete', 422, { ok: false, error: { message: 'The meal is checked in.' } }));
             const view = show({ payload: content });
@@ -647,15 +660,28 @@ describe('MealView', () => {
             expect(document.body.querySelector<HTMLInputElement>('[role="dialog"] input[name="saved-meal-name"]')!.value).toBe('Dinner');
         });
 
-        it('MEAL-009 ?action=remove_foods removes the foods once the meal has loaded', async () => {
-            const view = show({ mealId: MEAL, action: 'remove_foods' });
+        it('MEAL-009 ?action=remove_foods asks first, and removes the foods only on the tap', async () => {
+            show({ mealId: MEAL, action: 'remove_foods' });
+            await flushPromises();
+
             expect(writeMock).not.toHaveBeenCalled();
+            expect(dialog()!.querySelector('h2')!.textContent).toBe('Remove foods from Dinner?');
+            dialog()!.querySelector<HTMLButtonElement>('[data-test="confirm-clear"]')!.click();
             await flushPromises();
 
             expect(sent('meal_foods_clear')).toEqual({ meal_id: MEAL });
-            await view.get('[data-test="rebalance"]').trigger('click');
+            expect(dialog()).toBeNull();
+        });
+
+        it('MEAL-009 ?action=remove_foods cancelled sends nothing', async () => {
+            show({ payload: content, action: 'remove_foods' });
             await flushPromises();
-            expect(writeMock.mock.calls.filter((call) => call[0] === 'meal_foods_clear')).toHaveLength(1);
+
+            document.body.querySelector<HTMLButtonElement>('[role="dialog"] [data-cancel]')!.click();
+            await flushPromises();
+
+            expect(dialog()).toBeNull();
+            expect(writeMock).not.toHaveBeenCalled();
         });
 
         it('MEAL-009 an action the server has off does nothing, and still leaves the address', async () => {
@@ -723,6 +749,16 @@ describe('MealView', () => {
             await flushPromises();
 
             expect(sent('meal_check_in_undo')).toEqual({ meal_id: MEAL });
+        });
+
+        it('MEAL-047 the box takes each server state: on track and over are checked', () => {
+            for (const [state, look] of [['onTrack', 'on_track'], ['over', 'over']] as const) {
+                const view = show({ payload: { ...content, check_in: { state, text: 'Checked in', tone: 'good' } } });
+                expect(view.findComponent(CheckInButton).props('state')).toBe(look);
+                expect(view.get('[data-test="check"]').attributes('aria-checked')).toBe('true');
+                view.unmount();
+            }
+            wrapper = undefined;
         });
 
         it('MEAL-045 the box is off when the menu offers no check-in, as on a badged meal', () => {
