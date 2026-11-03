@@ -2,6 +2,7 @@
 
 use App\Actions\Plan\RebuildTargets;
 use App\Domain\Model\DayType;
+use App\Domain\Plan\PlanRebuildRefusal\Reason;
 use App\Domain\Plan\PlanRebuildRefused;
 use App\Models\DayTarget;
 use App\Models\Mesocycle;
@@ -144,7 +145,7 @@ it('SET-004 a week flagged a deload runs at maintenance like the review builds i
 });
 
 it('SAFE-003 a training-only profile has no targets to rebuild', function () {
-    $user = rebuildUser(['training_only' => true]);
+    $user = rebuildUser(['training_only' => true], phase: false);
 
     expect(rebuildRun($user))->toBe([])
         ->and(DayTarget::query()->count())->toBe(0);
@@ -284,4 +285,170 @@ it('SET-004 a user without a plan is told the plan has not started', function ()
 
     expect(fn () => rebuildRun($user))
         ->toThrow(PlanRebuildRefused::class, 'Your plan has not started yet, so there are no targets to update. Your targets were not changed.');
+});
+
+/** @return array<string, list<string>> each written day's meal times by Y-m-d */
+function rebuildMealTimesByDay(User $user): array
+{
+    return rebuildRows($user)->map(fn (DayTarget $row) => array_column($row->meals, 'time'))->all();
+}
+
+it('SET-005 a weekday busy period moves only its weekdays\' meals', function () {
+    $user = rebuildUser();
+    rebuildRun($user);
+    $plainTimes = rebuildMealTimesByDay($user);
+
+    $user->profile->update(['busy_periods' => [['start' => '11:00', 'end' => '13:00', 'weekdays' => [1, 2, 3, 4, 5]]]]);
+    rebuildRun($user);
+    $busyTimes = rebuildMealTimesByDay($user);
+
+    // Friday the 16th is busy; Saturday the 17th and Sunday the 18th are untouched.
+    expect($busyTimes['2026-10-16'])->not->toBe($plainTimes['2026-10-16'])
+        ->and($busyTimes['2026-10-17'])->toBe($plainTimes['2026-10-17'])
+        ->and($busyTimes['2026-10-18'])->toBe($plainTimes['2026-10-18']);
+});
+
+it('SET-005 a Saturday busy period moves Saturday only', function () {
+    $user = rebuildUser();
+    rebuildRun($user);
+    $plainTimes = rebuildMealTimesByDay($user);
+
+    $user->profile->update(['busy_periods' => [['start' => '11:00', 'end' => '13:00', 'weekdays' => [6]]]]);
+    rebuildRun($user);
+    $busyTimes = rebuildMealTimesByDay($user);
+
+    expect($busyTimes['2026-10-17'])->not->toBe($plainTimes['2026-10-17'])
+        ->and($busyTimes['2026-10-16'])->toBe($plainTimes['2026-10-16'])
+        ->and($busyTimes['2026-10-18'])->toBe($plainTimes['2026-10-18']);
+});
+
+it('SET-005 a busy period with no weekdays applies every day', function () {
+    $user = rebuildUser();
+    rebuildRun($user);
+    $plainTimes = rebuildMealTimesByDay($user);
+
+    $user->profile->update(['busy_periods' => [['start' => '11:00', 'end' => '13:00']]]);
+    rebuildRun($user);
+    $busyTimes = rebuildMealTimesByDay($user);
+
+    expect($busyTimes['2026-10-16'])->not->toBe($plainTimes['2026-10-16'])
+        ->and($busyTimes['2026-10-17'])->not->toBe($plainTimes['2026-10-17']);
+});
+
+it('NUT-030 stored meals keep their ids in the stored order whatever their times say', function () {
+    $user = rebuildUser();
+    $ids = ['aaaaaaaa-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000002', 'aaaaaaaa-0000-4000-8000-000000000003', 'aaaaaaaa-0000-4000-8000-000000000004'];
+    $meals = array_map(fn (string $id, string $time) => [
+        'id' => $id, 'name' => 'M', 'time' => $time, 'kcal' => 500, 'protein_g' => 30, 'fat_g' => 15, 'carbs_g' => 60,
+    ], $ids, ['16:00', '08:00', '20:00', '12:00']);
+    DayTarget::factory()->for($user)->create(['date' => '2026-10-15', 'meals' => $meals]);
+
+    rebuildRun($user);
+
+    expect(array_column(rebuildRows($user)['2026-10-15']->meals, 'id'))->toBe($ids);
+});
+
+it('SAFE-017 before the plan starts the first week can be built whole', function () {
+    Carbon::setTestNow('2026-09-02 10:00:00');
+    $user = rebuildUser();
+
+    $written = rebuildRun($user, beforeStart: true);
+
+    expect($written)->toBe(['2026-09-07', '2026-09-08', '2026-09-09', '2026-09-10', '2026-09-11', '2026-09-12', '2026-09-13'])
+        ->and(DayTarget::query()->where('user_id', $user->id)->count())->toBe(7);
+});
+
+it('SAFE-017 before the plan starts the rebuild is refused without the flag and writes nothing', function () {
+    Carbon::setTestNow('2026-09-02 10:00:00');
+    $user = rebuildUser();
+
+    try {
+        rebuildRun($user);
+        $reason = null;
+    } catch (PlanRebuildRefused $refused) {
+        $reason = $refused->refusal->reason;
+    }
+
+    expect($reason)->toBe(Reason::PlanNotStarted)
+        ->and(DayTarget::query()->count())->toBe(0);
+});
+
+it('SAFE-017 a calorie change moves every written day', function () {
+    $user = rebuildUser();
+    rebuildRun($user);
+    $plain = rebuildKcal($user);
+
+    rebuildRun($user, -200);
+
+    foreach (rebuildKcal($user) as $date => $kcal) {
+        expect($kcal)->toEqualWithDelta($plain[$date] - 200, 5);
+    }
+});
+
+it('SCH-060 an away week that pauses training and holds maintenance has only rest days above the deficit', function () {
+    $user = rebuildUser();
+    rebuildSeedMesocycle($user);
+    rebuildRun($user);
+    $plain = rebuildKcal($user);
+
+    PlanWeek::factory()->for($user)->create([
+        'start_date' => '2026-10-12', 'is_away' => true, 'away_training' => 'pause', 'away_calories' => 'maintenance',
+    ]);
+    rebuildRun($user);
+
+    expect(rebuildTypes($user))->each->toBe(DayType::Rest)
+        ->and(rebuildKcal($user)['2026-10-16'])->toBeGreaterThan($plain['2026-10-16']);
+});
+
+it('SCH-060 an away week on rest days takes the training day\'s workout out', function () {
+    $user = rebuildUser();
+    rebuildSeedMesocycle($user);
+    rebuildRun($user);
+    expect(rebuildTypes($user)['2026-10-15'])->not->toBe(DayType::Rest);
+
+    PlanWeek::factory()->for($user)->create([
+        'start_date' => '2026-10-12', 'is_away' => true, 'away_training' => 'pause', 'away_calories' => 'restDays',
+    ]);
+    rebuildRun($user);
+
+    expect(rebuildTypes($user)['2026-10-15'])->toBe(DayType::Rest);
+});
+
+it('PLAN-023 turning the diet break off keeps a deload week in the deficit', function () {
+    $user = rebuildUser();
+    rebuildRun($user);
+    $deficit = rebuildKcal($user);
+
+    $week = PlanWeek::factory()->for($user)->create(['start_date' => '2026-10-12', 'is_deload' => true]);
+    rebuildRun($user);
+    $deload = rebuildKcal($user);
+
+    $week->update(['diet_break_off' => true]);
+    rebuildRun($user);
+
+    expect($deload['2026-10-15'])->toBeGreaterThan($deficit['2026-10-15'])
+        ->and(rebuildKcal($user)['2026-10-15'])->toEqualWithDelta($deficit['2026-10-15'], 1e-6);
+});
+
+it('MESO-043 an ended mesocycle plans no session after its last day', function () {
+    $user = rebuildUser();
+    rebuildSeedMesocycle($user, ['ended_on' => '2026-10-14']);
+
+    rebuildRun($user);
+
+    expect(rebuildTypes($user)['2026-10-15'])->toBe(DayType::Rest);
+});
+
+it('SCH-038 the first Other activity of a day sets its day type', function () {
+    $user = rebuildUser();
+    OtherActivity::factory()->for($user)->create([
+        'date' => '2026-10-16', 'minutes' => 60, 'intensity' => 'moderate', 'created_at' => '2026-10-14 08:00:00',
+    ]);
+    OtherActivity::factory()->for($user)->create([
+        'date' => '2026-10-16', 'minutes' => 60, 'intensity' => 'hard', 'created_at' => '2026-10-14 09:00:00',
+    ]);
+
+    rebuildRun($user);
+
+    expect(rebuildTypes($user)['2026-10-16'])->toBe(DayType::Moderate);
 });

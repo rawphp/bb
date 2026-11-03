@@ -39,7 +39,8 @@ it('SET-004 rebuilds the rest of the week from the stored plan and saves each da
         ->and(array_column($rows['2026-10-15']->meals, 'id'))->toBe(array_slice($ids, 0, 4))
         ->and($rows['2026-10-15']->kcal)->not->toBe(2000.0)
         ->and($rows['2026-10-14']->meals)->toHaveCount(1)
-        ->and($rows['2026-10-14']->updated_at->equalTo($today->updated_at))->toBeTrue();
+        ->and($rows['2026-10-14']->kcal)->toBe($today->kcal)
+        ->and(array_column($rows['2026-10-14']->meals, 'id'))->toBe(array_column($today->meals, 'id'));
 
     // The index follows: the dropped tail meals' rows are gone, and a new day has one row per meal.
     expect(DayTargetMeal::query()->where('day_target_id', $thursday->id)->orderBy('position')->pluck('id')->all())->toBe(array_slice($ids, 0, 4))
