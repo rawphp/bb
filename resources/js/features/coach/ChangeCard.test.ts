@@ -18,7 +18,9 @@ function mountCard(change: CoachChangesListOutput['changes'][number]) {
 }
 
 describe('ChangeCard', () => {
-    beforeEach(() => writeMock.mockReset());
+    beforeEach(() => {
+        writeMock.mockReset();
+    });
 
     it('AGT-013 shows what changed, a link to its screen and Undo', () => {
         const card = mountCard(withScreen);

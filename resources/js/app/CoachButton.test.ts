@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
-import { read } from '@/app/call';
+import { CapabilityError, read } from '@/app/call';
 import type { AgentStatusShowOutput } from '@/contracts/agent_status_show';
 import { screenFixture } from '@/testing/schemas';
 import CoachButton from './CoachButton.vue';
@@ -26,7 +26,9 @@ async function show(answer: AgentStatusShowOutput) {
 }
 
 describe('CoachButton', () => {
-    beforeEach(() => readMock.mockReset());
+    beforeEach(() => {
+        readMock.mockReset();
+    });
 
     it('AGT-002 shows when the agent is enabled and on, and opens the chat', async () => {
         const wrapper = await show(status);
@@ -62,7 +64,7 @@ describe('CoachButton', () => {
     });
 
     it('AGT-002 is hidden when the status cannot be read', async () => {
-        readMock.mockRejectedValue(new Error('offline'));
+        readMock.mockImplementation(() => Promise.reject(new CapabilityError('agent_status_show', 0, { reason: 'network' })));
         router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:any(.*)*', component: { template: '<p />' } }] });
         await router.push('/today');
         const wrapper = mount(CoachButton, { global: { plugins: [router] } });

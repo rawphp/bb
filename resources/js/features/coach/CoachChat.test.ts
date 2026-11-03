@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearReads } from '@/app/cache';
+import { cached, clearReads, readKey } from '@/app/cache';
 import { CapabilityError, read, readFresh } from '@/app/call';
 import { cancel, events, history, send, type ChatHistory, type TurnEvent } from '@/app/chatTransport';
 import type { AgentStatusShowOutput } from '@/contracts/agent_status_show';
@@ -142,7 +142,8 @@ describe('CoachChat', () => {
         await vi.advanceTimersByTimeAsync(1000);
         expect(lines(wrapper)).toEqual(['Checking this week…', 'Working…']);
         await vi.advanceTimersByTimeAsync(1000);
-        await flushPromises();
+        // The history is stored in IndexedDB, which answers on its own clock.
+        await vi.waitFor(() => expect(wrapper.findAll('[data-test="change-card"]')).toHaveLength(2));
 
         // Each poll passes back the cursor after the last event it got.
         expect(eventsMock.mock.calls).toEqual([
@@ -183,7 +184,7 @@ describe('CoachChat', () => {
         expect(lines(wrapper)).toEqual(['Checking this week…']);
 
         await wrapper.get('[data-test="cancel-turn"]').trigger('click');
-        await flushPromises();
+        await vi.waitFor(() => expect(readFreshMock).toHaveBeenCalledWith('coach_changes_list', { turn: TURN }));
 
         expect(cancelMock).toHaveBeenCalledWith(TURN);
         expect(wrapper.get('[data-test="turn-state"]').text()).toBe('Cancelled');
@@ -196,16 +197,17 @@ describe('CoachChat', () => {
     it('AGT-023 offline shows the last history it loaded from cache and disables the input', async () => {
         readMock.mockResolvedValue(status);
         historyMock.mockResolvedValue(earlier);
-        mountChat().unmount();
-        await flushPromises();
+        const online = mountChat();
+        await vi.waitFor(async () => expect(await cached(readKey('capabilities-ai.history', { conversation_ulid: CONVERSATION }))).toBeDefined());
+        online.unmount();
 
         setOnline(false);
         historyMock.mockReset();
         historyMock.mockRejectedValue(new CapabilityError('chat.history', 0, { reason: 'network' }));
         const wrapper = mountChat();
-        await flushPromises();
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
 
-        expect(wrapper.text()).toContain('Four of five sessions done.');
+        expect(historyMock).toHaveBeenCalledWith(CONVERSATION);
         expect(wrapper.text()).toContain('The Coach needs a connection');
         expect(wrapper.get('textarea').attributes('disabled')).toBeDefined();
         expect(wrapper.get('[data-test="send"]').attributes('disabled')).toBeDefined();
