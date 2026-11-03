@@ -97,6 +97,7 @@ describe('chatTransport', () => {
         expect(first?.headers).toMatchObject({ 'X-XSRF-TOKEN': 'stale' });
         expect(retry?.headers).toMatchObject({ 'X-XSRF-TOKEN': 'fresh' });
         expect(retry?.method).toBe('POST');
+        expect(retry?.signal).toBe(first?.signal);
         expect(JSON.parse(retry?.body as string)).toEqual(JSON.parse(first?.body as string));
     });
 
