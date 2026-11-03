@@ -168,7 +168,9 @@ const select = 'max-w-[60%] rounded-lg bg-transparent text-right text-secondary-
                         </span>
                     </div>
                 </div>
-                <p v-if="notNumber" class="px-4 pt-2 text-sm text-tone-warning" data-test="not-number">Type your height in numbers, with whole feet.</p>
+                <p v-if="notNumber" class="px-4 pt-2 text-sm text-tone-warning" data-test="not-number">
+                    {{ draft.unit === 'cm' ? 'Type your height as a number.' : 'Type your height in numbers, with whole feet.' }}
+                </p>
             </section>
 
             <section aria-labelledby="profile-body-fat">
