@@ -392,6 +392,7 @@ final class WorkoutSnapshot
             isFatLoss: $this->isFatLoss(),
             experience: $this->train->experience(),
             rules: $this->rules($exercise),
+            lastWeekWasRough: $this->isRoughWeek($this->week - 1),
         ));
     }
 
@@ -438,6 +439,12 @@ final class WorkoutSnapshot
             ->sortBy('position')
             ->map(fn (WorkoutSet $set) => new SetLoad($this->weightOf($set->actual_weight_kg, $exercise), (int) $set->actual_reps))
             ->values()->all();
+    }
+
+    /** SCH-063: whether the plan week mesocycle week `$week` falls in is marked rough. No row means it is not. */
+    private function isRoughWeek(int $week): bool
+    {
+        return $this->train->planWeekRow($this->calendar()->planWeek($week - 1)->start)?->is_rough === true;
     }
 
     // MARK: feedback (FB-007, FB-009)
@@ -594,6 +601,7 @@ final class WorkoutSnapshot
             jointPain: $this->jointAnswers(),
             held: Underperformance::flaggedMuscles([...$this->earlierLogged(), $this->logged($session)]),
             now: $this->start(),
+            isRoughWeek: $this->isRoughWeek($this->week),
         ));
     }
 

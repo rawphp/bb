@@ -22,6 +22,7 @@ final readonly class ProgressionInput
      * @param  array<int, JointPain>  $jointPain  FB-002 answers by library exercise id
      * @param  list<MuscleGroup>  $held  PROG-050: the muscles that missed their reps two sessions running
      * @param  DateTimeImmutable  $now  when the session was done
+     * @param  bool  $isRoughWeek  SCH-063: the session was logged in a rough week, so every muscle of it is held
      */
     public function __construct(
         public array $days,
@@ -36,5 +37,6 @@ final readonly class ProgressionInput
         public array $jointPain,
         public array $held,
         public DateTimeImmutable $now,
+        public bool $isRoughWeek = false,
     ) {}
 }
