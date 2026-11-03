@@ -6,6 +6,7 @@ use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\Priority;
 use App\Domain\Model\Session;
 use App\Models\Mesocycle;
+use App\Models\WorkoutSession;
 use App\Support\Mesocycles\TrainSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -108,6 +109,28 @@ it('MESO-034 setting a muscle Off keeps the weeks that ran and this week\'s done
         ->and($muscles(2))->toBe([['chest'], ['calves']])
         ->and($muscles(3))->toBe([[], ['calves']])
         ->and($muscles(4))->toBe([[], ['calves']]);
+});
+
+it('MESO-034 Off counts only this mesocycle\'s sessions done or skipped this week, not another user\'s or an earlier week\'s', function () {
+    $mesocycle = priorityMeso();
+    $other = TrainSeed::mesocycle(TrainSeed::user());
+    WorkoutSession::factory()->for($other->user)->create(['mesocycle_id' => $other->id, 'week' => 3, 'day' => 1, 'actual_start_at' => '2026-09-21 17:30:00']);
+    WorkoutSession::factory()->for($mesocycle->user)->create(['mesocycle_id' => $mesocycle->id, 'week' => 2, 'day' => 1, 'is_skipped' => true]);
+
+    prioritySet($mesocycle, MuscleGroup::Chest, null);
+
+    // Week 3's Upper A has not run, so it takes the change.
+    expect(priorityWeek($mesocycle, 2))->toBe([[], ['quads', 'calves']]);
+});
+
+it('MESO-034 a session skipped this week keeps what it had when a muscle goes Off', function () {
+    $mesocycle = priorityMeso();
+    WorkoutSession::factory()->for($mesocycle->user)->create(['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 2, 'is_skipped' => true]);
+
+    prioritySet($mesocycle, MuscleGroup::Quads, null);
+
+    expect(priorityWeek($mesocycle, 2))->toBe([['chest'], ['quads', 'calves']])
+        ->and(priorityWeek($mesocycle, 3))->toBe([['chest'], ['calves']]);
 });
 
 it('MESO-032 MESO-034 a mesocycle that has ended takes no priority change', function (?Priority $priority) {
