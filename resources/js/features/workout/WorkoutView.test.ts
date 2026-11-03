@@ -630,6 +630,18 @@ describe('WorkoutView', () => {
         expect(wrapper.find('[data-test="day-menu"]').exists()).toBe(false);
     });
 
+    it('EX-008 a session that can no longer change offers no swap: the suggestion\'s Swap is off and opens nothing', async () => {
+        const wrapper = await show({ payload: { ...workout('warning'), status: 'finished', is_editable: false } });
+
+        const swap = wrapper.get('[data-test="swap-suggestion"] button');
+        expect(swap.attributes('disabled')).toBeDefined();
+        await swap.trigger('click');
+        await flushPromises();
+
+        expect(dialog(wrapper)).toBeNull();
+        expect(wrapper.find('[data-test="exercise-menu"] button').attributes('disabled')).toBeDefined();
+    });
+
     it('FB-001 a due feedback that is not answered opens its sheet by itself', async () => {
         const wrapper = await show({ payload: workout('warning') });
 

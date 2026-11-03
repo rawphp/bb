@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { read } from '@/app/call';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
 import { screenFixture } from '@/testing/schemas';
+import StatusPill from '@/design/StatusPill.vue';
 import LookBackSheet from './LookBackSheet.vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn() }));
@@ -27,9 +28,8 @@ describe('LookBackSheet', () => {
         const rows = wrapper.findAll('[data-test="session"]');
         expect(rows).toHaveLength(4);
         expect(rows[0]!.text()).toContain('Week 2 · Day 2 · Lower A');
-        expect(rows[0]!.get('[data-test="status"]').text()).toBe('Done');
-        expect(rows[2]!.get('[data-test="status"]').text()).toBe('Skipped');
-        expect(rows[0]!.get('[data-test="status"]').classes().join(' ')).toContain('tone-good');
+        expect(rows[0]!.getComponent(StatusPill).props()).toMatchObject({ text: 'Done', tone: 'good' });
+        expect(rows[2]!.getComponent(StatusPill).props()).toMatchObject({ text: 'Skipped', tone: 'neutral' });
     });
 
     it('WO-008 says when there are no earlier sessions (workout_show.empty)', () => {
