@@ -19,8 +19,10 @@ const props = withDefaults(
         /** A diet save is running: the toggles wait for it. */
         dietSaving?: boolean;
         dietError?: string | null;
+        /** Off for a recipe: Recipes and Saved Meals are not foods. */
+        showsCollections?: boolean;
     }>(),
-    { dietSaving: false, dietError: null },
+    { dietSaving: false, dietError: null, showsCollections: true },
 );
 
 const emit = defineEmits<{
@@ -46,7 +48,7 @@ function picked<T extends string>(event: Event): T | null {
 
 <template>
     <div class="-mx-4 flex items-center gap-2 overflow-x-auto px-4 [scrollbar-width:none]">
-        <label class="relative shrink-0">
+        <label v-if="showsCollections" class="relative shrink-0">
             <PantryChip :title="titleOf(COLLECTIONS, collection, 'Foods')" :active="collection !== null" />
             <select
                 aria-label="Show"

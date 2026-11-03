@@ -132,3 +132,61 @@ it('SCH-020 SCH-023 a date opens in a week of the plan or in today\'s week; any 
         ->and($day('2026-12-25'))->toBe('2026-10-09')
         ->and($day('2026-01-01'))->toBe('2026-09-12');
 });
+
+// SCH-063: the rough week's pill and the menu of the strip.
+
+function weekActions(array $payload): array
+{
+    return array_column($payload['actions'], 'label', 'action');
+}
+
+it('SCH-063 a rough week shows the Rough week pill after Deload and Away', function () {
+    $rough = weekPayload(W::snapshot(planWeeks: [W::planWeek('2026-09-19', rough: true)]));
+    $all = weekPayload(W::snapshot(date: '2026-09-28', planWeeks: [W::planWeek('2026-09-26', deload: true, away: true, rough: true)]));
+
+    expect($rough['pills'])->toBe([['text' => 'Rough week', 'tone' => 'warning']])
+        ->and($all['pills'])->toBe([
+            ['text' => 'Deload', 'tone' => 'neutral'], ['text' => 'Away', 'tone' => 'info'], ['text' => 'Rough week', 'tone' => 'warning'],
+        ])
+        ->and(weekPayload(W::snapshot())['pills'])->toBe([]);
+});
+
+it('SCH-063 this plan week offers Mark rough week, or Unmark when it is already rough', function () {
+    expect(weekActions(weekPayload(W::snapshot())))->toBe(['mark_rough' => 'Mark rough week'])
+        ->and(weekActions(weekPayload(W::snapshot(planWeeks: [W::planWeek('2026-09-19', rough: true)]))))->toBe(['unmark_rough' => 'Unmark rough week']);
+});
+
+it('SCH-063 a deload or an away week of this plan week offers no rough menu', function () {
+    expect(weekPayload(W::snapshot(planWeeks: [W::planWeek('2026-09-19', deload: true)]))['actions'])->toBe([])
+        ->and(weekPayload(W::snapshot(planWeeks: [W::planWeek('2026-09-19', away: true)]))['actions'])->toBe([]);
+});
+
+it('SCH-063 only the week of today offers a rough menu, not a past or later week', function () {
+    expect(weekPayload(W::snapshot(date: '2026-09-15'))['actions'])->toBe([])
+        ->and(weekPayload(W::snapshot(date: '2026-09-28', planWeeks: []))['actions'])->toBe([]);
+});
+
+// SCH-060: the same strip offers the weeks the Away sheet would.
+
+it('SCH-060 a later week of the phase offers Mark week away', function () {
+    $payload = weekPayload(W::snapshot(date: '2026-09-30', planWeeks: [], phases: [W::phase()]));
+
+    expect(weekActions($payload))->toBe(['mark_away' => 'Mark week away']);
+});
+
+it('SCH-060 an away week offers Edit away week', function () {
+    $payload = weekPayload(W::snapshot(date: '2026-09-28', phases: [W::phase()]));
+
+    expect(weekActions($payload))->toBe(['edit_away' => 'Edit away week']);
+});
+
+it('SCH-060 the week in progress, past weeks and weeks past the phase offer no away menu', function () {
+    $phase = W::phase(end: '2026-10-03');
+
+    expect(weekActions(weekPayload(W::snapshot(phases: [W::phase()]))))->toBe(['mark_rough' => 'Mark rough week'])
+        ->and(weekPayload(W::snapshot(date: '2026-09-15', phases: [W::phase()]))['actions'])->toBe([])
+        // The phase ends on 2026-10-03, so its last week starts on 2026-09-26.
+        ->and(weekActions(weekPayload(W::snapshot(date: '2026-09-28', planWeeks: [], phases: [$phase]))))->toBe(['mark_away' => 'Mark week away'])
+        ->and(weekActions(weekPayload(W::snapshot(date: '2026-10-06', planWeeks: [], phases: [$phase]))))->toBe([])
+        ->and(weekActions(weekPayload(W::snapshot(date: '2026-09-30', planWeeks: [], phases: []))))->toBe([]);
+});

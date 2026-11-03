@@ -19,7 +19,7 @@
                     },
                     "label": {
                         "type": "string",
-                        "description": "\"Week 5 · Nov 9\""
+                        "description": "\"Week 5 \u00b7 Nov 9\""
                     },
                     "is_away": {
                         "type": "boolean"
@@ -138,6 +138,10 @@
         },
         "shows_keep_phase_end": {
             "type": "boolean"
+        },
+        "keep_phase_end": {
+            "type": "boolean",
+            "description": "What the keep-the-phase-end switch opens with: the week's saved value, false when it is not away."
         }
     },
     "required": [
@@ -148,6 +152,7 @@
         "training",
         "calories",
         "notes",
-        "shows_keep_phase_end"
+        "shows_keep_phase_end",
+        "keep_phase_end"
     ]
 }

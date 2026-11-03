@@ -27,9 +27,9 @@ const open = ref(true);
 const chosen = ref<string[]>([]);
 const training = ref<AwayWeekShowOutput['training'] | null>(null);
 const calories = ref<AwayWeekShowOutput['calories'] | null>(null);
-// null until the user sets it, and keep_phase_end goes out only then (PLAN-025). away_week_show
-// does not say what an away week saved, so the switch starts off; the server reads a missing
-// value as false, so an edit keeps a saved "keep" only if the user sets it again.
+// null until the user sets it, and keep_phase_end goes out only then (PLAN-025). The server reads
+// a missing value as "keep what each week was saved with" (#70), so an untouched switch never
+// resets a saved "keep". Opening the switch from away_week_show's keep_phase_end is #99's follow-up.
 const keepPhaseEnd = ref<boolean | null>(null);
 
 // The sheet opens with what the server chose; a read again after a write leaves the user's picks.
