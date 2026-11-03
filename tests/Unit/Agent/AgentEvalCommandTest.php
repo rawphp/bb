@@ -49,6 +49,7 @@ beforeEach(function () {
 
 afterEach(function () {
     Carbon::setTestNow();
+    app()['env'] = 'testing';
     app()->useEnvironmentPath($this->envFile[0])->loadEnvironmentFrom($this->envFile[1]);
     @unlink(base_path(EVAL_RESULT));
 });
@@ -64,9 +65,15 @@ it('AGT-050 agent:eval --live runs the eval set on the real model and records it
         return in_array('tests/Agent', $command, true)
             && ($process->environment['AGENT_EVAL_LIVE'] ?? null) === '1'
             && ($process->environment['ANTHROPIC_API_KEY'] ?? null) === 'live-key'
-            // The app's own environment stays out, so phpunit.xml's pins hold.
-            && ($process->environment['APP_ENV'] ?? null) === false
-            && ($process->environment['CAPABILITIES_AI_LLM_DRIVER'] ?? null) === false;
+            // phpunit.xml's pins are passed as they are, so neither .env nor the host's own variables
+            // can point the tests' RefreshDatabase at another database.
+            && ($process->environment['APP_ENV'] ?? null) === 'testing'
+            && ($process->environment['DB_CONNECTION'] ?? null) === 'mysql'
+            && ($process->environment['DB_DATABASE'] ?? null) === 'testing'
+            && ($process->environment['DB_URL'] ?? null) === ''
+            && ($process->environment['CAPABILITIES_AI_LLM_DRIVER'] ?? null) === 'fake'
+            // The rest of the app's .env stays out.
+            && ($process->environment['CAPABILITIES_AI_ANTHROPIC_BASE_URL'] ?? null) === false;
     });
     expect(json_decode((string) file_get_contents(base_path(EVAL_RESULT)), true))->toBe([
         'date' => '2031-01-02',
@@ -103,6 +110,16 @@ it('AGT-050 agent:eval --live with no Anthropic key stops before it runs anythin
     Process::assertNothingRan();
     expect(file_exists(base_path(EVAL_RESULT)))->toBeFalse();
 });
+
+it('AGT-050 agent:eval refuses to run outside a local or testing app, so its tests never refresh a real database', function (string $env) {
+    app()['env'] = $env;
+
+    $this->artisan('agent:eval', ['--live' => true])
+        ->expectsOutputToContain('only in a local or testing app')
+        ->assertExitCode(1);
+
+    Process::assertNothingRan();
+})->with(['production', 'staging']);
 
 it('AGT-050 agent:eval fails when Pest runs no request', function () {
     Process::fake(fn () => Process::result(errorOutput: 'Pest is not installed', exitCode: 127));
