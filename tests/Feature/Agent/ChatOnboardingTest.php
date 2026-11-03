@@ -80,7 +80,9 @@ it('AGT-030 AGT-031 AGT-032 AGT-033 runs a full onboarding by chat, with the scr
     expect(allOk($first))->toBeTrue()
         ->and($shown['step']['key'])->toBe('screening')
         ->and($shown['about_you']['name'])->toBe('Sam')
-        ->and($shown['goal']['options'][0]['is_selected'] ?? null)->not->toBeNull();
+        ->and(OnboardingDraft::query()->where('user_id', $user->id)->first()?->toArray())->toMatchArray(['goal' => 'fatLoss', 'finished_diet_recently' => false, 'sex' => 'female', 'birth_date' => '1990-04-09'])
+        ->and((float) OnboardingDraft::query()->where('user_id', $user->id)->value('height_cm'))->toBe(170.0)
+        ->and((float) OnboardingDraft::query()->where('user_id', $user->id)->value('weight_kg'))->toBe(80.0);
 
     // AGT-031: the screening is answered on its sheet, and its Next is the sheet's too.
     sheetAnswers($user, ['answers' => ['screening' => [['item' => 'diabetes', 'is_on' => false]]], 'move' => 'stay'])->assertOk();
@@ -187,4 +189,14 @@ it('SAFE-001 refuses an MCP client a screening answer too, since it is a chat wi
 
     expect($result->isOk())->toBeFalse()
         ->and($result->toArray()['error']['message'] ?? '')->toContain('health check');
+});
+
+it('AGT-040 SAFE-001 refuses an MCP client onboarding_complete, so it cannot start a plan that skipped the health check', function () {
+    $user = User::factory()->create();
+    StartWorld::draft($user, ['step' => 2]);
+
+    $result = app(CapabilityBus::class)->invoke('onboarding_complete', [], ['caller' => 'mcp', 'actor' => $user]);
+
+    expect($result->isOk())->toBeFalse()
+        ->and(Phase::query()->where('user_id', $user->id)->exists())->toBeFalse();
 });
