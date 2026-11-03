@@ -1,26 +1,24 @@
-Most apps record what you did. This one plans what you should do next, for both your meals and your training, then adjusts as the week unfolds.
+Bodybuilder is a planner more than a diary. It decides what you should eat and lift next, and it reshapes that plan as your week shifts.
 
-## Planning first
+## The plan comes first
 
-A tracker waits for you to log food and then shows a total. Here the plan comes first. Your phase sets daily calories and macros, splits them across meals, and places those meals around your workouts. You open the app and see what to eat and what to lift.
+Most tracking apps sit empty until you enter food, then add it up. In Bodybuilder your phase has already set the day's calories and macros, divided them into meals, and timed those meals around training. You open it and the day is laid out.
 
-## One plan, two halves
+## Food and training share a plan
 
-Training and nutrition read from the same plan. There is no second app to set up and nothing to keep in sync by hand.
+Nothing needs syncing, and you set up only one app.
 
-- Your workouts appear on the day's schedule with their times.
-- A harder session raises that day's calories and puts carbs before and after it.
-- Move, skip or finish a workout early and the meals still to come are re-targeted.
-- Every deload week runs at maintenance calories automatically.
+- Workouts show on the day's schedule, with start times.
+- On a harder training day, calories go up and carbs are placed around the session.
+- If a workout moves, gets skipped or ends early, the meals still ahead get new targets.
+- Deload weeks switch to maintenance calories on their own.
 
-## One weekly review
+## One review a week
 
-Once a week the app looks at your weight trend, your food, your lifts and how you are recovering, all together. If your lifts are dropping during a cut, it asks about diet fatigue before it suggests cutting training volume.
+Weekly, the app weighs your trend, meals, lifts and recovery together. On a cut, if your lifts fall, it raises diet fatigue as a cause before suggesting less volume. These are only suggestions. You decide.
 
-It only recommends. Nothing changes until you choose it.
+## What's left for you
 
-## What you do
+Step on the scale, check in meals, train, and finish the review. Logging still counts, since the plan can only respond to what you've told it. Your entries feed decisions here instead of piling up in a log.
 
-Weigh in, check in your meals, train, and do the weekly review. Logging is still part of the job, because the plan can only adjust to what it knows. The difference is that logging feeds a decision instead of filling a diary.
-
-Small misses are fine. Landing within 10% of your calories and protein on a day counts as a good day.
+You don't have to be exact. Finishing a day within 10% of your calorie and protein targets is a good day.

@@ -1,20 +1,22 @@
-Weigh yourself often and look at the trend, not any single number. Your trend weight drives almost every decision the app makes.
+Weigh in often, and judge by the trend rather than any single day. Trend weight is behind nearly every decision the app makes.
 
-## How to weigh in
+## Getting a clean reading
 
-- Weigh first thing in the morning.
-- Go to the bathroom first.
-- Wear minimal clothing.
-- Use the same scale in the same spot.
+- Step on the scale first thing in the morning.
+- Use the bathroom beforehand.
+- Wear as little as possible.
+- Stick with one scale in one spot.
 
-The app asks you to set at least 2 weigh-in days a week and sends a reminder at the time you pick. More is better. Weigh in daily if you can, and log extra readings on unscheduled days. They all sharpen the trend. If you use a smart scale connected to Apple Health, your weights come in automatically.
+## How often
 
-## What is trend weight
+Pick a minimum of 2 weigh-in days each week. The app reminds you at the time you choose. More readings help, so step on daily when possible and add readings on off days. A smart scale linked to Apple Health sends your weights in on its own.
 
-Trend weight is a smoothed average of your daily weights. Each new reading nudges the line a little, so one odd day barely moves it. The app uses trend weight for your rate of change, your protein target and your weekly review.
+## Trend weight
 
-The Progress tab needs 4 weigh-ins before it shows a trend. After that, it charts your daily weights and your trend against the goal range of your phase.
+Think of it as a smoothed average built from each day's weight. Each new reading moves the line only slightly, so a strange day barely shows. Your rate of change, protein target and weekly review all run off it.
 
-## Missed days
+The Progress tab shows a trend once you have 4 weigh-ins. From there it charts daily weights and the trend against your phase's goal range.
 
-Missed scheduled weigh-ins show in orange on the Weigh-ins screen. You can edit or delete any entry. A missed day is not a problem, but a long gap makes the trend less reliable.
+## If you miss days
+
+Orange marks on the Weigh-ins screen show skipped weigh-ins. Every entry can be edited or deleted. One miss is no problem, but a long stretch of them weakens the trend.

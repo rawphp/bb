@@ -1,16 +1,16 @@
-RIR means reps in reserve: how many more good reps you could have done when you stopped a set. The app lowers your target RIR week by week, so you work harder as the block goes on.
+RIR stands for reps in reserve, meaning how many good reps you had left when a set ended. The target falls over the block, so every week asks slightly more effort than the one before.
 
-## What the numbers mean
+## Reading the scale
 
-- **3 RIR:** you stopped with 3 reps left in the tank.
-- **1 RIR:** one more rep was possible.
-- **0 RIR:** you hit your limit. No more clean reps.
+- **3 RIR:** you quit with three clean reps still available.
+- **1 RIR:** exactly one more rep was in you.
+- **0 RIR:** failure. Another clean rep was not possible.
 
-Count honestly. Reps that are slow, sloppy or shortened do not count as reps you could have done.
+Judge yourself strictly. If a rep would have been slow, sloppy or partial, it was not really in reserve.
 
-## Your weekly target
+## Targets by week
 
-The target starts at 3 in week 1 and reaches 0 in the last training week, before the deload. It depends on how many training weeks your block has, not counting the deload.
+Week 1 starts at 3. The final training week, just ahead of the deload, ends at 0. Which numbers you get depends on the count of training weeks, with the deload left out.
 
 - **3 training weeks:** 3, 1, 0
 - **4 training weeks:** 3, 2, 1, 0
@@ -18,16 +18,16 @@ The target starts at 3 in week 1 and reaches 0 in the last training week, before
 - **6 training weeks:** 3, 3, 2, 2, 1, 0
 - **7 training weeks:** 3, 3, 2, 2, 1, 1, 0
 
-A 5-week mesocycle has 4 training weeks plus the deload, so it follows 3, 2, 1, 0.
+Subtract the deload when you count. A block of 5 weeks has four training weeks, so you work through 3, 2, 1, 0.
 
-## Why start easy
+## Why the slow ramp
 
-Early weeks leave room to learn your exercises and set your loads. As weeks pass, fatigue builds and sets get closer to failure. Pushing the final week hard is what makes the deload feel like a real reset.
+The gentle start gives you time to learn the lifts and find sensible loads. Fatigue then accumulates, and sets creep toward failure. Finishing at maximum effort is what turns the deload into a genuine reset.
 
-## In the app
+## Where you see it
 
-Each set shows its target RIR next to the reps, such as "3 RIR". Tap the info icon on reps to see the target for the week.
+Every set lists its target next to the rep count, for instance "3 RIR". The info icon on the reps field explains this week's target.
 
-You cannot change the RIR schedule. If you finish a set at a different RIR, just log the reps you actually did. The app builds next week from that.
+The schedule can't be edited. When a set ends at a different RIR, log the reps you actually completed. Next week's numbers are built from that.
 
-In week 1 you choose your own starting weights. Pick a load you can do for the target reps with 3 reps left, after you have warmed up.
+Week 1 weights are yours to pick. After warming up, choose a load that lets you hit the target reps with three still left.

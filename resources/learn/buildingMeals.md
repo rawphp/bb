@@ -1,23 +1,23 @@
-You choose the foods for each meal. The app then sets the amounts so the meal hits its calorie, protein, carb and fat targets.
+You pick the foods and the app works out the amounts, so each meal lands on its targets for calories, protein, carbs and fat.
 
-## Pick a source for each macro
+## Choose from the Pantry
 
-Choose foods from the Pantry. Aim for at least one of each in a meal.
-- **Protein:** chicken, fish, lean meat, eggs, Greek yogurt, tofu.
-- **Carbs:** rice, potatoes, oats, bread, fruit.
-- **Fat:** nuts, avocado, olive oil, cheese.
-- **Veggies:** add as many as you like.
+Try to bring something from every group below into the meal.
+- **Protein:** eggs, tofu, Greek yogurt, fish, chicken, lean cuts of meat.
+- **Carbs:** oats, bread, rice, potatoes, fruit.
+- **Fat:** avocado, cheese, nuts, olive oil.
+- **Veggies:** any amount you want.
 
-Foods are grouped as recommended or use sparingly. Start with the recommended ones.
+Pantry foods carry a label, either recommended or use sparingly. Begin with the recommended ones.
 
-## Let the app do the math
+## How the amounts work
 
-As you add foods, the app scales the grams to fit the meal. A "Targets met" badge appears when every macro is within 5 g of its target. If you cannot hit a target, for example when there is no carb source, the app tells you which macro is short and suggests a food group to add from.
+Whenever you add a food, the app rescales the grams across the whole meal. A "Targets met" badge shows up once each macro is no more than 5 g off. Sometimes a target can't be reached, for instance when nothing in the meal supplies carbs. The app then names the macro that falls short and points you to a food group worth adding.
 
-## Weigh your food
+## Weigh what you eat
 
-Use a food scale. Eyeballing portions drifts quickly. Meat, rice and pasta change weight when cooked, so each food has a raw and a cooked setting. Weigh raw when you cook one meal, and cooked when you batch cook.
+Use a food scale, since estimated portions drift fast. Cooking changes the weight of meat, rice and pasta, so each food offers a raw and a cooked mode. Choose raw when you weigh before cooking a single meal. Choose cooked when you weigh after batch cooking.
 
-## Lock and rebalance
+## Lock, rebalance, check in
 
-Lock a food to keep its exact amount. Tap Rebalance to refit the rest. Once you are done, check the meal in. Small misses are fine.
+Lock a food to hold its exact amount, then tap Rebalance and the rest of the meal refits around it. When it looks right, check it in. Close enough is fine.

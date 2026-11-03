@@ -1,19 +1,21 @@
-Your body fat estimate helps the app set your protein and your minimum fat intake. A close guess is good enough.
+The app uses your body fat estimate to set protein and a floor for fat intake. An approximate answer works fine.
 
-## How to choose
+## Choosing a photo
 
-Pick the photo that looks most like you. The groups for women are under 20%, 20 to 27%, 27 to 35% and over 35%. For men they are under 15%, 15 to 22%, 22 to 30% and over 30%. Choose the closest match, and if you sit between two, take the one you think is nearer.
+Choose the photo that looks the most like you. If two seem right, go with the one you think is closer. The ranges are:
+- Women: under 20%, 20 to 27%, 27 to 35%, over 35%.
+- Men: under 15%, 15 to 22%, 22 to 30%, over 30%.
 
-## Accuracy is not critical
+## Why a rough guess is fine
 
-Small errors do not change your plan much. Each weekly review recommends calorie changes from how your trend weight actually moves, so a slightly wrong guess gets corrected over time.
+A small miss barely affects your plan. The weekly review bases calorie changes on how your trend weight really moves, which corrects a slightly wrong estimate as you go.
 
-## Do not use scale readings
+## Skip the scale's number
 
-Do not use the body-fat reading from a bathroom scale or smart scale. These readings guess from tiny electrical signals, and they swing with how much water you have in your body. Photos are steadier.
+Body-fat readings from bathroom scales and smart scales are unreliable. They infer fat from weak electrical signals, and your hydration shifts the result a lot. Photos hold steadier.
 
-## Where it matters
+## Where else it counts
 
-Your estimate is also the starting point for the muscle gain body-fat check. If you want to change your choice later, you can do it in Settings. The app then resets its estimate from your new pick.
+This estimate is also where the muscle gain fat check begins. You can pick a different photo later in Settings, and the app recalculates from the new choice.
 
-If your goal or health situation is complicated, such as pregnancy or illness, follow your doctor's advice.
+If pregnancy, illness or another health matter complicates your goal, follow your doctor's advice.

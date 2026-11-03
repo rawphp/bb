@@ -1,18 +1,18 @@
-Cooking oils are foods like any other. They count toward your calories and fat, so you need to measure them.
+Oil is food. It adds to your calories and your fat, which is why you should measure it.
 
-## Why oil needs care
+## Why oil sneaks up on you
 
-Oil is very calorie dense. One tablespoon holds about 120 calories, all of it fat. A quick splash from the bottle can be two or three tablespoons without you noticing. That small habit can quietly erase a whole day's deficit, or add up to a surplus you did not plan for.
+Oil packs a lot of energy into a small volume. A tablespoon holds roughly 120 calories, every one of them fat. Pouring from the bottle can put two or three tablespoons in the pan without you noticing. Repeat that daily and a deficit disappears, or a surplus appears that you never planned.
 
-## What to do
+## Habits that help
 
-- **Measure oil.** Use a spoon or put the pan on the scale and pour by weight.
-- Add the oil to your meal in the app, the same as you would add chicken or rice. Oils are in the food database, and the app counts them in your fat target.
-- If you cook for several people, weigh the oil you use and divide by the number of servings.
-- Use a spray or a non-stick pan to cut down on how much you need.
+- **Measure oil.** A spoon works. So does setting the pan on the scale, then pouring by weight.
+- Log it in the app as you would log chicken or rice. The database lists oils, and the app counts them against your fat target.
+- Cooking for several people? Weigh what went into the pan and divide by the servings.
+- A spray bottle or non-stick pan reduces how much you need.
 
-## Fit it into the plan
+## How it fits the meal
 
-Oil is a fat source, so it is part of the meal's fat target. If you use more oil in one meal, the app will lower the other fats in that meal to keep the meal on target.
+Oil is fat, so it eats into that meal's fat target. Use more and the app reduces the other fats in the meal to keep the total on track.
 
-Do the same with butter, mayonnaise and dressings. They are also easy to under-count.
+Butter, mayo and dressings deserve the same care. They are just as easy to undercount.

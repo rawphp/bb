@@ -1,23 +1,23 @@
-A mini-cut is a short, fast fat loss phase that clears out the extra fat you gained during a muscle gain phase. It lasts 2 to 6 weeks.
+A mini-cut is a brief, quick round of fat loss, used to burn off the extra fat picked up while gaining muscle. It runs 2 to 6 weeks.
 
-## How it works
+## Pace and training
 
-You lose at 0.75% to 1% of your bodyweight per week, with 1% as the default. Because it is short, you accept a faster pace than a normal cut.
+- Weight loss is 0.75% to 1% of bodyweight per week, and 1% is the default.
+- The faster pace is fine because the phase is so short.
+- Training aims to hold on to your muscle. Volume sits near the lowest level that still supports growth, with no big push above it.
 
-Training is set to keep the muscle you built. Volume stays right around the lowest amount that still drives growth, and you do not push it much higher.
+## Good times for one
 
-## When to use one
+- A muscle gain phase left your body fat estimate higher than you like.
+- You want to get lean fast before the next gain phase.
+- Your planned fat loss phase would run under 6 weeks. Here the app proposes a mini-cut.
 
-- After a muscle gain phase, when your estimated body fat has crept up.
-- When you want to lean out quickly before another gain phase.
-- When a planned fat loss would be under 6 weeks. The app suggests a mini-cut instead.
+## Gain twice as long as you cut
 
-## The 2 to 1 rule
+Try to gain for at least double the time you mini-cut. When your latest muscle gain phase fell short of double your mini-cut, you get a warning. Back-to-back short cuts leave too little time for building.
 
-Aim to spend at least twice as long gaining as you spend mini-cutting. If your last muscle gain phase was less than twice the length of your mini-cut, the app warns you. Constant short cuts leave little time to build.
+## Afterward
 
-## After a mini-cut
+Expect the app to suggest maintenance, then another muscle gain phase. Wait 1 to 4 weeks after the cut before eating cheat foods, so your appetite can settle.
 
-The app usually recommends maintenance next, then another muscle gain phase. Hold off cheat foods for 1 to 4 weeks after a cut ends, while your appetite settles.
-
-If you have a medical condition, are pregnant, or take weight-loss medication, follow your doctor's advice first.
+Speak with your doctor before starting if a medical condition, pregnancy or weight-loss medication applies to you.

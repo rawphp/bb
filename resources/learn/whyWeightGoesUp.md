@@ -1,19 +1,19 @@
-A single higher weigh-in is almost never fat. Your weight bounces around every day, and only the trend tells you what is really happening.
+A single jump on the scale is nearly never fat. Daily weight jumps around, and only the trend shows the real direction.
 
-## What moves the scale
+## What nudges the number
 
-- **Water.** Your body holds a few pounds of water that shift all day.
-- **Salt.** A salty meal makes you hold more water for a day or two.
-- **Carbs.** Extra carbs store water along with them in your muscles.
-- **Food in your gut.** A big meal or a late dinner adds weight until it passes.
-- **Hard training.** Sore muscles hold extra fluid while they repair.
+- **Water:** you carry a few pounds of it, and the amount shifts through the day.
+- **Salt:** a salty meal has you holding extra water for a day or so.
+- **Carbs:** more carbs pull water into your muscles.
+- **Food in transit:** a large meal or late dinner weighs on the scale until you digest it.
+- **Hard training:** sore, repairing muscles hold fluid.
 
-These swings can easily add up to a couple of pounds overnight. Fat does not change that fast. To gain a pound of real fat, you would need to eat thousands of calories above your needs.
+Added up, these can put on two pounds by morning. Fat can't build that quickly. Gaining one pound of it takes thousands of calories above what you need.
 
-## What to do
+## Your move
 
-Do nothing. Keep weighing in at the same time, in the same way. Look at your trend weight on the Progress tab, not the daily dots. The weekly review makes its calls from the trend.
+Nothing. Keep weighing in the same way at the same time. Look at the trend line in the Progress tab and skip the daily dots. Weekly reviews use that same line.
 
-If water is likely behind a rise, for example after a higher-carb day, a deload or a diet break, the app holds your calories instead of cutting them. Cutting more because of a water bump would only make your diet harder.
+Water likely explains a rise that follows a high-carb day, deload or diet break. In those cases the app leaves calories alone rather than cutting. A bigger cut over a water blip would only make dieting harder.
 
-If the trend itself keeps moving the wrong way for a couple of weeks, the review will tell you and suggest a change.
+Should the trend itself move against you across two weeks or so, the review flags it and proposes a change.

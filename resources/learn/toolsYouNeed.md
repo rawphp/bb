@@ -1,18 +1,23 @@
-You need three things: a gram food scale, a bathroom scale and a gym. Each one makes the plan more accurate.
+Three things make the plan work: a gram food scale, a bathroom scale and a gym.
 
 ## Gram food scale
 
-Your meals are built from targets in grams. A scale that weighs in single grams lets you hit those targets without guessing. Cups and spoons vary too much from day to day.
+Meal targets are written in grams. Weighing food to the single gram means you land on target without eyeballing, which measuring cups and spoons can't match since they drift.
 
 ## Bathroom scale
 
-The plan steers by your weight trend, so you need a scale you can step on every few days. Pick any reliable one. Set at least 2 weigh-in days a week, and aim for 4 or more. Weigh first thing in the morning, after the bathroom, in minimal clothing. A single reading bounces around. Only the trend matters. If you use a smart scale, ignore its body-fat reading.
+Your plan follows the weight trend, so pick a scale you'll step on every few days. Any dependable model works.
+
+- Choose 2 weigh-in days per week at minimum, and try for 4 or more.
+- Weigh when you get up, once you've used the bathroom, in very light clothing.
+- Any single reading wanders. Look at the trend.
+- Skip the body-fat estimate on a smart scale.
 
 ## Gym
 
-You need gym access, or a home gym with enough equipment to train every major muscle. A barbell and plates, dumbbells, a bench and a pull-up bar cover a lot. The app does not ask what equipment you own, so you handle limits by choosing exercises you can do. Pick a template, then swap any exercise that does not fit your setup.
+You need a gym, or a home gym equipped to train each major muscle. Barbell, plates, dumbbells, bench and pull-up bar already take you far. The app doesn't ask about your gear. Choose a template and replace exercises that don't suit what you own.
 
-## Nice to have
+## Optional
 
-- Apple Health access, so the app can read your weight and steps. You can manage this in Settings.
-- A phone you can carry to the gym for logging sets.
+- Apple Health access lets the app read weight and steps. Change it in Settings.
+- Bring your phone to the gym so you can log sets.

@@ -1,21 +1,24 @@
-A maintenance phase holds your weight steady. It gives your body a rest from dieting or gaining and keeps the results you built.
+Maintenance keeps your weight level. It is a break from dieting or gaining, and it locks in what you have built.
 
-## What it does
+## How it works
 
-Calories stay close to what you burn. Your target is a weight corridor, not a single number. If your trend weight stays within about 1% of where the phase started, the app keeps your calories the same. If you drift outside it, the weekly review nudges you back toward the middle. You can also set a small gain or loss of up to 0.25% a week.
+You eat roughly what you burn. The goal is a corridor of weight rather than one exact figure.
+- Stay within about 1% of your weight at the start of the phase and calories do not change.
+- Drift outside that band and the weekly review pulls you in toward the center.
+- You can also choose a slight gain or loss, up to 0.25% per week.
 
-## Length
+Training volume is lower here, which lets you recover and respond better to the next push.
 
-A maintenance phase runs from 2 weeks up to no end date. After a cut, the recommended length is two thirds to the full length of the cut. If you have dieted several times this year, aim for the longer end.
+## How long
 
-## After a cut
+The minimum is 2 weeks, and a phase can have no end date at all. Following a cut, the suggested length is two thirds of the cut up to its full length. Several diets already this year? Choose the longer end.
 
-Your new lower weight is the one to hold. Do not bounce back up to your old weight. Hold off cheat foods for 1 to 4 weeks after a cut ends, while your hunger and appetite settle. Then you can add more flexibility.
+## Right after a cut
 
-Training during this phase is lighter on volume so your body can recover and respond well to the next push.
+Treat your new, lighter weight as the one to hold, and avoid climbing back to the old one. Skip cheat foods for 1 to 4 weeks after the cut, while hunger and appetite calm down. After that you can loosen up.
 
-## What comes next
+## Next steps
 
-After maintenance, you can start a fat loss or muscle gain phase. The app will not suggest fat loss straight after another fat loss, and it warns you when maintenance was too short.
+You can move on to fat loss or muscle gain. Fat loss is never suggested straight after fat loss, and a warning appears if maintenance ran short.
 
-If you have a medical condition, are pregnant, or take weight-loss medication, follow your doctor's advice.
+Ask your doctor about this phase if you are pregnant, on weight-loss medication or managing a medical condition.

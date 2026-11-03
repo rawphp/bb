@@ -1,31 +1,31 @@
-You can use the app with a home gym. It does not ask what equipment you have, so you handle limited equipment by choosing exercises you can actually do.
+A home gym works well here. The app never asks about your equipment, so you adapt by selecting only exercises you are able to do.
 
-## Choosing exercises
+## Picking exercises
 
-When you build a mesocycle, every muscle slot offers an exercise from a drop-down. Pick ones that suit your setup. Use the library filters for muscle group and equipment to find options.
+While building a mesocycle, each muscle slot offers a drop-down list. Choose moves that suit your setup, and filter the library by muscle group and equipment.
 
-Be careful with the "pick for me" flash button. It fills empty slots for you, and it does not know your equipment. Check what it chose and swap anything you cannot do.
+Be careful with the flash button labeled "pick for me". It fills empty slots without knowing what you own. Read through its picks and swap out any you can't perform.
 
-If your exercise is not in the library, create a custom exercise with a name, muscle, equipment and load type.
+If your exercise isn't listed, create your own. You give it a name, a muscle, the equipment and a load type.
 
-## Loads and plates
+## Weights and plates
 
-The app steps your weight up each week, rounded to your equipment. Adjust this to match what you own:
+Each week the app raises your load, rounded to what your gear allows. You can tune this.
 
-- Set the load step for any exercise, for example if your dumbbells go up in 4 kg jumps.
-- Turn on micro plates in Settings if you have them. This halves barbell steps.
-- If the next step is too big, the app adds a rep instead.
+- Set a load step per exercise, such as 4 kg if that is how your dumbbells climb.
+- Own micro plates? Turn them on in Settings and barbell steps are halved.
+- When the next jump would be too large, you get an added rep instead.
 
-Light dumbbell moves may keep the same weight and chase reps.
+Light dumbbell work may hold the same weight while reps go up.
 
-## Limited weights
+## When your weights run light
 
-If your weights are too light for a muscle, use the higher rep ranges. Small muscles and awkward-to-load movements work well at 20 to 30 reps. Slow your reps, pause at the stretch, and get close to your target reps in reserve.
+Lean on higher rep ranges for muscles your weights can't challenge. Small muscles, and lifts that are awkward to load, respond to sets of 20 to 30. Lower the weight slowly, hold the stretch for a beat, and stop a few reps short of failure, matching your reps in reserve target.
 
 ## Swapping
 
-Swap an exercise for a session, or for the rest of the mesocycle, only for a good reason. Constant swapping makes it hard to see progress.
+Change an exercise for one session or for the remainder of the block only when you have a real reason. Constant changes make progress hard to read.
 
 ## Technique
 
-For how to do each exercise, open it in the exercise library, where the technique videos live.
+Every exercise in the library has a technique video on its page.

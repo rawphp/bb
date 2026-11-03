@@ -1,34 +1,34 @@
-A deload is a deliberately easy week at the end of every mesocycle. It lets fatigue clear so you can train hard again next block. The app adds it automatically.
+A deload is a purposely light week that ends every mesocycle. Fatigue drains away, and you can push hard again in the next block. The app inserts it for you.
 
-## What changes
+## Changes in the week
 
-- **Sessions in the first half of the week:** half the sets and half the reps, at the same weight.
-- **Sessions in the second half:** half the sets and reps, and half the weight too.
-- **Traps and forearms:** removed for the week.
-- **Feedback:** the app does not ask for it.
+- **Early sessions:** sets and reps are cut in half, with weights unchanged.
+- **Later sessions:** sets and reps are halved and so are the weights.
+- **Trap and forearm work:** dropped.
+- **Feedback:** not requested.
 
-Your calories stay at maintenance during the deload week.
+Calories remain at maintenance.
 
-## It should feel easy
+## Easy is the point
 
-If a deload feels too light, that is the point. You will probably feel the difference once you start the next block. Resist the urge to add extra work.
+A deload that seems too light is working. You'll probably feel the payoff once the next block starts. Don't be tempted to sneak extra work in.
 
-## Push the week before
+## Work for it beforehand
 
-Make the last training week, the 0 RIR week, as hard as you can with good form. The harder you push, the more the deload helps. Skipping hard effort and then deloading wastes it.
+Give the final training week, the one at 0 RIR, everything you have while keeping form clean. More effort there means more benefit from the deload. A soft block followed by a deload squanders it.
 
-## Skipping or ending early
+## Ending early
 
-You can end a mesocycle early from the menu. For intermediate and advanced lifters the app warns that skipping the deload is not recommended. Beginners usually carry less fatigue, but the deload is still the default.
+A mesocycle can be closed from the menu. Intermediate and advanced lifters see a caution against dropping the deload. Beginners carry less fatigue as a rule, though the deload stays the default.
 
-## Early deloads
+## Deloading ahead of schedule
 
-If several muscles are underperforming in the same week, the app may suggest a recovery step: a half-session for the rest of the week, or an early deload. You can ignore the suggestion. During a fat loss phase, a diet break may be offered first, because the cause could be your diet, not your training.
+When several muscles lag in one week, the app might suggest recovering sooner, with either a half session for what remains of the week or a deload right away. Feel free to ignore it. In fat loss phases a diet break may come first, because food intake rather than lifting could be at fault.
 
 ## Active rest
 
-If you report almost no pump and no soreness for most muscles for 2 weeks or more, the app recommends an active rest: the deload week plus a full week off the gym.
+Most muscles reporting nearly no pump and no soreness over two weeks or longer triggers a recommendation of active rest, which is the deload plus another full week away from the gym.
 
-## After the deload
+## Afterward
 
-During the deload week, the app asks you to build your next mesocycle.
+Building your next mesocycle is requested during the deload week itself.

@@ -17,12 +17,12 @@ describe('ArticleView', () => {
         const wrapper = mount(ArticleView, { props: { payload } });
 
         expect(wrapper.find('h1').text()).toBe('Reps in reserve (RIR)');
-        expect(wrapper.find('p').text()).toContain('RIR means reps in reserve');
-        expect(wrapper.find('h2').text()).toBe('What the numbers mean');
+        expect(wrapper.find('p').text()).toContain('RIR stands for reps in reserve');
+        expect(wrapper.find('h2').text()).toBe('Reading the scale');
         const bullets = wrapper.findAll('li > span:not([aria-hidden])');
         expect(bullets.map((li) => li.text())).toEqual([
-            '3 RIR: you stopped with 3 reps left in the tank.',
-            '0 RIR: you hit your limit. No more clean reps.',
+            '3 RIR: you quit with three clean reps still available.',
+            '0 RIR: failure. Another clean rep was not possible.',
         ]);
         expect(readMock).not.toHaveBeenCalled();
     });
@@ -31,7 +31,7 @@ describe('ArticleView', () => {
         const wrapper = mount(ArticleView, { props: { payload } });
 
         expect(wrapper.findAll('strong').map((s) => s.text())).toEqual(['3 RIR:', '0 RIR:']);
-        expect(wrapper.findAll('em').map((s) => s.text())).toEqual(['No more clean reps.']);
+        expect(wrapper.findAll('em').map((s) => s.text())).toEqual(['Another clean rep was not possible.']);
     });
 
     it('LRN-001 a span that is both bold and italic renders as italic strong text', () => {
@@ -113,11 +113,11 @@ describe('ArticleView', () => {
         });
         const wrapper = mount(ArticleView, { props: { slug: 'rir' } });
         await flushPromises();
-        expect(wrapper.text()).toContain('What the numbers mean');
+        expect(wrapper.text()).toContain('Reading the scale');
 
         refuse(new CapabilityError('article_show', 404, null));
         await flushPromises();
-        expect(wrapper.text()).not.toContain('What the numbers mean');
+        expect(wrapper.text()).not.toContain('Reading the scale');
         expect(wrapper.text()).toContain('This article could not be loaded.');
     });
 });

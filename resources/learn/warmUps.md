@@ -1,27 +1,27 @@
-Warm up with a few light ramp-up sets before your working sets, but do not log them. The app treats every logged set as a working set.
+Ramp up with a few easy sets before the real work, and keep them out of your log. Anything in the log is counted as hard training.
 
 ## The ramp
 
-The first time you visit an exercise in a workout, the app shows this guide:
+On your first visit to an exercise in a session, a guide appears.
 
-- **12 reps** at a weight you could lift for 30 or more.
-- **8 reps** at a weight you could lift for about 20.
-- **4 reps** at a weight you could lift for about 10.
+- **12 reps** using a load you could lift 30 or more times.
+- **8 reps** using a load you could lift about 20 times.
+- **4 reps** using a load you could lift about 10 times.
 
-Then start your working sets at 3 reps in reserve (3 RIR).
+After that, working sets begin at 3 RIR, meaning three reps in reserve.
 
-These sets prepare your joints and muscles and let you rehearse the movement. They should not tire you out. Stop well short of effort.
+Their job is to loosen you up and let you rehearse the motion. They are not meant to fatigue you, so stop far from effort.
 
-## Why you do not log them
+## The reason for leaving them out
 
-Logged sets feed your volume and your next week's targets. A warm-up set in the log would count as hard training and push your numbers off.
+Your volume count and next week's targets are built from logged sets. A logged warm-up would look like hard training and skew both.
 
-## Choosing a first working weight
+## Finding where to start
 
-In week 1 the weight boxes are empty unless you copied a previous mesocycle. Use your warm-up to find a load where you could do the target reps and stop with about 3 reps left. Enter it on your first set. It carries over to the next sets, and you can change any of them.
+New to a block without a copied mesocycle? Week 1 weight boxes are blank. Let your warm-up guide you to a load where the target reps leave about three in reserve. Enter it on set one. Later sets inherit it, and each can be changed.
 
-## Only warm up what you need
+## Keep it proportionate
 
-You do not need the full ramp for every exercise. If the first exercise for a muscle has warmed it up, later exercises for the same muscle may need only one or two lighter sets. Use the ramp when a lift is heavy or the joints feel stiff.
+You can skip the full ramp on most exercises. After one exercise has warmed a muscle, a second exercise for it might want just a couple of lighter sets. Reach for the full ramp on heavy lifts or when joints feel stiff.
 
-For how to perform a lift, open the exercise in the exercise library, where the technique videos live.
+For technique, the exercise library has videos on each lift.

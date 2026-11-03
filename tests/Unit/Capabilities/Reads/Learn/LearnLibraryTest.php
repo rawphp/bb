@@ -52,7 +52,7 @@ it('LRN-001 LRN-002 builds the Learn index: each section in order, each article 
         ->and($sections[2]['articles'][1])->toBe([
             'slug' => 'rir',
             'title' => 'Reps in reserve (RIR)',
-            'summary' => 'RIR means reps in reserve: how many more good reps you could have done when you stopped a set. The app lowers your target RIR week by week, so you work harder as the block goes on.',
+            'summary' => 'RIR stands for reps in reserve, meaning how many good reps you had left when a set ended. The target falls over the block, so every week asks slightly more effort than the one before.',
         ]);
 });
 
@@ -65,7 +65,7 @@ it('LRN-002 builds the index summaries once and rebuilds them when an article fi
     try {
         $old = $summary();
         $mtime = filemtime($path);
-        file_put_contents($path, str_replace('RIR means', 'RIR MEANS', file_get_contents($path)));
+        file_put_contents($path, str_replace('RIR stands', 'RIR STANDS', file_get_contents($path)));
         touch($path, $mtime);
         clearstatcache();
 
@@ -74,7 +74,7 @@ it('LRN-002 builds the index summaries once and rebuilds them when an article fi
         touch($path, $mtime + 60);
         clearstatcache();
 
-        expect($summary())->toBe(str_replace('RIR means', 'RIR MEANS', $old));
+        expect($summary())->toBe(str_replace('RIR stands', 'RIR STANDS', $old));
     } finally {
         File::deleteDirectory($dir);
     }
@@ -91,12 +91,12 @@ it('LRN-002 rebuilds the index summaries when the article parser changes', funct
     try {
         $old = $summary();
         $mtime = filemtime($path);
-        file_put_contents($path, str_replace('RIR means', 'RIR MEANS', file_get_contents($path)));
+        file_put_contents($path, str_replace('RIR stands', 'RIR STANDS', file_get_contents($path)));
         touch($path, $mtime);
         touch($parser, $parserMtime + 60);
         clearstatcache();
 
-        expect($summary())->toBe(str_replace('RIR means', 'RIR MEANS', $old));
+        expect($summary())->toBe(str_replace('RIR stands', 'RIR STANDS', $old));
     } finally {
         touch($parser, $parserMtime);
         File::deleteDirectory($dir);
@@ -108,7 +108,7 @@ it('LRN-001 shows an article by its slug, in blocks of styled spans', function (
 
     expect($article['slug'])->toBe('rir')
         ->and($article['title'])->toBe('Reps in reserve (RIR)')
-        ->and($article['blocks'][1])->toBe(['kind' => 'heading', 'spans' => [['text' => 'What the numbers mean', 'bold' => false, 'italic' => false]]])
+        ->and($article['blocks'][1])->toBe(['kind' => 'heading', 'spans' => [['text' => 'Reading the scale', 'bold' => false, 'italic' => false]]])
         ->and($article['blocks'][2]['spans'][0])->toBe(['text' => '3 RIR:', 'bold' => true, 'italic' => false]);
 });
 
@@ -128,7 +128,7 @@ it('LRN-006 tells users to hold off cheat foods for 1 to 4 weeks after a cut end
 
 it('FOOD-081 guides on alcohol and coffee', function () {
     expect(learnArticleText(LearnTopic::Alcohol))->toContain('avoid alcohol while dieting')->toContain('1 to 2 drinks a week')
-        ->and(learnArticleText(LearnTopic::Coffee))->toContain('Coffee and caffeine are fine');
+        ->and(learnArticleText(LearnTopic::Coffee))->toContain('coffee and caffeine are fine');
 });
 
 it('FOOD-007 says to measure cooking oil', function () {

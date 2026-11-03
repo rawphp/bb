@@ -1,20 +1,21 @@
-Alcohol makes dieting harder. The simple rule is to avoid alcohol while dieting.
+The simplest advice is to avoid alcohol while dieting, because it works against most of what you are trying to do.
 
-## Why it matters
+## What alcohol costs you
 
-- Alcohol adds calories that give you no protein and little else.
-- It lowers your willpower, so you eat more than you planned.
-- It hurts sleep and recovery, which hurts your training.
-- Drinks are easy to under-count.
+- Calories arrive with no protein and very little nutrition.
+- Your resolve weakens, so you end up eating more than planned.
+- Sleep and recovery suffer, and training follows.
+- Drinks are easy to forget when you log.
 
-## How much is okay
+## If you do drink
 
-If you do drink, keep it to 1 to 2 drinks a week at most. That is a limit, not a target. Skipping alcohol altogether is better for your results.
+If you drink at all, stay at 1 to 2 drinks a week. Treat that as a ceiling, never a goal. Skipping it entirely will serve your results better.
 
-## What to do in the app
+## In the app
 
-Count it. Drinks are in the food database, so search for what you had and log it. Use Save food macros for a drink or a bite that was not in your plan. Then tap Redistribute to take those calories out of your later meals. Pick which meals absorb the change.
+- Log each drink. The food database includes them, so look up what you had.
+- For a drink or bite outside the plan, use Save food macros. Then tap Redistribute and those calories come out of your later meals. You decide which meals take the hit.
 
-If you know you will be drinking, plan ahead. Leave room in the day, keep protein high, and do not skip meals to save up calories. A higher intake of carbs and fat one evening is better than a missed meal that leaves you ravenous.
+When you know a night out is coming, plan for it. Leave room in the day's calories and keep protein high. Don't skip meals to bank calories. A little extra carbs and fat that evening beats showing up ravenous after a missed meal.
 
-If you take medication, or you have a health condition that affects how you handle alcohol, follow your doctor's advice.
+If a health condition or medication changes how your body handles alcohol, follow your doctor's advice.

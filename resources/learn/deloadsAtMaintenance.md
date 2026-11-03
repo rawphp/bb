@@ -1,24 +1,28 @@
-Every mesocycle ends with a deload week, and the app runs that week at maintenance calories. In a cut, this makes the deload a diet break too.
+The final week of each mesocycle is a deload, and it runs on maintenance calories. In a cut, that turns the deload into a diet break as well.
 
-## Why eat at maintenance
+## The reasoning
 
-A deload is meant to shed fatigue. If you stay in a deficit while you deload, you keep piling up diet fatigue, so you don't recover. Deloading while still dieting is one of the biggest mistakes. Eating at maintenance lets the deload do its job.
+Deloads are for dropping fatigue. Staying in a deficit keeps adding diet fatigue, which blocks recovery. One of the worst errors is deloading while still dieting. Maintenance calories let the week work.
 
-## What changes in the week
+## During the week
 
-- Calories rise to your maintenance level on every day, so each day sits at its own expenditure.
-- Training gets easier. In the first half of the week you do half the sets and reps at the same weight. In the second half you also halve the weight.
-- The deload should feel easy. Push the last hard week as close to 0 reps in reserve as you can before it.
-- The schedule labels the week "Deload · maintenance calories".
+- Every day's calories rise to what that day burns.
+- Early in the week, you perform half the usual sets and reps with normal weight.
+- Later in the week, the weight is halved too.
+- It ought to feel easy. Before it starts, try to take your last hard week to nearly 0 reps in reserve.
+- The schedule names the week "Deload · maintenance calories".
 
-## Fat loss specifics
+## Cuts specifically
 
-The app places deloads 4 to 6 weeks apart in longer cuts, and any fat-loss phase over 8 weeks gets at least one. Diet-break weeks don't count toward your weekly rate or the 16-week cap. You can turn the maintenance calories off for one deload week, but the app warns you first.
+- Long cuts place deloads every 4 to 6 weeks.
+- A fat-loss phase longer than 8 weeks includes at least one.
+- Neither your weekly rate nor the 16-week limit counts diet-break weeks.
+- Maintenance calories can be turned off for one deload week, though the app cautions you first.
 
-## Expect a scale bump
+## Scale blip
 
-Your weight may jump a little in that week. That is mostly water from extra carbs and food. The weekly review accounts for it and holds your calories rather than cutting.
+Expect your weight to rise slightly. Most of that is water, from the extra carbs and food. Your weekly review factors it in and keeps calories steady instead of reducing them.
 
-## Gaining and maintenance
+## Other phases
 
-Deloads run at maintenance calories in a gain phase too. They are planned, so they don't move your end date.
+Gain phases deload at maintenance calories too. Because they're scheduled, your end date doesn't shift.

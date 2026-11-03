@@ -1,29 +1,29 @@
-This app suits you if you lift weights and want one plan that covers both your training and your eating. A few health situations call for a doctor's clearance first.
+Bodybuilder is for people who lift and want training and eating run from one plan. A handful of health situations need a doctor's go-ahead first.
 
-## Who it suits
+## You'll likely get on well with it if
 
-- You can train 2 to 4 days a week and repeat that every week. That beats 5 or 6 days you will miss.
-- You want a clear goal: lose fat, build muscle or hold your weight.
-- You are happy to weigh yourself regularly and check in your meals.
-- You want the plan to adjust for you rather than do the sums yourself.
+- Lifting 2 to 4 days a week is realistic for you, and you can repeat it. A schedule you keep is worth more than a 5 or 6 day one you skip.
+- You have a clear aim: losing fat, building muscle or staying put.
+- Regular weigh-ins and meal check-ins don't bother you.
+- You'd rather the app handle the adjusting than do the math yourself.
 
-## Talk to a doctor first
+## Check with a doctor before starting if
 
-The app asks a short set of health questions before it gives you any calorie targets. Get medical clearance before starting any diet if you:
+The app asks some health questions before it will show calorie targets. Medical clearance is needed before any diet when one of these fits you.
 
-- are under 18 or over 65;
-- are pregnant or breastfeeding, or trying to conceive;
-- have a heart condition, diabetes, a thyroid condition, PCOS, gallbladder disease or an autoimmune disease;
-- have had weight-loss surgery in the past 5 years;
-- are on hormone therapy;
-- have a history of eating disorders.
+- Your age is under 18 or over 65.
+- You are expecting, nursing, or planning a pregnancy.
+- You live with a heart condition, diabetes, a thyroid condition, PCOS, gallbladder disease or an autoimmune disease.
+- You had a weight-loss operation within the last 5 years.
+- You use hormone therapy.
+- You've had an eating disorder at any point.
 
-If one of these applies, the app turns calorie targets off. (Trying to conceive blocks only fat loss.) You can still use every training feature, and you can still log weigh-ins.
+Any of these makes the app turn calorie targets off, and planning a pregnancy only blocks fat loss. Training features and weigh-ins keep working.
 
-## Weight-loss drugs
+## GLP-1 medication
 
-If you take a GLP-1 drug such as semaglutide or tirzepatide, tell the app when it asks. It shows protein first on every meal. If you eat well under your targets for two weeks running, the weekly review warns you about losing muscle. Follow your doctor's advice on your medication and your diet.
+Semaglutide and tirzepatide are examples. Mention it when the app asks. Each meal then lists protein first. Two straight weeks of eating far under target prompt a muscle-loss warning in your weekly review. For medication and diet decisions, follow your doctor.
 
-## What it is not
+## Not covered
 
-The app does not support medical diets. If you have a metabolic condition, see your physician before using it for nutrition.
+Medical diets are unsupported. Anyone with a metabolic condition should talk to your physician before using the nutrition features.

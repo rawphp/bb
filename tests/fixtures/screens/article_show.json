@@ -6,7 +6,7 @@
             "kind": "paragraph",
             "spans": [
                 {
-                    "text": "RIR means reps in reserve: how many more good reps you could have done when you stopped a set. The app lowers your target RIR week by week, so you work harder as the block goes on.",
+                    "text": "RIR stands for reps in reserve, meaning how many good reps you had left when a set ended. The target falls over the block, so every week asks slightly more effort than the one before.",
                     "bold": false,
                     "italic": false
                 }
@@ -16,7 +16,7 @@
             "kind": "heading",
             "spans": [
                 {
-                    "text": "What the numbers mean",
+                    "text": "Reading the scale",
                     "bold": false,
                     "italic": false
                 }
@@ -31,7 +31,7 @@
                     "italic": false
                 },
                 {
-                    "text": " you stopped with 3 reps left in the tank.",
+                    "text": " you quit with three clean reps still available.",
                     "bold": false,
                     "italic": false
                 }
@@ -46,12 +46,12 @@
                     "italic": false
                 },
                 {
-                    "text": " you hit your limit. ",
+                    "text": " failure. ",
                     "bold": false,
                     "italic": false
                 },
                 {
-                    "text": "No more clean reps.",
+                    "text": "Another clean rep was not possible.",
                     "bold": false,
                     "italic": true
                 }

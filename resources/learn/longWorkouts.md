@@ -1,30 +1,30 @@
-If your workouts have crept too long, the app is probably adding sets because your feedback said you could handle more. Fix it by answering honestly, or by lowering how much a muscle can grow.
+Workouts that have stretched out usually mean the app piled on sets because your answers said you had room. You can stop it by answering truthfully, or by limiting a muscle's growth.
 
-## Why it happens
+## What went wrong
 
-The app only adds volume when you tell it you can take it. If you answer "Just right" or "Not enough" when you were actually near your limit, it keeps adding sets. Each muscle gets more, and the session gets longer.
+Volume rises only when your feedback permits it. If you pick "Just right" or "Not enough" while nearly spent, sets keep coming. Each muscle collects more, and the session swells.
 
-## Fix 1: answer "Pushed my limits"
+## Fix 1. Report it
 
-When a session already takes as much time and energy as you can give, choose **Pushed my limits** on the volume question. This stops any increase for that muscle at the next occurrence of the session, whatever you say about pump and soreness. Use **Too much** if it was beyond that, and the app will remove a set.
+When a session already uses all the time and energy you can spare, pick **Pushed my limits** when asked about volume. That halts growth for the muscle at its next session, whatever pump and soreness you reported. Go with **Too much** if you passed that point, and a set is removed.
 
-## Fix 2: lower a muscle's priority
+## Fix 2. Lower the priority
 
-If one muscle takes a lot of your time but is not a goal, change its priority:
+Some muscles consume plenty of time without being a goal. Downgrade them.
 
-- Open the day menu in the workout and tap **Progression rates**.
-- Move the muscle from Emphasize to Grow, or from Grow to Maintain.
+- In the workout, open the day menu and choose **Progression rates**.
+- Step the muscle down, Emphasize to Grow or Grow to Maintain.
 
-The change applies from your next session. A Maintain muscle never adds sets.
+Your next session picks up the change. Maintain muscles never gain sets.
 
-## Other things that help
+## Further trimming
 
-- Remove an exercise from the day menu if a muscle has more than it needs.
-- Keep rests honest. Cutting them too short makes sets worse.
-- Use myorep sets for efficient work when time is tight.
+- If a muscle has extra exercises, delete one through the day menu.
+- Rest properly, since rushed sets are poorer sets.
+- When time is short, myorep sets deliver efficient volume.
 
-## Ceiling
+## The cap
 
-Each muscle has a weekly set ceiling based on your phase. At that point the app holds volume and tells you you are at your recovery limit.
+Every muscle has a weekly set limit set by your phase. At that limit the app freezes volume and says you are at the edge of what you can recover from.
 
-If your session length also changes your meal timing, the schedule updates when you finish the workout.
+A longer session can shift your meal times, and the schedule refreshes as soon as the workout ends.

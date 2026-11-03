@@ -1,25 +1,29 @@
-Pick the goal that matters most right now: Fat loss, Muscle gain or Maintenance. The goal sets your calories, your pace and the way the app programs your training.
+Choose Fat loss, Muscle gain or Maintenance, whichever suits you best at the moment. Your calories, rate of change and training design all follow from it.
 
-## The three goals
+## How the goals differ
 
-- **Fat loss** lowers calories to bring your weight down. Training aims to keep the muscle you have.
-- **Muscle gain** adds calories so you can recover from more training and build.
-- **Maintenance** holds your weight steady. It gives you a break from dieting and keeps training light.
+- **Fat loss:** calories drop to bring weight down, and training tries to preserve what muscle you have.
+- **Muscle gain:** extra calories support harder training and new muscle.
+- **Maintenance:** weight stays level, dieting pressure eases and training stays light.
 
-If you want to lose fat and gain muscle at once, pick Fat loss. There is no separate option for both.
+Want both lower fat and more muscle? Go with Fat loss, because there's no dual option.
 
-## Rate and length
+## Rate
 
-You choose how fast to go, as a share of bodyweight per week. Fat loss runs from 0.25% to 1.0%, and the app never lets you go above 1.0%. Muscle gain runs from 0.125% to 0.5%. Slower is easier to sustain.
+You set speed as a share of bodyweight each week. For fat loss that's 0.25% to 1.0%, with 1.0% as the ceiling the app enforces. Gaining is limited to 0.125% up to 0.5%. Going slower is easier to sustain. You get a warning if the pace would strip more than a tenth of your starting weight during fat loss.
 
-Length matters too. A fat-loss phase works best at 6 to 12 weeks. Under 6 weeks, the app suggests a mini-cut instead. A muscle-gain phase works best at 8 to 16 weeks. Fat-loss and muscle-gain phases cannot run past 16 weeks; maintenance can run with no end date. The app warns you if a fat-loss phase would take off more than 10% of your starting weight.
+## Length
 
-## If you just finished a diet
+- Aim for 6 to 12 weeks of fat loss. A shorter plan leads to a mini-cut suggestion.
+- Aim for 8 to 16 weeks of muscle gain.
+- Both stop at 16 weeks. Maintenance may run open-ended.
 
-If your last fat-loss diet ended in the past 8 weeks, the app recommends starting with Maintenance and explains why. You can override it.
+## Right after a diet
 
-## Experience and training days
+A fat-loss diet that ended within the past 8 weeks leads the app to recommend Maintenance first, with an explanation. You may decline.
 
-You also say how long you have lifted consistently: under 1 year, 1 to 4 years, or over 4 years. That sets your starting volume and mesocycle length. Then you pick your training days.
+## Training background and days
 
-You can change phase length or end a phase early later. Nothing is locked in.
+Next, state how long you've trained steadily: under 1 year, 1 to 4 years, or over 4 years. That decides how much volume you begin with and how long each mesocycle runs. Then select your training days.
+
+Later you can alter a phase's length or end it ahead of schedule. Nothing is fixed.

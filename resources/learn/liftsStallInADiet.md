@@ -1,25 +1,26 @@
-When your lifts stall or drop on a cut, suspect the diet before the training. Often the fix is a break from dieting, not less lifting.
+Should your lifts plateau or drop in a cut, blame the diet before the program. A pause from dieting often fixes it, with no need to lift less.
 
-## Why it happens
+## Cause
 
-Fat loss adds fatigue on top of training fatigue. Weeks of a deficit reduce your recovery, your sleep and your drive. Your program may be fine.
+Dieting piles fatigue onto what training already causes. Weeks of eating less wear down recovery, sleep and motivation, while the program may be perfectly good.
 
-## What the app watches
+## Signals the app uses
 
-It flags a muscle when you miss rep targets by 2 or more reps on most sets, in 2 sessions running. When 2 or more muscles are flagged in the same week, or more than a third of your soreness and volume answers are "Too much" or "I'm still sore!", the weekly review calls training fatigue high.
+- A muscle is flagged after two sessions in a row where most sets miss the rep target by 2 or more reps.
+- Training fatigue is rated high by the weekly review when a week flags at least 2 muscles, or when over 33% of your soreness and volume replies say "Too much" or "I'm still sore!".
+- Diet fatigue draws on time since the last diet break, a weight trend that has stalled, and adherence that is sliding.
+- After 6 deficit weeks with no break, the app proposes one, even when nothing else is wrong.
 
-It also counts diet fatigue: weeks since your last diet break, a stalled weight trend, and falling adherence. At 6 or more deficit weeks without a break, it suggests one even with no other signs.
+## Suggested response
 
-## What it recommends
+During a cut, the review reads "Your lifts are dropping. It might be the diet, not the training." and proposes Drop fatigue first. The coming week becomes a diet break on maintenance calories, preferably merged with the deload. Accepting is your call.
 
-During a cut, the review says: "Your lifts are dropping. It might be the diet, not the training." It recommends Drop fatigue first. That makes next week a diet break at maintenance calories, ideally combined with your deload. You choose whether to accept it.
+Should fatigue stay high past the break and deload, expect advice to end the phase and go to Maintenance.
 
-If fatigue is still high after the diet break and deload, the app recommends ending the phase and moving to Maintenance.
+## Trimming volume instead
 
-## If you cut volume instead
+Fine too. Affected muscles lose roughly 33% of sets, or 50% after two "Too much" replies. From there, add a set per muscle weekly until you find the ceiling.
 
-You can. Each affected muscle drops by about a third of its sets, or half if you answered "Too much" twice. Then you add one set per muscle per week until you find your new ceiling.
+## Don't
 
-## What not to do
-
-Don't push through with extra sets, and don't jump weight. Small steps and a smart break work better than grinding.
+Avoid forcing it with extra sets or heavier jumps. Gradual steps plus a well-placed break beat grinding.

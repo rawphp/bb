@@ -1,26 +1,26 @@
-Day Balance is how you keep a day on target when real life changes your plan. You can shift what is left across later meals, or move calories between days.
+Use Day Balance to rescue a day that drifted. Either push the remainder into later meals or swap calories with other days.
 
-## Read the day
+## What the bar says
 
-The bar at the top of Today shows calories and protein against your targets. It says on track when both are within 10%. Otherwise it tells you how far under or over you are, for example "315 under".
+Up top on Today, a bar shows calories and protein against target. When both are inside 10%, it reads on track. If not, it gives the shortfall or excess, for instance "315 under".
 
 ## Redistribute
 
-Ate more or less than planned? Tap the wand icon. The app spreads the day's remaining calories and macros across later meals. You choose which meals receive them and can leave any out.
+Overate or underate? The wand icon is your tool. Remaining calories and macros for the day are shared across later meals. You choose the recipients and can exclude any meal.
 
-Meals that already hold foods can take a share too. They get an orange Adjust foods badge until you refit the foods. Locked foods stay put.
+A meal holding foods can accept a share as well. Its orange Adjust foods badge stays until you refit the foods. Foods you've locked don't move.
 
 ## Adjust
 
-The Adjust sheet lets you move calories between meals on the day. It also lets you move them between days in the week. Eat less on weekdays and more on Saturday, for example. The week's total holds, and the sheet shows the projected calories and protein for the day.
+Adjust moves calories among a day's meals, and also across days of the week. Lighter weekdays and a bigger Saturday is one use. The week keeps its total, and the sheet previews that day's calories and protein.
 
-Limits keep this safe:
+Safeguards apply.
 
-- No day can drop below 80% or rise above 125% of the week's daily average.
-- Protein never moves.
-- Days you have already finished are locked.
-- Every meal keeps at least 5 g of fat and 5 g of carbs.
+- Each day stays between 80% and 125% of the weekly daily average.
+- Protein is untouchable.
+- Finished days can't be edited.
+- Every meal retains a floor of 5 g fat and 5 g carbs.
 
-## Don't chase perfect
+## Skip the chase
 
-A small miss is fine. Within 10% of calories and protein on a day counts as success, and the weekly target is what drives your results.
+Missing by a little is okay. Finishing a day inside 10% for calories and protein is a success. The weekly target decides your results.
