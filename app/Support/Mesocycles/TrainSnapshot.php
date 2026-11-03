@@ -460,7 +460,7 @@ final class TrainSnapshot
         $today = $this->today->format('Y-m-d');
         $weekday = null;
         foreach ($this->plan->reviewDayChanges ?? [] as $change) {
-            if ($change->effective_on->format('Y-m-d') <= $today) {
+            if (self::day($change->effective_on)->format('Y-m-d') <= $today) {
                 $weekday = $change->review_weekday;
             }
         }

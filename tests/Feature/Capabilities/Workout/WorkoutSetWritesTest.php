@@ -188,8 +188,9 @@ it('WO-003 CAP-011 logging a set names the reads it changes from the session row
         ->assertOk()->json('data.invalidates');
 
     // The write reads the set, its session and exercise, and saves the set; the keys need the plan, the profile and
-    // the mesocycle. A Train snapshot alone runs nine queries, the session's sets among them.
-    expect(count($queries))->toBeLessThanOrEqual(8, implode("\n", $queries))
+    // the mesocycle, and the plan's review-day changes for its grid (PLAN-008). A Train snapshot alone runs ten queries,
+    // the session's sets among them.
+    expect(count($queries))->toBeLessThanOrEqual(9, implode("\n", $queries))
         ->and($keys)->toBe([
             'workout_show{"day":1,"mesocycle_id":"'.$mesocycleId.'","week":3}',
             'train_show{}',

@@ -22,6 +22,7 @@ use App\Models\User;
 use App\Support\Plan\PlanSnapshot;
 use App\Support\Today\TodaySnapshot;
 use DateTimeImmutable;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -160,7 +161,7 @@ final class UpdateScheduleDefaults
 
         $stored = [];
         foreach ($plan->reviewDayChanges as $row) {
-            $date = $row->effective_on->format('Y-m-d');
+            $date = PlanSnapshot::day($row->effective_on)->format('Y-m-d');
             if ($date > $today->format('Y-m-d') && ($wanted[$date] ?? null) !== $row->review_weekday) {
                 $row->delete();
 
@@ -179,10 +180,10 @@ final class UpdateScheduleDefaults
     /** Each phase whose dates moved keeps its weeks and takes the new dates. */
     private static function movePhases(PlanSnapshot $snapshot, DomainPlan $result): void
     {
-        $dates = fn (?DateTimeImmutable $date) => $date?->format('Y-m-d');
+        $dates = fn (DateTimeInterface|string|null $date) => $date === null ? null : PlanSnapshot::day($date)->format('Y-m-d');
         foreach ($result->phases as $moved) {
             $phase = $snapshot->phases->first(fn (Phase $phase) => (string) $phase->id === $moved->id);
-            if ($phase !== null && ($dates($moved->start) !== $phase->start_date->format('Y-m-d') || $dates($moved->end) !== $phase->end_date?->format('Y-m-d'))) {
+            if ($phase !== null && ($dates($moved->start) !== $dates($phase->start_date) || $dates($moved->end) !== $dates($phase->end_date))) {
                 $phase->forceFill(['start_date' => $dates($moved->start), 'end_date' => $dates($moved->end)])->save();
             }
         }
@@ -198,7 +199,7 @@ final class UpdateScheduleDefaults
         foreach ($query->whereNotNull('start_date')->whereDate('start_date', '>', $boundary->format('Y-m-d'))->get() as $row) {
             $index = $old->weekIndexContaining(PlanSnapshot::day($row->start_date));
             $start = $index === null ? null : $new->start($index)->format('Y-m-d');
-            if ($start !== null && $start !== $row->start_date->format('Y-m-d')) {
+            if ($start !== null && $start !== PlanSnapshot::day($row->start_date)->format('Y-m-d')) {
                 $row->forceFill(['start_date' => $start])->save();
             }
         }
