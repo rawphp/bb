@@ -111,6 +111,7 @@ describe('RecipeEditorView', () => {
         expect(view.find('[data-test="save"]').exists()).toBe(false);
         expect(view.find('input').exists()).toBe(false);
         expect(view.text()).not.toContain('Overnight oats');
+        expect(view.get('h1').text()).not.toBe('New recipe');
         expect(view.get('[role="alert"]').text()).toContain('You are signed out.');
     });
 
@@ -273,6 +274,9 @@ describe('RecipeEditorView', () => {
         expect(lastWrite()).toEqual(['recipe_delete', { recipe_id: ID }]);
         expect(inputViolations('recipe_delete', lastWrite()[1])).toEqual([]);
         expect(back).toHaveBeenCalledOnce();
+        // The recipe it removed is not read again, so no "could not be loaded" flashes as it goes.
+        expect(readMock).not.toHaveBeenCalled();
+        expect(view.find('[data-test="delete"]').exists()).toBe(true);
     });
 
     it('CAP-012 a refused delete stays open with the server\'s words, and does not go back', async () => {

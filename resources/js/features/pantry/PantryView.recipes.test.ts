@@ -136,6 +136,23 @@ describe('PantryView for a recipe', () => {
         expect(readMock.mock.calls.at(-1)![0]).toBe('food_search');
     });
 
+    it('RCP-010 a fixture Pantry does not read again on return', async () => {
+        const top = ref(true);
+        const Host = defineComponent({
+            setup() {
+                provideScreenTop(top);
+                return () => h(PantryView, { payload: curated, mealId: '01JBX5M0000000000000000001' });
+            },
+        });
+        mount(Host, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub, teleport: true } } });
+        top.value = false;
+        await flushPromises();
+        top.value = true;
+        await flushPromises();
+
+        expect(readMock).not.toHaveBeenCalled();
+    });
+
     it('RCP-001 recipeIngredients takes several foods, and the button counts them', async () => {
         const wrapper = show({ payload: curated, purpose: 'recipeIngredients' });
         const confirm = () => wrapper.find('[data-test="confirm"]');
