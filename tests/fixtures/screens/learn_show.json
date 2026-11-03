@@ -11,7 +11,7 @@
                 {
                     "slug": "toolsYouNeed",
                     "title": "Tools you need",
-                    "summary": "Three things make the plan work: a gram food scale, a bathroom scale and a gym. All three make the plan's numbers more accurate."
+                    "summary": "A gym, a bathroom scale and a gram food scale are all the plan asks for. Each one sharpens the numbers it gives you."
                 }
             ]
         },
@@ -21,7 +21,7 @@
                 {
                     "slug": "weighingIn",
                     "title": "Weighing in",
-                    "summary": "Weigh in often, and judge by the trend rather than any single day. Trend weight is behind nearly every decision the app makes."
+                    "summary": "Almost every call the app makes starts from your trend weight. Weigh in often, and let that trend matter more than any single morning."
                 }
             ]
         },
@@ -31,7 +31,7 @@
                 {
                     "slug": "rir",
                     "title": "Reps in reserve (RIR)",
-                    "summary": "RIR stands for reps in reserve, meaning how many good reps you had left when a set ended. The target falls over the block, so every week asks slightly more effort than the one before."
+                    "summary": "RIR stands for reps in reserve: the clean reps still left in you at the moment you rack the weight. Your target drops as the weeks go by, so effort climbs across the block."
                 }
             ]
         },

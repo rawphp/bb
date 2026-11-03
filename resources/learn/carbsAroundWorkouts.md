@@ -7,19 +7,19 @@ Calories are based on projected burn, so training days get more than rest days. 
 ## When you eat
 
 - A pre-workout meal finishes 1 to 3 hours ahead of the session, with about 90 minutes the target.
-- A post-workout meal starts inside 60 minutes after you stop.
+- A post-workout meal gets going no more than 60 minutes after the session ends.
 - For sessions over an hour, the app suggests a shake during the session containing carbs and protein.
 
-Each of these meals has a tag, Pre-workout or Post-workout, with the session time. Reschedule the workout and the meals follow.
+Both meals are tagged Pre-workout or Post-workout along with the session time, and they move whenever the workout moves.
 
 ## Dividing carbs
 
-Post-workout gets the most, followed by pre-workout and bedtime. With four meals, you get 25% before, 35% after, 25% at night and 15% in the remaining one. With more meals, the rest is shared among remaining slots. Rest days divide carbs equally.
+Carbs go first to post-workout, next to pre-workout and bedtime. With four meals, you get 25% before, 35% after, 25% at night and 15% in the remaining one. With more meals, the rest is shared among remaining slots. Rest days divide carbs equally.
 
 Fat is the reverse. Meals near training get the least, and those farthest away get the most. Protein is equal across meals, with a bit extra at the final one.
 
 ## Starving before bed?
 
-On a cut, when hunger keeps you up, select evening-weighted carbs. It shifts some carbs from pre-workout to bedtime. You'll have slightly less energy in the morning.
+Evening-weighted carbs are the option for a cut where hunger keeps you awake. Bedtime then gets some of the carbs that would have gone pre-workout. You'll have slightly less energy in the morning.
 
 Get the day's totals right first. Timing adds a small bonus.

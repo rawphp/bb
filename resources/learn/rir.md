@@ -1,9 +1,9 @@
-RIR stands for reps in reserve, meaning how many good reps you had left when a set ended. The target falls over the block, so every week asks slightly more effort than the one before.
+RIR stands for reps in reserve: the clean reps still left in you at the moment you rack the weight. Your target drops as the weeks go by, so effort climbs across the block.
 
 ## Reading the scale
 
 - **3 RIR:** you quit with three clean reps still available.
-- **1 RIR:** exactly one more rep was in you.
+- **1 RIR:** you stopped a single rep short of failure.
 - **0 RIR:** failure. Another clean rep was not possible.
 
 Judge yourself strictly. If a rep would have been slow, sloppy or partial, it was not really in reserve.
@@ -28,6 +28,6 @@ The gentle start gives you time to learn the lifts and find sensible loads. Fati
 
 Every set lists its target next to the rep count, for instance "3 RIR". The info icon on the reps field explains this week's target.
 
-The schedule can't be edited. When a set ends at a different RIR, log the reps you actually completed. Next week's numbers are built from that.
+The schedule itself is fixed. Whatever RIR a set really ended at, the reps you log should be the ones you did, because next week's numbers are built from them.
 
 Week 1 weights are yours to pick. After warming up, choose a load that lets you hit the target reps with three still left.

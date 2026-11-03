@@ -1,10 +1,10 @@
-After a muscle is trained, the app puts a few short questions to you. What you say decides the sets that muscle receives next, so report what happened, not what you wish had happened.
+Every muscle you train gets a short round of questions, and your answers set how many sets it gets next time. Report what happened, not what you wish had happened.
 
 ## The questions
 
 - **Joint pain:** each exercise gets its own, with answers none, low, moderate or a lot. The last two stop sets being added to that exercise, and a lot also lowers its following load by 10%.
 - **Soreness:** a single question per muscle, about the previous session. Had it healed by today?
-- **Pump:** how full the muscle felt today. Low, moderate or amazing.
+- **Pump:** low, moderate or amazing, for how full the muscle felt today.
 - **Volume:** your impression of the hard-set count. Not enough, just right, pushed my limits, or too much.
 
 Each question has a ? icon for specific help.
@@ -17,19 +17,15 @@ Each question has a ? icon for specific help.
 
 The change hits the matching session the following week, meaning Day 2 of week 3 shapes Day 2 of week 4.
 
-Two volume answers trump everything else. **Pushed my limits** means no sets are added the next time that session comes round, whatever your pump and soreness were. **Too much** takes a set away.
+Two volume answers trump everything else. **Pushed my limits** means no sets are added the next time that session comes round, whatever your pump and soreness were. Answer **Too much** and the app takes a set off.
 
 ## How volume should feel
 
-- **Week 1:** easy, since you begin low deliberately.
-- **Mid-block:** just right.
-- **Final training week:** pushed my limits.
-
-Tell the app if week 1 is already hard.
+Your volume answer should shift as the block goes on. Expect week 1 to be easy, since the plan opens at a deliberately low volume. Through the middle weeks it should sit at just right, and by the final training week you should be at pushed my limits. A week 1 that already feels hard is worth reporting.
 
 ## Fine print
 
 - A muscle's first session in the app has no soreness question, and neither does a return after more than 14 days.
 - Deload weeks skip feedback.
 - Finishing a workout requires answers.
-- Feedback stays editable until the next session of that muscle starts.
+- Until that muscle's next session begins, you can go back and change the answers.

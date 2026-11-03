@@ -1,4 +1,4 @@
-Maintenance keeps your new weight steady while diet fatigue clears. Training volume is kept low so your body is primed for the following push. That low-volume approach is called resensitization.
+Maintenance holds your new weight steady and lets diet fatigue clear. Training stays light on volume, a setup called resensitization, so your body responds well when the next hard phase starts.
 
 ## Purpose
 
@@ -7,20 +7,20 @@ A cut leaves your appetite, energy and recovery lagging, and they take time to r
 ## Duration
 
 - Following fat loss, plan Maintenance lasting from about two-thirds of the cut up to its full length.
-- Used two or more cuts over the last year? Go for the full length. People who diet often need longer breaks.
+- Had two or more cuts over the last year? Go for the full length. People who diet often need longer breaks.
 - When weight still drops on maintenance calories, a far shorter break could be enough.
 
 ## Calorie steps
 
 Starting from your last cut target, daily calories go up by 250 to 500, then rise again every 3 weeks until they reach maintenance. Counting this climb, a 12-week diet works out closer to 16 weeks overall. Going directly to maintenance is allowed.
 
-Weight ought to hold at its new, lower point instead of springing back to the pre-diet figure. The review keeps it inside 1% of its start.
+Weight ought to hold at its new, lower point instead of springing back to the pre-diet figure. The review holds you within a 1% band around the weight you began maintenance at.
 
 Cheat foods should wait. Give it 1 to 4 weeks after the cut is over.
 
 ## Training
 
-Maintenance after a cut starts with a brief resensitization mesocycle, 3 to 4 weeks long.
+Unless you change it, the first mesocycle of post-cut Maintenance is a 3 to 4 week resensitization block.
 
 - Muscles are all on Maintain, with volume close to the lowest.
 - Sessions are full body, two or three weekly.

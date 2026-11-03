@@ -1,27 +1,29 @@
-A fat loss phase trims your calories so body fat comes off and most of your muscle stays. Plan on 6 to 12 weeks for the best odds of sticking with it.
+Cutting body fat while your muscle stays put is the whole job of a fat loss phase, and the app does it by lowering your calories. For most people the sweet spot is 6 to 12 weeks.
 
 ## Pick a pace
 
-Choose a weekly loss between 0.25% and 1% of your bodyweight. Three choices are built in:
-- **Highest success:** 0.75% per week. This is the default.
-- **Slow & steady:** 0.5% per week.
-- **Custom:** any rate inside that range.
+Three paces are on offer, each a weekly share of your bodyweight between 0.25% and 1%:
+- **Highest success:** 0.75%, the default pace.
+- **Slow & steady:** 0.5%.
+- **Custom:** anything in that range.
 
 ## Phase length
 
-You can set a phase anywhere from 2 to 16 weeks. The app has a few nudges along the way:
-- Pick fewer than 6 weeks and it suggests a mini-cut instead.
-- Pick more than 12 weeks and it warns you that long diets are harder to follow.
-- If the plan would remove over 10% of your starting bodyweight, it warns you during setup.
+Phases can be set from 2 to 16 weeks, and the app speaks up at a few points:
+- **Under 6 weeks:** a mini-cut fits better, and the app will say so.
+- **Over 12 weeks:** expect a warning, since a long diet is harder to stay on.
+- **Over 10% of starting bodyweight lost in one phase:** setup warns you.
 
 ## What the app does for you
 
-Calories come out of fat and carbs. Protein stays where it is. Every weekly review checks your trend weight against your target rate. When you are off pace, it recommends a calorie change, and nothing is applied until you accept it. Week one is ignored when working out your rate, because weight takes a few days to settle.
+The app takes the missing calories from fat and carbs and never touches protein. Once a week, the review sets your trend weight beside your target rate. Drift off course and it recommends a calorie change, which only takes effect if you choose it.
+
+Week one is skipped when the app works out your rate. It takes a few days for your weight to settle.
 
 ## When the cut ends
 
-Maintenance is the phase the app lines up next. For 1 to 4 weeks after the cut, hold off on cheat foods. Hunger and appetite are still catching up, and eating loosely too soon can quickly undo the fat you lost.
+Next, the app recommends maintenance. Give it 1 to 4 weeks before cheat foods come back, because hunger and appetite are still adjusting. Eating loosely right after is the easiest way to undo that hard-won loss.
 
-If your weight keeps dropping on maintenance calories, let the app know and it can shorten that phase.
+Tell the app if your weight keeps falling once you are on maintenance calories, and it can cut that phase short.
 
-Dieting calls for a doctor's input first if you are sick, pregnant, using a GLP-1 drug, or have struggled with disordered eating.
+Get your doctor's advice before dieting if you are sick, pregnant, taking a GLP-1 drug, or have struggled with disordered eating.

@@ -6,15 +6,15 @@ Read the menu ahead of time. The food database includes restaurant dishes, so lo
 
 ## No match? Use the camera
 
-Tap the camera button and photograph the plate. The app estimates what is on it and how much, and the list is yours to edit. Typing also works, for instance "grilled salmon with potatoes". The portion control scales the entire meal up or down.
+Tap the camera button and photograph the plate. The app estimates what is on it and how much, and the list is yours to edit. Typing also works, for instance "grilled salmon with potatoes". To resize the whole meal at once, use the portion control.
 
 ## Ordering well
 
 - Build the order around a clear protein.
 - Ask for sauce and dressing separately.
-- Grilled or baked beats fried.
+- Skip fried, and go grilled or baked.
 - If the main is what you want, leave the bread basket alone.
 
 ## When you overshoot
 
-You won't know a restaurant meal's numbers exactly, and you don't need to. Check the meal in with your best estimate, then tap Redistribute to spread the day's remaining budget across later meals. Skipping a meal to compensate backfires. Ending the day within 10% of calories and protein still counts as a success.
+You won't know a restaurant meal's numbers exactly, and you don't need to. Check the meal in with your best estimate, then tap Redistribute to spread the day's remaining budget across later meals. Skipping a meal to compensate backfires. Finish within 10% on calories and protein and the day is still a success.

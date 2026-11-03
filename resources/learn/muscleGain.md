@@ -1,24 +1,24 @@
-In a muscle gain phase you eat a modest surplus, which gives your body fuel to build muscle. Gaining slowly means more of the extra weight is muscle and less is fat.
+Building muscle needs spare fuel, so a muscle gain phase has you eating a little more than you burn. The slower you gain, the larger the share of new weight that is muscle.
 
 ## Pick your rate
 
-Weekly gain runs from 0.125% up to 0.5% of bodyweight, depending on how experienced you are:
+Your rate runs 0.125% to 0.5% a week, measured against bodyweight, and where you aim depends on how long you have trained:
 - **Under 1 year of training:** up to about 0.5% a week.
 - **1 to 4 years:** about 0.375% is the sweet spot.
-- **Over 4 years:** muscle comes slower, so about 0.25% is enough.
+- **Over 4 years:** about 0.25%, since muscle comes more slowly.
 
 ## How long
 
-Phases last 4 to 16 weeks, and 8 to 16 is the recommended range. Training volume rises as the phase goes on.
+Set anything from 4 to 16 weeks. The app recommends 8 to 16. Your training is built to keep adding volume as the weeks go by.
 
 ## Keeping an eye on fat
 
-Some of what you gain is fat. To track it, the app begins with your body-fat estimate and counts about half of each pound gained as fat. The weekly review raises a warning when that figure passes 20% for men or 30% for women, and suggests a mini-cut or fat loss phase.
+Some of the weight will be fat. The app's starting point is your body-fat estimate, and from there it treats about half of whatever you gain as fat. Men get a warning in the weekly review once that estimate tops 20%, and women once it tops 30%. Along with the warning comes a suggestion to switch to a mini-cut or fat loss.
 
-Edit the estimate in Settings and the app starts its math over from your new pick.
+Picking a new estimate in Settings resets the app's math to start from it.
 
 ## What follows
 
-Most people move to maintenance for 4 to 8 weeks. If you added more fat than you wanted, a mini-cut fits better. As a rule of thumb, gain for at least double the time you spend cutting afterward.
+Next, most people do 4 to 8 weeks of maintenance. A mini-cut suits you better if fat crept up more than you wanted. As a guide, the time you spend gaining should be at least twice the cut that follows.
 
 A medical condition means your doctor should weigh in before you change how you eat.

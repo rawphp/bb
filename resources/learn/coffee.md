@@ -1,4 +1,4 @@
-Both coffee and caffeine are fine to keep. No need to drop either to lose fat or gain muscle.
+You can keep drinking coffee whether you are losing fat or building muscle, and caffeine is fine too.
 
 ## Why it works
 
@@ -8,8 +8,7 @@ Black coffee has next to no calories. Caffeine can sharpen focus and help you pu
 
 Milk, cream, sugar, syrups and flavored creamers all carry calories. With several cups a day they pile up.
 
-- Log whatever milk or cream goes in.
-- Log sweeteners such as sugar or syrup.
+- Log what goes in the cup, from milk and cream to sugar and syrup.
 - Look up your regular order from your coffee shop. Cafe drinks often hold far more calories than you would guess.
 
 Drinks sit in the food database next to everything else. Put one in a meal and the app fits it around your targets.
@@ -19,4 +18,4 @@ Drinks sit in the food database next to everything else. Put one in a meal and t
 - A big milky coffee every day belongs in your first meal's plan.
 - Energy drinks and pre-workout powder are fine as well. Just log any sugar or calories inside them.
 
-Pregnant, living with a heart condition, or on medication that interacts with caffeine? Your doctor should tell you how much is right.
+Your doctor should set your caffeine amount if you are pregnant, live with a heart condition, or are on a medication caffeine interacts with.

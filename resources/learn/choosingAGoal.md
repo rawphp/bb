@@ -1,4 +1,4 @@
-Choose Fat loss, Muscle gain or Maintenance, whichever suits you best at the moment. Your calories, rate of change and training design all follow from it.
+Choose Maintenance, Muscle gain or Fat loss, whichever suits you best at the moment. Your calories, rate of change and training design all follow from it.
 
 ## How the goals differ
 
@@ -10,7 +10,7 @@ Want both lower fat and more muscle? Go with Fat loss, because there's no dual o
 
 ## Rate
 
-You set speed as a share of bodyweight each week. For fat loss that's 0.25% to 1.0%, with 1.0% as the ceiling the app enforces. Gaining is limited to 0.125% up to 0.5%. Going slower is easier to sustain. You get a warning if a fat-loss phase, at your chosen rate and length, would remove over 10% of your starting weight.
+Pace is a weekly percentage of your bodyweight. For fat loss that's 0.25% to 1.0%, with 1.0% as the ceiling the app enforces. Gaining is limited to 0.125% up to 0.5%. A gentler pace is easier to stick with. You get a warning if a fat-loss phase, at your chosen rate and length, would remove over 10% of your starting weight.
 
 ## Length
 
@@ -24,6 +24,6 @@ A fat-loss diet that ended within the past 8 weeks leads the app to recommend Ma
 
 ## Training background and days
 
-Next, state how long you've trained steadily: under 1 year, 1 to 4 years, or over 4 years. That decides how much volume you begin with and how long each mesocycle runs. Then select your training days.
+The app also asks about your lifting history. Answer under 1 year, 1 to 4 years, or over 4 years, and from it the app sets how much volume you start with and how long each mesocycle lasts. Picking training days is the last step.
 
 Later you can alter a phase's length or end it ahead of schedule. Nothing is fixed.

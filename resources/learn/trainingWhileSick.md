@@ -1,14 +1,14 @@
-When you are ill, rest and listen to your doctor. Training is optional, and skipped sessions cost you almost nothing.
+When you are ill, rest and listen to your doctor. Training can wait, since a few missed sessions cost you very little.
 
-## Skip if you feel properly unwell
+## Signs to stay home
 
-Fever, chest symptoms, vomiting, diarrhea, or weakness that gets in the way of ordinary movement all mean stay home from the gym. Pushing through can drag the illness out and leave you sicker. If you aren't sure, ask your doctor, whose word beats anything on this page.
+Feeling properly unwell means no gym. Fever, chest symptoms, vomiting, diarrhea, or weakness that gets in the way of ordinary movement all count. Lifting while ill can make you worse and slow your recovery. If you aren't sure, ask your doctor, whose word beats anything on this page.
 
 ## Skipping in the app
 
 The day menu has **Skip workout**. Choose it and confirm. There is no undo, and the day becomes a nutrition rest day. Leave a session unlogged instead and the app checks in the following morning, asking if it should be moved or dropped.
 
-Miss a week or longer and you can restart the week you were in or build a new mesocycle.
+Stay away a week or longer and you choose between restarting the week you were in and building a new mesocycle.
 
 ## Food while ill
 

@@ -1,9 +1,9 @@
-Checking in tells the app a meal happened. Your totals stay correct, and the plan can set fresh targets for meals that remain.
+Marking a meal as eaten does two jobs. Your day's totals stay correct, and the plan can set fresh targets for the meals still ahead.
 
 ## Three ways to do it
 
-- Use the checkbox on the meal card in Today.
-- Tick the meal once it's open, or use Check in meal in its menu.
+- On Today, each meal card has a checkbox.
+- Check in meal sits in each meal's menu, and ticking an open meal works too.
 - Swipe the card to the right and enter your real intake, covering time, calories and macros.
 
 ## How it counts
@@ -14,11 +14,11 @@ Checking in tells the app a meal happened. Your totals stay correct, and the pla
 
 ## Status icons and undoing
 
-A meal's icon shows whether it is unchecked, checked, or checked but under or over its target. To undo an error, use the meal menu and remove the check-in.
+Every meal carries an icon for its state: still open, checked in, or checked in yet under or over target. To undo an error, use the meal menu and remove the check-in.
 
-## Adjust foods badge
+## The orange badge
 
-Redistributing calories to a meal with foods already in it puts an orange Adjust foods badge on it. Check-in stays blocked until you correct the foods or mark the meal Done planning foods.
+Redistributing calories to a meal with foods already in it puts an orange Adjust foods badge on it. Fixing the foods, or marking the meal Done planning foods, unlocks check-in again.
 
 ## Which totals show
 

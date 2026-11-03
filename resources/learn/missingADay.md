@@ -2,11 +2,11 @@ Skipping a day is normal. There is nothing to repay, and piling extra work onto 
 
 ## Workouts you didn't log
 
-When a day ends without a logged workout, the next morning the app offers options.
+When a day ends without a logged workout, the next morning the app offers options. Which ones you see depends on today.
 
-- **Do it today:** offered if today is a rest day. Just this session moves; every later one stays where it was.
-- **Do it on the next rest day this week:** available on a training day if a rest day remains this week.
-- **Skip it:** the workout gets a skipped label.
+- **On a rest day:** **Do it today** is offered. Just this session moves, and every later one stays where it was.
+- **On a training day with a rest day still ahead this week:** **Do it on the next rest day this week** is offered.
+- **Any day:** **Skip it**, and the workout gets a skipped label.
 
 Sessions can't carry over into next week. If neither move is possible, you only see Skip.
 
@@ -14,11 +14,11 @@ Choosing to skip from the day menu brings a confirmation, since you can't revers
 
 ## Longer gaps
 
-After a week or more away, the app asks if you want to restart this week or close the mesocycle and start a new one. A restart suits a gap of about a week. A new block suits a longer absence or a lost routine.
+A gap of a week or more brings a different choice: restart this week, or close the mesocycle and start a new one. A restart suits a gap of about a week. A new block suits a longer absence or a lost routine.
 
 ## Eating off plan
 
-Don't skip meals to even things out, and don't double up tomorrow. Record everything, including off-plan food, then eat your next planned meal as normal. One day hardly changes your weekly average.
+Don't skip meals to even things out, and don't double up tomorrow. Record everything, including off-plan food, then eat your next planned meal as normal. A single day makes only a small dent in your weekly average.
 
 Staying inside 10% for daily calories and protein counts as hitting your target. Slips of that size are fine.
 

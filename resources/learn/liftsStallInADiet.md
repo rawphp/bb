@@ -1,4 +1,4 @@
-Should your lifts plateau or drop in a cut, blame the diet before the program. A pause from dieting often fixes it, with no need to lift less.
+Look at the diet first, and the program second, if your lifts stall or slip during a cut. A pause from dieting often fixes it, with no need to lift less.
 
 ## Cause
 
@@ -13,13 +13,17 @@ Dieting piles fatigue onto what training already causes. Weeks of eating less we
 
 ## Suggested response
 
-During a cut, the review reads "Your lifts are dropping. It might be the diet, not the training." and proposes Drop fatigue first. The coming week becomes a diet break on maintenance calories, preferably merged with the deload. Accepting is your call.
+On a cut, the weekly review leads with Drop fatigue and explains why with this message:
+
+"Your lifts are dropping. It might be the diet, not the training."
+
+Drop fatigue turns the coming week into a diet break on maintenance calories, preferably merged with the deload. Accepting is your call.
 
 Should fatigue stay high past the break and deload, expect advice to end the phase and go to Maintenance.
 
 ## Trimming volume instead
 
-Fine too. Affected muscles lose about a third of their sets, or half after two "Too much" replies. Sets then come back one per muscle each week, until you reach the most you can recover from.
+Fine too. Expect about a third of the sets to come off each affected muscle, or half once you've answered "Too much" twice. Sets then come back one per muscle each week, until you reach the most you can recover from.
 
 ## Don't
 

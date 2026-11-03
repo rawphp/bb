@@ -6,9 +6,9 @@ Up top on Today, a bar shows calories and protein against target. When both are 
 
 ## Redistribute
 
-Overate or underate? The wand icon is your tool. Remaining calories and macros for the day are shared across later meals. You choose the recipients and can exclude any meal.
+Overate or underate? The wand icon is your tool. Later meals then split what's left of the day's calories and macros. You choose the recipients and can exclude any meal.
 
-A meal holding foods can accept a share as well. Its orange Adjust foods badge stays until you refit the foods. Foods you've locked don't move.
+A meal holding foods can accept a share as well. It then shows an orange Adjust foods badge, and refitting its foods clears it. Foods you've locked don't move.
 
 ## Adjust
 
@@ -19,7 +19,7 @@ Safeguards apply.
 - Each day stays between 80% and 125% of the weekly daily average.
 - Protein is untouchable.
 - Finished days can't be edited.
-- Every meal retains a floor of 5 g fat and 5 g carbs.
+- No meal goes under 5 g carbs and 5 g fat.
 
 ## Skip the chase
 

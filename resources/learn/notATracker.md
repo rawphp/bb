@@ -8,7 +8,7 @@ Most tracking apps sit empty until you enter food, then add it up. In Bodybuilde
 
 Nothing needs syncing, and you set up only one app.
 
-- Workouts show on the day's schedule, with start times.
+- Each session has its own time slot in the day's schedule.
 - On a harder training day, calories go up and carbs are placed around the session.
 - If a workout moves, gets skipped or ends early, the meals still ahead get new targets.
 - Deload weeks switch to maintenance calories on their own.
@@ -19,6 +19,6 @@ Weekly, the app weighs your trend, meals, lifts and recovery together. On a cut,
 
 ## What's left for you
 
-Step on the scale, check in meals, train, and finish the review. Logging still counts, since the plan can only respond to what you've told it. Your entries feed decisions here instead of piling up in a log.
+Your part is the weigh-ins, meal check-ins, workouts and the weekly review. The plan only responds to what you've told it, so logging still matters. Your entries feed decisions here instead of piling up in a log.
 
-You don't have to be exact. Finishing a day within 10% of your calorie and protein targets is a good day.
+You don't have to be exact. Get calories and protein within 10% on a day and call it a good day.

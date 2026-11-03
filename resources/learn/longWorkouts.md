@@ -2,18 +2,15 @@ Workouts that have stretched out usually mean the app piled on sets because your
 
 ## What went wrong
 
-Volume rises only when your feedback permits it. If you pick "Just right" or "Not enough" while nearly spent, sets keep coming. Each muscle collects more, and the session swells.
+Volume rises only when your feedback permits it. Say "Just right" or "Not enough" while you are nearly spent, and sets keep piling onto every muscle until the session stretches.
 
 ## Fix 1. Report it
 
-When a session already uses all the time and energy you can spare, pick **Pushed my limits** when asked about volume. The next time that session comes round, the muscle gets no extra sets, whatever pump and soreness you reported. Go with **Too much** if you passed that point, and a set is removed.
+Once a session eats all the time and energy you have, **Pushed my limits** is the volume answer to give. The next time that session comes round, the muscle gets no extra sets, whatever pump and soreness you reported. Go with **Too much** if you passed that point, and a set is removed.
 
 ## Fix 2. Lower the priority
 
-Some muscles consume plenty of time without being a goal. Downgrade them.
-
-- In the workout, open the day menu and choose **Progression rates**.
-- Step the muscle down, Emphasize to Grow or Grow to Maintain.
+Some muscles consume plenty of time without being a goal. Downgrade them from the workout's day menu: open **Progression rates** and drop the muscle one level, so Emphasize becomes Grow and Grow becomes Maintain.
 
 Your next session picks up the change. Sets are never added to a muscle on Maintain.
 
@@ -25,6 +22,6 @@ Your next session picks up the change. Sets are never added to a muscle on Maint
 
 ## The cap
 
-Every muscle has a weekly set limit set by your phase. At that limit the app freezes volume and says you are at the edge of what you can recover from.
+Your phase decides the most weekly sets any muscle can reach. At that limit the app freezes volume and says you are at the edge of what you can recover from.
 
 A longer session can shift your meal times, and the schedule refreshes as soon as the workout ends.

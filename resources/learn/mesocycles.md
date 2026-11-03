@@ -21,11 +21,11 @@ The calendar icon lets you resize a running block, and the deload always stays a
 Press + on the Mesocycles screen and choose how to begin.
 
 - **Template:** a finished plan. Narrow the list by diet phase, sex, how many days you train, and whether you want a whole-body split or a muscle emphasis.
-- **Copy previous mesocycle:** brings over the structure and the weights.
+- **Copy previous mesocycle:** your last block again, same layout, same weights.
 - **Meso Builder:** you enter your available training days and label each muscle Emphasize, Grow or Maintain. The app drafts the layout.
 - **Build from scratch.**
 
-Select days that fit every week. Sessions go in sequence, beginning with Day 1.
+Whichever you choose, the training days should be ones that work for you every single week. Sessions go in sequence, beginning with Day 1.
 
 ## What follows
 

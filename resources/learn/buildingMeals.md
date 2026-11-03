@@ -4,8 +4,8 @@ You pick the foods and the app works out the amounts, so each meal lands on its 
 
 Try to bring something from every group below into the meal.
 - **Protein:** eggs, tofu, Greek yogurt, fish, chicken, lean cuts of meat.
-- **Carbs:** oats, bread, rice, potatoes, fruit.
-- **Fat:** avocado, cheese, nuts, olive oil.
+- **Carbs:** fruit, bread, oats, potatoes, rice.
+- **Fat:** cheese, olive oil, avocado, nuts.
 - **Veggies:** any amount you want.
 
 Pantry foods carry a label, either recommended or use sparingly. Reach for the recommended foods first.
@@ -16,7 +16,7 @@ Whenever you add a food, the app rescales the grams across the whole meal. A "Ta
 
 ## Weigh what you eat
 
-Use a food scale, since estimated portions drift fast. Cooking changes the weight of meat, rice and pasta, so each food offers a raw and a cooked mode. Choose raw when you weigh before cooking a single meal. Choose cooked when you weigh after batch cooking.
+Use a food scale, since estimated portions drift fast. Foods come with raw and cooked modes, since cooking changes what meat, rice and pasta weigh. Choose raw when you weigh before cooking a single meal. Choose cooked when you weigh after batch cooking.
 
 ## Lock, rebalance, check in
 

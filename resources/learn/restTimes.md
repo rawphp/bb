@@ -1,13 +1,13 @@
 Rest until you can do the next set properly. There is no rest timer in the app, and that is on purpose.
 
-## Are you ready?
+## Signs you're ready
 
 Go again once all four of these hold.
 
 - Your breathing has settled.
 - Your focus is back.
 - The assisting muscles have recovered. Before a press, your arms should feel fresh.
-- You could manage 3 to 5 reps or more on the next set.
+- The next set still holds 3 to 5 reps or more.
 
 ## What to expect
 
@@ -21,9 +21,9 @@ A countdown can hurry you into a set you are not ready for, or make you sit when
 
 ## Special cases
 
-- **Myorep sets:** take just 5-15 seconds between mini-sets, then log the combined reps.
+- **Myorep sets:** mini-sets with just 5 to 15 seconds between them, logged as one total.
 - **Myorep match sets:** go on with brief mini-sets until you have caught up with the first set's rep count.
-- **Alternating two exercises:** no superset set type exists. Do the pair back to back. Jot a reminder in the exercise notes, or move one using the day menu.
+- **Supersets:** the app has no set type for them, so alternate the two exercises back to back yourself. Leave yourself a reminder in the exercise notes, or use the day menu to put the pair next to each other.
 
 ## If sessions drag
 

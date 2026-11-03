@@ -1,4 +1,4 @@
-A deload is a purposely light week that ends every mesocycle. Fatigue drains away, and you can push hard again in the next block. The app inserts it for you.
+Every mesocycle closes with a deload, a week the app keeps easy on purpose so fatigue drains away and you can push hard again in the next block.
 
 ## Changes in the week
 
@@ -11,15 +11,15 @@ Calories remain at maintenance.
 
 ## Easy is the point
 
-A deload that seems too light is working. You'll probably feel the payoff once the next block starts. Don't be tempted to sneak extra work in.
+A deload that seems too light is working. Most likely the next block is where you'll notice the benefit. Don't be tempted to sneak extra work in.
 
 ## Work for it beforehand
 
-Give the final training week, the one at 0 RIR, everything you have while keeping form clean. More effort there means more benefit from the deload. A soft block followed by a deload squanders it.
+Before it arrives, take the last hard week as close to 0 RIR as you can while keeping form clean. More effort there means more benefit from the deload. A soft block followed by a deload squanders it.
 
 ## Ending early
 
-A mesocycle can be closed from the menu. Intermediate and advanced lifters see a caution against dropping the deload. Beginners build up less fatigue, yet the deload is kept in their plan by default.
+The menu will close a mesocycle early, but intermediate and advanced lifters get a caution against dropping the deload. The deload stays the default for beginners too, even though they usually carry less fatigue.
 
 ## Deloading ahead of schedule
 

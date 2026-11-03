@@ -1,4 +1,4 @@
-The simplest advice is to avoid alcohol while dieting, because it works against most of what you are trying to do.
+Dieting gets harder when you drink, so keep it simple and avoid alcohol while dieting.
 
 ## What alcohol costs you
 
@@ -9,13 +9,14 @@ The simplest advice is to avoid alcohol while dieting, because it works against 
 
 ## If you do drink
 
-If you drink at all, stay at 1 to 2 drinks a week. Treat that as a ceiling, never a goal. Skipping it entirely will serve your results better.
+Anyone who does drink should treat 1 to 2 drinks a week as the most, a ceiling to stay under rather than a number to hit. Your results do better still with none at all.
 
 ## In the app
 
-- Log each drink. The food database includes them, so look up what you had.
-- For a drink or bite outside the plan, use Save food macros. Then tap Redistribute and those calories come out of your later meals. You decide which meals take the hit.
+- Look up each drink in the food database and log it.
+- Something you drank or ate off-plan goes in with Save food macros.
+- Tapping Redistribute then pulls those calories from your later meals, and you choose which ones absorb it.
 
 When you know a night out is coming, plan for it. Leave room in the day's calories and keep protein high. Don't skip meals to bank calories. A little extra carbs and fat that evening beats showing up ravenous after a missed meal.
 
-If a health condition or medication changes how your body handles alcohol, follow your doctor's advice.
+Your doctor's advice comes first if you take medication. The same goes if a health condition changes how your body deals with alcohol.

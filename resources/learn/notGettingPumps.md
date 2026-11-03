@@ -1,16 +1,16 @@
-Muscles that seldom feel pumped or sore may be undertrained, or you may be short on recovery. The app has two responses, based on how long the pattern lasts.
+Muscles that seldom feel pumped or sore may be undertrained, or you may be short on recovery. What the app does about it depends on how long the pattern lasts.
 
 ## One muscle, low pump
 
-Give a straight answer on pump. A weak pump earns that muscle extra sets next week, more so when soreness is low too. Its priority also plays a part.
+Give a straight answer on pump. A weak pump earns that muscle extra sets next week, more so when soreness is low too. How readily that happens depends on its priority.
 
-- **Emphasize:** adds sets most readily.
-- **Grow:** adds sets only on clear signals from your feedback.
-- **Maintain:** never adds sets.
+- **Emphasize:** the quickest to gain sets.
+- **Grow:** gains sets only on clear signals from your feedback.
+- **Maintain:** never gains sets.
 
 A muscle you care about but have set to Maintain can be promoted. Open Progression rates in the workout menu. The new priority starts at your next session.
 
-Judging pump is tricky, especially early on. Watch for tightness, fullness or a feeling of being squeezed in what you just trained. Muscles pump to different degrees, so measure each against its own past.
+Judging pump is tricky, especially early on. A pump feels like the muscle you just worked has gone full, tight or squeezed. Muscles pump to different degrees, so measure each against its own past.
 
 ## Flat for weeks
 
@@ -20,9 +20,9 @@ In that case you'll see a suggestion for an **active rest**, which is a deload w
 
 ## Rule out other causes
 
-- Are you honest about effort? See whether you reach the target RIR.
-- Do you wait long enough between sets?
-- Is your sleep and food enough for recovery? Eating to plan counts for as much as the sets you do.
-- Does a joint complain about one exercise? Replace it, with a good reason.
+- **Effort:** check that your sets really reach the target RIR.
+- **Rest:** give yourself enough time between sets.
+- **Recovery:** sleep and food both count, and eating to plan matters as much as the sets you do.
+- **Joints:** an exercise that bothers a joint is a good reason to swap it.
 
-Answering feedback is not optional if you want the plan to adapt. The app can only respond to what it is told.
+Answer the feedback questions every time, even when you'd rather avoid a change. Your answers are all the app has to go on.
