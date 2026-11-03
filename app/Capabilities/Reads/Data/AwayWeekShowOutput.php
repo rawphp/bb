@@ -27,5 +27,6 @@ final class AwayWeekShowOutput extends CapabilityData
         #[Field(description: 'Maintenance during Fat loss.', enum: ['rest', 'maintenance'])] public readonly string $calories,
         #[Field(description: '"Counts as a diet break" and the like.', items: Status::class)] public readonly array $notes,
         public readonly bool $shows_keep_phase_end,
+        #[Field(description: 'What the keep-the-phase-end switch opens with: the week\'s saved value, false when it is not away.')] public readonly bool $keep_phase_end,
     ) {}
 }

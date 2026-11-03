@@ -35,6 +35,12 @@ export const WARM_FRESH_MS = 60_000;
 // stalled server ends in a CapabilityError instead of a screen stuck on loading.
 export const TIMEOUT_MS = 15_000;
 
+// The deadline for a read that waits on the server's AI call (recipe_generate,
+// recipe_import): longer than the 60 s AiJson gives the AI call itself, so the device does
+// not give up on an answer the server is still working out. Import fetches the page first,
+// so a slow page and a slow AI call together can still pass it.
+export const AI_TIMEOUT_MS = 75_000;
+
 export class CapabilityError extends Error {
     constructor(
         readonly capability: string,
@@ -82,6 +88,16 @@ export async function read<T = unknown>(
  */
 export function readFresh<T = unknown>(name: string, input: CapabilityInput = {}): Promise<T> {
     return fetchRead<T>(name, input, readKey(name, input));
+}
+
+/**
+ * The server's answer to a read that does costly work each time it runs, such as an AI
+ * call (recipe_generate, recipe_import): asked once, never asked again because a write
+ * landed meanwhile, and never cached, since the next call should run it afresh. Offline
+ * it fails with status 0; past `timeoutMs` with status 0 and reason 'timeout'.
+ */
+export function readNow<T = unknown>(name: string, input: CapabilityInput = {}, options: { timeoutMs?: number } = {}): Promise<T> {
+    return invoke<T>(name, input, {}, options.timeoutMs);
 }
 
 // The statuses after which a cached copy may not be shown. A gone session clears
@@ -471,9 +487,9 @@ export async function discardEntry(entry: OutboxEntry): Promise<void> {
     void replay();
 }
 
-async function invoke<T>(name: string, input: CapabilityInput, headers: Record<string, string> = {}): Promise<T> {
+async function invoke<T>(name: string, input: CapabilityInput, headers: Record<string, string> = {}, timeoutMs = TIMEOUT_MS): Promise<T> {
     const deadline = new AbortController();
-    const timer = setTimeout(() => deadline.abort(), TIMEOUT_MS);
+    const timer = setTimeout(() => deadline.abort(), timeoutMs);
 
     try {
         return await send<T>(name, input, deadline.signal, headers);

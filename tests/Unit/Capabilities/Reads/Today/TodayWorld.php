@@ -12,6 +12,7 @@ use App\Models\Mesocycle;
 use App\Models\MuscleFeedback;
 use App\Models\OffPlanEntry;
 use App\Models\OtherActivity;
+use App\Models\Phase;
 use App\Models\Plan;
 use App\Models\PlannedFood;
 use App\Models\PlannedRecipe;
@@ -52,6 +53,7 @@ final class TodayWorld
     /**
      * @param  list<Mesocycle>|null  $mesocycles  Meso A when null
      * @param  list<PlanWeek>|null  $planWeeks
+     * @param  list<Phase>  $phases  none by default
      * @param  list<WorkoutSession>|null  $sessions
      * @param  list<MuscleFeedback>  $feedback
      * @param  array<string, list<array{0: string, 1: float, 2?: bool, 3?: int}>>  $foods  planned foods by meal id: [name-key, grams, cooked, position]
@@ -76,6 +78,7 @@ final class TodayWorld
         array $profile = [],
         ?int $steps = null,
         bool $withPlan = true,
+        array $phases = [],
     ): TodaySnapshot {
         $train = new TrainSnapshot(
             today: TrainSnapshot::day($today),
@@ -96,7 +99,7 @@ final class TodayWorld
                 'step_plan' => [['weekday' => 3, 'min' => 6000, 'max' => 8000], ['weekday' => 6, 'min' => 0, 'max' => 8000]],
             ], $profile)),
             mesocycles: new Collection($mesocycles ?? [self::mesocycle()]),
-            phases: new Collection,
+            phases: new Collection($phases),
             sessions: new Collection($sessions ?? self::sessions()),
             sets: new Collection(self::sets()),
             feedback: new Collection($feedback),
@@ -291,11 +294,23 @@ final class TodayWorld
         return ['id' => $id, 'exercise_id' => $exercise, 'muscle_group' => $muscle, 'sets' => $sets];
     }
 
-    public static function planWeek(string $start, bool $deload = false, bool $away = false, ?string $awayTraining = null): PlanWeek
-    {
+    public static function planWeek(
+        string $start, bool $deload = false, bool $away = false, ?string $awayTraining = null, bool $rough = false,
+        ?string $awayCalories = null, bool $dietBreak = false, bool $keepPhaseEnd = false,
+    ): PlanWeek {
         return (new PlanWeek)->forceFill([
             'id' => "pw-{$start}", 'user_id' => 1, 'start_date' => $start, 'is_deload' => $deload,
-            'is_diet_break' => false, 'diet_break_off' => false, 'is_away' => $away, 'away_training' => $awayTraining,
+            'is_diet_break' => $dietBreak, 'diet_break_off' => false, 'is_away' => $away, 'away_training' => $awayTraining,
+            'away_calories' => $awayCalories, 'is_rough' => $rough, 'keep_phase_end' => $keepPhaseEnd,
+        ]);
+    }
+
+    /** The plan's one phase: Fat loss from the plan start to 2026-12-05 (the end is the first day after its last week). */
+    public static function phase(string $type = 'fatLoss', string $start = self::PLAN_START, ?string $end = '2026-12-05'): Phase
+    {
+        return (new Phase)->forceFill([
+            'id' => 'cccccccc-0000-4000-8000-000000000001', 'user_id' => 1, 'type' => $type, 'start_date' => $start, 'end_date' => $end,
+            'target_rate_percent_per_week' => -0.5, 'event_date' => null,
         ]);
     }
 

@@ -45,6 +45,10 @@ export interface AwayWeekShowOutput {
     tone: "good" | "neutral" | "warning" | "info";
   }[];
   shows_keep_phase_end: boolean;
+  /**
+   * What the keep-the-phase-end switch opens with: the week's saved value, false when it is not away.
+   */
+  keep_phase_end: boolean;
 }
 
-export const outputVersion = 'c7144c032766';
+export const outputVersion = '4a3bdfac841f';
