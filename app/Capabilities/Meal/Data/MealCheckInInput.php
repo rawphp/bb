@@ -11,7 +11,7 @@ final class MealCheckInInput extends CapabilityData
 {
     public function __construct(
         public readonly string $meal_id,
-        #[Field(description: '24-hour "HH:MM"; defaults to now.')] public readonly ?string $time = null,
+        #[Field(description: '24-hour "HH:MM"; defaults to when the user acted.')] public readonly ?string $time = null,
         #[Field(minimum: 0)] public readonly ?float $kcal = null,
         #[Field(minimum: 0)] public readonly ?float $protein_g = null,
         #[Field(minimum: 0)] public readonly ?float $fat_g = null,

@@ -11,7 +11,7 @@
                 "string",
                 "null"
             ],
-            "description": "24-hour \"HH:MM\"; defaults to now."
+            "description": "24-hour \"HH:MM\"; defaults to when the user acted."
         },
         "kcal": {
             "type": [
