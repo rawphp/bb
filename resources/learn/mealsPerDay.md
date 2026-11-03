@@ -6,7 +6,7 @@ The app sets 5 by default. On a cut, fewer and larger meals can leave you feelin
 
 ## How meals get placed
 
-Your daily targets are shared out across meals, placed at even intervals through your eating window with 2 hours or more between them, and kept clear of your busy periods. Training days are built around your session, with one meal ahead of it and one after. To fuel the session and your recovery, those two hold most of the carbs and very little fat, which shifts the fat toward meals at the far end of the day from your workout.
+Your daily targets are shared out across meals, placed at even intervals through your eating window with 2 hours or more between them, and kept clear of your busy periods. Training days are built around your session, with one meal ahead of it and one after. To fuel the session and your recovery, those two get the largest share of the carbs and the least fat, and the rest of the fat goes to the other meals.
 
 ## Making changes
 

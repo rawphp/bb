@@ -9,7 +9,7 @@ Once a muscle's work is done for the day, a few quick questions pop up. Be truth
 
 Every question has a "?" icon that opens help for it.
 
-On joint pain, a moderate answer or worse stops new sets being added to that exercise, and a lot drops its next load by 10% as well.
+On joint pain, a moderate answer or worse stops new sets being added to that exercise, and answering "A lot" also drops its next load by 10%.
 
 ## Turning answers into sets
 

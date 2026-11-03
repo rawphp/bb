@@ -24,7 +24,7 @@ Start one with the "+" on the Mesocycles screen, then decide how to fill it.
 
 - Pick a **Template** for a finished plan, with filters for sex, days per week, emphasis or whole body, and diet phase.
 - **"Copy previous mesocycle"** brings back the block you just ran in the same layout, with its weights carried forward.
-- **Meso Builder** drafts the plan once you've given it your weekly training days and an Emphasize, Grow or Maintain setting for each muscle.
+- **Meso Builder** needs two answers, your training days per week and a priority of Emphasize, Grow or Maintain for every muscle. The draft follows from those.
 - **Build from scratch** if you'd rather set up every day yourself.
 
 The days you pick should be ones your week can always hold. The app works through them in order, so Day 1 always comes before Day 2.

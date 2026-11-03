@@ -8,7 +8,7 @@ Each exercise has a suggested number of reps per set, and your working sets aim 
 
 The exercise header on your workout screen shows which range applies.
 
-The mix tilts with your diet phase. During fat loss, most work sits in the 20 to 30 and 10 to 20 bands, because they're kinder on joints and recovery. A muscle-gain phase uses every band, with a little extra weight on 5 to 10.
+The mix tilts with your diet phase. During fat loss, most work sits in the 20 to 30 and 10 to 20 bands, because they're kinder on joints and recovery. Gaining phases draw on all three bands, tilted toward 5 to 10.
 
 ## How targets progress
 

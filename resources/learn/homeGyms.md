@@ -18,7 +18,7 @@ Can't find something? Make a custom exercise. You'll set its muscle, equipment, 
 
 ## Weights on the light side
 
-Higher rep ranges help. Sets of 20 to 30 reps work well for small muscles and for movements that are awkward to load. Lower under control with a brief hold at the bottom stretch, and carry every set close to the RIR target.
+Higher rep ranges help. Sets of 20 to 30 reps work well for small muscles and for movements that are awkward to load. Lower under control, pause briefly in the stretched position, and carry every set close to the RIR target.
 
 ## Swaps
 
