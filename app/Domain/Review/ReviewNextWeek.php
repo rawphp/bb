@@ -11,6 +11,7 @@ use App\Domain\WeekBuilder\CalorieMove;
 use App\Domain\WeekBuilder\WeekBuilder;
 use App\Domain\WeekBuilder\WeekBuildRefusal;
 use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * The week a review sets (REV-002, REV-004, REV-010, REV-011, REV-013), built by WeekBuilder, which holds the day
@@ -102,8 +103,8 @@ final class ReviewNextWeek
         ?ReviewWorld $repeatWorld = null,
     ): BuiltWeek {
         $dates = $planned ?? self::build($world, NextWeekCalories::planned());
-        $startOfToday = $today->setTimezone($world->plan->start->getTimezone())->setTime(0, 0);
-        $pastCount = count(array_filter($dates->days, fn ($day) => $day->day->date->setTime(0, 0) < $startOfToday));
+        $zone = $world->plan->start->getTimezone();
+        $pastCount = count(array_filter($dates->days, fn ($day) => self::isPast($day->day->date, $today, $zone)));
         $locked = array_filter(
             array_merge(...array_map(fn (CalorieMove $move) => [$move->from, $move->to], $moves)),
             fn (int $index) => $index < $pastCount,
@@ -122,6 +123,12 @@ final class ReviewNextWeek
         }
 
         return new BuiltWeek($chosen->week, $chosen->phase, $days);
+    }
+
+    /** NUT-024: a day before today, read in the plan's time zone, is past and can't change. */
+    public static function isPast(DateTimeImmutable $date, DateTimeImmutable $today, DateTimeZone $zone): bool
+    {
+        return $date->setTime(0, 0) < $today->setTimezone($zone)->setTime(0, 0);
     }
 
     /** @param  list<CalorieMove>  $moves */

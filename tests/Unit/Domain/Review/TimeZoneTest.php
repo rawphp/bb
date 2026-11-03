@@ -13,6 +13,7 @@ use App\Domain\Review\ReviewTiming;
 use App\Domain\Review\ReviewWeighIns;
 use App\Domain\Review\StoredPlanWeek;
 use App\Domain\WeekBuilder\CalorieMove;
+use App\Domain\WeekBuilder\WeekBuildRefusal;
 use App\Domain\WeekBuilder\WeekBuildRefusalReason;
 use Tests\Unit\Domain\Plan\PlanFixtures;
 use Tests\Unit\Domain\Review\NextWeekFixtures as F;
@@ -105,4 +106,28 @@ it('REV-002 a late save counts the days already past in the Brisbane day, not th
         ->and($refusal->move->reason)->toBe(MoveRefusalReason::DayCompleted)
         ->and($refusal->move->dayIndex)->toBe(1)
         ->and($saved->days)->toHaveCount(7);
+});
+
+it('NUT-024 REV-004 the preview\'s past-day lock is the New York day forSave refuses moves on, not the UTC day', function () {
+    $world = F::world(zone: 'America/New_York');
+    $zone = $world->plan->start->getTimezone();
+    // 02:00 UTC on Wednesday 21 January is 21:00 on Tuesday 20 January in New York: only Monday is past there, while on
+    // the UTC calendar Monday and Tuesday are.
+    $today = reviewTzUtc('2026-01-21 02:00');
+    $week = ReviewNextWeek::build($world, NextWeekCalories::planned());
+
+    $locked = array_map(fn ($day) => ReviewNextWeek::isPast($day->day->date, $today, $zone), $week->days);
+    $refused = array_map(function (int $index) use ($world, $today) {
+        try {
+            ReviewNextWeek::forSave($world, NextWeekCalories::planned(), null, [new CalorieMove($index, 6, 25)], today: $today);
+
+            return false;
+        } catch (WeekBuildRefusal $refusal) {
+            return $refusal->move?->reason === MoveRefusalReason::DayCompleted;
+        }
+    }, range(0, 5));
+
+    expect($locked)->toBe([true, false, false, false, false, false, false])
+        ->and($refused)->toBe(array_slice($locked, 0, 6))
+        ->and(ReviewNextWeek::isPast($week->days[1]->day->date, $today, new DateTimeZone('UTC')))->toBeTrue();
 });
