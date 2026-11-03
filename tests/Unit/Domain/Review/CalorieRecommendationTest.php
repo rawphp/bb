@@ -345,6 +345,16 @@ it('REV-046 losing faster than the band with high training fatigue goes back to 
         ->and($recommendation->changeKcal)->toBeGreaterThan(250);
 });
 
+it('REV-046 REV-024 a week faster than the target rate but inside the TBL-050 band stays on target', function () {
+    // -0.6% a week against -0.5% is inside the 0.15 band, so REV-046 does not apply, fatigue or not.
+    $weeks = F::weeks(4, 1800, false);
+    $weeks[3] = recMarked($weeks[3], fatigued: true);
+    $recommendation = (new CalorieScenario(weeks: $weeks, rates: [-0.5, -0.5, -0.5, -0.6]))->recommend();
+
+    expect($recommendation->reason)->toEqual(RecommendationReason::onTarget())
+        ->and($recommendation->kcal)->toEqualWithDelta(1800, 1e-9);
+});
+
 it('REV-046 REV-023 without high training fatigue the same week moves by at most 250 kcal', function () {
     $recommendation = recLosingFast(fatigued: false)->recommend();
 
