@@ -195,9 +195,23 @@ it('SAFE-001 Add a phase offers and opens on no cut while the user is trying to 
         ->and($payload['add_phase']['default_type'])->toBe('maintenance')
         ->and($empty['add_phase']['default_type'])->toBe('muscleGain')
         ->and(array_column($payload['prebuilt_plans'], 'refusal'))->toBe([
-            "Fat loss isn't available while you're trying to conceive or in fertility treatment. Pick Maintenance or Muscle gain.",
-            "Fat loss isn't available while you're trying to conceive or in fertility treatment. Pick Maintenance or Muscle gain.",
+            "This plan includes Fat loss, which isn't available while you're trying to conceive or in fertility treatment. Add a phase instead.",
+            "This plan includes Fat loss, which isn't available while you're trying to conceive or in fertility treatment. Add a phase instead.",
         ])
-        ->and(array_column(newPhases()['prebuilt_plans'], 'refusal'))->toBe([null, null])
+        ->and(array_column(PlanPayload::build(W::snapshot())->toArray()['prebuilt_plans'], 'refusal'))->toBe([null, null])
         ->and(array_column($trainingOnly['add_phase']['types'], 'type'))->toHaveCount(4);
+});
+
+it('PH-034 TBL-010 after a Maintenance shorter than 60% of the cut before it, a long cut next warns of all three', function () {
+    $due = transition(world: ['phases' => [
+        W::phase(W::CUT, 'fatLoss', '2026-08-31', '2026-10-12', -0.75),
+        W::phase(W::HOLD, 'maintenance', '2026-10-12', '2026-10-19', 0),
+    ]]);
+
+    // 17 weeks hold 3 diet-break deloads, so 14 count at 0.75%: 10.5%.
+    expect(array_column(collect(transitionOption($due, 'fatLoss')['lengths'])->firstWhere('weeks', 17)['warnings'], 'text'))->toBe([
+        'Maintenance was under 60% of the last fat-loss phase.',
+        'Fat loss over 12 weeks is a long diet. Consider a shorter phase.',
+        'This phase plans to lose more than 10% of your starting bodyweight.',
+    ]);
 });

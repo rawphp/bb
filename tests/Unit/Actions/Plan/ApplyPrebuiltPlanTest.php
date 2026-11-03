@@ -77,6 +77,6 @@ it('SAFE-001 PLAN-030 no prebuilt plan, each holding a Fat loss, is applied whil
     [$user] = PlanSeed::world();
     Profile::query()->where('user_id', $user->id)->update(['screening' => ['tryingToConceive']]);
 
-    expect(applyPrebuilt($user, 'muscleGain'))->toBe("Fat loss isn't available while you're trying to conceive or in fertility treatment. Pick Maintenance or Muscle gain.")
+    expect(applyPrebuilt($user, 'muscleGain'))->toBe("This plan includes Fat loss, which isn't available while you're trying to conceive or in fertility treatment. Add a phase instead.")
         ->and(Phase::query()->where('user_id', $user->id)->count())->toBe(3);
 });
