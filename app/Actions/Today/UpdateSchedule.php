@@ -112,8 +112,8 @@ final class UpdateSchedule
             'meal_count' => $input->meal_count,
         ], function (Profile $profile) use ($input, $weekday): void {
             // Read from the profile SaveProfile has locked, so a change saved meanwhile elsewhere is kept.
-            $profile->busy_periods = self::busyPeriods(TodaySnapshot::json($profile->busy_periods), $input->busy_periods, $weekday);
-            $profile->training_days = self::trainingDays(TodaySnapshot::json($profile->training_days), $input->training_start, $weekday);
+            $profile->fill(['busy_periods' => self::busyPeriods(TodaySnapshot::json($profile->busy_periods), $input->busy_periods, $weekday)]);
+            $profile->fill(['training_days' => self::trainingDays(TodaySnapshot::json($profile->training_days), $input->training_start, $weekday)]);
         });
 
         return ['toast' => null, 'dates' => $dates, 'week' => null, 'session' => null];

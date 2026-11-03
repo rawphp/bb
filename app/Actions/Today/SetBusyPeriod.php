@@ -44,7 +44,7 @@ final class SetBusyPeriod
 
         // The merge reads the profile SaveProfile has locked, so a period saved meanwhile elsewhere is kept.
         return ($this->save)($user, [], function (Profile $profile) use ($period): void {
-            $profile->busy_periods = self::upserted(TodaySnapshot::json($profile->busy_periods), $period);
+            $profile->fill(['busy_periods' => self::upserted(TodaySnapshot::json($profile->busy_periods), $period)]);
         });
     }
 
