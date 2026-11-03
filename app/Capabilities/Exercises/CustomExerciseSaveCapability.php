@@ -42,7 +42,7 @@ final class CustomExerciseSaveCapability implements HostCapability, OwnsInput
                         ExerciseReads::show($exercise->id),
                         ExerciseReads::history($exercise->id),
                         ...ExerciseReads::workouts($user, $exercise->id),
-                        ...ExerciseReads::names(),
+                        ...ExerciseReads::names($user),
                     ]),
                 ]);
             });
