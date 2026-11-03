@@ -99,8 +99,34 @@ describe('PaywallView', () => {
         expect(wrapper.get('[data-test="checkout"]').attributes('aria-busy')).toBe('true');
         expect(wrapper.findAll('[role="radio"]').every((row) => row.attributes('disabled') !== undefined)).toBe(true);
         expect(wrapper.emitted('busy')).toEqual([[true]]);
+    });
+
+    it('SUB-005 lets go of the plans when Back from Checkout brings the page back from the cache', async () => {
+        writeMock.mockResolvedValueOnce({ invalidates: [], url: 'https://checkout.stripe.com/c/pay/test' });
+        const wrapper = mount(PaywallView, { props: { payload: trial } });
+
         await wrapper.get('[data-test="checkout"]').trigger('click');
-        expect(writeMock).toHaveBeenCalledTimes(1);
+        await flushPromises();
+        expect(wrapper.get('[data-test="checkout"]').attributes('disabled')).toBeDefined();
+
+        window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }));
+        await flushPromises();
+
+        expect(wrapper.get('[data-test="checkout"]').attributes('disabled')).toBeUndefined();
+        expect(wrapper.emitted('busy')).toEqual([[true], [false]]);
+    });
+
+    it('SUB-002 selects nothing, and offers no button to pay, while the server\'s first choice has no price from Stripe', async () => {
+        writeMock.mockResolvedValueOnce({ invalidates: [], url: 'https://checkout.stripe.com/c/pay/monthly' });
+        const wrapper = mount(PaywallView, { props: { payload: { ...trial, plans: trial.plans.filter((plan) => plan.plan !== 'yearly') } } });
+
+        expect(wrapper.findAll('[role="radio"]').every((row) => row.attributes('aria-checked') === 'false')).toBe(true);
+        expect(wrapper.get('[data-test="checkout"]').attributes('disabled')).toBeDefined();
+        await plan(wrapper, 'Monthly').trigger('click');
+        await wrapper.get('[data-test="checkout"]').trigger('click');
+        await flushPromises();
+
+        expect(sent('billing_checkout_start')).toEqual({ plan: 'monthly' });
     });
 
     it('CAP-012 says why Checkout did not start and lets the user try again', async () => {
