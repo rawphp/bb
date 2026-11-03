@@ -5,7 +5,7 @@ import type { DayAdjustInput } from '@/contracts/day_adjust';
 import type { DayAdjustShowInput, DayAdjustShowOutput } from '@/contracts/day_adjust_show';
 import BottomSheet from '@/design/BottomSheet.vue';
 import PendingMark from '@/design/PendingMark.vue';
-import SegmentedPicker from './SegmentedPicker.vue';
+import SegmentedPicker from '@/design/SegmentedPicker.vue';
 import WarningLine from './WarningLine.vue';
 import { useSheet, useSheetRead, type SheetListeners } from './useSheet';
 
