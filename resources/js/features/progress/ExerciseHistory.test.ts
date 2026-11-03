@@ -266,6 +266,37 @@ describe('ExerciseHistoryView', () => {
         expect(wrapper.get('[data-more]').attributes('disabled')).toBeUndefined();
     });
 
+    it("EX-002 ignores an older page's refresh once Show older has put a newer read in its place", async () => {
+        let refresh!: (data: ExerciseHistoryShowOutput) => void;
+        let refreshOlder!: (data: ExerciseHistoryShowOutput) => void;
+        const again: ExerciseHistoryShowOutput = { ...older, sessions: [{ ...older.sessions[0]!, id: 'again', date_label: 'Wed, 3 Jun 2026' }] };
+        readMock
+            .mockImplementationOnce(async (_name, _input, onUpdate) => {
+                refresh = onUpdate as typeof refresh;
+                return paged;
+            })
+            .mockImplementationOnce(async (_name, _input, onUpdate) => {
+                refreshOlder = onUpdate as typeof refreshOlder;
+                return older;
+            })
+            .mockResolvedValueOnce(again);
+        const wrapper = mount(ExerciseHistoryView, { props: { exerciseId: '01JA000000000000000000EX01' } });
+        await flushPromises();
+        await wrapper.get('[data-more]').trigger('click');
+        await flushPromises();
+        refresh(paged);
+        await flushPromises();
+        await wrapper.get('[data-more]').trigger('click');
+        await flushPromises();
+
+        refreshOlder({ ...older, sessions: [{ ...older.sessions[0]!, date_label: 'Tue, 2 Jun 2026' }] });
+        await flushPromises();
+
+        expect(wrapper.findAll('[data-session]')).toHaveLength(3);
+        expect(wrapper.findAll('[data-session]').at(-1)!.text()).toContain('Wed, 3 Jun 2026');
+        expect(wrapper.text()).not.toContain('Tue, 2 Jun 2026');
+    });
+
     it('CAP-001 reads nothing for older sessions when it was given a payload and no exercise', async () => {
         const wrapper = mount(ExerciseHistoryView, { props: { payload: paged } });
 
