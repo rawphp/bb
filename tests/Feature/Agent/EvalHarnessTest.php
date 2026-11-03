@@ -35,7 +35,9 @@ it('AGT-050 the eval harness lets the Coach read on the way to the expected call
         ['content' => 'Logged.'],
     ];
 
-    Coach::says($user, 'I walked 9,000 steps today', calls: [$log], script: $readThenLog);
+    $read = Coach::says($user, 'I walked 9,000 steps today', calls: [$log], script: $readThenLog);
+    // The read went through, so the case passed with an accepted call nobody expected.
+    expect($read->call('today_show')['ok'])->toBeTrue();
 
     expect(fn () => Coach::says($user, 'I walked 9,000 steps today', calls: [$log], script: [$readThenLog[0], $readThenLog[2]]))
         ->toThrow(ExpectationFailedException::class, 'The Coach should call steps_log');
