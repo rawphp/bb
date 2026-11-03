@@ -27,10 +27,10 @@ final class SetMusclePriority
     public function __invoke(User $user, string $mesocycleId, MuscleGroup $muscle, ?Priority $priority): Mesocycle
     {
         return DB::transaction(function () use ($user, $mesocycleId, $muscle, $priority) {
-            // Two writes take turns, and the one that waited reads with locks so it sees what the other saved.
-            Mesocycle::query()->where('user_id', $user->id)->whereKey($mesocycleId)->lockForUpdate()->first();
-            $snapshot = TrainSnapshot::load($user, $mesocycleId, locked: true);
-            $mesocycle = $snapshot->mesocycle($mesocycleId);
+            // Two writes take turns, and the one that waited computes from the locked row: what the other saved.
+            $locked = Mesocycle::query()->where('user_id', $user->id)->whereKey($mesocycleId)->lockForUpdate()->first();
+            $snapshot = TrainSnapshot::load($user, $mesocycleId);
+            $mesocycle = $snapshot->lockedMesocycle($mesocycleId, $locked);
             $saved = $mesocycle->isSaved();
             if ($priority === null && ! $saved) {
                 throw new DomainException('A muscle can be set Off only once the mesocycle is running.');

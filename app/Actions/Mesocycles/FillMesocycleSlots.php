@@ -24,10 +24,10 @@ final class FillMesocycleSlots
     public function __invoke(User $user, string $mesocycleId): int
     {
         return DB::transaction(function () use ($user, $mesocycleId) {
-            // Two writes take turns, and the one that waited reads with locks so it sees what the other saved.
-            Mesocycle::query()->where('user_id', $user->id)->whereKey($mesocycleId)->lockForUpdate()->first();
-            $snapshot = TrainSnapshot::load($user, locked: true);
-            $draft = $snapshot->mesocycle($mesocycleId);
+            // Two writes take turns, and the one that waited computes from the locked row: what the other saved.
+            $locked = Mesocycle::query()->where('user_id', $user->id)->whereKey($mesocycleId)->lockForUpdate()->first();
+            $snapshot = TrainSnapshot::load($user);
+            $draft = $snapshot->lockedMesocycle($mesocycleId, $locked);
             if ($draft->isSaved()) {
                 throw (new ModelNotFoundException)->setModel(Mesocycle::class, [$mesocycleId]);
             }
