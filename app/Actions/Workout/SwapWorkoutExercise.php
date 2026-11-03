@@ -10,7 +10,6 @@ use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Workout\MesocycleDay;
-use App\Support\Workout\OpenWorkout;
 use App\Support\Workout\SessionBlocks;
 use Illuminate\Support\Facades\DB;
 
@@ -18,21 +17,22 @@ use Illuminate\Support\Facades\DB;
  * EX-008 (rp-clone swap): another exercise of the same muscle takes an exercise's place in a session under way. Sets
  * already logged or skipped stay on the exercise they were done on; the others move, keeping their ids and types, to
  * a block for the new exercise under the client's ULID (CAP-019), right after it, and take the new exercise's targets
- * (PROG-020). With nothing done the old block goes and the new one takes its place; with everything done nothing
- * moves. `$restOfMesocycle` also writes the swap to the day's slot from this week on. A replay of the ULID changes
- * nothing.
+ * at their places (PROG-020). With nothing done, an exercise with no sets too, the old block goes and the new one
+ * takes its place; with everything done nothing moves. `$restOfMesocycle` also writes the swap to the day's slot from
+ * this week on. A replay of the ULID changes nothing, also once the old block has gone.
  */
 final class SwapWorkoutExercise
 {
     public function __invoke(User $user, string $blockId, string $newBlockId, int $exerciseId, bool $restOfMesocycle): WorkoutSession
     {
         return DB::transaction(function () use ($user, $blockId, $newBlockId, $exerciseId, $restOfMesocycle) {
+            $newId = strtolower($newBlockId);
+            $made = SessionBlocks::made($user, $newId);
+            if ($made !== null) {
+                return WorkoutSession::query()->findOrFail($made->workout_session_id);
+            }
             $block = SessionBlocks::block($user, $blockId);
             $session = $block->session;
-            $newId = strtolower($newBlockId);
-            if (WorkoutExercise::query()->withTrashed()->where('user_id', $user->id)->whereKey($newId)->exists()) {
-                return $session;
-            }
             $exercise = Exercise::query()->visibleTo($user)->findOrFail($exerciseId);
             $old = $block->exercise;
             if ((int) $exercise->id === (int) $old->id) {
@@ -43,16 +43,17 @@ final class SwapWorkoutExercise
             }
             $snapshot = SessionBlocks::snapshot($user, $session);
 
-            $sets = $block->sets()->get()->values();
-            $undone = $sets->filter(fn (WorkoutSet $set) => ! $set->is_logged && ! $set->is_skipped);
-            if ($undone->isNotEmpty()) {
+            $sets = SessionBlocks::sets($block);
+            $done = array_filter($sets, fn (WorkoutSet $set) => $set->is_logged || $set->is_skipped);
+            $undone = array_filter($sets, fn (WorkoutSet $set) => ! $set->is_logged && ! $set->is_skipped);
+            if ($done === [] || $undone !== []) {
                 $blocks = SessionBlocks::blocks($session);
-                $index = (int) array_search($block->id, array_map(fn (WorkoutExercise $b) => $b->id, $blocks), true);
+                $index = SessionBlocks::indexOf($blocks, $block);
                 $new = (new WorkoutExercise(['workout_session_id' => $session->id, 'exercise_id' => $exercise->id, 'position' => $index + 1]))
                     ->forceFill(['id' => $newId, 'user_id' => $user->id]);
                 $new->save();
                 // Each set takes the target of its place among the exercise's sets (rp-clone plannedSets).
-                $planned = $snapshot->plannedLoads($exercise, $sets->count());
+                $planned = $sets === [] ? [] : $snapshot->plannedLoads($exercise, count($sets));
                 foreach ($undone as $place => $set) {
                     $load = $planned[$place] ?? null;
                     $set->update([
@@ -64,19 +65,19 @@ final class SwapWorkoutExercise
                         'actual_reps' => null,
                     ]);
                 }
-                if ($undone->count() === $sets->count()) {
+                if ($done === []) {
                     $block->delete();
                     array_splice($blocks, $index, 1, [$new]);
                 } else {
                     array_splice($blocks, $index + 1, 0, [$new]);
-                    OpenWorkout::renumber($block);
+                    SessionBlocks::renumber(array_values($done));
                 }
-                OpenWorkout::renumber($new);
+                SessionBlocks::renumber(array_values($undone));
                 SessionBlocks::renumber($blocks);
             }
 
             if ($restOfMesocycle) {
-                MesocycleDay::slots($snapshot->mesocycle, $snapshot->plan()->id, $snapshot->week, fn (array $slots) => DayEdits::swapping($slots, (int) $old->id, (int) $exercise->id));
+                MesocycleDay::slots($snapshot, fn (array $slots) => DayEdits::swapping($slots, (int) $old->id, (int) $exercise->id));
             }
 
             return $session;

@@ -6,8 +6,6 @@ use App\Actions\Today\RetargetableDay;
 use App\Domain\Progression\WorkoutStatus;
 use App\Domain\Retarget\MealRetarget;
 use App\Domain\Retarget\Retargeting;
-use App\Domain\Retarget\RetargetRefusal;
-use App\Domain\Retarget\RetargetRefused;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Today\DayPlans;
@@ -61,8 +59,10 @@ final class SkipWorkout
     }
 
     /**
-     * SCH-053 on `$date`, read before the session is saved skipped; null when there is nothing to re-target: a past
-     * day, a day with no meals or no targets yet, or one Today shows no session on.
+     * SCH-053 on `$date`, read before the session is saved skipped; null when there is nothing to re-target, and the
+     * skip goes through without it: a past day (its targets stay, as SCH-057's skip leaves them), a day with no meals
+     * planned, a user the re-target rule cannot work for yet (no eating window or weight), or a day Today shows no
+     * session on. Retargeting::skip refuses nothing else.
      *
      * @return ?array{RetargetableDay, MealRetarget}
      */
@@ -70,16 +70,10 @@ final class SkipWorkout
     {
         try {
             $day = RetargetableDay::load($user, $date);
+
+            return [$day, Retargeting::skip($day->day, $day->context)];
         } catch (DomainException) {
             return null;
-        }
-        try {
-            return [$day, Retargeting::skip($day->day, $day->context)];
-        } catch (RetargetRefused $refused) {
-            if ($refused->refusal === RetargetRefusal::NoSession) {
-                return null;
-            }
-            throw RetargetableDay::refused($refused);
         }
     }
 }

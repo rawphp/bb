@@ -30,7 +30,7 @@ final class ReorderWorkoutExercise
                     ? 'This session has one exercise, so it stays where it is.'
                     : "This session has {$count} exercises, so pick a place from 1 to {$count}.");
             }
-            $from = (int) array_search($block->id, array_map(fn (WorkoutExercise $b) => $b->id, $blocks), true);
+            $from = SessionBlocks::indexOf($blocks, $block);
             if ($from === $position - 1) {
                 return $session;
             }
@@ -41,7 +41,7 @@ final class ReorderWorkoutExercise
             if ($remainingWeeks) {
                 $snapshot = SessionBlocks::snapshot($user, $session);
                 $order = array_map(fn (WorkoutExercise $b) => (int) $b->exercise_id, $blocks);
-                MesocycleDay::slots($snapshot->mesocycle, $snapshot->plan()->id, $snapshot->week, fn (array $slots) => DayEdits::following($slots, $order));
+                MesocycleDay::slots($snapshot, fn (array $slots) => DayEdits::following($slots, $order));
             }
 
             return $session;

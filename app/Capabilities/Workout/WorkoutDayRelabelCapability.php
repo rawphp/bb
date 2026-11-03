@@ -6,8 +6,10 @@ use App\Actions\Workout\RelabelWorkoutDay;
 use App\Capabilities\HostCapability;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\WriteResult;
+use App\Capabilities\Today\TodayReads;
 use App\Capabilities\Workout\Data\WorkoutDayRelabelInput;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
 
@@ -26,7 +28,11 @@ final class WorkoutDayRelabelCapability implements HostCapability
                 $user = $context->user();
                 $session = ($this->relabel)($user, $input->workout_id, $input->label);
 
-                return new WriteResult(invalidates: WorkoutDayReads::keys($user, $session, 1));
+                return new WriteResult(invalidates: array_values(array_unique([
+                    ...WorkoutDayReads::keys($user, $session, 1),
+                    // Today's Add workout sheet names the next session that can move, by its day's label.
+                    ...TodayReads::keys([Carbon::now()->format('Y-m-d')]),
+                ])));
             });
     }
 }

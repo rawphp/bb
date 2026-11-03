@@ -6,26 +6,42 @@ use App\Models\Mesocycle;
 use App\Models\User;
 use App\Models\WorkoutExercise;
 use App\Models\WorkoutSession;
+use App\Models\WorkoutSet;
+use DomainException;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * The rows the session actions change (WO-022, WO-031, EX-008), in a session under way. The mesocycle row is locked
  * first, as every workout write that reads the whole session does ({@see WorkoutSnapshot::lockFor()}), so one structure
- * change runs at a time per mesocycle; then the exercise, through {@see OpenWorkout}, which refuses a session not under
- * way in plain words. Call it inside the write's transaction.
+ * change runs at a time per mesocycle. Every row after the lock is read with a lock: a plain read inside the
+ * transaction would see the first view it took, from before the lock (docs/architecture.md, Server). Call it inside the
+ * write's transaction.
  */
 final class SessionBlocks
 {
-    /** @throws ModelNotFoundException<WorkoutExercise> */
+    /**
+     * The user's exercise of a session under way, locked with its session. A session not started, finished or skipped
+     * refuses in plain words (rp-clone isReadOnly).
+     *
+     * @throws ModelNotFoundException<WorkoutExercise>
+     */
     public static function block(User $user, string $id): WorkoutExercise
     {
-        $found = WorkoutExercise::query()->where('user_id', $user->id)->whereKey($id)->firstOrFail();
-        $mesocycleId = $found->session?->mesocycle_id;
+        // The session's mesocycle never changes, so it is found before the lock.
+        $mesocycleId = WorkoutExercise::query()->where('user_id', $user->id)->whereKey($id)->first()?->session?->mesocycle_id;
         if ($mesocycleId !== null) {
             Mesocycle::query()->whereKey($mesocycleId)->lockForUpdate()->first();
         }
+        $block = WorkoutExercise::query()->where('user_id', $user->id)->whereKey($id)->lockForUpdate()->firstOrFail();
+        $session = WorkoutSession::query()->whereKey($block->workout_session_id)->lockForUpdate()->first()
+            ?? throw (new ModelNotFoundException)->setModel(WorkoutSession::class);
+        $refusal = $session->status()->refusal();
+        if ($refusal !== null) {
+            throw new DomainException($refusal);
+        }
 
-        return OpenWorkout::block($user, $id);
+        return $block->setRelation('session', $session);
     }
 
     /** @return list<WorkoutExercise> the session's exercises in order, locked */
@@ -34,12 +50,37 @@ final class SessionBlocks
         return WorkoutExercise::query()->where('workout_session_id', $session->id)->orderBy('position')->lockForUpdate()->get()->all();
     }
 
-    /** @param  list<WorkoutExercise>  $blocks  positions 1, 2, … in this order */
-    public static function renumber(array $blocks): void
+    /** @return list<WorkoutSet> the exercise's sets in order, locked */
+    public static function sets(WorkoutExercise $block): array
     {
-        foreach ($blocks as $index => $block) {
-            if ($block->position !== $index + 1) {
-                $block->update(['position' => $index + 1]);
+        return WorkoutSet::query()->where('workout_exercise_id', $block->id)->orderBy('position')->lockForUpdate()->get()->all();
+    }
+
+    /** The user's exercise under `$id`, removed ones too: a create's ULID is spent once used (CAP-019). */
+    public static function made(User $user, string $id): ?WorkoutExercise
+    {
+        return WorkoutExercise::query()->withTrashed()->where('user_id', $user->id)->whereKey(strtolower($id))->first();
+    }
+
+    /** @param  list<WorkoutExercise>  $blocks */
+    public static function indexOf(array $blocks, WorkoutExercise $block): int
+    {
+        foreach ($blocks as $index => $candidate) {
+            if ($candidate->is($block)) {
+                return $index;
+            }
+        }
+
+        throw (new ModelNotFoundException)->setModel(WorkoutExercise::class, [$block->id]);
+    }
+
+    /** @param  list<WorkoutExercise|WorkoutSet>  $rows  positions 1, 2, … in this order */
+    public static function renumber(array $rows): void
+    {
+        foreach ($rows as $index => $row) {
+            /** @var Model $row */
+            if ($row->getAttribute('position') !== $index + 1) {
+                $row->update(['position' => $index + 1]);
             }
         }
     }

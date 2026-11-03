@@ -32,7 +32,7 @@ final class AddWorkoutExercise
                 throw new DomainException((string) $refusal);
             }
             $id = strtolower($blockId);
-            if (WorkoutExercise::query()->withTrashed()->where('user_id', $user->id)->whereKey($id)->exists()) {
+            if (SessionBlocks::made($user, $id) !== null) {
                 return $session;
             }
             $exercise = Exercise::query()->visibleTo($user)->findOrFail($exerciseId);
@@ -58,9 +58,9 @@ final class AddWorkoutExercise
             }
 
             if ($remainingWeeks) {
-                MesocycleDay::slots($snapshot->mesocycle, $snapshot->plan()->id, $snapshot->week, fn (array $slots) => DayEdits::appending(
-                    $slots, (string) Str::uuid7(), (int) $exercise->id, $exercise->muscle_group->value,
-                ));
+                // One slot id wherever the day runs, so its sessions in every week plan the same slot.
+                $slotId = (string) Str::uuid7();
+                MesocycleDay::slots($snapshot, fn (array $slots) => DayEdits::appending($slots, $slotId, (int) $exercise->id, $exercise->muscle_group->value));
             }
 
             return $session;

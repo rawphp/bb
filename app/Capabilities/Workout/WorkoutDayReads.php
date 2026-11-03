@@ -2,15 +2,18 @@
 
 namespace App\Capabilities\Workout;
 
-use App\Capabilities\Support\ReadKey;
+use App\Models\Mesocycle;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Mesocycles\TrainSnapshot;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 
 /**
  * The reads a session action changes (CAP-011, CAP-017): the session's, as {@see WorkoutReads} names them, and, when
- * the change was written to the mesocycle's day (MESO-045, EX-008, WO-031), the workout_show of every session that
- * runs that day from `$fromWeek` on, as the plan numbers them (SCH-039).
+ * the change was written to the mesocycle's day (MESO-045, EX-008, WO-031), those of every session that runs that day
+ * from `$fromWeek` on, as the plan numbers them (SCH-039): its workout_show, and Today and the week strip of the day it
+ * shows on.
  */
 final class WorkoutDayReads
 {
@@ -22,14 +25,29 @@ final class WorkoutDayReads
     {
         $keys = WorkoutReads::keys($user, $session);
         if ($fromWeek !== null) {
-            $train = TrainSnapshot::load($user, (string) $session->mesocycle_id);
-            $mesocycle = $train->mesocycle((string) $session->mesocycle_id);
-            $domain = $train->domain($mesocycle);
+            $mesocycle = Mesocycle::query()->where('user_id', $user->id)->findOrFail($session->mesocycle_id);
+            $rows = WorkoutSession::query()->where('user_id', $user->id)->where('mesocycle_id', $mesocycle->id)->get();
+            // The rotation and the weeks as the plan runs them; slot names are not needed.
+            $domain = (new TrainSnapshot(
+                today: TrainSnapshot::day(CarbonImmutable::now()),
+                plan: null,
+                profile: null,
+                mesocycles: new Collection([$mesocycle]),
+                phases: new Collection,
+                sessions: new Collection,
+                sets: new Collection,
+                feedback: new Collection,
+                planWeeks: new Collection,
+                dayTargets: new Collection,
+                exercises: new Collection,
+            ))->domain($mesocycle);
             $dayId = $domain->sessionsInWeek($session->week - 1)[$session->day - 1]->id ?? null;
             for ($week = $fromWeek; $week <= (int) $mesocycle->weeks; $week++) {
                 foreach ($domain->sessionsInWeek($week - 1) as $index => $day) {
                     if ($day->id === $dayId) {
-                        $keys[] = ReadKey::for('workout_show', ['mesocycle_id' => (string) $session->mesocycle_id, 'week' => $week, 'day' => $index + 1]);
+                        $row = $rows->first(fn (WorkoutSession $row) => $row->week === $week && $row->day === $index + 1)
+                            ?? new WorkoutSession(['mesocycle_id' => $mesocycle->id, 'week' => $week, 'day' => $index + 1]);
+                        $keys = [...$keys, ...WorkoutReads::keys($user, $row)];
                     }
                 }
             }

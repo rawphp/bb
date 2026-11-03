@@ -42,7 +42,9 @@ final class ExerciseSwapCapability implements HostCapability, OwnsInput
     public function owned(User $user): array
     {
         return [
-            'workout_exercise_id' => WorkoutExercise::query()->where('user_id', $user->id),
+            // A swap sent again after it moved every set names the block it removed: still the user's, and the Action
+            // answers it from the new block.
+            'workout_exercise_id' => WorkoutExercise::query()->withTrashed()->where('user_id', $user->id),
             'exercise_id' => Exercise::query()->visibleTo($user),
         ];
     }

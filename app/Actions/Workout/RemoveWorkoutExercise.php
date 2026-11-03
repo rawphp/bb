@@ -15,7 +15,7 @@ final class RemoveWorkoutExercise
         return DB::transaction(function () use ($user, $blockId) {
             $block = SessionBlocks::block($user, $blockId);
             $session = $block->session;
-            foreach ($block->sets()->get() as $set) {
+            foreach (SessionBlocks::sets($block) as $set) {
                 $set->delete();
             }
             $block->delete();
