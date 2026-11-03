@@ -1,0 +1,25 @@
+{
+    "name": "Turkey chili",
+    "servings": 4,
+    "meal_type": null,
+    "steps": [
+        "Brown the turkey.",
+        "Add the beans and tomatoes and simmer."
+    ],
+    "items": [
+        {
+            "name": "lean ground turkey",
+            "grams": 500,
+            "food_id": "01JBX5F0000000000000000031",
+            "match_text": "Turkey, ground, 93% lean",
+            "detail": null
+        },
+        {
+            "name": "chili sauce",
+            "grams": 60,
+            "food_id": null,
+            "match_text": "No match",
+            "detail": null
+        }
+    ]
+}
