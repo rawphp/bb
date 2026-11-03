@@ -97,6 +97,19 @@ it('MEAL-060 SCH-034 copy_show matches its screen fixtures, copying a meal\'s fo
         ->and($day['shown_date'])->toBe('2026-09-24');
 });
 
+it('MEAL-060 copy_show shows a day in another week with that week\'s strip and meals', function () {
+    $user = copySeeded();
+
+    $sheet = copyOver($user, 'copy_show', ['meal_id' => copySeededMeal($user, '2026-09-23', 1), 'shown_date' => '2026-09-30'])
+        ->assertOk()
+        ->json('data');
+
+    expect(array_column($sheet['strip'], 'date'))->toBe(['2026-09-26', '2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02'])
+        ->and(array_column($sheet['strip'], 'enabled'))->toBe(array_fill(0, 7, true))
+        ->and(array_column($sheet['meals'], 'id'))->toBe(array_map(fn (int $i) => copySeededMeal($user, '2026-09-30', $i), [1, 2, 3]))
+        ->and($sheet['source']['foods_text'])->toBe('Oats 80 g');
+});
+
 it('MEAL-060 CAP-010 CAP-013 meal_copy copies, names the reads it changed, and its undo puts the meals back', function () {
     $user = copySeeded();
     $dinner = copySeededMeal($user, '2026-09-23', 3);
