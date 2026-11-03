@@ -5,6 +5,7 @@ import type { MealShowOutput } from '@/contracts/meal_show';
 import CopySheet from '@/features/copy/CopySheet.vue';
 import SavedMealPickerSheet from '@/features/saved-meals/SavedMealPickerSheet.vue';
 import ScanView from '@/features/scan/ScanView.vue';
+import CheckInButton from '@/features/today/CheckInButton.vue';
 import StatusPill from '@/design/StatusPill.vue';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import MealAmountSheet from './MealAmountSheet.vue';
@@ -14,7 +15,9 @@ import MealView from './MealView.vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 const back = vi.fn();
-vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back }) }));
+const replace = vi.fn();
+const route = { path: '/meals/01JBX5M0000000000000000003', query: {} as Record<string, string> };
+vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back, replace }), useRoute: () => route }));
 
 const readMock = vi.mocked(read);
 const writeMock = vi.mocked(writeNow);
@@ -26,7 +29,7 @@ const [chicken, rice, , oats] = content.entries;
 
 let wrapper: VueWrapper | undefined;
 
-function show(props: { payload?: MealShowOutput; mealId?: string; pending?: boolean } = {}): VueWrapper {
+function show(props: { payload?: MealShowOutput; mealId?: string; pending?: boolean; action?: string } = {}): VueWrapper {
     wrapper = mount(MealView, {
         props,
         attachTo: document.body,
@@ -80,6 +83,8 @@ describe('MealView', () => {
         readMock.mockReset().mockResolvedValue(content);
         writeMock.mockReset().mockResolvedValue({});
         back.mockReset();
+        replace.mockReset();
+        route.query = {};
     });
     afterEach(() => {
         wrapper?.unmount();
@@ -344,7 +349,7 @@ describe('MealView', () => {
     });
 
     describe('while a write is in flight', () => {
-        it('CAP-010 the rows, Rebalance, the tick and the menu are off, so a second tap sends nothing', async () => {
+        it('CAP-010 the rows, Rebalance, the check-in box and the menu are off, so a second tap sends nothing', async () => {
             writeMock.mockReset().mockReturnValue(new Promise(() => {}));
             const view = show({ payload: content });
 
@@ -624,19 +629,84 @@ describe('MealView', () => {
         });
     });
 
-    describe('check-in tick', () => {
-        it('MEAL-040 the tick inside the meal checks it in', async () => {
+    describe('opened with an action', () => {
+        it('MEAL-070 ?action=load_saved_meal opens the saved meal picker, once, and drops the action from the address', async () => {
+            route.query = { action: 'load_saved_meal' };
+            const view = show({ payload: content, action: 'load_saved_meal' });
+            await flushPromises();
+
+            expect(view.findComponent(SavedMealPickerSheet).props('open')).toBe(true);
+            expect(replace).toHaveBeenCalledWith({ path: route.path, query: {} });
+        });
+
+        it('MEAL-070 ?action=save_as_saved_meal opens the name sheet on the meal name', async () => {
+            show({ payload: content, action: 'save_as_saved_meal' });
+            await flushPromises();
+
+            expect(dialog()!.querySelector('h2')!.textContent).toBe('Save as saved meal');
+            expect(document.body.querySelector<HTMLInputElement>('[role="dialog"] input[name="saved-meal-name"]')!.value).toBe('Dinner');
+        });
+
+        it('MEAL-009 ?action=remove_foods removes the foods once the meal has loaded', async () => {
+            const view = show({ mealId: MEAL, action: 'remove_foods' });
+            expect(writeMock).not.toHaveBeenCalled();
+            await flushPromises();
+
+            expect(sent('meal_foods_clear')).toEqual({ meal_id: MEAL });
+            await view.get('[data-test="rebalance"]').trigger('click');
+            await flushPromises();
+            expect(writeMock.mock.calls.filter((call) => call[0] === 'meal_foods_clear')).toHaveLength(1);
+        });
+
+        it('MEAL-009 an action the server has off does nothing, and still leaves the address', async () => {
+            show({ payload: empty, action: 'remove_foods' });
+            await flushPromises();
+
+            expect(empty.menu.find((e) => e.item === 'remove_foods')!.is_enabled).toBe(false);
+            expect(writeMock).not.toHaveBeenCalled();
+            expect(replace).toHaveBeenCalled();
+        });
+
+        it('MEAL-009 ?action=edit_macros_time opens the meal only, as that screen is not in the app yet', async () => {
+            show({ payload: content, action: 'edit_macros_time' });
+            await flushPromises();
+
+            expect(writeMock).not.toHaveBeenCalled();
+            expect(dialog()).toBeNull();
+        });
+
+        it('MEAL-009 an unknown action does nothing', async () => {
+            show({ payload: content, action: 'delete_everything' });
+            await flushPromises();
+
+            expect(writeMock).not.toHaveBeenCalled();
+            expect(dialog()).toBeNull();
+        });
+
+        it('MEAL-009 Delete meal is not run from the address', async () => {
+            show({ payload: content, action: 'delete_meal' });
+            await flushPromises();
+
+            expect(dialog()).toBeNull();
+            expect(writeMock).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('check-in box', () => {
+        it('MEAL-040 the check-in box inside the meal checks it in', async () => {
             const view = show({ payload: content });
 
             const tick = view.get('[data-test="check"]');
-            expect(tick.attributes('aria-label')).toBe('Check in Dinner');
+            expect(view.findComponent(CheckInButton).exists()).toBe(true);
+            expect(tick.attributes('aria-label')).toBe('Dinner eaten');
+            expect(tick.attributes('aria-checked')).toBe('false');
             await tick.trigger('click');
             await flushPromises();
 
             expect(sent('meal_check_in')).toEqual({ meal_id: MEAL });
         });
 
-        it("MEAL-044 MEAL-047 on a checked-in meal the tick shows the server's state and removes the check-in", async () => {
+        it("MEAL-044 MEAL-047 on a checked-in meal the box shows the server's state and removes the check-in", async () => {
             const checked: MealShowOutput = {
                 ...content,
                 check_in: { state: 'under', text: 'Checked in under target', tone: 'warning' },
@@ -646,14 +716,16 @@ describe('MealView', () => {
 
             expect(view.get('[data-test="check-in-text"]').text()).toBe('Checked in under target');
             const tick = view.get('[data-test="check"]');
-            expect(tick.attributes('aria-label')).toBe('Remove check-in for Dinner');
+            expect(tick.attributes('aria-checked')).toBe('true');
+            expect(tick.attributes('aria-description')).toBe('Checked in under target');
+            expect(view.findComponent(CheckInButton).props('state')).toBe('under');
             await tick.trigger('click');
             await flushPromises();
 
             expect(sent('meal_check_in_undo')).toEqual({ meal_id: MEAL });
         });
 
-        it('MEAL-045 the tick is off when the menu offers no check-in, as on a badged meal', () => {
+        it('MEAL-045 the box is off when the menu offers no check-in, as on a badged meal', () => {
             const badged = { ...short, menu: short.menu.map((e) => (e.item === 'check_in_meal' ? { ...e, is_enabled: false } : e)) };
 
             expect(show({ payload: badged }).get<HTMLButtonElement>('[data-test="check"]').element.disabled).toBe(true);

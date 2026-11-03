@@ -23,4 +23,12 @@ describe('meal routes', () => {
         expect(router.currentRoute.value.meta.tab).toBe('nutrition');
         expect(read).toHaveBeenCalledWith('meal_show', { meal_id: '01JBX5M0000000000000000003' }, expect.any(Function), expect.any(Function));
     });
+
+    it("MEAL-070 /meals/:id?action= hands Today's menu item to the meal screen", async () => {
+        const router = createRouter({ history: createMemoryHistory(), routes });
+        await router.push('/meals/01JBX5M0000000000000000003?action=load_saved_meal');
+
+        const props = router.currentRoute.value.matched[0]!.props.default as (r: typeof router.currentRoute.value) => Record<string, unknown>;
+        expect(props(router.currentRoute.value)).toEqual({ mealId: '01JBX5M0000000000000000003', action: 'load_saved_meal' });
+    });
 });
