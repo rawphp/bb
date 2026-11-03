@@ -5,8 +5,10 @@ use App\Models\Food;
 use App\Models\FoodServing;
 use App\Models\MealPlanningState;
 use App\Models\PlannedFood;
+use App\Models\PlannedRecipe;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Tests\Support\ScreenFixture;
 use Tests\Support\TodaySeed;
 
@@ -107,4 +109,18 @@ it('MEAL-007 DAY-003 shows a meal still being planned that is short of carbs in 
         ->and($data['adjust_badge'])->toBe(['text' => 'Adjust foods', 'tone' => 'warning'])
         ->and($data['hints'])->toBe([['text' => 'Short 128 g carbs. Add a food from Carbs · Recommended.', 'group' => 'carbs_recommended']])
         ->and(array_column($data['menu'], 'is_enabled', 'item')['check_in_meal'])->toBeFalse();
+});
+
+it('CAP-019 MEAL-001 RCP-002 gives a food entry and a recipe entry the row\'s own ULID, with no kind prefix', function () {
+    $user = mealShowUser();
+    $dinner = mealShowIds($user, '2026-09-23')[2];
+    $food = PlannedFood::factory()->create(['meal_id' => $dinner, 'food_id' => mealShowChicken()->getKey(), 'position' => 5]);
+    $recipe = PlannedRecipe::query()->where('meal_id', $dinner)->firstOrFail();
+
+    $entries = collect($this->actingAs($user)->postJson('/capabilities/meal_show', ['meal_id' => $dinner])->assertOk()->json('data.entries'))->keyBy('kind');
+
+    expect(Str::isUlid($food->getKey()))->toBeTrue()
+        ->and($entries['food']['id'])->toBe($food->getKey())
+        ->and($entries['recipe']['id'])->toBe($recipe->getKey())
+        ->and(Str::isUlid($entries['recipe']['id']))->toBeTrue();
 });

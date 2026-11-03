@@ -5,16 +5,21 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\PlannedFoodFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** A food planned in a meal (MEAL-001 to MEAL-008, FOOD-009). */
-#[Fillable(['user_id', 'meal_id', 'food_id', 'position', 'grams', 'is_cooked', 'is_locked', 'unit'])]
+/**
+ * A food planned in a meal (MEAL-001 to MEAL-008, FOOD-009). Keyed by a ULID, so the outbox can create one offline (CAP-019).
+ *
+ * @property string $id
+ */
+#[Fillable(['id', 'user_id', 'meal_id', 'food_id', 'position', 'grams', 'is_cooked', 'is_locked', 'unit'])]
 class PlannedFood extends Model
 {
     /** @use HasFactory<PlannedFoodFactory> */
-    use BelongsToUser, HasFactory;
+    use BelongsToUser, HasFactory, HasUlids;
 
     protected $table = 'planned_foods';
 
