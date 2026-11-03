@@ -231,6 +231,34 @@ it('REV-041 high training fatigue recommends Drop fatigue, in the spec\'s words'
         ->and(rvSelected($calories))->toBe(['drop_fatigue']);
 });
 
+it('REV-041 an answer taken literally: the recommendation chosen over the recommended Drop fatigue stays chosen', function () {
+    $fatigued = fn (ReviewSeed $seed) => $seed->muscleFeedback = ReviewSeed::highFatigue(ReviewSeed::sessionKey(1));
+    $unanswered = rvCalories($fatigued, ReviewAnswers::defaults());
+    $chosen = rvCalories($fatigued, new ReviewAnswers('recommendation', null, null, false, [], null));
+
+    expect(rvSelected($unanswered))->toBe(['drop_fatigue'])
+        ->and(rvSelected($chosen))->toBe(['recommendation'])
+        ->and(rvRecommended($chosen))->toBe(['drop_fatigue'])
+        ->and($chosen['deload'])->toBeNull();
+});
+
+it('REV-041 REV-050 accepting the step plan does not change which option is selected', function () {
+    $world = function (ReviewSeed $seed) {
+        $seed->muscleFeedback = ReviewSeed::highFatigue(ReviewSeed::sessionKey(1));
+        $seed->steps = array_combine(
+            array_map(fn (int $offset) => ReviewSeed::day($offset), range(-7, -1)),
+            array_fill(0, 7, 10000),
+        );
+    };
+    $dropFatigue = rvCalories($world, new ReviewAnswers('drop_fatigue', null, null, true, [], null));
+    $recommendation = rvCalories($world, new ReviewAnswers('recommendation', null, null, true, [], null));
+
+    expect(rvSelected($dropFatigue))->toBe(['drop_fatigue'])
+        ->and($dropFatigue['step_offer']['accepted'])->toBeTrue()
+        ->and(rvSelected($recommendation))->toBe(['recommendation'])
+        ->and($recommendation['step_offer']['accepted'])->toBeTrue();
+});
+
 it('REV-042 six weeks without a break suggests Drop fatigue without other signs', function () {
     $calories = rvCalories(function (ReviewSeed $seed) {
         $seed->weeksFinished = 6;

@@ -111,6 +111,15 @@ it('REV-011 Drop fatigue builds next week at maintenance, above the cut', functi
     expect(array_sum(rvDayKcal($preview)) / 7)->toBeGreaterThan(2400);
 });
 
+it('REV-041 the preview is built at the option answered, not at the recommended Drop fatigue', function () {
+    $fatigued = fn (ReviewSeed $seed) => $seed->muscleFeedback = ReviewSeed::highFatigue(ReviewSeed::sessionKey(1));
+    $unanswered = rvPreview($fatigued);
+    $chosen = rvPreview($fatigued, rvWith('recommendation'));
+
+    expect(array_sum(rvDayKcal($unanswered)) / 7)->toBeGreaterThan(2400)
+        ->and(array_sum(rvDayKcal($chosen)))->toBeGreaterThan(7 * 2399)->toBeLessThan(7 * 2401);
+});
+
 it('REV-002 Repeat this week builds the week that ended again', function () {
     $preview = rvPreview(answers: rvWith('repeat_this_week'));
 
