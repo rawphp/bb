@@ -139,7 +139,7 @@ final class CopyPayload
 
             return new CopyStripDay(
                 date: $day->format('Y-m-d'),
-                letter: WeekPayload::LETTERS[(int) $day->format('N')],
+                letter: $day->format('D')[0],
                 number: $day->format('j'),
                 calories_text: $target === null ? '–' : (string) (int) round($target->kcal),
                 is_today: $day == $snapshot->today(),
