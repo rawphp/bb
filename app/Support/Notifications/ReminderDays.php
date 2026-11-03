@@ -93,7 +93,7 @@ final class ReminderDays
                 ->whereIn('kind', [ReminderKind::WeeklyReview->value, ReminderKind::NextMesocycle->value])->where('on', false)
                 ->groupBy('user_id')->havingRaw('count(*) = 2')->pluck('user_id')->all();
             $starting = Plan::query()->whereIn('user_id', $userIds)
-                ->where(fn ($query) => $query->where('review_weekday', (int) $at->format('N'))->orWhereDate('start_date', $date))
+                ->where(fn ($query) => $query->where('review_weekday', (int) $at->format('N'))->orWhereDate('start_date', $date)->orWhereHas('reviewDayChanges'))
                 ->pluck('user_id');
             foreach ($starting as $id) {
                 if (! in_array($id, $done, true) && ! in_array($id, $off, true)) {
@@ -173,8 +173,8 @@ final class ReminderDays
             weighIn: self::weighIn($snapshot, $weekday),
             meals: array_map(fn (TodayMealItem $meal) => new ReminderMeal($meal->id, $meal->name, $meal->time, $meal->isChecked()), $snapshot->meals($day)),
             workout: $workout === null ? null : new ReminderWorkout($workout->session->name, $workout->time, $workout->state !== TodayWorkoutItem::PLANNED),
-            // NOTIF-004: a review day, but not before one full plan week has passed since the plan start.
-            hasWeeklyReview: $weekday === (int) $snapshot->train->plan?->review_weekday && $start->diff($day)->days >= 7,
+            // NOTIF-004: the first day of a plan week, but not before one full plan week has passed since the plan start.
+            hasWeeklyReview: ($snapshot->train->grid()?->isBoundary($day) ?? false) && $start->diff($day)->days >= 7,
             // NOTIF-005: MESO-060 prompts from the first day of the deload week.
             startsDeloadWeek: $snapshot->isDeload($day) && ! $snapshot->isDeload($day->modify('-1 day')),
         );

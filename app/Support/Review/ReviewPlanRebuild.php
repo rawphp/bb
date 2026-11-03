@@ -57,6 +57,7 @@ final class ReviewPlanRebuild
             start: TrainSnapshot::day($record->start_date),
             reviewWeekday: PlanWeekDays::calendarWeekdayFromIso($record->review_weekday),
             phases: $phases->map(fn (Phase $phase) => PlanSnapshot::domainPhase($phase))->values()->all(),
+            reviewDayChanges: $record->domainReviewDayChanges(),
         );
     }
 

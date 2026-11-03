@@ -51,7 +51,7 @@ final class WorkoutReads
         return self::keysIn(TrainSnapshot::calendarOnly(
             UserDay::today($user),
             new Collection([$mesocycle]),
-            Plan::query()->where('user_id', $user->id)->first(),
+            Plan::query()->where('user_id', $user->id)->with('reviewDayChanges')->first(),
             Profile::query()->where('user_id', $user->id)->first(),
             UserDay::zone($user),
         ), $mesocycle, $session, $planWeek);

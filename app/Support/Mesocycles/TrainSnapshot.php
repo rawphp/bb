@@ -106,7 +106,7 @@ final class TrainSnapshot
     {
         $base = new self(
             today: UserDay::today($user),
-            plan: self::read(Plan::query()->where('user_id', $user->id), $locked)->first(),
+            plan: self::read(Plan::query()->where('user_id', $user->id)->with('reviewDayChanges'), $locked)->first(),
             profile: self::read(Profile::query()->where('user_id', $user->id), $locked)->first(),
             mesocycles: self::read(Mesocycle::query()->where('user_id', $user->id), $locked)->get(),
             phases: self::read(Phase::query()->where('user_id', $user->id)->orderBy('start_date'), $locked)->get(),
@@ -447,13 +447,25 @@ final class TrainSnapshot
         return $this->plan === null ? null : new PlanWeekGrid(
             self::day($this->plan->start_date),
             PlanWeekDays::calendarWeekdayFromIso($this->plan->review_weekday),
+            $this->plan->domainReviewDayChanges(),
         );
     }
 
-    /** The ISO weekday plan weeks start on; without a plan, that of the grid given. */
+    /**
+     * The ISO weekday plan weeks start on today: that of the latest review-day change from today or before (PLAN-008),
+     * else the plan's; without a plan, that of the grid given.
+     */
     public function reviewIsoWeekday(PlanWeekGrid $grid): int
     {
-        return $this->plan->review_weekday ?? PlanWeekDays::isoWeekdayFromCalendar($grid->reviewWeekday());
+        $today = $this->today->format('Y-m-d');
+        $weekday = null;
+        foreach ($this->plan->reviewDayChanges ?? [] as $change) {
+            if ($change->effective_on->format('Y-m-d') <= $today) {
+                $weekday = $change->review_weekday;
+            }
+        }
+
+        return $weekday ?? $this->plan->review_weekday ?? PlanWeekDays::isoWeekdayFromCalendar($grid->reviewWeekday());
     }
 
     /** MESO-004: today when it begins a plan week, otherwise the next plan week's first day. */

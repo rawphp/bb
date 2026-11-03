@@ -112,7 +112,7 @@ final class TodaySnapshot
     private static function read(User $user, ?string $date, bool $wholeDay): self
     {
         $today = UserDay::today($user);
-        $plan = Plan::query()->where('user_id', $user->id)->first();
+        $plan = Plan::query()->where('user_id', $user->id)->with('reviewDayChanges')->first();
         $profile = Profile::query()->where('user_id', $user->id)->first();
         $mesocycles = Mesocycle::query()->where('user_id', $user->id)->get();
         $phases = Phase::query()->where('user_id', $user->id)->orderBy('start_date')->get();
@@ -218,12 +218,19 @@ final class TodaySnapshot
     /** PLAN-008: the first day of the 7 days around `$day`, from the plan's review weekday (Monday without a plan). */
     public function weekStart(DateTimeImmutable $day): DateTimeImmutable
     {
-        return self::weekStartFor($this->train->plan, $day);
+        return self::weekStartFor($this->train, $day);
     }
 
-    private static function weekStartFor(?Plan $plan, DateTimeImmutable $day): DateTimeImmutable
+    /** From plan week 1 the plan's grid says, with its review-day changes; before that, the plan's review weekday. */
+    private static function weekStartFor(TrainSnapshot $train, DateTimeImmutable $day): DateTimeImmutable
     {
-        $back = ((int) $day->format('N') - ($plan->review_weekday ?? 1) + 7) % 7;
+        $grid = $train->grid();
+        $week = $grid?->weekIndexContaining($day);
+        if ($grid !== null && $week !== null && $week >= 1) {
+            return $grid->start($week);
+        }
+
+        $back = ((int) $day->format('N') - ($train->plan->review_weekday ?? 1) + 7) % 7;
 
         return $day->modify("-{$back} days");
     }

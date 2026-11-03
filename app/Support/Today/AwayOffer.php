@@ -49,6 +49,7 @@ final class AwayOffer
             start: PlanSnapshot::day($plan->start_date),
             reviewWeekday: PlanWeekDays::calendarWeekdayFromIso($plan->review_weekday),
             phases: $phases->map(fn (Phase $phase) => PlanSnapshot::domainPhase($phase))->values()->all(),
+            reviewDayChanges: $plan->domainReviewDayChanges(),
         );
         $grid = PlanWeekGrid::forPlan($domain);
         $rows = [];
