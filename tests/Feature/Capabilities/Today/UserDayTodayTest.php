@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Today\PlannedSession;
 use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Today\TodayReads;
 use App\Models\DayTarget;
@@ -237,4 +238,30 @@ it('SET-012 finishing a session started this local morning re-targets that day\'
 
     expect($finish['toast'])->toContain('Meals updated for your 7:30 AM workout')
         ->and($finish['invalidates'])->toContain(ReadKey::for('today_show', ['date' => '2026-09-21']));
+});
+
+it('SET-012 a session started this local morning is refused as started, not as missing, when re-timed', function () {
+    // Friday 07:58 in Brisbane is Thursday in UTC: Today must find the session on Friday to know it has started.
+    Carbon::setTestNow('2026-10-08 21:58:00');
+    $user = zonedTodayUser('Australia/Brisbane');
+    $friday = test()->actingAs($user)->postJson('/capabilities/today_show')->assertOk()->json('data.workouts.0');
+    test()->actingAs($user)->postJson('/capabilities/workout_start', ['workout_id' => WorkoutIds::workout($friday['mesocycle_id'], $friday['week'], $friday['day'])], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertOk();
+
+    test()->actingAs($user)->postJson('/capabilities/workout_time_set', ['mesocycle_id' => $friday['mesocycle_id'], 'week' => $friday['week'], 'day' => $friday['day'], 'time' => '18:00'], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertStatus(422)
+        ->assertJsonPath('error.message', PlannedSession::LOCKED);
+});
+
+it('SET-012 a plan-week write refreshes Today from the user\'s local today on, for a user behind UTC', function () {
+    // Wednesday 21:00 in New York is Thursday in UTC. Relabelling Friday's session names Today for every day left in
+    // the plan week, and Wednesday is one of them.
+    Carbon::setTestNow('2026-10-08 01:00:00');
+    $user = zonedTodayUser('America/New_York');
+    $friday = test()->actingAs($user)->postJson('/capabilities/today_show', ['date' => '2026-10-09'])->assertOk()->json('data.workouts.0');
+
+    $invalidates = test()->actingAs($user)->postJson('/capabilities/workout_day_relabel', ['workout_id' => WorkoutIds::workout($friday['mesocycle_id'], $friday['week'], $friday['day']), 'label' => 'Upper C'], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertOk()->json('data.invalidates');
+
+    expect($invalidates)->toContain(ReadKey::for('today_show', ['date' => '2026-10-07']));
 });
