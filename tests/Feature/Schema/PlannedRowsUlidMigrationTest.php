@@ -78,6 +78,8 @@ it('CAP-019 gives every planned food and recipe row a ULID key and keeps the res
             ->and(DB::table('undo_tokens')->where('id', $otherToken)->exists())->toBeTrue();
 
         // An undo of a deleted token answers as an unknown or expired one does: not found (404).
+        // The DDL above ended the test's transaction on the server, and undo's own transaction needs one to nest in.
+        DB::unprepared('START TRANSACTION');
         expect(fn () => (new ApplyUndo)($user, $foodToken))->toThrow(ModelNotFoundException::class);
     } finally {
         $this->warpRecycleDatabase();

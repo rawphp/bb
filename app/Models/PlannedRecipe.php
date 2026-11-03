@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\BelongsToUser;
 use Database\Factories\PlannedRecipeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PlannedRecipe extends Model
 {
     /** @use HasFactory<PlannedRecipeFactory> */
-    use BelongsToUser, HasFactory;
+    use BelongsToUser, HasFactory, HasUlids;
 
     /** @return BelongsTo<DayTargetMeal, $this> */
     public function meal(): BelongsTo
