@@ -1,6 +1,6 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, writeNow } from '@/app/call';
+import { CapabilityError, read, readFresh, writeNow } from '@/app/call';
 import type { ExerciseShowOutput } from '@/contracts/exercise_show';
 import type { ExercisesShowOutput } from '@/contracts/exercises_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
@@ -10,6 +10,7 @@ import ExerciseView from './ExerciseView.vue';
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
 
 const readMock = vi.mocked(read);
+const readFreshMock = vi.mocked(readFresh);
 const writeMock = vi.mocked(writeNow);
 const bench = screenFixture<ExerciseShowOutput>('exercise_show');
 const landmine = screenFixture<ExerciseShowOutput>('exercise_show.empty');
@@ -24,6 +25,14 @@ function show(props: { exerciseId?: string; payload?: ExerciseShowOutput; pendin
 
 function card(view: VueWrapper, name: string) {
     return view.get(`[data-card="${name}"]`);
+}
+
+function noteValue(view: VueWrapper): string {
+    return (view.get('textarea[aria-label="Pinned note"]').element as HTMLTextAreaElement).value;
+}
+
+function stepValue(view: VueWrapper): string {
+    return (view.get('input[aria-label="Load step in kg"]').element as HTMLInputElement).value;
 }
 
 async function openHistory(view: VueWrapper): Promise<void> {
@@ -214,6 +223,64 @@ describe('ExerciseView', () => {
         await flushPromises();
 
         expect(view.get('[role="alert"]').text()).toContain('The step must be at least 0.25.');
+        expect(stepValue(view)).toBe('0.1');
+    });
+
+    it('CAP-014 a note save with no final answer keeps the typed note while the screen reads the server again', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('exercise_note_set', 502, null));
+        readFreshMock.mockResolvedValue({ ...bench, pinned_note: 'Changed elsewhere.' });
+        const view = show({ payload: bench });
+
+        await view.get('textarea[aria-label="Pinned note"]').setValue('Typed here');
+        await view.get('[data-note-save]').trigger('click');
+        await flushPromises();
+
+        expect(readFreshMock).toHaveBeenCalledWith('exercise_show', { exercise_id: bench.id });
+        expect(view.get('[role="alert"]').text()).toContain('may have worked');
+        expect(noteValue(view)).toBe('Typed here');
+    });
+
+    it('EX-012 after a load step save the field shows the server\'s step', async () => {
+        readMock.mockReset().mockResolvedValue({ ...bench, load_step: { ...bench.load_step!, step: { value: 4.5, unit: 'kg', text: '4.5 kg' } } });
+        const view = show({ payload: bench });
+
+        await view.get('input[aria-label="Load step in kg"]').setValue('4,5');
+        await view.get('[data-step-save]').trigger('click');
+        await flushPromises();
+
+        expect(stepValue(view)).toBe('4.5');
+    });
+
+    it('EX-010 EX-012 every read fills the fields the user has not touched, not just the first', async () => {
+        const withStep = (value: number) => ({ value, unit: 'kg', text: `${value} kg` });
+        readMock
+            .mockReset()
+            .mockResolvedValueOnce({ ...bench, pinned_note: 'Second', load_step: { ...bench.load_step!, step: withStep(5) } })
+            .mockResolvedValueOnce({ ...bench, pinned_note: 'Third', load_step: { ...bench.load_step!, step: withStep(7.5) } });
+        const view = show({ payload: bench });
+
+        await view.get('input[aria-label="Load step in kg"]').setValue('5');
+        await view.get('[data-step-save]').trigger('click');
+        await flushPromises();
+        expect(noteValue(view)).toBe('Second');
+        await view.get('textarea[aria-label="Pinned note"]').setValue('Third');
+        await view.get('[data-note-save]').trigger('click');
+        await flushPromises();
+
+        expect(noteValue(view)).toBe('Third');
+        expect(stepValue(view)).toBe('7.5');
+    });
+
+    it('EX-010 EX-012 what was typed on Detail stays after a look at History', async () => {
+        const view = show({ payload: bench });
+
+        await view.get('textarea[aria-label="Pinned note"]').setValue('Typed, not saved');
+        await view.get('input[aria-label="Load step in kg"]').setValue('3');
+        await openHistory(view);
+        await view.findAll('[role="tab"]').find((t) => t.text() === 'Detail')!.trigger('click');
+
+        expect(noteValue(view)).toBe('Typed, not saved');
+        expect(stepValue(view)).toBe('3');
     });
 
     it('EX-002 the History tab lists every session by date with its sets and the best e1RM marked', async () => {
@@ -226,7 +293,7 @@ describe('ExerciseView', () => {
         expect(sessions[0]!.findAll('[data-set]').map((s) => s.get('span').text())).toEqual(['82.5 kg × 9', '82.5 kg × 8', '80.0 kg × 10']);
         expect(sessions[0]!.findAll('[data-set]').map((s) => s.text().includes('Best e1RM'))).toEqual([true, false, false]);
         expect(sessions[0]!.text()).toContain('Best e1RM 107.2 kg');
-        expect(view.find('textarea').exists()).toBe(false);
+        expect(view.get('textarea').isVisible()).toBe(false);
     });
 
     it('EX-002 the History tab says when no session is logged yet', async () => {
