@@ -25,7 +25,11 @@ use Illuminate\Support\Facades\DB;
  * MEAL-060: copies each pair's source meal into its destination meal, as {@see CopyPlanner} decides, replacing the
  * destination's planned foods and recipe servings. Every row is removed and created through its model, and the meal
  * times through the day's target, in one transaction. Meals that are not the user's, or whose day is gone, are left out,
- * and so is a destination on a day outside the user's plan ({@see self::inPlan()}).
+ * and so is a destination on a day outside the user's plan ({@see self::inPlan()}). The meals, their check-ins, planned
+ * foods and recipe servings are read under their rows' lock in that transaction, and the copy is planned from them, so
+ * a check-in or a food added meanwhile waits for the copy to commit or is seen by it: a destination checked in since
+ * the Copy sheet opened is skipped, never overwritten. The locked reads are current reads, so this holds inside
+ * UndoLog's transaction too.
  */
 final class CopyMeals
 {
@@ -39,29 +43,37 @@ final class CopyMeals
     {
         // DayTarget stores meal ids lowercased; a client may send a ULID in capitals.
         $pairs = array_map(fn (array $pair) => [strtolower($pair[0]), strtolower($pair[1])], $pairs);
-        $rows = DayTargetMeal::query()->liveOf($user)
-            ->whereIn('id', array_values(array_unique(array_merge([], ...$pairs))))
-            ->with(['dayTarget', 'plannedFoods.food', 'plannedRecipes.sourceRecipe.ingredients.food', 'checkIn'])
-            ->get()
-            ->keyBy(fn (DayTargetMeal $meal) => strtolower((string) $meal->id));
-        $meals = $rows->map(fn (DayTargetMeal $meal) => self::meal($meal));
-        $date = fn (DayTargetMeal $meal): string => DayPlans::day($meal->dayTarget->date)->format('Y-m-d');
-        $inPlan = self::inPlan($user, array_values(array_unique($rows->map($date)->all())));
-        $takes = fn (string $id): bool => $rows->has($id) && in_array($date($rows[$id]), $inPlan, true);
 
-        $writes = $this->planner->writes(array_values(array_filter(array_map(
-            fn (array $pair) => $meals->has($pair[0]) && $takes($pair[1]) ? ['source' => $meals[$pair[0]], 'destination' => $meals[$pair[1]]] : null,
-            $pairs,
-        ))), $options);
+        return DB::transaction(function () use ($user, $pairs, $options): array {
+            $locked = fn ($query) => $query->lockForUpdate();
+            $rows = DayTargetMeal::query()->liveOf($user)
+                ->whereIn('id', array_values(array_unique(array_merge([], ...$pairs))))
+                ->with([
+                    'dayTarget',
+                    'plannedFoods' => $locked, 'plannedFoods.food',
+                    'plannedRecipes' => $locked, 'plannedRecipes.sourceRecipe.ingredients.food',
+                    'checkIn' => $locked,
+                ])
+                ->lockForUpdate()
+                ->get()
+                ->keyBy(fn (DayTargetMeal $meal) => strtolower((string) $meal->id));
+            $meals = $rows->map(fn (DayTargetMeal $meal) => self::meal($meal));
+            $date = fn (DayTargetMeal $meal): string => DayPlans::day($meal->dayTarget->date)->format('Y-m-d');
+            $inPlan = self::inPlan($user, array_values(array_unique($rows->map($date)->all())));
+            $takes = fn (string $id): bool => $rows->has($id) && in_array($date($rows[$id]), $inPlan, true);
 
-        DB::transaction(function () use ($user, $rows, $writes) {
+            $writes = $this->planner->writes(array_values(array_filter(array_map(
+                fn (array $pair) => $meals->has($pair[0]) && $takes($pair[1]) ? ['source' => $meals[$pair[0]], 'destination' => $meals[$pair[1]]] : null,
+                $pairs,
+            ))), $options);
+
             foreach ($writes as $write) {
                 $this->replace($user, $rows[$write->sourceId], $rows[$write->destinationId], $write);
             }
             $this->retime($rows, $writes);
-        });
 
-        return array_map(fn (CopyWrite $write) => $rows[$write->destinationId], $writes);
+            return array_map(fn (CopyWrite $write) => $rows[$write->destinationId], $writes);
+        });
     }
 
     /**
