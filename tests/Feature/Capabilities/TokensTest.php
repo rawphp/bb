@@ -76,14 +76,15 @@ it('CAP-021 creates a token that is shown once and lists it without its secret',
     assertMatchesScreenFixture('token_list', $list->json('data'));
 });
 
-it('CAP-021 gives a Read only token every read and no write', function () {
+it('CAP-021 CAP-031 gives a Read only token every read but the exclusions, and no write', function () {
     createToken(User::factory()->create(), 'read_only');
 
     $registry = app(CapabilityRegistry::class);
-    $reads = array_keys(array_filter($registry->all(), fn ($definition) => $definition->readOnly));
+    $reads = array_keys(array_filter($registry->all(), fn ($definition, $name) => $definition->readOnly && Exclusions::reason($name) === null, ARRAY_FILTER_USE_BOTH));
     sort($reads);
 
-    expect(PersonalAccessToken::query()->findOrFail(TOKEN_ID)->abilities)->toBe($reads)->toContain('account_show', 'token_list');
+    expect(PersonalAccessToken::query()->findOrFail(TOKEN_ID)->abilities)->toBe($reads)->toContain('account_show', 'token_list')
+        ->not->toContain('coach_changes_list');
 });
 
 it('CAP-023 stores each scope as capability names', function (string $scope, array $picked, array $abilities) {
