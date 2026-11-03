@@ -8,5 +8,6 @@ final class ExerciseHistoryShowInput extends CapabilityData
 {
     public function __construct(
         public readonly string $exercise_id,
+        public readonly ?string $before = null,
     ) {}
 }

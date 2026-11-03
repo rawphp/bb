@@ -110,3 +110,22 @@ it('ANA-009 dates a session by its actual start, else its planned start, and put
 it('EX-002 an exercise never trained has an empty history', function () {
     expect(history([])['sessions'])->toBe([]);
 });
+
+it('EX-002 orders sessions of the same date by id, the greater id first, whatever order their sets come in', function () {
+    $at = '2026-10-12 09:00:00';
+    $payload = history([
+        historySet('s1', historySession('a', $at), 50.0, 5),
+        historySet('s2', historySession('c', null), 50.0, 5),
+        historySet('s3', historySession('b', $at), 50.0, 5),
+        historySet('s4', historySession('d', null), 50.0, 5),
+    ]);
+
+    expect(array_column($payload['sessions'], 'id'))->toBe(['b', 'a', 'd', 'c']);
+});
+
+it('EX-002 passes on the id to read older sessions with, and has none by default', function () {
+    $bench = (new Exercise)->forceFill(['id' => 12, 'name' => 'Bench Press', 'muscle_group' => 'chest']);
+
+    expect(ExerciseHistoryPayload::build($bench, new Collection(benchSets()), WeightUnit::Kg, 'a1')->toArray()['next_before'])->toBe('a1')
+        ->and(history(benchSets())['next_before'])->toBeNull();
+});
