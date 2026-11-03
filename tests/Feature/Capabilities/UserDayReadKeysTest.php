@@ -22,7 +22,7 @@ use Tests\Support\TrainSeed;
 
 afterEach(fn () => Carbon::setTestNow());
 
-function zoned(User $user, string $zone): User
+function userDayReadKeysUser(User $user, string $zone): User
 {
     $user->forceFill(['time_zone' => $zone])->save();
 
@@ -34,7 +34,7 @@ it('SET-012 a meal on the user\'s local today drops the undated Nutrition tab', 
     $user = TodaySeed::user();
     TodaySeed::mesocycle($user);
     TodaySeed::targets($user, last: '2026-10-16');
-    zoned($user, $zone);
+    userDayReadKeysUser($user, $zone);
     $meal = DayTargetMeal::query()->where('user_id', $user->id)->whereHas('dayTarget', fn ($query) => $query->whereDate('date', $date))
         ->orderBy('id')->firstOrFail();
 
@@ -50,7 +50,7 @@ it('SET-012 a meal on the user\'s local today drops the undated Nutrition tab', 
 
 it('SET-012 a renamed exercise drops Today on the user\'s local day', function (string $zone, string $today, ?string $notToday) {
     Carbon::setTestNow('2026-10-09 21:58:00');
-    $user = zoned(TrainSeed::user(), $zone);
+    $user = userDayReadKeysUser(TrainSeed::user(), $zone);
     $exercise = Exercise::factory()->custom($user)->create(['name' => 'Press', 'muscle_group' => 'chest']);
 
     $invalidates = test()->actingAs($user)->postJson('/capabilities/custom_exercise_save', [
@@ -68,7 +68,7 @@ it('SET-012 a renamed exercise drops Today on the user\'s local day', function (
 
 it('SET-012 exercise_show gives the rep range of the mesocycle current on the user\'s local day', function (string $zone, ?string $repRange) {
     Carbon::setTestNow('2026-10-09 21:58:00');
-    $user = zoned(TrainSeed::user(), $zone);
+    $user = userDayReadKeysUser(TrainSeed::user(), $zone);
     $exercise = Exercise::factory()->create(['rep_range_min' => 10, 'rep_range_max' => 20]);
     // The earlier mesocycle runs Monday 7 Sep for five weeks and does not hold the exercise; the new one starts Saturday.
     TrainSeed::mesocycle($user);
@@ -88,7 +88,7 @@ it('SET-012 a day change names Today from the user\'s local day on', function (s
     // 22:00 on Friday 9 Oct in New York is Saturday in UTC. Plan weeks run Monday to Sunday, so 5–11 Oct holds both
     // days. Monday's session of week 5 (5 Oct) is relabelled; its day runs on Mondays only, never on Friday.
     Carbon::setTestNow('2026-10-10 02:00:00');
-    $user = zoned(TrainSeed::user(), $zone);
+    $user = userDayReadKeysUser(TrainSeed::user(), $zone);
     $mesocycle = TrainSeed::mesocycle($user);
 
     $invalidates = test()->actingAs($user)->postJson('/capabilities/workout_day_relabel', [
@@ -104,7 +104,7 @@ it('SET-012 a day change names Today from the user\'s local day on', function (s
 it('SET-012 the eligibility re-check screen measures age on the user\'s local day', function (string $zone, bool $applies) {
     // Born 10 Oct 2008: 18 on Saturday in Brisbane, still 17 on Friday in UTC.
     Carbon::setTestNow('2026-10-09 21:58:00');
-    $user = zoned(User::factory()->create(), $zone);
+    $user = userDayReadKeysUser(User::factory()->create(), $zone);
     Profile::factory()->for($user)->create(['birth_date' => '2008-10-10']);
 
     $questions = test()->actingAs($user)->postJson('/capabilities/eligibility_recheck_show')->assertOk()->json('data.questions');
@@ -118,7 +118,7 @@ it('SET-012 the eligibility re-check screen measures age on the user\'s local da
 
 it('SET-012 a switch to training only drops Today on the user\'s local day', function (string $zone, string $today) {
     Carbon::setTestNow('2026-10-09 21:58:00');
-    $user = zoned(User::factory()->create(), $zone);
+    $user = userDayReadKeysUser(User::factory()->create(), $zone);
     Profile::factory()->for($user)->create();
     Plan::factory()->for($user)->create(['start_date' => '2026-09-07', 'review_weekday' => 1]);
     Phase::factory()->for($user)->create(['type' => 'fatLoss', 'start_date' => '2026-09-07', 'end_date' => '2026-12-07']);
