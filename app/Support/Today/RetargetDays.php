@@ -22,6 +22,7 @@ use App\Models\OtherActivity as OtherActivityRow;
 use App\Models\PlanWeek as PlanWeekRow;
 use App\Models\Profile;
 use App\Models\User;
+use App\Support\Plan\DayTargetRow;
 use DateTimeImmutable;
 use DomainException;
 use Throwable;
@@ -107,15 +108,11 @@ final class RetargetDays
         foreach ($day->meals as $meal) {
             $byId[$meal->id()] = $meal;
         }
-        $written = fn (RetargetMeal $meal, array $stored) => array_replace($stored, [
-            'id' => $meal->id(),
-            'name' => $stored['name'] ?? $meal->meal->name,
-            'time' => (string) $meal->time,
-            'kcal' => $meal->meal->target->kcal,
-            'protein_g' => $meal->meal->target->proteinG,
-            'fat_g' => $meal->meal->target->fatG,
-            'carbs_g' => $meal->meal->target->carbsG,
-        ]);
+        $written = fn (RetargetMeal $meal, array $stored) => array_replace(
+            $stored,
+            DayTargetRow::meal($meal->meal, $meal->time),
+            ['name' => $stored['name'] ?? $meal->meal->name],
+        );
         $meals = [];
         foreach ($row->meals as $stored) {
             if (isset($byId[$stored['id']])) {
@@ -129,10 +126,7 @@ final class RetargetDays
 
         $row->fill([
             'day_type' => $day->day->type,
-            'kcal' => $day->target->kcal,
-            'protein_g' => $day->target->proteinG,
-            'fat_g' => $day->target->fatG,
-            'carbs_g' => $day->target->carbsG,
+            ...DayTargetRow::totals($day->target),
             'meals' => $meals,
         ])->save();
 
