@@ -1,16 +1,21 @@
+<script lang="ts">
+import type { ExercisesShowOutput } from '@/contracts/exercises_show';
+
+/** The choices the sheet offers, as exercises_show sends them. */
+export type Choices = Pick<ExercisesShowOutput, 'muscle_groups' | 'equipment' | 'load_types'>;
+</script>
+
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { ulid } from '@/app/ulid';
 import { useWrite } from '@/app/useWrite';
 import type { CustomExerciseSaveInput } from '@/contracts/custom_exercise_save';
-import type { ExercisesShowOutput } from '@/contracts/exercises_show';
 import BottomSheet from '@/design/BottomSheet.vue';
 
 // Create a custom exercise, or edit one (EX-004, EX-005), ported from rp-clone's
 // CustomExerciseSheet.swift. The choices and their labels are exercises_show's, and the
 // server checks every value. `reload` is the read of the screen underneath, which
 // useWrite runs after a save, or fresh after one that got no final answer (CAP-014).
-type Choices = Pick<ExercisesShowOutput, 'muscle_groups' | 'equipment' | 'load_types'>;
 type Exercise = Pick<CustomExerciseSaveInput, 'name' | 'muscle_group' | 'equipment' | 'load_type'> & { id: string };
 
 const props = withDefaults(
