@@ -20,7 +20,7 @@ describe('WeekWarnings', () => {
         const wrapper = mount(WeekWarnings, { props: { warnings: week().warnings } });
 
         expect(week().warnings).toEqual([]);
-        expect(wrapper.find('[role="status"]').exists()).toBe(false);
+        expect(wrapper.find('[data-test="week-warnings"]').exists()).toBe(false);
         expect(wrapper.text()).toBe('');
     });
 });
