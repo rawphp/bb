@@ -41,13 +41,13 @@ function remove(): void {
 }
 
 // A tap on the line while Delete shows only hides it, as in SwiftUI: the click that
-// follows the touch that closed the line does not tick it.
+// follows the tap that closed the line does not tick it. A swipe ends in no click.
 let closing = false;
 
 function up(event: PointerEvent): void {
-    const wasOpen = open.value;
+    const tapOnOpen = open.value && drag.value === null;
     pointerUp(event);
-    closing = wasOpen && !open.value;
+    closing = tapOnOpen && !open.value;
 }
 
 function tick(): void {

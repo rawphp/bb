@@ -2,7 +2,7 @@
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { write } from '@/app/call';
 import { writeFailureMessage } from '@/app/errors';
-import { entries, pendingInput } from '@/app/outbox';
+import { entries } from '@/app/outbox';
 import { ulid } from '@/app/ulid';
 import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
@@ -31,8 +31,6 @@ const { send, busy, error } = useWrite(load);
 // The pickers' dates. They stay when the list for them does not load, to pick again.
 const from = ref('');
 const to = ref('');
-// The server's own dates, from its answer to the read with none.
-let defaults: { from: string; to: string } | null = null;
 
 watch(
     data,
@@ -40,13 +38,11 @@ watch(
         if (!list) return;
         from.value = list.from;
         to.value = list.to;
-        if (asked.value.from === undefined) defaults = { from: list.from, to: list.to };
     },
     { immediate: true },
 );
 
-// As rp-clone's pickers: a first day after the last moves the last day with it. The
-// server's own dates are asked for with no dates, the read whose copy is kept warm.
+// As rp-clone's pickers: a first day after the last moves the last day with it.
 function pickDates(which: 'from' | 'to', value: string): void {
     if (value === '') return;
     if (which === 'from') {
@@ -55,7 +51,7 @@ function pickDates(which: 'from' | 'to', value: string): void {
     } else {
         to.value = value < from.value ? from.value : value;
     }
-    asked.value = defaults?.from === from.value && defaults.to === to.value ? {} : { from: from.value, to: to.value };
+    asked.value = { from: from.value, to: to.value };
     error.value = null;
     void load().catch(() => undefined);
 }
@@ -69,15 +65,10 @@ function lineOf(input: { from: string; to: string; key: string }): string {
     return `${input.from} ${input.to} ${input.key}`;
 }
 
-// OFF-009: the user's own tick for this line on this list while it waits to sync.
-function waitingTick(row: Row): ShoppingItemCheckInput | undefined {
-    const line = lineOf({ ...shown(), key: row.key });
-    return pendingInput<ShoppingItemCheckInput>('shopping_item_check', (input) => lineOf(input) === line);
-}
-
-// The user's ticks, by line, from each outbox entry seen while it waits. One the server took
-// leaves the outbox and its tick holds until an answer read after that, as the list on
-// screen may predate it; a refused one goes, and the line shows the server's tick.
+// OFF-009: the user's ticks, by line, from each outbox entry seen while it waits, shown as
+// tapped with a pending mark. One the server took leaves the outbox, and its tick holds,
+// unmarked, until an answer read after that, as the list on screen may predate it. A
+// refused one goes, and the line shows the server's tick.
 const held = ref<Record<string, { seq: number; ticked: boolean }>>({});
 watch(
     entries,
@@ -102,8 +93,17 @@ watch(data, () => {
     held.value = Object.fromEntries(Object.entries(held.value).filter(([, tick]) => waiting.has(tick.seq)));
 });
 
+function heldTick(row: Row): { seq: number; ticked: boolean } | undefined {
+    return held.value[lineOf({ ...shown(), key: row.key })];
+}
+
 function tickOf(row: Row): boolean {
-    return held.value[lineOf({ ...shown(), key: row.key })]?.ticked ?? row.is_ticked;
+    return heldTick(row)?.ticked ?? row.is_ticked;
+}
+
+function tickWaits(row: Row): boolean {
+    const tick = heldTick(row);
+    return tick !== undefined && entries.value.some((entry) => entry.seq === tick.seq);
 }
 
 function tick(row: Row): void {
@@ -123,7 +123,7 @@ function tick(row: Row): void {
 const newItem = ref('');
 const itemText = computed(() => newItem.value.trim());
 let itemId = ulid();
-watch(newItem, () => (itemId = ulid()));
+watch(itemText, () => (itemId = ulid()));
 
 async function add(): Promise<void> {
     if (itemText.value === '') return;
@@ -223,7 +223,7 @@ async function share(): Promise<void> {
                         :key="row.key"
                         :row="row"
                         :ticked="tickOf(row)"
-                        :tick-pending="waitingTick(row) !== undefined"
+                        :tick-pending="tickWaits(row)"
                         :pending="pending"
                         :disabled="busy"
                         @tick="tick(row)"
