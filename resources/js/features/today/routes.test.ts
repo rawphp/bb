@@ -11,6 +11,24 @@ import routes from './routes';
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), writeNow: vi.fn() }));
 
 describe('today routes', () => {
+    it('VIEW-001 /dev/screens/today_show opens the Today screen, with the week strip\'s fixture beside it', () => {
+        const route = featureRoutes.find((r) => r.meta?.screen === 'today_show');
+
+        expect(route?.name).toBe('today');
+        expect(route?.meta?.fixtures).toEqual({ week: 'week_show' });
+        expect(takesFixture('today_show', featureRoutes)).toBe(true);
+    });
+
+    it.each([
+        ['/today', 'today'],
+        ['/today/2026-09-24', 'today-day'],
+    ])('SCH-020 %s opens the Today screen', (path, name) => {
+        const router = createRouter({ history: createMemoryHistory(), routes });
+
+        expect(router.resolve(path).name).toBe(name);
+        expect(router.resolve('/today/tomorrow').matched).toHaveLength(0);
+    });
+
     it.each(['day_adjust_show', 'day_redistribute_show', 'day_optimize_show'])('VIEW-001 /dev/screens/%s finds its sheet and its fixture', (name) => {
         expect(findScreen(name, featureRoutes)).not.toBeNull();
         expect(takesFixture(name, featureRoutes)).toBe(true);

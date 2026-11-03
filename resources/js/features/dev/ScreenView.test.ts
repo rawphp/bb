@@ -11,6 +11,8 @@ vi.mock('@/app/router', () => ({
         { path: '/probe', component: defineComponent({ template: '<p />' }), meta: { screen: 'probe_show' } },
         { path: '/meal', component: defineComponent({ props: ['payload', 'mealId'], template: '<p>{{ mealId }} {{ payload !== undefined }}</p>' }), meta: { screen: 'food_search' } },
         { path: '/form', component: defineComponent({ props: ['payload'], template: '<p>form {{ payload === undefined }}</p>' }), meta: { screen: 'form', fixture: false } },
+        { path: '/two', component: defineComponent({ props: ['payload', 'week'], template: '<p>{{ payload.date }} {{ week.days[0].calories_text }}</p>' }), meta: { screen: 'today_show', fixtures: { week: 'week_show' } } },
+        { path: '/meal-week', component: defineComponent({ props: ['payload', 'week'], template: '<p>{{ week.days[0].calories_text }}</p>' }), meta: { screen: 'meal_show', fixtures: { week: 'week_show' } } },
         { path: '/act', name: 'act', component: defineComponent({ props: ['action'], template: '<p>act {{ action }}</p>' }), props: { action: 'end' }, meta: { screen: 'form', fixture: false } },
     ],
 }));
@@ -66,5 +68,17 @@ describe('ScreenView', () => {
             view: 'pantry',
             screenProps: { mealId: 'm1' },
         });
+    });
+
+    it('VIEW-001 gives a screen that shows two reads the fixture of the other one, in the same state', async () => {
+        const wrapper = mount(ScreenView, { props: { name: 'today_show.empty' } });
+
+        await vi.waitFor(() => expect(wrapper.text()).toBe('2026-09-19 –'));
+    });
+
+    it('VIEW-001 falls back to the other read\'s main fixture when it has none in that state', async () => {
+        const wrapper = mount(ScreenView, { props: { name: 'meal_show.short' } });
+
+        await vi.waitFor(() => expect(wrapper.text()).toBe('2200'));
     });
 });
