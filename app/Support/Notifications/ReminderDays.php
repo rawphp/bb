@@ -33,7 +33,8 @@ final class ReminderDays
     /**
      * The days from `$first` to `$last`, both whole days, as Today shows them: a day before the plan or before the
      * profile exists is left out, and so is a day Today would show as another (outside the plan's weeks and not in
-     * today's week, SCH-023).
+     * today's week, SCH-023). `$first` and `$last` are the user's wall-clock times labelled UTC (SET-012), so their
+     * days are the user's days.
      *
      * @return list<ReminderDay>
      */
@@ -55,8 +56,9 @@ final class ReminderDays
      * fall at in ($after, $now]. It reads every source of a due time, so it may name a user with nothing due but
      * never leaves out one with something due: the 09:00 review and deload reminders on a plan-week start, the weigh-in schedule, the meal
      * times of the days' targets, and an hour before each session start, from the profile's training days and from
-     * the session rows a move or re-time wrote. Four queries, however many users, and four more in the minutes after
-     * 09:00.
+     * the session rows a move or re-time wrote. `$after` and `$now` are the users' wall-clock times labelled UTC
+     * (SET-012), so every user given must share one time zone. Four queries per call, however many users, and four
+     * more in the minutes after 09:00; reminders:send calls it once per zone.
      *
      * @param  list<int>  $userIds
      * @return list<int> those users who may have something due, in the order given
@@ -136,7 +138,8 @@ final class ReminderDays
     }
 
     /**
-     * The 09:00 morning instants in ($after, $now], keyed by their Y-m-d.
+     * The 09:00 mornings in ($after, $now], keyed by their Y-m-d. The times are the user's wall-clock times labelled
+     * UTC (SET-012), so these are the user's 09:00s.
      *
      * @return array<string, DateTimeImmutable>
      */

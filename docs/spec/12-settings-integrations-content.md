@@ -37,7 +37,7 @@ Notifications are Web Push (iOS 16.4 or later, installed to the home screen; Chr
 - **SET-007** [D][H][B] Subscription and manage plan (SUB-007). Shown only with billing on.
 - **SET-010** [B] Health bridge (INT-001), Personal access tokens (CAP-023) and Coach (AGT-020) pages.
 - **SET-011** [B] Developer section in local and testing environments only: the time-walk clock (architecture.md, "Walking through time").
-- **SET-012** [B] Time zone: each user has an IANA time zone, taken from the device on each app load (default UTC). Today, plan days, reminders and weigh-ins count days in it. Built so far: Today, its week strip and weigh-ins, Train, Plan, the weigh-ins screen, and the Coach's daily turn cap and its time of day; reminders and Progress still count UTC days until their follow-ups land (architecture.md, "Days and time zones").
+- **SET-012** [B] Time zone: each user has an IANA time zone, taken from the device on each app load (default UTC). Today, plan days, reminders and weigh-ins count days in it. Built so far: Today, its week strip and weigh-ins, Train, Plan, the weigh-ins screen, reminders, the Nutrition tab, the exercise screen, the eligibility re-check, and the Coach's daily turn cap and its time of day; Progress still counts UTC days until its follow-up lands (architecture.md, "Days and time zones").
 - **SET-008** [D] Contact support (email) and the help hub.
 - **SET-009** [D] Account: sign out, delete account.
 
