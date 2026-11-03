@@ -10,8 +10,8 @@ use App\Models\Exercise;
 use App\Models\Mesocycle;
 use App\Models\User;
 use App\Models\WorkoutExercise;
+use App\Support\UserDay;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Carbon;
 
 /** The reads an exercise write changes (CAP-011, CAP-017), and the one rule for an exercise id that arrives as text. */
 final class ExerciseReads
@@ -74,11 +74,11 @@ final class ExerciseReads
         return MesocycleReads::keys(...Mesocycle::query()->where('user_id', $user->id)->pluck('id')->map(fn ($id) => (string) $id)->all());
     }
 
-    /** @return list<string> the reads that show an exercise's name outside its own screens: today's session and the progress charts */
-    public static function names(): array
+    /** @return list<string> the reads that show an exercise's name outside its own screens: today's session (SET-012: the user's local today) and the progress charts */
+    public static function names(User $user): array
     {
         return [
-            ...TodayReads::keys([Carbon::now()->format('Y-m-d')]),
+            ...TodayReads::keys([UserDay::today($user)->format('Y-m-d')]),
             ReadKey::for('progress_show'),
             ReadKey::for('progress_show', ['scope' => 'phase']),
             ReadKey::for('progress_show', ['scope' => 'plan']),
