@@ -63,6 +63,9 @@ final class ReviewSeed
 
     public bool $trainingOnly = false;
 
+    /** @var array{start: string, end: string} the profile's eating window */
+    public array $eatingWindow = ['start' => '07:00', 'end' => '21:00'];
+
     public float $heightCm = 180;
 
     /** The profile's stored weight. */
@@ -215,7 +218,7 @@ final class ReviewSeed
         Profile::factory()->for($user)->create([
             'name' => 'Sam', 'sex' => 'male', 'birth_date' => '1990-06-15', 'height_cm' => $this->heightCm, 'weight_kg' => $this->profileKg,
             'body_fat_bucket' => 'low', 'uses_glp1' => false, 'experience' => 'intermediate', 'weight_unit' => 'kg',
-            'height_unit' => 'cm', 'consumed_totals' => 'checked_in', 'eating_window' => ['start' => '07:00', 'end' => '21:00'],
+            'height_unit' => 'cm', 'consumed_totals' => 'checked_in', 'eating_window' => $this->eatingWindow,
             'meal_count' => 4, 'busy_periods' => [],
             'training_days' => [
                 ['weekday' => 1, 'start' => '17:30', 'minutes' => 75],

@@ -134,6 +134,26 @@ it('REV-021 expenditure is measured once there are 3 eligible weeks, and the for
         ->and($early->recommendation->expenditure->source)->toBe(StartingCaloriesSource::Formula);
 });
 
+it('REV-021 NUT-002 when next week cannot be built the reviewed week\'s target stands in for the formula', function () {
+    // As rp-clone's ReviewAnalysis: maintenance ?? current.dailyAverageKcal. Two finished weeks, so nothing is measured.
+    $cases = [
+        'meals do not fit' => fn (ReviewSeed $seed) => $seed->eatingWindow = ['start' => '12:00', 'end' => '12:30'],
+        'no phase next week' => fn (ReviewSeed $seed) => $seed->phaseEndDate = ReviewSeed::NEXT_WEEK_START,
+    ];
+    foreach ($cases as $name => $change) {
+        $analysis = reviewed(function (ReviewSeed $seed) use ($change) {
+            $seed->weeksFinished = 2;
+            $change($seed);
+        });
+
+        expect($analysis->plannedNextWeek)->toBeNull($name)
+            ->and($analysis->recommendation)->not->toBeNull($name)
+            ->and($analysis->recommendation->expenditure->source)->toBe(StartingCaloriesSource::Formula, $name)
+            ->and($analysis->recommendation->expenditure->kcal)->toEqualWithDelta($analysis->weeks[1]->targetKcal, 1e-6, $name)
+            ->and($analysis->weeks[1]->targetKcal)->toEqualWithDelta(2400, 1e-6, $name);
+    }
+});
+
 it('REV-022 a diet break and the week after it are not eligible for measured expenditure', function () {
     $analysis = reviewed(fn (ReviewSeed $seed) => $seed->planWeekRows = [['start_date' => '2026-09-21', 'is_diet_break' => true]]);
     $weeks = $analysis->weeks;
