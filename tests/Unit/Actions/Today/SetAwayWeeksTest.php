@@ -285,14 +285,53 @@ it('PLAN-025 (d) "Not away" with no keep_phase_end on a week saved with true mov
         ->and(sheetFor($user, '2026-09-26')['is_editing'])->toBeFalse();
 });
 
-it('PLAN-025 a sent keep_phase_end replaces the saved one for that save', function () {
-    [$user, $phase] = awayWorld();
+// A diet break the sheet made either moved the phase end (saved with keep_phase_end off) or did not (on). The end only
+// moves back for a break that moved it, and moves out for one that has not, so it never drifts from the breaks that count.
+
+it('PLAN-025 removing a diet break that kept the end date, with keep_phase_end false, never pulls the end earlier', function () {
+    [$user, $phase, $later] = awayWorld();
     setAway($user, ['2026-09-26'], calories: 'maintenance', keep: true);
 
     setAway($user, ['2026-09-26'], calories: 'rest', keep: false);
 
-    expect(endOf($phase))->toBe('2026-11-28')
+    expect(endOf($phase))->toBe('2026-12-05')
+        ->and(startOf($later))->toBe('2026-12-05')
         ->and(awayRowOf($user, '2026-09-26')->keep_phase_end)->toBeFalse();
+});
+
+it('PLAN-025 turning keep_phase_end off on a diet break that kept the end date moves the end a week later, and back once it goes', function () {
+    [$user, $phase, $later] = awayWorld();
+    setAway($user, ['2026-09-26'], calories: 'maintenance', keep: true);
+
+    setAway($user, ['2026-09-26'], calories: 'maintenance', keep: false);
+    expect([endOf($phase), startOf($later)])->toBe(['2026-12-12', '2026-12-12'])
+        ->and(awayRowOf($user, '2026-09-26')->keep_phase_end)->toBeFalse();
+
+    setAway($user, ['2026-09-26'], calories: 'rest');
+    expect([endOf($phase), startOf($later)])->toBe(['2026-12-05', '2026-12-05']);
+});
+
+it('PLAN-025 keeping the end date on a diet break that already moved it leaves it moved, and "Not away" brings it back', function () {
+    [$user, $phase] = awayWorld();
+    setAway($user, ['2026-09-26'], calories: 'maintenance', keep: false);
+
+    setAway($user, ['2026-09-26'], calories: 'maintenance', keep: true);
+    expect(endOf($phase))->toBe('2026-12-12')
+        ->and(awayRowOf($user, '2026-09-26')->keep_phase_end)->toBeFalse();
+
+    setAway($user, ['2026-09-26'], away: false);
+    expect(endOf($phase))->toBe('2026-12-05');
+});
+
+it('PLAN-025 marking with keep_phase_end and clearing without it, again and again, leaves the end date where it was', function () {
+    [$user, $phase] = awayWorld();
+
+    foreach ([1, 2, 3] as $_) {
+        setAway($user, ['2026-09-26'], calories: 'maintenance', keep: true);
+        setAway($user, ['2026-09-26'], away: false, keep: false);
+    }
+
+    expect(endOf($phase))->toBe('2026-12-05');
 });
 
 it('PLAN-025 weeks saved with different keep values move the end date only for the ones that do not keep it', function () {
