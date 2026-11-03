@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 import { writeNow } from '@/app/call';
 import { writeFailureMessage } from '@/app/errors';
 import ReadState from '@/app/ReadState.vue';
@@ -41,18 +41,25 @@ function setBusy(now: boolean): void {
 }
 
 async function checkout(): Promise<void> {
-    if (busy.value || selected.value === null) return;
+    if (selected.value === null) return;
     setBusy(true);
     error.value = null;
     try {
         const started = await writeNow<BillingCheckoutStartOutput>('billing_checkout_start', { plan: selected.value } satisfies BillingCheckoutStartInput);
-        // Stays busy: the page is leaving for Checkout.
+        // Stays busy while the page leaves for Checkout; see leftCheckout.
         window.location.assign(started.url);
     } catch (failed) {
         error.value = writeFailureMessage(failed, 'Checkout could not be started. Try again.');
         setBusy(false);
     }
 }
+
+// Back from Checkout can bring this page back from the browser's cache as it was, busy.
+function leftCheckout(event: PageTransitionEvent): void {
+    if (event.persisted && busy.value) setBusy(false);
+}
+window.addEventListener('pageshow', leftCheckout);
+onUnmounted(() => window.removeEventListener('pageshow', leftCheckout));
 
 function retry(): void {
     void load().catch(() => undefined);
