@@ -3,6 +3,7 @@
 namespace App\Actions\Today;
 
 use App\Capabilities\Today\Data\RoughWeekSetInput;
+use App\Models\Mesocycle;
 use App\Models\Plan;
 use App\Models\PlanWeek;
 use App\Models\User;
@@ -20,7 +21,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class SetRoughWeek
 {
-    /** @return array{dates: list<string>, toast: string} the week's days, Y-m-d, and what to say */
+    /**
+     * @return array{dates: list<string>, mesocycle: ?Mesocycle, toast: string} the week's days (Y-m-d), the saved
+     *                                                                            mesocycle it belongs to, and what to say
+     */
     public function __invoke(User $user, RoughWeekSetInput $input): array
     {
         // The plan is locked first, so two writes to its weeks run one after the other and cannot both add the row.
@@ -53,6 +57,7 @@ final class SetRoughWeek
 
             return [
                 'dates' => array_values(array_unique($days)),
+                'mesocycle' => $snapshot->covering($today),
                 'toast' => $input->rough ? 'Marked as a rough week' : 'Rough week unmarked',
             ];
         });
