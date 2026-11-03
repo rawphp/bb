@@ -287,7 +287,7 @@ it('ONB-017 shows step 13, the recommendation with its daily average and the wee
     expect($shown['step'])->toMatchArray(['number' => 13, 'counter' => 'Step 13 of 13', 'can_continue' => true])
         ->and(onboardingChosen($calories['options']))->toBe(['recommendation'])
         ->and($calories['options'][0]['detail'])->toMatch('/^[\d,]+ kcal a day$/')
-        ->and($calories['options'][0]['badges'])->toBe([['text' => 'Recommended', 'tone' => 'good']])
+        ->and($calories['options'][0]['is_recommended'])->toBeTrue()
         ->and(array_column($calories['week'], 'name'))->toBe(['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'])
         ->and($calories['week'][0]['kcal_text'])->toMatch('/^[\d,]+ kcal$/')
         ->and($calories)->toMatchArray(['own_kcal' => null, 'own_kcal_max' => 10000, 'own_unit' => 'kcal a day']);

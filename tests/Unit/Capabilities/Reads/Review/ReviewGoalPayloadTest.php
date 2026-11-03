@@ -24,9 +24,9 @@ it('REV-003 the goal step offers to keep the goal, choose a new one or end the p
 
     expect($payload['notes'])->toBe([])
         ->and($payload['options'])->toBe([
-            ['id' => 'keep_goal', 'title' => 'Keep current goal', 'detail' => '', 'is_recommended' => true, 'is_selected' => true, 'is_enabled' => true],
-            ['id' => 'choose_new_goal', 'title' => 'Choose a new goal', 'detail' => '', 'is_recommended' => false, 'is_selected' => false, 'is_enabled' => true],
-            ['id' => 'end_plan', 'title' => 'End the plan', 'detail' => '', 'is_recommended' => false, 'is_selected' => false, 'is_enabled' => true],
+            ['value' => 'keep_goal', 'title' => 'Keep current goal', 'detail' => '', 'is_recommended' => true, 'is_selected' => true, 'is_enabled' => true],
+            ['value' => 'choose_new_goal', 'title' => 'Choose a new goal', 'detail' => '', 'is_recommended' => false, 'is_selected' => false, 'is_enabled' => true],
+            ['value' => 'end_plan', 'title' => 'End the plan', 'detail' => '', 'is_recommended' => false, 'is_selected' => false, 'is_enabled' => true],
         ]);
 });
 
@@ -34,7 +34,7 @@ it('PH-041 the final review lets the user keep the goal and extend the phase up 
     // The 4-week cut ends with the reviewed week; the maximum is 16 weeks.
     $payload = rvGoal(fn (ReviewSeed $seed) => $seed->phaseEndDate = '2026-10-12');
 
-    expect(array_column($payload['options'], 'id'))->toBe(['keep_goal', 'choose_new_goal', 'end_plan'])
+    expect(array_column($payload['options'], 'value'))->toBe(['keep_goal', 'choose_new_goal', 'end_plan'])
         ->and($payload['options'][0]['detail'])->toBe('Extend the phase by up to 12 weeks');
 });
 

@@ -1,12 +1,12 @@
 <?php
 
 use App\Actions\Onboarding\StartPlan;
-use App\Capabilities\Support\Choice;
 use App\Capabilities\Reads\Onboarding\OnboardingShowPayload;
 use App\Capabilities\Reads\Plan\PlanPayload;
 use App\Capabilities\Reads\Today\TodayPayload;
 use App\Capabilities\Reads\Today\WeekPayload;
 use App\Capabilities\Reads\Train\TrainPayload;
+use App\Capabilities\Support\Choice;
 use App\Models\DayTarget;
 use App\Models\DayTargetMeal;
 use App\Models\Mesocycle;

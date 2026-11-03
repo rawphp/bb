@@ -154,7 +154,7 @@ it('REV-027 REV-004 an answered cut builds next week with the calories taken off
     );
     $selected = array_values(array_filter($payload['calories']['options'], fn (array $option) => $option['is_selected']));
 
-    expect(array_column($selected, 'id'))->toBe(['cut_calories'])
+    expect(array_column($selected, 'value'))->toBe(['cut_calories'])
         ->and($payload['preview']['days'])->toHaveCount(7)
         ->and(reviewShownAverageKcal($payload))->toEqualWithDelta(2150, 1)
         ->and($payload['preview']['error'])->toBeNull()
@@ -168,7 +168,7 @@ it('REV-027 REV-004 answered added steps keep next week at this week\'s calories
     );
     $selected = array_values(array_filter($payload['calories']['options'], fn (array $option) => $option['is_selected']));
 
-    expect(array_column($selected, 'id'))->toBe(['add_steps'])
+    expect(array_column($selected, 'value'))->toBe(['add_steps'])
         ->and($payload['preview']['days'])->toHaveCount(7)
         ->and(reviewShownAverageKcal($payload))->toEqualWithDelta(2400, 1)
         ->and($payload['can_save'])->toBeTrue();
@@ -197,8 +197,8 @@ it('REV-027 SAFE-012 a cut safety refuses is not offered, so an answered cut is 
     );
     $selected = array_values(array_filter($payload['calories']['options'], fn (array $option) => $option['is_selected']));
 
-    expect(array_column($payload['calories']['options'], 'id'))->not->toContain('cut_calories')
-        ->and(array_column($selected, 'id'))->toBe(['add_steps'])
+    expect(array_column($payload['calories']['options'], 'value'))->not->toContain('cut_calories')
+        ->and(array_column($selected, 'value'))->toBe(['add_steps'])
         ->and(reviewShownAverageKcal($payload))->toEqualWithDelta(1600, 1)
         ->and($payload['can_save'])->toBeTrue();
 });
