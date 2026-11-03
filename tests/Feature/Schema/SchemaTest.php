@@ -195,6 +195,8 @@ it('CAP-019 keys every row the outbox creates by a ULID and keeps a client-made 
 })->with([
     'workout sets' => WorkoutSet::class,
     'check-ins' => MealCheckIn::class,
+    'planned foods' => PlannedFood::class,
+    'planned recipes' => PlannedRecipe::class,
     'weigh-ins' => WeighIn::class,
     'steps' => Step::class,
     'off-plan entries' => OffPlanEntry::class,
