@@ -146,3 +146,28 @@ it('CAP-012 a run that refuses one field answers 422 naming it, and a plain refu
         ->and($result->error['message'])->toBe('Pick an amount offered.')
         ->and($result->error['violations'] ?? [])->toBe($field ? [['field' => 'amount', 'message' => 'Pick an amount offered.']] : []);
 })->with([true, false]);
+
+it('CAP-012 a field refusal made and caught does not rename a later refusal', function () {
+    $registry = new CapabilityRegistry;
+    HostDefinition::write('tally_refuse', affects: ['tally_show'])
+        ->description('Refuse the tally. Used by rail tests only.')
+        ->cli('tally', 'refuse')
+        ->input(TallyInput::class)
+        ->run(function (TallyInput $input): WriteResult {
+            try {
+                throw new FieldRefused('amount', 'A');
+            } catch (FieldRefused) {
+                throw new DomainException('B');
+            }
+        })
+        ->register($registry);
+    $ownership = new Ownership;
+    $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, $ownership, new NoBilling, app(AgentPolicy::class)));
+
+    $result = (new HostBus($registry, $ownership, app(IdempotencyKeys::class)))
+        ->invoke('tally_refuse', ['amount' => 3], ['actor' => tap(new User, fn (User $u) => $u->id = 1), 'idempotency_key' => (string) Str::ulid()]);
+
+    expect($result->errorCode())->toBe('domain_error')
+        ->and($result->error['message'])->toBe('B')
+        ->and($result->error['violations'] ?? [])->toBe([]);
+});

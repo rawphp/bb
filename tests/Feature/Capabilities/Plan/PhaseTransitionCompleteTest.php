@@ -42,10 +42,22 @@ it('PH-030 answers 404 for another user\'s phase', function () {
     phaseTransitionComplete(cutEnding(), ['phase_id' => W::HOLD])->assertNotFound();
 });
 
-it('PH-036 answers 422 naming template when the option does not offer it', function () {
-    phaseTransitionComplete(cutEnding(), ['template' => 'standard'])
-        ->assertStatus(422)
-        ->assertJsonPath('error.violations.0.field', 'template');
+it('CAP-019 answers 404 for a next phase id another user owns, and saves nothing', function () {
+    PlanSeed::world();
+    $user = cutEnding();
+
+    phaseTransitionComplete($user, ['next_phase_id' => W::CUT])->assertNotFound();
+    expect(Phase::query()->where('user_id', $user->id)->count())->toBe(1);
+});
+
+it('PH-036 answers 422 naming template when the option does not offer it, and again when the same key is sent twice', function () {
+    $user = cutEnding();
+    $send = fn () => test()->actingAs($user)->postJson('/capabilities/phase_transition_complete', [
+        'phase_id' => ENDING_CUT, 'next_phase_id' => '01JC1F0000000000000000000A', 'choice' => 'maintenance', 'gain_first' => false, 'weeks' => 5, 'template' => 'standard',
+    ], ['Idempotency-Key' => '01JC1H0000000000000000000A']);
+
+    $send()->assertStatus(422)->assertJsonPath('error.violations.0.field', 'template');
+    $send()->assertStatus(422)->assertJsonPath('error.violations.0.field', 'template');
 });
 
 it('PH-030 saves what comes next and invalidates the ending phase and the new one', function () {

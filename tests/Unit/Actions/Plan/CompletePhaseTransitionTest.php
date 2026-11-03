@@ -1,10 +1,12 @@
 <?php
 
 use App\Actions\Plan\CompletePhaseTransition;
+use App\Actions\Plan\EndPhase;
 use App\Capabilities\Reads\Plan\PlanPayload;
 use App\Capabilities\Support\FieldRefused;
 use App\Domain\Model\PhaseType;
 use App\Models\Phase;
+use App\Models\Profile;
 use App\Models\User;
 use App\Support\Plan\PlanSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -85,10 +87,10 @@ it('PH-032 Gain first saves its three phases, the first under the client\'s id a
 
     expect($ids)->toHaveCount(4)
         ->and($ids[1])->toBe(NEXT)
-        ->and(array_map(fn (array $p) => [$p['type'], $p['start_date'], $p['end_date']], array_slice(savedPhases($user), 1)))->toBe([
-            ['muscleGain', '2026-10-19', '2026-11-23'],
-            ['maintenance', '2026-11-23', '2026-12-21'],
-            ['muscleGain', '2026-12-21', '2027-02-15'],
+        ->and(array_map(fn (array $p) => [$p['type'], $p['start_date'], $p['end_date'], $p['target_rate_percent_per_week']], array_slice(savedPhases($user), 1)))->toBe([
+            ['muscleGain', '2026-10-19', '2026-11-23', 0.375],
+            ['maintenance', '2026-11-23', '2026-12-21', 0.0],
+            ['muscleGain', '2026-12-21', '2027-02-15', 0.375],
         ]);
 });
 
@@ -104,6 +106,8 @@ it('PH-031 PH-036 PH-044 a length, template, calorie mode or step not offered is
         ->toBe('step_kcal: Calories only step up for Maintenance after Fat loss, so send no step.')
         ->and(complete($user, ['choice' => 'muscleGain', 'gain_first' => true, 'weeks' => 8, 'template' => 'standard']))
         ->toBe('weeks: Gain first sets its own lengths, so send no weeks.')
+        ->and(complete($user, ['choice' => 'fatLoss', 'gain_first' => true, 'weeks' => null, 'template' => 'standard']))
+        ->toBe('choice: That is not one of the next phases offered.')
         ->and(Phase::query()->where('user_id', $user->id)->count())->toBe(1);
 });
 
@@ -118,5 +122,39 @@ it('CAP-019 a replayed transition finds its phase already saved and writes nothi
     complete($user);
 
     expect(complete($user, replay: Phase::query()->findOrFail(NEXT)))->toBe([W::CUT, NEXT])
+        ->and(complete($user, replay: Phase::query()->findOrFail(W::CUT)))->toBe('That new phase id is already used.')
         ->and(Phase::query()->where('user_id', $user->id)->count())->toBe(2);
+});
+
+it('PH-030 PLAN-007 the next phase takes its type\'s rate, and none in training-only mode', function () {
+    $user = endingCut();
+    complete($user, ['choice' => 'muscleGain', 'weeks' => 8, 'template' => 'standard']);
+    $trainingOnly = TrainSeed::user();
+    Profile::query()->where('user_id', $trainingOnly->id)->update(['training_only' => true]);
+    Phase::factory()->for($trainingOnly)->create(['id' => '01JC1C000000000000000000ZZ', 'type' => 'fatLoss', 'start_date' => '2026-08-31', 'end_date' => '2026-10-19']);
+    app(CompletePhaseTransition::class)($trainingOnly, '01JC1C000000000000000000ZZ', '01JC1C000000000000000000ZY', PhaseType::MuscleGain, false, 8, 'standard', null, null);
+
+    expect(Phase::query()->findOrFail(NEXT)->target_rate_percent_per_week)->toBe(0.375)
+        ->and(Phase::query()->findOrFail('01JC1C000000000000000000ZY')->target_rate_percent_per_week)->toBe(0.0);
+});
+
+it('PH-007 ending the plan\'s last phase with phase_end opens its transition', function () {
+    $user = TrainSeed::user();
+    Phase::factory()->for($user)->create(['id' => W::CUT, 'type' => 'fatLoss', 'start_date' => '2026-08-31', 'end_date' => '2026-11-23']);
+    expect(PlanPayload::build(PlanSnapshot::load($user))->toArray()['transition'])->toBeNull();
+
+    app(EndPhase::class)($user, W::CUT);
+
+    expect(PlanPayload::build(PlanSnapshot::load($user))->toArray()['transition']['next_from_text'])->toBe('What comes next, from 19 Oct');
+});
+
+it('SAFE-001 no cut is offered or saved next while the user is trying to conceive', function () {
+    $user = TrainSeed::user();
+    Profile::query()->where('user_id', $user->id)->update(['screening' => ['tryingToConceive']]);
+    Phase::factory()->for($user)->create(['id' => W::CUT, 'type' => 'maintenance', 'start_date' => '2026-08-31', 'end_date' => '2026-10-19', 'target_rate_percent_per_week' => 0]);
+
+    $choices = array_column(PlanPayload::build(PlanSnapshot::load($user))->toArray()['transition']['options'], 'choice');
+
+    expect($choices)->toBe(['muscleGain', 'maintenance'])
+        ->and(complete($user, ['choice' => 'fatLoss', 'weeks' => 8, 'template' => 'standard']))->toBe('choice: That is not one of the next phases offered.');
 });

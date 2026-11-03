@@ -25,9 +25,16 @@ function transitionOption(array $transition, string $choice, bool $gainFirst = f
     return collect($transition['options'])->first(fn (array $o) => $o['choice'] === $choice && $o['gain_first'] === $gainFirst);
 }
 
-it('PH-030 no transition is due while a phase follows the running one', function () {
-    expect(PlanPayload::build(W::snapshot())->toArray()['transition'])->toBeNull()
-        ->and(transition(world: ['today' => '2026-10-07']))->toBeNull();
+it('PH-030 no transition is due while a phase follows the ending one, or before the last phase\'s final week', function () {
+    $followed = transition(world: ['phases' => [
+        W::phase(W::CUT, 'fatLoss', '2026-08-31', '2026-10-19', -0.75),
+        W::phase(W::HOLD, 'maintenance', '2026-10-19', '2026-11-16', 0),
+    ]]);
+
+    expect($followed)->toBeNull()
+        ->and(PlanPayload::build(W::snapshot())->toArray()['transition'])->toBeNull()
+        ->and(transition(world: ['today' => '2026-10-11']))->toBeNull()
+        ->and(transition(world: ['today' => '2026-10-12']))->not->toBeNull();
 });
 
 it('PH-030 PH-007 the last phase in its final week, or over, is due: its summary in the user\'s units', function () {
@@ -168,4 +175,21 @@ it('PH-039 a Mini-cut next trains every muscle at Emphasize with an MEV +2 ceili
     $lines = transitionOption(transition(type: 'muscleGain'), 'miniCut')['templates'][0]['training_lines'];
 
     expect(array_column(array_slice($lines, 0, 3), 'text'))->toBe(['All muscles Emphasize', 'Volume starts at MEV sets', 'Volume ceiling: MEV +2 sets']);
+});
+
+it('PH-031 PLAN-007 a training-only Maintenance after a long cut opens on its shortest offered length', function () {
+    $due = transition(world: ['trainingOnly' => true, 'planStart' => '2026-07-20', 'phases' => [W::phase(W::CUT, 'fatLoss', '2026-07-20', '2026-10-19', -0.75)]]);
+    $lengths = transitionOption($due, 'maintenance')['lengths'];
+
+    expect($lengths[0]['weeks'])->toBe(9)
+        ->and(collect($lengths)->firstWhere('is_selected')['weeks'])->toBe(9);
+});
+
+it('SAFE-001 neither Add a phase nor the prebuilt plans offer a cut while the user is trying to conceive', function () {
+    $payload = PlanPayload::build(W::snapshot(profile: ['screening' => ['tryingToConceive']]))->toArray();
+    $trainingOnly = PlanPayload::build(W::snapshot(trainingOnly: true, profile: ['screening' => ['tryingToConceive']]))->toArray();
+
+    expect(array_column($payload['add_phase']['types'], 'type'))->toBe(['muscleGain', 'maintenance'])
+        ->and($payload['prebuilt_plans'])->toBe([])
+        ->and(array_column($trainingOnly['add_phase']['types'], 'type'))->toHaveCount(4);
 });

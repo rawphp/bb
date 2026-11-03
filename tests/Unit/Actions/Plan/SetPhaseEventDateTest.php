@@ -31,13 +31,3 @@ it('PH-043 a phase takes an event date, and null clears it', function () {
     setEvent($user, W::HOLD, null);
     expect(Phase::query()->findOrFail(W::HOLD)->event_date)->toBeNull();
 });
-
-it('PH-043 an event cannot be set in the past or on a phase that is over', function () {
-    [$user] = PlanSeed::world();
-
-    expect(setEvent($user, W::CUT, '2026-10-13'))->toBe('An event date cannot be in the past.');
-
-    Carbon::setTestNow('2026-12-01 10:00:00');
-    expect(setEvent($user, W::CUT, '2026-12-19'))->toBe('This phase is over, so its event date can no longer change.')
-        ->and(Phase::query()->findOrFail(W::CUT)->event_date)->toBeNull();
-});

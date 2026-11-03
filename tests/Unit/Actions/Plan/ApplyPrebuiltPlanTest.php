@@ -38,8 +38,8 @@ it('PLAN-030 the fat-loss plan\'s phases are added where the plan ends, the firs
 
     $added = applyPrebuilt($user, 'fatLoss');
 
-    expect($added)->toHaveCount(3)
-        ->and($added[0])->toBe(FIRST)
+    expect($added)->toHaveCount(4)
+        ->and(array_slice($added, 0, 2))->toBe([W::GAIN, FIRST])
         ->and(phasesAfter($user, '2027-03-15'))->toBe([
             ['fatLoss', '2027-03-15', '2027-06-21', -0.75],
             ['maintenance', '2027-06-21', '2027-07-05', 0.0],
@@ -68,7 +68,15 @@ it('CAP-019 a replayed apply finds its phases already saved and writes nothing',
     [$user] = PlanSeed::world();
     $first = applyPrebuilt($user, 'fatLoss');
 
-    expect(applyPrebuilt($user, 'fatLoss', Phase::query()->findOrFail(FIRST)))->toBe($first)
+    expect(applyPrebuilt($user, 'fatLoss', Phase::query()->findOrFail(FIRST)))->toBe(array_slice($first, 1))
         ->and(applyPrebuilt($user, 'fatLoss', Phase::query()->findOrFail(W::CUT)))->toBe('That phase id is already used.')
         ->and(Phase::query()->where('user_id', $user->id)->count())->toBe(6);
+});
+
+it('SAFE-001 PLAN-030 no prebuilt plan, each holding a Fat loss, is applied while the user is trying to conceive', function () {
+    [$user] = PlanSeed::world();
+    Profile::query()->where('user_id', $user->id)->update(['screening' => ['tryingToConceive']]);
+
+    expect(applyPrebuilt($user, 'muscleGain'))->toBe("Fat loss isn't available while you're trying to conceive or in fertility treatment. Pick Maintenance or Muscle gain.")
+        ->and(Phase::query()->where('user_id', $user->id)->count())->toBe(3);
 });

@@ -32,7 +32,8 @@ function addPhase(User $user, string $type, ?int $weeks, ?float $rate = null, ?P
 it('PLAN-006 a phase is added where the last one ends, under the client\'s id, at the type\'s default rate', function () {
     [$user] = PlanSeed::world();
 
-    expect(addPhase($user, 'maintenance', 4))->toBe([ADDED]);
+    // The phase before it changes too: it can no longer run with no end.
+    expect(addPhase($user, 'maintenance', 4))->toBe([W::GAIN, ADDED]);
 
     $added = Phase::query()->findOrFail(ADDED);
     expect([$added->type->value, $added->start_date->format('Y-m-d'), $added->end_date->format('Y-m-d')])->toBe(['maintenance', '2027-03-15', '2027-04-12'])
@@ -60,6 +61,7 @@ it('PLAN-006 PH-003 a phase is refused after a phase with no end, and outside TB
     [$user] = PlanSeed::world();
 
     expect(addPhase($user, 'miniCut', 9))->toBe('A Mini-cut phase can run at most 6 weeks. Diet-break weeks do not count.')
+        ->and(addPhase($user, 'maintenance', 53))->toBe('A phase can run at most 52 weeks.')
         ->and(addPhase($user, 'fatLoss', 8, -2.0))->toBe('The rate for Fat loss must be between 0.25% and 1% a week.')
         ->and(addPhase($user, 'muscleGain', null))->toBe('Only Maintenance can run with no end date.');
 
@@ -84,4 +86,12 @@ it('CAP-019 a replayed add finds its phase already saved and writes nothing', fu
     expect(addPhase($user, 'maintenance', 4, replay: Phase::query()->findOrFail(ADDED)))->toBe([ADDED])
         ->and(addPhase($user, 'fatLoss', 4, replay: Phase::query()->findOrFail(W::CUT)))->toBe('That phase id is already used.')
         ->and(Phase::query()->where('user_id', $user->id)->count())->toBe(4);
+});
+
+it('SAFE-001 no Fat loss or Mini-cut can be added while the user is trying to conceive', function () {
+    [$user] = PlanSeed::world();
+    Profile::query()->where('user_id', $user->id)->update(['screening' => ['tryingToConceive']]);
+
+    expect(addPhase($user, 'miniCut', 4))->toBe("Fat loss isn't available while you're trying to conceive or in fertility treatment. Pick Maintenance or Muscle gain.")
+        ->and(addPhase($user, 'maintenance', 4))->toBe([W::GAIN, ADDED]);
 });

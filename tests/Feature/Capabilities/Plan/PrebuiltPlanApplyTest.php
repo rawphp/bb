@@ -45,5 +45,7 @@ it('PLAN-030 adds the plan and invalidates every phase it adds', function () {
         ->assertJsonPath('data.toast', 'Fat loss plan added')
         ->json('data.invalidates');
 
-    expect(count(array_filter($invalidates, fn (string $key) => str_starts_with($key, 'phase_show'))))->toBe(3);
+    // The three it adds, and the Muscle gain before them, which can no longer run with no end.
+    expect(count(array_filter($invalidates, fn (string $key) => str_starts_with($key, 'phase_show'))))->toBe(4)
+        ->and($invalidates)->toContain('phase_show{"phase_id":"'.W::GAIN.'"}');
 });
