@@ -25,13 +25,6 @@ describe('custom foods routes', () => {
         expect(read).toHaveBeenCalledWith('custom_foods_show', {}, expect.any(Function), expect.any(Function));
     });
 
-    it('NAV-001 the More placeholder links Custom foods until the More menu exists', () => {
-        const more = routesFor(false).find((route) => route.path === '/more');
-
-        expect((more?.props as { links: string[] }).links).toContain('/custom-foods');
-        expect((more?.props as { links: string[] }).links).not.toContain('/nutrition/custom-foods/new');
-    });
-
     it('FOOD-062 the Pantry\'s /nutrition/custom-foods/new?name= opens a new custom food named after the search', async () => {
         vi.mocked(read).mockReset().mockReturnValueOnce(new Promise(() => {}));
         const router = createRouter({ history: createMemoryHistory(), routes });

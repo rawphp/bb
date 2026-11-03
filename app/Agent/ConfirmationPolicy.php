@@ -19,6 +19,9 @@ use Throwable;
  * copy of the Coach's reply is not consent. Key order, spacing inside the JSON and defaults
  * the model left out do not matter, because both inputs are compared as read keys. A line
  * split after the colon or inside the JSON is not one line and confirms nothing.
+ *
+ * An MCP call (caller `mcp`, AGT-040) has no turn to confirm it, so the policy refuses it
+ * every destructive capability until MCP has its own confirmation step.
  */
 final class ConfirmationPolicy implements AgentPolicy
 {
@@ -28,7 +31,13 @@ final class ConfirmationPolicy implements AgentPolicy
 
     public function allows(CapabilityDefinition $capability, mixed $input, CapabilityContext $context): bool
     {
-        if ($context->caller() !== 'agent' || ! HostDefinition::isDestructive($capability)) {
+        if (! HostDefinition::isDestructive($capability)) {
+            return true;
+        }
+        if ($context->caller() === 'mcp') {
+            return false;
+        }
+        if ($context->caller() !== 'agent') {
             return true;
         }
 
