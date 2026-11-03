@@ -73,17 +73,18 @@ describe('MesocycleView', () => {
         expect(wrapper.findAll('[data-test="day"]').at(-1)!.text()).toContain('Not planned');
     });
 
-    it('MESO-042 changes the length with + and −, sending a valid mesocycle_length_set', async () => {
+    it('MESO-042 changes the length with + and −, sending a valid mesocycle_length_set with the length shown', async () => {
         const wrapper = show();
 
         await wrapper.find('[data-test="lengthen"]').trigger('click');
         await flushPromises();
-        expect(lastWrite()).toEqual(['mesocycle_length_set', { mesocycle_id: meso.id, weeks: 7 }]);
+        expect(lastWrite()).toEqual(['mesocycle_length_set', { mesocycle_id: meso.id, weeks: 7, expected_weeks: 6 }]);
         expect(inputViolations(...lastWrite())).toEqual([]);
 
         await wrapper.find('[data-test="shorten"]').trigger('click');
         await flushPromises();
-        expect(lastWrite()).toEqual(['mesocycle_length_set', { mesocycle_id: meso.id, weeks: 5 }]);
+        expect(lastWrite()).toEqual(['mesocycle_length_set', { mesocycle_id: meso.id, weeks: 5, expected_weeks: 6 }]);
+        expect(inputViolations(...lastWrite())).toEqual([]);
         expect(readMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id }, expect.any(Function), expect.any(Function));
     });
 
