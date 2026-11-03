@@ -321,6 +321,7 @@
                 "is_locked": false
             }
         ],
+        "moves": [],
         "hint": "Tap a day to move calories between days. The week's total stays the same.",
         "error": null,
         "move": {
