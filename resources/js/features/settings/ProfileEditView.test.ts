@@ -214,7 +214,7 @@ describe('ProfileEditView', () => {
         await wrapper.get(`[data-test="${field}"]`).setValue(text);
 
         expect(wrapper.get('[data-test="save"]').attributes('disabled')).toBeDefined();
-        expect(wrapper.get('[data-test="not-number"]').text()).toBe('Type your height as a number.');
+        expect(wrapper.get('[data-test="not-number"]').text()).toBe('Type your height in numbers, with whole feet.');
         await save(wrapper);
         expect(writeMock).not.toHaveBeenCalled();
     });

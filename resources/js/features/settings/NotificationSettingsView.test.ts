@@ -118,6 +118,21 @@ describe('NotificationSettingsView', () => {
         expect(wrapper.get('[data-test="push-error"]').text()).toContain('could not be set up');
     });
 
+    it('NOTIF-010 starts the permission prompt at the tap, before the switch goes to the server', async () => {
+        enable.mockResolvedValueOnce('on');
+        let answer: (value: unknown) => void = () => {};
+        writeMock.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+        readMock.mockResolvedValueOnce(withMeals(true));
+        const wrapper = render(settings);
+
+        await wrapper.get('[data-test="notify-meal"]').setValue(true);
+
+        expect(enable).toHaveBeenCalledOnce();
+        expect(enable.mock.invocationCallOrder[0]).toBeLessThan(writeMock.mock.invocationCallOrder[0]!);
+        answer({ invalidates: ['settings_show'] });
+        await flushPromises();
+    });
+
     it('NOTIF-007 saves the switch even when setting up this device never finishes', async () => {
         enable.mockReturnValueOnce(new Promise(() => {}));
         writeMock.mockResolvedValueOnce({ invalidates: ['settings_show'] });
