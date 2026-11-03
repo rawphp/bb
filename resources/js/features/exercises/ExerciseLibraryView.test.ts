@@ -87,6 +87,15 @@ describe('ExerciseLibraryView', () => {
         expect(view.text()).toContain('No exercises match.');
     });
 
+    it('EX-003 says no exercises match when a filter alone leaves none', async () => {
+        const view = show({ payload: content });
+
+        await view.get('select[aria-label="Muscle filter"]').setValue('back');
+
+        expect(view.findAll('[data-exercise]')).toHaveLength(0);
+        expect(view.text()).toContain('No exercises match.');
+    });
+
     it('EX-001 says there are no exercises yet when the library is empty', () => {
         const view = show({ payload: empty });
 

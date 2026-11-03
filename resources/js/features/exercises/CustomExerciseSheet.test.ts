@@ -61,6 +61,12 @@ describe('CustomExerciseSheet', () => {
         expect(save().disabled).toBe(true);
         await type('load_type', 'dumbbell');
         expect(save().disabled).toBe(false);
+        await type('muscle_group', '');
+        expect(save().disabled).toBe(true);
+        await type('muscle_group', 'back');
+        await type('equipment', '');
+        expect(save().disabled).toBe(true);
+        await type('equipment', 'dumbbell');
         await type('name', '   ');
         expect(save().disabled).toBe(true);
         wrapper.unmount();
@@ -105,6 +111,59 @@ describe('CustomExerciseSheet', () => {
         const input = writeMock.mock.calls[0]![1];
         expect(input).toEqual({ exercise_id: landmine.id, name: 'Landmine Press (my gym)', muscle_group: 'frontDelts', equipment: 'barbell', load_type: 'machine' });
         expect(inputViolations('custom_exercise_save', input)).toEqual([]);
+        wrapper.unmount();
+    });
+
+    it('CAP-019 each opening for a new exercise starts blank under a new ULID', async () => {
+        const wrapper = show();
+
+        await type('name', 'Seal row');
+        await type('muscle_group', 'back');
+        await type('equipment', 'dumbbell');
+        await type('load_type', 'dumbbell');
+        save().click();
+        await flushPromises();
+        await wrapper.setProps({ open: false });
+        await wrapper.setProps({ open: true });
+
+        expect(field('name').value).toBe('');
+        expect(field<HTMLSelectElement>('muscle_group').value).toBe('');
+        await type('name', 'Pendlay row');
+        await type('muscle_group', 'back');
+        await type('equipment', 'barbell');
+        await type('load_type', 'barbell');
+        save().click();
+        await flushPromises();
+
+        const [first, second] = writeMock.mock.calls.map((call) => (call[1] as { exercise_id: string }).exercise_id);
+        expect(second).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);
+        expect(second).not.toBe(first);
+        wrapper.unmount();
+    });
+
+    it('EX-004 an edit that was cancelled reopens with the exercise\'s own values', async () => {
+        const wrapper = show({ exercise: landmine });
+
+        await type('name', 'Something else');
+        document.body.querySelector<HTMLButtonElement>('[data-cancel]')!.click();
+        await wrapper.setProps({ open: false });
+        await wrapper.setProps({ open: true });
+
+        expect(field('name').value).toBe('Landmine Press (my gym)');
+        wrapper.unmount();
+    });
+
+    it('CAP-014 a save with no final answer reads the screen underneath from the server and stays open', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('custom_exercise_save', 502, null));
+        const reload = vi.fn().mockResolvedValue(undefined);
+        const wrapper = show({ exercise: landmine, reload });
+
+        save().click();
+        await flushPromises();
+
+        expect(reload).toHaveBeenCalledWith({ fresh: true });
+        expect(wrapper.emitted('saved')).toBeUndefined();
+        expect(document.body.querySelector('[role="dialog"] [role="alert"]')!.textContent).toContain('may have worked');
         wrapper.unmount();
     });
 

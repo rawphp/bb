@@ -4,6 +4,7 @@ import { CapabilityError, read, writeNow } from '@/app/call';
 import type { ExerciseShowOutput } from '@/contracts/exercise_show';
 import type { ExercisesShowOutput } from '@/contracts/exercises_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
+import ExerciseDetailContent from './ExerciseDetailContent.vue';
 import ExerciseView from './ExerciseView.vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
@@ -63,6 +64,14 @@ describe('ExerciseView', () => {
         expect(readMock).not.toHaveBeenCalled();
     });
 
+    it('VIEW-001 the Detail tab is ExerciseDetailContent, given the exercise', () => {
+        const view = show({ payload: bench, pending: true });
+        const detail = view.getComponent(ExerciseDetailContent);
+
+        expect(detail.props('exercise')).toEqual(bench);
+        expect(detail.props('pending')).toBe(true);
+    });
+
     it('EX-001 an exercise without a video has no video card, and one without a rep range has no rep range row', () => {
         const view = show({ payload: landmine });
 
@@ -88,6 +97,42 @@ describe('ExerciseView', () => {
         expect(input).toEqual({ exercise_id: bench.id, note: 'Elbows at 45°.' });
         expect(inputViolations('exercise_note_set', input)).toEqual([]);
         expect(readMock).toHaveBeenCalledWith('exercise_show', { exercise_id: bench.id }, expect.any(Function), expect.any(Function));
+    });
+
+    it('EX-010 after a save the fields show the server\'s answer', async () => {
+        readMock.mockReset().mockResolvedValue({ ...bench, pinned_note: 'Elbows at 45°.', load_step: { ...bench.load_step!, step: { value: 5, unit: 'kg', text: '5 kg' } } });
+        const view = show({ payload: bench });
+
+        await view.get('textarea[aria-label="Pinned note"]').setValue('  Elbows at 45°.  ');
+        await view.get('[data-note-save]').trigger('click');
+        await flushPromises();
+
+        expect((view.get('textarea[aria-label="Pinned note"]').element as HTMLTextAreaElement).value).toBe('Elbows at 45°.');
+        expect(view.get('[data-note-save]').attributes('disabled')).toBeDefined();
+    });
+
+    it('EX-010 EX-012 saving one field keeps what was typed but not saved in the other', async () => {
+        readMock.mockReset().mockResolvedValue({ ...bench, load_step: { ...bench.load_step!, step: { value: 5, unit: 'kg', text: '5 kg' } } });
+        const view = show({ payload: bench });
+
+        await view.get('textarea[aria-label="Pinned note"]').setValue('Not saved yet');
+        await view.get('input[aria-label="Load step in kg"]').setValue('5');
+        await view.get('[data-step-save]').trigger('click');
+        await flushPromises();
+
+        expect((view.get('textarea[aria-label="Pinned note"]').element as HTMLTextAreaElement).value).toBe('Not saved yet');
+        expect((view.get('input[aria-label="Load step in kg"]').element as HTMLInputElement).value).toBe('5');
+    });
+
+    it('EX-010 a fresh read fills a field the user has not touched', async () => {
+        readMock.mockReset().mockResolvedValue({ ...bench, pinned_note: 'From another device.' });
+        const view = show({ payload: bench });
+
+        await view.get('input[aria-label="Load step in kg"]').setValue('5');
+        await view.get('[data-step-save]').trigger('click');
+        await flushPromises();
+
+        expect((view.get('textarea[aria-label="Pinned note"]').element as HTMLTextAreaElement).value).toBe('From another device.');
     });
 
     it('EX-010 a blank note cannot be saved; Clear removes the note', async () => {
@@ -206,6 +251,8 @@ describe('ExerciseView', () => {
 
         expect(readMock).toHaveBeenCalledWith('exercise_show', { exercise_id: bench.id }, expect.any(Function), expect.any(Function));
         expect(view.get('h1').text()).toBe('Barbell Bench Press');
+        expect((view.get('textarea[aria-label="Pinned note"]').element as HTMLTextAreaElement).value).toBe(bench.pinned_note);
+        expect((view.get('input[aria-label="Load step in kg"]').element as HTMLInputElement).value).toBe('1.25');
     });
 
     it('CAP-004 says why the exercise did not load, and Try again reads it again', async () => {
