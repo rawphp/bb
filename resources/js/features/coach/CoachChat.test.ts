@@ -273,6 +273,7 @@ describe('CoachChat', () => {
     });
 
     it('AGT-023 a send that gets no answer while online says so and leaves the input on', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
         readMock.mockResolvedValue(status);
         historyMock.mockResolvedValue(earlier);
         sendMock.mockRejectedValue(new CapabilityError('chat.send', 0, { reason: 'network' }));
@@ -282,10 +283,12 @@ describe('CoachChat', () => {
         await sendMessage(wrapper, 'Plan my week');
         // It first reads the conversation again, to see whether the message landed anyway.
         await vi.waitFor(() => expect(wrapper.find('[role="alert"]').exists()).toBe(true));
+        // Once the server can no longer be taking it, it says plainly that it did not go.
+        await vi.advanceTimersByTimeAsync(30_000);
+        await vi.waitFor(() => expect(wrapper.get('[role="alert"]').text()).toBe('No connection. Try again when you are online.'));
 
         expect(wrapper.find('[data-test="offline"]').exists()).toBe(false);
         expect(wrapper.get('textarea').attributes('disabled')).toBeUndefined();
-        expect(wrapper.get('[role="alert"]').text()).toBe('No connection. Try again when you are online.');
     });
 
     it('AGT-021 an older history answer does not take away a message sent after it', async () => {
@@ -489,7 +492,10 @@ describe('CoachChat', () => {
     });
 
     describe('a message that gets no answer', () => {
+        const waiting = 'The Coach may still be taking your message, so it was not sent again. It will be checked again in a moment.';
+
         beforeEach(() => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
             readMock.mockResolvedValue(status);
             reads({ agent_status_show: status });
         });
@@ -511,8 +517,11 @@ describe('CoachChat', () => {
             expect(sendMock).toHaveBeenCalledTimes(1);
             expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('Plan my week');
 
-            // The conversation answers without the message: now it is sent again.
+            // The conversation answers without the message once the server can no longer be
+            // taking it (its deadline twice over): now it is sent again.
             historyMock.mockResolvedValue(earlier);
+            await vi.advanceTimersByTimeAsync(30_000);
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').text()).not.toBe(unknown));
             sendMock.mockResolvedValue(ids);
             eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [] });
             await wrapper.get('form').trigger('submit');
@@ -558,12 +567,40 @@ describe('CoachChat', () => {
             await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
 
             await sendMessage(wrapper, 'Plan my week');
-            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').exists()).toBe(true));
+            // Absent now may only mean not yet: the server can still be taking it.
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').text()).toBe(waiting));
+            await wrapper.get('form').trigger('submit');
+            await flushPromises();
+            expect(sendMock).toHaveBeenCalledTimes(1);
 
-            expect(historyMock).toHaveBeenCalledTimes(2);
-
+            await vi.advanceTimersByTimeAsync(30_000);
+            await vi.waitFor(() => expect(wrapper.get('[role="alert"]').text()).toBe('The server did not answer in time, so this may have worked. Check, then try again.'));
             expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('Plan my week');
-            expect(wrapper.get('[role="alert"]').text()).toBe('The server did not answer in time, so this may have worked. Check, then try again.');
+
+            // Settled as not sent: Send sends it again.
+            sendMock.mockResolvedValue(ids);
+            eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [] });
+            await wrapper.get('form').trigger('submit');
+            await vi.waitFor(() => expect(sendMock).toHaveBeenCalledTimes(2));
+        });
+
+        it('AGT-021 a message the server takes after the deadline shows as landed, not sent twice', async () => {
+            const landed: ChatHistory = { conversation_ulid: CONVERSATION, messages: [...earlier.messages, { ulid: ids.message_ulid, role: 'user', content: 'Plan my week', created_at: null }] };
+            historyMock.mockResolvedValue(earlier);
+            sendMock.mockRejectedValue(new CapabilityError('chat.send', 0, { reason: 'timeout' }));
+            const wrapper = mountChat();
+            await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
+            await sendMessage(wrapper, 'Plan my week');
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').text()).toBe(waiting));
+
+            // The server finishes taking it after the first check.
+            historyMock.mockResolvedValue(landed);
+            await vi.advanceTimersByTimeAsync(30_000);
+            await vi.waitFor(() => expect(wrapper.find('[data-test="landed"]').exists()).toBe(true));
+
+            expect(sendMock).toHaveBeenCalledTimes(1);
+            expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('');
+            expect(wrapper.find('[role="alert"]').exists()).toBe(false);
         });
     });
 
