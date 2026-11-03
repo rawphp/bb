@@ -18,7 +18,8 @@ use Rawphp\CapabilitiesAi\Models\Turn;
  * caps a user has used. Every turn counts towards the day; the tokens of every
  * LLM round count towards the month, from `turns.tokens` (MeteredTurnClaim). The turns
  * of a conversation the user cleared still count, from ClearedCoachTurn (AGT-020).
- * The day is the user's local day (SET-012); the month is the app's.
+ * The day is the user's local day (SET-012); the month is the app's. A time zone change gives no fresh daily
+ * allowance for 24 hours (AGT-005, SET-012): until then the day's turns count from 24 hours before the change.
  */
 final class AgentStatus
 {
@@ -50,19 +51,31 @@ final class AgentStatus
         $now = CarbonImmutable::now();
         $turnsPerDay = $this->config->get('agent.turns_per_day');
         $tokensPerMonth = $this->config->get('agent.tokens_per_month');
-        // The user's zone moves this day, so changing zone can start a new one early. Accepted for now (#303): the
-        // monthly token cap bounds the bill, and #325 is to hold the allowance for 24 hours after a zone change.
+        $appZone = $this->config->get('app.timezone');
         [$dayStarts, $dayEnds] = UserDay::bounds($user, UserDay::today($user));
+        $dayEndsAt = CarbonImmutable::instance($dayEnds)->addSecond()->setTimezone(UserDay::zone($user));
         $userId = $user->getAuthIdentifier();
+        // created_at is stored in the app timezone, and a bound date is not converted.
+        $turnsToday = $turnsPerDay === null ? 0 : $this->turnsSince($userId, CarbonImmutable::instance($dayStarts)->setTimezone($appZone));
+
+        $changedAt = $user->time_zone_changed_at === null ? null : CarbonImmutable::instance($user->time_zone_changed_at);
+        if ($turnsPerDay !== null && $changedAt !== null && $changedAt > $now->subDay()) {
+            // Within a day of a zone change the day runs from a day before it, which covers the old zone's whole
+            // day, and ends a day after it, unless the new local day's own turns hold the cap to its later midnight.
+            $windowEndsAt = $changedAt->addDay();
+            if (! ($dayEndsAt > $windowEndsAt && $turnsToday >= $turnsPerDay)) {
+                $dayEndsAt = $windowEndsAt->setTimezone(UserDay::zone($user));
+            }
+            $turnsToday = $this->turnsSince($userId, $changedAt->subDay()->setTimezone($appZone));
+        }
 
         return Allowance::check(
             $turnsPerDay,
             $tokensPerMonth,
-            // created_at is stored in the app timezone, and a bound date is not converted.
-            turnsToday: $turnsPerDay === null ? 0 : $this->turnsSince($userId, CarbonImmutable::instance($dayStarts)->setTimezone($this->config->get('app.timezone'))),
+            turnsToday: $turnsToday,
             tokensThisMonth: $tokensPerMonth === null ? 0 : $this->tokensSince($userId, $now->startOfMonth()),
             now: $now,
-            dayEndsAt: CarbonImmutable::instance($dayEnds)->addSecond()->setTimezone(UserDay::zone($user)),
+            dayEndsAt: $dayEndsAt,
         );
     }
 

@@ -4,6 +4,7 @@ namespace App\Actions\Account;
 
 use App\Capabilities\Support\FieldRefused;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use DateTimeZone;
 
 /**
@@ -25,7 +26,7 @@ final class SetTimeZone
             return false;
         }
 
-        $user->forceFill(['time_zone' => $timeZone])->save();
+        $user->forceFill(['time_zone' => $timeZone, 'time_zone_changed_at' => CarbonImmutable::now()])->save();
 
         return true;
     }
