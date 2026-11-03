@@ -19,8 +19,14 @@ const didYouMean = screenFixture<FoodSearchOutput>('food_search.did-you-mean');
 const empty = screenFixture<FoodSearchOutput>('food_search.empty');
 const MEAL = '01JBX5M0000000000000000001';
 
+// Every Pantry a test mounts, unmounted after it, so a search still waiting on its pause
+// (PantryView's 250 ms timer) cannot read inside a later test.
+let mounted: ReturnType<typeof mount>[] = [];
+
 function show(props: Record<string, unknown> = { payload: curated, mealId: MEAL }) {
-    return mount(PantryView, { props, attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub, teleport: true } } });
+    const wrapper = mount(PantryView, { props, attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub, teleport: true } } });
+    mounted.push(wrapper);
+    return wrapper;
 }
 
 function lastRead(): FoodSearchInput {
@@ -52,6 +58,8 @@ describe('PantryView', () => {
     });
 
     afterEach(() => {
+        for (const wrapper of mounted) if (wrapper.vm.$.isMounted && !wrapper.vm.$.isUnmounted) wrapper.unmount();
+        mounted = [];
         vi.useRealTimers();
         document.body.innerHTML = '';
     });
