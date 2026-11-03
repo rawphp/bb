@@ -590,3 +590,14 @@ it('WT-020 pages no further when the only step left is on the page\'s first day'
     expect(array_column($newest['steps']['rows'], 'date'))->toBe(['2026-07-13'])
         ->and($newest['next_before'])->toBeNull();
 });
+
+it('WT-004 pages no further when the first weigh-in is at the first moment of the page', function () {
+    Carbon::setTestNow('2026-10-10 12:00:00');
+    $user = weighInScenario();
+    WeighIn::factory()->for($user)->create(['weighed_at' => '2026-07-13 00:00:00']);
+
+    $newest = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data');
+
+    expect($newest['rows'])->not->toBe([])
+        ->and($newest['next_before'])->toBeNull();
+});

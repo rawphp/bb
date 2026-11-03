@@ -320,6 +320,25 @@ describe('WeighInsView paging', () => {
         expect(stepDates(page)).toEqual(['Fri, 9 Oct', 'Thu, 8 Oct', 'Moved Fri, 9 Oct', 'Moved Thu, 8 Oct']);
     });
 
+    it('OFF-003 a cached page\'s late refresh does not replace a re-read of the same page after a write', async () => {
+        let refresh: ((data: WeighInsShowOutput) => void) | undefined;
+        const page = await view();
+        readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {
+            refresh = onUpdate as (data: WeighInsShowOutput) => void;
+            return olderPage('Cached');
+        });
+        await showOlder(page);
+        readFreshMock.mockResolvedValueOnce(olderPage('Edited'));
+        await page.getComponent(WeighInsScreen).props('reload')();
+        await flushPromises();
+
+        // The refresh asked before the write, so it holds the rows from before it.
+        refresh!(olderPage('Before the write'));
+        await flushPromises();
+
+        expect(stepDates(page)).toEqual(['Fri, 9 Oct', 'Thu, 8 Oct', 'Edited Fri, 9 Oct', 'Edited Thu, 8 Oct']);
+    });
+
     it('WT-004 an older answer from a re-read the next one overtook is dropped', async () => {
         olderAnswers = [olderPage('Old')];
         const page = await view();
