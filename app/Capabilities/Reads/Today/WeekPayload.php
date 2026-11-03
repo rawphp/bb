@@ -8,6 +8,8 @@ use App\Capabilities\Reads\Data\Today\StripDay;
 use App\Capabilities\Reads\Data\Today\WeekAction;
 use App\Capabilities\Reads\Data\WeekShowOutput;
 use App\Capabilities\Support\Tone;
+use App\Models\OtherActivity;
+use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Today\AwayOffer;
 use App\Support\Today\TodaySnapshot;
 use App\Support\Today\TodayWorkoutItem;
@@ -54,7 +56,12 @@ final class WeekPayload
             calendar: $snapshot->planStart() === null || $upper === null ? null
                 : new CalendarRange($snapshot->planStart()->format('Y-m-d'), $upper->format('Y-m-d')),
             actions: self::actions($snapshot, $week, $last, $rough),
-            warnings: [],
+            warnings: WeekWarnings::cardio(
+                $snapshot->train->phaseCovering($last)?->type,
+                $snapshot->otherActivities
+                    ->filter(fn (OtherActivity $activity) => TrainSnapshot::day($activity->date) >= $first && TrainSnapshot::day($activity->date) <= $last)
+                    ->pluck('intensity')->values()->all(),
+            ),
         );
     }
 

@@ -5,14 +5,18 @@ import OfflineNotice from '@/design/OfflineNotice.vue';
 import Skeleton from '@/design/Skeleton.vue';
 import StatusPill from '@/design/StatusPill.vue';
 
-// Every session of one exercise with its sets, the best e1RM of each marked (ANA-009).
-// No title, so the exercise screen can embed it as its History tab (EX-002).
+// The sessions of one exercise read so far with their sets, the best e1RM of each marked (ANA-009).
+// No title, so the exercise screen can embed it as its History tab (EX-002). When older sessions
+// exist, a button under the last one asks for them (`more`); the parent reads and appends them.
 defineProps<{
     payload?: ExerciseHistoryShowOutput;
     error?: string | null;
     offline?: boolean;
     pending?: boolean;
+    loadingMore?: boolean;
+    moreError?: string | null;
 }>();
+defineEmits<{ more: [] }>();
 </script>
 
 <template>
@@ -43,6 +47,18 @@ defineProps<{
                     <p class="text-sm text-secondary-text">{{ session.best_label }}</p>
                 </div>
             </ItemCard>
+            <template v-if="payload.next_before">
+                <button
+                    type="button"
+                    data-more
+                    class="min-h-tap w-full rounded-2xl bg-surface font-semibold text-accent active:opacity-70 disabled:opacity-50"
+                    :disabled="loadingMore"
+                    @click="$emit('more')"
+                >
+                    Show older sessions
+                </button>
+                <p v-if="moreError" role="alert" class="text-sm text-tone-warning">{{ moreError }}</p>
+            </template>
         </template>
     </div>
 </template>
