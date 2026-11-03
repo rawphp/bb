@@ -15,3 +15,8 @@ export function onScreenReturn(back: () => void): void {
     const top = inject(SCREEN_TOP, null);
     if (top) watch(top, (now, before) => now && !before && back());
 }
+
+/** Whether the screen is on show; outside a tab stack (a dev screen, a test) it always is. */
+export function useScreenTop(): Readonly<Ref<boolean>> | null {
+    return inject(SCREEN_TOP, null);
+}
