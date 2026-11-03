@@ -7,6 +7,7 @@ import type { WorkoutSetAddInput } from '@/contracts/workout_set_add';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
 import ActionMenu, { type ActionMenuItem } from '@/design/ActionMenu.vue';
 import { toneClasses } from '@/design/tones';
+import { isFeedbackDue } from './feedbackDue';
 import WorkoutSetRow from './WorkoutSetRow.vue';
 import type { WorkoutSheet, WorkoutWrite } from './workoutWrite';
 
@@ -32,7 +33,9 @@ const warmUpDismissed = ref(false);
 
 // FB-001, FB-009: the feedback that is due after this exercise, while it is due or can still change.
 const feedback = computed(() =>
-    props.workout.feedback.find((entry) => entry.due_after_exercise_id === props.exercise.id && (entry.is_due || (entry.is_answered && entry.can_edit))),
+    props.workout.feedback.find(
+        (entry) => entry.due_after_exercise_id === props.exercise.id && (isFeedbackDue(props.workout, entry) || (entry.is_answered && entry.can_edit)),
+    ),
 );
 
 // WO-006: the first set's weight as typed, shown on later sets that have none.

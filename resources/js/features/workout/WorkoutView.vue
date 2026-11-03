@@ -19,6 +19,7 @@ import HelpButton from '@/design/HelpButton.vue';
 import PendingMark from '@/design/PendingMark.vue';
 import { toneClasses } from '@/design/tones';
 import { showWorkout } from './activeWorkout';
+import { isFeedbackDue } from './feedbackDue';
 import { holdWakeLock, leaveWakeLock, releaseWakeLock } from './wakeLock';
 import FeedbackSheet from './sheets/FeedbackSheet.vue';
 import LookBackSheet from './sheets/LookBackSheet.vue';
@@ -167,15 +168,18 @@ function closeSheet(): void {
     sheet.value = null;
 }
 
-// FB-001: the first feedback that is due and unanswered, with no answer waiting in the outbox.
+// FB-001: the first feedback that is due and unanswered, with no answer waiting in the outbox. Due counts the sets
+// waiting to sync, so feedback is asked offline too (OFF-021).
 const answerWaiting = (muscle: string) =>
     data.value !== undefined &&
     pendingInput<WorkoutFeedbackAnswerInput>('workout_feedback_answer', (input) => input.workout_id === data.value!.workout_id && input.muscle_group === muscle) !== undefined;
-const dueFeedback = computed(() => data.value?.feedback.find((entry) => entry.is_due && !entry.is_answered)?.muscle_group);
+const dueFeedback = computed(() => data.value?.feedback.find((entry) => isFeedbackDue(data.value!, entry) && !entry.is_answered)?.muscle_group);
 // What opens by itself: the first due, unanswered muscle the user has not cancelled and whose answer is not waiting.
 const autoFeedback = computed(() =>
     data.value?.is_editable
-        ? data.value.feedback.find((entry) => entry.is_due && !entry.is_answered && !cancelled.value.includes(entry.muscle_group) && !answerWaiting(entry.muscle_group))?.muscle_group
+        ? data.value.feedback.find(
+              (entry) => isFeedbackDue(data.value!, entry) && !entry.is_answered && !cancelled.value.includes(entry.muscle_group) && !answerWaiting(entry.muscle_group),
+          )?.muscle_group
         : undefined,
 );
 // Also when the open sheet closes: feedback that came due under another sheet is not lost.
