@@ -172,3 +172,31 @@ it('SCH-062 does not warn for 4 hard Other activities, nor outside Fat loss', fu
     expect($four['warnings'])->toBe([])
         ->and($gain['warnings'])->toBe([]);
 });
+
+it('PLAN-008 SCH-020 the week strip starts on the new review day from week 4', function () {
+    Carbon::setTestNow('2026-09-23 10:00:00');
+    $user = TodaySeed::user();
+    TodaySeed::targets($user);
+    // Weeks start Saturday 09-12; from 09-26 they start Thursday, so week 2 runs 5 days and week 4 starts 10-08.
+    $user->plan->reviewDayChanges()->create(['effective_on' => '2026-09-26', 'review_weekday' => 4]);
+
+    $data = $this->actingAs($user)->postJson('/capabilities/week_show', ['date' => '2026-10-10'])->assertOk()->json('data');
+
+    expect($data['week_start'])->toBe('2026-10-08')
+        ->and($data['days'][0]['date'])->toBe('2026-10-08');
+});
+
+it('PLAN-008 SCH-020 a day late in a lengthened transition week shows its own targets', function () {
+    Carbon::setTestNow('2026-09-23 10:00:00');
+    $user = TodaySeed::user();
+    TodaySeed::targets($user);
+    // Monday plan from 09-07; the change to Thursday lengthens week 3 to run 09-28 to 10-07, and week 4 starts 10-08.
+    $user->plan->update(['start_date' => '2026-09-07', 'review_weekday' => 1]);
+    $user->plan->reviewDayChanges()->create(['effective_on' => '2026-09-28', 'review_weekday' => 4]);
+
+    $data = $this->actingAs($user)->postJson('/capabilities/week_show', ['date' => '2026-10-06'])->assertOk()->json('data');
+
+    $day = collect($data['days'])->firstWhere('date', '2026-10-06');
+    expect($day)->not->toBeNull()
+        ->and($day['calories_text'])->toBe('2600');
+});

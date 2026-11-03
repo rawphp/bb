@@ -82,7 +82,7 @@ final readonly class ReviewData
     public static function load(User $user, DateTimeImmutable|string $today): self
     {
         $today = TrainSnapshot::day($today);
-        $plan = Plan::query()->where('user_id', $user->id)->first();
+        $plan = Plan::query()->where('user_id', $user->id)->with('reviewDayChanges')->first();
         $mealsFrom = $today->modify('-'.(7 * self::MEAL_WEEKS).' days');
         $planStart = $plan === null ? null : TrainSnapshot::day($plan->start_date);
         if ($planStart !== null && $planStart > $mealsFrom) {

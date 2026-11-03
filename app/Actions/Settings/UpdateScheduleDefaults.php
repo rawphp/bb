@@ -2,6 +2,7 @@
 
 namespace App\Actions\Settings;
 
+use App\Actions\Plan\ChangeReviewDay;
 use App\Capabilities\Settings\Data\BusyPeriodInput;
 use App\Capabilities\Settings\Data\ScheduleDefaultsUpdateInput;
 use App\Capabilities\Settings\Data\StepRangeInput;
@@ -21,14 +22,11 @@ use App\Support\Today\TodaySnapshot;
  * the old days, so the write is refused and `training_weekdays_change` moves them instead. New times or minutes on the
  * same weekdays save as usual.
  *
- * The review day is shown here, but changing it from the next plan-week boundary (PLAN-008) is not built yet, so only
- * the plan's own day, or null, is accepted.
+ * PLAN-008: a review day other than the one chosen last is recorded by {@see ChangeReviewDay}, under the same locks.
  */
 final class UpdateScheduleDefaults
 {
     public const MESOCYCLE_UNDER_WAY = 'A mesocycle is under way. Change training weekdays to move its sessions from next week.';
-
-    public const REVIEW_DAY_CHANGE = "Changing the review day isn't supported yet.";
 
     public const NO_PLAN_REVIEW_DAY = 'There is no plan yet, so there is no review day to set.';
 
@@ -36,7 +34,7 @@ final class UpdateScheduleDefaults
 
     public const ONE_RANGE_A_DAY = 'Each weekday can have one step range.';
 
-    public function __construct(private readonly SaveProfile $save) {}
+    public function __construct(private readonly SaveProfile $save, private readonly ChangeReviewDay $changeReviewDay) {}
 
     /** @return list<string> the dates the rebuild wrote, Y-m-d */
     public function __invoke(User $user, ScheduleDefaultsUpdateInput $input): array
@@ -59,7 +57,9 @@ final class UpdateScheduleDefaults
             'step_plan' => array_map(fn (StepRangeInput $range) => [
                 'weekday' => $range->weekday, 'min' => $range->min, 'max' => $range->max,
             ], $stepPlan),
-        ], fn (Profile $profile) => self::check($user, $profile, $input));
+        ], fn (Profile $profile) => self::check($user, $profile, $input), fn (): bool => $input->review_weekday === null
+            ? false
+            : ($this->changeReviewDay)($user, $input->review_weekday));
     }
 
     /** Runs under the profile's lock, before anything saves. */
@@ -68,13 +68,8 @@ final class UpdateScheduleDefaults
         // The plan row is already locked by SaveProfile; a locking read sees the plan as it is now.
         $plan = PlanSnapshot::load($user, lock: true);
 
-        if ($input->review_weekday !== null) {
-            if ($plan === null) {
-                throw new FieldRefused('review_weekday', self::NO_PLAN_REVIEW_DAY);
-            }
-            if ($input->review_weekday !== $plan->plan->review_weekday) {
-                throw new FieldRefused('review_weekday', self::REVIEW_DAY_CHANGE);
-            }
+        if ($input->review_weekday !== null && $plan === null) {
+            throw new FieldRefused('review_weekday', self::NO_PLAN_REVIEW_DAY);
         }
 
         $stored = array_map(fn (array $day): int => (int) $day['weekday'], TodaySnapshot::json($profile->training_days));

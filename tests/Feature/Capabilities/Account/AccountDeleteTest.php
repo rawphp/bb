@@ -45,6 +45,7 @@ it('ACC-005 SET-009 deletes the account and all its data, and no one else\'s', f
     $user = TrainSeed::user();
     TrainSeed::mesocycle($user);
     Phase::factory()->for($user)->create();
+    $user->plan->reviewDayChanges()->create(['effective_on' => '2026-10-19', 'review_weekday' => 3]);
     DayTarget::factory()->for($user)->create();
     WeighIn::factory()->for($user)->create();
     $other = TrainSeed::user();
@@ -54,6 +55,7 @@ it('ACC-005 SET-009 deletes the account and all its data, and no one else\'s', f
     expect(User::query()->whereKey($user->id)->exists())->toBeFalse()
         ->and(Profile::query()->where('user_id', $user->id)->exists())->toBeFalse()
         ->and(DB::table('phases')->where('user_id', $user->id)->exists())->toBeFalse()
+        ->and(DB::table('plan_review_day_changes')->exists())->toBeFalse()
         ->and(DB::table('day_targets')->where('user_id', $user->id)->exists())->toBeFalse()
         ->and(DB::table('mesocycles')->where('user_id', $user->id)->exists())->toBeFalse()
         ->and(WeighIn::query()->where('user_id', $user->id)->exists())->toBeFalse()

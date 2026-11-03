@@ -208,6 +208,27 @@ it('SET-004 a profile change made before a check refuses saves nothing and does 
         ->and($rebuild->calls)->toBe([]);
 });
 
+it('SET-004 a write that changed a target input outside the profile rebuilds with no profile field changed, one that did not does not', function () {
+    $rebuild = FakeRebuild::bind();
+    $user = saveProfileUser();
+
+    $none = app(SaveProfile::class)($user, ['birth_date' => '1990-04-12'], null, fn (): bool => false);
+    expect($none)->toBe([])->and($rebuild->calls)->toBe([]);
+
+    $order = [];
+    $dates = app(SaveProfile::class)($user, ['birth_date' => '1990-04-12'], function () use (&$order): void {
+        $order[] = 'check';
+    }, function () use (&$order): bool {
+        $order[] = 'write';
+
+        return true;
+    });
+
+    expect($dates)->toBe(['2026-10-15'])
+        ->and($rebuild->calls)->toBe([['user' => $user->id, 'beforeStart' => true]])
+        ->and($order)->toBe(['check', 'write']);
+});
+
 it('SET-004 a user with no profile yet is told to finish setup', function () {
     FakeRebuild::bind();
 

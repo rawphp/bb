@@ -32,7 +32,7 @@ final readonly class AdjustWeek
 
     public static function load(User $user, string $date): self
     {
-        $plan = Plan::query()->where('user_id', $user->id)->first();
+        $plan = Plan::query()->where('user_id', $user->id)->with('reviewDayChanges')->first();
         $dates = self::weekDates(DayPlans::day($date), $plan);
         $plans = DayPlans::load($user, $dates);
 
@@ -64,7 +64,9 @@ final readonly class AdjustWeek
         if ($plan === null) {
             return [$day->format('Y-m-d')];
         }
-        $grid = new PlanWeekGrid(DayPlans::day($plan->start_date), PlanWeekDays::calendarWeekdayFromIso($plan->review_weekday));
+        $grid = new PlanWeekGrid(
+            DayPlans::day($plan->start_date), PlanWeekDays::calendarWeekdayFromIso($plan->review_weekday), $plan->domainReviewDayChanges(),
+        );
         $index = $grid->weekIndexContaining($day);
         if ($index === null) {
             return [$day->format('Y-m-d')];

@@ -144,6 +144,24 @@ it('NOTIF-004 sends the weekly review on review day once a full plan week has pa
     expect(sentLines($user))->toBe(['Weekly review available | Your week is ready to review | /today?date=2026-09-19']);
 });
 
+it('NOTIF-004 PLAN-008 after a review-day change the weekly review is due on the new day and not the old one', function () {
+    $user = remindedUser();
+    // Weeks start Monday 09-07; from 09-28 they start Thursday, so week 4 starts Thursday 2026-10-08.
+    Plan::query()->where('user_id', $user->id)->update(['start_date' => '2026-09-07', 'review_weekday' => 1]);
+    $user->plan->reviewDayChanges()->create(['effective_on' => '2026-09-28', 'review_weekday' => 4]);
+
+    $may = fn (string $date) => ReminderDays::mayHaveDue([$user->id], new DateTimeImmutable("{$date} 08:50:00"), new DateTimeImmutable("{$date} 09:00:00"));
+    expect($may('2026-10-08'))->toBe([$user->id]);
+
+    foreach (['2026-10-05 09:00:00', '2026-10-08 09:00:00'] as $at) {
+        Carbon::setTestNow($at);
+        app(SendDueReminders::class)($user, CarbonImmutable::now());
+    }
+
+    expect(array_values(array_filter(sentLines($user), fn (string $line) => str_starts_with($line, 'Weekly review'))))
+        ->toBe(['Weekly review available | Your week is ready to review | /today?date=2026-10-08']);
+});
+
 it('NOTIF-005 sends next mesocycle on the first day of the deload week only', function () {
     $user = remindedUser();
 
@@ -260,6 +278,29 @@ it('NOTIF-004 NOTIF-005 at 09:00 only a user on a plan-week start may be due, an
     Carbon::setTestNow('2026-09-26 09:01:00');
     $this->artisan('reminders:send')->assertSuccessful();
     Queue::assertPushed(SendUserReminders::class, 1);
+});
+
+it('NOTIF-004 NOTIF-005 a user who changed review day is a candidate only on a boundary the change makes possible', function () {
+    $user = remindedUser();
+    // Weeks start Monday 2026-09-07; from Wednesday 2026-09-30 (the stored change's effective day) they start Thursday.
+    Plan::query()->where('user_id', $user->id)->update(['start_date' => '2026-09-07', 'review_weekday' => 1]);
+    Plan::query()->where('user_id', $user->id)->firstOrFail()->reviewDayChanges()->create(['effective_on' => '2026-09-30', 'review_weekday' => 4]);
+    Queue::fake();
+
+    // Tuesday: neither a Monday, the plan start, the change's day nor a Thursday, so the prefilter leaves the user out.
+    Carbon::setTestNow('2026-10-06 09:00:00');
+    $this->artisan('reminders:send')->assertSuccessful();
+    Queue::assertNothingPushed();
+
+    // Thursday, the day the changed weeks start: queued.
+    Carbon::setTestNow('2026-10-08 09:00:00');
+    $this->artisan('reminders:send')->assertSuccessful();
+    Queue::assertPushed(SendUserReminders::class, 1);
+
+    // The change's own effective day is queued too, so the prefilter never leaves out a boundary.
+    Carbon::setTestNow('2026-09-30 09:00:00');
+    $this->artisan('reminders:send')->assertSuccessful();
+    Queue::assertPushed(SendUserReminders::class, 2);
 });
 
 it('NOTIF-005 a plan starting mid-week may have its morning reminder on the start day, not the day after', function () {

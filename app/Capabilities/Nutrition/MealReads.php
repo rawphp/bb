@@ -40,7 +40,9 @@ final class MealReads
     private static function weekDates(DayTargetMeal $meal, DateTimeImmutable $day): array
     {
         $plan = $meal->user->plan;
-        $grid = $plan === null ? null : new PlanWeekGrid(DayPlans::day($plan->start_date), PlanWeekDays::calendarWeekdayFromIso($plan->review_weekday));
+        $grid = $plan === null ? null : new PlanWeekGrid(
+            DayPlans::day($plan->start_date), PlanWeekDays::calendarWeekdayFromIso($plan->review_weekday), $plan->domainReviewDayChanges(),
+        );
         $index = $grid?->weekIndexContaining($day);
         if ($index === null) {
             return [$day->format('Y-m-d')];

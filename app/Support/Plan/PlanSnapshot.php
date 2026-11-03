@@ -81,6 +81,7 @@ final class PlanSnapshot
             start: self::day($plan->start_date),
             reviewWeekday: PlanWeekDays::calendarWeekdayFromIso($plan->review_weekday),
             phases: $phases->map(fn (Phase $phase) => self::domainPhase($phase))->values()->all(),
+            reviewDayChanges: $plan->domainReviewDayChanges(),
         );
         $this->grid = PlanWeekGrid::forPlan($this->domain);
         $this->todayWeek = $this->grid->weekIndexContaining($today);
@@ -122,7 +123,9 @@ final class PlanSnapshot
      */
     public static function load(User $user, bool $lock = false): ?self
     {
-        $plan = Plan::query()->where('user_id', $user->id)->when($lock, fn ($query) => $query->lockForUpdate())->first();
+        $plan = Plan::query()->where('user_id', $user->id)
+            ->with(['reviewDayChanges' => fn ($query) => $query->when($lock, fn ($query) => $query->lockForUpdate())])
+            ->when($lock, fn ($query) => $query->lockForUpdate())->first();
         if ($plan === null) {
             return null;
         }

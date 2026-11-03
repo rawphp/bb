@@ -6,6 +6,7 @@ use App\Capabilities\Support\FieldRefused;
 use App\Models\Mesocycle;
 use App\Models\Phase;
 use App\Models\Plan;
+use App\Models\PlanReviewDayChange;
 use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -248,17 +249,15 @@ it('SET-005 the plan\'s own review day saves the rest, the day unchanged', funct
         ->and(Plan::query()->where('user_id', $user->id)->value('review_weekday'))->toBe(1);
 });
 
-it('SET-005 a different review day is refused on review_weekday and nothing is saved', function () {
-    $rebuild = FakeRebuild::bind();
+it('SET-005 PLAN-008 a different review day saves the rest and records the change', function () {
+    FakeRebuild::bind();
     $user = scheduleUser();
 
-    $refused = scheduleRefusal($user, ['meal_count' => 3, 'review_weekday' => 3]);
+    updateSchedule($user, ['meal_count' => 3, 'review_weekday' => 3]);
 
-    expect($refused->field)->toBe('review_weekday')
-        ->and($refused->getMessage())->toBe("Changing the review day isn't supported yet.")
-        ->and(scheduleProfile($user)->meal_count)->toBe(4)
+    expect(scheduleProfile($user)->meal_count)->toBe(3)
         ->and(Plan::query()->where('user_id', $user->id)->value('review_weekday'))->toBe(1)
-        ->and($rebuild->calls)->toBe([]);
+        ->and(PlanReviewDayChange::query()->where('plan_id', Plan::query()->where('user_id', $user->id)->value('id'))->pluck('review_weekday')->all())->toBe([3]);
 });
 
 it('SET-005 a review day with no plan is refused on review_weekday and nothing is saved', function () {

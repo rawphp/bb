@@ -83,7 +83,10 @@ final class ShowSettings
     public function __invoke(User $user, CarbonImmutable $now): SettingsShowOutput
     {
         $profile = Profile::query()->where('user_id', $user->id)->first() ?? throw new DomainException(SaveProfile::NO_PROFILE);
-        $reviewWeekday = Plan::query()->where('user_id', $user->id)->value('review_weekday');
+        // PLAN-008: the day chosen last, so a change still pending shows at once.
+        $plan = Plan::query()->where('user_id', $user->id)->with('reviewDayChanges')->first();
+        $last = $plan?->reviewDayChanges->last();
+        $reviewWeekday = $last === null ? $plan?->review_weekday : $last->review_weekday;
 
         return new SettingsShowOutput(
             notice: $profile->targets_rebuild_failed_at === null ? null : new Status(self::TARGETS_NOT_UPDATED, Tone::Warning->value),
