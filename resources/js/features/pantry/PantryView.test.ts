@@ -1,4 +1,4 @@
-import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityError, read, writeNow } from '@/app/call';
 import type { FoodSearchInput, FoodSearchOutput } from '@/contracts/food_search';
@@ -42,6 +42,10 @@ function row(wrapper: ReturnType<typeof show>, name: string) {
     if (!found) throw new Error(`No row for ${name}`);
     return found;
 }
+
+// Each test's screen goes when the test ends, with its pending search pause (250 ms):
+// left mounted, it fired a read of the old query in whichever test ran 250 ms later.
+enableAutoUnmount(afterEach);
 
 describe('PantryView', () => {
     beforeEach(() => {
