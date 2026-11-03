@@ -1,6 +1,7 @@
 <?php
 
 use App\Capabilities\Support\HostDefinition;
+use App\Models\DayTarget;
 use App\Models\Mesocycle;
 use App\Models\Phase;
 use App\Models\Plan;
@@ -186,4 +187,29 @@ it('SET-001 settings_show matches its empty fixture for a new user in lb and fee
         ->and($data['subscription'])->toBeNull()
         ->and($data['tokens']['text'])->toBe('None')
         ->and($data['schedule']['review_weekday'])->toBeNull();
+});
+
+it('SET-004 a profile change over HTTP rebuilds the targets from tomorrow with the real rebuild, and names the rebuilt days', function () {
+    // The plan week runs Monday 12 to Sunday 18 October; today is Wednesday 14 October.
+    $user = settingsSam(['height_cm' => 168.0, 'weight_kg' => 80.0, 'training_only' => false]);
+    Phase::factory()->for($user)->create(['type' => 'fatLoss', 'start_date' => '2026-09-07', 'end_date' => null, 'target_rate_percent_per_week' => -0.5]);
+    foreach (['2026-10-13', '2026-10-14', '2026-10-15'] as $date) {
+        DayTarget::factory()->for($user)->create(['date' => $date, 'kcal' => 2000]);
+    }
+
+    $invalidates = settingsPost($user, 'profile_update', [
+        'name' => 'Sam', 'sex' => 'male', 'birth_date' => '1990-03-14', 'height' => ['unit' => 'cm', 'cm' => 190.0, 'feet' => null, 'inches' => null],
+        'body_fat_bucket' => 'low', 'uses_glp1' => false, 'experience' => 'intermediate',
+    ])->assertOk()->json('data.invalidates');
+
+    $kcal = DayTarget::query()->where('user_id', $user->id)->orderBy('date')->get()
+        ->mapWithKeys(fn (DayTarget $row) => [$row->date->format('Y-m-d') => $row->kcal])->all();
+    expect(array_keys($kcal))->toBe(['2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18'])
+        ->and($kcal['2026-10-13'])->toBe(2000.0)
+        ->and($kcal['2026-10-14'])->toBe(2000.0)
+        ->and($kcal['2026-10-15'])->not->toBe(2000.0)
+        ->and(Profile::query()->where('user_id', $user->id)->value('targets_rebuild_failed_at'))->toBeNull()
+        ->and(Profile::query()->where('user_id', $user->id)->value('height_cm'))->toEqual(190.0)
+        ->and($invalidates)->toContain('settings_show{}', 'today_show{"date":"2026-10-15"}', 'today_show{"date":"2026-10-18"}', 'week_show{"date":"2026-10-12"}', 'week_show{}')
+        ->and($invalidates)->not->toContain('today_show{"date":"2026-10-14"}');
 });

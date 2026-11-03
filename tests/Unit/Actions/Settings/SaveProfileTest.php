@@ -6,7 +6,9 @@ use App\Domain\Plan\PlanRebuildRefused;
 use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Database\ConcurrencyErrorDetector;
 use Illuminate\Database\DeadlockException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\Support\FakeRebuild;
@@ -150,6 +152,20 @@ it('SET-004 a deadlock or lock wait in the rebuild fails the whole write rather 
     });
 
     expect(fn () => saveProfile(saveProfileUser(), ['experience' => 'advanced']))->toThrow(DeadlockException::class)
+        ->and($reported)->toBe([]);
+});
+
+it('SET-004 a deadlock the database reports as a query error also fails the whole write', function () {
+    FakeRebuild::bind(new QueryException('mysql', 'select 1', [], new PDOException('SQLSTATE[40001]: Serialization failure: 1213 Deadlock found when trying to get lock; try restarting transaction')));
+    $reported = [];
+    app(ExceptionHandler::class)->reportable(function (Throwable $e) use (&$reported) {
+        $reported[] = $e;
+
+        return false;
+    });
+
+    expect(fn () => saveProfile(saveProfileUser(), ['experience' => 'advanced']))
+        ->toThrow(fn (Exception $e) => expect((new ConcurrencyErrorDetector)->causedByConcurrencyError($e))->toBeTrue())
         ->and($reported)->toBe([]);
 });
 
