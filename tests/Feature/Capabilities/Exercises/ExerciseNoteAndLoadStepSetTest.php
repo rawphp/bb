@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Exercises\SetExerciseLoadStep;
 use App\Capabilities\Support\ReadKey;
 use App\Models\Exercise;
 use App\Models\ExerciseLoadStep;
@@ -13,7 +14,8 @@ use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\TrainSeed;
 
-// The HTTP seam of exercise_note_set and exercise_load_step_set. The rules are unit tests (SetExerciseNoteTest, SetExerciseLoadStepTest).
+// The HTTP seam of exercise_note_set and exercise_load_step_set. Exercises that take a step are pinned to a
+// loaded type: the factory picks one at random, and a bodyweight one refuses a step. The rules are unit tests (SetExerciseNoteTest, SetExerciseLoadStepTest).
 
 function exerciseWriteCall(?User $user, string $name, array $input): TestResponse
 {
@@ -31,7 +33,7 @@ it('EX-010 EX-012 refuses both writes when signed out', function (string $name, 
 
 it('EX-010 EX-012 answer 404 for another user\'s custom exercise, an unknown one and an id that is not plain digits', function (string $name, array $input) {
     $user = User::factory()->create();
-    $library = Exercise::factory()->create();
+    $library = Exercise::factory()->create(['load_type' => 'barbell']);
     $theirs = Exercise::factory()->custom()->create();
 
     foreach ([(string) $theirs->id, '999999', 'abc', "{$library->id}abc", '0'.$library->id] as $id) {
@@ -44,7 +46,7 @@ it('EX-010 EX-012 answer 404 for another user\'s custom exercise, an unknown one
 ]);
 
 it('EX-010 EX-012 answer 422 naming the field for one bad input', function (string $name, array $input, string $field) {
-    $exercise = Exercise::factory()->create();
+    $exercise = Exercise::factory()->create(['load_type' => 'barbell']);
 
     exerciseWriteCall(User::factory()->create(), $name, ['exercise_id' => (string) $exercise->id, ...$input])
         ->assertStatus(422)
@@ -56,7 +58,7 @@ it('EX-010 EX-012 answer 422 naming the field for one bad input', function (stri
 
 it('EX-010 pins a trimmed note, clears it with null, and names the exercise and the sessions holding it', function () {
     $user = User::factory()->create();
-    $exercise = Exercise::factory()->create();
+    $exercise = Exercise::factory()->create(['load_type' => 'barbell']);
     $session = WorkoutSession::factory()->for($user)->create(['mesocycle_id' => Mesocycle::factory()->for($user)->create()->id, 'week' => 3, 'day' => 2]);
     WorkoutExercise::factory()->create(['workout_session_id' => $session->id, 'exercise_id' => $exercise->id]);
 
@@ -76,7 +78,7 @@ it('EX-010 pins a trimmed note, clears it with null, and names the exercise and 
 it('EX-012 SET-001 stores a step typed in pounds as kilograms, and clears it with null', function () {
     $user = User::factory()->create();
     Profile::factory()->for($user)->create(['weight_unit' => 'lb']);
-    $exercise = Exercise::factory()->create();
+    $exercise = Exercise::factory()->create(['load_type' => 'barbell']);
 
     $set = exerciseWriteCall($user, 'exercise_load_step_set', ['exercise_id' => (string) $exercise->id, 'step' => 10, 'unit' => 'lb'])->assertOk();
 
@@ -88,13 +90,14 @@ it('EX-012 SET-001 stores a step typed in pounds as kilograms, and clears it wit
     expect(ExerciseLoadStep::query()->count())->toBe(0);
 });
 
-it('EX-012 refuses a step for a reps-only exercise with a 422 on step, and still lets null clear one', function () {
+it('EX-012 refuses a step for a reps-only exercise with a 422 that says why, and still lets null clear one', function () {
     $user = User::factory()->create();
     $pushUp = Exercise::factory()->create(['load_type' => 'bodyweight']);
 
     exerciseWriteCall($user, 'exercise_load_step_set', ['exercise_id' => (string) $pushUp->id, 'step' => 2.5, 'unit' => 'kg'])
         ->assertStatus(422)
-        ->assertJsonPath('error.violations.0.field', 'step');
+        ->assertJsonPath('error.code', 'domain_error')
+        ->assertJsonPath('error.message', SetExerciseLoadStep::REPS_ONLY);
     expect(ExerciseLoadStep::query()->count())->toBe(0);
 
     exerciseWriteCall($user, 'exercise_load_step_set', ['exercise_id' => (string) $pushUp->id, 'step' => null, 'unit' => 'kg'])->assertOk();
@@ -106,6 +109,8 @@ it('EX-010 EX-012 name the workout_show of each day of a saved, not-started meso
     $mesocycle = TrainSeed::mesocycle($user, ['weeks' => 2]);
     TrainSeed::mesocycle($other);
     $bench = Exercise::query()->where('name', 'Bench Press')->sole();
+    // A reps-only load type would refuse the step (EX-012).
+    $bench->update(['load_type' => 'barbell']);
     $mesocycle->update(['earlier_weeks' => [0 => [
         // Week 1 ran with bench on its second day; the rotation (TrainSeed) has it on the first.
         ['id' => 'a', 'label' => 'Old', 'weekday' => 2, 'slots' => []],

@@ -29,8 +29,7 @@ final class ExerciseLoadStepSetCapability implements HostCapability, OwnsInput
                 $user = $context->user();
                 $id = ExerciseReads::id($input->exercise_id);
 
-                // A reps-only exercise takes a step too: it is stored and nothing reads it.
-                ($this->step)($user, $id, $input->step, WeightUnit::from($input->unit));
+                ($this->step)($user, Exercise::query()->visibleTo($user)->findOrFail($id), $input->step, WeightUnit::from($input->unit));
 
                 return new WriteResult(invalidates: [ExerciseReads::show($id), ...ExerciseReads::workouts($user, $id)]);
             });

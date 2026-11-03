@@ -6,7 +6,6 @@ use App\Models\Exercise;
 use App\Models\ExerciseLoadStep;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
 
@@ -17,7 +16,7 @@ function storedStep(User $user, Exercise $exercise): ?float
 
 it('EX-012 stores a step typed in kilograms as it is, one row per user and exercise', function () {
     $user = User::factory()->create();
-    $exercise = Exercise::factory()->create();
+    $exercise = Exercise::factory()->create(['load_type' => 'barbell']);
 
     (new SetExerciseLoadStep)($user, $exercise, 4.5, WeightUnit::Kg);
     (new SetExerciseLoadStep)($user, $exercise, 1.25, WeightUnit::Kg);
@@ -28,7 +27,7 @@ it('EX-012 stores a step typed in kilograms as it is, one row per user and exerc
 
 it('SET-001 stores a step typed in pounds as kilograms, unrounded', function () {
     $user = User::factory()->create();
-    $exercise = Exercise::factory()->create();
+    $exercise = Exercise::factory()->create(['load_type' => 'barbell']);
 
     (new SetExerciseLoadStep)($user, $exercise, 10, WeightUnit::Lb);
 
@@ -38,7 +37,7 @@ it('SET-001 stores a step typed in pounds as kilograms, unrounded', function () 
 it('EX-012 clears the step on null, back to the TBL-040 default, and leaves another user\'s', function () {
     $user = User::factory()->create();
     $other = User::factory()->create();
-    $exercise = Exercise::factory()->create();
+    $exercise = Exercise::factory()->create(['load_type' => 'barbell']);
     ExerciseLoadStep::factory()->create(['user_id' => $user->id, 'exercise_id' => $exercise->id, 'step_kg' => 3]);
     ExerciseLoadStep::factory()->create(['user_id' => $other->id, 'exercise_id' => $exercise->id, 'step_kg' => 4]);
 
@@ -53,6 +52,6 @@ it('EX-012 refuses a step for a reps-only exercise and stores nothing', function
     $pushUp = Exercise::factory()->create(['load_type' => 'bodyweight']);
 
     expect(fn () => (new SetExerciseLoadStep)($user, $pushUp, 2.5, WeightUnit::Kg))
-        ->toThrow(ValidationException::class)
+        ->toThrow(DomainException::class, SetExerciseLoadStep::REPS_ONLY)
         ->and(storedStep($user, $pushUp))->toBeNull();
 });
