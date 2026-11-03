@@ -18,8 +18,6 @@ return new class extends Migration
 
     public function up(): void
     {
-        $this->forgetUndoTokens();
-
         foreach (self::TABLES as $table) {
             Schema::table($table, fn (Blueprint $t) => $t->char('ulid', 26)->nullable());
 
@@ -31,6 +29,9 @@ return new class extends Migration
             Schema::table($table, fn (Blueprint $t) => $t->renameColumn('ulid', 'id'));
             DB::statement("ALTER TABLE `{$table}` MODIFY `id` CHAR(26) NOT NULL, ADD PRIMARY KEY (`id`)");
         }
+
+        // After the swap, so a token an old process wrote while the tables changed goes too (DDL commits on its own).
+        $this->forgetUndoTokens();
     }
 
     public function down(): void

@@ -183,7 +183,7 @@ final class MealEntries
         }
     }
 
-    /** A food gone from the database counts at zero macros, as on Today's card. */
+    /** The food is always there: its foreign key restricts deletes and the relation includes trashed foods. */
     private static function food(PlannedFood $planned): MealFood
     {
         return new MealFood(
