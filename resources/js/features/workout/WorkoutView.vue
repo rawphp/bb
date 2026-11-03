@@ -9,7 +9,9 @@ import { useScreenTop } from '@/app/screenTop';
 import { useHoldUpdates } from '@/app/updates';
 import { useRead } from '@/app/useRead';
 import type { WorkoutFinishInput } from '@/contracts/workout_finish';
+import type { WorkoutFeedbackAnswerInput } from '@/contracts/workout_feedback_answer';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
+import type { WorkoutSkipInput } from '@/contracts/workout_skip';
 import type { WorkoutStartInput } from '@/contracts/workout_start';
 import ActionMenu, { type ActionMenuItem } from '@/design/ActionMenu.vue';
 import BottomSheet from '@/design/BottomSheet.vue';
@@ -17,8 +19,18 @@ import PendingMark from '@/design/PendingMark.vue';
 import { toneClasses } from '@/design/tones';
 import { showWorkout } from './activeWorkout';
 import { holdWakeLock, leaveWakeLock, releaseWakeLock } from './wakeLock';
+import FeedbackSheet from './sheets/FeedbackSheet.vue';
+import LookBackSheet from './sheets/LookBackSheet.vue';
+import NoteSheet from './sheets/NoteSheet.vue';
+import RelabelSheet from './sheets/RelabelSheet.vue';
+import ReorderSheet from './sheets/ReorderSheet.vue';
+import RIRInfoSheet from './sheets/RIRInfoSheet.vue';
+import SetMenuSheet from './sheets/SetMenuSheet.vue';
+import SwapSheet from './sheets/SwapSheet.vue';
+import WorkoutHelpSheet from './sheets/WorkoutHelpSheet.vue';
+import ExercisePickerSheet from './sheets/ExercisePickerSheet.vue';
 import WorkoutExerciseCard from './WorkoutExerciseCard.vue';
-import type { WorkoutWrite } from './workoutWrite';
+import type { WorkoutSheet, WorkoutWrite } from './workoutWrite';
 
 // The workout screen for the gym (WO-001 to WO-025): the session title, each exercise with
 // its sets, the post-workout meal (WO-009) and Finish (WO-010). Sized for the gym (UI-020):
@@ -27,8 +39,11 @@ import type { WorkoutWrite } from './workoutWrite';
 // the first one starts the session (workout_start) when the server says it has not started.
 // While a change waits, the server's numbers show as pending (OFF-008). While the session is
 // under way the screen holds a wake lock (PWA-030) and keeps the bar above the tabs current
-// (NAV-004). The script holds which question is open and what failed to store (VIEW-002).
-// The day menu, help and the workout sheets come with V_WO2. Ported from rp-clone's WorkoutView.
+// (NAV-004). The header opens Look back (WO-008) and Help (WO-030) and the workout menu
+// (WO-031); the set, exercise and feedback buttons open their sheets too. The screen owns
+// which sheet is open and sends what a sheet asks through the outbox. A due feedback opens
+// its sheet by itself (FB-001) until the user cancels it. The script holds which sheet and
+// question is open and what failed to store (VIEW-002). Ported from rp-clone's WorkoutView.
 const props = withDefaults(defineProps<{ payload?: WorkoutShowOutput; mesocycleId?: string; week?: number; day?: number; pending?: boolean }>(), {
     mesocycleId: '',
     week: 1,
@@ -61,7 +76,8 @@ async function store(change: WorkoutWrite): Promise<boolean> {
     if (!workout) return false;
     error.value = null;
     try {
-        if (workout.status === 'not_started' && !started.value && !waiting('workout_start')) {
+        // A skip is for a session that never began: it does not start it first.
+        if (workout.status === 'not_started' && !started.value && !waiting('workout_start') && change.name !== 'workout_skip') {
             const start: WorkoutStartInput = { workout_id: workout.workout_id };
             await write('workout_start', { ...start }, { label: `Started ${workout.day_label}` });
             started.value = true;
@@ -141,13 +157,61 @@ watch(
 const finishWaiting = computed(() => finishing.value || waiting('workout_finish'));
 const canFinish = computed(() => !finishWaiting.value && (data.value?.can_finish === true || pending.value));
 
-// WO-008: an earlier session of the mesocycle, opened in place of this one.
-const lookBack = computed<ActionMenuItem[]>(() =>
-    (data.value?.look_back ?? []).map((entry) => ({ key: `${entry.week}/${entry.day}`, title: entry.title, detail: entry.status.text })),
+// The one sheet that is open, and the feedback sheets the user cancelled this visit.
+const sheet = ref<WorkoutSheet | null>(null);
+const cancelled = ref<string[]>([]);
+
+function closeSheet(): void {
+    if (sheet.value?.name === 'feedback') cancelled.value.push(sheet.value.muscle);
+    sheet.value = null;
+}
+
+// FB-001: the first feedback that is due and unanswered, with no answer waiting in the outbox.
+const answerWaiting = (muscle: string) =>
+    data.value !== undefined &&
+    pendingInput<WorkoutFeedbackAnswerInput>('workout_feedback_answer', (input) => input.workout_id === data.value!.workout_id && input.muscle_group === muscle) !== undefined;
+const dueFeedback = computed(() => data.value?.feedback.find((entry) => entry.is_due && !entry.is_answered)?.muscle_group);
+const autoFeedback = computed(() => {
+    const muscle = dueFeedback.value;
+    return data.value?.is_editable && muscle !== undefined && !cancelled.value.includes(muscle) && !answerWaiting(muscle) ? muscle : undefined;
+});
+watch(
+    autoFeedback,
+    (muscle) => {
+        if (muscle !== undefined && sheet.value === null) sheet.value = { name: 'feedback', muscle };
+    },
+    { immediate: true },
 );
 
-function openEarlier(key: string): void {
-    if (data.value) void router.push(`/workouts/${data.value.mesocycle_id}/${key}`);
+function openFeedback(): void {
+    if (dueFeedback.value !== undefined) sheet.value = { name: 'feedback', muscle: dueFeedback.value };
+}
+
+// WO-031: the workout menu.
+const dayMenu: ActionMenuItem[] = [
+    { key: 'add', title: 'Add exercise' },
+    { key: 'reorder', title: 'Reorder exercises' },
+    { key: 'skip', title: 'Skip workout' },
+    { key: 'rates', title: 'Progression rates' },
+    { key: 'relabel', title: 'Relabel day' },
+];
+
+function chooseDay(key: string): void {
+    const workout = data.value;
+    if (!workout) return;
+    if (key === 'add') sheet.value = { name: 'add-exercise' };
+    else if (key === 'reorder') sheet.value = { name: 'reorder' };
+    else if (key === 'relabel') sheet.value = { name: 'relabel' };
+    else if (key === 'rates') void router.push(`/train/mesocycles/${workout.mesocycle_id}/rates`);
+    else if (key === 'skip') {
+        const input: WorkoutSkipInput = { workout_id: workout.workout_id };
+        send({
+            name: 'workout_skip',
+            input: { ...input },
+            label: `Skipped ${workout.day_label}`,
+            confirm: { title: "Skip this workout? This can't be undone.", message: 'The session is marked skipped.', action: 'Skip workout' },
+        });
+    }
 }
 
 // PWA-030 and NAV-004: what the session's state means for the wake lock and the bar.
@@ -190,10 +254,23 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
                 </svg>
             </button>
             <span class="flex-1" />
-            <ActionMenu v-if="lookBack.length" label="Look back" :items="lookBack" data-test="look-back" @select="openEarlier">
-                <svg viewBox="0 0 24 24" class="size-6 text-accent" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+            <button type="button" :class="headerButton" aria-label="Look back" aria-haspopup="dialog" data-test="look-back" @click="sheet = { name: 'look-back' }">
+                <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                     <rect x="4" y="5" width="16" height="15" rx="2" />
                     <path d="M4 9h16M9 3v4M15 3v4" stroke-linecap="round" />
+                </svg>
+            </button>
+            <button type="button" :class="headerButton" aria-label="Help" aria-haspopup="dialog" data-test="help" @click="sheet = { name: 'help' }">
+                <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9.25" />
+                    <path d="M9.5 9.25a2.5 2.5 0 1 1 3.5 2.3c-.6.27-1 .87-1 1.53v.67" stroke-linecap="round" />
+                    <circle cx="12" cy="16.75" r=".6" fill="currentColor" stroke="none" />
+                </svg>
+            </button>
+            <ActionMenu v-if="data?.is_editable" label="Workout menu" :items="dayMenu" data-test="day-menu" @select="chooseDay">
+                <svg viewBox="0 0 24 24" class="size-6 text-accent" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9.25" />
+                    <path d="M8 12h.01M12 12h.01M16 12h.01" stroke-linecap="round" stroke-width="2.5" />
                 </svg>
             </ActionMenu>
         </div>
@@ -206,14 +283,22 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
             </p>
             <p v-if="error" class="rounded-xl p-2.5 text-sm" :class="toneClasses.warning" role="alert" data-test="error">{{ error }}</p>
 
-            <WorkoutExerciseCard v-for="(exercise, index) in data.exercises" :key="exercise.id" :exercise="exercise" :index="index" :workout="data" @send="send" />
+            <WorkoutExerciseCard v-for="(exercise, index) in data.exercises" :key="exercise.id" :exercise="exercise" :index="index" :workout="data" @send="send" @open="(next) => (sheet = next)" />
             <p v-if="!data.exercises.length" class="text-sm text-secondary-text" data-test="no-exercises">This workout has no exercises.</p>
 
             <footer class="sticky bottom-0 -mx-4 mt-auto flex flex-col gap-2 bg-surface px-4 py-2.5">
-                <p v-if="data.feedback_banner" class="rounded-xl p-2.5 text-sm font-semibold" :class="toneClasses[data.feedback_banner.tone]" data-test="feedback-banner">
+                <!-- FB-001: a tap opens the feedback that is due. -->
+                <button
+                    v-if="data.feedback_banner"
+                    type="button"
+                    class="min-h-tap w-full rounded-xl p-2.5 text-left text-sm font-semibold"
+                    :class="toneClasses[data.feedback_banner.tone]"
+                    data-test="feedback-banner"
+                    @click="openFeedback"
+                >
                     <PendingMark v-if="pending" derived>{{ data.feedback_banner.text }}</PendingMark>
                     <template v-else>{{ data.feedback_banner.text }}</template>
-                </p>
+                </button>
                 <p v-if="data.next_meal" class="text-sm text-secondary-text" data-test="next-meal">{{ data.next_meal }}</p>
                 <template v-if="data.is_editable">
                     <button
@@ -228,6 +313,17 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
                     <p v-if="pending" class="text-center" data-test="finish-pending"><PendingMark /></p>
                 </template>
             </footer>
+
+            <SetMenuSheet v-if="sheet?.name === 'set-menu'" :payload="data" :set-id="sheet.setId" @send="send" @close="closeSheet" />
+            <RIRInfoSheet v-else-if="sheet?.name === 'rir'" :payload="data" @close="closeSheet" />
+            <SwapSheet v-else-if="sheet?.name === 'swap'" :payload="data" :exercise-id="sheet.exerciseId" @send="send" @close="closeSheet" />
+            <NoteSheet v-else-if="sheet?.name === 'note'" :payload="data" :exercise-id="sheet.exerciseId" :pinned="sheet.pinned" @send="send" @close="closeSheet" />
+            <FeedbackSheet v-else-if="sheet?.name === 'feedback'" :payload="data" :muscle="sheet.muscle" @send="send" @close="closeSheet" />
+            <LookBackSheet v-else-if="sheet?.name === 'look-back'" :payload="data" @close="closeSheet" />
+            <WorkoutHelpSheet v-else-if="sheet?.name === 'help'" :payload="data" @close="closeSheet" />
+            <ExercisePickerSheet v-else-if="sheet?.name === 'add-exercise'" :payload="data" @send="send" @close="closeSheet" />
+            <ReorderSheet v-else-if="sheet?.name === 'reorder'" :payload="data" @send="send" @close="closeSheet" />
+            <RelabelSheet v-else-if="sheet?.name === 'relabel'" :payload="data" @send="send" @close="closeSheet" />
 
             <div v-if="confirm?.confirm" data-test="confirm">
                 <BottomSheet

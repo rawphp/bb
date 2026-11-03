@@ -458,7 +458,9 @@ describe('WorkoutView', () => {
     });
 
     it('EX-008 the swap suggestion\'s Swap button opens the swap sheet', async () => {
-        readMock.mockImplementation(((name: string) => (name === 'exercises_show' ? Promise.resolve(screenFixture('exercises_show')) : new Promise(() => {}))) as never);
+        const library = screenFixture<{ exercises: Record<string, unknown>[] }>('exercises_show');
+        library.exercises.push({ ...library.exercises[0]!, id: '01JA8Q0V3K2M4N6P8R0T2W4Y99', name: 'Chest Supported Row', detail: 'Back · Machine', muscle_group: 'back' });
+        readMock.mockImplementation(((name: string) => (name === 'exercises_show' ? Promise.resolve(library) : new Promise(() => {}))) as never);
         const wrapper = await show({ payload: workout('warning') });
 
         const swap = exercise(wrapper, ROW).get('[data-test="swap-suggestion"] button');
@@ -558,7 +560,7 @@ describe('WorkoutView', () => {
     it('WO-031 Add exercise opens the exercise picker, and a pick is added to the session through the outbox', async () => {
         const library = screenFixture<{ exercises: { id: string }[] }>('exercises_show');
         readMock.mockImplementation(((name: string) => (name === 'exercises_show' ? Promise.resolve(library) : new Promise(() => {}))) as never);
-        const wrapper = await show();
+        const wrapper = await show({ payload: workout('warning') });
 
         await wrapper.get('[data-test="day-menu"] [data-test="menu"]').trigger('click');
         await wrapper.get('[data-test="item-add"]').trigger('click');
@@ -573,7 +575,7 @@ describe('WorkoutView', () => {
     });
 
     it('WO-031 Reorder exercises opens the reorder sheet, and a move goes through the outbox', async () => {
-        const wrapper = await show();
+        const wrapper = await show({ payload: workout('warning') });
 
         await wrapper.get('[data-test="day-menu"] [data-test="menu"]').trigger('click');
         await wrapper.get('[data-test="item-reorder"]').trigger('click');
@@ -585,7 +587,7 @@ describe('WorkoutView', () => {
         expect(dialog(wrapper)).toBe('Reorder exercises');
     });
 
-    it('WO-050 Skip workout asks first, then skips it', async () => {
+    it('WO-050 Skip workout asks first, then skips it without starting the session', async () => {
         const wrapper = await show();
 
         await wrapper.get('[data-test="day-menu"] [data-test="menu"]').trigger('click');
@@ -610,7 +612,7 @@ describe('WorkoutView', () => {
     });
 
     it('WO-031 Relabel day opens the relabel sheet, and the new name goes through the outbox', async () => {
-        const wrapper = await show();
+        const wrapper = await show({ payload: workout('warning') });
 
         await wrapper.get('[data-test="day-menu"] [data-test="menu"]').trigger('click');
         await wrapper.get('[data-test="item-relabel"]').trigger('click');

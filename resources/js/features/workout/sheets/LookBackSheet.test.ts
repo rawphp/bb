@@ -46,7 +46,7 @@ describe('LookBackSheet', () => {
 
         expect(wrapper.get('[role="dialog"] h2').text()).toBe('Week 2 · Day 1 · Upper A');
         expect(wrapper.find('[data-test="session"]').exists()).toBe(false);
-        expect(wrapper.get('[data-test="look-back-detail"]').exists()).toBe(true);
+        expect(wrapper.find('[data-test="look-back-detail"]').exists()).toBe(true);
         expect(wrapper.get('[data-cancel]').text()).toBe('Back');
         await wrapper.get('[data-cancel]').trigger('click');
 

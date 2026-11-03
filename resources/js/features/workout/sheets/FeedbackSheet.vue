@@ -94,7 +94,8 @@ function save(): void {
                         <HelpButton :title="question.help.title" :message="question.help.body" :to="question.help.article ? `/learn/${question.help.article}` : undefined" />
                     </div>
                     <ChoiceList
-                        v-model="answers[index]"
+                                                :model-value="answers[index] ?? null"
+                        @update:model-value="answers[index] = $event"
                         :label="question.text"
                         :choices="question.choices.map((choice) => ({ id: choice.value, title: choice.label }))"
                         :disabled="readOnly"

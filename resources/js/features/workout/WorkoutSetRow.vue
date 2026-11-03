@@ -2,24 +2,16 @@
 import { computed, ref, watch } from 'vue';
 import { KEYPAD } from '@/app/keypad';
 import { entries, pendingInput } from '@/app/outbox';
-import { ulid } from '@/app/ulid';
-import type { WorkoutSetAddInput } from '@/contracts/workout_set_add';
-import type { WorkoutSetDeleteInput } from '@/contracts/workout_set_delete';
 import type { WorkoutSetLogInput } from '@/contracts/workout_set_log';
-import type { WorkoutSetSkipInput } from '@/contracts/workout_set_skip';
-import type { WorkoutSetTypeSetInput } from '@/contracts/workout_set_type_set';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
-import ActionMenu, { type ActionMenuItem } from '@/design/ActionMenu.vue';
-import HelpButton from '@/design/HelpButton.vue';
 import PendingMark from '@/design/PendingMark.vue';
-import type { WorkoutWrite } from './workoutWrite';
+import type { WorkoutSheet, WorkoutWrite } from './workoutWrite';
 
 type Exercise = WorkoutShowOutput['exercises'][number];
 type WorkoutSet = Exercise['sets'][number];
-type SetType = WorkoutSetTypeSetInput['set_type'];
 
-// One set (WO-003): its menu, number and type badge, the weight and reps fields, the RIR
-// info icon and the Log box. Weight and reps use the number pads (UI-020) and are sent when
+// One set (WO-003): its menu button, number and type badge, the weight and reps fields, the
+// RIR info icon and the Log box. The menu and the icon ask the screen to open their sheets. Weight and reps use the number pads (UI-020) and are sent when
 // a field is left or Log is tapped. The server fills both from the target (WO-004); a typed
 // weight looks its reps up in the set's rep table (WO-005, CAP-016), and a weight not in it
 // shows the server's "just log reps" text. A set with a write waiting shows what the user
@@ -31,15 +23,13 @@ const props = withDefaults(
         exercise: Exercise;
         unit: WorkoutShowOutput['weight_unit'];
         editable: boolean;
-        rirInfo: WorkoutShowOutput['rir_info'];
-        setTypeChoices: WorkoutShowOutput['set_type_choices'];
         /** WO-006: the first set's typed weight, shown on a later set that has none of its own. */
         carriedWeight?: string | null;
     }>(),
     { carriedWeight: null },
 );
 
-const emit = defineEmits<{ send: [write: WorkoutWrite]; 'weight-typed': [text: string] }>();
+const emit = defineEmits<{ send: [write: WorkoutWrite]; open: [sheet: WorkoutSheet]; 'weight-typed': [text: string] }>();
 
 // OFF-009: the newest waiting set_log for this set, as the user typed it.
 const own = computed(() => pendingInput<WorkoutSetLogInput>('workout_set_log', (input) => input.set_id === props.set.id));
@@ -163,45 +153,6 @@ function toggleLog(): void {
     emit('send', { name: 'workout_set_log', input: { ...input }, label: label(input, input.is_logged ? 'Logged' : 'Unlogged'), haptic: input.is_logged });
 }
 
-// WO-020, WO-021: the set menu.
-const menuItems = computed<ActionMenuItem[]>(() => [
-    { key: 'add', title: 'Add set below' },
-    { key: 'skip', title: props.set.is_skipped ? 'Unskip set' : 'Skip set' },
-    { key: 'delete', title: 'Delete set', destructive: true },
-    ...props.setTypeChoices.map((choice) => ({
-        key: `type:${choice.value}`,
-        title: `Set type: ${choice.label}`,
-        detail: choice.value === props.set.set_type ? 'Current' : choice.note,
-        disabled: choice.value === props.set.set_type,
-    })),
-]);
-
-const what = computed(() => `${props.exercise.name} set ${props.set.number}`);
-
-function choose(key: string): void {
-    if (key === 'add') {
-        const id = ulid();
-        const input: WorkoutSetAddInput = { set_id: id, workout_exercise_id: props.exercise.id, after_set_id: props.set.id, set_type: props.set.set_type };
-        emit('send', { name: 'workout_set_add', input: { ...input }, label: `Added a set below ${what.value}`, creates: [id] });
-    } else if (key === 'skip') {
-        const input: WorkoutSetSkipInput = { set_id: props.set.id, is_skipped: !props.set.is_skipped };
-        emit('send', { name: 'workout_set_skip', input: { ...input }, label: `${input.is_skipped ? 'Skipped' : 'Unskipped'} ${what.value}` });
-    } else if (key === 'delete') {
-        const input: WorkoutSetDeleteInput = { set_id: props.set.id };
-        emit('send', {
-            name: 'workout_set_delete',
-            input: { ...input },
-            label: `Deleted ${what.value}`,
-            confirm: { title: `Delete set ${props.set.number}?`, message: 'Whatever was logged on it goes with it. It cannot be undone.', action: 'Delete set' },
-        });
-    } else if (key.startsWith('type:')) {
-        const choice = props.setTypeChoices.find((found) => `type:${found.value}` === key);
-        if (!choice) return;
-        const input: WorkoutSetTypeSetInput = { set_id: props.set.id, set_type: choice.value as SetType };
-        emit('send', { name: 'workout_set_type_set', input: { ...input }, label: `Made ${what.value} ${choice.label}` });
-    }
-}
-
 const field =
     'h-tap w-full min-w-0 rounded-[10px] border bg-background px-1.5 text-center text-xl font-medium tabular-nums text-primary-text outline-none focus:border-2 focus:border-accent disabled:opacity-100';
 </script>
@@ -209,12 +160,21 @@ const field =
 <template>
     <div :data-set="set.id" :class="set.is_skipped ? 'opacity-50' : ''">
         <div class="flex items-center gap-1 rounded-xl py-0.5" :class="logged ? 'bg-accent/10' : ''">
-            <ActionMenu :label="`Set ${set.number} menu`" :items="menuItems" align="start" :disabled="!editable" data-test="set-menu" @select="choose">
-                <svg viewBox="0 0 24 24" class="size-6 text-accent" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+            <!-- WO-020, WO-021: the set menu sheet. -->
+            <button
+                type="button"
+                class="flex min-h-tap min-w-tap shrink-0 items-center justify-center text-accent disabled:opacity-40"
+                aria-haspopup="dialog"
+                :aria-label="`Set ${set.number} menu`"
+                :disabled="!editable"
+                data-test="menu"
+                @click="emit('open', { name: 'set-menu', setId: set.id })"
+            >
+                <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                     <circle cx="12" cy="12" r="9.25" />
                     <path d="M8 12h.01M12 12h.01M16 12h.01" stroke-linecap="round" stroke-width="2.5" />
                 </svg>
-            </ActionMenu>
+            </button>
             <div class="flex w-[34px] shrink-0 flex-col items-center">
                 <span class="font-semibold tabular-nums text-primary-text">{{ set.number }}</span>
                 <span
@@ -273,7 +233,20 @@ const field =
                 @blur="focused === 'reps' && commit()"
             />
             <!-- WO-007: what the target and this week's RIR mean. -->
-            <HelpButton :title="rirInfo.title" :message="rirInfo.body" :to="rirInfo.article ? `/learn/${rirInfo.article}` : undefined" data-test="rir-info" />
+            <button
+                type="button"
+                class="flex min-h-tap min-w-tap shrink-0 items-center justify-center text-accent"
+                aria-haspopup="dialog"
+                aria-label="What RIR means"
+                data-test="rir-info"
+                @click="emit('open', { name: 'rir' })"
+            >
+                <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9.25" />
+                    <path d="M9.5 9.25a2.5 2.5 0 1 1 3.5 2.3c-.6.27-1 .87-1 1.53v.67" stroke-linecap="round" />
+                    <circle cx="12" cy="16.75" r=".6" fill="currentColor" stroke="none" />
+                </svg>
+            </button>
             <button
                 type="button"
                 role="checkbox"
