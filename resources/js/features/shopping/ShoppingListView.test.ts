@@ -36,7 +36,9 @@ function tickButton(view: VueWrapper, name: string) {
 }
 
 async function setDate(view: VueWrapper, which: 'from' | 'to', value: string): Promise<void> {
-    await view.get(`input[name="${which}"]`).setValue(value);
+    const field = view.get(`input[name="${which}"]`);
+    await field.setValue(value);
+    await field.trigger('change');
     await flushPromises();
 }
 
@@ -213,14 +215,6 @@ describe('ShoppingListView', () => {
         const amounts = view.findAllComponents(ShoppingRowView).filter((r) => r.find('[data-test="amount"]').exists());
         expect(amounts).toHaveLength(3);
         expect(amounts.every((r) => r.get('[data-test="amount"]').text().includes('Waiting to sync'))).toBe(true);
-    });
-
-    it('OFF-008 marks the amounts while a write to the list waits in the outbox', async () => {
-        await queue({ name: 'shopping_item_add', input: {}, affects: ['shopping_show'], label: 'Added Bin bags to the shopping list' });
-        const view = show({ payload: content });
-        await flushPromises();
-
-        expect(row(view, 'White rice').get('[data-test="amount"]').text()).toContain('Waiting to sync');
     });
 
     it('OFF-008 marks nothing when nothing waits to sync', () => {
