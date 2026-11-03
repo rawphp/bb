@@ -3,10 +3,13 @@
 // go at once on finish. When the user leaves the workout (another screen, another app) it
 // keeps the hold for 30 minutes and then lets go; coming back within that time takes it
 // again. The browser drops the lock while the page is hidden, so it is taken again on return.
+// The lock is one workout's: another (an earlier one looked back at) never leaves or drops it.
 export const LEAVE_AFTER_MS = 30 * 60_000;
 
 let sentinel: WakeLockSentinel | null = null;
 let wanted = false;
+// The workout holding it.
+let holder: string | null = null;
 // The workout screen is on show; only then does a return to the page take the lock again.
 let showing = false;
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -34,7 +37,8 @@ function stopTimer(): void {
 }
 
 /** The workout is on show and under way. */
-export function holdWakeLock(): void {
+export function holdWakeLock(workoutId: string): void {
+    holder = workoutId;
     stopTimer();
     wanted = true;
     showing = true;
@@ -42,18 +46,21 @@ export function holdWakeLock(): void {
 }
 
 /** The user left the workout: let go after 30 minutes unless they come back. */
-export function leaveWakeLock(): void {
+export function leaveWakeLock(workoutId: string): void {
+    if (holder !== workoutId) return;
     showing = false;
     startTimer();
 }
 
 function startTimer(): void {
     if (!wanted || timer !== undefined) return;
-    timer = setTimeout(releaseWakeLock, LEAVE_AFTER_MS);
+    timer = setTimeout(() => releaseWakeLock(), LEAVE_AFTER_MS);
 }
 
-/** The workout is finished, or the leave ran out: let go now. */
-export function releaseWakeLock(): void {
+/** The workout is finished, or (with no id) the leave ran out: let go now. */
+export function releaseWakeLock(workoutId?: string): void {
+    if (workoutId !== undefined && holder !== workoutId) return;
+    holder = null;
     stopTimer();
     wanted = false;
     showing = false;
@@ -66,6 +73,6 @@ if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
         if (!wanted) return;
         if (document.visibilityState === 'hidden') startTimer();
-        else if (showing) holdWakeLock();
+        else if (showing && holder !== null) holdWakeLock(holder);
     });
 }

@@ -98,9 +98,20 @@ function finish(): void {
     if (!workout) return;
     const input: WorkoutFinishInput = { workout_id: workout.workout_id };
     void queue({ name: 'workout_finish', input: { ...input }, label: `Finished ${workout.day_label}`, haptic: true }).then((done) => {
-        if (done) releaseWakeLock();
+        if (done) releaseWakeLock(workout.workout_id);
     });
 }
+
+// OFF-021: a start or finish waiting in the outbox counts, so an offline session behaves as
+// it will once synced. While changes wait, can_finish is from before them, and the server
+// decides on the finish itself (workout_finish has the last word); a finish already waiting
+// is not sent again.
+const waiting = (name: string) => {
+    const workout = data.value;
+    return workout !== undefined && pendingInput<WorkoutFinishInput>(name, (input) => input.workout_id === workout.workout_id) !== undefined;
+};
+const finishWaiting = computed(() => waiting('workout_finish'));
+const canFinish = computed(() => !finishWaiting.value && (data.value?.can_finish === true || pending.value));
 
 // WO-008: an earlier session of the mesocycle, opened in place of this one.
 const lookBack = computed<ActionMenuItem[]>(() =>
@@ -117,19 +128,21 @@ const top = useScreenTop();
 const live = props.payload === undefined;
 const onShow = computed(() => top?.value ?? true);
 watch(
-    [() => data.value?.status, () => data.value?.active_bar_text, onShow],
+    [() => data.value?.status, () => data.value?.active_bar_text, onShow, () => waiting('workout_start'), finishWaiting],
     () => {
         const workout = data.value;
         if (!workout || !live) return;
         showWorkout(workout.workout_id, path.value, workout.active_bar_text);
-        if (workout.status === 'finished' || workout.status === 'skipped') releaseWakeLock();
-        else if (workout.status === 'in_progress' && onShow.value) holdWakeLock();
-        else if (workout.status === 'in_progress') leaveWakeLock();
+        const id = workout.workout_id;
+        const underWay = workout.status === 'in_progress' || (workout.status === 'not_started' && waiting('workout_start'));
+        if (workout.status === 'finished' || workout.status === 'skipped' || finishWaiting.value) releaseWakeLock(id);
+        else if (underWay && onShow.value) holdWakeLock(id);
+        else if (underWay) leaveWakeLock(id);
     },
     { immediate: true },
 );
 onUnmounted(() => {
-    if (live) leaveWakeLock();
+    if (live && data.value) leaveWakeLock(data.value.workout_id);
 });
 
 const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-accent';
@@ -173,7 +186,7 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
                     <button
                         type="button"
                         class="min-h-tap w-full rounded-xl bg-accent font-semibold text-on-accent disabled:opacity-40"
-                        :disabled="!data.can_finish"
+                        :disabled="!canFinish"
                         data-test="finish"
                         @click="finish"
                     >

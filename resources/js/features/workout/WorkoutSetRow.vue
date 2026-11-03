@@ -64,14 +64,28 @@ const repsTyped = ref(false);
 // What a left field last sent, so a second change event before the outbox shows it sends nothing more.
 let lastSent: string | null = null;
 
-watch([() => props.set, own, () => props.carriedWeight], () => {
+// Log as the user last set it, until a new read of the set: replay drops a sent entry
+// before that read arrives, and the row must not flash back to the old set meanwhile.
+const loggedSet = ref<boolean | null>(null);
+
+function resync(): void {
     if (focused.value !== 'weight') weightText.value = savedWeight();
     if (focused.value !== 'reps') repsText.value = savedReps();
     if (focused.value === null) repsTyped.value = false;
+    loggedSet.value = null;
     lastSent = null;
+}
+
+// A new read of the set, or a carried weight, shows in the fields; so does a waiting entry
+// that arrives (from a remount, say). One that goes away leaves the fields as they are.
+watch([() => props.set, () => props.carriedWeight], resync);
+watch(own, (now) => {
+    if (!now) return;
+    resync();
+    loggedSet.value = now.is_logged;
 });
 
-const logged = computed(() => own.value?.is_logged ?? props.set.is_logged);
+const logged = computed(() => loggedSet.value ?? own.value?.is_logged ?? props.set.is_logged);
 const locked = computed(() => !props.editable || props.set.is_skipped);
 
 /** The field's text as a number, a comma taken as the decimal point; NaN when it is not one. */
@@ -140,6 +154,8 @@ function toggleLog(): void {
     const input = logInput(!logged.value);
     if (input === null) return;
     emit('send', { name: 'workout_set_log', input: { ...input }, label: label(input, input.is_logged ? 'Logged' : 'Unlogged'), haptic: input.is_logged });
+    loggedSet.value = input.is_logged;
+    lastSent = `${weightText.value.trim()}|${repsText.value.trim()}`;
 }
 
 // WO-020, WO-021: the set menu.
