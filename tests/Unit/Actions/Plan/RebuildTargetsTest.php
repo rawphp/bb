@@ -19,6 +19,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
 
@@ -280,6 +282,81 @@ it('SET-004 a refusal writes nothing and says why', function () {
     expect(fn () => rebuildRun($user))
         ->toThrow(PlanRebuildRefused::class, 'No phase covers this week, so your targets were not changed.')
         ->and(DayTarget::query()->count())->toBe(0);
+});
+
+/**
+ * Stored meals with the given ids, as a day_targets row keeps them.
+ *
+ * @param  list<string>  $ids
+ * @return list<array<string, mixed>>
+ */
+function rebuildRowMeals(array $ids): array
+{
+    return array_map(fn (string $id, int $i) => [
+        'id' => $id, 'name' => 'Meal '.($i + 1), 'time' => sprintf('%02d:00', 8 + $i * 3), 'kcal' => 500, 'protein_g' => 30, 'fat_g' => 15, 'carbs_g' => 60,
+    ], $ids, array_keys($ids));
+}
+
+/** @return array{kcal: float, meals: list<array<string, mixed>>, index: list<string>} a row's targets, meals and meal index */
+function rebuildRowState(DayTarget $row): array
+{
+    $row->refresh();
+
+    return [
+        'kcal' => $row->kcal,
+        'meals' => $row->meals,
+        'index' => DB::table('day_target_meals')->where('day_target_id', $row->id)->orderBy('position')->pluck('id')->all(),
+    ];
+}
+
+it('SET-004 a refused rebuild leaves the stored days after today, their meals and their meal index as they were', function () {
+    $user = rebuildUser();
+    $rows = [];
+    foreach (['2026-10-15', '2026-10-16'] as $date) {
+        $rows[$date] = DayTarget::factory()->for($user)->create([
+            'date' => $date, 'meals' => rebuildRowMeals(array_map(fn () => strtolower((string) Str::uuid7()), range(1, 4))),
+        ]);
+    }
+    $before = array_map(fn (DayTarget $row) => rebuildRowState($row), $rows);
+
+    // 2000 kcal a day below the recommendation takes carbs and fat below their floors (SAFE-012).
+    expect(fn () => rebuildRun($user, -2000))->toThrow(PlanRebuildRefused::class, 'These details would take your carbs or fat below the safe minimum. Your targets were not changed.')
+        ->and(array_map(fn (DayTarget $row) => rebuildRowState($row), $rows))->toBe($before)
+        ->and(DayTarget::query()->where('user_id', $user->id)->count())->toBe(2);
+});
+
+it('SET-004 a save that fails partway through the week writes none of the week', function () {
+    $user = rebuildUser();
+    // Another user's day already holds this meal id, so saving the 17th, which still lists it, is refused.
+    $taken = strtolower((string) Str::uuid7());
+    DayTarget::factory()->create(['date' => '2026-10-17', 'meals' => rebuildRowMeals([$taken])]);
+    $broken = (string) Str::uuid7();
+    DB::table('day_targets')->insert([
+        'id' => $broken, 'user_id' => $user->id, 'date' => '2026-10-17', 'day_type' => 'rest', 'kcal' => 2000, 'protein_g' => 140,
+        'fat_g' => 60, 'carbs_g' => 220, 'meals' => json_encode(rebuildRowMeals([$taken])), 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    expect(fn () => rebuildRun($user))->toThrow(ValidationException::class)
+        ->and(DayTarget::query()->where('user_id', $user->id)->pluck('id')->all())->toBe([$broken])
+        ->and(DayTarget::query()->findOrFail($broken)->kcal)->toBe(2000.0);
+});
+
+it('SET-004 of two stored rows for one date, the older is rebuilt in place and the newer is left as it was', function () {
+    $user = rebuildUser();
+    $olderIds = array_map(fn () => strtolower((string) Str::uuid7()), range(1, 4));
+    $newerIds = array_map(fn () => strtolower((string) Str::uuid7()), range(1, 4));
+    $older = DayTarget::factory()->for($user)->create(['date' => '2026-10-16', 'meals' => rebuildRowMeals($olderIds), 'created_at' => '2026-10-01 08:00:00']);
+    $newer = DayTarget::factory()->for($user)->create(['date' => '2026-10-16', 'meals' => rebuildRowMeals($newerIds), 'created_at' => '2026-10-02 08:00:00']);
+    $newerBefore = rebuildRowState($newer);
+
+    expect(rebuildRun($user))->toContain('2026-10-16');
+
+    $olderAfter = rebuildRowState($older);
+    expect(DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-10-16')->count())->toBe(2)
+        ->and(array_column($olderAfter['meals'], 'id'))->toBe($olderIds)
+        ->and($olderAfter['index'])->toBe($olderIds)
+        ->and($olderAfter['kcal'])->not->toBe(2000.0)
+        ->and(rebuildRowState($newer))->toBe($newerBefore);
 });
 
 it('SET-004 a user without a plan is told the plan has not started', function () {
