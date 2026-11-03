@@ -7,6 +7,7 @@ use App\Capabilities\WeighIns\Data\WeightInput;
 use App\Domain\WeighIns\BodyMeasures;
 use App\Models\User;
 use App\Models\WeighIn;
+use App\Support\UserDay;
 use App\Support\WeighIns\ReadingTime;
 
 /**
@@ -15,13 +16,13 @@ use App\Support\WeighIns\ReadingTime;
  */
 final class UpdateWeighIn
 {
-    /** @return list<string> the days, Y-m-d, whose weigh-ins changed: the old day and the new one */
+    /** @return list<string> the user's local days, Y-m-d, whose weigh-ins changed: the old day and the new one (SET-012) */
     public function __invoke(User $user, string $id, string $weighedAt, WeightInput $weight, ?WaistInput $waist): array
     {
         $at = ReadingTime::instant($weighedAt);
         $kg = BodyMeasures::kg($weight->value, $weight->unit);
         $weighIn = WeighIn::query()->where('user_id', $user->id)->findOrFail($id);
-        $before = $weighIn->weighed_at->format('Y-m-d');
+        $before = UserDay::dayOf($user, $weighIn->weighed_at)->format('Y-m-d');
 
         $weighIn->forceFill([
             'weight_kg' => $kg,
@@ -29,6 +30,6 @@ final class UpdateWeighIn
             'weighed_at' => $at,
         ])->save();
 
-        return array_values(array_unique([$before, $weighIn->weighed_at->format('Y-m-d')]));
+        return array_values(array_unique([$before, UserDay::dayOf($user, $weighIn->weighed_at)->format('Y-m-d')]));
     }
 }

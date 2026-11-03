@@ -238,8 +238,8 @@ it('WT-003 WT-020 marks what a Health bridge token posts as the bridge\'s over M
         ->and(WeighIn::query()->findOrFail($id)->source)->toBe(MeasurementSource::Shortcut);
 });
 
-it('WT-002 WT-004 counts a weigh-in on the app\'s day, UTC, as Today does: the one it refreshes and the one it fills', function () {
-    // The app has no per-user time zone: today_show's "today" is the UTC date, so a reading belongs to its UTC day.
+it('WT-002 WT-004 counts a weigh-in on the user\'s day, for a user whose zone is UTC, as Today does: the one it refreshes and the one it fills', function () {
+    // The user's time zone is UTC, the default (SET-012): today_show's "today" is the UTC date, so a reading belongs to its UTC day.
     Carbon::setTestNow('2026-10-10 12:00:00');
     $user = User::factory()->create();
     WeighInScheduleEntry::factory()->for($user)->create(['weekdays' => [4, 5], 'time' => '07:00']);
@@ -601,3 +601,116 @@ it('WT-004 pages no further when the first weigh-in is at the first moment of th
     expect($newest['rows'])->not->toBe([])
         ->and($newest['next_before'])->toBeNull();
 });
+
+it('SET-012 lists a weigh-in on the user\'s local day, at the user\'s clock time', function (string $zone, array $dates, array $missed, string $time, string $weighedAt, ?array $missedRow) {
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => $zone])->save();
+    WeighInScheduleEntry::factory()->for($user)->create(['weekdays' => [5, 6], 'time' => '07:00']);
+    // Thursday 8 October 07:00 in Brisbane.
+    WeighIn::factory()->for($user)->create(['weighed_at' => '2026-10-07 21:00:00']);
+    weighInCall($user, 'weigh_in_log', weighInInput(['weighed_at' => '2026-10-10T06:58:00+10:00']))->assertOk();
+
+    $rows = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data.rows');
+
+    expect(array_column($rows, 'date_label'))->toBe($dates)
+        ->and(array_column($rows, 'is_missed'))->toBe($missed)
+        ->and($rows[0]['time_label'])->toBe($time)
+        ->and($rows[0]['weighed_at'])->toBe($weighedAt);
+    if ($missedRow !== null) {
+        expect([$rows[1]['id'], $rows[1]['weighed_at']])->toBe($missedRow);
+    }
+})->with([
+    'Brisbane' => ['Australia/Brisbane', ['Sat, 10 Oct', 'Fri, 9 Oct', 'Thu, 8 Oct'], [false, true, false], '6:58 AM', '2026-10-10T06:58:00+10:00', ['missed-2026-10-09', '2026-10-09T07:00:00+10:00']],
+    'UTC' => ['UTC', ['Fri, 9 Oct', 'Wed, 7 Oct'], [false, false], '8:58 PM', '2026-10-09T20:58:00+00:00', null],
+]);
+
+it('SET-012 a weigh-in write names the user\'s local day', function (string $zone, string $logged, array $updated, string $notUpdated, string $deleted) {
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => $zone])->save();
+    $day = fn (string $date) => 'today_show{"date":"'.$date.'"}';
+    $dated = fn (array $keys) => array_values(array_filter($keys, fn (string $key) => str_starts_with($key, 'today_show{"date"')));
+
+    $keys = weighInCall($user, 'weigh_in_log', weighInInput(['weighed_at' => '2026-10-10T06:58:00+10:00']))->assertOk()->json('data.invalidates');
+    expect($dated($keys))->toBe([$day($logged)]);
+
+    // Tuesday 6 October 06:00 in Brisbane.
+    $weighIn = WeighIn::factory()->for($user)->create(['weighed_at' => '2026-10-05 20:00:00']);
+    $keys = weighInCall($user, 'weigh_in_update', weighInInput(['id' => $weighIn->id, 'weighed_at' => '2026-10-07T06:00:00+10:00']))->assertOk()->json('data.invalidates');
+    expect($dated($keys))->toBe(array_map($day, $updated))->not->toContain($day($notUpdated));
+
+    $keys = weighInCall($user, 'weigh_in_delete', ['id' => $weighIn->id])->assertOk()->json('data.invalidates');
+    expect($dated($keys))->toBe([$day($deleted)]);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', '2026-10-10', ['2026-10-06', '2026-10-07'], '2026-10-05', '2026-10-07'],
+    'UTC' => ['UTC', '2026-10-09', ['2026-10-05', '2026-10-06'], '2026-10-07', '2026-10-06'],
+]);
+
+it('SET-012 a schedule change names the user\'s next seven local days', function (string $zone, string $first) {
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    $user = weighInScenario();
+    $user->forceFill(['time_zone' => $zone])->save();
+
+    $keys = weighInCall($user, 'weigh_in_schedule_set', ['entries' => [['weekdays' => [7, 2], 'time' => '06:45']]])
+        ->assertOk()->json('data.invalidates');
+
+    $days = array_map(fn (int $offset) => 'today_show{"date":"'.date('Y-m-d', strtotime("{$first} +{$offset} days")).'"}', range(0, 6));
+    expect(array_values(array_filter($keys, fn (string $key) => str_starts_with($key, 'today_show{"date"'))))->toBe($days);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', '2026-10-10'],
+    'UTC' => ['UTC', '2026-10-09'],
+]);
+
+it('SET-012 the steps sheet defaults to the user\'s yesterday', function (string $zone, string $yesterday) {
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => $zone])->save();
+
+    expect(weighInCall($user, 'weigh_ins_show')->assertOk()->json('data.steps.default_date'))->toBe($yesterday);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', '2026-10-09'],
+    'UTC' => ['UTC', '2026-10-08'],
+]);
+
+it('SET-012 pages the weigh-ins by the user\'s local days', function (string $zone, array $newestIds, ?string $nextBefore, array $olderIds) {
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => $zone])->save();
+    // Sunday 12 July 23:00 and Monday 13 July 00:30 in Brisbane.
+    $late = WeighIn::factory()->for($user)->create(['weighed_at' => '2026-07-12 13:00:00']);
+    $early = WeighIn::factory()->for($user)->create(['weighed_at' => '2026-07-12 14:30:00']);
+    $ids = ['late' => (string) $late->id, 'early' => (string) $early->id];
+
+    $newest = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data');
+    expect(array_column($newest['rows'], 'id'))->toBe(array_map(fn (string $name) => $ids[$name], $newestIds))
+        ->and($newest['next_before'])->toBe($nextBefore);
+
+    if ($nextBefore !== null) {
+        $older = weighInCall($user, 'weigh_ins_show', ['before' => $nextBefore])->assertOk()->json('data');
+        expect(array_column($older['rows'], 'id'))->toBe(array_map(fn (string $name) => $ids[$name], $olderIds));
+    }
+})->with([
+    'Brisbane' => ['Australia/Brisbane', ['early'], '2026-07-13', ['late']],
+    'UTC' => ['UTC', ['early', 'late'], null, []],
+]);
+
+it('SET-012 starts the missed days and the paging at the first weigh-in\'s local day', function (string $zone, array $ids) {
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    $scanned = User::factory()->create();
+    $scanned->forceFill(['time_zone' => $zone])->save();
+    WeighInScheduleEntry::factory()->for($scanned)->create(['weekdays' => [3, 5, 6], 'time' => '07:00']);
+    // Thursday 8 October 07:00 in Brisbane: Wednesday 7 is the day before the first weigh-in there.
+    $first = WeighIn::factory()->for($scanned)->create(['weighed_at' => '2026-10-07 21:00:00']);
+    $paged = User::factory()->create();
+    $paged->forceFill(['time_zone' => $zone])->save();
+    // Monday 13 July 00:30 in Brisbane, the first day of the newest page there, and 12 July, its first day, in UTC.
+    WeighIn::factory()->for($paged)->create(['weighed_at' => '2026-07-12 14:30:00']);
+
+    expect(array_column(weighInCall($scanned, 'weigh_ins_show')->assertOk()->json('data.rows'), 'id'))
+        ->toBe(str_replace('first', (string) $first->id, $ids))
+        ->and(weighInCall($paged, 'weigh_ins_show')->assertOk()->json('data.next_before'))->toBeNull();
+})->with([
+    'Brisbane' => ['Australia/Brisbane', ['missed-2026-10-09', 'first']],
+    'UTC' => ['UTC', ['first']],
+]);
