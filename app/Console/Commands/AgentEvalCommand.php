@@ -89,9 +89,17 @@ final class AgentEvalCommand extends Command
         foreach ((new SimpleXMLElement($junit))->xpath('//testcase') ?: [] as $case) {
             $failure = isset($case->failure) ? $case->failure : (isset($case->error) ? $case->error : null);
             $cases[] = ['name' => preg_replace('/^it /', '', (string) $case['name']), 'passed' => $failure === null && ! isset($case->skipped)]
-                + ($failure === null ? [] : ['failure' => trim((string) $failure)]);
+                + ($failure === null ? [] : ['failure' => $this->message((string) $case['name'], (string) $failure)]);
         }
 
         return $cases;
+    }
+
+    /** Pest's JUnit fault is the test's name, the message, then where it was thrown: keep the message. */
+    private function message(string $name, string $fault): string
+    {
+        $text = str_starts_with($fault, $name) ? substr($fault, strlen($name)) : $fault;
+
+        return trim((string) preg_replace('/\R\s*at \S+:\d+.*$/s', '', $text));
     }
 }

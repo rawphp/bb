@@ -18,7 +18,7 @@ use Rawphp\CapabilitiesAi\Support\FakeLlmClient;
  * the right tools with arguments the app accepts. `php artisan agent:eval --live` sets AGENT_EVAL_LIVE and
  * the real model answers instead. A case then passes when the model's calls hold the expected ones, in
  * order, each with at least the expected arguments, and the app accepted each. Reads it makes on the way
- * do not count against it.
+ * do not count against it; a write nobody expected that the app accepts fails the case.
  */
 final class Coach
 {
@@ -59,7 +59,8 @@ final class Coach
         test()->actingAs($user)->postJson('/capabilities-ai/chat/messages', ['content' => $message])->assertCreated();
 
         $turn = new self($recorder->calls(), $recorder->reply());
-        $turn->assertMade($calls);
+        $matched = $turn->assertMade($calls);
+        $turn->assertNoOtherWrites($matched);
         $turn->assertNotMade($refused);
         if ($asks !== null) {
             $turn->assertAsks($asks[0], $asks[1]);
@@ -81,19 +82,29 @@ final class Coach
     }
 
     /**
+     * The first successful call of a tool: the arguments the Coach sent, and the app's result.
+     *
+     * @return array{name: string, arguments: array<string, mixed>, ok: bool, result: array<string, mixed>}
+     */
+    public function call(string $name): array
+    {
+        foreach ($this->calls as $call) {
+            if ($call['name'] === $name && $call['ok']) {
+                return $call;
+            }
+        }
+
+        throw new \RuntimeException("The Coach made no successful {$name} call.\n".$this->described());
+    }
+
+    /**
      * The app's result for the first successful call of a tool.
      *
      * @return array<string, mixed>
      */
     public function result(string $name): array
     {
-        foreach ($this->calls as $call) {
-            if ($call['name'] === $name && $call['ok']) {
-                return $call['result'];
-            }
-        }
-
-        throw new \RuntimeException("The Coach made no successful {$name} call.\n".$this->described());
+        return $this->call($name)['result'];
     }
 
     /**
@@ -112,9 +123,13 @@ final class Coach
         return $round === [] ? [['content' => $reply]] : [['tool_calls' => $round], ['content' => $reply]];
     }
 
-    /** @param  list<array{0: string, 1: array<string, mixed>}>  $expected */
-    private function assertMade(array $expected): void
+    /**
+     * @param  list<array{0: string, 1: array<string, mixed>}>  $expected
+     * @return list<int> the index of the call that met each expectation
+     */
+    private function assertMade(array $expected): array
     {
+        $matched = [];
         $from = 0;
         foreach ($expected as [$name, $arguments]) {
             $found = null;
@@ -126,8 +141,24 @@ final class Coach
             }
 
             Assert::assertNotNull($found, "The Coach should call {$name} with ".self::json(self::example($arguments)).", and the app accept it.\n".$this->described());
+            $matched[] = (int) $found;
             $from = (int) $found + 1;
         }
+
+        return $matched;
+    }
+
+    /** @param  list<int>  $matched */
+    private function assertNoOtherWrites(array $matched): void
+    {
+        $registry = app(CapabilityRegistry::class);
+        $others = array_filter(
+            $this->calls,
+            fn (array $call, int $index): bool => $call['ok'] && ! in_array($index, $matched, true) && $registry->has($call['name']) && $registry->get($call['name'])->isMutating(),
+            ARRAY_FILTER_USE_BOTH,
+        );
+
+        Assert::assertEmpty($others, 'The Coach changed something it was not asked to: '.implode(', ', array_column($others, 'name')).".\n".$this->described());
     }
 
     /** @param  list<array{0: string, 1: array<string, mixed>}>  $refused */
