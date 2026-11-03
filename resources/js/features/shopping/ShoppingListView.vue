@@ -48,7 +48,7 @@ watch(
 // kept copy shows even offline. Signed out, nothing of the user's comes back (OFF-003).
 watch(failure, (why) => {
     if (!why || why.signedOut || (asked.value.from === showing.from && asked.value.to === showing.to)) return;
-    error.value = why.offline ? 'The list for those dates needs a connection.' : why.error;
+    error.value = why.offline ? 'The list for those dates needs a connection.' : 'The list for those dates could not be loaded.';
     asked.value = { ...showing };
     void load().catch(() => undefined);
 });
