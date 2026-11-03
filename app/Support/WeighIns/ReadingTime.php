@@ -9,9 +9,9 @@ use Carbon\CarbonImmutable;
  * outbox keeps the moment the user acted (OFF-030). The input's rules have already refused a time the calendar or
  * the column does not have.
  *
- * Stored in the app's time zone (UTC), a reading belongs to its UTC day: the day today_show calls today, the day its
- * write invalidates, and the day the missed-day scan counts it on. The app has no per-user time zone, so 06:58 on a
- * Saturday at +10:00 is Friday's weigh-in, as Friday is still Today's today for that user.
+ * The instant is stored in the app's time zone (UTC). A reading's day is the user's local day, through
+ * UserDay::dayOf() (SET-012): the day today_show calls today, the day its write invalidates, and the day the missed-day
+ * scan counts it on. So 06:58 on a Saturday at +10:00 is Saturday's weigh-in for a user in that zone.
  */
 final class ReadingTime
 {
