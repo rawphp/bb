@@ -51,6 +51,14 @@ describe('WorkoutSetRow', () => {
         expect(wrapper.get('[data-test="log"]').attributes('aria-checked')).toBe('false');
     });
 
+    it('UI-020 the set menu, at the left of the row, opens to the right so it stays on screen', async () => {
+        const wrapper = row();
+
+        await wrapper.get('[data-test="menu"]').trigger('click');
+
+        expect(wrapper.get('[role="menu"]').classes()).toContain('left-0');
+    });
+
     it('UI-020 weight opens the decimal pad and reps the number pad', () => {
         const wrapper = row();
 
