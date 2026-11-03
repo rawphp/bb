@@ -29,7 +29,8 @@ return [
     'env' => env('APP_ENV', 'production'),
 
     // SET-008: the address Settings' "Contact support" row writes to.
-    'support_email' => env('SUPPORT_EMAIL', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
+    // An empty SUPPORT_EMAIL counts as unset.
+    'support_email' => env('SUPPORT_EMAIL') ?: env('MAIL_FROM_ADDRESS', 'hello@example.com'),
 
     /*
     |--------------------------------------------------------------------------

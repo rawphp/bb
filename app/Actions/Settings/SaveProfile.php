@@ -10,7 +10,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Closure;
 use DomainException;
-use Illuminate\Database\DeadlockException;
+use Illuminate\Database\ConcurrencyErrorDetector;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -113,9 +113,12 @@ final class SaveProfile
             return [DB::transaction(fn (): array => app(RebuildTargets::class)($user, beforeStartBuildsFirstWeek: true)), null];
         } catch (PlanRebuildRefused) {
             return [[], null];
-        } catch (DeadlockException $e) {
-            throw $e;
         } catch (Throwable $e) {
+            // Laravel's own test for a deadlock or lock wait, as its transaction retry uses: a DeadlockException from
+            // the savepoint, or the driver's QueryException should one reach here unwrapped.
+            if ((new ConcurrencyErrorDetector)->causedByConcurrencyError($e)) {
+                throw $e;
+            }
             report($e);
 
             return [[], CarbonImmutable::now()];
