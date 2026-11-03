@@ -69,7 +69,7 @@ describe('WeighInsView', () => {
 
         const rows = view.findAll('[data-test="weigh-in"]');
         expect(rows.map((row) => row.text())).toEqual([
-            'Sat, 10 Oct8:35 AM82.5 kg',
+            'Sat, 10 Oct8:35 AM82.5 kgWaist 86 cm',
             'Fri, 9 OctMissed',
             'Wed, 7 OctMissed',
             'Mon, 5 Oct7:00 AM82.9 kg',
@@ -81,8 +81,9 @@ describe('WeighInsView', () => {
     it('WT-021 shows a weigh-in\'s waist when it has one', () => {
         const view = show({ payload: content });
 
-        expect(view.findAll('[data-test="weigh-in"]')[0]!.attributes('aria-description')).toBe('Waist 86 cm');
-        expect(view.findAll('[data-test="weigh-in"]')[3]!.attributes('aria-description')).toBeUndefined();
+        const rows = view.findAll('[data-test="weigh-in"]');
+        expect(rows[0]!.get('[data-test="waist"]').text()).toBe('Waist 86 cm');
+        expect(rows[3]!.find('[data-test="waist"]').exists()).toBe(false);
     });
 
     it('WT-001 the schedule row says the server\'s summary and opens the schedule', async () => {
@@ -267,7 +268,7 @@ describe('WeighInsView', () => {
         const view = show({ payload: content });
 
         expect(view.get('[data-test="steps"] h2').text()).toBe('Steps');
-        expect(view.findAll('[data-test="steps-row"]').map((row) => row.text())).toEqual(['Fri, 9 Oct8,412 stepsTyped', 'Thu, 8 Oct10,230 stepsShortcut']);
+        expect(view.findAll('[data-test="steps-row"]').map((row) => row.text())).toEqual(['Fri, 9 OctTyped8,412 steps', 'Thu, 8 OctShortcut10,230 steps']);
     });
 
     it('WT-020 Add steps starts on the server\'s day, and saves the count as typed', async () => {
