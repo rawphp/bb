@@ -7,7 +7,6 @@ export type Choices = Pick<ExercisesShowOutput, 'muscle_groups' | 'equipment' | 
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { ulid } from '@/app/ulid';
 import { useWrite } from '@/app/useWrite';
 import type { CustomExerciseSaveInput } from '@/contracts/custom_exercise_save';
 import BottomSheet from '@/design/BottomSheet.vue';
@@ -16,6 +15,8 @@ import BottomSheet from '@/design/BottomSheet.vue';
 // CustomExerciseSheet.swift. The choices and their labels are exercises_show's, and the
 // server checks every value. `reload` is the read of the screen underneath, which
 // useWrite runs after a save, or fresh after one that got no final answer (CAP-014).
+// A create sends no exercise_id: exercise ids are integers the server assigns (CAP-019's
+// exception). An edit sends the exercise's own id.
 type Exercise = Pick<CustomExerciseSaveInput, 'name' | 'muscle_group' | 'equipment' | 'load_type'> & { id: string };
 
 const props = withDefaults(
@@ -29,9 +30,10 @@ const props = withDefaults(
     { exercise: null },
 );
 
-const emit = defineEmits<{ cancel: []; saved: [id: string] }>();
+const emit = defineEmits<{ cancel: []; saved: [] }>();
 
-const id = ref('');
+/** The exercise being edited; null for a create. */
+const id = ref<string | null>(null);
 const name = ref('');
 const muscle = ref('');
 const equipment = ref('');
@@ -39,10 +41,10 @@ const loadType = ref('');
 
 const { send, busy, error } = useWrite((options) => props.reload(options));
 
-// Each opening starts from the exercise, or blank with a new id for a create (CAP-019).
+// Each opening starts from the exercise, or blank for a create.
 function reset(): void {
     const exercise = props.exercise;
-    id.value = exercise?.id ?? ulid();
+    id.value = exercise?.id ?? null;
     name.value = exercise?.name ?? '';
     muscle.value = exercise?.muscle_group ?? '';
     equipment.value = exercise?.equipment ?? '';
@@ -60,7 +62,7 @@ const input = computed<CustomExerciseSaveInput | null>(() => {
     if (name.value.trim() === '' || !muscle.value || !equipment.value || !loadType.value) return null;
 
     return {
-        exercise_id: id.value,
+        ...(id.value === null ? {} : { exercise_id: id.value }),
         name: name.value.trim(),
         muscle_group: muscle.value as CustomExerciseSaveInput['muscle_group'],
         equipment: equipment.value as CustomExerciseSaveInput['equipment'],
@@ -77,7 +79,7 @@ const pickers = computed(() => [
 async function save(): Promise<void> {
     if (!input.value) return;
     const saving = input.value;
-    if ((await send('custom_exercise_save', { ...saving }, 'The exercise could not be saved. Try again.')) === 'done') emit('saved', saving.exercise_id);
+    if ((await send('custom_exercise_save', { ...saving }, 'The exercise could not be saved. Try again.')) === 'done') emit('saved');
 }
 </script>
 
