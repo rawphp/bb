@@ -154,7 +154,7 @@ it('SCH-034 the Copy day sheet copies the day and lists no meals', function () {
         ->and($sheet['options']['update_target_macros'])->toBeTrue();
 });
 
-it('SCH-034 the source day and a day without meals cannot be chosen', function () {
+it('SCH-034 the source day and a day without a target cannot be chosen', function () {
     $snapshot = W::snapshot();
     $snapshot->dayTargets->forget($snapshot->dayTargets->search(fn (DayTarget $day) => TrainSnapshot::day($day->date)->format('Y-m-d') === '2026-09-25'));
     $sheet = copyDaySheet(snapshot: $snapshot);
