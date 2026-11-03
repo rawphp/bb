@@ -10,14 +10,14 @@ use App\Capabilities\Plan\Data\PlanMesocycleBand;
 use App\Capabilities\Plan\Data\PlanPhaseBand;
 use App\Capabilities\Plan\Data\PlanShowOutput;
 use App\Domain\Model\PhaseType;
-use App\Domain\Phases\NextPhase;
-use App\Domain\Phases\NextPhaseOption;
 use App\Domain\Phases\PhaseWarnings;
 use App\Domain\Plan\DeloadCalories;
-use App\Domain\Plan\PhaseRefusal;
 use App\Domain\Plan\PlanRules;
 use App\Models\Phase;
+use App\Support\Plan\NewPhases;
 use App\Support\Plan\PhaseChanges;
+use App\Support\Plan\PhaseIntake;
+use App\Support\Plan\PhaseTransitions;
 use App\Support\Plan\PlacedMesocycle;
 use App\Support\Plan\PlanSnapshot;
 use App\Support\Plan\PlanWords;
@@ -27,10 +27,8 @@ use App\Support\Plan\PlanWords;
  * under them, deload weeks and today marked (PLAN-003), the current phase, the event countdown (PH-043), the
  * Maintenance suggestion (PH-045) and the diet-break toggle on each deload (PLAN-023).
  *
- * The add-phase form's types, the prebuilt plans and the due transition are folded into this read by the train
- * contract but built from AddPhaseModel, PrebuiltPlans and PhaseTransitionModel, which #79 ports (PH-030 to PH-046).
- * Until then the form carries where a new phase starts and the PLAN-006 refusal, with no types; there are no
- * prebuilt plans and no transition.
+ * The add-phase form's types and the prebuilt plans (NewPhasePayload, PLAN-006, PLAN-030) and the due transition
+ * (TransitionPayload, PH-030 to PH-046) are folded into this read by the train contract.
  */
 final class PlanPayload
 {
@@ -38,7 +36,7 @@ final class PlanPayload
     public const DIET_BREAK_OFF_WARNING = DeloadCalories::DEFICIT_DELOAD_WARNING.' Keep this deload at maintenance calories?';
 
     /** A plan with no phases still shows this week. */
-    public static function build(?PlanSnapshot $plan): PlanShowOutput
+    public static function build(?PlanSnapshot $plan, PhaseIntake $intake = new PhaseIntake): PlanShowOutput
     {
         if ($plan === null) {
             return self::noPlan();
@@ -130,8 +128,8 @@ final class PlanPayload
             ),
             diet_break_off_warning: self::DIET_BREAK_OFF_WARNING,
             add_phase: self::addPhase($plan),
-            prebuilt_plans: [],
-            transition: null,
+            prebuilt_plans: NewPhasePayload::prebuilt(new NewPhases($plan)),
+            transition: TransitionPayload::build(new PhaseTransitions($plan, $intake)),
         );
     }
 
@@ -189,23 +187,14 @@ final class PlanPayload
      */
     private static function addPhase(PlanSnapshot $plan): PlanAddPhase
     {
-        $last = $plan->phases->last();
-        $range = $last === null ? null : $plan->weeksOf($last);
-        $startWeek = match (true) {
-            $range === null => $plan->todayWeek ?? 0,
-            $range->upper !== PlanSnapshot::OPEN => $range->upper,
-            default => null,
-        };
-        $after = $last === null ? [] : array_values(array_filter(array_map(
-            fn (NextPhaseOption $option) => $option->phase,
-            NextPhase::recommendation($last->type),
-        )));
+        $new = new NewPhases($plan);
+        $startWeek = $new->startWeek();
 
         return new PlanAddPhase(
             starts_text: $startWeek === null ? 'After the current phase' : 'Starts '.PlanWords::day($plan->dayOfWeek($startWeek)),
-            refusal: $startWeek === null ? PlanWords::refusal(PhaseRefusal::previousPhaseHasNoEnd(), $last->type) : null,
-            default_type: ($after[0] ?? PhaseType::FatLoss)->value,
-            types: [],
+            refusal: $new->refusal(),
+            default_type: $new->defaultType()->value,
+            types: NewPhasePayload::types($new),
         );
     }
 

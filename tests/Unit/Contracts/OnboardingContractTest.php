@@ -32,13 +32,14 @@ it('ONB-002 maps every onboarding read and write to the API issue that registers
         ->and($owners)->toBe(['onboarding_show' => 63, 'onboarding_answer' => 67, 'onboarding_complete' => 63]);
 });
 
-it('ONB-002 registers nothing: the API issues do', function () use ($names) {
+it('ONB-002 registers onboarding_show and leaves onboarding_answer to #67', function () use ($names) {
     $registry = app(CapabilityRegistry::class);
 
-    foreach ($names as $name) {
+    foreach (array_diff($names, ['onboarding_show', 'onboarding_complete']) as $name) {
         expect($registry->has($name))->toBeFalse("{$name} is registered");
     }
-    expect(glob(app_path('Capabilities/Onboarding/*Capability.php')))->toBe([]);
+    expect($registry->has('onboarding_show'))->toBeTrue()
+        ->and(array_map('basename', glob(app_path('Capabilities/Onboarding/*Capability.php'))))->toContain('OnboardingShowCapability.php');
 });
 
 it('CAP-018 lets a status carry only the tones the server picks from', function () {
@@ -71,7 +72,7 @@ it('ONB-003 ONB-004 ONB-007 ONB-010 CAP-015 keep every copied choice list equal 
     'sex' => [OnboardingAnswers::class, 'sex', array_column(Sex::cases(), 'value')],
     'body fat' => [OnboardingAnswers::class, 'body_fat', array_column(BodyFatBucket::cases(), 'value')],
     'experience' => [OnboardingAnswers::class, 'experience', array_column(ExperienceLevel::cases(), 'value')],
-    'body fat sex' => [OnboardingBodyFatSection::class, 'sex', array_column(Sex::cases(), 'value')],
+    'body fat sex' => [OnboardingBodyFatSection::class, 'sex', [...array_column(Sex::cases(), 'value'), null]],
     'height unit' => [OnboardingHeight::class, 'unit', array_column(HeightUnit::cases(), 'value')],
     'height answer unit' => [OnboardingHeightAnswer::class, 'unit', array_column(HeightUnit::cases(), 'value')],
     'weight unit' => [OnboardingWeight::class, 'unit', array_column(WeightUnit::cases(), 'value')],

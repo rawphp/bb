@@ -1,4 +1,4 @@
-import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CapabilityError, read, writeNow } from '@/app/call';
 import type { FoodSearchInput, FoodSearchOutput } from '@/contracts/food_search';
@@ -48,6 +48,10 @@ function row(wrapper: ReturnType<typeof show>, name: string) {
     if (!found) throw new Error(`No row for ${name}`);
     return found;
 }
+
+// Every test's PantryView is unmounted after it, so a search timer it left (250 ms after typing) cannot fire a
+// read during a later test and become that test's lastRead().
+enableAutoUnmount(afterEach);
 
 describe('PantryView', () => {
     beforeEach(() => {
