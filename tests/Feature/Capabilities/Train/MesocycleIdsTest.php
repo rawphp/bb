@@ -20,7 +20,7 @@ function idsOver(User $user, string $capability, array $input): mixed
 
 /** Each write and the input that names `$id` as the mesocycle it changes, or copies. */
 dataset('mesocycle writes', [
-    'mesocycle_length_set' => ['mesocycle_length_set', fn (string $id) => ['mesocycle_id' => $id, 'weeks' => 6]],
+    'mesocycle_length_set' => ['mesocycle_length_set', fn (string $id) => ['mesocycle_id' => $id, 'weeks' => 6, 'expected_weeks' => 5]],
     'mesocycle_end' => ['mesocycle_end', fn (string $id) => ['mesocycle_id' => $id]],
     'mesocycle_day_add' => ['mesocycle_day_add', fn (string $id) => ['mesocycle_id' => $id, 'day_id' => (string) Str::ulid()]],
     'mesocycle_active_rest_take' => ['mesocycle_active_rest_take', fn (string $id) => ['mesocycle_id' => $id]],
@@ -52,7 +52,7 @@ it('MESO-040 MESO-042 MESO-043 MESO-045 MESO-060 finds a mesocycle whatever the 
     idsOver($user, $capability, array_map(fn ($value) => $value === 'ID' ? $id : $value, $input))->assertOk();
 })->with([
     'mesocycle_show' => ['mesocycle_show', ['mesocycle_id' => 'ID']],
-    'mesocycle_length_set' => ['mesocycle_length_set', ['mesocycle_id' => 'ID', 'weeks' => 6]],
+    'mesocycle_length_set' => ['mesocycle_length_set', ['mesocycle_id' => 'ID', 'weeks' => 6, 'expected_weeks' => 5]],
     'mesocycle_end' => ['mesocycle_end', ['mesocycle_id' => 'ID']],
     'mesocycle_day_add' => ['mesocycle_day_add', ['mesocycle_id' => 'ID', 'day_id' => '01JC0000000000000000000000']],
     'mesocycle_copy' => ['mesocycle_copy', ['mesocycle_id' => '01JD0000000000000000000000', 'source_mesocycle_id' => 'ID']],

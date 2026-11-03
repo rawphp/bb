@@ -199,6 +199,8 @@ it('CAP-012 refuses a train input outside its bounds and names the field', funct
     'a slot of 21 sets' => [MesocycleBuildInput::class, 'days.0.slots.0.sets', 21],
     'a slot of no sets' => [MesocycleBuildInput::class, 'days.0.slots.0.sets', 0],
     'a 9-week mesocycle' => [MesocycleLengthSetInput::class, 'weeks', 9],
+    'a 9-week mesocycle seen' => [MesocycleLengthSetInput::class, 'expected_weeks', 9],
+    'a 0-week mesocycle seen' => [MesocycleLengthSetInput::class, 'expected_weeks', 0],
     'position 0' => [WorkoutExerciseReorderInput::class, 'position', 0],
     'negative reps' => [WorkoutSetLogInput::class, 'reps', -1],
     'week 0' => [WorkoutShowInput::class, 'week', 0],
@@ -229,6 +231,7 @@ it('CAP-012 takes the values at a train input\'s bounds, and the null that clear
     'a 1000-character note' => [ExerciseNoteSetInput::class, 'note', str_repeat('x', 1000)],
     'a 60-character day label' => [WorkoutDayRelabelInput::class, 'label', str_repeat('x', 60)],
     'an 8-week mesocycle' => [MesocycleLengthSetInput::class, 'weeks', 8],
+    'an 8-week mesocycle seen' => [MesocycleLengthSetInput::class, 'expected_weeks', 8],
     'a slot of 20 sets' => [MesocycleBuildInput::class, 'days.0.slots.0.sets', 20],
     'a phase with no end' => [PhaseAddInput::class, 'weeks', null],
 ]);
