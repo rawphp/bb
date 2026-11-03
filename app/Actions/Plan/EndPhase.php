@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * PH-007: end the running phase early, at the next plan-week boundary. The phases after it move up with its end, as
- * when it is shortened (PH-006). The phase transition (PH-030) that follows is #79's; until it lands nothing opens.
+ * when it is shortened (PH-006). When it is the plan's last phase, `plan_show` then offers its transition (PH-030).
  */
 final class EndPhase
 {

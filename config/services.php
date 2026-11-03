@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    // The shared iOS Shortcut the Health bridge page links to (INT-001). Empty: the page shows only the steps to build it.
+    'health_bridge' => [
+        'shortcut_url' => env('HEALTH_BRIDGE_SHORTCUT_URL', ''),
+    ],
+
 ];

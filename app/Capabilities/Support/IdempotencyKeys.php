@@ -50,6 +50,26 @@ final class IdempotencyKeys
         ]);
     }
 
+    /**
+     * A run that refused a field ({@see FieldRefused}) wrote nothing, but the store keeps its answer as a plain
+     * `domain_error`, without the field. The stored refusal goes, so the same key runs again and answers with the
+     * field. A key that holds anything else is left as it is.
+     */
+    public function releaseRefused(object $actor, string $capability, string $key): void
+    {
+        $row = $this->stored($actor, $capability, $key);
+        $result = $row['result_json'] ?? null;
+        $error = (is_string($result) ? json_decode($result, true) : $result)['error'] ?? null;
+
+        if (($row['status'] ?? null) !== 'failed' || ! is_array($error) || ($error['code'] ?? null) !== 'domain_error') {
+            return;
+        }
+
+        $this->store->update(self::TENANT, ResolveActor::actorType($actor), ResolveActor::actorId($actor), $capability, $key, [
+            'expires_at' => (new DateTimeImmutable('-1 second'))->format(DATE_ATOM),
+        ]);
+    }
+
     /** @return array<string, mixed>|null */
     private function stored(object $actor, string $capability, string $key): ?array
     {
