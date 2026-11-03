@@ -222,13 +222,15 @@ test('AGT-030 AGT-031 AGT-032 AGT-033 ONB-020 a new account sets up by chat with
     await expect(page.getByRole('heading', { level: 2 }).first()).toHaveText(visited[7]!);
     await page.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(page.getByRole('radiogroup', { name: 'Training experience', exact: true }).getByRole('radio', { name: 'Intermediate', exact: true })).toBeChecked();
+    await page.getByRole('button', { name: /^(Next|Continue)$/ }).click();
+    await expect(page.getByText('Step 8 of 13', { exact: true })).toBeVisible();
     expect(rows<{ goal: string }>('select goal from onboarding_drafts where user_id = ?', chatId)).toMatchObject([{ goal: 'fatLoss' }]);
 
     // ...and the chat carries on from there.
     await openChat();
     const days = TRAINING_DAYS.map((day) => {
-      const chosen = shown().training_days.days.find((entry) => entry.weekday === isoWeekday(day))!;
-      return { weekday: isoWeekday(day), start_minutes: chosen.start.minutes, length_minutes: chosen.length_minutes };
+        const chosen = shown().training_days.days.find((entry) => entry.weekday === isoWeekday(day))!;
+        return { weekday: isoWeekday(day), start_minutes: chosen.start.minutes, length_minutes: chosen.length_minutes };
     });
     const weighIns = WEIGH_IN_DAYS.map((day) => ({ weekday: isoWeekday(day), minutes: shown().weigh_ins.days.find((entry) => entry.weekday === isoWeekday(day))!.time.minutes }));
     const third = `I train ${TRAINING_DAYS.join(', ')}; weigh me in ${WEIGH_IN_DAYS.join(', ')}. Everything else as suggested.`;
@@ -247,6 +249,10 @@ test('AGT-030 AGT-031 AGT-032 AGT-033 ONB-020 a new account sets up by chat with
     for (const day of TRAINING_DAYS) expect(cardText).toContain(`${day.slice(0, 3)} 6:00 PM for 60 min`);
     say('confirm: onboarding_complete{}', [{ name: 'onboarding_complete', arguments: {} }], 'Your plan starts tomorrow. Want me to swap any exercises or move a training day?');
     await card.locator('[data-test="start-plan"]').click();
+
+    // AGT-032: the Coach offers to adjust the first mesocycle. Closing the chat then opens Today.
+    await expect(page.locator('li[data-role="assistant"]').filter({ hasText: 'Want me to swap any exercises or move a training day?' })).toBeVisible();
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
 
     // ONB-020: Today, with its tour, before the plan's first day.
     await page.waitForURL('**/today');
