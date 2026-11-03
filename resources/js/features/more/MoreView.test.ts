@@ -67,7 +67,14 @@ describe('MoreView', () => {
         expect(rows(wrapper)).toEqual(built);
     });
 
-    it('SET-020 a tap on a row opens its screen in the More tab', async () => {
+    it("SET-020 with the app's own routes, lists every row whose screen is built, Settings included", async () => {
+        const { wrapper } = await mountMore(createRouter({ history: createMemoryHistory(), routes: routesFor(false) }));
+
+        // Weigh-ins waits for its screen (V_WT). Add it here when that route lands.
+        expect(rows(wrapper)).toEqual(ROWS.filter(([title]) => title !== 'Weigh-ins'));
+    });
+
+    it('SET-020 a tap on a row opens its screen', async () => {
         const { wrapper, router } = await mountMore();
 
         await wrapper.findAll('[data-test="more-row"]').find((row) => row.text() === 'Learn')!.trigger('click');
@@ -90,6 +97,7 @@ describe('MoreView', () => {
         const { wrapper } = await mountMore();
 
         expect(wrapper.get('[data-test="sync-line"]').text()).toContain('1 change waiting to sync');
+        expect(wrapper.get('main').element.lastElementChild!.contains(wrapper.get('[data-test="sync-line"]').element)).toBe(true);
     });
 
     it('VIEW-004 shows the gallery under Developer only where the dev routes are on', async () => {
