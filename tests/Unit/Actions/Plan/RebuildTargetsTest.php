@@ -507,13 +507,17 @@ it('PLAN-023 turning the diet break off keeps a deload week in the deficit', fun
         ->and(rebuildKcal($user)['2026-10-15'])->toEqualWithDelta($deficit['2026-10-15'], 1e-6);
 });
 
-it('MESO-043 an ended mesocycle plans no session after its last day', function () {
+it('MESO-043 an ended mesocycle plans no session after its last day, and its week is no deload', function () {
     $user = rebuildUser();
+    rebuildRun($user);
+    $plain = rebuildKcal($user);
     rebuildSeedMesocycle($user, ['ended_on' => '2026-10-14']);
 
     rebuildRun($user);
 
-    expect(rebuildTypes($user)['2026-10-15'])->toBe(DayType::Rest);
+    // It keeps its stored four weeks: read as the one week it ran, this week would be its deload, at maintenance.
+    expect(rebuildTypes($user)['2026-10-15'])->toBe(DayType::Rest)
+        ->and(rebuildKcal($user)['2026-10-16'])->toEqualWithDelta($plain['2026-10-16'], 1e-6);
 });
 
 it('SCH-038 the first Other activity of a day sets its day type', function () {
