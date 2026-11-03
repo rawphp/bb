@@ -28,9 +28,10 @@ const asked = ref<ShoppingShowInput>({});
 const { data, failure, load } = useRead<ShoppingShowOutput>('shopping_show', () => ({ ...asked.value }), 'Your shopping list could not be loaded.', props.payload);
 const { send, busy, error } = useWrite(load);
 
-// The pickers' dates. They stay when the list for them does not load, to pick again.
+// The pickers' dates, and what was asked for the list on screen.
 const from = ref('');
 const to = ref('');
+let showing: ShoppingShowInput = {};
 
 watch(
     data,
@@ -38,9 +39,19 @@ watch(
         if (!list) return;
         from.value = list.from;
         to.value = list.to;
+        showing = { ...asked.value };
     },
     { immediate: true },
 );
+
+// The list for picked dates did not load: say why and go back to the list before, whose
+// kept copy shows even offline. Signed out, nothing of the user's comes back (OFF-003).
+watch(failure, (why) => {
+    if (!why || why.signedOut || (asked.value.from === showing.from && asked.value.to === showing.to)) return;
+    error.value = why.offline ? 'The list for those dates needs a connection.' : why.error;
+    asked.value = { ...showing };
+    void load().catch(() => undefined);
+});
 
 // As rp-clone's pickers: a first day after the last moves the last day with it.
 function pickDates(which: 'from' | 'to', value: string): void {
