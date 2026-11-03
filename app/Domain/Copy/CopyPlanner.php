@@ -16,21 +16,23 @@ final readonly class CopyPlanner
     /**
      * The source's entries for a destination meal with `$target`, in the same order. With update target macros the
      * unlocked foods and recipe servings are fitted to the target while locked ones keep their amounts (MEAL-005,
-     * RCP-002), through the one meal fit. One the fit leaves below 1 g is planned at 1 g, a tenth of a serving. Without
-     * copy locked state the copies arrive unlocked, after the fit.
+     * RCP-002), through the one meal fit, and one the fit leaves below 1 g is planned at 1 g, a tenth of a serving.
+     * With it off, the source's amounts are copied as they are. Without copy locked state the copies arrive unlocked,
+     * after the fit.
      *
      * @param  list<MealFood>  $source
      * @return list<MealFood>
      */
     public function entries(array $source, MealTarget $target, CopyOptions $options): array
     {
-        $fitted = $options->updateTargetMacros && $source !== [] ? $this->fit->fit($source, $target)->foods : $source;
+        $fitted = $options->updateTargetMacros && $source !== []
+            ? array_map(
+                fn (MealFood $f) => ! $f->isLocked && $f->grams < RecipeServing::MIN_GRAMS ? $f->withGrams(RecipeServing::MIN_GRAMS) : $f,
+                $this->fit->fit($source, $target)->foods,
+            )
+            : $source;
 
-        return array_map(function (MealFood $entry) use ($options): MealFood {
-            $entry = ! $entry->isLocked && $entry->grams < RecipeServing::MIN_GRAMS ? $entry->withGrams(RecipeServing::MIN_GRAMS) : $entry;
-
-            return $options->copyLockedState ? $entry : $entry->withLocked(false);
-        }, $fitted);
+        return array_map(fn (MealFood $entry) => $options->copyLockedState ? $entry : $entry->withLocked(false), $fitted);
     }
 
     /**
