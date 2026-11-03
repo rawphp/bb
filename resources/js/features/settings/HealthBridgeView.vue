@@ -188,7 +188,7 @@ async function revoke(id: string): Promise<void> {
                 @cancel="confirming = false"
                 @save="token && revoke(token.id)"
             >
-                <p class="p-4">Revoke the Health bridge token? The Shortcut stops posting until you set the bridge up again.</p>
+                <p class="p-4">Revoke the Health bridge token? The Shortcut's posts are refused from now on. To start again, set up the bridge and paste the new token into the Shortcut.</p>
             </BottomSheet>
         </template>
 

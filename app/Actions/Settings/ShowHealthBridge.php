@@ -23,7 +23,8 @@ use Carbon\CarbonImmutable;
  *
  * A post is one run of the Shortcut: its weigh-in and steps writes, seconds apart. The run is the newest successful
  * bridge write and those made in the RUN_MINUTES before it, so an older post of the other kind is never shown as
- * part of it.
+ * part of it. The status judges only the current token: a run from before it was made is shown as the last post,
+ * but the status waits for the token's own first post.
  */
 final class ShowHealthBridge
 {
@@ -59,7 +60,10 @@ final class ShowHealthBridge
             ->get(['capability', 'input', 'result', 'created_at'])
             ->all();
 
-        return self::page($token, $posts, $now, (string) config('services.health_bridge.shortcut_url'), url('/capabilities'));
+        // The capability API's own route prefix, so the steps name the URL the Shortcut must post to.
+        $endpoint = url((string) config('capabilities.surfaces.http.prefix'));
+
+        return self::page($token, $posts, $now, (string) config('services.health_bridge.shortcut_url'), $endpoint);
     }
 
     /**
@@ -77,8 +81,8 @@ final class ShowHealthBridge
             token: $token === null ? null : new BridgeToken(
                 id: $token->id,
                 name: $token->name,
-                expires_text: TokenRows::expiresText($token),
-                last_used_text: TokenRows::lastUsedText($token->last_used_at),
+                expires_text: TokenRows::expiresText($token, $now),
+                last_used_text: TokenRows::lastUsedText($token->last_used_at, $now),
             ),
             last_post: $postedAt === null ? null : new BridgePost(
                 when_text: ucfirst(self::when($postedAt, $now)),
@@ -117,7 +121,8 @@ final class ShowHealthBridge
             return new Status('The token has expired. Revoke it and set up the bridge again.', Tone::Warning->value);
         }
 
-        if ($postedAt === null) {
+        // A post from before this token was made came from an earlier one: this token has not posted yet.
+        if ($postedAt === null || ($token->created_at !== null && $postedAt->lt($token->created_at))) {
             return new Status('Waiting for the first post', Tone::Info->value);
         }
 
@@ -209,7 +214,10 @@ final class ShowHealthBridge
             'Set up the bridge here and copy the token. It is shown once.',
             'In the Shortcuts app, make a personal automation that runs every morning, set to run without asking.',
             'Add "Find Health Samples" for the latest Body Weight, and again for yesterday\'s Steps.',
-            "Add \"Get Contents of URL\" to POST to {$endpoint}/weigh_in_log, with the header \"Authorization\" set to \"Bearer \" and your token, and a JSON body: \"id\", a new ULID each run; \"weighed_at\", the weight's date and time in ISO 8601; and \"weight\", with \"value\" and \"unit\" (\"kg\" or \"lb\").",
+            // weigh_in_log needs a new ULID per weigh-in (CAP-019). Shortcuts has no ULID action, but 26 digits starting
+            // with 0 is one: the weight's time and a random number, both actions Shortcuts has.
+            'Add "Format Date" for the weight\'s date with the custom format yyyyMMddHHmmss, and "Random Number" from 10000000000 to 99999999999. Put "0", the date and the number together in one "Text": that is the weigh-in\'s id.',
+            "Add \"Get Contents of URL\" to POST to {$endpoint}/weigh_in_log, with the header \"Authorization\" set to \"Bearer \" and your token, and a JSON body: \"id\", the text above; \"weighed_at\", the weight's date and time in ISO 8601; and \"weight\", with \"value\" and \"unit\" (\"kg\" or \"lb\").",
             "Add another \"Get Contents of URL\" to POST to {$endpoint}/steps_log, with the same header, and a JSON body: \"date\", yesterday as YYYY-MM-DD; and \"steps\", the sum of yesterday's steps.",
             'Run it once, then check this page shows the post.',
         ]);

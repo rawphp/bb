@@ -28,23 +28,25 @@ final class TokenRows
         );
     }
 
-    public static function expiresText(PersonalAccessToken $token): string
+    /** @param  CarbonInterface|null  $now  the page's clock; the system's when null */
+    public static function expiresText(PersonalAccessToken $token, ?CarbonInterface $now = null): string
     {
         $expires = $token->expires_at;
         if ($expires === null) {
             return 'Never expires';
         }
 
-        return ($expires->isPast() ? 'Expired ' : 'Expires ').self::date($expires);
+        return ($expires->lte($now ?? CarbonImmutable::now()) ? 'Expired ' : 'Expires ').self::date($expires);
     }
 
-    public static function lastUsedText(?CarbonInterface $used): string
+    /** @param  CarbonInterface|null  $now  the page's clock; the system's when null */
+    public static function lastUsedText(?CarbonInterface $used, ?CarbonInterface $now = null): string
     {
         if ($used === null) {
             return 'Never used';
         }
 
-        return 'Last used '.($used->isToday() ? 'today, '.$used->format('H:i') : self::date($used));
+        return 'Last used '.($used->isSameDay($now ?? CarbonImmutable::now()) ? 'today, '.$used->format('H:i') : self::date($used));
     }
 
     private static function status(?CarbonInterface $expires): Status
