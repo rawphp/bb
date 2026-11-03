@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import ToggleSwitch from './ToggleSwitch.vue';
@@ -47,6 +47,15 @@ describe('ToggleSwitch', () => {
 
         expect(changes).toHaveLength(1);
         expect(wrapper.emitted('update:modelValue')).toEqual([[true]]);
+    });
+
+    it('CAP-012 holds a box its caller sets back from the change event, so the switch shows what the server holds', async () => {
+        const wrapper = toggle({}, { onChange: (event: Event) => ((event.target as HTMLInputElement).checked = false) });
+
+        await wrapper.get('[role="switch"]').setValue(true);
+        await flushPromises();
+
+        expect(wrapper.get<HTMLInputElement>('[role="switch"]').element.checked).toBe(false);
     });
 
     it('VIEW-004 has a gallery entry', () => {
