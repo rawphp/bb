@@ -3,12 +3,14 @@
 use App\Actions\Today\PlannedSession;
 use App\Capabilities\Support\ReadKey;
 use App\Capabilities\Today\TodayReads;
+use App\Capabilities\Workout\WorkoutDayReads;
 use App\Models\DayTarget;
 use App\Models\DayTargetMeal;
 use App\Models\MealCheckIn;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WeighInScheduleEntry;
+use App\Models\WorkoutSession;
 use App\Support\Today\TodayWeight;
 use App\Support\Workout\WorkoutIds;
 use Illuminate\Support\Carbon;
@@ -282,3 +284,18 @@ it('SET-012 a meal checked in with no time records the user\'s clock', function 
     'Brisbane' => ['Australia/Brisbane', '2026-10-10', '07:58'],
     'UTC' => ['UTC', '2026-10-09', '21:58'],
 ]);
+
+it('SET-012 a change to the rest of a mesocycle names the Today and week of the user\'s local start day', function () {
+    // Friday's session, started at 07:58 on Saturday in Brisbane: Friday in UTC and on the plan, Saturday locally,
+    // and Saturday 10 Oct begins the next plan week.
+    Carbon::setTestNow('2026-10-09 21:58:00');
+    $user = zonedTodayUser('Australia/Brisbane');
+    $friday = test()->actingAs($user)->postJson('/capabilities/today_show', ['date' => '2026-10-09'])->assertOk()->json('data.workouts.0');
+    test()->actingAs($user)->postJson('/capabilities/workout_start', ['workout_id' => WorkoutIds::workout($friday['mesocycle_id'], $friday['week'], $friday['day'])], ['Idempotency-Key' => (string) Str::ulid()])
+        ->assertOk();
+    $session = WorkoutSession::query()->where('user_id', $user->id)->whereNotNull('actual_start_at')->sole();
+
+    $keys = WorkoutDayReads::keys($user->fresh(), $session, fromWeek: $session->week);
+
+    expect($keys)->toContain(ReadKey::for('today_show', ['date' => '2026-10-10']), ReadKey::for('week_show', ['date' => '2026-10-10']));
+});
