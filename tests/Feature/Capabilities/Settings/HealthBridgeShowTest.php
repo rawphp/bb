@@ -6,6 +6,7 @@ use App\Models\PersonalAccessToken;
 use App\Models\Step;
 use App\Models\User;
 use App\Models\WeighIn;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -38,7 +39,8 @@ function setUpBridge(User $user): string
 function runShortcut(string $secret, string $weighedAt = '2026-11-02T06:00:00+00:00', string $day = '2026-11-01'): void
 {
     test()->withToken($secret)->postJson('/capabilities/weigh_in_log', [
-        'id' => (string) Str::ulid(),
+        // Built as the page's steps say: "0", the weight's time as yyyyMMddHHmmss, and an 11-digit random number.
+        'id' => '0'.CarbonImmutable::parse($weighedAt)->format('YmdHis').random_int(10_000_000_000, 99_999_999_999),
         'weighed_at' => $weighedAt,
         'weight' => ['value' => 81.4, 'unit' => 'kg'],
     ])->assertOk();
@@ -74,6 +76,7 @@ it('INT-001 INT-004 matches the screen fixture once the bridge has posted today'
             ],
         ])
         ->and($page['shortcut_url'])->toBe('https://www.icloud.com/shortcuts/example')
+        ->and(implode(' ', array_column($page['steps'], 'text')))->toContain(url('/capabilities/weigh_in_log'), url('/capabilities/steps_log'))
         ->and(json_encode($page))->not->toContain(explode('|', $secret)[1]);
 });
 
@@ -96,6 +99,7 @@ it('INT-001 matches the screen fixture before the bridge is set up, with nothing
 
     $page = healthBridgeShow(User::factory()->create())->assertOk()->json('data');
 
+    expect(ScreenFixture::differences(ScreenFixture::load('health_bridge_show.empty'), $page))->toBe([]);
     assertMatchesScreenFixture('health_bridge_show', $page);
     expect($page['status']['text'])->toBe('Not set up')
         ->and($page['token'])->toBeNull()
@@ -145,6 +149,26 @@ it('INT-001 shows a user only their own bridge, never another user\'s token or p
     $page = healthBridgeShow(User::factory()->create())->assertOk()->json('data');
 
     expect($page['token'])->toBeNull()->and($page['last_post'])->toBeNull();
+});
+
+it('INT-001 INT-004 shows the bridge token and the bridge\'s run, not another token of the user\'s or a weigh-in they typed', function () {
+    $user = User::factory()->create();
+    $this->travelTo('2026-11-02T06:02:00Z');
+    runShortcut(setUpBridge($user));
+    $bridgeId = PersonalAccessToken::query()->sole()->id;
+    $this->travelTo('2026-11-02T08:00:00Z');
+    $this->actingAs($user)->postJson('/capabilities/token_create', [
+        'id' => (string) Str::ulid(), 'name' => 'Laptop CLI', 'expires_in_days' => 30, 'scope' => 'read_only', 'capabilities' => [],
+    ], ['Idempotency-Key' => (string) Str::ulid()])->assertOk();
+    $this->actingAs($user)->postJson('/capabilities/weigh_in_log', [
+        'id' => (string) Str::ulid(), 'weighed_at' => '2026-11-02T07:59:00+00:00', 'weight' => ['value' => 90, 'unit' => 'kg'],
+    ])->assertOk();
+
+    $page = healthBridgeShow($user)->assertOk()->json('data');
+
+    expect($page['token']['id'])->toBe($bridgeId)
+        ->and($page['last_post']['when_text'])->toBe('Today, 06:02')
+        ->and($page['last_post']['items'][0]['value'])->toBe('81.4 kg at 06:00');
 });
 
 it('INT-001 answers 401 to health_bridge_show signed out', function () {

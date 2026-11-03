@@ -5,11 +5,8 @@ use App\Domain\Tokens\TokenScope;
 use App\Models\AuditRecord;
 use App\Models\PersonalAccessToken;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Carbon;
 
 // The Health bridge page's rules (INT-001, INT-004), on in-memory rows: no database.
-
-afterEach(fn () => Carbon::setTestNow());
 
 const BRIDGE_ENDPOINT = 'https://bb.example/capabilities';
 
@@ -23,6 +20,7 @@ function bridgeToken(array $attributes = []): PersonalAccessToken
         'abilities' => TokenScope::HEALTH_BRIDGE,
         'expires_at' => CarbonImmutable::parse('2027-10-03T09:00:00Z'),
         'last_used_at' => null,
+        'created_at' => CarbonImmutable::parse('2026-10-01T09:00:00Z'),
     ]);
 
     return $token;
@@ -55,9 +53,6 @@ function bridgeSteps(string $at, int $steps = 8412, string $date = '2026-11-01')
 /** @param  list<AuditRecord>  $posts */
 function bridgePage(?PersonalAccessToken $token, array $posts = [], string $now = '2026-11-02T09:00:00Z', string $shortcut = 'https://www.icloud.com/shortcuts/abc'): array
 {
-    // Token words (TokenRows) read the clock.
-    test()->travelTo($now);
-
     return ShowHealthBridge::page($token, $posts, CarbonImmutable::parse($now), $shortcut, BRIDGE_ENDPOINT)->toArray();
 }
 
@@ -96,7 +91,10 @@ it('INT-001 links the shared Shortcut from config, and writes out its steps agai
         ->toContain('Authorization')
         ->toContain('weighed_at')
         ->toContain('"date"')
-        ->toContain('"steps"');
+        ->toContain('"steps"')
+        // Shortcuts has no ULID action: the id is built from actions it has (CAP-019).
+        ->toContain('yyyyMMddHHmmss')
+        ->toContain('Random Number');
 });
 
 it('INT-001 says the token has expired, since the Shortcut can no longer post with it', function () {
@@ -132,6 +130,13 @@ it('INT-004 shows the weight in the unit the Shortcut sent it in, with its day w
     expect($page['last_post']['items'])->toBe([['label' => 'Body weight', 'value' => '180.0 lb on 31 October at 07:15']]);
 });
 
+it('INT-004 waits for the first post from a new token, though an earlier token posted, and still shows that post', function () {
+    $page = bridgePage(bridgeToken(['created_at' => CarbonImmutable::parse('2026-11-02T08:00:00Z')]), [bridgeSteps('2026-11-02T06:02:00Z')]);
+
+    expect($page['status'])->toBe(['text' => 'Waiting for the first post', 'tone' => 'info'])
+        ->and($page['last_post']['when_text'])->toBe('Today, 06:02');
+});
+
 it('INT-004 counts a post from yesterday as running, as the automation runs once a day', function () {
     $page = bridgePage(bridgeToken(), [bridgeSteps('2026-11-01T06:02:00Z')]);
 
@@ -144,6 +149,11 @@ it('INT-004 warns when the bridge has not posted for two days or more, so the us
 
     expect($page['status'])->toBe(['text' => 'No posts for 3 days. Check the automation is still on.', 'tone' => 'warning'])
         ->and($page['last_post']['when_text'])->toBe('30 October, 06:01');
+});
+
+it('INT-004 warns from exactly two days without a post', function () {
+    expect(bridgePage(bridgeToken(), [bridgeSteps('2026-10-31T06:01:00Z')])['status'])
+        ->toBe(['text' => 'No posts for 2 days. Check the automation is still on.', 'tone' => 'warning']);
 });
 
 it('INT-004 shows only what the last run carried: an older post of the other kind is not part of it', function () {

@@ -12,7 +12,7 @@ const readMock = vi.mocked(read);
 const writeMock = vi.mocked(writeNow);
 const posted = screenFixture<HealthBridgeShowOutput>('health_bridge_show');
 const quiet = screenFixture<HealthBridgeShowOutput>('health_bridge_show.warning');
-const notSetUp: HealthBridgeShowOutput = { ...posted, status: { text: 'Not set up', tone: 'neutral' }, token: null, last_post: null };
+const notSetUp = screenFixture<HealthBridgeShowOutput>('health_bridge_show.empty');
 
 const created: TokenCreateOutput = {
     invalidates: ['token_list', 'health_bridge_show'],
@@ -114,6 +114,19 @@ describe('HealthBridgeView', () => {
         expect(wrapper.get('[data-test="plain-text"]').text()).toBe('7|s3cr3t-token');
     });
 
+    it('INT-001 says the secret is lost when a retried set-up replays a create whose answer never arrived', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('token_create', 0, { reason: 'timeout' })).mockResolvedValueOnce({ ...created, token: { ...created.token, plain_text: null } });
+        const wrapper = mount(HealthBridgeView, { global, props: { payload: notSetUp } });
+
+        await wrapper.get('[data-test="set-up"]').trigger('click');
+        await flushPromises();
+        await wrapper.get('[data-test="set-up"]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.get('[data-test="secret-lost"]').text()).toContain("can't be shown again");
+        expect(wrapper.find('[data-test="plain-text"]').exists()).toBe(false);
+    });
+
     it('INT-001 says so when a token was made but its secret was lost', async () => {
         writeMock.mockRejectedValueOnce(new CapabilityError('token_create', 409, { ok: false, error: { message: 'This token already exists.' } }));
         readMock.mockResolvedValueOnce(posted);
@@ -149,5 +162,26 @@ describe('HealthBridgeView', () => {
         expect(sent('token_revoke')).toEqual({ id: posted.token!.id });
         expect(wrapper.find('[data-test="token"]').exists()).toBe(false);
         expect(wrapper.find('[data-test="set-up"]').exists()).toBe(true);
+    });
+
+    it('INT-001 treats a token already gone as revoked', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('token_revoke', 404, { ok: false, error: { message: 'Not found.' } }));
+        readMock.mockResolvedValueOnce(notSetUp);
+        const wrapper = mount(HealthBridgeView, { global, props: { payload: posted } });
+
+        await wrapper.get('[data-test="revoke"]').trigger('click');
+        await wrapper.get('[role="dialog"] [data-save]').trigger('click');
+        await flushPromises();
+
+        expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+        expect(wrapper.find('[data-test="set-up"]').exists()).toBe(true);
+    });
+
+    it('INT-001 says revoking stops the Shortcut\'s posts until it has a new token', async () => {
+        const wrapper = mount(HealthBridgeView, { global, props: { payload: posted } });
+
+        await wrapper.get('[data-test="revoke"]').trigger('click');
+
+        expect(wrapper.get('[role="dialog"]').text()).toContain('paste the new token into the Shortcut');
     });
 });
