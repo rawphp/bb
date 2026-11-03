@@ -304,16 +304,16 @@ it('MEAL-060 CAP-013 a failed write leaves every destination as it was', functio
 it('MEAL-060 a copy reads the meals under their row lock inside its transaction, before it plans', function () {
     $user = copyActionUser();
     copyActionDinner($user);
-    $thursday = copyActionMeal($user, '2026-09-24', 3);
+    [$source, $lunch, $thursday] = [copyActionMeal($user, '2026-09-23', 3), copyActionMeal($user, '2026-09-24', 2), copyActionMeal($user, '2026-09-24', 3)];
     copyActionFood($thursday);
-    MealCheckIn::factory()->create(['meal_id' => copyActionMeal($user, '2026-09-24', 2)]);
+    MealCheckIn::factory()->create(['meal_id' => $lunch]);
     $level = DB::transactionLevel();
     $queries = [];
     DB::listen(function (QueryExecuted $query) use (&$queries) {
         $queries[] = ['sql' => $query->sql, 'level' => DB::transactionLevel()];
     });
 
-    $written = copyActionCopyFoods($user, copyActionMeal($user, '2026-09-23', 3), [$thursday, copyActionMeal($user, '2026-09-24', 2)]);
+    $written = copyActionCopyFoods($user, $source, [$thursday, $lunch]);
 
     // A check-in or a food added meanwhile waits for the copy or is seen by it: the plan is made from locked rows,
     // read as they are now even inside UndoLog's transaction (CopyMealsRaceTest proves what that keeps).
