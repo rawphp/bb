@@ -60,6 +60,7 @@ describe('ExerciseView', () => {
             ['History', 'false'],
         ]);
         expect(view.get('[data-session]').isVisible()).toBe(false);
+        expect(view.get('textarea').isVisible()).toBe(true);
         const video = view.get('a[href="https://www.youtube.com/watch?v=example-bench"]');
         expect(video.text()).toContain('Watch on YouTube');
         expect(video.attributes('target')).toBe('_blank');
@@ -281,6 +282,10 @@ describe('ExerciseView', () => {
         await openHistory(view);
         await view.findAll('[role="tab"]').find((t) => t.text() === 'Detail')!.trigger('click');
 
+        expect(view.get('textarea').isVisible()).toBe(true);
+        expect(view.get('[data-session]').isVisible()).toBe(false);
+        expect(view.findAll('[role="tab"]').map((t) => t.attributes('aria-selected'))).toEqual(['true', 'false']);
+
         expect(noteValue(view)).toBe('Typed, not saved');
         expect(stepValue(view)).toBe('3');
     });
@@ -289,6 +294,7 @@ describe('ExerciseView', () => {
         const view = show({ payload: bench });
 
         await openHistory(view);
+        expect(view.find('[data-no-sessions]').exists()).toBe(false);
         const sessions = view.findAll('[data-session]');
         expect(sessions).toHaveLength(2);
         expect(sessions[0]!.text()).toContain('Thu, 8 Oct 2026');
