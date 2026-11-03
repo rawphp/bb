@@ -1,7 +1,7 @@
 import { expect, devices, test, type Browser, type Page } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import type { OnboardingShowOutput } from '../../resources/js/contracts/onboarding_show';
+import { createAccount, reviewSections, rows, stepperAnswers, stepThroughSetup } from './support';
 
 // E2E_CHAT: a new account sets up by talking to the Coach (AGT-030 to AGT-033) and ends at Today with the plan the
 // stepper builds from the same answers. The Coach is the scripted fake model of tests/Support/ScriptedCoach.php: the
@@ -10,8 +10,6 @@ import type { OnboardingShowOutput } from '../../resources/js/contracts/onboardi
 // the same for both.
 //
 // The plan starts tomorrow (ONB-020) for both accounts, on the same day.
-// scripts/e2e-server.sh's MySQL listens on the app's port + 1.
-const DB_PORT = String(Number(process.env.E2E_PORT ?? 8125) + 1);
 const SCRIPT = 'storage/framework/testing/e2e-coach.json';
 const DAY = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
@@ -21,6 +19,7 @@ const TRAINING_DAYS = [0, 2, 4].map((offset) => WEEKDAYS[(FIRST + offset) % 7]!)
 // ISO weekdays, as the Coach sends them: 1 is Monday, 7 is Sunday.
 const isoWeekday = (name: string): number => WEEKDAYS.indexOf(name as (typeof WEEKDAYS)[number]) || 7;
 const WEIGH_IN_DAYS = ['Monday', 'Wednesday', 'Friday', 'Saturday'];
+const ANSWERS = stepperAnswers(TRAINING_DAYS, WEIGH_IN_DAYS);
 
 type Script = Record<string, { calls?: { name: string; arguments: unknown }[]; reply: string }>;
 type Setup = OnboardingShowOutput;
@@ -37,69 +36,11 @@ function say(message: string, calls: { name: string; arguments: unknown }[], rep
 }
 test.afterAll(() => rmSync(SCRIPT, { force: true }));
 
-/** Rows from the server's database, with numbers as numbers. */
-function rows<T>(sql: string, ...params: string[]): T[] {
-    const php = [
-        '$pdo = new PDO("mysql:host=127.0.0.1;port=".$argv[1].";dbname=bodybuilder", "root", "", [PDO::ATTR_EMULATE_PREPARES => false]);',
-        '$st = $pdo->prepare($argv[2]); $st->execute(array_slice($argv, 3)); echo json_encode($st->fetchAll(PDO::FETCH_ASSOC));',
-    ].join(' ');
-    return JSON.parse(execFileSync('php', ['-r', php, '--', DB_PORT, sql, ...params], { encoding: 'utf8' })) as T[];
-}
-
 /** A phone-sized page of its own, so each account has its own session. */
 async function newAccountPage(browser: Browser, baseURL: string): Promise<Page> {
     const context = await browser.newContext({ ...devices['Pixel 7'], viewport: { width: 390, height: 844 }, baseURL, timezoneId: 'UTC' });
     return context.newPage();
 }
-
-/** ACC-001: a new account, after the signed-out page settles (tests/e2e/support.ts says why). Returns its id. */
-async function createAccount(page: Page, email: string): Promise<string> {
-    await page.goto('/sign-in', { waitUntil: 'networkidle' });
-    await page.getByRole('button', { name: 'New here? Create an account' }).click();
-    await page.getByLabel('Name').fill('New Lifter');
-    await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Password', { exact: true }).fill('a-long-password-1');
-    await page.getByLabel('Confirm password').fill('a-long-password-1');
-    await page.getByRole('button', { name: 'Create account', exact: true }).click();
-    await page.waitForURL('**/today');
-    return String(rows<{ id: number }>('select id from users where email = ?', email)[0]!.id);
-}
-
-async function pick(page: Page, group: string, name: string): Promise<void> {
-    await page.getByRole('radiogroup', { name: group, exact: true }).getByRole('radio', { name, exact: true }).click();
-}
-
-/** Types a field and leaves it: the step saves a typed answer when it loses focus. */
-async function type(page: Page, label: string, value: string): Promise<void> {
-    const field = page.getByLabel(label, { exact: true });
-    await field.fill(value);
-    await field.blur();
-}
-
-/** Each stepper step's answers, by its heading. Steps not listed keep their defaults. */
-const ANSWERS: Record<string, (page: Page) => Promise<void>> = {
-    "What's your goal?": async (page) => {
-        await pick(page, 'Goal', 'Fat loss');
-        await pick(page, 'Have you finished a fat-loss diet recently?', 'No');
-    },
-    'About you': async (page) => {
-        await type(page, 'Name', 'New Lifter');
-        await pick(page, 'Sex', 'Male');
-        await page.getByRole('button', { name: 'Set date of birth' }).click();
-        await type(page, 'Date of birth', '1994-05-10');
-        await type(page, 'Height in cm', '180');
-        await type(page, 'Weight in kg', '90');
-    },
-    'Weight-loss drugs': (page) => pick(page, 'Do you take a GLP-1 or similar weight-loss drug?', 'No'),
-    'Body fat': (page) => page.getByRole('button', { name: 'Body fat 15-22%' }).click(),
-    'Training experience': (page) => pick(page, 'Training experience', 'Intermediate'),
-    'Training days': async (page) => {
-        for (const day of TRAINING_DAYS) await page.getByRole('button', { name: day, exact: true }).click();
-    },
-    'Weigh-ins': async (page) => {
-        for (const day of WEIGH_IN_DAYS) await page.getByRole('button', { name: day, exact: true }).click();
-    },
-};
 
 /** The rows "Start my plan" wrote, with everything that is the account's own or the moment's left out. */
 const PLAN_TABLES = [
@@ -143,15 +84,12 @@ test('AGT-030 AGT-031 AGT-032 AGT-033 ONB-020 a new account sets up by chat with
     await stepper.goto('/onboarding', { waitUntil: 'networkidle' });
     await expect(stepper.getByRole('button', { name: /Talk it through with the Coach/ })).toBeVisible();
     await stepper.getByRole('button', { name: /Set up step by step/ }).click();
-    const visited: string[] = [];
-    for (let step = 1; step <= 13; step++) {
-        await expect(stepper.getByText(`Step ${step} of 13`, { exact: true })).toBeVisible();
-        const heading = (await stepper.getByRole('heading', { level: 2 }).first().textContent())!.trim();
-        visited.push(heading);
-        await ANSWERS[heading]?.(stepper);
-        await stepper.getByRole('button', { name: /^(Next|Continue)$/ }).click();
-    }
-    expect(visited).toEqual(expect.arrayContaining(Object.keys(ANSWERS)));
+    const visited = await stepThroughSetup(stepper, ANSWERS);
+    // The review the stepper shows, for the chat's card to match.
+    const review = stepper.getByRole('group', { name: 'Review your plan' });
+    await expect(review).toBeVisible();
+    const stepperSections = await reviewSections(review);
+    expect(stepperSections.length).toBeGreaterThan(0);
     await stepper.getByRole('button', { name: 'Start my plan' }).click();
     await stepper.waitForURL('**/today');
     expect(rows<{ start_date: string }>('select start_date from plans where user_id = ?', stepperId)).toEqual([{ start_date: DAY }]);
@@ -242,9 +180,11 @@ test('AGT-030 AGT-031 AGT-032 AGT-033 ONB-020 a new account sets up by chat with
     await send(third, 'Here is your plan');
     await at('review');
 
-    // AGT-032: the review is a card in the chat, the same summary as the stepper's, and the plan starts on its button.
+    // AGT-032: the review is a card in the chat, the same sections as the stepper's (ReviewStep, minus its
+    // Edit links), and the plan starts on its button.
     const card = page.locator('[data-test="review-card"]');
     await expect(card).toBeVisible();
+    expect(await reviewSections(card)).toEqual(stepperSections);
     const cardText = (await card.innerText()).replace(/\s+/g, ' ');
     for (const day of TRAINING_DAYS) expect(cardText).toContain(`${day.slice(0, 3)} 6:00 PM for 60 min`);
     say('confirm: onboarding_complete{}', [{ name: 'onboarding_complete', arguments: {} }], 'Your plan starts tomorrow. Want me to swap any exercises or move a training day?');
