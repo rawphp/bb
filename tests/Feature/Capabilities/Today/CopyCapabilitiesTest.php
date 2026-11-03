@@ -39,20 +39,6 @@ function copySeededMeal(User $user, string $date, int $index): string
     return DayTarget::query()->where('user_id', $user->id)->whereDate('date', $date)->firstOrFail()->meals[$index - 1]['id'];
 }
 
-/**
- * The day's meals under new ULIDs, as meals a client added offline (CAP-019): meal_copy's input takes ULID targets.
- *
- * @return list<string>
- */
-function copyClientMeals(User $user, string $date): array
-{
-    $day = DayTarget::query()->where('user_id', $user->id)->whereDate('date', $date)->firstOrFail();
-    $day->meals = array_map(fn (array $meal) => ['id' => strtolower((string) Str::ulid())] + $meal, $day->meals);
-    $day->save();
-
-    return array_column($day->meals, 'id');
-}
-
 it('MEAL-060 SCH-034 SCH-035 refuses the copy reads and writes when signed out', function (string $name, array $input) {
     copyOver(null, $name, $input)->assertUnauthorized();
 })->with([
@@ -75,7 +61,7 @@ it('MEAL-060 SCH-034 SCH-035 answers 404 for another user\'s meal or day', funct
         'meal_id' => copySeededMeal($other, '2026-09-23', 1), 'target_meal_ids' => [],
     ]],
     'meal_copy into another user\'s meal' => ['meal_copy', fn (User $other, User $user) => [
-        'meal_id' => copySeededMeal($user, '2026-09-19', 1), 'target_meal_ids' => [copyClientMeals($other, '2026-09-24')[0]],
+        'meal_id' => copySeededMeal($user, '2026-09-19', 1), 'target_meal_ids' => [copySeededMeal($other, '2026-09-24', 1)],
     ]],
     'day_copy from a day the user has none of' => ['day_copy', fn () => ['source_date' => '2026-09-23', 'target_dates' => ['2026-09-20']]],
     'week_copy of a week the user has none of' => ['week_copy', fn () => ['week_start' => '2026-09-26']],
@@ -114,8 +100,9 @@ it('MEAL-060 SCH-034 copy_show matches its screen fixtures, copying a meal\'s fo
 it('MEAL-060 CAP-010 CAP-013 meal_copy copies, names the reads it changed, and its undo puts the meals back', function () {
     $user = copySeeded();
     $dinner = copySeededMeal($user, '2026-09-23', 3);
-    $thursday = copyClientMeals($user, '2026-09-24')[2];
-    $friday = copyClientMeals($user, '2026-09-25')[0];
+    // The server made these meals, so their ids are UUIDs; a client-added meal brings a ULID (CAP-019).
+    $thursday = copySeededMeal($user, '2026-09-24', 3);
+    $friday = copySeededMeal($user, '2026-09-25', 1);
     $kept = PlannedFood::factory()->create(['meal_id' => $friday]);
 
     $response = copyOver($user, 'meal_copy', ['meal_id' => $dinner, 'target_meal_ids' => [$thursday, $friday]])
