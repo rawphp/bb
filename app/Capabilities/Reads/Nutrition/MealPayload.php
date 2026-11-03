@@ -16,6 +16,7 @@ use App\Capabilities\Reads\Today\MealMenu;
 use App\Capabilities\Reads\Today\TodayPayload;
 use App\Capabilities\Reads\Today\TodayWords;
 use App\Capabilities\Support\Tone;
+use App\Domain\MealFit\Food as FitFood;
 use App\Domain\MealFit\MealFit;
 use App\Domain\MealFit\MealFood;
 use App\Domain\MealFit\Shortfall;
@@ -201,7 +202,8 @@ final class MealPayload
         $fit = new MealFood(
             // Planned foods and recipe servings number their rows apart, so the fit tells them apart by kind.
             id: 'food-'.$planned->getKey(),
-            food: MealFitFoods::of($food),
+            // A food gone from the database counts at zero macros, as on Today's card.
+            food: $food === null ? new FitFood(id: '', name: 'Food', kcal: 0, proteinG: 0, fatG: 0, carbsG: 0) : MealFitFoods::of($food),
             grams: $planned->grams,
             weighing: $planned->is_cooked ? Weighing::Cooked : Weighing::Raw,
             isLocked: $planned->is_locked,
@@ -216,7 +218,7 @@ final class MealPayload
         return ['fit' => $fit, 'row' => new MealEntry(
             id: (string) $planned->getKey(),
             kind: 'food',
-            name: $food->name,
+            name: $food->name ?? 'Food',
             amount_text: $amount,
             amount: $ounces ? round($planned->grams / FoodUnit::GRAMS_PER_OUNCE, 1) : $planned->grams,
             amount_unit: $ounces ? FoodUnit::Ounces->value : FoodUnit::Grams->value,
