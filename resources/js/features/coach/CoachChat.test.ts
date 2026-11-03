@@ -6,6 +6,7 @@ import { CapabilityError, read, readFresh } from '@/app/call';
 import { cancel, events, history, send, type ChatHistory, type TurnEvent } from '@/app/chatTransport';
 import type { AgentStatusShowOutput } from '@/contracts/agent_status_show';
 import type { CoachChangesListOutput } from '@/contracts/coach_changes_list';
+import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
 import { screenFixture } from '@/testing/schemas';
 import OfflineNotice from '@/design/OfflineNotice.vue';
 import CoachChat from './CoachChat.vue';
@@ -63,8 +64,8 @@ function reads(fresh: Partial<Record<string, unknown>>): void {
     readFreshMock.mockImplementation(async (name) => fresh[name]);
 }
 
-function mountChat() {
-    return mount(CoachChat, { props: { open: true }, global: { stubs: { teleport: true, RouterLink: RouterLinkStub } } });
+function mountChat(onboarding = false) {
+    return mount(CoachChat, { props: { open: true, onboarding }, global: { stubs: { teleport: true, RouterLink: RouterLinkStub } } });
 }
 
 function lines(wrapper: ReturnType<typeof mountChat>): string[] {
@@ -674,5 +675,117 @@ describe('CoachChat', () => {
         await flushPromises();
 
         expect(wrapper.getComponent(OfflineNotice).props('needs')).toBe('The Coach needs a connection.');
+    });
+
+    describe('setup by chat', () => {
+        const review = screenFixture<OnboardingShowOutput>('onboarding_show');
+        const screening = screenFixture<OnboardingShowOutput>('onboarding_show.screening');
+        const goal = screenFixture<OnboardingShowOutput>('onboarding_show.empty');
+
+        /** One turn: running, the given tool results, then terminal. */
+        function turnWith(tools: { name: string; ok: boolean }[]): void {
+            const events: TurnEvent[] = [
+                { kind: 'status', data: { status: 'running' }, at: '2026-11-03T08:00:01+00:00', index: 0 },
+                ...tools.map((data, i) => ({ kind: 'tool', data: { ...data, payload: {}, error_code: null, tool_call_id: `toolu_${i}` }, at: '2026-11-03T08:00:02+00:00', index: i + 1 })),
+                { kind: 'terminal', data: { status: 'completed' }, at: '2026-11-03T08:00:03+00:00', index: tools.length + 1 },
+            ];
+            eventsMock.mockImplementation(async (turn, cursor) => ({ turn_ulid: turn, events: events.filter((event) => event.index >= cursor) }));
+        }
+
+        it('AGT-031 reads no setup outside setup', async () => {
+            readMock.mockResolvedValue(status);
+            historyMock.mockResolvedValue(earlier);
+            mountChat();
+            await flushPromises();
+
+            expect(readFreshMock).not.toHaveBeenCalledWith('onboarding_show', {});
+        });
+
+        it('AGT-031 in setup, says what the Coach does when there is no conversation yet', async () => {
+            readMock.mockResolvedValue({ ...status, conversation_ulid: null });
+            reads({ onboarding_show: goal });
+            const wrapper = mountChat(true);
+            await flushPromises();
+
+            expect(wrapper.text()).toContain('Tell the Coach your goal');
+            expect(wrapper.find('[data-test="review-card"]').exists()).toBe(false);
+        });
+
+        it('AGT-032 in setup, shows the review as a card in the chat, and Start my plan sends the confirm line', async () => {
+            readMock.mockResolvedValue(status);
+            historyMock.mockResolvedValue(earlier);
+            sendMock.mockResolvedValue(ids);
+            reads({ onboarding_show: review, agent_status_show: status, coach_changes_list: { changes: [] } });
+            eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [] });
+            const wrapper = mountChat(true);
+            await flushPromises();
+
+            expect(readFreshMock).toHaveBeenCalledWith('onboarding_show', {});
+            await wrapper.get('textarea').setValue('Can I train on Sunday');
+            await wrapper.get('[data-test="start-plan"]').trigger('click');
+            await flushPromises();
+
+            expect(sendMock).toHaveBeenCalledWith('confirm: onboarding_complete{}', CONVERSATION);
+            expect(wrapper.text()).toContain('confirm: onboarding_complete{}');
+            // What the user was typing stays theirs.
+            expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('Can I train on Sunday');
+        });
+
+        it('AGT-031 reads setup again when a turn ends, so the screening sheet opens once the Coach reaches it', async () => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+            readMock.mockResolvedValue(status);
+            historyMock.mockResolvedValue(earlier);
+            sendMock.mockResolvedValue(ids);
+            let setup = goal;
+            readFreshMock.mockImplementation(async (name) => ({ onboarding_show: setup, agent_status_show: status, coach_changes_list: { changes: [] } })[name]);
+            turnWith([{ name: 'onboarding_answer', ok: true }]);
+            const wrapper = mountChat(true);
+            await flushPromises();
+            expect(wrapper.findAll('[role="dialog"]')).toHaveLength(1);
+
+            setup = screening;
+            await sendMessage(wrapper, 'Fat loss, and I have not dieted lately.');
+            await vi.advanceTimersByTimeAsync(1000);
+
+            await vi.waitFor(() => expect(wrapper.findAll('[role="dialog"]')).toHaveLength(2));
+            expect(wrapper.findAll('[role="dialog"]')[1]!.text()).toContain(screening.screening.prompt);
+        });
+
+        it('AGT-032 says the plan started once the turn\'s onboarding_complete comes back done', async () => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+            readMock.mockResolvedValue(status);
+            historyMock.mockResolvedValue(earlier);
+            sendMock.mockResolvedValue(ids);
+            reads({ onboarding_show: review, agent_status_show: status, coach_changes_list: { changes: [] } });
+            turnWith([{ name: 'onboarding_complete', ok: true }]);
+            const wrapper = mountChat(true);
+            await flushPromises();
+
+            await wrapper.get('[data-test="start-plan"]').trigger('click');
+            await flushPromises();
+            await vi.advanceTimersByTimeAsync(1000);
+
+            await vi.waitFor(() => expect(wrapper.emitted('started')).toHaveLength(1));
+            // The draft is gone once the plan starts, so there is no review card left to press.
+            expect(wrapper.find('[data-test="review-card"]').exists()).toBe(false);
+        });
+
+        it('AGT-032 a refused onboarding_complete starts nothing', async () => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+            readMock.mockResolvedValue(status);
+            historyMock.mockResolvedValue(earlier);
+            sendMock.mockResolvedValue(ids);
+            reads({ onboarding_show: review, agent_status_show: status, coach_changes_list: { changes: [] } });
+            turnWith([{ name: 'onboarding_complete', ok: false }]);
+            const wrapper = mountChat(true);
+            await flushPromises();
+
+            await sendMessage(wrapper, 'Start it');
+            await vi.advanceTimersByTimeAsync(2000);
+            await flushPromises();
+
+            expect(wrapper.emitted('started')).toBeUndefined();
+            expect(wrapper.find('[data-test="review-card"]').exists()).toBe(true);
+        });
     });
 });

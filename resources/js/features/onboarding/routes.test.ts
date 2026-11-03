@@ -48,7 +48,8 @@ describe('onboarding routes', () => {
     });
 
     it('ONB-002 /onboarding opens setup outside the tab bar, reading onboarding_show', async () => {
-        vi.mocked(read).mockReturnValueOnce(new Promise(() => {}));
+        // Setup and the Coach's status both stay unanswered.
+        vi.mocked(read).mockImplementation(() => new Promise(() => {}));
         const router = createRouter({ history: createMemoryHistory(), routes });
         await router.push('/onboarding');
         mount(RouterView, { global: { plugins: [router] } });

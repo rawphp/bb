@@ -6,8 +6,10 @@ import { cancel, events, history, send, type ChatHistory, type ChatMessage } fro
 import { failureMessage, writeFailureMessage } from '@/app/errors';
 import type { AgentStatusShowOutput } from '@/contracts/agent_status_show';
 import type { CoachChangesListInput, CoachChangesListOutput } from '@/contracts/coach_changes_list';
+import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
 import BottomSheet from '@/design/BottomSheet.vue';
 import OfflineNotice from '@/design/OfflineNotice.vue';
+import ChatSetup from '@/features/onboarding/ChatSetup.vue';
 import ChangeCard from './ChangeCard.vue';
 import { toolLine } from './toolLabels';
 
@@ -18,8 +20,11 @@ import { toolLine } from './toolLabels';
 // stream at v0.10.0, so the reply shows in one piece, from history, when the turn ends,
 // and the turn's writes follow as change cards (AGT-013). Offline it shows the history
 // it last loaded and needs a connection to send (AGT-023). No photo attach (AGT-022 is later).
-const props = defineProps<{ open: boolean }>();
-const emit = defineEmits<{ close: [] }>();
+// Opened from setup (`onboarding`, AGT-030), it reads setup on open and after each turn, and
+// shows the health check sheet and the review card ChatSetup draws for the step the server
+// says the user is on; `started` once a turn's onboarding_complete comes back done.
+const props = withDefaults(defineProps<{ open: boolean; onboarding?: boolean }>(), { onboarding: false });
+const emit = defineEmits<{ close: []; started: [] }>();
 
 // `lost`: the events route stopped answering, so the client stopped asking; the turn
 // may still finish on the server, and the next open shows its reply.
@@ -44,6 +49,8 @@ const turn = ref<Turn | null>(null);
 // A turn's change cards, under the reply they belong to.
 const cards = ref<{ after: string | null; changes: Changes }[]>([]);
 const draft = ref('');
+const setup = ref<OnboardingShowOutput | null>(null);
+const started = ref(false);
 const sending = ref(false);
 const error = ref<string | null>(null);
 // A message whose send got no answer but which history shows the Coach received.
@@ -74,7 +81,8 @@ const running = computed(() => turn.value?.state === 'running');
 const shown = computed(() => messages.value.filter((message) => (message.role === 'user' || message.role === 'assistant') && message.content));
 // Cards whose reply is not on screen (its history did not load) follow the last message.
 const unplaced = computed(() => cards.value.filter((block) => !shown.value.some((message) => message.ulid === block.after)));
-const canSend = computed(() => !offline.value && !sending.value && !running.value && draft.value.trim() !== '');
+const busy = computed(() => offline.value || sending.value || running.value);
+const canSend = computed(() => !busy.value && draft.value.trim() !== '');
 
 async function load(): Promise<void> {
     error.value = null;
@@ -93,7 +101,17 @@ async function load(): Promise<void> {
     }
     if (sends !== at) return;
     status.value = answer;
-    await loadHistory();
+    await Promise.all([loadHistory(), loadSetup()]);
+}
+
+/** Setup as saved, in setup only; when it cannot be read, what is shown stays. */
+async function loadSetup(): Promise<void> {
+    if (!props.onboarding) return;
+    try {
+        setup.value = await readFresh<OnboardingShowOutput>('onboarding_show', {});
+    } catch {
+        // The chat still works; the sheet and the card follow on the next read.
+    }
 }
 
 /** The server's status now; false when it did not answer, and what is shown stays. */
@@ -133,9 +151,11 @@ async function loadHistory(): Promise<ChatHistory | undefined> {
     }
 }
 
-async function submit(): Promise<void> {
-    const content = draft.value.trim();
-    if (!canSend.value) return;
+/** Sends what is typed, or `line` as the whole message (ChatSetup's), leaving what is typed alone. */
+async function submit(line?: string): Promise<void> {
+    const typed = line === undefined;
+    const content = line ?? draft.value.trim();
+    if (busy.value || content === '') return;
     sending.value = true;
     error.value = null;
     landed.value = false;
@@ -149,7 +169,7 @@ async function submit(): Promise<void> {
         const earlier = unanswered;
         const outcome = await settle(earlier);
         if (outcome !== 'absent') {
-            if (outcome === 'landed' && content === earlier.content) draft.value = '';
+            if (outcome === 'landed' && typed && content === earlier.content) draft.value = '';
             sending.value = false;
             return;
         }
@@ -166,7 +186,7 @@ async function submit(): Promise<void> {
                 message.graceOver = true;
                 void recheck(message);
             }, GRACE_MS);
-            if ((await settle(message)) === 'landed') draft.value = '';
+            if ((await settle(message)) === 'landed' && typed) draft.value = '';
         } else {
             error.value = writeFailureMessage(failed, "The Coach couldn't take that message. Try again.");
         }
@@ -175,7 +195,7 @@ async function submit(): Promise<void> {
     }
     sends++;
     historyAsked++;
-    draft.value = '';
+    if (typed) draft.value = '';
     messages.value = [...messages.value, { ulid: sent.message_ulid, role: 'user', content, created_at: null }];
     turn.value = { ulid: sent.turn_ulid, message: sent.message_ulid, lines: [], state: 'running', cursor: 0, ended: false, failures: 0 };
     scrollToEnd();
@@ -259,7 +279,12 @@ async function tick(current: Turn): Promise<void> {
             if (event.index < current.cursor || current.ended) continue;
             current.cursor = event.index + 1;
             if (event.kind === 'tool') {
-                current.lines.push(toolLine(String((event.data as { name?: unknown } | null)?.name ?? '')));
+                const tool = event.data as { name?: unknown; ok?: unknown } | null;
+                current.lines.push(toolLine(String(tool?.name ?? '')));
+                if (props.onboarding && tool?.name === 'onboarding_complete' && tool.ok === true && !started.value) {
+                    started.value = true;
+                    emit('started');
+                }
                 scrollToEnd();
             } else if (event.kind === 'terminal') {
                 const ended = (event.data as { status?: unknown } | null)?.status;
@@ -293,7 +318,7 @@ async function finish(current: Turn, state: TurnState, reload = true): Promise<v
     if (current.ended) return;
     current.ended = true;
     clearTimeout(timer);
-    if (reload) await showOutcome(current);
+    if (reload) await Promise.all([showOutcome(current), loadSetup()]);
     current.state = state;
     scrollToEnd();
 }
@@ -371,7 +396,7 @@ watch(
         <div class="flex min-h-full flex-col">
             <ol class="flex flex-1 flex-col gap-3 p-4" aria-label="Conversation">
                 <li v-if="shown.length === 0 && !running" class="py-8 text-center text-sm text-secondary-text">
-                    Ask the Coach about your training or meals, or to change your plan.
+                    {{ onboarding ? 'Tell the Coach your goal, and it will set up your plan with you.' : 'Ask the Coach about your training or meals, or to change your plan.' }}
                 </li>
                 <template v-for="message in shown" :key="message.ulid">
                     <li
@@ -390,6 +415,7 @@ watch(
                 <li v-for="(block, index) in unplaced" :key="`unplaced-${index}`" class="flex flex-col gap-2 self-stretch">
                     <ChangeCard v-for="change in block.changes" :key="change.id" :change="change" @open="emit('close')" />
                 </li>
+                <ChatSetup v-if="onboarding && setup && !started" :setup="setup" :busy="busy" @say="submit" @changed="loadSetup" />
                 <li v-if="landed" class="self-start text-sm text-secondary-text" data-test="landed">
                     Your message reached the Coach. Its reply will show here when you open the chat again.
                 </li>
@@ -402,7 +428,7 @@ watch(
                 </li>
             </ol>
             <div ref="end" />
-            <form class="sticky bottom-0 flex flex-col gap-2 border-t border-secondary-text/25 bg-surface p-3" @submit.prevent="submit">
+            <form class="sticky bottom-0 flex flex-col gap-2 border-t border-secondary-text/25 bg-surface p-3" @submit.prevent="submit()">
                 <OfflineNotice v-if="offline" needs="The Coach needs a connection." data-test="offline" />
                 <div class="flex items-end gap-2">
                     <textarea
@@ -412,7 +438,7 @@ watch(
                         placeholder="Message the Coach"
                         :disabled="offline"
                         class="max-h-32 min-h-tap flex-1 resize-none rounded-xl border border-secondary-text/25 bg-background px-3 py-2.5 text-base text-primary-text disabled:opacity-50"
-                        @keydown.enter.exact.prevent="submit"
+                        @keydown.enter.exact.prevent="submit()"
                     />
                     <button
                         v-if="running"
