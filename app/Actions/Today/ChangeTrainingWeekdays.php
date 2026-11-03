@@ -247,11 +247,11 @@ final class ChangeTrainingWeekdays
     /**
      * Stores the mesocycle covering next week for the new weekdays (rp-clone's `replacingWeeks`).
      *
+     * The weeks before `fromWeek` are stored as they ran first, whatever the change.
      * - A re-map, more days, or keeping all sessions: each rotation day takes the new weekday in its place, in plan-week
      *   order, so Train and Workout put next week's sessions where Today does; with a different number of days the days
-     *   float. Keeping all sessions also stores the length and the later weeks, and the weeks before `fromWeek` as
-     *   they ran.
-     * - Restructure: the rotation is the new sessions, from `fromWeek` on, with the weeks before it stored as they ran.
+     *   float. Keeping all sessions also stores the length and the later weeks.
+     * - Restructure: the rotation is the new sessions from `fromWeek` on.
      *   A stored slot keeps its exercise, a new one takes the exercise its muscle had; a new session has no weekday.
      *
      * @param  array{mesocycle: Mesocycle, fromWeek: int, train: TrainSnapshot, result: ?DomainMesocycle, restructure: bool, weekdays: list<int>}  $covering
@@ -259,10 +259,12 @@ final class ChangeTrainingWeekdays
     private static function store(array $covering): void
     {
         ['mesocycle' => $mesocycle, 'fromWeek' => $fromWeek, 'train' => $train, 'result' => $result] = $covering;
-        $changes = [];
+        // This week and the weeks before it are stored as they ran, on their old weekdays, so Train and Workout keep
+        // them where Today pins them (TrainSnapshot::weekdays() reads a stored week's own days).
+        $frozen = MesocycleRules::freezingWeeks($train->rotationAsRun($mesocycle), $mesocycle->earlierWeekRows(), $mesocycle->laterWeekIds(), $fromWeek);
+        $changes = ['earlier_weeks' => $frozen['earlier_weeks'], 'later_weeks' => $frozen['later_weeks']];
         if ($result !== null) {
-            $frozen = MesocycleRules::freezingWeeks($train->rotationAsRun($mesocycle), $mesocycle->earlierWeekRows(), $mesocycle->laterWeekIds(), $fromWeek);
-            $changes = ['weeks' => $result->weeks, 'earlier_weeks' => $frozen['earlier_weeks'], 'later_weeks' => $result->laterWeeks];
+            $changes = [...$changes, 'weeks' => $result->weeks, 'later_weeks' => $result->laterWeeks];
         }
         if ($result !== null && $covering['restructure']) {
             $slots = [];
