@@ -11,10 +11,13 @@ use App\Capabilities\Support\OwnsInput;
 use App\Models\Exercise;
 use App\Models\ExerciseLoadStep;
 use App\Models\ExerciseNote;
+use App\Models\Mesocycle;
 use App\Models\Profile;
 use App\Models\User;
 use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Progress\ExerciseHistorySnapshot;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
@@ -56,7 +59,20 @@ final class ExerciseShowCapability implements HostCapability, OwnsInput
     /** EX-007: a slot of the mesocycle that is current today names the exercise. */
     private function inCurrentMesocycle(User $user, Exercise $exercise): bool
     {
-        $current = TrainSnapshot::load($user)->current();
+        // The light snapshot WorkoutReads::calendarOf() builds: current() needs only today and the mesocycles.
+        $current = (new TrainSnapshot(
+            today: TrainSnapshot::day(CarbonImmutable::now()),
+            plan: null,
+            profile: null,
+            mesocycles: Mesocycle::query()->where('user_id', $user->id)->get(),
+            phases: new Collection,
+            sessions: new Collection,
+            sets: new Collection,
+            feedback: new Collection,
+            planWeeks: new Collection,
+            dayTargets: new Collection,
+            exercises: new Collection,
+        ))->current();
 
         return $current !== null
             && collect($current->dayRows())->flatMap(fn (array $day) => $day['slots'])->contains('exercise_id', $exercise->id);

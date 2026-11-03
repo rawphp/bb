@@ -4,12 +4,14 @@ namespace App\Capabilities\Exercises;
 
 use App\Capabilities\Mesocycles\MesocycleReads;
 use App\Capabilities\Support\ReadKey;
+use App\Capabilities\Today\TodayReads;
 use App\Capabilities\Workout\WorkoutReads;
 use App\Models\Exercise;
 use App\Models\Mesocycle;
 use App\Models\User;
 use App\Models\WorkoutExercise;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Carbon;
 
 /** The reads an exercise write changes (CAP-011, CAP-017), and the one rule for an exercise id that arrives as text. */
 final class ExerciseReads
@@ -37,7 +39,12 @@ final class ExerciseReads
         return ReadKey::for('exercise_history_show', ['exercise_id' => (string) $exerciseId]);
     }
 
-    /** @return list<string> the workout_show of each of the user's sessions that has the exercise */
+    /**
+     * The workout_show of each of the user's sessions that has the exercise, and of each day of a saved mesocycle whose
+     * slots name it: a workout that has not started is built from those slots, the same walk as WorkoutSnapshot::locate().
+     *
+     * @return list<string>
+     */
     public static function workouts(User $user, int $exerciseId): array
     {
         $keys = [];
@@ -48,17 +55,33 @@ final class ExerciseReads
             }
         }
 
+        foreach (Mesocycle::savedBy($user)->get() as $mesocycle) {
+            for ($week = 1; $week <= (int) $mesocycle->weeks; $week++) {
+                foreach (($mesocycle->earlierWeekRows()[$week - 1] ?? $mesocycle->dayRows()) as $index => $day) {
+                    if (collect($day['slots'])->contains('exercise_id', $exerciseId)) {
+                        $keys[] = ReadKey::for('workout_show', ['mesocycle_id' => (string) $mesocycle->id, 'week' => $week, 'day' => $index + 1]);
+                    }
+                }
+            }
+        }
+
         return array_values(array_unique($keys));
     }
 
-    /** @return list<string> the Train tab and the mesocycle_show of each of the user's mesocycles with a slot for the exercise */
-    public static function mesocycles(User $user, int $exerciseId): array
+    /** @return list<string> the Train tab and the mesocycle_show of every mesocycle of the user's, drafts too: each builder lists the whole library */
+    public static function mesocycles(User $user): array
     {
-        $ids = Mesocycle::query()->where('user_id', $user->id)->get()
-            ->filter(fn (Mesocycle $mesocycle) => collect($mesocycle->dayRows())->flatMap(fn (array $day) => $day['slots'])->contains('exercise_id', $exerciseId))
-            ->map(fn (Mesocycle $mesocycle) => (string) $mesocycle->id)
-            ->values()->all();
+        return MesocycleReads::keys(...Mesocycle::query()->where('user_id', $user->id)->pluck('id')->map(fn ($id) => (string) $id)->all());
+    }
 
-        return $ids === [] ? [] : MesocycleReads::keys(...$ids);
+    /** @return list<string> the reads that show an exercise's name outside its own screens: today's session and the progress charts */
+    public static function names(): array
+    {
+        return [
+            ...TodayReads::keys([Carbon::now()->format('Y-m-d')]),
+            ReadKey::for('progress_show'),
+            ReadKey::for('progress_show', ['scope' => 'phase']),
+            ReadKey::for('progress_show', ['scope' => 'plan']),
+        ];
     }
 }

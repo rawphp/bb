@@ -36,6 +36,11 @@ final class CustomExerciseSaveInput extends CapabilityData
     {
         // The id is typed as a string, so the package's portable `integer` rule would never run (it counts on the
         // schema); not_regex does. Digits and nothing else: an integer id, as a string.
-        return ['exercise_id' => ['nullable', 'not_regex:/\\D/']];
+        return [
+            'exercise_id' => ['nullable', 'not_regex:/\\D/'],
+            // The agent, MCP and job surfaces have no TrimStrings, so "   " passes minLength and the action would trim it
+            // to "". `filled` refuses a name that is blank after trimming; it is not a portable rule, so the schema is unchanged.
+            'name' => ['filled'],
+        ];
     }
 }

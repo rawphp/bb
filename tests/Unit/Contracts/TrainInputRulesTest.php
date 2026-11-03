@@ -97,7 +97,7 @@ function trainInputExample(string $input): array
     $data = trainExample($input::jsonSchema());
 
     foreach ($input::rules() as $field => $rules) {
-        if (! in_array('ulid', (array) $rules, true)) {
+        if (str_ends_with($field, 'id') && ! in_array('ulid', (array) $rules, true)) {
             data_set($data, str_replace('*', '0', $field), '12');
         }
     }

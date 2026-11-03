@@ -21,7 +21,7 @@ final class CustomExerciseSaveCapability implements HostCapability, OwnsInput
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        return HostDefinition::write('custom_exercise_save', affects: ['exercises_show', 'exercise_show', 'exercise_history_show', 'mesocycle_show', 'workout_show'])
+        return HostDefinition::write('custom_exercise_save', affects: ['exercises_show', 'exercise_show', 'exercise_history_show', 'train_show', 'mesocycle_show', 'workout_show', 'today_show', 'progress_show'])
             ->description('Create a custom exercise, or edit one of the user\'s own, from its name, muscle group, equipment and load type. Use it when an exercise is not in the library: send no exercise_id to create one, or the id of one of the user\'s own custom exercises to change it. A library exercise cannot be edited.')
             ->cli('exercise', 'save')
             ->input(CustomExerciseSaveInput::class)
@@ -37,11 +37,12 @@ final class CustomExerciseSaveCapability implements HostCapability, OwnsInput
 
                 return new WriteResult(invalidates: [
                     ReadKey::for('exercises_show'),
+                    ...ExerciseReads::mesocycles($user),
                     ...($existing === null ? [] : [
                         ExerciseReads::show($exercise->id),
                         ExerciseReads::history($exercise->id),
-                        ...ExerciseReads::mesocycles($user, $exercise->id),
                         ...ExerciseReads::workouts($user, $exercise->id),
+                        ...ExerciseReads::names(),
                     ]),
                 ]);
             });
