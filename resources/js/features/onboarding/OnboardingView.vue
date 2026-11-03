@@ -65,6 +65,12 @@ onMounted(() => {
     );
 });
 
+// A turn can finish starting the plan after the chat was closed.
+function chatStarted(): void {
+    startedByChat.value = true;
+    if (door.value !== 'chat') void router.replace('/');
+}
+
 async function leaveChat(): Promise<void> {
     if (startedByChat.value) {
         await router.replace('/');
@@ -186,6 +192,6 @@ function edit(step: number): void {
             </fieldset>
         </StepFlow>
         <ReadState v-else :failure="failure" what="Your setup" @retry="load" />
-        <CoachChat v-if="coach" :open="door === 'chat'" onboarding @close="leaveChat" @started="startedByChat = true" />
+        <CoachChat v-if="coach" :open="door === 'chat'" onboarding @close="leaveChat" @started="chatStarted" />
     </main>
 </template>
