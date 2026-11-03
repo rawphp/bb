@@ -139,7 +139,7 @@ export interface OnboardingShowOutput {
   };
   body_fat: {
     help: string;
-    sex?: ("male" | "female") | null;
+    sex: "male" | "female" | null;
     options: {
       value: string;
       title: string;
@@ -375,4 +375,4 @@ export interface OnboardingShowOutput {
   };
 }
 
-export const outputVersion = '7884778e9b3a';
+export const outputVersion = 'ff638f39fb60';
