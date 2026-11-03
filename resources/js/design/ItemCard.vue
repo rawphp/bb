@@ -13,6 +13,7 @@ export type ItemCardStatus =
 
 <script setup lang="ts">
 import { computed, useId } from 'vue';
+import { checkInLook, checkMarks } from './checkInLook';
 
 // Meals, workouts, weigh-ins and busy periods share this card (UI-002), ported
 // from rp-clone's ItemCard.swift. The icon and body are slots.
@@ -51,22 +52,13 @@ const checkBox = computed(() => {
         };
     }
     if (status?.kind === 'check-in') {
-        const look = {
-            not_checked_in: { shape: 'empty', color: 'text-secondary-text' },
-            on_track: { shape: 'check', color: 'text-tone-good' },
-            under: { shape: 'down', color: 'text-tone-warning' },
-            over: { shape: 'up', color: 'text-tone-warning' },
-        }[status.state];
+        const look = checkInLook[status.state];
         return { checked: status.state !== 'not_checked_in', label: `${status.mealName} eaten`, description: status.label, ...look };
     }
     return null;
 });
 
-const paths: Record<string, string> = {
-    check: 'M8 12.5l2.75 2.75L16 9.5',
-    down: 'M12 7.5v9M8 12.5l4 4 4-4',
-    up: 'M12 16.5v-9M8 11.5l4-4 4 4',
-};
+const paths: Record<string, string> = checkMarks;
 
 const isReady = computed(() => !props.loading && !props.error);
 const isPending = computed(() => isReady.value && props.pending);
