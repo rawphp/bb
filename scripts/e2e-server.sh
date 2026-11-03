@@ -53,6 +53,8 @@ export SESSION_LIFETIME=10080
 export CAPABILITIES_RATE_LIMITS_DRIVER=memory
 # The Coach's turns run inside the request that sends the message, as in phpunit.xml: no queue worker, no Redis.
 export CAPABILITIES_AI_QUEUE_CONNECTION=sync
+# The scripted Coach's file is its only switch: a key exported in the developer's shell must not turn the Coach on.
+export ANTHROPIC_API_KEY=
 
 php artisan migrate --seed --force --no-interaction >/dev/null
 php artisan db:seed --class='Tests\Support\AuditSeeder' --force --no-interaction >/dev/null
