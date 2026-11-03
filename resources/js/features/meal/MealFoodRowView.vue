@@ -16,7 +16,7 @@ const emit = defineEmits<{ lock: []; minus: []; plus: []; edit: []; delete: [] }
     <MealEntryRow :entry="entry" :busy="busy" :pending="pending" @lock="emit('lock')" @minus="emit('minus')" @plus="emit('plus')" @delete="emit('delete')">
         <template #title>
             <div class="min-w-0 flex-1">
-                <h3 class="font-semibold text-primary-text">{{ entry.name }}</h3>
+                <h2 class="font-semibold text-primary-text">{{ entry.name }}</h2>
                 <p v-if="entry.weighing === 'cooked'" class="text-xs text-secondary-text">Cooked weight</p>
             </div>
         </template>
