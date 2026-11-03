@@ -50,6 +50,8 @@ let historyAsked = 0;
 const conversation = computed(() => status.value?.conversation_ulid ?? null);
 const running = computed(() => turn.value?.state === 'running');
 const shown = computed(() => messages.value.filter((message) => (message.role === 'user' || message.role === 'assistant') && message.content));
+// Cards whose reply is not on screen (its history did not load) follow the last message.
+const unplaced = computed(() => cards.value.filter((block) => !shown.value.some((message) => message.ulid === block.after)));
 const canSend = computed(() => !offline.value && !sending.value && !running.value && draft.value.trim() !== '');
 
 async function load(): Promise<void> {
@@ -180,7 +182,8 @@ async function finish(current: Turn, state: TurnState): Promise<void> {
     if (conversation.value === null) await refreshStatus();
     // Still none: what is shown stays rather than being cleared for want of a ULID.
     const fresh = conversation.value === null ? undefined : await loadHistory();
-    const reply = (fresh?.messages ?? shown.value).filter((message) => message.role === 'assistant' && message.content).at(-1);
+    // Only a reply from this history is the turn's; without one the cards follow the last message.
+    const reply = fresh?.messages.filter((message) => message.role === 'assistant' && message.content).at(-1);
     try {
         const { changes } = await readFresh<CoachChangesListOutput>('coach_changes_list', { turn: current.ulid } satisfies CoachChangesListInput);
         if (changes.length > 0) cards.value = [...cards.value, { after: reply?.ulid ?? null, changes }];
@@ -261,6 +264,9 @@ watch(
                         </li>
                     </template>
                 </template>
+                <li v-for="(block, index) in unplaced" :key="`unplaced-${index}`" class="flex flex-col gap-2 self-stretch">
+                    <ChangeCard v-for="change in block.changes" :key="change.id" :change="change" @open="emit('close')" />
+                </li>
                 <li v-if="turn && turn.state !== 'done'" class="flex flex-col gap-1 self-start" aria-live="polite">
                     <p v-for="(line, index) in turn.lines" :key="index" class="text-sm text-secondary-text" data-test="tool-line">{{ line }}</p>
                     <p v-if="turn.state === 'running' && turn.lines.length === 0" class="text-sm text-secondary-text">Thinking…</p>
