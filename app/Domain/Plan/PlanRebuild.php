@@ -8,10 +8,12 @@ use App\Domain\Model\Plan;
 use App\Domain\Model\Profile;
 use App\Domain\Retarget\OtherActivity;
 use App\Domain\WeekBuilder\AwayWeek;
+use App\Domain\WeekBuilder\MealNames;
 use App\Domain\WeekBuilder\WeekBuilder;
 use App\Domain\WeekBuilder\WeekBuildRefusal;
 use App\Domain\WeekBuilder\WeekDay;
 use App\Domain\WeekBuilder\WeekMeal;
+use App\Domain\WeekBuilder\WeekMealKind;
 use App\Domain\WeekBuilder\WeekSchedule;
 use App\Domain\WeekBuilder\WeekSessions\SessionRow;
 use Closure;
@@ -43,13 +45,14 @@ final class PlanRebuild
 
     /**
      * SET-004: builds the week and returns its days after today that carry targets, each meal under the id it is saved
-     * with: the stored meal's id at the same position (NUT-030), else the built one. A training-only profile (SAFE-003)
+     * with: a regular meal takes the stored regular meal's id at its place in the order, the intra-workout shake takes the
+     * stored shake's id (NUT-030), else the built one. A training-only profile (SAFE-003)
      * builds no targets, so it returns none.
      *
      * @param  list<int>  $pausedWeeks
      * @param  list<SessionRow>  $sessionRows
      * @param  array<string, OtherActivity>  $otherActivities  keyed by Y-m-d
-     * @param  array<string, list<string>>  $storedMealIds  each stored day's meal ids in stored order, keyed by Y-m-d
+     * @param  array<string, list<array{id: string, name: string}>>  $storedMeals  each stored day's meals in stored order, keyed by Y-m-d
      * @param  Closure(): string  $newId
      * @return list<WeekDay>
      *
@@ -72,7 +75,7 @@ final class PlanRebuild
         array $pausedWeeks = [],
         array $sessionRows = [],
         array $otherActivities = [],
-        array $storedMealIds = [],
+        array $storedMeals = [],
     ): array {
         try {
             $built = WeekBuilder::build(
@@ -92,15 +95,26 @@ final class PlanRebuild
             if ($day->target === null || $date <= $after) {
                 continue;
             }
+            // Built meals are in time order and stored ones in stored order (a shake is stored last), so the order
+            // cannot match them up: regular meals go by their order among the regular ones, the shake by its kind.
+            $regularIds = [];
+            $shakeId = null;
+            foreach ($storedMeals[$date] ?? [] as $stored) {
+                if ($stored['name'] === MealNames::INTRA_WORKOUT_SHAKE) {
+                    $shakeId ??= $stored['id'];
+                } else {
+                    $regularIds[] = $stored['id'];
+                }
+            }
+            $ordinal = 0;
             $days[] = new WeekDay(
                 $day->day,
                 $day->workouts,
-                // Built meals are in time order, stored ids in stored order: the positions line up.
-                array_map(fn (WeekMeal $meal, int $position) => new WeekMeal(
-                    new Meal($storedMealIds[$date][$position] ?? $meal->id(), $meal->meal->name, $meal->meal->target),
-                    $meal->time,
-                    $meal->kind,
-                ), $day->meals, array_keys($day->meals)),
+                array_map(function (WeekMeal $meal) use (&$ordinal, $regularIds, $shakeId) {
+                    $id = $meal->kind === WeekMealKind::IntraWorkoutShake ? $shakeId : ($regularIds[$ordinal++] ?? null);
+
+                    return new WeekMeal(new Meal($id ?? $meal->id(), $meal->meal->name, $meal->meal->target), $meal->time, $meal->kind);
+                }, $day->meals),
                 $day->target,
                 $day->carbBoundsWarning,
             );

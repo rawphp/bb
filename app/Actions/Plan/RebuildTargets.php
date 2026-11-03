@@ -50,21 +50,22 @@ final class RebuildTargets
     /** @return list<string> */
     private function rebuild(User $user, float $calorieChangePerDay, bool $beforeStartBuildsFirstWeek): array
     {
-        $profile = Profile::query()->where('user_id', $user->id)->first();
+        // The plan row is locked first, before any other read: a plain read would fix this transaction's view (MySQL's
+        // REPEATABLE READ), so one that waited on this lock would miss the rows the rebuild before it wrote.
+        $plan = Plan::query()->where('user_id', $user->id)->lockForUpdate()->first();
+        $profile = Profile::query()->where('user_id', $user->id)->sharedLock()->first();
         // SAFE-003: a training-only profile has no targets to rebuild, before anything else is looked at.
         if ($profile?->training_only) {
             return [];
         }
-        // The plan row is locked first, so two rebuilds of one plan run one after the other.
-        $plan = Plan::query()->where('user_id', $user->id)->lockForUpdate()->first();
         if ($plan === null || $profile === null) {
             throw new PlanRebuildRefused(PlanRebuildRefusal::planNotStarted());
         }
 
         $today = TrainSnapshot::day(CarbonImmutable::now());
-        $phases = Phase::query()->where('user_id', $user->id)->orderBy('start_date')->get();
-        $mesocycles = Mesocycle::query()->where('user_id', $user->id)->get();
-        $planWeeks = PlanWeek::query()->where('user_id', $user->id)->get();
+        $phases = Phase::query()->where('user_id', $user->id)->orderBy('start_date')->sharedLock()->get();
+        $mesocycles = Mesocycle::query()->where('user_id', $user->id)->sharedLock()->get();
+        $planWeeks = PlanWeek::query()->where('user_id', $user->id)->sharedLock()->get();
         // A draft, or a mesocycle with no days, never covers a week (PLAN-002).
         $snapshot = new PlanSnapshot(
             $today, $plan, $profile, $phases,
@@ -84,7 +85,7 @@ final class RebuildTargets
         $row = $snapshot->weekRow($week);
         $dates = array_map(fn (DateTimeImmutable $day) => $day->format('Y-m-d'), $snapshot->grid->planWeek($week)->days());
 
-        $stored = DayTarget::query()->where('user_id', $user->id)->whereIn('date', $dates)->orderBy('created_at')->orderBy('id')->get()
+        $stored = DayTarget::query()->where('user_id', $user->id)->whereIn('date', $dates)->orderBy('created_at')->orderBy('id')->lockForUpdate()->get()
             ->unique(fn (DayTarget $target) => TrainSnapshot::day($target->date)->format('Y-m-d'))
             ->keyBy(fn (DayTarget $target) => TrainSnapshot::day($target->date)->format('Y-m-d'));
 
@@ -105,10 +106,10 @@ final class RebuildTargets
             pausedWeeks: $snapshot->pausedWeeks,
             sessionRows: $this->sessionRows($user, $covering['mesocycle']->id),
             otherActivities: PlanRebuildRows::activitiesByDay(
-                OtherActivity::query()->where('user_id', $user->id)->whereIn('date', $dates)->orderBy('created_at')->orderBy('id')->get(),
+                OtherActivity::query()->where('user_id', $user->id)->whereIn('date', $dates)->orderBy('created_at')->orderBy('id')->sharedLock()->get(),
             ),
-            storedMealIds: $stored->map(fn (DayTarget $target) => array_map(
-                fn (array $meal) => strtolower((string) $meal['id']), $target->meals,
+            storedMeals: $stored->map(fn (DayTarget $target) => array_map(
+                fn (array $meal) => ['id' => strtolower((string) $meal['id']), 'name' => (string) ($meal['name'] ?? '')], $target->meals,
             ))->all(),
         );
 
@@ -125,7 +126,7 @@ final class RebuildTargets
         if ($mesocycleId === '') {
             return [];
         }
-        $records = WorkoutSession::query()->where('user_id', $user->id)->where('mesocycle_id', $mesocycleId)->get()
+        $records = WorkoutSession::query()->where('user_id', $user->id)->where('mesocycle_id', $mesocycleId)->sharedLock()->get()
             ->map(fn (WorkoutSession $session) => new WorkoutSessionRecord(
                 id: (string) $session->id,
                 mesocycleId: $session->mesocycle_id,

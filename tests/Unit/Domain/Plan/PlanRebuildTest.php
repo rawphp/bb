@@ -94,13 +94,19 @@ function rebuildLongMesocycle(): Mesocycle
     );
 }
 
-/** @return array<string, mixed> named arguments of PlanRebuild::days() with the long session on Thursday 15 Oct */
+/**
+ * @param  list<array{id: string, name: string}>  $stored
+ * @return array<string, mixed> named arguments of PlanRebuild::days() with the long session on Thursday 15 Oct
+ */
 function rebuildShakeWith(array $stored): array
 {
     return ['mesocycle' => rebuildLongMesocycle(), 'mesocycleStartWeek' => 5, 'storedMeals' => ['2026-10-15' => $stored]];
 }
 
-/** @param  list<string>  $ids */
+/**
+ * @param  list<string>  $ids
+ * @return list<array{id: string, name: string}>
+ */
 function rebuildStoredMeals(array $ids, ?string $shakeId = null): array
 {
     $meals = array_map(fn (string $id) => ['id' => $id, 'name' => 'Meal'], $ids);
@@ -130,7 +136,10 @@ function rebuildNewId(): Closure
     };
 }
 
-/** @param  array<string, mixed>  $with  named arguments of PlanRebuild::days() */
+/**
+ * @param  array<string, mixed>  $with  named arguments of PlanRebuild::days()
+ * @return list<WeekDay>
+ */
 function rebuildDays(array $with = []): array
 {
     return PlanRebuild::days(...array_replace([
@@ -195,13 +204,14 @@ it('SET-004 writes tomorrow through the end of the week only', function () {
 it('SET-004 today and earlier days never get a write, even with stored targets', function () {
     $stored = [];
     foreach (['2026-10-12' => 'a', '2026-10-13' => 'b', '2026-10-14' => 'c'] as $date => $id) {
-        $stored[$date] = [$id.'1', $id.'2', $id.'3', $id.'4'];
+        $stored[$date] = rebuildStoredMeals([$id.'1', $id.'2', $id.'3', $id.'4']);
     }
-    $days = rebuildDays(['storedMealIds' => $stored]);
+    $days = rebuildDays(['storedMeals' => $stored]);
     $ids = array_merge(...array_map(fn (WeekDay $day) => array_map(fn (WeekMeal $meal) => $meal->id(), $day->meals), $days));
+    $storedIds = array_merge(...array_map(fn (array $meals) => array_column($meals, 'id'), array_values($stored)));
 
     expect(array_filter(rebuildDates($days), fn (string $date) => $date <= '2026-10-14'))->toBe([])
-        ->and(array_intersect($ids, array_merge(...array_values($stored))))->toBe([]);
+        ->and(array_intersect($ids, $storedIds))->toBe([]);
 });
 
 it('NUT-030 each rebuilt day\'s meal targets add up to the day', function () {
@@ -222,7 +232,7 @@ it('SET-004 on the last day of the week there is nothing to write', function () 
 
 it('SET-004 a rebuilt day keeps the ids of its stored meals in the stored order', function () {
     // The array order is the stored position, whatever the times say.
-    $days = rebuildDays(['storedMealIds' => ['2026-10-15' => ['id-3', 'id-1', 'id-4', 'id-2']]]);
+    $days = rebuildDays(['storedMeals' => ['2026-10-15' => rebuildStoredMeals(['id-3', 'id-1', 'id-4', 'id-2'])]]);
 
     expect(rebuildMealIds($days, '2026-10-15'))->toBe(['id-3', 'id-1', 'id-4', 'id-2'])
         // A day with no stored target gets fresh ids.
@@ -261,16 +271,16 @@ it('SET-004 a day that gains a shake gives it a new id and keeps the regular ids
 it('SET-004 a window crossing midnight keeps the ids position by position', function () {
     $days = rebuildDays([
         'schedule' => rebuildSchedule(window: new ClockRange(ClockTime::at(20), ClockTime::at(2)), meals: 3, trainingDays: []),
-        'storedMealIds' => ['2026-10-15' => ['id-1', 'id-2', 'id-3']],
+        'storedMeals' => ['2026-10-15' => rebuildStoredMeals(['id-1', 'id-2', 'id-3'])],
     ]);
 
     expect(rebuildMealIds($days, '2026-10-15'))->toBe(['id-1', 'id-2', 'id-3']);
 });
 
 it('SET-004 fewer meals drop only the tail and more meals add new ids', function () {
-    $days = rebuildDays(['storedMealIds' => [
-        '2026-10-15' => ['id-1', 'id-2', 'id-3', 'id-4', 'id-5', 'id-6'],
-        '2026-10-16' => ['id-7', 'id-8'],
+    $days = rebuildDays(['storedMeals' => [
+        '2026-10-15' => rebuildStoredMeals(['id-1', 'id-2', 'id-3', 'id-4', 'id-5', 'id-6']),
+        '2026-10-16' => rebuildStoredMeals(['id-7', 'id-8']),
     ]]);
 
     $shorter = rebuildMealIds($days, '2026-10-15');
