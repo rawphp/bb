@@ -2,5 +2,14 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "additionalProperties": false,
-    "properties": []
+    "properties": {
+        "before": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "The next_before of the previous page, to read the 90 days before it. Null for the newest page.",
+            "format": "date"
+        }
+    }
 }

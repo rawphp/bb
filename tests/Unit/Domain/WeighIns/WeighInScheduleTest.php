@@ -92,3 +92,21 @@ it('WT-006 does not mark an unscheduled day missed, and a weigh-in on one leaves
 
     expect(scheduleDates($missed))->toBe(['2026-10-09 00:00']);
 });
+
+it('WT-004 marks the missed days of one window only, from its first day up to the day before its end, newest first', function () {
+    // Schedule Mon, Wed, Fri, Sat. The window [Mon 5 Oct, Sat 10 Oct): the Saturday is outside it, and so is Sat 3 Oct.
+    $missed = WeighInSchedule::missedDaysBetween(
+        [1, 3, 5, 6],
+        [scheduleDay('2026-10-07 23:50')],
+        scheduleDay('2026-10-05 12:00'),
+        scheduleDay('2026-10-10 08:00'),
+    );
+
+    expect(scheduleDates($missed))->toBe(['2026-10-09 00:00', '2026-10-05 00:00']);
+});
+
+it('WT-004 marks nothing in an empty window or without a schedule', function () {
+    expect(WeighInSchedule::missedDaysBetween([1, 3], [], scheduleDay('2026-10-07'), scheduleDay('2026-10-07')))->toBe([])
+        ->and(WeighInSchedule::missedDaysBetween([1, 3], [], scheduleDay('2026-10-09'), scheduleDay('2026-10-05')))->toBe([])
+        ->and(WeighInSchedule::missedDaysBetween([], [], scheduleDay('2026-10-01'), scheduleDay('2026-10-10')))->toBe([]);
+});

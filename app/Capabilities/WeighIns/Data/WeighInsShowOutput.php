@@ -25,5 +25,7 @@ final class WeighInsShowOutput extends CapabilityData
         #[Field(description: 'Shown when there are no weigh-ins; null otherwise.')]
         public readonly ?string $empty_message,
         public readonly StepsSection $steps,
+        #[Field(description: 'The date to pass as before for older weigh-ins and steps; null when there are none.')]
+        public readonly ?string $next_before,
     ) {}
 }
