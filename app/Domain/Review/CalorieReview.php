@@ -65,6 +65,7 @@ final class CalorieReview
         $week = $weeks[count($weeks) - 1];
         $review = new Review(
             $phase, $weeks, $week, $trend, $currentTargets, $profile, $expenditure->kcal, $plannedDailySteps,
+            $formulaExpenditureKcal,
         );
         $decision = $review->decide();
 

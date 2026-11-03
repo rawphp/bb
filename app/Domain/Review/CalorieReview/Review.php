@@ -39,6 +39,7 @@ final class Review
     /**
      * @param  list<ReviewWeek>  $weeks  oldest first; $week is the last of them
      * @param  float  $expenditureKcal  measured over $weeks (REV-021), else the formula's
+     * @param  float  $formulaExpenditureKcal  NUT-002's maintenance, for REV-046's corrected target after a break
      */
     public function __construct(
         private readonly Phase $phase,
@@ -49,6 +50,7 @@ final class Review
         private readonly Profile $profile,
         private readonly float $expenditureKcal,
         private readonly int $plannedDailySteps,
+        private readonly float $formulaExpenditureKcal,
     ) {
         $this->current = $week->targetKcal;
     }
@@ -208,8 +210,9 @@ final class Review
     /**
      * REV-046: the target the rule set in an earlier week, recomputed from that week's rows: expenditure measured over
      * the weeks up to it, plus the calories for the target rate at its trend weight. Without a measurement REV-046 used
-     * the formula maintenance built for the week after it: the break week reviewed now, stored at maintenance. Null
-     * when the rule did not decide that week.
+     * the formula maintenance built for the week after it: the diet break reviewed now, stored at maintenance. A deload
+     * is not stored at maintenance when its diet break was turned off (PLAN-023), so it takes the formula's. Null when
+     * the rule did not decide that week.
      */
     private function correctedTarget(ReviewWeek $week): ?float
     {
@@ -218,7 +221,8 @@ final class Review
             return null;
         }
         $measured = MeasuredExpenditure::estimate(array_slice($this->weeks, 0, $index + 1), $this->trend);
-        $level = ($measured ?? $this->current) + MacroRules::dailyKcal($this->targetRate(), $this->trendKgAt($week));
+        $maintenance = $this->week->week->isDietBreak ? $this->current : $this->formulaExpenditureKcal;
+        $level = ($measured ?? $maintenance) + MacroRules::dailyKcal($this->targetRate(), $this->trendKgAt($week));
 
         return $this->isLosingTooFast($week, $level) ? $level : null;
     }
