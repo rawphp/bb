@@ -6,6 +6,7 @@ import { writeFailureMessage } from '@/app/errors';
 import { isPending, pendingInput } from '@/app/outbox';
 import ReadState from '@/app/ReadState.vue';
 import { useScreenTop } from '@/app/screenTop';
+import { useHoldUpdates } from '@/app/updates';
 import { useRead } from '@/app/useRead';
 import type { WorkoutFinishInput } from '@/contracts/workout_finish';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
@@ -133,17 +134,22 @@ function openEarlier(key: string): void {
 const top = useScreenTop();
 const live = props.payload === undefined;
 const onShow = computed(() => top?.value ?? true);
+// A session under way, counting a start that waits to sync, and one over, counting a finish
+// that waits (OFF-021).
+const over = computed(() => data.value?.status === 'finished' || data.value?.status === 'skipped' || finishWaiting.value);
+const underWay = computed(() => !over.value && (data.value?.status === 'in_progress' || (data.value?.status === 'not_started' && waiting('workout_start'))));
+// PWA-035: no update reloads the app mid-workout.
+useHoldUpdates(() => live && underWay.value);
 watch(
-    [() => data.value?.status, () => data.value?.active_bar_text, onShow, () => waiting('workout_start'), finishWaiting],
+    [() => data.value?.active_bar_text, onShow, underWay, over],
     () => {
         const workout = data.value;
         if (!workout || !live) return;
-        showWorkout(workout.workout_id, path.value, workout.active_bar_text);
         const id = workout.workout_id;
-        const underWay = workout.status === 'in_progress' || (workout.status === 'not_started' && waiting('workout_start'));
-        if (workout.status === 'finished' || workout.status === 'skipped' || finishWaiting.value) releaseWakeLock(id);
-        else if (underWay && onShow.value) holdWakeLock(id);
-        else if (underWay) leaveWakeLock(id);
+        showWorkout(id, path.value, workout.active_bar_text);
+        if (over.value) releaseWakeLock(id);
+        else if (underWay.value && onShow.value) holdWakeLock(id);
+        else if (underWay.value) leaveWakeLock(id);
     },
     { immediate: true },
 );
