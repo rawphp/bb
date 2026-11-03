@@ -85,3 +85,24 @@ it('SCH-060 CAP-011 SCH-023 away_week_set invalidates every day from the earlies
     expect($invalidates)->toContain('today_show{"date":"2026-10-03"}', 'today_show{"date":"2026-10-24"}', 'today_show{"date":"2026-11-20"}', 'week_show{"date":"2026-11-14"}')
         ->and($invalidates)->not->toContain('today_show{"date":"2026-10-02"}');
 });
+
+it('PLAN-025 over HTTP, a left-out keep_phase_end keeps the saved value while an explicit false turns it off', function () {
+    Carbon::setTestNow('2026-09-23 10:00:00');
+    $world = function (): array {
+        $user = TodaySeed::user();
+        $phase = TrainSeed::phase($user, 'fatLoss', '2026-09-12', '2026-12-05');
+        // A diet break saved keeping the end date.
+        awaySet($user, ['week_starts' => ['2026-09-26'], 'away' => true, 'calories' => 'maintenance', 'keep_phase_end' => true])->assertOk();
+
+        return [$user, $phase];
+    };
+    $row = fn (User $user) => PlanWeek::query()->where('user_id', $user->id)->whereDate('start_date', '2026-09-26')->sole();
+    [$omitting, $omittingPhase] = $world();
+    [$sendingFalse, $sendingFalsePhase] = $world();
+
+    awaySet($omitting, ['week_starts' => ['2026-09-26'], 'away' => true, 'calories' => 'maintenance'])->assertOk();
+    awaySet($sendingFalse, ['week_starts' => ['2026-09-26'], 'away' => true, 'calories' => 'maintenance', 'keep_phase_end' => false])->assertOk();
+
+    expect([$omittingPhase->fresh()->end_date->format('Y-m-d'), $row($omitting)->keep_phase_end])->toBe(['2026-12-05', true])
+        ->and([$sendingFalsePhase->fresh()->end_date->format('Y-m-d'), $row($sendingFalse)->keep_phase_end])->toBe(['2026-12-12', false]);
+});
