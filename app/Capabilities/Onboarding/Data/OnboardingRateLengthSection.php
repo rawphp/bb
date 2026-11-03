@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Onboarding\Data;
 
+use App\Capabilities\Support\Choice;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -13,9 +14,9 @@ use Rawphp\Capabilities\Support\CapabilityData;
  */
 final class OnboardingRateLengthSection extends CapabilityData
 {
-    /** @param  list<OnboardingChoice>  $options  presets, then Custom */
+    /** @param  list<Choice>  $options  presets, then Custom */
     public function __construct(
-        #[Field(items: OnboardingChoice::class)]
+        #[Field(items: Choice::class)]
         public readonly array $options,
         public readonly bool $is_custom,
         public readonly OnboardingSlider $custom_rate,

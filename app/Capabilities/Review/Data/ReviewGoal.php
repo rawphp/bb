@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Review\Data;
 
+use App\Capabilities\Support\Choice;
 use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
@@ -15,12 +16,12 @@ final class ReviewGoal extends CapabilityData
 {
     /**
      * @param  list<Status>  $notes
-     * @param  list<ReviewChoice>  $options
+     * @param  list<Choice>  $options
      */
     public function __construct(
         #[Field(items: Status::class)]
         public readonly array $notes,
-        #[Field(items: ReviewChoice::class)]
+        #[Field(items: Choice::class)]
         public readonly array $options,
     ) {}
 }

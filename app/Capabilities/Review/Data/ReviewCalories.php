@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Review\Data;
 
+use App\Capabilities\Support\Choice;
 use App\Capabilities\Support\Line;
 use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
@@ -18,14 +19,14 @@ final class ReviewCalories extends CapabilityData
     /**
      * @param  list<Line>  $lines
      * @param  list<Status>  $notes
-     * @param  list<ReviewChoice>  $options
+     * @param  list<Choice>  $options
      */
     public function __construct(
         #[Field(items: Line::class)]
         public readonly array $lines,
         #[Field(items: Status::class)]
         public readonly array $notes,
-        #[Field(items: ReviewChoice::class)]
+        #[Field(items: Choice::class)]
         public readonly array $options,
         #[Field(description: 'Shown while choose_own is selected; null otherwise.')]
         public readonly ?ReviewOwnCalories $own,

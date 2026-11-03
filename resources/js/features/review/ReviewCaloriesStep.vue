@@ -19,9 +19,9 @@ const props = defineProps<{ calories: Calories; pending: boolean; busy: boolean 
 const emit = defineEmits<{ option: [id: string]; own: [kcal: number]; deload: [too: boolean]; stepOffer: [accepted: boolean] }>();
 
 const choices = computed<Choice<string>[]>(() =>
-    props.calories.options.map((o) => ({ id: o.id, title: o.title, detail: o.detail || undefined, isRecommended: o.is_recommended, isEnabled: o.is_enabled })),
+    props.calories.options.map((o) => ({ id: o.value, title: o.title, detail: o.detail || undefined, isRecommended: o.is_recommended, isEnabled: o.is_enabled })),
 );
-const selected = computed(() => props.calories.options.find((o) => o.is_selected)?.id ?? null);
+const selected = computed(() => props.calories.options.find((o) => o.is_selected)?.value ?? null);
 
 // The text in the own-calories field, from the server's amount until the user types.
 const ownText = ref('');

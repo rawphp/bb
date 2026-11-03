@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Onboarding\Data;
 
+use App\Capabilities\Support\Choice;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -13,11 +14,11 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class OnboardingCaloriesSection extends CapabilityData
 {
     /**
-     * @param  list<OnboardingChoice>  $options
+     * @param  list<Choice>  $options
      * @param  list<OnboardingCalorieDay>  $week
      */
     public function __construct(
-        #[Field(items: OnboardingChoice::class)]
+        #[Field(items: Choice::class)]
         public readonly array $options,
         public readonly ?int $own_kcal,
         public readonly int $own_kcal_max,

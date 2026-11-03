@@ -76,7 +76,7 @@ async function answer(change: Partial<ReviewAnswerInput>): Promise<WriteOutcome 
     const calories = shown.calories;
     const input = {
         week_start: shown.week_start,
-        option: (calories?.options.find((o) => o.is_selected)?.id ?? 'recommendation') as ReviewAnswerInput['option'],
+        option: (calories?.options.find((o) => o.is_selected)?.value ?? 'recommendation') as ReviewAnswerInput['option'],
         own_kcal: calories?.own?.value ?? null,
         deload_too: calories?.deload?.kind === 'ask' ? (calories.deload.answer ?? null) : null,
         update_step_plan: calories?.step_offer?.accepted ?? false,

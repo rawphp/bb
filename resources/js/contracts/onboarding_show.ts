@@ -39,13 +39,16 @@ export interface OnboardingShowOutput {
     options: {
       value: string;
       title: string;
+      /**
+       * The row's explanation, or why it is refused. Lines split on "\n".
+       */
       detail: string;
+      is_recommended: boolean;
       is_selected: boolean;
+      /**
+       * False when the server refuses the option; detail says why.
+       */
       is_enabled: boolean;
-      badges: {
-        text: string;
-        tone: "good" | "neutral" | "warning" | "info";
-      }[];
     }[];
     recent_diet: {
       question: string;
@@ -63,13 +66,16 @@ export interface OnboardingShowOutput {
     sex_options: {
       value: string;
       title: string;
+      /**
+       * The row's explanation, or why it is refused. Lines split on "\n".
+       */
       detail: string;
+      is_recommended: boolean;
       is_selected: boolean;
+      /**
+       * False when the server refuses the option; detail says why.
+       */
       is_enabled: boolean;
-      badges: {
-        text: string;
-        tone: "good" | "neutral" | "warning" | "info";
-      }[];
     }[];
     birth_date: {
       date?: string | null;
@@ -84,13 +90,16 @@ export interface OnboardingShowOutput {
       unit_options: {
         value: string;
         title: string;
+        /**
+         * The row's explanation, or why it is refused. Lines split on "\n".
+         */
         detail: string;
+        is_recommended: boolean;
         is_selected: boolean;
+        /**
+         * False when the server refuses the option; detail says why.
+         */
         is_enabled: boolean;
-        badges: {
-          text: string;
-          tone: "good" | "neutral" | "warning" | "info";
-        }[];
       }[];
       cm?: number | null;
       feet?: number | null;
@@ -102,13 +111,16 @@ export interface OnboardingShowOutput {
       unit_options: {
         value: string;
         title: string;
+        /**
+         * The row's explanation, or why it is refused. Lines split on "\n".
+         */
         detail: string;
+        is_recommended: boolean;
         is_selected: boolean;
+        /**
+         * False when the server refuses the option; detail says why.
+         */
         is_enabled: boolean;
-        badges: {
-          text: string;
-          tone: "good" | "neutral" | "warning" | "info";
-        }[];
       }[];
       value?: number | null;
       text: string;
@@ -143,26 +155,32 @@ export interface OnboardingShowOutput {
     options: {
       value: string;
       title: string;
+      /**
+       * The row's explanation, or why it is refused. Lines split on "\n".
+       */
       detail: string;
+      is_recommended: boolean;
       is_selected: boolean;
+      /**
+       * False when the server refuses the option; detail says why.
+       */
       is_enabled: boolean;
-      badges: {
-        text: string;
-        tone: "good" | "neutral" | "warning" | "info";
-      }[];
     }[];
   };
   rate_length: {
     options: {
       value: string;
       title: string;
+      /**
+       * The row's explanation, or why it is refused. Lines split on "\n".
+       */
       detail: string;
+      is_recommended: boolean;
       is_selected: boolean;
+      /**
+       * False when the server refuses the option; detail says why.
+       */
       is_enabled: boolean;
-      badges: {
-        text: string;
-        tone: "good" | "neutral" | "warning" | "info";
-      }[];
     }[];
     is_custom: boolean;
     custom_rate: {
@@ -208,13 +226,16 @@ export interface OnboardingShowOutput {
     options: {
       value: string;
       title: string;
+      /**
+       * The row's explanation, or why it is refused. Lines split on "\n".
+       */
       detail: string;
+      is_recommended: boolean;
       is_selected: boolean;
+      /**
+       * False when the server refuses the option; detail says why.
+       */
       is_enabled: boolean;
-      badges: {
-        text: string;
-        tone: "good" | "neutral" | "warning" | "info";
-      }[];
     }[];
   };
   training_days: {
@@ -240,13 +261,16 @@ export interface OnboardingShowOutput {
     options: {
       value: string;
       title: string;
+      /**
+       * The row's explanation, or why it is refused. Lines split on "\n".
+       */
       detail: string;
+      is_recommended: boolean;
       is_selected: boolean;
+      /**
+       * False when the server refuses the option; detail says why.
+       */
       is_enabled: boolean;
-      badges: {
-        text: string;
-        tone: "good" | "neutral" | "warning" | "info";
-      }[];
     }[];
   };
   steps: {
@@ -325,26 +349,32 @@ export interface OnboardingShowOutput {
     review_days: {
       value: string;
       title: string;
+      /**
+       * The row's explanation, or why it is refused. Lines split on "\n".
+       */
       detail: string;
+      is_recommended: boolean;
       is_selected: boolean;
+      /**
+       * False when the server refuses the option; detail says why.
+       */
       is_enabled: boolean;
-      badges: {
-        text: string;
-        tone: "good" | "neutral" | "warning" | "info";
-      }[];
     }[];
   };
   calories: {
     options: {
       value: string;
       title: string;
+      /**
+       * The row's explanation, or why it is refused. Lines split on "\n".
+       */
       detail: string;
+      is_recommended: boolean;
       is_selected: boolean;
+      /**
+       * False when the server refuses the option; detail says why.
+       */
       is_enabled: boolean;
-      badges: {
-        text: string;
-        tone: "good" | "neutral" | "warning" | "info";
-      }[];
     }[];
     own_kcal?: number | null;
     own_kcal_max: number;
@@ -375,4 +405,4 @@ export interface OnboardingShowOutput {
   };
 }
 
-export const outputVersion = 'ff638f39fb60';
+export const outputVersion = '6f248f96b1f1';

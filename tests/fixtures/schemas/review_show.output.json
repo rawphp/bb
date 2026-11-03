@@ -411,7 +411,7 @@
                         "type": "object",
                         "additionalProperties": false,
                         "properties": {
-                            "id": {
+                            "value": {
                                 "type": "string"
                             },
                             "title": {
@@ -419,7 +419,7 @@
                             },
                             "detail": {
                                 "type": "string",
-                                "description": "REV-013: next week's calories and macros, then the option's own words or why it is refused. Lines split on \"\\n\"."
+                                "description": "The row's explanation, or why it is refused. Lines split on \"\\n\"."
                             },
                             "is_recommended": {
                                 "type": "boolean"
@@ -429,11 +429,11 @@
                             },
                             "is_enabled": {
                                 "type": "boolean",
-                                "description": "False when safety refuses it (SAFE-008 to SAFE-012); detail says why."
+                                "description": "False when the server refuses the option; detail says why."
                             }
                         },
                         "required": [
-                            "id",
+                            "value",
                             "title",
                             "detail",
                             "is_recommended",
@@ -516,7 +516,7 @@
                         "type": "object",
                         "additionalProperties": false,
                         "properties": {
-                            "id": {
+                            "value": {
                                 "type": "string"
                             },
                             "title": {
@@ -524,7 +524,7 @@
                             },
                             "detail": {
                                 "type": "string",
-                                "description": "REV-013: next week's calories and macros, then the option's own words or why it is refused. Lines split on \"\\n\"."
+                                "description": "The row's explanation, or why it is refused. Lines split on \"\\n\"."
                             },
                             "is_recommended": {
                                 "type": "boolean"
@@ -534,11 +534,11 @@
                             },
                             "is_enabled": {
                                 "type": "boolean",
-                                "description": "False when safety refuses it (SAFE-008 to SAFE-012); detail says why."
+                                "description": "False when the server refuses the option; detail says why."
                             }
                         },
                         "required": [
-                            "id",
+                            "value",
                             "title",
                             "detail",
                             "is_recommended",

@@ -119,47 +119,27 @@
                                 "type": "string"
                             },
                             "detail": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "The row's explanation, or why it is refused. Lines split on \"\\n\"."
+                            },
+                            "is_recommended": {
+                                "type": "boolean"
                             },
                             "is_selected": {
                                 "type": "boolean"
                             },
                             "is_enabled": {
-                                "type": "boolean"
-                            },
-                            "badges": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "text": {
-                                            "type": "string"
-                                        },
-                                        "tone": {
-                                            "type": "string",
-                                            "enum": [
-                                                "good",
-                                                "neutral",
-                                                "warning",
-                                                "info"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "text",
-                                        "tone"
-                                    ]
-                                }
+                                "type": "boolean",
+                                "description": "False when the server refuses the option; detail says why."
                             }
                         },
                         "required": [
                             "value",
                             "title",
                             "detail",
+                            "is_recommended",
                             "is_selected",
-                            "is_enabled",
-                            "badges"
+                            "is_enabled"
                         ]
                     }
                 },
@@ -235,47 +215,27 @@
                                 "type": "string"
                             },
                             "detail": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "The row's explanation, or why it is refused. Lines split on \"\\n\"."
+                            },
+                            "is_recommended": {
+                                "type": "boolean"
                             },
                             "is_selected": {
                                 "type": "boolean"
                             },
                             "is_enabled": {
-                                "type": "boolean"
-                            },
-                            "badges": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "text": {
-                                            "type": "string"
-                                        },
-                                        "tone": {
-                                            "type": "string",
-                                            "enum": [
-                                                "good",
-                                                "neutral",
-                                                "warning",
-                                                "info"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "text",
-                                        "tone"
-                                    ]
-                                }
+                                "type": "boolean",
+                                "description": "False when the server refuses the option; detail says why."
                             }
                         },
                         "required": [
                             "value",
                             "title",
                             "detail",
+                            "is_recommended",
                             "is_selected",
-                            "is_enabled",
-                            "badges"
+                            "is_enabled"
                         ]
                     }
                 },
@@ -345,47 +305,27 @@
                                         "type": "string"
                                     },
                                     "detail": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "description": "The row's explanation, or why it is refused. Lines split on \"\\n\"."
+                                    },
+                                    "is_recommended": {
+                                        "type": "boolean"
                                     },
                                     "is_selected": {
                                         "type": "boolean"
                                     },
                                     "is_enabled": {
-                                        "type": "boolean"
-                                    },
-                                    "badges": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "object",
-                                            "additionalProperties": false,
-                                            "properties": {
-                                                "text": {
-                                                    "type": "string"
-                                                },
-                                                "tone": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "good",
-                                                        "neutral",
-                                                        "warning",
-                                                        "info"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "text",
-                                                "tone"
-                                            ]
-                                        }
+                                        "type": "boolean",
+                                        "description": "False when the server refuses the option; detail says why."
                                     }
                                 },
                                 "required": [
                                     "value",
                                     "title",
                                     "detail",
+                                    "is_recommended",
                                     "is_selected",
-                                    "is_enabled",
-                                    "badges"
+                                    "is_enabled"
                                 ]
                             }
                         },
@@ -441,47 +381,27 @@
                                         "type": "string"
                                     },
                                     "detail": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "description": "The row's explanation, or why it is refused. Lines split on \"\\n\"."
+                                    },
+                                    "is_recommended": {
+                                        "type": "boolean"
                                     },
                                     "is_selected": {
                                         "type": "boolean"
                                     },
                                     "is_enabled": {
-                                        "type": "boolean"
-                                    },
-                                    "badges": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "object",
-                                            "additionalProperties": false,
-                                            "properties": {
-                                                "text": {
-                                                    "type": "string"
-                                                },
-                                                "tone": {
-                                                    "type": "string",
-                                                    "enum": [
-                                                        "good",
-                                                        "neutral",
-                                                        "warning",
-                                                        "info"
-                                                    ]
-                                                }
-                                            },
-                                            "required": [
-                                                "text",
-                                                "tone"
-                                            ]
-                                        }
+                                        "type": "boolean",
+                                        "description": "False when the server refuses the option; detail says why."
                                     }
                                 },
                                 "required": [
                                     "value",
                                     "title",
                                     "detail",
+                                    "is_recommended",
                                     "is_selected",
-                                    "is_enabled",
-                                    "badges"
+                                    "is_enabled"
                                 ]
                             }
                         },
@@ -653,47 +573,27 @@
                                 "type": "string"
                             },
                             "detail": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "The row's explanation, or why it is refused. Lines split on \"\\n\"."
+                            },
+                            "is_recommended": {
+                                "type": "boolean"
                             },
                             "is_selected": {
                                 "type": "boolean"
                             },
                             "is_enabled": {
-                                "type": "boolean"
-                            },
-                            "badges": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "text": {
-                                            "type": "string"
-                                        },
-                                        "tone": {
-                                            "type": "string",
-                                            "enum": [
-                                                "good",
-                                                "neutral",
-                                                "warning",
-                                                "info"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "text",
-                                        "tone"
-                                    ]
-                                }
+                                "type": "boolean",
+                                "description": "False when the server refuses the option; detail says why."
                             }
                         },
                         "required": [
                             "value",
                             "title",
                             "detail",
+                            "is_recommended",
                             "is_selected",
-                            "is_enabled",
-                            "badges"
+                            "is_enabled"
                         ]
                     }
                 }
@@ -721,47 +621,27 @@
                                 "type": "string"
                             },
                             "detail": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "The row's explanation, or why it is refused. Lines split on \"\\n\"."
+                            },
+                            "is_recommended": {
+                                "type": "boolean"
                             },
                             "is_selected": {
                                 "type": "boolean"
                             },
                             "is_enabled": {
-                                "type": "boolean"
-                            },
-                            "badges": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "text": {
-                                            "type": "string"
-                                        },
-                                        "tone": {
-                                            "type": "string",
-                                            "enum": [
-                                                "good",
-                                                "neutral",
-                                                "warning",
-                                                "info"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "text",
-                                        "tone"
-                                    ]
-                                }
+                                "type": "boolean",
+                                "description": "False when the server refuses the option; detail says why."
                             }
                         },
                         "required": [
                             "value",
                             "title",
                             "detail",
+                            "is_recommended",
                             "is_selected",
-                            "is_enabled",
-                            "badges"
+                            "is_enabled"
                         ]
                     }
                 },
@@ -974,47 +854,27 @@
                                 "type": "string"
                             },
                             "detail": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "The row's explanation, or why it is refused. Lines split on \"\\n\"."
+                            },
+                            "is_recommended": {
+                                "type": "boolean"
                             },
                             "is_selected": {
                                 "type": "boolean"
                             },
                             "is_enabled": {
-                                "type": "boolean"
-                            },
-                            "badges": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "text": {
-                                            "type": "string"
-                                        },
-                                        "tone": {
-                                            "type": "string",
-                                            "enum": [
-                                                "good",
-                                                "neutral",
-                                                "warning",
-                                                "info"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "text",
-                                        "tone"
-                                    ]
-                                }
+                                "type": "boolean",
+                                "description": "False when the server refuses the option; detail says why."
                             }
                         },
                         "required": [
                             "value",
                             "title",
                             "detail",
+                            "is_recommended",
                             "is_selected",
-                            "is_enabled",
-                            "badges"
+                            "is_enabled"
                         ]
                     }
                 }
@@ -1120,47 +980,27 @@
                                 "type": "string"
                             },
                             "detail": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "The row's explanation, or why it is refused. Lines split on \"\\n\"."
+                            },
+                            "is_recommended": {
+                                "type": "boolean"
                             },
                             "is_selected": {
                                 "type": "boolean"
                             },
                             "is_enabled": {
-                                "type": "boolean"
-                            },
-                            "badges": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "text": {
-                                            "type": "string"
-                                        },
-                                        "tone": {
-                                            "type": "string",
-                                            "enum": [
-                                                "good",
-                                                "neutral",
-                                                "warning",
-                                                "info"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "text",
-                                        "tone"
-                                    ]
-                                }
+                                "type": "boolean",
+                                "description": "False when the server refuses the option; detail says why."
                             }
                         },
                         "required": [
                             "value",
                             "title",
                             "detail",
+                            "is_recommended",
                             "is_selected",
-                            "is_enabled",
-                            "badges"
+                            "is_enabled"
                         ]
                     }
                 }
@@ -1501,47 +1341,27 @@
                                 "type": "string"
                             },
                             "detail": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "The row's explanation, or why it is refused. Lines split on \"\\n\"."
+                            },
+                            "is_recommended": {
+                                "type": "boolean"
                             },
                             "is_selected": {
                                 "type": "boolean"
                             },
                             "is_enabled": {
-                                "type": "boolean"
-                            },
-                            "badges": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "text": {
-                                            "type": "string"
-                                        },
-                                        "tone": {
-                                            "type": "string",
-                                            "enum": [
-                                                "good",
-                                                "neutral",
-                                                "warning",
-                                                "info"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "text",
-                                        "tone"
-                                    ]
-                                }
+                                "type": "boolean",
+                                "description": "False when the server refuses the option; detail says why."
                             }
                         },
                         "required": [
                             "value",
                             "title",
                             "detail",
+                            "is_recommended",
                             "is_selected",
-                            "is_enabled",
-                            "badges"
+                            "is_enabled"
                         ]
                     }
                 }
@@ -1571,47 +1391,27 @@
                                 "type": "string"
                             },
                             "detail": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "The row's explanation, or why it is refused. Lines split on \"\\n\"."
+                            },
+                            "is_recommended": {
+                                "type": "boolean"
                             },
                             "is_selected": {
                                 "type": "boolean"
                             },
                             "is_enabled": {
-                                "type": "boolean"
-                            },
-                            "badges": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "text": {
-                                            "type": "string"
-                                        },
-                                        "tone": {
-                                            "type": "string",
-                                            "enum": [
-                                                "good",
-                                                "neutral",
-                                                "warning",
-                                                "info"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "text",
-                                        "tone"
-                                    ]
-                                }
+                                "type": "boolean",
+                                "description": "False when the server refuses the option; detail says why."
                             }
                         },
                         "required": [
                             "value",
                             "title",
                             "detail",
+                            "is_recommended",
                             "is_selected",
-                            "is_enabled",
-                            "badges"
+                            "is_enabled"
                         ]
                     }
                 },

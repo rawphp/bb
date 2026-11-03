@@ -60,7 +60,7 @@ final class OnboardingTrainingPayload
         $selectedId = $training->selectedTemplate()?->id;
         $options = array_map(fn (TemplateOption $option) => OnboardingParts::choice(
             "template:{$option->template->id}", $option->template->name, $option->template->id === $selectedId, $option->summary(),
-            badges: $option->isRecommended ? [OnboardingParts::status('Recommended', 'good')] : [],
+            recommended: $option->isRecommended,
         ), $training->templateOptions());
 
         return new OnboardingTrainingPlanSection(

@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Onboarding\Data;
 
+use App\Capabilities\Support\Choice;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -14,7 +15,7 @@ final class OnboardingWeighInsSection extends CapabilityData
 {
     /**
      * @param  list<OnboardingWeighInDay>  $days  Monday first
-     * @param  list<OnboardingChoice>  $review_days
+     * @param  list<Choice>  $review_days
      */
     public function __construct(
         #[Field(items: OnboardingWeighInDay::class)]
@@ -22,7 +23,7 @@ final class OnboardingWeighInsSection extends CapabilityData
         public readonly string $time_note,
         public readonly string $hint,
         public readonly string $review_note,
-        #[Field(items: OnboardingChoice::class)]
+        #[Field(items: Choice::class)]
         public readonly array $review_days,
     ) {}
 }

@@ -2,10 +2,10 @@
 
 namespace App\Capabilities\Reads\Onboarding;
 
-use App\Capabilities\Onboarding\Data\OnboardingChoice;
 use App\Capabilities\Onboarding\Data\OnboardingDateField;
 use App\Capabilities\Onboarding\Data\OnboardingSlider;
 use App\Capabilities\Onboarding\Data\OnboardingTime;
+use App\Capabilities\Support\Choice;
 use App\Capabilities\Support\Status;
 use App\Domain\Onboarding\OnboardingText;
 use DateTimeImmutable;
@@ -13,11 +13,10 @@ use DateTimeImmutable;
 /** The small shapes every onboarding_show section is built from. */
 final class OnboardingParts
 {
-    /** @param  list<Status>  $badges */
-    public static function choice(string $value, string $title, bool $selected, string $detail = '', bool $enabled = true, array $badges = []): OnboardingChoice
+    public static function choice(string $value, string $title, bool $selected, string $detail = '', bool $enabled = true, bool $recommended = false): Choice
     {
-        return new OnboardingChoice(
-            value: $value, title: $title, detail: $detail, is_selected: $selected, is_enabled: $enabled, badges: $badges,
+        return new Choice(
+            value: $value, title: $title, detail: $detail, is_recommended: $recommended, is_selected: $selected, is_enabled: $enabled,
         );
     }
 
