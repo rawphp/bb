@@ -248,6 +248,24 @@ it('SCH-051 a session moved by its row trains on the new day', function () {
         ->and($types['2026-10-17'])->not->toBe(DayType::Rest);
 });
 
+it('SCH-051 the rebuild places a started session on the day of its stored start, whatever the user\'s zone', function () {
+    $user = rebuildUser();
+    $user->forceFill(['time_zone' => 'Australia/Brisbane'])->save();
+    rebuildSeedMesocycle($user);
+    // Started Friday 16 Oct at 20:00 as stored, which is 06:00 Saturday in Brisbane. The rebuild reads the stored start.
+    WorkoutSession::factory()->for($user)->create([
+        'mesocycle_id' => REBUILD_MESO, 'week' => 1, 'day' => 1, 'planned_start_at' => null, 'planned_end_at' => null,
+        'actual_start_at' => '2026-10-16 20:00:00',
+    ]);
+
+    rebuildRun($user);
+
+    $types = rebuildTypes($user);
+    expect($types['2026-10-15'])->toBe(DayType::Rest)
+        ->and($types['2026-10-16'])->not->toBe(DayType::Rest)
+        ->and($types['2026-10-17'])->toBe(DayType::Rest);
+});
+
 it('SCH-053 a skipped session leaves a rest day', function () {
     $user = rebuildUser();
     rebuildSeedMesocycle($user);
