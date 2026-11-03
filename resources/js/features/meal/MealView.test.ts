@@ -539,7 +539,7 @@ describe('MealView', () => {
             expect(picker.props('open')).toBe(false);
         });
 
-        it('MEAL-061 Save as saved meal starts at the meal name and saves its foods under the typed one', async () => {
+        it('MEAL-070 Save as saved meal starts at the meal name and saves its foods under the typed one', async () => {
             const view = show({ payload: content });
 
             await menu(view, 'save_as_saved_meal');
@@ -596,7 +596,7 @@ describe('MealView', () => {
             expect(second!.id).not.toBe(first!.id);
         });
 
-        it("MEAL-061 a refused saved meal keeps the sheet open with the server's words, and the next save is a new meal", async () => {
+        it("MEAL-070 a refused saved meal keeps the sheet open with the server's words, and the next save is a new meal", async () => {
             writeMock.mockReset().mockRejectedValueOnce(new CapabilityError('saved_meal_save', 422, { ok: false, error: { message: 'That name is taken.' } })).mockResolvedValueOnce({});
             const view = show({ payload: content });
 
