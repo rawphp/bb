@@ -300,7 +300,7 @@ describe('WorkoutView', () => {
 
         await menu(wrapper, `[data-set="${BENCH_SET_1}"]`, 'add');
 
-        const [[name, input]] = sent();
+        const [name, input] = sent()[0]!;
         expect(name).toBe('workout_set_add');
         expect(input).toMatchObject({ workout_exercise_id: BENCH, after_set_id: BENCH_SET_1, set_type: 'regular_straight' });
         expect(writeMock.mock.calls[0]![2].creates).toEqual([input.set_id]);
@@ -382,7 +382,7 @@ describe('WorkoutView', () => {
 
         await menu(wrapper, `[data-exercise="${ROW}"]`, 'add:myorep_match');
 
-        const [[name, input]] = sent();
+        const [name, input] = sent()[0]!;
         expect(name).toBe('workout_set_add');
         expect(input).toMatchObject({ workout_exercise_id: ROW, after_set_id: workout().exercises[1]!.sets[2]!.id, set_type: 'myorep_match' });
     });
