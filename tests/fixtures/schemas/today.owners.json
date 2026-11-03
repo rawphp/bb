@@ -21,10 +21,10 @@
     "away_week_show": 70,
     "away_week_set": 70,
     "rough_week_set": 70,
-    "copy_show": 70,
-    "meal_copy": 70,
-    "day_copy": 70,
-    "week_copy": 70,
+    "copy_show": 236,
+    "meal_copy": 236,
+    "day_copy": 236,
+    "week_copy": 236,
     "missed_week_resolve": 70,
     "meal_check_in": 239
 }

@@ -5,8 +5,8 @@ import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
 import type { ProfileUpdateInput } from '@/contracts/profile_update';
 import type { SettingsShowOutput } from '@/contracts/settings_show';
+import ToggleSwitch from '@/design/ToggleSwitch.vue';
 import { toneClasses } from '@/design/tones';
-import SwitchRow from './SwitchRow.vue';
 
 // Settings → Profile (SET-004): name, sex, date of birth, height, body-fat bucket, the
 // GLP-1 answer and training experience. The form starts from what settings_show holds
@@ -186,13 +186,7 @@ const select = 'max-w-[60%] rounded-lg bg-transparent text-right text-secondary-
             </section>
 
             <div :class="card">
-                <SwitchRow
-                    label="Taking a GLP-1 medication"
-                    data-test="uses_glp1"
-                    :checked="draft.uses_glp1"
-                    :disabled="busy"
-                    @change="draft.uses_glp1 = ($event.target as HTMLInputElement).checked"
-                />
+                <ToggleSwitch v-model="draft.uses_glp1" label="Taking a GLP-1 medication" data-test="uses_glp1" :disabled="busy" class="px-4 py-2" />
                 <label :class="row">
                     <span>Training experience</span>
                     <select v-model="draft.experience" data-test="experience" :disabled="busy" :class="select">

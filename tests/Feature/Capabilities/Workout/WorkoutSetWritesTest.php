@@ -201,6 +201,20 @@ it('WO-003 CAP-011 logging a set names the reads it changes from the session row
         ]);
 });
 
+it('CAP-011 a set write in a session whose mesocycle is gone still answers and keeps the set', function () {
+    [$user, $shown] = startedOver();
+    $setId = $shown['exercises'][0]['sets'][0]['id'];
+    WorkoutSet::query()->findOrFail($setId)->session->mesocycle->delete();
+
+    writeOver($user, 'workout_set_log', ['set_id' => $setId, 'weight' => ['value' => 82.5, 'unit' => 'kg'], 'reps' => 9, 'is_logged' => true])
+        ->assertOk();
+
+    $set = WorkoutSet::query()->findOrFail($setId);
+    expect((float) $set->actual_weight_kg)->toBe(82.5)
+        ->and($set->actual_reps)->toBe(9)
+        ->and($set->is_logged)->toBeTrue();
+});
+
 it('SCH-039 CAP-011 a set write in a moved floating-day session still names the day the plan put it on', function () {
     // Both days float (no weekday), so the plan puts day 1 on the user's first training day of week 3, Monday 21
     // September. The session was moved to Tuesday 29th, a week later, and started there: only the plan names the 21st.
