@@ -432,7 +432,7 @@ describe('AppShell', () => {
         const { inside, outside } = wideBlock();
 
         // One wide-screen block, at the one breakpoint.
-        expect(css.match(/@media[^{]*width/g)).toEqual([`@media ${WIDE_QUERY}`]);
+        expect(css.match(/@media [^{]*width[^{]*\)/g)).toEqual([`@media ${WIDE_QUERY}`]);
         expect(inside).toMatch(/#app\s*{[^}]*max-width: none;/);
         expect(inside).not.toContain('480px');
         // The rail on the left at full height; the stacks and the floating layer to its right.

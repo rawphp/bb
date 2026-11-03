@@ -2,7 +2,8 @@
 import { useNavigation } from './navigation';
 import { TABS, type TabId } from './tabs';
 
-// The bottom bar (NAV-001), above the home indicator (PWA-010).
+// The bottom bar (NAV-001), above the home indicator (PWA-010). From 768 px wide,
+// shell.css lays the same bar out as a left rail (NAV-003).
 const nav = useNavigation();
 
 // Outline icons after rp-clone's SF Symbols: sun.max, dumbbell, fork.knife,
