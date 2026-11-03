@@ -139,9 +139,8 @@ final class NewPhasePayload
         if ($start === null) {
             return [];
         }
-        $refusal = NewPhases::screeningRefusal($new->plan, PhaseType::FatLoss);
 
-        return array_map(fn (PrebuiltPlan $plan) => self::prebuiltPlan($new->plan, $plan, $start, $refusal), PrebuiltPlan::cases());
+        return array_map(fn (PrebuiltPlan $plan) => self::prebuiltPlan($new->plan, $plan, $start, NewPhases::prebuiltRefusal($new->plan, $plan)), PrebuiltPlan::cases());
     }
 
     private static function prebuiltPlan(PlanSnapshot $plan, PrebuiltPlan $prebuilt, int $start, ?string $refusal): PlanPrebuilt

@@ -14,6 +14,7 @@ use App\Domain\Plan\MesocycleAlignment;
 use App\Domain\Plan\PhaseRefusal;
 use App\Domain\Plan\PhaseRules;
 use App\Domain\Plan\PlannedMesocycle;
+use App\Domain\Plan\PrebuiltPlan;
 use App\Domain\Safety\EligibilityMode;
 use App\Domain\Safety\Screening;
 use App\Models\Phase;
@@ -220,6 +221,18 @@ final class NewPhases
             && Screening::eligibilityFor(ProfileScreening::ticked($profile))->mode === EligibilityMode::FatLossBlocked;
 
         return array_values(array_filter(PhaseType::cases(), fn (PhaseType $type) => ! ($blocked && $type->isFatLoss())));
+    }
+
+    /** SAFE-001: why a prebuilt plan cannot be added while one of its phases is a cut the screening blocks. */
+    public static function prebuiltRefusal(PlanSnapshot $plan, PrebuiltPlan $prebuilt): ?string
+    {
+        foreach ($prebuilt->layout(0, $plan->grid, fn () => '')->phases as $phase) {
+            if (self::screeningRefusal($plan, $phase->type) !== null) {
+                return "This plan includes Fat loss, which isn't available while you're trying to conceive or in fertility treatment. Add a phase instead.";
+            }
+        }
+
+        return null;
     }
 
     public static function screeningRefusal(PlanSnapshot $plan, PhaseType $type): ?string

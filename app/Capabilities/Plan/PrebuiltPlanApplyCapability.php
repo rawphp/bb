@@ -23,7 +23,7 @@ final class PrebuiltPlanApplyCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('prebuilt_plan_apply', affects: PlanReads::AFFECTS, destructive: true)
-            ->description('Add one of RP\'s two 24-week plans (muscleGain or fatLoss) to the end of the plan, as plan_show\'s prebuilt_plans lays it out: six months of phases at once. Use it only when the user asks for a prebuilt plan; it is refused when the last phase has no end. It cannot be undone, so confirm with the user first.')
+            ->description('Add one of RP\'s two 24-week plans (muscleGain or fatLoss) to the end of the plan, as plan_show\'s prebuilt_plans lays it out: six months of phases at once. Use it only when the user asks for a prebuilt plan; it is refused when the last phase has no end, or while the user\'s screening rules out Fat loss. It cannot be undone, so confirm with the user first.')
             ->cli('plan', 'prebuilt-apply')
             ->input(PrebuiltPlanApplyInput::class)
             ->run(function (PrebuiltPlanApplyInput $input, CapabilityContext $context): WriteResult {

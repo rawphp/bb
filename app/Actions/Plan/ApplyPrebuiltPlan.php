@@ -2,7 +2,6 @@
 
 namespace App\Actions\Plan;
 
-use App\Domain\Model\PhaseType;
 use App\Domain\Plan\PrebuiltPlan;
 use App\Models\Phase;
 use App\Models\User;
@@ -34,8 +33,7 @@ final class ApplyPrebuiltPlan
                 return self::replayed($plan, $prebuilt, $replay);
             }
             $new = new NewPhases($plan);
-            // SAFE-001: both plans hold a Fat loss.
-            $refusal = $new->refusal() ?? NewPhases::screeningRefusal($plan, PhaseType::FatLoss);
+            $refusal = $new->refusal() ?? NewPhases::prebuiltRefusal($plan, $prebuilt);
             if ($refusal !== null) {
                 throw new DomainException($refusal);
             }

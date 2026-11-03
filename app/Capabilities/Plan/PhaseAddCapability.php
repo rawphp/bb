@@ -23,7 +23,7 @@ final class PhaseAddCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('phase_add', affects: PlanReads::AFFECTS)
-            ->description('Add a phase (Fat loss, Muscle gain, Maintenance or Mini-cut) to the end of the plan, starting where the last phase ends, with one of the lengths and rates plan_show\'s add_phase lists. Leave the rate out for the type\'s default; only Maintenance may have no end. Use it when the user wants to plan what comes after their last phase; it is refused when the last phase has no end.')
+            ->description('Add a phase (Fat loss, Muscle gain, Maintenance or Mini-cut) to the end of the plan, starting where the last phase ends, with one of the lengths and rates plan_show\'s add_phase lists. Leave the rate out for the type\'s default; only Maintenance may have no end. Use it when the user wants to plan what comes after their last phase; it is refused when the last phase has no end, and a cut is refused while the user\'s screening rules out Fat loss.')
             ->cli('phase', 'add')
             ->input(PhaseAddInput::class)
             ->run(function (PhaseAddInput $input, CapabilityContext $context): WriteResult {
