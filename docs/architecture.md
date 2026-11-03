@@ -125,6 +125,8 @@ The `~/EA/projects/AGENTS.md` testing rules apply: unit first, thin feature test
   1. stepper onboarding to the first finished workout;
   2. the offline workout (OFF-050);
   3. chat onboarding against the fake LLM driver.
+
+  `tests/e2e/` also holds the audits of Today, Workout and Meal: Lighthouse accessibility and best practices, the manifest's installability (PWA-051), and a cold start from cache on slow 4G with a 4× slower CPU (PWA-004). `scripts/e2e-server.sh` serves the built app on a fresh SQLite database seeded by `Tests\Support\AuditSeeder`.
 - Tests are named after the requirement they prove, for example `it('PROG-024 recalculates reps at equal effort')`.
 - Agent evals (AGT-050) live in `tests/Agent/` and run against the fake driver in the gate. The real-model run is a separate command, run before a release.
 - `bash scripts/check.sh` is the gate. It runs, stopping at the first failure:

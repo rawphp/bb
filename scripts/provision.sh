@@ -10,4 +10,6 @@ grep -q '^APP_KEY=base64' .env || php artisan key:generate --no-interaction
 
 if [ -f package.json ]; then
   npm ci
+  # tests/e2e runs on Playwright's Chromium.
+  npx playwright install chromium
 fi
