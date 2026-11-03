@@ -19,10 +19,11 @@ import ReviewTrainingStep from './ReviewTrainingStep.vue';
 import ReviewWeighInsStep from './ReviewWeighInsStep.vue';
 
 // The weekly review (REV-001 to REV-050): the steps review_show sends, each with Back and
-// Next, and Save on the last. The server sends every number, judgement and option; the
-// screen holds only which step is open, what is typed, and the calorie moves the user
-// made (review_answer takes the answer whole, REV-004). Each answer goes with
-// review_answer and Save with review_complete; nothing applies before Save (REV-031).
+// Next, and Save on the last. The server sends every number, judgement, option and the
+// answer so far, moves included; the screen holds only which step is open and what is
+// typed. review_answer takes the answer whole, so each one is built from what the screen
+// shows with one part changed; Save sends review_complete, and nothing applies before
+// it (REV-031).
 // `step` opens a named step, for links and /dev/screens. rp-clone's WeeklyReviewView.
 const props = withDefaults(defineProps<{ payload?: ReviewShowOutput; pending?: boolean; step?: string }>(), { pending: false, step: undefined });
 
@@ -46,10 +47,9 @@ const flow = computed<StepFlowStep>(() => ({
     can_continue: !isLast.value || (!!data.value?.can_save && !busy.value),
 }));
 
-// The calorie moves the server has taken, sent whole with every answer.
-const moves = ref<ReviewMove[]>([]);
-// Why the week refused the last move, kept while the answer goes back without it.
-const moveError = ref<string | null>(null);
+// Counts answers that did not go through, so the calories step starts again from what
+// the server holds instead of showing input it refused.
+const unsent = ref(0);
 
 const message = computed(() => error.value ?? (isLast.value ? (data.value?.preview?.error ?? null) : null));
 
@@ -80,30 +80,27 @@ async function answer(change: Partial<ReviewAnswerInput>): Promise<WriteOutcome 
         own_kcal: calories?.own?.value ?? null,
         deload_too: calories?.deload?.kind === 'ask' ? (calories.deload.answer ?? null) : null,
         update_step_plan: calories?.step_offer?.accepted ?? false,
-        moves: moves.value,
+        moves: shown.preview?.moves ?? [],
         ...change,
     } satisfies ReviewAnswerInput;
+    const outcome = await send('review_answer', input, 'Your answer could not be saved.');
+    if (outcome !== 'done') unsent.value++;
 
-    return send('review_answer', input, 'Your answer could not be saved.');
+    return outcome;
 }
 
+// A new option, own amount or deload answer changes the week the moves were made on, so
+// they start again, as in rp-clone; a new option also drops the old one's own amount and
+// deload answer.
 function pickOption(option: string): void {
-    void answer({ option: option as ReviewAnswerInput['option'], own_kcal: null, deload_too: null });
+    void answer({ option: option as ReviewAnswerInput['option'], own_kcal: null, deload_too: null, moves: [] });
 }
 
-/** REV-004: sends the moves with this one; true once the week took it. */
-async function move(next: ReviewMove): Promise<boolean> {
-    moveError.value = null;
-    const withMove = [...moves.value, next];
-    if ((await answer({ moves: withMove })) !== 'done') return false;
-    const refused = data.value?.preview?.error;
-    if (!refused) {
-        moves.value = withMove;
-        return true;
-    }
-    moveError.value = refused;
-    await answer({});
-    return false;
+/** REV-004: sends the answered moves with this one; null once the week took it, else why not. */
+async function move(next: ReviewMove): Promise<string | null> {
+    const outcome = await answer({ moves: [...(data.value?.preview?.moves ?? []), next] });
+
+    return outcome === 'done' ? null : (error.value ?? 'The move could not be saved.');
 }
 
 function addWeighIn(at?: string): void {
@@ -128,18 +125,19 @@ function checkIn(mealId: string): void {
             <div class="flex flex-col gap-4">
                 <p data-test="week" class="text-sm font-semibold text-secondary-text">{{ data.week_label }}</p>
                 <ReviewWeighInsStep v-if="current.key === 'weigh_ins' && data.weigh_ins" :weigh-ins="data.weigh_ins" @add="addWeighIn" />
-                <ReviewMealsStep v-else-if="current.key === 'meals' && data.meals" :meals="data.meals" :busy="busy" @check-in="checkIn" />
+                <ReviewMealsStep v-else-if="current.key === 'meals' && data.meals" :meals="data.meals" :pending="pending" :busy="busy" @check-in="checkIn" />
                 <ReviewTrainingStep v-else-if="current.key === 'training' && data.training" :training="data.training" :pending="pending" />
                 <ReviewProgressStep v-else-if="current.key === 'progress' && data.progress" :progress="data.progress" :pending="pending" />
                 <ReviewGoalStep v-else-if="current.key === 'goal' && data.goal" :goal="data.goal" @transition="router.push('/train/plan/transition')" />
                 <ReviewCaloriesStep
                     v-else-if="current.key === 'calories' && data.calories"
+                    :key="unsent"
                     :calories="data.calories"
                     :pending="pending"
                     :busy="busy"
                     @option="pickOption"
-                    @own="(kcal) => answer({ own_kcal: kcal })"
-                    @deload="(too) => answer({ deload_too: too })"
+                    @own="(kcal) => answer({ own_kcal: kcal, moves: [] })"
+                    @deload="(too) => answer({ deload_too: too, moves: [] })"
                     @step-offer="(accepted) => answer({ update_step_plan: accepted })"
                 />
                 <ReviewPreviewStep
@@ -147,7 +145,6 @@ function checkIn(mealId: string): void {
                     :preview="data.preview"
                     :pending="pending"
                     :busy="busy"
-                    :error="moveError ?? error"
                     :move="move"
                 />
                 <p v-if="message" role="alert" data-test="message" class="flex items-start gap-2 text-sm text-tone-warning">{{ message }}</p>

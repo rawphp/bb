@@ -5,13 +5,14 @@ import ReviewNote from './ReviewNote.vue';
 type Meals = NonNullable<ReviewShowOutput['meals']>;
 
 // Step 2 (REV-003): how many meals were checked in, and each unchecked one to check in now.
-defineProps<{ meals: Meals; busy: boolean }>();
+// `pending` dims the server's count (OFF-008).
+defineProps<{ meals: Meals; pending: boolean; busy: boolean }>();
 const emit = defineEmits<{ checkIn: [mealId: string] }>();
 </script>
 
 <template>
     <div class="flex flex-col gap-3" data-test="step-meals">
-        <ReviewNote :text="meals.message.text" :tone="meals.message.tone" />
+        <ReviewNote :text="meals.message.text" :tone="meals.message.tone" :class="{ 'opacity-60': pending }" />
         <ul v-if="meals.unchecked.length" class="flex flex-col gap-3">
             <li v-for="meal in meals.unchecked" :key="meal.meal_id" data-test="unchecked" class="flex items-center justify-between gap-2">
                 <span class="flex flex-col gap-0.5">
