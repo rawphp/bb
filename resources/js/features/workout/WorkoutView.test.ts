@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, reactive, ref } from 'vue';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
 import { CapabilityError, read, write } from '@/app/call';
 import { isPending, pendingInput } from '@/app/outbox';
@@ -660,6 +660,45 @@ describe('WorkoutView', () => {
 
         expect(dialog(wrapper)).toBeNull();
         expect(writeMock).not.toHaveBeenCalled();
+    });
+
+    it('FB-001 a cancelled muscle does not block the next muscle that becomes due', async () => {
+        const payload = reactive(workout('warning'));
+        payload.feedback.push({ ...payload.feedback[0]!, muscle_group: 'back', is_due: false });
+        const wrapper = await show({ payload });
+        expect(dialog(wrapper)).toBe('Chest');
+
+        await wrapper.get('[data-cancel]').trigger('click');
+        payload.feedback[1]!.is_due = true;
+        await flushPromises();
+
+        expect(dialog(wrapper)).toBe('Back');
+    });
+
+    it('FB-001 an answer for one muscle waiting in the outbox does not block the next muscle that is due', async () => {
+        vi.mocked(pendingInput).mockImplementation(((name: string, match: (input: unknown) => boolean) =>
+            name === 'workout_feedback_answer' && match({ workout_id: '01JB8W3Q000000000000000901', muscle_group: 'chest' }) ? {} : undefined) as never);
+        const payload = workout('warning');
+        payload.feedback.push({ ...payload.feedback[0]!, muscle_group: 'back' });
+        const wrapper = await show({ payload });
+
+        expect(dialog(wrapper)).toBe('Back');
+    });
+
+    it('FB-001 feedback that becomes due while another sheet is open opens when that sheet closes', async () => {
+        const payload = reactive(workout());
+        const wrapper = await show({ payload });
+        await setRow(wrapper, BENCH_SET_1).get('[data-test="rir-info"]').trigger('click');
+        const open = dialog(wrapper);
+        expect(open).not.toBeNull();
+
+        payload.feedback[0]!.is_due = true;
+        await flushPromises();
+        expect(dialog(wrapper)).toBe(open);
+        await wrapper.get('[data-cancel]').trigger('click');
+        await flushPromises();
+
+        expect(dialog(wrapper)).toBe('Chest');
     });
 
     it('FB-001 tapping the feedback banner opens the first due feedback again', async () => {
