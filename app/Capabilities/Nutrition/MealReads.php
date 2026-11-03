@@ -8,13 +8,13 @@ use App\Domain\Plan\PlanWeekGrid;
 use App\Domain\Progress\PlanWeekDays;
 use App\Models\DayTargetMeal;
 use App\Support\Today\DayPlans;
+use App\Support\UserDay;
 use DateTimeImmutable;
-use Illuminate\Support\Carbon;
 
 /**
  * The reads a change to one meal invalidates (CAP-010, CAP-011): its meal screen, the Nutrition tab of its day, and
  * Today and the week strip, which show its planned foods and check-in. A day that is today also drops the reads
- * without a date. The day and the plan are read through the meal's dayTarget and user->plan relations.
+ * without a date (SET-012: the user's local today). The day and the plan are read through the meal's dayTarget and user->plan relations.
  *
  * Only the changed meal's screen is named. A write that changes the day's other meals, such as a delete that moves the
  * pre- or post-workout tag (MEAL-010) or a "Meal n" title, names their meal_show keys too.
@@ -29,7 +29,7 @@ final class MealReads
         $day = DayPlans::day($meal->dayTarget->date);
         $date = $day->format('Y-m-d');
         $keys = [ReadKey::for('meal_show', ['meal_id' => (string) $meal->getKey()]), ReadKey::for('nutrition_show', ['date' => $date])];
-        if ($date === Carbon::now()->format('Y-m-d')) {
+        if ($date === UserDay::today($meal->user)->format('Y-m-d')) {
             $keys[] = ReadKey::for('nutrition_show');
         }
 
