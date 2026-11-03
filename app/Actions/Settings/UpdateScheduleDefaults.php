@@ -9,8 +9,6 @@ use App\Capabilities\Settings\Data\StepRangeInput;
 use App\Capabilities\Settings\Data\TrainingDayInput;
 use App\Capabilities\Settings\Data\WeekdayInput;
 use App\Capabilities\Support\FieldRefused;
-use App\Models\Mesocycle;
-use App\Models\Plan;
 use App\Models\Profile;
 use App\Models\User;
 use App\Support\Plan\PlanSnapshot;
@@ -23,6 +21,8 @@ use App\Support\Today\TodaySnapshot;
  * SCH-039: while a mesocycle covers next plan week, a different set of training weekdays would leave its sessions on
  * the old days, so the write is refused and `training_weekdays_change` moves them instead. New times or minutes on the
  * same weekdays save as usual.
+ *
+ * PLAN-008: a review day other than the one chosen last is recorded by {@see ChangeReviewDay}, under the same locks.
  */
 final class UpdateScheduleDefaults
 {
@@ -79,7 +79,6 @@ final class UpdateScheduleDefaults
         if ($stored !== array_values(array_unique($sent)) && $plan?->mesocycleCoveringWeek($plan->nextWeek()) !== null) {
             throw new FieldRefused('training_days', self::MESOCYCLE_UNDER_WAY);
         }
-
     }
 
     /**

@@ -81,8 +81,9 @@ final class ReminderDays
         $due = [];
 
         // NOTIF-004, NOTIF-005: both morning reminders fall on the first day of a plan week, which is the plan start
-        // or the review weekday (PLAN-008; the weekday and the effective day of each stored review-day change count too), and are judged together. A user is not due again once a pass judged that
-        // morning (a marker, or a morning reminder sent), nor with both morning switches off (NOTIF-007).
+        // or a review weekday (PLAN-008: the plan's, or a stored change's weekday or first day), and are judged together.
+        // A user is not due again once a pass judged that morning (a marker, or a morning reminder sent), nor with both
+        // morning switches off (NOTIF-007).
         foreach (self::mornings($after, $now) as $date => $at) {
             $done = [
                 ...SentReminder::query()->whereIn('user_id', $userIds)
@@ -93,7 +94,10 @@ final class ReminderDays
                 ->whereIn('kind', [ReminderKind::WeeklyReview->value, ReminderKind::NextMesocycle->value])->where('on', false)
                 ->groupBy('user_id')->havingRaw('count(*) = 2')->pluck('user_id')->all();
             $starting = Plan::query()->whereIn('user_id', $userIds)
-                ->where(fn ($query) => $query->where('review_weekday', (int) $at->format('N'))->orWhereDate('start_date', $date)->orWhereHas('reviewDayChanges', fn ($change) => $change->where(fn ($either) => $either->where('review_weekday', (int) $at->format('N'))->orWhereDate('effective_on', $date))))
+                ->where(fn ($query) => $query->where('review_weekday', (int) $at->format('N'))->orWhereDate('start_date', $date)
+                    ->orWhereHas('reviewDayChanges', fn ($change) => $change->where(
+                        fn ($either) => $either->where('review_weekday', (int) $at->format('N'))->orWhereDate('effective_on', $date),
+                    )))
                 ->pluck('user_id');
             foreach ($starting as $id) {
                 if (! in_array($id, $done, true) && ! in_array($id, $off, true)) {

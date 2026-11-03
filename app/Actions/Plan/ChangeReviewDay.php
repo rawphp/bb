@@ -19,12 +19,12 @@ use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * PLAN-008: a review day other than the one chosen last changes from the next plan-week boundary. What sits after the
- * transition week's first day moves to the same week indices of the new grid. The transition week is shortened or lengthened to fit, and the phases, mesocycles and plan weeks
- * after it keep their week indices on the new grid, which keeps them on one grid (PLAN-002). The change is a row in
- * `plan_review_day_changes`; a row on or before today is history and never changes. Before the plan starts there is no
- * boundary: the starting day itself changes, and the targets rebuild, as week 0's length changed (ONB-016). Nothing is
- * written for the day already chosen.
+ * PLAN-008: a review day other than the one chosen last changes from the next plan-week boundary. The transition week
+ * is shortened or lengthened to fit, and the phases, mesocycles and plan weeks after its first day keep their week
+ * indices on the new grid, which keeps them on one grid (PLAN-002). The change is a row in `plan_review_day_changes`;
+ * a row on or before today is history and never changes. Before the plan starts there is no boundary: the starting
+ * day itself changes, and the targets rebuild, as week 0's length changed (ONB-016). Nothing is written for the day
+ * already chosen.
  *
  * Runs inside {@see SaveProfile}'s transaction, which has the plan and profile rows locked.
  */
