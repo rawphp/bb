@@ -762,7 +762,7 @@ final class WorkoutSnapshot
     private function dayRow(): ?array
     {
         $id = $this->plan()->id;
-        $days = $this->mesocycle->earlierWeekRows()[$this->week - 1] ?? $this->mesocycle->dayRows();
+        $days = $this->mesocycle->earlierWeekRows()[$this->week - 1] ?? $this->train->rotationAsRun($this->mesocycle);
 
         return array_values(array_filter($days, fn (array $day) => $day['id'] === $id))[0] ?? null;
     }
