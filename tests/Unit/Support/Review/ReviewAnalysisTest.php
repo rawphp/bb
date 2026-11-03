@@ -107,7 +107,7 @@ it('REV-003 the analysis holds the week\'s weigh-ins, meals, training and progre
         ->and($analysis->training->setsDone)->toBe(14)
         ->and($analysis->training->jointPain[0]->exerciseName)->toBe('Bench Press')
         ->and($analysis->progress)->not->toBeNull()
-        ->and($analysis->progress->onTarget)->toBeTrue();
+        ->and($analysis->progress->rateIsOnTarget)->toBeTrue();
 });
 
 // MARK: the recommendation (REV-020 to REV-032)
@@ -122,7 +122,7 @@ it('REV-020 the week is read from the trend weight, not the last weigh-in', func
 
 it('REV-021 expenditure is measured once there are 3 eligible weeks, and the formula stands in until then', function () {
     $measured = reviewed();
-    $early = reviewed(fn (ReviewSeed $seed) => $seed->weeksFinished = 3);
+    $early = reviewed(fn (ReviewSeed $seed) => $seed->weeksFinished = 2);
 
     expect(array_map(fn ($week) => $week->loggedDays(), $measured->weeks))->toBe([7, 7, 7, 7])
         ->and($measured->weeks[3]->averageIntakeKcal())->toEqualWithDelta(2400, 1e-6)
@@ -198,7 +198,9 @@ it('REV-027 a stall says so and recommends one change at a time', function () {
     expect(ReviewSeed::reasonText($analysis))->toBe('Your progress has stalled')
         ->and($stall->cutKcal)->toEqualWithDelta(250, 1e-6)
         ->and($stall->addSteps)->toBe(2000)
-        ->and($analysis->recommendation->kcal)->toEqualWithDelta($stall->recommended === StallChange::CutCalories ? 2150 : 2400, 1e-6);
+        // 70 g of fat a day is close to the fat floor after a 250 kcal cut, so steps come first and calories hold.
+        ->and($stall->recommended)->toBe(StallChange::AddSteps)
+        ->and($analysis->recommendation->kcal)->toEqualWithDelta(2400, 1e-6);
 });
 
 it('REV-028 a stalled gain in Muscle gain raises calories and says so', function () {

@@ -114,7 +114,7 @@ final class ReviewSeed
     public function __construct()
     {
         // 0.5% a week of 90 kg, the plan's own rate, with a weigh-in every day of the plan.
-        $this->weight = fn (int $offset): ?float => 90 - 0.0643 * ($offset + 28);
+        $this->weight = fn (int $offset): float => 90 - 0.0643 * ($offset + 28);
         $this->isChecked = fn (string $date, int $meal): bool => true;
         $this->stepPlan = array_map(fn (int $weekday) => ['weekday' => $weekday, 'min' => 6000, 'max' => 8000], range(1, 7));
     }
@@ -168,7 +168,7 @@ final class ReviewSeed
     {
         $readings = [];
         foreach (range(-7 * ($this->weeksFinished + 1), 0) as $offset) {
-            $kg = ($this->weight)($offset);
+            $kg = $this->storedKg($offset);
             if ($kg !== null) {
                 $readings[] = new DomainWeighIn("w{$offset}", new DateTimeImmutable(self::day($offset).' 07:00:00', new DateTimeZone('UTC')), $kg);
             }
@@ -222,7 +222,7 @@ final class ReviewSeed
         }
         $this->targets($user);
         foreach (range(-7 * ($this->weeksFinished + 1), 0) as $offset) {
-            $kg = ($this->weight)($offset);
+            $kg = $this->storedKg($offset);
             if ($kg !== null) {
                 WeighIn::factory()->for($user)->create(['weight_kg' => $kg, 'weighed_at' => self::day($offset).' 07:00:00']);
             }
@@ -233,6 +233,14 @@ final class ReviewSeed
         $this->training($user, $phase->id, $start);
 
         return $user;
+    }
+
+    /** The day's weight as the weigh_ins column keeps it, to 2 decimals. */
+    private function storedKg(int $offset): ?float
+    {
+        $kg = ($this->weight)($offset);
+
+        return $kg === null ? null : round($kg, 2);
     }
 
     /** @return array{type: string, kcal: float, carbs: float} the day's stored target; the reviewed week may be shifted */
