@@ -584,6 +584,67 @@ describe('CoachChat', () => {
             await vi.waitFor(() => expect(sendMock).toHaveBeenCalledTimes(2));
         });
 
+        it('AGT-021 a message found at the end of the grace period keeps a draft the user has since changed', async () => {
+            const landed: ChatHistory = { conversation_ulid: CONVERSATION, messages: [...earlier.messages, { ulid: ids.message_ulid, role: 'user', content: 'Plan my week', created_at: null }] };
+            historyMock.mockResolvedValue(earlier);
+            sendMock.mockRejectedValue(new CapabilityError('chat.send', 0, { reason: 'timeout' }));
+            const wrapper = mountChat();
+            await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
+            await sendMessage(wrapper, 'Plan my week');
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').text()).toBe(waiting));
+
+            await wrapper.get('textarea').setValue('And next week?');
+            historyMock.mockResolvedValue(landed);
+            await vi.advanceTimersByTimeAsync(30_000);
+            await vi.waitFor(() => expect(wrapper.find('[data-test="landed"]').exists()).toBe(true));
+
+            expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('And next week?');
+            expect(sendMock).toHaveBeenCalledTimes(1);
+        });
+
+        it('AGT-021 a chat closed during the grace period checks nothing more', async () => {
+            historyMock.mockResolvedValue(earlier);
+            sendMock.mockRejectedValue(new CapabilityError('chat.send', 0, { reason: 'timeout' }));
+            const wrapper = mountChat();
+            await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
+            await sendMessage(wrapper, 'Plan my week');
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').text()).toBe(waiting));
+            const reads = historyMock.mock.calls.length;
+
+            wrapper.unmount();
+            await vi.advanceTimersByTimeAsync(60_000);
+            // A check would first wait on IndexedDB, which answers on its own clock.
+            for (let i = 0; i < 20; i++) await new Promise((resolve) => setImmediate(resolve));
+
+            expect(historyMock).toHaveBeenCalledTimes(reads);
+        });
+
+        it('AGT-021 a Send whose check began before the grace ended still waits, and the check after it settles the message', async () => {
+            historyMock.mockResolvedValue(earlier);
+            sendMock.mockRejectedValue(new CapabilityError('chat.send', 0, { reason: 'timeout' }));
+            const wrapper = mountChat();
+            await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
+            await sendMessage(wrapper, 'Plan my week');
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').text()).toBe(waiting));
+
+            // A Send checks the conversation, and that read is still out when the grace ends.
+            let answer: (value: ChatHistory) => void = () => {};
+            historyMock.mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+            const reads = historyMock.mock.calls.length;
+            await wrapper.get('form').trigger('submit');
+            await vi.waitFor(() => expect(historyMock).toHaveBeenCalledTimes(reads + 1));
+            await vi.advanceTimersByTimeAsync(30_000);
+            answer(earlier);
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').text()).toBe(waiting));
+            expect(sendMock).toHaveBeenCalledTimes(1);
+
+            // The check after it starts past the grace, so it settles the message as not sent.
+            await vi.advanceTimersByTimeAsync(1000);
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').text()).toBe('The server did not answer in time, so this may have worked. Check, then try again.'));
+            expect(sendMock).toHaveBeenCalledTimes(1);
+            expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('Plan my week');
+        });
+
         it('AGT-021 a message the server takes after the deadline shows as landed, not sent twice', async () => {
             const landed: ChatHistory = { conversation_ulid: CONVERSATION, messages: [...earlier.messages, { ulid: ids.message_ulid, role: 'user', content: 'Plan my week', created_at: null }] };
             historyMock.mockResolvedValue(earlier);
