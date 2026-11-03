@@ -5,6 +5,7 @@ import type { MealShowOutput } from '@/contracts/meal_show';
 import CopySheet from '@/features/copy/CopySheet.vue';
 import SavedMealPickerSheet from '@/features/saved-meals/SavedMealPickerSheet.vue';
 import ScanView from '@/features/scan/ScanView.vue';
+import StatusPill from '@/design/StatusPill.vue';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import MealAmountSheet from './MealAmountSheet.vue';
 import MealFoodRowView from './MealFoodRowView.vue';
@@ -248,9 +249,15 @@ describe('MealView', () => {
         it("OFF-008 marks the bars, pills and each food's macros as waiting to sync", () => {
             const view = show({ payload: content, pending: true });
 
-            expect(view.findAll('[role="progressbar"]').every((bar) => bar.attributes('aria-valuetext')!.includes('waiting to sync'))).toBe(true);
-            expect(view.findAll('[data-test="macros"]').every((line) => line.text().includes('Waiting to sync'))).toBe(true);
-            expect(view.get('[data-test="summary"]').text()).toContain('Waiting to sync');
+            const bars = view.findAll('[role="progressbar"]');
+            expect(bars).toHaveLength(4);
+            expect(bars.every((bar) => bar.attributes('aria-valuetext')!.includes('waiting to sync'))).toBe(true);
+            const macros = view.findAll('[data-test="macros"]');
+            expect(macros).toHaveLength(4);
+            expect(macros.every((line) => line.text().includes('Waiting to sync'))).toBe(true);
+            const pills = view.findAllComponents(StatusPill);
+            expect(pills).toHaveLength(3);
+            expect(pills.every((pill) => pill.text().includes('Waiting to sync'))).toBe(true);
         });
 
         it('OFF-008 marks nothing when nothing waits to sync', () => {
@@ -333,6 +340,26 @@ describe('MealView', () => {
             await flushPromises();
 
             expect(view.get('[data-test="error"]').text()).toContain('Add a food first.');
+        });
+    });
+
+    describe('while a write is in flight', () => {
+        it('CAP-010 the rows, Rebalance, the tick and the menu are off, so a second tap sends nothing', async () => {
+            writeMock.mockReset().mockReturnValue(new Promise(() => {}));
+            const view = show({ payload: content });
+
+            await row(view, 'White rice').get('[data-test="plus"]').trigger('click');
+            await flushPromises();
+
+            const rice = row(view, 'White rice');
+            for (const control of ['minus', 'plus', 'lock', 'delete', 'amount']) expect(rice.get<HTMLButtonElement>(`[data-test="${control}"]`).element.disabled).toBe(true);
+            expect(row(view, 'Overnight oats').get<HTMLButtonElement>('[data-test="plus"]').element.disabled).toBe(true);
+            expect(view.get<HTMLButtonElement>('[data-test="rebalance"]').element.disabled).toBe(true);
+            expect(view.get<HTMLButtonElement>('[data-test="check"]').element.disabled).toBe(true);
+            expect(view.get<HTMLButtonElement>('button[aria-label="Meal menu"]').element.disabled).toBe(true);
+            await rice.get('[data-test="minus"]').trigger('click');
+            await view.get('[data-test="rebalance"]').trigger('click');
+            expect(writeMock).toHaveBeenCalledTimes(1);
         });
     });
 
@@ -567,6 +594,21 @@ describe('MealView', () => {
 
             const [first, second] = writeMock.mock.calls.map((call) => call[1] as { id: string });
             expect(second!.id).not.toBe(first!.id);
+        });
+
+        it("MEAL-061 a refused saved meal keeps the sheet open with the server's words, and the next save is a new meal", async () => {
+            writeMock.mockReset().mockRejectedValueOnce(new CapabilityError('saved_meal_save', 422, { ok: false, error: { message: 'That name is taken.' } })).mockResolvedValueOnce({});
+            const view = show({ payload: content });
+
+            await menu(view, 'save_as_saved_meal');
+            await saveSheet();
+            expect(dialog()!.textContent).toContain('That name is taken.');
+            expect(view.find('[data-test="error"]').exists()).toBe(false);
+            await saveSheet();
+
+            const [first, second] = writeMock.mock.calls.map((call) => call[1] as { id: string });
+            expect(second!.id).not.toBe(first!.id);
+            expect(dialog()).toBeNull();
         });
 
         it('MEAL-060 Copy foods opens the copy sheet for this meal', async () => {
