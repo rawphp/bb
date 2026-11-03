@@ -4,6 +4,7 @@ import { KEYPAD } from '@/app/keypad';
 import { entries, pendingInput } from '@/app/outbox';
 import type { WorkoutSetLogInput } from '@/contracts/workout_set_log';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
+import HelpButton from '@/design/HelpButton.vue';
 import PendingMark from '@/design/PendingMark.vue';
 import type { WorkoutSheet, WorkoutWrite } from './workoutWrite';
 
@@ -233,20 +234,7 @@ const field =
                 @blur="focused === 'reps' && commit()"
             />
             <!-- WO-007: what the target and this week's RIR mean. -->
-            <button
-                type="button"
-                class="flex min-h-tap min-w-tap shrink-0 items-center justify-center text-accent"
-                aria-haspopup="dialog"
-                aria-label="What RIR means"
-                data-test="rir-info"
-                @click="emit('open', { name: 'rir' })"
-            >
-                <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-                    <circle cx="12" cy="12" r="9.25" />
-                    <path d="M9.5 9.25a2.5 2.5 0 1 1 3.5 2.3c-.6.27-1 .87-1 1.53v.67" stroke-linecap="round" />
-                    <circle cx="12" cy="16.75" r=".6" fill="currentColor" stroke="none" />
-                </svg>
-            </button>
+            <HelpButton class="shrink-0" title="Reps and RIR" message="" label="What RIR means" opens data-test="rir-info" @open="emit('open', { name: 'rir' })" />
             <button
                 type="button"
                 role="checkbox"

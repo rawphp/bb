@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
 import BottomSheet from '@/design/BottomSheet.vue';
-import { toneClasses } from '@/design/tones';
+import StatusPill from '@/design/StatusPill.vue';
 import LookBackDetail from './LookBackDetail.vue';
 
 type Session = WorkoutShowOutput['look_back'][number];
@@ -36,7 +36,7 @@ function back(): void {
                 @click="open = entry"
             >
                 <span class="text-primary-text">{{ entry.title }}</span>
-                <span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" :class="toneClasses[entry.status.tone]" data-test="status">{{ entry.status.text }}</span>
+                <StatusPill class="shrink-0" :text="entry.status.text" :tone="entry.status.tone" />
             </button>
         </div>
     </BottomSheet>

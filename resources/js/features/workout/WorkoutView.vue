@@ -15,6 +15,7 @@ import type { WorkoutSkipInput } from '@/contracts/workout_skip';
 import type { WorkoutStartInput } from '@/contracts/workout_start';
 import ActionMenu, { type ActionMenuItem } from '@/design/ActionMenu.vue';
 import BottomSheet from '@/design/BottomSheet.vue';
+import HelpButton from '@/design/HelpButton.vue';
 import PendingMark from '@/design/PendingMark.vue';
 import { toneClasses } from '@/design/tones';
 import { showWorkout } from './activeWorkout';
@@ -266,13 +267,7 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
                     <path d="M4 9h16M9 3v4M15 3v4" stroke-linecap="round" />
                 </svg>
             </button>
-            <button type="button" :class="headerButton" aria-label="Help" aria-haspopup="dialog" data-test="help" @click="sheet = { name: 'help' }">
-                <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-                    <circle cx="12" cy="12" r="9.25" />
-                    <path d="M9.5 9.25a2.5 2.5 0 1 1 3.5 2.3c-.6.27-1 .87-1 1.53v.67" stroke-linecap="round" />
-                    <circle cx="12" cy="16.75" r=".6" fill="currentColor" stroke="none" />
-                </svg>
-            </button>
+            <HelpButton title="Workout help" message="" opens data-test="help" @open="sheet = { name: 'help' }" />
             <ActionMenu v-if="data?.is_editable" label="Workout menu" :items="dayMenu" data-test="day-menu" @select="chooseDay">
                 <svg viewBox="0 0 24 24" class="size-6 text-accent" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                     <circle cx="12" cy="12" r="9.25" />
