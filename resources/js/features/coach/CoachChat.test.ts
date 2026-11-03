@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cached, clearReads, readKey } from '@/app/cache';
 import { CapabilityError, read, readFresh } from '@/app/call';
@@ -82,6 +82,9 @@ function setOnline(online: boolean): void {
 }
 
 describe('CoachChat', () => {
+    // A chat left mounted keeps its online listener and would read again in the next test.
+    enableAutoUnmount(afterEach);
+
     beforeEach(async () => {
         document.cookie = 'bb_cache_owner=a1; path=/';
         await clearReads();
@@ -111,6 +114,8 @@ describe('CoachChat', () => {
 
         const wrapper = mountChat();
         await flushPromises();
+        // A history ask would first wait on IndexedDB, which answers on its own clock.
+        await new Promise((resolve) => setTimeout(resolve, 50));
 
         expect(historyMock).not.toHaveBeenCalled();
         expect(wrapper.find('textarea').attributes('disabled')).toBeUndefined();
@@ -295,6 +300,28 @@ describe('CoachChat', () => {
         await flushPromises();
 
         expect(wrapper.text()).toContain('I ran this morning, fix my meals');
+    });
+
+    it('AGT-013 shows the turn\'s change cards when its reply cannot be loaded', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        readMock.mockResolvedValue(status);
+        historyMock.mockResolvedValueOnce(earlier);
+        historyMock.mockRejectedValue(new CapabilityError('chat.history', 503, null));
+        sendMock.mockResolvedValue(ids);
+        reads({ agent_status_show: status, coach_changes_list: changes });
+        playStream([[0, 1, 2, 3, 4]]);
+        const wrapper = mountChat();
+        await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
+
+        await sendMessage(wrapper, 'I ran this morning, fix my meals');
+        await vi.advanceTimersByTimeAsync(1000);
+        await vi.waitFor(() => expect(readFreshMock).toHaveBeenCalledWith('coach_changes_list', { turn: TURN }));
+        await flushPromises();
+
+        // Not under the earlier reply, and not dropped: after the message that started the turn.
+        const items = wrapper.findAll('ol > li');
+        expect(items.at(-1)!.findAll('[data-test="change-card"]')).toHaveLength(2);
+        expect(items.at(-2)!.text()).toBe('I ran this morning, fix my meals');
     });
 
     it('AGT-022 offers no photo attach control', async () => {
