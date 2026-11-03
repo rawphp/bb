@@ -95,31 +95,43 @@ final class PlanRebuild
             if ($day->target === null || $date <= $after) {
                 continue;
             }
-            // Built meals are in time order and stored ones in stored order (a shake is stored last), so the order
-            // cannot match them up: regular meals go by their order among the regular ones, the shake by its kind.
-            $regularIds = [];
-            $shakeId = null;
-            foreach ($storedMeals[$date] ?? [] as $stored) {
-                if ($stored['name'] === MealNames::INTRA_WORKOUT_SHAKE) {
-                    $shakeId ??= $stored['id'];
-                } else {
-                    $regularIds[] = $stored['id'];
-                }
-            }
-            $ordinal = 0;
-            $days[] = new WeekDay(
-                $day->day,
-                $day->workouts,
-                array_map(function (WeekMeal $meal) use (&$ordinal, $regularIds, $shakeId) {
-                    $id = $meal->kind === WeekMealKind::IntraWorkoutShake ? $shakeId : ($regularIds[$ordinal++] ?? null);
-
-                    return new WeekMeal(new Meal($id ?? $meal->id(), $meal->meal->name, $meal->meal->target), $meal->time, $meal->kind);
-                }, $day->meals),
-                $day->target,
-                $day->carbBoundsWarning,
-            );
+            $days[] = self::withStoredMealIds($day, $storedMeals[$date] ?? []);
         }
 
         return $days;
+    }
+
+    /**
+     * NUT-030: a built day under the ids of the meals stored for its date, so their foods and check-ins stay with them.
+     * Built meals are in time order and stored ones in stored order (a shake is stored last), so the order cannot match
+     * them up: regular meals go by their order among the regular ones, the shake by its kind. A meal with no stored
+     * match keeps its built id.
+     *
+     * @param  list<array{id: string, name: string}>  $stored  the day's stored meals, in stored order
+     */
+    public static function withStoredMealIds(WeekDay $day, array $stored): WeekDay
+    {
+        $regularIds = [];
+        $shakeId = null;
+        foreach ($stored as $meal) {
+            if ($meal['name'] === MealNames::INTRA_WORKOUT_SHAKE) {
+                $shakeId ??= $meal['id'];
+            } else {
+                $regularIds[] = $meal['id'];
+            }
+        }
+        $ordinal = 0;
+
+        return new WeekDay(
+            $day->day,
+            $day->workouts,
+            array_map(function (WeekMeal $meal) use (&$ordinal, $regularIds, $shakeId) {
+                $id = $meal->kind === WeekMealKind::IntraWorkoutShake ? $shakeId : ($regularIds[$ordinal++] ?? null);
+
+                return new WeekMeal(new Meal($id ?? $meal->id(), $meal->meal->name, $meal->meal->target), $meal->time, $meal->kind);
+            }, $day->meals),
+            $day->target,
+            $day->carbBoundsWarning,
+        );
     }
 }
