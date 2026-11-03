@@ -50,6 +50,8 @@ final class AgentStatus
         $now = CarbonImmutable::now();
         $turnsPerDay = $this->config->get('agent.turns_per_day');
         $tokensPerMonth = $this->config->get('agent.tokens_per_month');
+        // The user's zone moves this day, so changing zone can start a new one early. Accepted for now (#303): the
+        // monthly token cap bounds the bill, and #325 is to hold the allowance for 24 hours after a zone change.
         [$dayStarts, $dayEnds] = UserDay::bounds($user, UserDay::today($user));
         $userId = $user->getAuthIdentifier();
 
