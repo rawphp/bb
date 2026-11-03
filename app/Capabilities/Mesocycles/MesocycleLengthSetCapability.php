@@ -26,7 +26,7 @@ final class MesocycleLengthSetCapability implements HostCapability, OwnsInput
             ->run(function (MesocycleLengthSetInput $input, CapabilityContext $context): WriteResult {
                 /** @var User $user */
                 $user = $context->user();
-                ($this->setLength)($user, $input->mesocycle_id, $input->weeks);
+                ($this->setLength)($user, $input->mesocycle_id, $input->weeks, $input->expected_weeks);
 
                 return new WriteResult(invalidates: MesocycleReads::keys($input->mesocycle_id), toast: "Mesocycle is now {$input->weeks} weeks");
             });

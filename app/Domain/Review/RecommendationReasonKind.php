@@ -33,4 +33,8 @@ enum RecommendationReasonKind: string
     case NoTrend = 'noTrend';
     /** REV-030: SAFE-011 or SAFE-012 refused the cut. */
     case Safety = 'safety';
+    /** REV-046: losing faster than the band with training fatigue high: back to the target rate, uncapped. */
+    case LosingTooFast = 'losingTooFast';
+    /** SCH-064: the week was rough: repeat it. */
+    case RoughWeek = 'roughWeek';
 }

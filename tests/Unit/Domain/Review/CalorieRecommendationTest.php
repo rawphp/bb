@@ -4,6 +4,7 @@ use App\Domain\Model\PhaseType;
 use App\Domain\Phases\StartingCalories;
 use App\Domain\Review\RecommendationReason;
 use App\Domain\Review\RecommendationReasonKind;
+use App\Domain\Review\ReviewWeek;
 use Tests\Unit\Domain\Review\CalorieFixtures as F;
 use Tests\Unit\Domain\Review\CalorieScenario;
 
@@ -313,4 +314,182 @@ it('REV-031 asking for a recommendation changes nothing', function () {
     $first = $scenario->recommend();
     expect($scenario->recommend())->toEqual($first, 'a pure value: asking twice gives the same answer')
         ->and($first->kcal)->not->toBe(3000.0);
+});
+
+// REV-046 and SCH-064 have no Swift: they are bb's own.
+
+/** The week with the SCH-064 and REV-046 marks set. */
+function recMarked(ReviewWeek $week, bool $rough = false, bool $fatigued = false): ReviewWeek
+{
+    return new ReviewWeek(
+        week: $week->week, loggedIntakeKcal: $week->loggedIntakeKcal, targetKcal: $week->targetKcal,
+        hadHigherCarbDayShift: $week->hadHigherCarbDayShift, isRough: $rough, trainingFatigueHigh: $fatigued,
+    );
+}
+
+/** Four weeks at 1,800 kcal on the formula's 2,600; the last loses 1.2% a week, past the band. */
+function recLosingFast(bool $rough = false, bool $fatigued = true): CalorieScenario
+{
+    $weeks = F::weeks(4, 1800, false);
+    $weeks[3] = recMarked($weeks[3], $rough, $fatigued);
+
+    return new CalorieScenario(weeks: $weeks, rates: [-0.5, -0.5, -0.5, -1.2]);
+}
+
+it('REV-046 losing faster than the band with high training fatigue goes back to the target rate in one step', function () {
+    $scenario = recLosingFast();
+    $recommendation = $scenario->recommend();
+
+    expect($recommendation->reason)->toEqual(RecommendationReason::losingTooFast())
+        ->and($recommendation->kcal)->toEqualWithDelta(recFormulaLevel($scenario), 1e-6)
+        ->and($recommendation->changeKcal)->toBeGreaterThan(250);
+});
+
+it('REV-046 REV-024 a week faster than the target rate but inside the TBL-050 band stays on target', function () {
+    // -0.6% a week against -0.5% is inside the 0.15 band, so REV-046 does not apply, fatigue or not.
+    $weeks = F::weeks(4, 1800, false);
+    $weeks[3] = recMarked($weeks[3], fatigued: true);
+    $recommendation = (new CalorieScenario(weeks: $weeks, rates: [-0.5, -0.5, -0.5, -0.6]))->recommend();
+
+    expect($recommendation->reason)->toEqual(RecommendationReason::onTarget())
+        ->and($recommendation->kcal)->toEqualWithDelta(1800, 1e-9);
+});
+
+it('REV-046 REV-023 without high training fatigue the same week moves by at most 250 kcal', function () {
+    $recommendation = recLosingFast(fatigued: false)->recommend();
+
+    expect($recommendation->reason)->toEqual(RecommendationReason::towardTargetRate())
+        ->and($recommendation->kcal)->toEqualWithDelta(2050, 1e-6);
+});
+
+/**
+ * Three weeks at 1,800 kcal, too thinly logged to measure, the third losing 1.2% a week; then a diet break at 2,700,
+ * NUT-002's maintenance as it was stored for the break. $third changes the third week.
+ *
+ * @param  Closure(ReviewWeek): ReviewWeek  $third
+ */
+function recBreakAfterFastWeek(Closure $third): CalorieScenario
+{
+    $weeks = F::weeks(3, 1800, false);
+    $weeks[2] = $third($weeks[2]);
+    $weeks[] = F::week(3, intake: 2700, target: 2700, dietBreak: true);
+
+    return new CalorieScenario(weeks: $weeks, rates: [-0.5, -0.5, -1.2, -0.5]);
+}
+
+it('REV-046 the week after a break returns to the corrected target of the week that lost too fast', function () {
+    $scenario = fn (bool $fatigued): CalorieScenario => recBreakAfterFastWeek(fn (ReviewWeek $week) => recMarked($week, fatigued: $fatigued));
+    $fast = $scenario(true);
+    // Too few weeks to measure up to the fast week: the expenditure REV-046 used then was the formula maintenance
+    // built for the week after it, which is the break week, stored at 2,700 (not the 2,600 the formula gives now).
+    $corrected = 2700 + F::kcal(-0.5, $fast->trend()->trendKg(F::day(20)));
+
+    expect($fast->recommend()->reason)->toEqual(RecommendationReason::returnFromBreak())
+        ->and($fast->recommend()->kcal)->toEqualWithDelta($corrected, 1e-6)
+        ->and($corrected)->toBeGreaterThan(1800 + 250)
+        ->and($scenario(false)->recommend()->kcal)->toEqualWithDelta(1800, 1e-9);
+});
+
+it('REV-046 PLAN-023 after a deload run in a deficit the corrected target uses the formula maintenance', function () {
+    // The deload's diet break was turned off, so it is stored at the deficit's 1,800, not at maintenance: the
+    // expenditure REV-046 used for the fast week was NUT-002's maintenance, 2,600.
+    $scenario = recBreakAfterFastWeek(fn (ReviewWeek $week) => recMarked($week, fatigued: true));
+    $scenario->weeks[3] = F::week(3, intake: 1800, target: 1800, deload: true);
+    $corrected = 2600 + F::kcal(-0.5, $scenario->trend()->trendKg(F::day(20)));
+
+    expect($scenario->recommend()->reason)->toEqual(RecommendationReason::returnFromBreak())
+        ->and($scenario->recommend()->kcal)->toEqualWithDelta($corrected, 1e-6)
+        ->and($corrected)->toBeGreaterThan(1800);
+});
+
+it('REV-046 REV-032 a phase\'s first week that lost too fast is not corrected after the break that follows', function () {
+    $scenario = recBreakAfterFastWeek(fn (ReviewWeek $week) => recMarked($week, fatigued: true));
+    $scenario->phaseStartDay = 14;
+    $recommendation = $scenario->recommend();
+
+    expect($recommendation->reason)->toEqual(RecommendationReason::returnFromBreak())
+        ->and($recommendation->kcal)->toEqualWithDelta(1800, 1e-9);
+});
+
+it('SCH-064 a rough week repeats the week, over REV-046', function () {
+    $recommendation = recLosingFast(rough: true)->recommend();
+
+    expect($recommendation->reason)->toEqual(RecommendationReason::roughWeek())
+        ->and($recommendation->kcal)->toEqualWithDelta(1800, 1e-9);
+});
+
+it('SCH-064 REV-030 a rough week still meets the SAFE-011 check first', function () {
+    $scenario = recLosingFast(rough: true);
+    $scenario->heightCm = 220;
+
+    expect($scenario->recommend()->reason->kind)->toBe(RecommendationReasonKind::Safety);
+});
+
+it('REV-046 a fast week that measured expenditure puts below its target falls through to the ordinary rules', function () {
+    // Two slow eligible weeks, then a fast one: the weighted expenditure puts the target-rate level under 2,000.
+    $scenario = function (bool $fatigued): CalorieScenario {
+        $weeks = F::weeks(4, 2000);
+        $weeks[3] = recMarked($weeks[3], fatigued: $fatigued);
+
+        return new CalorieScenario(weeks: $weeks, rates: [-0.1, -0.1, -0.1, -0.8]);
+    };
+    $fast = $scenario(true);
+    $recommendation = $fast->recommend();
+
+    expect(F::isMeasured($recommendation->expenditure))->toBeTrue()
+        ->and($fast->level($recommendation))->toBeLessThan(2000)
+        ->and($recommendation->reason->kind)->not->toBe(RecommendationReasonKind::LosingTooFast)
+        ->and($recommendation)->toEqual($scenario(false)->recommend());
+});
+
+it('REV-046 on the formula a fast week whose level is not above its target falls through to the ordinary rules', function () {
+    $scenario = function (bool $fatigued): CalorieScenario {
+        $weeks = F::weeks(4, 2250, false);
+        $weeks[3] = recMarked($weeks[3], fatigued: $fatigued);
+
+        return new CalorieScenario(weeks: $weeks, rates: [-0.5, -0.5, -0.5, -1.2]);
+    };
+    $fast = $scenario(true);
+    $recommendation = $fast->recommend();
+
+    expect($recommendation->expenditure)->toEqual(StartingCalories::formula(2600))
+        ->and($fast->level($recommendation))->toBeLessThanOrEqual(2250)
+        ->and($recommendation->reason->kind)->not->toBe(RecommendationReasonKind::LosingTooFast)
+        ->and($recommendation)->toEqual($scenario(false)->recommend());
+});
+
+it('SCH-064 REV-046 a rough week that lost too fast is not corrected after the break that follows', function () {
+    $recommendation = recBreakAfterFastWeek(fn (ReviewWeek $week) => recMarked($week, rough: true, fatigued: true))->recommend();
+
+    expect($recommendation->reason)->toEqual(RecommendationReason::returnFromBreak())
+        ->and($recommendation->kcal)->toEqualWithDelta(1800, 1e-9);
+});
+
+it('REV-046 REV-025 a poorly logged week that lost too fast is not corrected after the break that follows', function () {
+    $thin = fn (ReviewWeek $week) => recMarked(F::week(2, logged: 4, intake: 1800, target: 1800), fatigued: true);
+    $offTarget = fn (ReviewWeek $week) => recMarked(F::week(2, intake: 2100, target: 1800), fatigued: true);
+
+    foreach ([$thin, $offTarget] as $third) {
+        $recommendation = recBreakAfterFastWeek($third)->recommend();
+        expect($recommendation->reason)->toEqual(RecommendationReason::returnFromBreak())
+            ->and($recommendation->kcal)->toEqualWithDelta(1800, 1e-9);
+    }
+});
+
+it('REV-046 a fast week whose corrected level is not above its target is not corrected after the break', function () {
+    // At 2,400 the level from the break's 2,700 (about 2,270) would be a cut.
+    $scenario = recBreakAfterFastWeek(fn (ReviewWeek $week) => recMarked(F::week(2, intake: 2400, target: 2400), fatigued: true));
+    $recommendation = $scenario->recommend();
+
+    expect(2700 + F::kcal(-0.5, $scenario->trend()->trendKg(F::day(20))))->toBeLessThan(2400)
+        ->and($recommendation->kcal)->toEqualWithDelta(2400, 1e-9);
+});
+
+it('SCH-064 REV-030 a rough break week whose repeat breaks the macro floors holds this week', function () {
+    // Repeat is the last ordinary week's 900 kcal: a 1,700 kcal cut from the break's 2,600 that SAFE-012 refuses.
+    $weeks = [F::week(0, intake: 900, target: 900), recMarked(F::week(1, intake: 2600, target: 2600, dietBreak: true), rough: true)];
+    $recommendation = (new CalorieScenario(weeks: $weeks, rates: [-0.5]))->recommend();
+
+    expect($recommendation->reason->kind)->toBe(RecommendationReasonKind::Safety)
+        ->and($recommendation->kcal)->toEqualWithDelta(2600, 1e-9);
 });
