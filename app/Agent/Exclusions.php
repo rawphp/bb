@@ -18,6 +18,7 @@ final class Exclusions
     /** @var array<string, string> name prefix => reason */
     public const PREFIXES = [
         'billing_' => 'Money needs a person.',
+        'coach_' => 'The Coach\'s own settings and history belong to the person.',
     ];
 
     public static function reason(string $capability): ?string

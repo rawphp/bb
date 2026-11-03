@@ -6,6 +6,15 @@
         "enabled": {
             "type": "boolean"
         },
+        "on": {
+            "type": "boolean"
+        },
+        "conversation_ulid": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
         "turns_left": {
             "type": [
                 "integer",
@@ -61,6 +70,7 @@
     },
     "required": [
         "enabled",
+        "on",
         "at_cap"
     ]
 }

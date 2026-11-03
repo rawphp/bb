@@ -1,0 +1,44 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "changes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "the write's toast, or its capability name in words, as Activity titles it"
+                    },
+                    "screen": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "the tab root the change shows on (ChangeScreens::TABS), or null"
+                    },
+                    "undo": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "the undo token while it can still be applied, else null"
+                    }
+                },
+                "required": [
+                    "id",
+                    "title"
+                ]
+            }
+        }
+    },
+    "required": [
+        "changes"
+    ]
+}
