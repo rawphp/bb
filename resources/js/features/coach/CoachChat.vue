@@ -3,10 +3,11 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { cached, readKey, store } from '@/app/cache';
 import { CapabilityError, read, readFresh } from '@/app/call';
 import { cancel, events, history, send, type ChatHistory, type ChatMessage } from '@/app/chatTransport';
-import { failureMessage } from '@/app/errors';
+import { failureMessage, writeFailureMessage } from '@/app/errors';
 import type { AgentStatusShowOutput } from '@/contracts/agent_status_show';
 import type { CoachChangesListInput, CoachChangesListOutput } from '@/contracts/coach_changes_list';
 import BottomSheet from '@/design/BottomSheet.vue';
+import OfflineNotice from '@/design/OfflineNotice.vue';
 import ChangeCard from './ChangeCard.vue';
 import { toolLine } from './toolLabels';
 
@@ -20,13 +21,20 @@ import { toolLine } from './toolLabels';
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ close: [] }>();
 
-type TurnState = 'running' | 'done' | 'cancelled' | 'failed';
-// `ended` is set once the terminal event or a cancel lands; `state` follows once the
-// reply and its cards are on screen, so nothing is sent in between.
-type Turn = { ulid: string; lines: string[]; state: TurnState; cursor: number; ended: boolean };
+// `lost`: the events route stopped answering, so the client stopped asking; the turn
+// may still finish on the server, and the next open shows its reply.
+type TurnState = 'running' | 'done' | 'cancelled' | 'failed' | 'lost';
+// `message` is the user message that started the turn. `ended` is set once the terminal
+// event or a cancel lands; `state` follows once the reply and its cards are on screen, so
+// nothing is sent in between. `failures` counts polls in a row that got no answer.
+type Turn = { ulid: string; message: string; lines: string[]; state: TurnState; cursor: number; ended: boolean; failures: number };
 type Changes = CoachChangesListOutput['changes'];
 
 const POLL_MS = 1000;
+// A poll with no answer waits twice as long as the last, up to this, and after
+// LOST_AFTER of them in a row (about two minutes) the client stops asking.
+const BACKOFF_MAX_MS = 30_000;
+const LOST_AFTER = 8;
 // The history's cache key: beside the capability reads, so a sign-out clears it (OFF-012).
 const historyKey = (conversation: string) => readKey('capabilities-ai.history', { conversation_ulid: conversation });
 
@@ -38,6 +46,8 @@ const cards = ref<{ after: string | null; changes: Changes }[]>([]);
 const draft = ref('');
 const sending = ref(false);
 const error = ref<string | null>(null);
+// A message whose send got no answer but which history shows the Coach received.
+const landed = ref(false);
 // The device's own word: a request that gets no answer while online is an error, not offline.
 const offline = ref(typeof navigator !== 'undefined' && navigator.onLine === false);
 const end = ref<HTMLElement | null>(null);
@@ -116,6 +126,7 @@ async function submit(): Promise<void> {
     if (!canSend.value) return;
     sending.value = true;
     error.value = null;
+    landed.value = false;
     // A message sent before has a conversation, which a failed status read may not show yet.
     if (conversation.value === null && sends > 0 && !(await refreshStatus())) {
         error.value = "The Coach couldn't take that message. Try again.";
@@ -126,7 +137,12 @@ async function submit(): Promise<void> {
     try {
         sent = await send(content, conversation.value);
     } catch (failed) {
-        error.value = failureMessage(failed, "The Coach couldn't take that message. Try again.");
+        if (failed instanceof CapabilityError && failed.status === 0 && (await reached(content))) {
+            draft.value = '';
+            landed.value = true;
+        } else {
+            error.value = writeFailureMessage(failed, "The Coach couldn't take that message. Try again.");
+        }
         sending.value = false;
         return;
     }
@@ -134,7 +150,7 @@ async function submit(): Promise<void> {
     historyAsked++;
     draft.value = '';
     messages.value = [...messages.value, { ulid: sent.message_ulid, role: 'user', content, created_at: null }];
-    turn.value = { ulid: sent.turn_ulid, lines: [], state: 'running', cursor: 0, ended: false };
+    turn.value = { ulid: sent.turn_ulid, message: sent.message_ulid, lines: [], state: 'running', cursor: 0, ended: false, failures: 0 };
     scrollToEnd();
     // The next message carries the conversation the server now names (AGT-024).
     await refreshStatus();
@@ -142,15 +158,39 @@ async function submit(): Promise<void> {
     poll(turn.value);
 }
 
-function poll(current: Turn): void {
+/**
+ * A send with no answer may still have reached the package, and sending it again would
+ * run a second turn. So the conversation is read again: true when it now holds this
+ * message, which was not on screen before. Its turn is not known, so it is not polled;
+ * its reply shows on the next open.
+ */
+async function reached(content: string): Promise<boolean> {
+    const before = new Set(messages.value.map((message) => message.ulid));
+    if (conversation.value === null) await refreshStatus();
+    const fresh = conversation.value === null ? undefined : await loadHistory();
+    const found = fresh?.messages.some((message) => message.role === 'user' && message.content === content && !before.has(message.ulid)) ?? false;
+    if (found) sends++;
+    return found;
+}
+
+function poll(current: Turn, delayMs = POLL_MS): void {
     clearTimeout(timer);
-    timer = setTimeout(() => void tick(current), POLL_MS);
+    timer = setTimeout(() => void tick(current), delayMs);
+}
+
+/** How long to wait after `failures` polls in a row with no answer, or longer when a limit says (`retry_after` seconds). */
+function backoffMs(failures: number, failed: CapabilityError): number {
+    const seconds = (failed.body as { error?: { retry_after?: unknown } } | null)?.error?.retry_after;
+    const asked = typeof seconds === 'number' && seconds > 0 ? seconds * 1000 : 0;
+
+    return Math.max(asked, Math.min(POLL_MS * 2 ** failures, BACKOFF_MAX_MS));
 }
 
 async function tick(current: Turn): Promise<void> {
     if (unmounted || turn.value !== current || current.ended) return;
     try {
         const answer = await events(current.ulid, current.cursor);
+        current.failures = 0;
         for (const event of answer.events) {
             if (event.index < current.cursor || current.ended) continue;
             current.cursor = event.index + 1;
@@ -167,31 +207,49 @@ async function tick(current: Turn): Promise<void> {
         // No answer, a server or gateway error, or a limit: ask again on the next tick. The
         // turn runs on the server either way. A refusal (signed out, not this user's turn) ends it here.
         if (!(failed instanceof CapabilityError && (failed.status === 0 || failed.status === 429 || failed.status >= 500))) {
-            await finish(current, 'failed');
+            await finish(current, 'failed', false);
             return;
         }
+        current.failures++;
+        if (current.failures >= LOST_AFTER) {
+            await finish(current, 'lost', false);
+            return;
+        }
+        if (turn.value === current && !current.ended) poll(current, backoffMs(current.failures, failed));
+        return;
     }
     if (turn.value === current && !current.ended) poll(current);
 }
 
-/** The turn ended: its reply from a fresh history, then its change cards under it. */
-async function finish(current: Turn, state: TurnState): Promise<void> {
+/**
+ * The turn ended: its reply from a fresh history, then its change cards under it. A turn
+ * the server refused, or one the client lost touch with, reads neither.
+ */
+async function finish(current: Turn, state: TurnState, reload = true): Promise<void> {
     if (current.ended) return;
     current.ended = true;
     clearTimeout(timer);
+    if (reload) await showOutcome(current);
+    current.state = state;
+    scrollToEnd();
+}
+
+async function showOutcome(current: Turn): Promise<void> {
     if (conversation.value === null) await refreshStatus();
     // Still none: what is shown stays rather than being cleared for want of a ULID.
     const fresh = conversation.value === null ? undefined : await loadHistory();
-    // Only a reply from this history is the turn's; without one the cards follow the last message.
-    const reply = fresh?.messages.filter((message) => message.role === 'assistant' && message.content).at(-1);
+    // The turn's reply is an assistant message after the turn's own message. A cancelled or
+    // failed turn may have none, and then its cards follow the message that started it.
+    const after = fresh?.messages.slice(fresh.messages.findIndex((message) => message.ulid === current.message) + 1) ?? [];
+    const reply = fresh?.messages.some((message) => message.ulid === current.message)
+        ? after.filter((message) => message.role === 'assistant' && message.content).at(-1)
+        : undefined;
     try {
         const { changes } = await readFresh<CoachChangesListOutput>('coach_changes_list', { turn: current.ulid } satisfies CoachChangesListInput);
-        if (changes.length > 0) cards.value = [...cards.value, { after: reply?.ulid ?? null, changes }];
+        if (changes.length > 0) cards.value = [...cards.value, { after: reply?.ulid ?? current.message, changes }];
     } catch {
         // The reply stands without its cards; every change is also in Activity (AGT-013).
     }
-    current.state = state;
-    scrollToEnd();
 }
 
 async function stop(): Promise<void> {
@@ -267,16 +325,20 @@ watch(
                 <li v-for="(block, index) in unplaced" :key="`unplaced-${index}`" class="flex flex-col gap-2 self-stretch">
                     <ChangeCard v-for="change in block.changes" :key="change.id" :change="change" @open="emit('close')" />
                 </li>
+                <li v-if="landed" class="self-start text-sm text-secondary-text" data-test="landed">
+                    Your message reached the Coach. Its reply will show here when you open the chat again.
+                </li>
                 <li v-if="turn && turn.state !== 'done'" class="flex flex-col gap-1 self-start" aria-live="polite">
                     <p v-for="(line, index) in turn.lines" :key="index" class="text-sm text-secondary-text" data-test="tool-line">{{ line }}</p>
                     <p v-if="turn.state === 'running' && turn.lines.length === 0" class="text-sm text-secondary-text">Thinking…</p>
                     <p v-if="turn.state === 'cancelled'" class="text-sm font-medium text-secondary-text" data-test="turn-state">Cancelled</p>
                     <p v-if="turn.state === 'failed'" class="text-sm text-tone-warning" data-test="turn-state">The Coach couldn't finish that. Try again.</p>
+                    <p v-if="turn.state === 'lost'" class="text-sm text-tone-warning" data-test="turn-state">Lost touch with the Coach. Close and open the chat to see its reply.</p>
                 </li>
             </ol>
             <div ref="end" />
             <form class="sticky bottom-0 flex flex-col gap-2 border-t border-secondary-text/25 bg-surface p-3" @submit.prevent="submit">
-                <p v-if="offline" class="text-sm text-secondary-text" data-test="offline">The Coach needs a connection</p>
+                <OfflineNotice v-if="offline" needs="The Coach needs a connection." data-test="offline" />
                 <div class="flex items-end gap-2">
                     <textarea
                         v-model="draft"

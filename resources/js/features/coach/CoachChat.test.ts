@@ -264,7 +264,8 @@ describe('CoachChat', () => {
 
         await sendMessage(wrapper, 'Plan my week');
         await vi.advanceTimersByTimeAsync(1000);
-        await vi.advanceTimersByTimeAsync(1000);
+        // After a poll with no answer the next waits twice as long.
+        await vi.advanceTimersByTimeAsync(2000);
         await vi.waitFor(() => expect(wrapper.text()).toContain('Done. I moved carbs to breakfast.'));
 
         expect(wrapper.find('[data-test="turn-state"]').exists()).toBe(false);
@@ -279,6 +280,8 @@ describe('CoachChat', () => {
         await flushPromises();
 
         await sendMessage(wrapper, 'Plan my week');
+        // It first reads the conversation again, to see whether the message landed anyway.
+        await vi.waitFor(() => expect(wrapper.find('[role="alert"]').exists()).toBe(true));
 
         expect(wrapper.find('[data-test="offline"]').exists()).toBe(false);
         expect(wrapper.get('textarea').attributes('disabled')).toBeUndefined();
@@ -513,8 +516,9 @@ describe('CoachChat', () => {
             await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
 
             await sendMessage(wrapper, 'Plan my week');
-            await vi.waitFor(() => expect(historyMock).toHaveBeenCalledTimes(2));
-            await flushPromises();
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').exists()).toBe(true));
+
+            expect(historyMock).toHaveBeenCalledTimes(2);
 
             expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('Plan my week');
             expect(wrapper.get('[role="alert"]').text()).toBe('The server did not answer in time, so this may have worked. Check, then try again.');
