@@ -7,6 +7,7 @@ use App\Actions\Settings\ShowSettings;
 use App\Capabilities\Support\FieldRefused;
 use App\Capabilities\Today\Data\TrainingWeekdaysChangeInput;
 use App\Domain\Mesocycle\Exercise as DomainExercise;
+use App\Domain\Mesocycle\MesocycleCalendar;
 use App\Domain\Mesocycle\MesocycleRules;
 use App\Domain\Mesocycle\StimulusToFatigue;
 use App\Domain\Model\ExerciseSlot;
@@ -262,7 +263,7 @@ final class ChangeTrainingWeekdays
         // This week and the weeks before it are stored as they ran, on their old weekdays, so Train and Workout keep
         // them where Today pins them (TrainSnapshot::weekdays() reads a stored week's own days).
         $frozen = MesocycleRules::freezingWeeks($train->rotationAsRun($mesocycle), $mesocycle->earlierWeekRows(), $mesocycle->laterWeekIds(), $fromWeek);
-        $changes = ['earlier_weeks' => $frozen['earlier_weeks'], 'later_weeks' => $frozen['later_weeks']];
+        $changes = ['earlier_weeks' => self::anchored($frozen['earlier_weeks'], $mesocycle, $train), 'later_weeks' => $frozen['later_weeks']];
         if ($result !== null) {
             $changes = [...$changes, 'weeks' => $result->weeks, 'later_weeks' => $result->laterWeeks];
         }
@@ -300,6 +301,29 @@ final class ChangeTrainingWeekdays
             );
         }
         $mesocycle->update($changes);
+    }
+
+    /**
+     * The stored weeks with each floating day (no weekday) given the weekday it runs on now, from the training
+     * weekdays before the change (`$train` read the profile before it saved), so a floating week stays where it ran.
+     *
+     * @param  list<list<array<string, mixed>>>  $weeks
+     * @return list<list<array<string, mixed>>>
+     */
+    private static function anchored(array $weeks, Mesocycle $mesocycle, TrainSnapshot $train): array
+    {
+        $calendar = $train->calendar($mesocycle);
+        $review = $train->reviewIsoWeekday($calendar->grid);
+        foreach ($weeks as $week => $days) {
+            $dates = MesocycleCalendar::dayDates($calendar->planWeek($week), array_map(fn (array $day) => $day['weekday'] ?? null, $days), $train->trainingWeekdays(), $review);
+            foreach ($days as $index => $day) {
+                if (($day['weekday'] ?? null) === null && ($dates[$index] ?? null) !== null) {
+                    $weeks[$week][$index]['weekday'] = (int) $dates[$index]->format('N');
+                }
+            }
+        }
+
+        return $weeks;
     }
 
     /**

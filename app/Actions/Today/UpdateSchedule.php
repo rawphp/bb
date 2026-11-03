@@ -181,8 +181,8 @@ final class UpdateSchedule
     /**
      * SCH-037 all future days: the busy periods on `$weekday` as edited. The input carries no period's id, so each sent
      * period is matched to one stored on the weekday: the same label, start and end (unchanged); the same label with a
-     * start or end in common; the same label; the same start and end; a start or end in common. A period that shares
-     * nothing with a stored one is read as new, and the stored one left over as removed. A matched one edited keeps the weekdays it repeats on, as Edit schedule says ("A busy period you
+     * start or end in common; the same label; the same start and end. Any other period is read as new, and a stored one
+     * left over as removed. A matched one edited keeps the weekdays it repeats on, as Edit schedule says ("A busy period you
      * edit or remove changes on every day it repeats"); a stored one left over was removed; a sent one left over is new
      * on `$weekday` only. Periods not on the weekday are left alone.
      *
@@ -202,7 +202,6 @@ final class UpdateSchedule
             fn (array $period, ScheduleBusyPeriod $edit) => $label($period, $edit) && $oneTime($period, $edit),
             $label,
             $times,
-            $oneTime,
         ];
 
         $left = $sent;
