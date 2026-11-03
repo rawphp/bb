@@ -50,8 +50,8 @@ final class RebuildTargets
     /** @return list<string> */
     private function rebuild(User $user, float $calorieChangePerDay, bool $beforeStartBuildsFirstWeek): array
     {
-        // The plan row is locked first, before any other read: a plain read would fix this transaction's view (MySQL's
-        // REPEATABLE READ), so one that waited on this lock would miss the rows the rebuild before it wrote.
+        // Locking the plan first keeps this transaction's view fresh only when it is the outermost one; inside a caller
+        // that already read, the view is fixed earlier. The stored day_targets are locked reads, so current either way.
         $plan = Plan::query()->where('user_id', $user->id)->lockForUpdate()->first();
         $profile = Profile::query()->where('user_id', $user->id)->sharedLock()->first();
         // SAFE-003: a training-only profile has no targets to rebuild, before anything else is looked at.
