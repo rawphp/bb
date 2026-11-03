@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, write, writeNow } from '@/app/call';
+import { CapabilityError, read, readFresh, write, writeNow } from '@/app/call';
+import type { OutboxEntry } from '@/app/outbox';
 import type { ShoppingItemCheckInput } from '@/contracts/shopping_item_check';
 import type { ShoppingShowOutput } from '@/contracts/shopping_show';
 import { queue, resetOutbox } from '@/testing/outbox';
@@ -15,6 +16,7 @@ vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@
 const readMock = vi.mocked(read);
 const writeMock = vi.mocked(write);
 const writeNowMock = vi.mocked(writeNow);
+const readFreshMock = vi.mocked(readFresh);
 const content = screenFixture<ShoppingShowOutput>('shopping_show');
 const empty = screenFixture<ShoppingShowOutput>('shopping_show.empty');
 const RANGE = { from: '2026-11-02', to: '2026-11-08' };
@@ -46,6 +48,21 @@ async function typeItem(view: VueWrapper, value: string): Promise<void> {
     await view.get('input[name="shopping-item"]').setValue(value);
 }
 
+async function pointer(target: ReturnType<VueWrapper['find']>, type: string, clientX: number): Promise<void> {
+    target.element.dispatchEvent(new MouseEvent(type, { clientX, clientY: 10, bubbles: true }));
+    await flushPromises();
+}
+
+/** The list with one item the user added, under that item's id. */
+function withManual(id: string, name: string): ShoppingShowOutput {
+    const other = { category: 'other' as const, title: 'Other', rows: [{ key: `manual:${id}`, name, amount_text: null, is_ticked: false, is_manual: true }] };
+    return { ...content, sections: [...content.sections.filter((section) => section.category !== 'other'), other] };
+}
+
+function sentIds(): string[] {
+    return writeNowMock.mock.calls.map((call) => (call[1] as { id: string }).id);
+}
+
 describe('ShoppingListView', () => {
     beforeEach(async () => {
         localStorage.clear();
@@ -53,6 +70,7 @@ describe('ShoppingListView', () => {
         readMock.mockReset().mockResolvedValue(content);
         writeMock.mockReset().mockResolvedValue({} as Awaited<ReturnType<typeof write>>);
         writeNowMock.mockReset().mockResolvedValue({});
+        readFreshMock.mockReset().mockResolvedValue(content);
     });
     afterEach(() => {
         wrapper?.unmount();
@@ -156,6 +174,61 @@ describe('ShoppingListView', () => {
         expect(readMock).not.toHaveBeenCalled();
     });
 
+    it('SHOP-001 a last day before the first is moved up to the first', async () => {
+        const view = show({ payload: content });
+
+        await setDate(view, 'to', '2026-11-01');
+
+        expect(readMock).toHaveBeenCalledWith('shopping_show', { from: '2026-11-02', to: '2026-11-02' }, expect.any(Function), expect.any(Function));
+    });
+
+    it('CAP-004 when the list for new dates does not load, the list on screen stays with its dates, and says why', async () => {
+        readMock.mockReset().mockRejectedValueOnce(new CapabilityError('shopping_show', 500, null));
+        const view = show({ payload: content });
+
+        await setDate(view, 'from', '2026-11-04');
+
+        expect(view.getComponent(ShoppingStatus).get('[role="alert"]').text()).toContain('Your shopping list could not be loaded.');
+        expect(row(view, 'White rice').exists()).toBe(true);
+        expect((view.get('input[name="from"]').element as HTMLInputElement).value).toBe('2026-11-02');
+        expect((view.get('input[name="to"]').element as HTMLInputElement).value).toBe('2026-11-08');
+    });
+
+    it('CAP-004 offline, the list for new dates says it needs a connection and the list on screen stays', async () => {
+        readMock.mockReset().mockRejectedValueOnce(new CapabilityError('shopping_show', 0, null));
+        const view = show({ payload: content });
+
+        await setDate(view, 'to', '2026-11-12');
+
+        expect(view.getComponent(ShoppingStatus).get('[role="alert"]').text()).toContain('The list for those dates needs a connection.');
+        expect(row(view, 'White rice').exists()).toBe(true);
+        expect((view.get('input[name="to"]').element as HTMLInputElement).value).toBe('2026-11-08');
+    });
+
+    it('SHOP-001 each read keeps the dates it asked for', async () => {
+        readMock.mockReset().mockReturnValue(new Promise(() => {}));
+        const view = show({ payload: content });
+
+        await setDate(view, 'from', '2026-11-04');
+        await setDate(view, 'to', '2026-11-12');
+
+        expect(readMock.mock.calls.map((call) => call[1])).toEqual([
+            { from: '2026-11-04', to: '2026-11-08' },
+            { from: '2026-11-04', to: '2026-11-12' },
+        ]);
+    });
+
+    it('SHOP-005 a tick made while new dates load names the list on screen', async () => {
+        readMock.mockReset().mockReturnValue(new Promise(() => {}));
+        const view = show({ payload: content });
+
+        await setDate(view, 'from', '2026-11-04');
+        await tickButton(view, 'Egg whites').trigger('click');
+        await flushPromises();
+
+        expect(writeMock).toHaveBeenCalledWith('shopping_item_check', expect.objectContaining(RANGE), expect.anything());
+    });
+
     it('SHOP-005 tapping a line ticks it off through the outbox, with the dates of the list', async () => {
         const view = show({ payload: content });
 
@@ -194,6 +267,51 @@ describe('ShoppingListView', () => {
     it('OFF-009 a waiting tick on other dates leaves this list\'s line as the server has it', async () => {
         await queue({ name: 'shopping_item_check', input: { from: '2026-11-09', to: '2026-11-15', key: 'food:01JBX5F0000000000000000007', ticked: true }, label: 'Ticked Egg whites off the shopping list' });
         const view = show({ payload: content });
+        await flushPromises();
+
+        expect(tickButton(view, 'Egg whites').attributes('aria-pressed')).toBe('false');
+    });
+
+    it('OFF-009 tapping a line whose tick waits to sync takes that tick back', async () => {
+        await queue({ name: 'shopping_item_check', input: { ...RANGE, key: 'food:01JBX5F0000000000000000007', ticked: true }, affects: ['shopping_show'], label: 'Ticked Egg whites off the shopping list' });
+        const view = show({ payload: content });
+        await flushPromises();
+
+        await tickButton(view, 'Egg whites').trigger('click');
+        await flushPromises();
+
+        expect(writeMock).toHaveBeenCalledWith(
+            'shopping_item_check',
+            { ...RANGE, key: 'food:01JBX5F0000000000000000007', ticked: false },
+            { label: 'Took the tick off Egg whites on the shopping list' },
+        );
+    });
+
+    it('OFF-009 a tick the server took stays on its line until the list is read again', async () => {
+        writeMock.mockResolvedValueOnce({ seq: 9999 } as OutboxEntry);
+        const view = show({ payload: content });
+
+        await tickButton(view, 'Egg whites').trigger('click');
+        await flushPromises();
+
+        expect(tickButton(view, 'Egg whites').attributes('aria-pressed')).toBe('true');
+        expect(row(view, 'Egg whites').text()).not.toContain('Waiting to sync');
+
+        await setDate(view, 'to', '2026-11-12');
+        expect(tickButton(view, 'Egg whites').attributes('aria-pressed')).toBe('false');
+    });
+
+    it('OFF-009 a tick the server refused shows the server\'s tick again', async () => {
+        const refused = await queue({
+            name: 'shopping_item_check',
+            input: { ...RANGE, key: 'food:01JBX5F0000000000000000007', ticked: true },
+            label: 'Ticked Egg whites off the shopping list',
+            refusal: { status: 422, body: null },
+        });
+        writeMock.mockResolvedValueOnce(refused);
+        const view = show({ payload: content });
+
+        await tickButton(view, 'Egg whites').trigger('click');
         await flushPromises();
 
         expect(tickButton(view, 'Egg whites').attributes('aria-pressed')).toBe('false');
@@ -271,6 +389,52 @@ describe('ShoppingListView', () => {
         expect((view.get('input[name="shopping-item"]').element as HTMLInputElement).value).toBe('Bin bags');
     });
 
+    it('CAP-019 an add that got no answer is sent again with the same id', async () => {
+        writeNowMock.mockRejectedValueOnce(new CapabilityError('shopping_item_add', 504, null));
+        const view = show({ payload: content });
+
+        await typeItem(view, 'Bin bags');
+        await view.get('button[aria-label="Add item"]').trigger('click');
+        await flushPromises();
+        await view.get('button[aria-label="Add item"]').trigger('click');
+        await flushPromises();
+
+        const [first, second] = sentIds();
+        expect(second).toBe(first);
+    });
+
+    it('CAP-019 an add that got no answer but is on the server\'s list is done: the field clears and the next item takes a new id', async () => {
+        writeNowMock.mockRejectedValueOnce(new CapabilityError('shopping_item_add', 504, null));
+        readFreshMock.mockImplementation(async () => withManual(sentIds()[0]!, 'Bin bags'));
+        const view = show({ payload: content });
+
+        await typeItem(view, 'Bin bags');
+        await view.get('button[aria-label="Add item"]').trigger('click');
+        await flushPromises();
+
+        expect((view.get('input[name="shopping-item"]').element as HTMLInputElement).value).toBe('');
+        await typeItem(view, 'Milk');
+        await view.get('button[aria-label="Add item"]').trigger('click');
+        await flushPromises();
+
+        const [first, second] = sentIds();
+        expect(second).not.toBe(first);
+    });
+
+    it('CAP-019 a refused add takes a new id next time', async () => {
+        writeNowMock.mockRejectedValueOnce(new CapabilityError('shopping_item_add', 422, { error: { message: 'No.' } }));
+        const view = show({ payload: content });
+
+        await typeItem(view, 'Bin bags');
+        await view.get('button[aria-label="Add item"]').trigger('click');
+        await flushPromises();
+        await view.get('button[aria-label="Add item"]').trigger('click');
+        await flushPromises();
+
+        const [first, second] = sentIds();
+        expect(second).not.toBe(first);
+    });
+
     it('CAP-019 the next item takes a new id once one is added', async () => {
         const view = show({ payload: content });
 
@@ -298,6 +462,35 @@ describe('ShoppingListView', () => {
         );
         expect(inputViolations('shopping_item_delete', writeNowMock.mock.calls[0]![1])).toEqual([]);
         expect(readMock).toHaveBeenCalledWith('shopping_show', {}, expect.any(Function), expect.any(Function));
+    });
+
+    it('UI-008 a swipe on an added item shows Delete; a tap on the line hides it without ticking', async () => {
+        const view = show({ payload: content });
+        const swipe = row(view, 'Paper towels').get('[data-test="swipe"]');
+
+        await pointer(swipe, 'pointerdown', 300);
+        await pointer(swipe, 'pointermove', 200);
+        await pointer(swipe, 'pointerup', 200);
+        expect(swipe.attributes('style')).toContain('translateX(-96px)');
+
+        await pointer(swipe, 'pointerdown', 200);
+        await pointer(swipe, 'pointerup', 200);
+        await tickButton(view, 'Paper towels').trigger('click');
+        await flushPromises();
+
+        expect(swipe.attributes('style')).toContain('translateX(0px)');
+        expect(writeMock).not.toHaveBeenCalled();
+    });
+
+    it('UI-008 a planned food does not swipe', async () => {
+        const view = show({ payload: content });
+        const swipe = row(view, 'Egg whites').get('[data-test="swipe"]');
+
+        await pointer(swipe, 'pointerdown', 300);
+        await pointer(swipe, 'pointermove', 200);
+        await pointer(swipe, 'pointerup', 200);
+
+        expect(swipe.attributes('style')).toContain('translateX(0px)');
     });
 
     it('CAP-012 says why a delete was refused', async () => {
