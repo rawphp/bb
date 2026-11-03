@@ -208,7 +208,7 @@ it('REV-010 Choose my own with no amount is stored as sent, a draft that applies
         ->and(rqaAnswer(rqaUser(), ['option' => 'choose_own', 'own_kcal' => 2300])->needsAmount())->toBeFalse();
 });
 
-it('REV-010 an answer with only an amount sets it on the stored Choose my own, keeping the rest of the answer', function () {
+it('REV-010 an answer with only an amount sets it on the stored Choose my own, keeping its other answers and clearing its moves', function () {
     $user = rqaUser();
     rqaAnswer($user, ['option' => 'choose_own', 'update_step_plan' => true, 'moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
 
@@ -265,6 +265,31 @@ it('REV-011 a draft stays a draft when the deload answer echoes the pre-filled a
     $shown = ReviewShowWorld::shownOwnKcal($user);
 
     expect(rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown, 'deload_too' => false])->fresh()->needsAmount())->toBeTrue();
+});
+
+it('REV-050 a draft stays a draft when the step offer answer echoes the pre-filled amount with the stored moves', function () {
+    $user = rqaUser();
+    $moves = [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]];
+    rqaAnswer($user, ['option' => 'choose_own', 'moves' => $moves]);
+    $shown = ReviewShowWorld::shownOwnKcal($user);
+
+    $row = rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown, 'update_step_plan' => true, 'moves' => $moves]);
+
+    expect($row->fresh()->needsAmount())->toBeTrue()
+        ->and($row->fresh()->update_step_plan)->toBeTrue();
+    expect(fn () => app(CompleteReview::class)($user, '2026-10-05'))->toThrow(DomainException::class, CompleteReview::NEEDS_AMOUNT);
+});
+
+it('REV-010 the screen\'s own amount answer for a draft with moves counts as typed, even at the pre-filled amount', function () {
+    $user = rqaUser();
+    rqaAnswer($user, ['option' => 'choose_own', 'moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
+    $shown = ReviewShowWorld::shownOwnKcal($user);
+
+    // A new amount clears the moves, so the screen sends none.
+    $row = rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown, 'moves' => []]);
+
+    expect($row->fresh()->own_kcal)->toBe($shown)
+        ->and($row->fresh()->needsAmount())->toBeFalse();
 });
 
 it('REV-010 an amount sent alone for a draft is taken as typed, even when it is the amount review_show filled in', function () {

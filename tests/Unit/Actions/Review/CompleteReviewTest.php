@@ -263,16 +263,57 @@ it('REV-027 review_show says an answered option is out of date before Save does'
     expect($shown['preview']['error'])->toBe(CompleteReview::OUT_OF_DATE);
 });
 
-it('REV-005 SCH-061 an answer stored while the review was full does not block saving once it is training-only or away', function (string $option) {
+it('REV-005 SCH-061 an answer stored while the review was full does not block review_show or saving once it is training-only or away', function (string $mode, string $option) {
     $user = rqcUser();
     rqcAnswer($user, ['option' => $option]);
-    Profile::query()->where('user_id', $user->id)->update(['training_only' => true]);
+    if ($mode === 'training-only') {
+        Profile::query()->where('user_id', $user->id)->update(['training_only' => true]);
+    } else {
+        PlanWeek::factory()->for($user)->create(['start_date' => '2026-10-05', 'is_away' => true, 'away_training' => 'pause', 'away_calories' => 'maintenance']);
+    }
+    $analysis = ReviewAnalysis::for($user, ReviewSeed::TODAY);
+
+    expect($analysis->mode->value)->toBe($mode === 'away' ? 'away' : 'trainingOnly')
+        ->and(ReviewShowPayload::build($analysis, OpenReview::answers($user, $analysis))->toArray()['preview']['error'] ?? null)->toBeNull();
 
     rqcSave($user);
 
     expect(rqcWeek($user, '2026-10-05')?->reviewed_at)->not->toBeNull()
-        ->and(rqcDays($user))->toBe([]);
-})->with(['repeat_this_week', 'choose_own', 'drop_fatigue']);
+        ->and(rqcDays($user))->toHaveCount($mode === 'away' ? 7 : 0);
+})->with(['training-only', 'away'])->with(['repeat_this_week', 'choose_own', 'drop_fatigue']);
+
+it('REV-010 review_show says a Choose my own draft needs an amount before Save does', function () {
+    $user = rqcUser();
+    rqcAnswer($user, ['option' => 'choose_own']);
+
+    $analysis = ReviewAnalysis::for($user, ReviewSeed::TODAY);
+    $shown = ReviewShowPayload::build($analysis, OpenReview::answers($user, $analysis))->toArray();
+
+    expect($shown['preview']['error'])->toBe(CompleteReview::NEEDS_AMOUNT)
+        ->and($shown['calories']['own']['value'])->toBeInt();
+});
+
+it('NUT-024 REV-004 stored moves that no longer build once their day has passed are dropped with the reason, and the review still saves', function (bool $away) {
+    $user = rqcUser(fn (ReviewSeed $seed) => $seed->planWeekRows = $away
+        ? [['start_date' => '2026-10-05', 'is_away' => true, 'away_training' => 'pause', 'away_calories' => 'maintenance']]
+        : []);
+    rqcAnswer($user, ['moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
+    $plain = rqcUser(fn (ReviewSeed $seed) => $seed->planWeekRows = $away
+        ? [['start_date' => '2026-10-05', 'is_away' => true, 'away_training' => 'pause', 'away_calories' => 'maintenance']]
+        : []);
+
+    Carbon::setTestNow('2026-10-14 10:00:00');
+    $analysis = ReviewAnalysis::for($user, '2026-10-14');
+    $shown = ReviewShowPayload::build($analysis, OpenReview::answers($user, $analysis))->toArray();
+    rqcSave($user);
+    rqcSave($plain);
+
+    expect($shown['preview']['days'])->toHaveCount(7)
+        ->and($shown['preview']['moves'])->toBe([])
+        ->and($shown['preview']['error'])->toBe('A day stays between 80% and 125% of the week\'s average, and a day already past can\'t change.')
+        ->and($shown['can_save'])->toBeTrue()
+        ->and(rqcKcal($user))->toBe(rqcKcal($plain), 'saved with no moves');
+})->with(['full' => false, 'away' => true]);
 
 it('REV-010 a typed amount stays the amount when the screen sends it back with a move', function () {
     $user = rqcUser();
