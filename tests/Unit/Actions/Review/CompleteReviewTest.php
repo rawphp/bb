@@ -2,9 +2,11 @@
 
 use App\Actions\Review\AnswerReview;
 use App\Actions\Review\CompleteReview;
+use App\Actions\Review\OpenReview;
 use App\Capabilities\Reads\Review\ReviewShowPayload;
 use App\Capabilities\Review\Data\ReviewAnswerInput;
 use App\Domain\Review\DeloadMove;
+use App\Domain\WeekBuilder\MealNames;
 use App\Models\DayTarget;
 use App\Models\Mesocycle;
 use App\Models\PlanWeek;
@@ -17,6 +19,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
 use Tests\Support\ReviewSeed;
 
 // review_complete (rp-clone WeeklyReviewModel+Save and WeeklyReviewSaveTests): next week's plan week and days, the
@@ -103,6 +106,15 @@ function rqcFailAtTheStamp(): void
             throw new RuntimeException('The stamp failed.');
         }
     });
+}
+
+/** The weigh-ins change after an answer, and the stall is gone: the plan's own rate, as ReviewSeed's default. */
+function rqcClearTheStall(User $user): void
+{
+    foreach (WeighIn::query()->where('user_id', $user->id)->get() as $weighIn) {
+        $offset = (int) Carbon::parse(ReviewSeed::NEXT_WEEK_START)->diffInDays(Carbon::parse($weighIn->weighed_at)->startOfDay(), false);
+        $weighIn->update(['weight_kg' => round(90 - 0.0643 * ($offset + 28), 2)]);
+    }
 }
 
 // MARK: REV-001
@@ -233,15 +245,43 @@ it('REV-010 a draft whose pre-filled amount the screen echoed with a move still 
 it('REV-027 an answered option the review no longer offers is refused at save, not swapped for another, and nothing is written', function () {
     $user = rqcUser(fn (ReviewSeed $seed) => $seed->weight = fn (int $offset): float => 88.0);
     rqcAnswer($user, ['option' => 'cut_calories']);
-    // The weigh-ins change after the answer, and the stall is gone: the plan's own rate, as ReviewSeed's default.
-    foreach (WeighIn::query()->where('user_id', $user->id)->get() as $weighIn) {
-        $offset = (int) Carbon::parse(ReviewSeed::NEXT_WEEK_START)->diffInDays(Carbon::parse($weighIn->weighed_at)->startOfDay(), false);
-        $weighIn->update(['weight_kg' => round(90 - 0.0643 * ($offset + 28), 2)]);
-    }
+    rqcClearTheStall($user);
     $before = rqcStored($user);
 
     expect(fn () => rqcSave($user))->toThrow(DomainException::class, CompleteReview::OUT_OF_DATE)
         ->and(rqcStored($user))->toBe($before);
+});
+
+it('REV-027 review_show says an answered option is out of date before Save does', function () {
+    $user = rqcUser(fn (ReviewSeed $seed) => $seed->weight = fn (int $offset): float => 88.0);
+    rqcAnswer($user, ['option' => 'cut_calories']);
+    rqcClearTheStall($user);
+
+    $analysis = ReviewAnalysis::for($user, ReviewSeed::TODAY);
+    $shown = ReviewShowPayload::build($analysis, OpenReview::answers($user, $analysis))->toArray();
+
+    expect($shown['preview']['error'])->toBe(CompleteReview::OUT_OF_DATE);
+});
+
+it('REV-005 SCH-061 an answer stored while the review was full does not block saving once it is training-only or away', function (string $option) {
+    $user = rqcUser();
+    rqcAnswer($user, ['option' => $option]);
+    Profile::query()->where('user_id', $user->id)->update(['training_only' => true]);
+
+    rqcSave($user);
+
+    expect(rqcWeek($user, '2026-10-05')?->reviewed_at)->not->toBeNull()
+        ->and(rqcDays($user))->toBe([]);
+})->with(['repeat_this_week', 'choose_own', 'drop_fatigue']);
+
+it('REV-010 a typed amount stays the amount when the screen sends it back with a move', function () {
+    $user = rqcUser();
+    rqcAnswer($user, ['option' => 'choose_own', 'own_kcal' => 2100]);
+    rqcAnswer($user, ['option' => 'choose_own', 'own_kcal' => 2100, 'moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
+
+    rqcSave($user);
+
+    expect(rqcAverage($user))->toEqualWithDelta(2100, 1e-6);
 });
 
 it('REV-010 Choose my own in two steps: the option, then its amount, then Save applies the amount', function () {
@@ -351,6 +391,21 @@ it('REV-002 NUT-030 a day target already stored is replaced by its id and keeps 
     expect(rqcAverage($user))->toEqualWithDelta(2400, 1e-6);
 });
 
+it('NUT-030 a stored intra-workout shake keeps its id off the regular meals: they match by their order among regular meals', function () {
+    $user = rqcUser(fn (ReviewSeed $seed) => $seed->nextWeekHasTargets = true);
+    $monday = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-10-12')->sole();
+    $regular = array_column($monday->meals, 'id');
+    $monday->meals = [
+        ['id' => (string) Str::uuid7(), 'name' => MealNames::INTRA_WORKOUT_SHAKE, 'time' => '18:00', 'kcal' => 100, 'protein_g' => 10, 'fat_g' => 0, 'carbs_g' => 15],
+        ...$monday->meals,
+    ];
+    $monday->save();
+
+    rqcSave($user);
+
+    expect(array_column(rqcDays($user)[0]->meals, 'id'))->toBe($regular);
+});
+
 // MARK: REV-005
 
 it('REV-005 training-only saves the plan week with no day targets', function () {
@@ -417,12 +472,14 @@ it('SCH-061 REV-005 completing an away or training-only review answered under th
     rqcSave($unanswered);
     $answered = rqcUser($awayWeek);
     rqcAnswer($answered, ['option' => 'recommendation', 'update_step_plan' => true]);
+    expect(ReviewAnalysis::for($answered, ReviewSeed::TODAY)?->stepOffer)->not->toBeNull('there is an offer to accept');
     rqcSave($answered);
     $trainingOnly = rqcUser(function (ReviewSeed $seed) use ($walked) {
         $walked($seed);
         $seed->trainingOnly = true;
     });
     rqcAnswer($trainingOnly, ['option' => 'recommendation', 'update_step_plan' => true]);
+    expect(ReviewAnalysis::for($trainingOnly, ReviewSeed::TODAY)?->stepOffer)->not->toBeNull('there is an offer to accept');
     rqcSave($trainingOnly);
 
     expect(rqcKcal($answered))->toBe(rqcKcal($unanswered))

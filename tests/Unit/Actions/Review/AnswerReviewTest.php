@@ -248,6 +248,26 @@ it('REV-010 a draft stays a draft when another answer echoes the amount review_s
     expect(rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown - 100])->fresh()->own_kcal)->toBe($shown - 100);
 });
 
+it('REV-010 the suggested amount sent with Choose my own counts as typed when it is the answer\'s only change', function () {
+    $user = rqaUser();
+    rqaAnswer($user, ['option' => 'choose_own', 'update_step_plan' => true]);
+    $shown = ReviewShowPayload::build(ReviewAnalysis::for($user, ReviewSeed::TODAY), ReviewAnswer::answersFor($user, '2026-10-05'))->toArray()['calories']['own']['value'];
+
+    // The screen's own amount answer: the shown option, the typed amount, the other answers as shown, no moves.
+    $row = rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown, 'update_step_plan' => true, 'moves' => []]);
+
+    expect($row->fresh()->own_kcal)->toBe($shown)
+        ->and($row->fresh()->needsAmount())->toBeFalse();
+});
+
+it('REV-011 a draft stays a draft when the deload answer echoes the pre-filled amount', function () {
+    $user = rqaUser(fn (ReviewSeed $seed) => $seed->mesocycleWeeks = 8);
+    rqaAnswer($user, ['option' => 'choose_own']);
+    $shown = ReviewShowPayload::build(ReviewAnalysis::for($user, ReviewSeed::TODAY), ReviewAnswer::answersFor($user, '2026-10-05'))->toArray()['calories']['own']['value'];
+
+    expect(rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown, 'deload_too' => false])->fresh()->needsAmount())->toBeTrue();
+});
+
 it('REV-010 an amount sent alone for a draft is taken as typed, even when it is the amount review_show filled in', function () {
     $user = rqaUser();
     rqaAnswer($user, ['option' => 'choose_own']);
