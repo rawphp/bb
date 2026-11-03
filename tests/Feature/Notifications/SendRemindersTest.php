@@ -553,3 +553,117 @@ it('NOTIF-004 the judged-morning log keeps two days', function () {
     Carbon::setTestNow('2026-09-28 09:01:00');
     expect((new ReminderMorning)->prunable()->count())->toBe(1);
 });
+
+it('SET-012 sends the weigh-in reminder at the user\'s local time', function (string $zone, array $at2100, array $at0700) {
+    foreach (['2026-09-25 21:00:00' => $at2100, '2026-09-26 07:00:00' => $at0700] as $at => $lines) {
+        $user = remindedUser();
+        $user->forceFill(['time_zone' => $zone])->save();
+        Carbon::setTestNow($at);
+        app(SendDueReminders::class)($user, CarbonImmutable::now());
+
+        expect(sentLines($user))->toBe($lines, $at);
+    }
+})->with([
+    'Australia/Brisbane' => ['Australia/Brisbane', ['Weigh-in | Time to weigh in | /today?date=2026-09-26&open=weigh-in'], []],
+    'UTC' => ['UTC', [], ['Weigh-in | Time to weigh in | /today?date=2026-09-26&open=weigh-in']],
+]);
+
+it('SET-012 sends the morning reminder at the user\'s local 09:00', function (string $zone, string $due, string $early) {
+    $user = remindedUser();
+    $user->forceFill(['time_zone' => $zone])->save();
+
+    Carbon::setTestNow($early);
+    app(SendDueReminders::class)($user, CarbonImmutable::now());
+    expect(sentLines($user))->toBe([]);
+
+    Carbon::setTestNow($due);
+    app(SendDueReminders::class)($user, CarbonImmutable::now());
+    expect(sentLines($user))->toBe(['Weekly review available | Your week is ready to review | /today?date=2026-09-19'])
+        ->and(ReminderMorning::query()->where('user_id', $user->id)->get()->map(fn (ReminderMorning $morning) => $morning->date->format('Y-m-d'))->all())
+        ->toBe(['2026-09-19']);
+})->with([
+    'Australia/Brisbane' => ['Australia/Brisbane', '2026-09-18 23:00:00', '2026-09-18 13:00:00'],
+    'UTC' => ['UTC', '2026-09-19 09:00:00', '2026-09-18 23:00:00'],
+]);
+
+it('SET-012 a meal moved earlier, inside the window, after its reminder went out is not reminded twice', function (string $zone, string $first, string $second) {
+    $user = remindedUser();
+    $user->forceFill(['time_zone' => $zone])->save();
+    NotificationPref::query()->create(['user_id' => $user->id, 'kind' => 'meal', 'on' => true]);
+
+    Carbon::setTestNow($first);
+    app(SendDueReminders::class)($user, CarbonImmutable::now());
+    $day = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-24')->sole();
+    $meals = $day->meals;
+    $meals[1]['time'] = '12:25';
+    $day->update(['meals' => $meals]);
+    Carbon::setTestNow($second);
+    app(SendDueReminders::class)($user, CarbonImmutable::now());
+
+    expect(sentLines($user))->toBe(['Lunch | Time to eat | /today?date=2026-09-24'])
+        ->and(SentReminder::query()->where('user_id', $user->id)->sole()->sent_at->format('Y-m-d H:i:s'))
+        ->toBe('2026-09-24 12:30:00');
+})->with([
+    'Australia/Brisbane' => ['Australia/Brisbane', '2026-09-24 02:30:00', '2026-09-24 02:32:00'],
+    'UTC' => ['UTC', '2026-09-24 12:30:00', '2026-09-24 12:32:00'],
+]);
+
+it('SET-012 reminders:send queues each user at their local due time', function () {
+    $brisbane = remindedUser();
+    $brisbane->forceFill(['time_zone' => 'Australia/Brisbane'])->save();
+    $utc = remindedUser();
+    Queue::fake();
+
+    Carbon::setTestNow('2026-09-25 21:00:00');
+    $this->artisan('reminders:send')->assertSuccessful();
+    Queue::assertPushed(SendUserReminders::class, 1);
+    Queue::assertPushed(SendUserReminders::class, fn (SendUserReminders $job) => $job->user->is($brisbane)
+        && $job->now->format('Y-m-d H:i:s') === '2026-09-25 21:00:00');
+
+    Queue::fake();
+    Carbon::setTestNow('2026-09-26 07:00:00');
+    $this->artisan('reminders:send')->assertSuccessful();
+    Queue::assertPushed(SendUserReminders::class, 1);
+    Queue::assertPushed(SendUserReminders::class, fn (SendUserReminders $job) => $job->user->is($utc));
+
+    // 13:00 in Brisbane and 03:00 in UTC: nothing is due for either.
+    Queue::fake();
+    Carbon::setTestNow('2026-09-26 03:00:00');
+    DB::enableQueryLog();
+    $this->artisan('reminders:send')->assertSuccessful();
+    $queries = count(DB::getQueryLog());
+    DB::disableQueryLog();
+    DB::flushQueryLog();
+    Queue::assertNothingPushed();
+    expect($queries)->toBeLessThanOrEqual(10);
+});
+
+it('SET-012 a pass just after the user\'s midnight still sends what fell due late their evening before', function () {
+    $user = remindedUser();
+    $user->forceFill(['time_zone' => 'America/Los_Angeles'])->save();
+    WeighInScheduleEntry::query()->where('user_id', $user->id)->update(['time' => '23:55']);
+
+    // 00:02 on Sunday 27 in Los Angeles, when the UTC day has long been the 27th.
+    Carbon::setTestNow('2026-09-27 07:02:00');
+    app(SendDueReminders::class)($user, CarbonImmutable::now());
+
+    expect(sentLines($user))->toBe(['Weigh-in | Time to weigh in | /today?date=2026-09-26&open=weigh-in']);
+});
+
+it('SET-012 the window is the user\'s last 10 minutes, so on the day the clocks go forward a reminder in the skipped hour is not sent', function () {
+    $user = remindedUser();
+    $user->forceFill(['time_zone' => 'Australia/Sydney'])->save();
+    WeighInScheduleEntry::query()->where('user_id', $user->id)->update(['weekdays' => [7], 'time' => '02:30']);
+
+    // Sunday 4 Oct in Sydney: 02:00 becomes 03:00 at 16:00 UTC on the 3rd.
+    $passes = fn (string $from) => collect(range(0, 20))->each(function (int $minute) use ($user, $from) {
+        Carbon::setTestNow(CarbonImmutable::parse($from)->addMinutes($minute));
+        app(SendDueReminders::class)($user, CarbonImmutable::now());
+    });
+    $passes('2026-10-03 15:50:00');
+    expect(sentLines($user))->toBe([]);
+
+    WeighInScheduleEntry::query()->where('user_id', $user->id)->update(['time' => '03:05']);
+    $passes('2026-10-03 15:50:00');
+    expect(sentLines($user))->toBe(['Weigh-in | Time to weigh in | /today?date=2026-10-04&open=weigh-in']);
+});
