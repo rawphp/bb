@@ -209,12 +209,13 @@ it('PROG-050 a hold keeps the sets the user added by hand', function () {
 });
 
 it('SCH-063 a rough week adds no set to any muscle of the session, and the add\'s messages go', function () {
-    // Chest is near its ceiling (PROG-015), so the add would also say so.
-    $result = ProgressionApply::apply(applyInput(applyDays(fly: 17), applyRan(), ['chest' => applyWantsMore(), 'back' => applyWantsMore()], rough: true));
+    // Chest is near its ceiling (PROG-015), so its add would also say so. Back ran a set short, so a toast is built and
+    // shows only that.
+    $result = ProgressionApply::apply(applyInput(applyDays(fly: 17), applyRan(row: 2), ['chest' => applyWantsMore(), 'back' => applyWantsMore()], rough: true));
 
-    expect($result->slotSets)->toBe(['bench' => 3, 'incline' => 3, 'row' => 3, 'curl' => 2])
-        ->and($result->changes)->toBe([])
-        ->and($result->lines)->toBe([]);
+    expect($result->slotSets)->toBe(['bench' => 3, 'incline' => 3, 'row' => 2, 'curl' => 2])
+        ->and($result->changes)->toBe(['back' => -1])
+        ->and($result->lines)->toBe(['Back −1 set next week']);
 });
 
 it('SCH-063 a removal still applies in a rough week', function () {

@@ -79,6 +79,18 @@ it('SCH-063 after a rough week there is no step up past the top of the range', f
         ->and(setPlanTargets(sets: 1, lastWeek: [new SetLoad(40, 30)], rough: true))->toEqual([new PlannedLoad(40, 30)]);
 });
 
+it('SCH-063 after a rough week a bodyweight-plus-load set logged with no added load repeats at 0 added', function () {
+    $rules = new LoadRules(LoadType::BodyweightPlusLoad, WeightUnit::Kg, false, null, new ClosedRange(6, 30));
+    $plan = fn (bool $rough) => SetPlan::targets(new SetPlanInputs(
+        sets: 2, lastWeek: [new SetLoad(null, 12), new SetLoad(null, 10)], carried: null, rir: 2, deloadHalf: null,
+        isFatLoss: false, experience: ExperienceLevel::Intermediate, rules: $rules, lastWeekWasRough: $rough,
+    ));
+
+    // toEqual holds null equal to 0.0, so the weights are compared exactly.
+    expect(array_map(fn (PlannedLoad $load) => [$load->weight, $load->reps], $plan(true)))->toBe([[0.0, 12], [0.0, 10]])
+        ->and($plan(false)[0]->weight)->not->toBeNull();
+});
+
 it('SCH-063 after a rough week an added set still drops reps like the sets before it', function () {
     expect(setPlanTargets(sets: 3, lastWeek: [new SetLoad(100, 10)], rough: true))
         ->toEqual([new PlannedLoad(100, 10), new PlannedLoad(100, 8), new PlannedLoad(100, 6)]);
