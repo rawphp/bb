@@ -9,8 +9,15 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
-/** A day's step count, typed in or posted by the Shortcuts bridge (WT-020). One per user per day. */
+/**
+ * A day's step count, typed in or posted by the Shortcuts bridge (WT-020). One per user per day.
+ *
+ * @property Carbon $date
+ * @property int $count
+ * @property MeasurementSource $source
+ */
 #[Fillable(['date', 'count', 'source'])]
 class Step extends Model
 {

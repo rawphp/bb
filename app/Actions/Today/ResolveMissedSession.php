@@ -3,7 +3,6 @@
 namespace App\Actions\Today;
 
 use App\Capabilities\Today\Data\MissedSessionResolveInput;
-use App\Domain\Placement\ScheduledSession;
 use App\Domain\Retarget\MissedDayOption;
 use App\Domain\Retarget\MissedDayOption\Kind;
 use App\Domain\Retarget\Retargeting;
@@ -46,7 +45,7 @@ final class ResolveMissedSession
         $option = $this->offered($input, Retargeting::missedDayOptions($session->date, $snapshot->today, $week->planWeek, $week->trainingDates()), $snapshot->today);
         $weekDates = array_map(fn (DateTimeImmutable $day) => $day->format('Y-m-d'), $week->planWeek->days());
         if ($option->kind === Kind::Skip) {
-            $this->saveRow($user, $stored, $input, $session, $session->date, skipped: true);
+            PlannedSession::saveRow($user, $stored, $mesocycle->id, $input->week, $input->day, $session->date, $session->time, skipped: true);
 
             return ['toast' => 'Session skipped', 'dates' => [$session->date->format('Y-m-d')], 'week' => $weekDates];
         }
@@ -70,9 +69,9 @@ final class ResolveMissedSession
             throw new DomainException(self::refusal($refused->refusal));
         }
         // The day and the session's row are saved together or not at all.
-        DB::transaction(function () use ($plans, $date, $result, $user, $stored, $input, $session, $destination) {
+        DB::transaction(function () use ($plans, $date, $result, $user, $stored, $input, $session, $destination, $mesocycle) {
             RetargetDays::save($plans->row($date), $result->days[1]);
-            $this->saveRow($user, $stored, $input, $session, $destination, skipped: false);
+            PlannedSession::saveRow($user, $stored, $mesocycle->id, $input->week, $input->day, $destination, $session->time);
         });
 
         return ['toast' => $result->message, 'dates' => [$session->date->format('Y-m-d'), $date], 'week' => $weekDates];
@@ -102,22 +101,6 @@ final class ResolveMissedSession
         }
 
         return $option;
-    }
-
-    /** The session's row, placed on `$day` at its time until its estimated length; a stored row keeps its id. */
-    private function saveRow(User $user, ?WorkoutSession $stored, MissedSessionResolveInput $input, ScheduledSession $session, DateTimeImmutable $day, bool $skipped): void
-    {
-        $start = DayPlans::day($day->format('Y-m-d'))->modify("+{$session->time->start->minuteOfDay} minutes");
-        $row = $stored ?? new WorkoutSession;
-        $row->forceFill([
-            'user_id' => $user->id,
-            'mesocycle_id' => $input->mesocycle_id,
-            'week' => $input->week,
-            'day' => $input->day,
-            'planned_start_at' => $start,
-            'planned_end_at' => $start->modify("+{$session->time->lengthMinutes} minutes"),
-            'is_skipped' => $skipped,
-        ])->save();
     }
 
     /** The re-target rule's refusal, as the user reads it. Nothing is saved. */

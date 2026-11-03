@@ -14,6 +14,27 @@ use Illuminate\Support\Carbon;
  */
 final class TodayReads
 {
+    /** The sheets that read a day's meals and session, by their date-only key. */
+    public const SHEETS = ['day_optimize_show', 'day_redistribute_show', 'day_adjust_show'];
+
+    /** SCH-051, SCH-057: the workout screen of a session whose row moved, re-timed or skipped it. */
+    public static function workout(string $mesocycleId, int $week, int $day): string
+    {
+        return ReadKey::for('workout_show', ['mesocycle_id' => $mesocycleId, 'week' => $week, 'day' => $day]);
+    }
+
+    /**
+     * A re-target of these days: each one's Today and sheets, and the week strip of their plan week.
+     *
+     * @param  list<string>  $dates  Y-m-d
+     * @param  list<string>  $weekDates  Y-m-d
+     * @return list<string>
+     */
+    public static function forDays(array $dates, array $weekDates): array
+    {
+        return [...self::keys($dates, self::SHEETS), ...self::weekKeys($weekDates)];
+    }
+
     /**
      * @param  list<string>  $dates  Y-m-d
      * @param  list<string>  $sheets  the sheet reads, such as day_redistribute_show, by their date-only key

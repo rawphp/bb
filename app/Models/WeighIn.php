@@ -9,8 +9,16 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
-/** A body weight reading in kg, with an optional waist in cm (WT-021), typed in or from the Shortcuts bridge (WT-003). */
+/**
+ * A body weight reading in kg, with an optional waist in cm (WT-021), typed in or from the Shortcuts bridge (WT-003).
+ *
+ * @property float $weight_kg
+ * @property float|null $waist_cm
+ * @property Carbon $weighed_at
+ * @property MeasurementSource $source
+ */
 #[Fillable(['weight_kg', 'waist_cm', 'weighed_at', 'source'])]
 class WeighIn extends Model
 {

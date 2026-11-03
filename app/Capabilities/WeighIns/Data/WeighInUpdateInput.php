@@ -19,6 +19,6 @@ final class WeighInUpdateInput extends CapabilityData
 
     public static function rules(): array
     {
-        return ['id' => ['ulid']];
+        return ['id' => ['ulid'], 'weighed_at' => [new WeighInTimeRule]];
     }
 }
