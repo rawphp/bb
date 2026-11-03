@@ -269,6 +269,17 @@ describe('MealView', () => {
             expect(readMock).toHaveBeenCalledWith('meal_show', { meal_id: MEAL }, expect.any(Function), expect.any(Function));
         });
 
+        it('RCP-002 MEAL-005 a recipe locks like a food', async () => {
+            const view = show({ payload: content });
+
+            const lock = row(view, 'Overnight oats').get('[data-test="lock"]');
+            expect(lock.attributes('aria-label')).toBe('Lock Overnight oats');
+            await lock.trigger('click');
+            await flushPromises();
+
+            expect(sent('meal_food_lock_set')).toEqual({ meal_id: MEAL, entry_id: oats!.id, locked: true });
+        });
+
         it('MEAL-004 + steps a food up', async () => {
             const view = show({ payload: content });
 
@@ -526,6 +537,36 @@ describe('MealView', () => {
 
             expect(writeMock).toHaveBeenCalledTimes(2);
             expect((writeMock.mock.calls[1]![1] as { id: string }).id).toBe((writeMock.mock.calls[0]![1] as { id: string }).id);
+        });
+
+        it('CAP-019 a save under another name after no answer is a new saved meal, with a new id', async () => {
+            writeMock.mockReset().mockRejectedValueOnce(new CapabilityError('saved_meal_save', 0, null)).mockResolvedValueOnce({});
+            const view = show({ payload: content });
+
+            await menu(view, 'save_as_saved_meal');
+            await saveSheet();
+            await type('saved-meal-name', 'Lean dinner');
+            await saveSheet();
+
+            const [first, second] = writeMock.mock.calls.map((call) => call[1] as { id: string; name: string });
+            expect(second!.name).toBe('Lean dinner');
+            expect(second!.id).not.toBe(first!.id);
+        });
+
+        it('CAP-019 a save closed after no answer and started again under another name gets a new id', async () => {
+            writeMock.mockReset().mockRejectedValueOnce(new CapabilityError('saved_meal_save', 0, null)).mockResolvedValueOnce({});
+            const view = show({ payload: content });
+
+            await menu(view, 'save_as_saved_meal');
+            await saveSheet();
+            document.body.querySelector<HTMLButtonElement>('[role="dialog"] [data-cancel]')!.click();
+            await flushPromises();
+            await menu(view, 'save_as_saved_meal');
+            await type('saved-meal-name', 'Lean dinner');
+            await saveSheet();
+
+            const [first, second] = writeMock.mock.calls.map((call) => call[1] as { id: string });
+            expect(second!.id).not.toBe(first!.id);
         });
 
         it('MEAL-060 Copy foods opens the copy sheet for this meal', async () => {
