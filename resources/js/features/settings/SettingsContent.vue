@@ -90,8 +90,8 @@ const select = 'max-w-[60%] rounded-lg bg-transparent text-right text-secondary-
                     <span class="flex min-w-0 items-center gap-2 text-secondary-text"><span class="truncate">{{ settings.profile.name }}</span><span aria-hidden="true">›</span></span>
                 </RouterLink>
                 <RouterLink to="/settings/eligibility" :class="row">
-                    <span>Re-check eligibility</span>
-                    <span class="flex items-center gap-2"><StatusPill :text="settings.eligibility.text" :tone="settings.eligibility.tone" /><span aria-hidden="true" class="text-secondary-text">›</span></span>
+                    <span class="shrink-0">Re-check eligibility</span>
+                    <span class="flex min-w-0 items-center justify-end gap-2"><StatusPill :text="settings.eligibility.text" :tone="settings.eligibility.tone" /><span aria-hidden="true" class="text-secondary-text">›</span></span>
                 </RouterLink>
             </div>
         </section>
@@ -171,16 +171,16 @@ const select = 'max-w-[60%] rounded-lg bg-transparent text-right text-secondary-
             <h2 id="settings-integrations" :class="heading">Integrations</h2>
             <div :class="card">
                 <RouterLink to="/settings/health-bridge" :class="row">
-                    <span>Health bridge</span>
-                    <span class="flex items-center gap-2"><StatusPill :text="settings.health_bridge.text" :tone="settings.health_bridge.tone" /><span aria-hidden="true" class="text-secondary-text">›</span></span>
+                    <span class="shrink-0">Health bridge</span>
+                    <span class="flex min-w-0 items-center justify-end gap-2"><StatusPill :text="settings.health_bridge.text" :tone="settings.health_bridge.tone" /><span aria-hidden="true" class="text-secondary-text">›</span></span>
                 </RouterLink>
                 <RouterLink to="/settings/tokens" :class="row">
-                    <span>Personal access tokens</span>
-                    <span class="flex items-center gap-2"><StatusPill :text="settings.tokens.text" :tone="settings.tokens.tone" /><span aria-hidden="true" class="text-secondary-text">›</span></span>
+                    <span class="shrink-0">Personal access tokens</span>
+                    <span class="flex min-w-0 items-center justify-end gap-2"><StatusPill :text="settings.tokens.text" :tone="settings.tokens.tone" /><span aria-hidden="true" class="text-secondary-text">›</span></span>
                 </RouterLink>
                 <RouterLink v-if="settings.coach" to="/settings/coach" :class="row">
-                    <span>Coach</span>
-                    <span class="flex items-center gap-2"><StatusPill :text="settings.coach.text" :tone="settings.coach.tone" /><span aria-hidden="true" class="text-secondary-text">›</span></span>
+                    <span class="shrink-0">Coach</span>
+                    <span class="flex min-w-0 items-center justify-end gap-2"><StatusPill :text="settings.coach.text" :tone="settings.coach.tone" /><span aria-hidden="true" class="text-secondary-text">›</span></span>
                 </RouterLink>
             </div>
         </section>
@@ -190,7 +190,7 @@ const select = 'max-w-[60%] rounded-lg bg-transparent text-right text-secondary-
             <h2 id="settings-subscription" :class="heading">Subscription</h2>
             <div :class="card">
                 <div :class="row" data-test="subscription">
-                    <span>Plan</span>
+                    <span class="shrink-0">Plan</span>
                     <StatusPill :text="settings.subscription.text" :tone="settings.subscription.tone" />
                 </div>
                 <button type="button" :class="[row, 'w-full text-left text-accent disabled:opacity-60']" data-test="manage-subscription" :disabled="acting" @click="manageSubscription">
