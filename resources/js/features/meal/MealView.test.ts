@@ -39,7 +39,7 @@ function links(view: VueWrapper): unknown[] {
 }
 
 function row(view: VueWrapper, name: string): VueWrapper {
-    return [...view.findAllComponents(MealFoodRowView), ...view.findAllComponents(MealRecipeRowView)].find((r) => r.props('entry').name === name)! as VueWrapper;
+    return [...view.findAllComponents(MealFoodRowView), ...view.findAllComponents(MealRecipeRowView)].find((r) => r.get('h3').text() === name)! as VueWrapper;
 }
 
 async function menu(view: VueWrapper, item: string): Promise<void> {
