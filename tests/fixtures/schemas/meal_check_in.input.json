@@ -11,31 +11,35 @@
                 "string",
                 "null"
             ],
-            "description": "24-hour \"HH:MM\"; defaults to now."
+            "description": "24-hour \"HH:MM\"; defaults to when the user acted."
         },
         "kcal": {
             "type": [
                 "number",
                 "null"
-            ]
+            ],
+            "minimum": 0
         },
         "protein_g": {
             "type": [
                 "number",
                 "null"
-            ]
+            ],
+            "minimum": 0
         },
         "fat_g": {
             "type": [
                 "number",
                 "null"
-            ]
+            ],
+            "minimum": 0
         },
         "carbs_g": {
             "type": [
                 "number",
                 "null"
-            ]
+            ],
+            "minimum": 0
         }
     },
     "required": [
