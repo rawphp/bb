@@ -43,6 +43,7 @@ final class PlanWorld
      * @param  list<Mesocycle>|null  $mesocycles
      * @param  list<PlanWeek>  $weeks
      * @param  list<WeighIn>|null  $weighIns
+     * @param  array<string, mixed>  $profile  more profile columns
      */
     public static function snapshot(
         string $today = '2026-10-14',
@@ -52,11 +53,12 @@ final class PlanWorld
         ?array $weighIns = null,
         bool $trainingOnly = false,
         string $planStart = '2026-08-31',
+        array $profile = [],
     ): PlanSnapshot {
         return new PlanSnapshot(
             today: PlanSnapshot::day($today),
             plan: (new Plan)->forceFill(['id' => 1, 'user_id' => 1, 'start_date' => $planStart, 'review_weekday' => 1]),
-            profile: (new Profile)->forceFill(['user_id' => 1, 'experience' => 'intermediate', 'weight_unit' => 'kg', 'training_only' => $trainingOnly]),
+            profile: (new Profile)->forceFill(['user_id' => 1, 'experience' => 'intermediate', 'weight_unit' => 'kg', 'training_only' => $trainingOnly, ...$profile]),
             phases: new Collection($phases ?? self::phases()),
             mesocycles: new Collection($mesocycles ?? self::mesocycles()),
             planWeeks: new Collection($weeks),
@@ -122,4 +124,11 @@ final class PlanWorld
 
         return $weighIns;
     }
+
+    /** The nutrition answers the energy and macro rules read (PH-035, PH-046): a 90 kg man, 180 cm, born 1990. */
+    public const NUTRITION = [
+        'name' => 'Sam', 'sex' => 'male', 'birth_date' => '1990-01-01', 'height_cm' => 180, 'weight_kg' => 90,
+        'height_unit' => 'cm', 'body_fat_bucket' => 'low', 'uses_glp1' => false,
+        'step_plan' => [['weekday' => 1, 'min' => 8000, 'max' => 10000]],
+    ];
 }

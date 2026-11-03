@@ -263,8 +263,8 @@ Screens. Each API row follows the API template and each V_ row the VIEW template
 
 | Key | Title | Depends on | Requirements | Sources |
 |---|---|---|---|---|
-| A_ONB1 | feat: onboarding answers, goal, body fat and screening | C_ONB, D_SAFETY, D_PHASES, TOKENS | ONB-001 to ONB-012, SAFE | Onboarding: OnboardingModel, OnboardingChoices, OnboardingDraft, OnboardingDraftStore, OnboardingIntro, +Health |
-| A_ONB2 | feat: onboarding lifestyle, training, rate and plan creation | C_ONB, D_PLAN, D_MESOCYCLE, D_WEEKBUILDER, TOKENS | ONB-013 to ONB-021, ONB-030 to ONB-033 | Onboarding: +Lifestyle, +Training, +RateLength, +Review, +Plan, +Start, OnboardingService, SetupGate |
+| A_ONB1 | feat: onboarding answers, goal, body fat and screening | C_ONB, D_SAFETY, D_PHASES, TOKENS, A_ONB2 | ONB-001 to ONB-012, SAFE | Onboarding: the write half of OnboardingModel and +Health (setters, next, back, edit) |
+| A_ONB2 | feat: onboarding lifestyle, training, rate and plan creation | C_ONB, D_SAFETY, D_PLAN, D_MESOCYCLE, D_WEEKBUILDER, TOKENS | ONB-013 to ONB-021 (ONB-031 and ONB-032 shipped in Today and Progress; ONB-030 and ONB-033 belong to the Today and meal screens) | Onboarding: OnboardingDraft, OnboardingDraftStore, OnboardingChoices, the read half of OnboardingModel and +Health, +Lifestyle, +Training, +RateLength, +Review, +Plan, +Start, OnboardingService, SetupGate |
 | A_TODAY1 | feat: Today, week strip and the day timeline | C_TODAY, D_WEEKBUILDER, D_PLACEMENT, D_DAYBALANCE, TOKENS | SCH-001 to SCH-023, MESO-060 | Today: TodayModel, TodayItems, +Timeline, +Meals, +ScheduleMeals, +MealScreen, +Review, +NextMesocycle, TodayTour |
 | A_TODAY2 | feat: move, time and add workouts; edit the schedule | C_TODAY, D_WEEKBUILDER, D_RETARGET, UNDO, TOKENS | SCH-030 to SCH-039 | Today: ScheduleSheetModels, ScheduleSnapshot+Pauses, +AddWorkout, +EditSchedule, +WeekdayChange |
 | A_TODAY3 | feat: re-target, adjust, redistribute and off-plan | C_TODAY, D_RETARGET, D_DAYBALANCE, D_MEALSPLIT, UNDO, TOKENS | SCH-050 to SCH-058, DAY-001 to DAY-021 | Today: +Retarget, +Adjust, +Redistribute, +OffPlan, +PlannedFoods |
