@@ -163,7 +163,7 @@ describe('TodayView', () => {
 
         wrapper = await show();
         expect(meal(wrapper, BREAKFAST).text()).toContain('8:00 AM · 780 kcal');
-        expect(wrapper.find('[data-test="macros"]').exists()).toBe(false);
+        expect(meal(wrapper, BREAKFAST).find('[data-test="macros"]').exists()).toBe(false);
     });
 
     it('SCH-009 one tap on the box checks a meal in through the outbox (OFF-030)', async () => {
@@ -407,7 +407,7 @@ describe('TodayView', () => {
         expect(readMock).toHaveBeenCalledWith('today_show', { date: '2026-09-24' }, expect.any(Function), expect.any(Function));
         expect(readMock).toHaveBeenCalledWith('week_show', { date: '2026-09-24' }, expect.any(Function), expect.any(Function));
         expect(wrapper.find('[data-test="skeleton"]').exists()).toBe(true);
-        expect(wrapper.findAll('[data-placeholder]')).toHaveLength(7);
+        expect(wrapper.getComponent(WeekStrip).findAll('[data-placeholder]')).toHaveLength(7);
     });
 
     it("CAP-002 reads the server's today when no day is named", async () => {

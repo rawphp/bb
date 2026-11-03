@@ -20,7 +20,7 @@ describe('TodayMealCard', () => {
 
         expect(wrapper.find('h3').text()).toBe('Breakfast');
         expect(wrapper.text()).toContain('8:00 AM');
-        expect(wrapper.find('[data-test="macros"]').text()).toBe('780 kcal P 51 F 21 C 96');
+        expect(wrapper.findAll('[data-test="macros"] span').map((macro) => macro.text())).toEqual(['780 kcal', 'P 51', 'F 21', 'C 96']);
         expect(wrapper.text()).toContain('780 kcal, 51 grams protein, 21 grams fat, 96 grams carbs');
         expect(wrapper.text()).toContain('Oats 80 g · Whey protein 30 g');
         expect(wrapper.text()).toContain('Eaten: 780 kcal, 51 g protein');

@@ -7,6 +7,15 @@ import type { RouteRecordRaw } from 'vue-router';
 // @close and @saved, and shows the toast (UI-010).
 const DATE = '(\\d{4}-\\d{2}-\\d{2})';
 
+// The Today screen (SCH-001 to SCH-023): the server's today at the tab's root, another day
+// at /today/<date>. It shows two reads, so /dev/screens/today_show hands it the week strip's
+// fixture too (meta.fixtures). First, so /dev/screens/today_show opens the screen.
+const todayMeta = { screen: 'today_show', fixtures: { week: 'week_show' }, tab: 'today' } as const;
+const today = [
+    { path: '/today', name: 'today', component: () => import('./TodayView.vue'), meta: todayMeta },
+    { path: `/today/:date${DATE}`, name: 'today-day', component: () => import('./TodayView.vue'), props: true, meta: todayMeta },
+] satisfies RouteRecordRaw[];
+
 const daySheets = [
     { path: `/today/:date${DATE}/adjust`, component: () => import('./sheets/AdjustSheet.vue'), props: true, meta: { screen: 'day_adjust_show', tab: 'today' } },
     { path: `/today/:date${DATE}/redistribute`, component: () => import('./sheets/RedistributeSheet.vue'), props: true, meta: { screen: 'day_redistribute_show', tab: 'today' } },
@@ -19,9 +28,7 @@ const daySheets = [
 // (SCH-060) and missed sessions and weeks (SCH-057, SCH-058). Today opens them over its
 // timeline; until it does, and for screenshots, each opens on its own here, in local and
 // testing only: /dev/screens/<fixture>?view=<name> renders it from a fixture, and its path
-// reads the server's day. Until the Today screen has a route, /dev/screens/today_show
-// without ?view opens the first sheet; Today's route (#96) must go above these so that URL
-// opens the screen.
+// reads the server's day.
 const sheet = (path: string, name: string, component: RouteRecordRaw['component'], screen = 'today_show', fixture = true): RouteRecordRaw =>
     ({ path: `/dev/today/${path}`, name, component, meta: { dev: true, shell: false, screen, fixture } }) as RouteRecordRaw;
 
@@ -42,4 +49,4 @@ const scheduleSheets = (import.meta.env.DEV
       ]
     : []) satisfies RouteRecordRaw[];
 
-export default [...daySheets, ...scheduleSheets] satisfies RouteRecordRaw[];
+export default [...today, ...daySheets, ...scheduleSheets] satisfies RouteRecordRaw[];

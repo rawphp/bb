@@ -59,8 +59,9 @@ describe('today routes', () => {
         expect(router.resolve('/today/tomorrow/adjust').matched).toHaveLength(0);
     });
 
+    // Today itself is a stand-in here, ahead of the real route, so going back renders nothing.
     async function open(path: string) {
-        const router = createRouter({ history: createMemoryHistory(), routes: [...routes, { path: '/today', component: { template: '<p />' } }] });
+        const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/today', component: { template: '<p />' } }, ...routes] });
         await router.push(path);
         const wrapper = mount(RouterView, { global: { plugins: [router], stubs: { teleport: true } } });
         await flushPromises();
