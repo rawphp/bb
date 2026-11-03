@@ -186,13 +186,13 @@ test('OFF-050 OFF-001 a workout started online is logged, answered and finished 
     for (const entry of queued) expect(sent.get(entry.idempotencyKey), entry.name).toBe(entry.occurredAt);
 
     // The server holds one session, started online and finished offline when the user did, and each set once, as typed.
-    const [user] = rows<{ id: number }>('select id from users where email = ?', account.email);
+    const user = rows<{ id: number }>('select id from users where email = ?', account.email)[0]!;
     const sessions = rows<{ id: string; actual_start_at: string; actual_end_at: string }>(
         'select id, actual_start_at, actual_end_at from workout_sessions where user_id = ?',
         String(user.id),
     );
     expect(sessions).toHaveLength(1);
-    const [session] = sessions;
+    const session = sessions[0]!;
     expect(starts).toHaveLength(1);
     expect(instant(session.actual_start_at)).toBe(toSecond(starts[0]!));
     expect(instant(session.actual_end_at)).toBe(toSecond(queued.at(-1)!.occurredAt));
@@ -212,7 +212,7 @@ test('OFF-050 OFF-001 a workout started online is logged, answered and finished 
 
     // Today shows Dinner as the server re-targeted it for the session's real length (SCH-054).
     type Meal = { name: string; time: string; kcal: number; carbs_g: number };
-    const [day] = rows<{ meals: string }>('select meals from day_targets where user_id = ? and date = ?', String(user.id), DAY);
+    const day = rows<{ meals: string }>('select meals from day_targets where user_id = ? and date = ?', String(user.id), DAY)[0]!;
     const retargeted = (JSON.parse(day.meals) as Meal[]).find((meal) => meal.name === 'Dinner')!;
     expect(retargeted).not.toMatchObject({ time: '19:00', kcal: 1120, carbs_g: 130 });
     await page.goto('/today', { waitUntil: 'networkidle' });
