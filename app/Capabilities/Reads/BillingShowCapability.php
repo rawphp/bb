@@ -84,7 +84,7 @@ final class BillingShowCapability implements BillingOnly, HostCapability
         return $plans;
     }
 
-    private static function status(Access $access, ?Subscription $subscription): Status
+    public static function status(Access $access, ?Subscription $subscription): Status
     {
         if ($subscription === null || $access === Access::None) {
             return new Status('No subscription', Tone::Neutral->value);
