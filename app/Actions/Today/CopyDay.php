@@ -33,21 +33,36 @@ final class CopyDay
             ->get()
             ->keyBy(fn (DayTarget $day) => DayPlans::day($day->date)->format('Y-m-d'));
         $source = $days->get($sourceDate) ?? throw (new ModelNotFoundException)->setModel(DayTarget::class, [$sourceDate]);
-        $start = Plan::query()->where('user_id', $user->id)->value('start_date');
-        $planStart = $start === null ? null : DayPlans::day($start)->format('Y-m-d');
 
-        $dates = array_values(array_unique($targetDates));
+        $dates = self::inPlan($user, array_values(array_unique($targetDates)));
         sort($dates);
         $pairs = [];
         foreach ($dates as $date) {
             $destination = $days->get($date);
-            if ($destination === null || $date === $sourceDate || $planStart === null || $date < $planStart) {
+            if ($destination === null || $date === $sourceDate) {
                 continue;
             }
             array_push($pairs, ...self::pairs($source, $destination));
         }
 
         return ($this->copy)($user, $pairs, $options);
+    }
+
+    /**
+     * SCH-034, SCH-035: the dates a copy may write to, those from the user's plan start on; none without a plan.
+     *
+     * @param  list<string>  $dates  Y-m-d
+     * @return list<string>
+     */
+    public static function inPlan(User $user, array $dates): array
+    {
+        $start = Plan::query()->where('user_id', $user->id)->value('start_date');
+        if ($start === null) {
+            return [];
+        }
+        $planStart = DayPlans::day($start)->format('Y-m-d');
+
+        return array_values(array_filter($dates, fn (string $date) => $date >= $planStart));
     }
 
     /**
