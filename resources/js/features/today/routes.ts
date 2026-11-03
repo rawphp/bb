@@ -2,9 +2,8 @@ import type { RouteRecordRaw } from 'vue-router';
 
 // Today's day-balance sheets at their own routes (DAY-001, DAY-002, DAY-020, SCH-036), so
 // /dev/screens/<capability> finds each one with its fixture (meta.screen) and a link can open
-// one for a day. Opened at its route, a sheet goes back to Today when it closes or saves,
-// without the server's toast: the Today screen draws the sheets over itself and listens to
-// @close and @saved, and shows the toast (UI-010).
+// one for a day. The Today screen opens them here, and each goes back to Today when it
+// closes or saves.
 const DATE = '(\\d{4}-\\d{2}-\\d{2})';
 
 // The Today screen (SCH-001 to SCH-023): the server's today at the tab's root, another day
@@ -26,9 +25,9 @@ const daySheets = [
 
 // Today's sheets: schedule (SCH-023, SCH-030 to SCH-039, SCH-050, SCH-051), away week
 // (SCH-060) and missed sessions and weeks (SCH-057, SCH-058). Today opens them over its
-// timeline; until it does, and for screenshots, each opens on its own here, in local and
-// testing only: /dev/screens/<fixture>?view=<name> renders it from a fixture, and its path
-// reads the server's day.
+// timeline; for screenshots, each also opens on its own here, in local and testing only:
+// /dev/screens/<fixture>?view=<name> renders it from a fixture, and its path reads the
+// server's day.
 const sheet = (path: string, name: string, component: RouteRecordRaw['component'], screen = 'today_show', fixture = true): RouteRecordRaw =>
     ({ path: `/dev/today/${path}`, name, component, meta: { dev: true, shell: false, screen, fixture } }) as RouteRecordRaw;
 

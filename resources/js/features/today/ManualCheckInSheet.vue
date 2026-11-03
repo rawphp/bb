@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import type { MealCheckInInput } from '@/contracts/meal_check_in';
 import type { TodayShowOutput } from '@/contracts/today_show';
 import BottomSheet from '@/design/BottomSheet.vue';
+import { amount } from './sheets/amount';
 import AmountRow from './sheets/AmountRow.vue';
 
 // MEAL-041: when the meal was eaten, and its calories and macros. It opens on what the
@@ -19,14 +20,10 @@ const protein = ref(String(manual.protein_g));
 const fat = ref(String(manual.fat_g));
 const carbs = ref(String(manual.carbs_g));
 
-// A typed amount as a number of zero or more; null while it is not one.
-function amount(text: string): number | null {
-    const value = Number(text.trim().replace(',', '.'));
-    return text.trim() !== '' && Number.isFinite(value) && value >= 0 ? value : null;
-}
-
+// Each amount as typed (sheets/amount); here an emptied field keeps Save off, as the
+// sheet opens with every amount filled in.
 const input = computed<MealCheckInInput | null>(() => {
-    const [k, p, f, c] = [kcal, protein, fat, carbs].map((field) => amount(field.value));
+    const [k, p, f, c] = [kcal, protein, fat, carbs].map((field) => (field.value.trim() === '' ? null : amount(field.value)));
     if (k == null || p == null || f == null || c == null || !time.value) return null;
     return { meal_id: props.meal.id, time: time.value, kcal: k, protein_g: p, fat_g: f, carbs_g: c };
 });

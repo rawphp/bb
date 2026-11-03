@@ -62,15 +62,16 @@ const router = useRouter();
 const input = props.date ? { date: props.date } : {};
 const { data, failure, load } = useRead<TodayShowOutput>('today_show', input, 'Today could not be loaded.', props.payload);
 const { data: weekData, failure: weekFailure, load: loadWeek } = useRead<WeekShowOutput>('week_show', input, 'This week could not be loaded.', props.week);
-const { send, busy, error } = useWrite(load);
+// A write re-reads both: what changes a day's target changes its calories on the strip too.
+const loadBoth = (options?: { fresh?: boolean }) => Promise.all([load(options), loadWeek(options).catch(() => undefined)]).then(() => undefined);
+const { send, busy, error } = useWrite(loadBoth);
 
 // OFF-008: the server's numbers while a write that affects them waits in the outbox.
 const pending = computed(() => props.pending || isPending('today_show'));
 const weekPending = computed(() => props.pending || isPending('week_show'));
 
 function reload(): void {
-    void load().catch(() => undefined);
-    void loadWeek().catch(() => undefined);
+    void loadBoth().catch(() => undefined);
 }
 
 // Device settings, kept like the appearance: the condensed view (SCH-007) and the tour,
@@ -90,16 +91,22 @@ function endTour(): void {
     localStorage.setItem(TOUR_KEY, '1');
 }
 
-// The day each item of the timeline is, by its kind and id (SCH-001).
-const byId = computed(() => {
+// The timeline in the server's order (SCH-001), each entry with the item it names.
+type Entry =
+    | { kind: 'meal'; key: string; item: Meal }
+    | { kind: 'workout'; key: string; item: TodayShowOutput['workouts'][number] }
+    | { kind: 'weigh_in'; key: string; item: TodayShowOutput['weigh_ins'][number] }
+    | { kind: 'other_activity'; key: string; item: TodayShowOutput['other_activities'][number] }
+    | { kind: 'busy'; key: string; item: TodayShowOutput['busy_periods'][number] };
+
+const timeline = computed<Entry[]>(() => {
     const day = data.value;
-    return {
-        meal: new Map(day?.meals.map((item) => [item.id, item])),
-        workout: new Map(day?.workouts.map((item) => [item.id, item])),
-        weigh_in: new Map(day?.weigh_ins.map((item) => [item.id, item])),
-        other_activity: new Map(day?.other_activities.map((item) => [item.id, item])),
-        busy: new Map(day?.busy_periods.map((item) => [item.id, item])),
-    };
+    if (!day) return [];
+    const lists = { meal: day.meals, workout: day.workouts, weigh_in: day.weigh_ins, other_activity: day.other_activities, busy: day.busy_periods };
+    return day.timeline.flatMap(({ kind, id }) => {
+        const item = (lists[kind] as { id: string }[]).find((candidate) => candidate.id === id);
+        return item ? [{ kind, key: `${kind}:${id}`, item } as Entry] : [];
+    });
 });
 
 // OFF-009: the user's own check-in or its removal, newest first, while it waits to sync.
@@ -160,35 +167,56 @@ async function confirmed(): Promise<void> {
 const notice = ref<{ mealId: string; text: string } | null>(null);
 const manualError = ref<string | null>(null);
 
-async function queue(name: string, body: Record<string, unknown>, label: string): Promise<boolean> {
+// Meals whose write is still being stored: until it is in the outbox, pendingCheck cannot
+// see it, so a second tap would be decided from the old state. It waits instead.
+const storing = ref(new Set<string>());
+
+async function queue(meal: Meal, name: string, body: Record<string, unknown>, label: string): Promise<boolean> {
+    if (storing.value.has(meal.id)) return false;
+    storing.value.add(meal.id);
     try {
         await write(name, body, { label });
         return true;
     } catch (failure) {
-        notice.value = { mealId: String(body.meal_id), text: writeFailureMessage(failure, 'The check-in could not be saved.') };
+        notice.value = { mealId: meal.id, text: writeFailureMessage(failure, 'The check-in could not be saved.') };
         return false;
+    } finally {
+        storing.value.delete(meal.id);
     }
 }
 
-function toggle(meal: Meal): void {
+/** Whether the meal shows as checked in: the user's own waiting write first (OFF-009), else the server's state. */
+function checkedIn(meal: Meal): boolean {
+    return pendingCheck(meal) ?? meal.check_in.state !== 'not_checked_in';
+}
+
+// Check in meal and Remove check-in say which way they go; a meal already that way is left alone.
+function checkIn(meal: Meal): void {
     notice.value = null;
-    const checked = pendingCheck(meal) ?? meal.check_in.state !== 'not_checked_in';
-    if (checked) {
-        void queue('meal_check_in_undo', { meal_id: meal.id } satisfies MealCheckInUndoInput, `Removed the check-in of ${meal.name}`);
-    } else if (meal.check_in.blocked_message) {
-        notice.value = { mealId: meal.id, text: meal.check_in.blocked_message };
-    } else {
-        void queue('meal_check_in', { meal_id: meal.id } satisfies MealCheckInInput, `Checked in ${meal.name}`);
-    }
+    if (checkedIn(meal)) return;
+    if (meal.check_in.blocked_message) notice.value = { mealId: meal.id, text: meal.check_in.blocked_message };
+    else void queue(meal, 'meal_check_in', { meal_id: meal.id } satisfies MealCheckInInput, `Checked in ${meal.name}`);
+}
+
+function removeCheckIn(meal: Meal): void {
+    notice.value = null;
+    if (!checkedIn(meal)) return;
+    void queue(meal, 'meal_check_in_undo', { meal_id: meal.id } satisfies MealCheckInUndoInput, `Removed the check-in of ${meal.name}`);
+}
+
+function toggle(meal: Meal): void {
+    if (checkedIn(meal)) removeCheckIn(meal);
+    else checkIn(meal);
 }
 
 async function saveManual(meal: Meal, body: MealCheckInInput): Promise<void> {
     manualError.value = null;
-    try {
-        await write('meal_check_in', { ...body }, { label: `Checked in ${meal.name} at manual macros` });
+    if (await queue(meal, 'meal_check_in', { ...body }, `Checked in ${meal.name} at manual macros`)) {
         sheet.value = null;
-    } catch (failure) {
-        manualError.value = writeFailureMessage(failure, 'The check-in could not be saved.');
+    } else if (notice.value?.mealId === meal.id) {
+        // The sheet says why, not the card under it.
+        manualError.value = notice.value.text;
+        notice.value = null;
     }
 }
 
@@ -208,8 +236,9 @@ function mealAction(meal: Meal, action: MealAction): void {
     if (ON_MEAL_SCREEN.includes(action)) return open(`/meals/${meal.id}?action=${action}`);
     switch (action) {
         case 'check_in_meal':
+            return checkIn(meal);
         case 'remove_check_in':
-            return toggle(meal);
+            return removeCheckIn(meal);
         case 'check_in_manual':
             manualError.value = null;
             sheet.value = { kind: 'manual', meal };
@@ -248,7 +277,7 @@ function activityMenu(activity: TodayShowOutput['other_activities'][number]): vo
         items: activity.menu.map((item) => ({ key: item.action, label: item.label, enabled: true, destructive: item.action === 'delete' })),
         run: (key) => {
             if (key === 'edit') sheet.value = { kind: 'add-workout' };
-            else void send('other_activity_delete', { id: activity.id } satisfies OtherActivityDeleteInput, 'The activity could not be deleted.');
+            else if (key === 'delete') void send('other_activity_delete', { id: activity.id } satisfies OtherActivityDeleteInput, 'The activity could not be deleted.');
         },
     };
 }
@@ -389,39 +418,33 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
 
                 <p v-if="error" role="alert" class="rounded-xl p-3 text-sm" :class="toneClasses.warning">{{ error }}</p>
 
-                <template v-for="item in data.timeline" :key="`${item.kind}:${item.id}`">
-                    <div data-timeline :data-kind="item.kind">
-                        <TodayWeighInRow v-if="item.kind === 'weigh_in' && byId.weigh_in.get(item.id)" :weigh-in="byId.weigh_in.get(item.id)!" @add="open('/weigh-ins/log')" />
-                        <template v-else-if="item.kind === 'meal' && byId.meal.get(item.id)">
-                            <TodayMealCard
-                                :meal="byId.meal.get(item.id)!"
-                                :condensed="condensed"
-                                :pending="pending"
-                                :pending-check="pendingCheck(byId.meal.get(item.id)!)"
-                                @toggle="toggle(byId.meal.get(item.id)!)"
-                                @open="open(`/meals/${item.id}`)"
-                                @menu="mealMenu(byId.meal.get(item.id)!)"
-                                @edit="open(`/meals/${item.id}?action=edit_macros_time`)"
-                                @delete="askDelete(byId.meal.get(item.id)!)"
-                            />
-                            <p v-if="notice?.mealId === item.id" role="alert" class="mt-1.5 px-1 text-sm text-tone-warning">{{ notice.text }}</p>
-                        </template>
-                        <TodayWorkoutCard
-                            v-else-if="item.kind === 'workout' && byId.workout.get(item.id)"
-                            :workout="byId.workout.get(item.id)!"
+                <div v-for="entry in timeline" :key="entry.key" data-timeline :data-kind="entry.kind">
+                    <TodayWeighInRow v-if="entry.kind === 'weigh_in'" :weigh-in="entry.item" @add="open('/weigh-ins/log')" />
+                    <template v-else-if="entry.kind === 'meal'">
+                        <TodayMealCard
+                            :meal="entry.item"
                             :condensed="condensed"
                             :pending="pending"
-                            @start="open(`/workouts/${byId.workout.get(item.id)!.mesocycle_id}/${byId.workout.get(item.id)!.week}/${byId.workout.get(item.id)!.day}`)"
-                            @menu="workoutMenu(byId.workout.get(item.id)!)"
+                            :pending-check="pendingCheck(entry.item)"
+                            @toggle="toggle(entry.item)"
+                            @open="open(`/meals/${entry.item.id}`)"
+                            @menu="mealMenu(entry.item)"
+                            @edit="open(`/meals/${entry.item.id}?action=edit_macros_time`)"
+                            @delete="askDelete(entry.item)"
                         />
-                        <TodayOtherActivityCard
-                            v-else-if="item.kind === 'other_activity' && byId.other_activity.get(item.id)"
-                            :activity="byId.other_activity.get(item.id)!"
-                            @menu="activityMenu(byId.other_activity.get(item.id)!)"
-                        />
-                        <TodayBusyCard v-else-if="item.kind === 'busy' && byId.busy.get(item.id)" :busy="byId.busy.get(item.id)!" />
-                    </div>
-                </template>
+                        <p v-if="notice?.mealId === entry.item.id" role="alert" class="mt-1.5 px-1 text-sm text-tone-warning">{{ notice.text }}</p>
+                    </template>
+                    <TodayWorkoutCard
+                        v-else-if="entry.kind === 'workout'"
+                        :workout="entry.item"
+                        :condensed="condensed"
+                        :pending="pending"
+                        @start="open(`/workouts/${entry.item.mesocycle_id}/${entry.item.week}/${entry.item.day}`)"
+                        @menu="workoutMenu(entry.item)"
+                    />
+                    <TodayOtherActivityCard v-else-if="entry.kind === 'other_activity'" :activity="entry.item" @menu="activityMenu(entry.item)" />
+                    <TodayBusyCard v-else :busy="entry.item" />
+                </div>
                 <!-- DAY-001: food eaten off-plan has no meal slot; it sits under the day's items. -->
                 <OffPlanRow v-for="entry in data.off_plan" :key="entry.id" :entry="entry" :pending="pending" />
             </template>
@@ -437,7 +460,14 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
             <TodayWorkoutTimeSheet v-else-if="sheet?.kind === 'time'" :payload="data" :workout-id="sheet.workoutId" @close="closeSheet" />
             <TodayMoveDaySheet v-else-if="sheet?.kind === 'move'" :payload="data" :workout-id="sheet.workoutId" @close="closeSheet" />
             <CopySheet v-else-if="sheet?.kind === 'copy'" :meal-id="sheet.mealId" :source-date="sheet.sourceDate" @close="closeSheet(true)" />
-            <ManualCheckInSheet v-else-if="sheet?.kind === 'manual'" :meal="sheet.meal" :error="manualError" @cancel="closeSheet()" @save="(body) => saveManual((sheet as { meal: Meal }).meal, body)" />
+            <ManualCheckInSheet
+                v-else-if="sheet?.kind === 'manual'"
+                :meal="sheet.meal"
+                :busy="storing.has(sheet.meal.id)"
+                :error="manualError"
+                @cancel="closeSheet()"
+                @save="(body) => saveManual((sheet as { meal: Meal }).meal, body)"
+            />
 
             <BottomSheet v-if="menu" :open="true" :title="menu.title" :save-title="null" :heights="['half', 'full']" @cancel="menu = null">
                 <div class="flex flex-col divide-y divide-secondary-text/15 p-4">
@@ -457,20 +487,20 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
             </BottomSheet>
             <!-- The wrapper names the sheet for tests; the sheet itself goes to <body>. -->
             <div v-if="confirm" data-test="confirm">
-            <BottomSheet
-                :open="true"
-                :title="confirm.title"
-                :save-title="confirm.action"
-                :save-disabled="busy"
-                :cancel-disabled="busy"
-                :dismissible="!busy"
-                :error="error"
-                :heights="['half']"
-                @cancel="confirm = null"
-                @save="confirmed"
-            >
-                <p class="p-4 text-primary-text">{{ confirm.message }}</p>
-            </BottomSheet>
+                <BottomSheet
+                    :open="true"
+                    :title="confirm.title"
+                    :save-title="confirm.action"
+                    :save-disabled="busy"
+                    :cancel-disabled="busy"
+                    :dismissible="!busy"
+                    :error="error"
+                    :heights="['half']"
+                    @cancel="confirm = null"
+                    @save="confirmed"
+                >
+                    <p class="p-4 text-primary-text">{{ confirm.message }}</p>
+                </BottomSheet>
             </div>
 
             <TodayMissedDaySheet v-if="askMissed" :payload="data" @close="closeMissed('day')" />

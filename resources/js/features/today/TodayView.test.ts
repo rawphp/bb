@@ -516,7 +516,7 @@ describe('TodayView', () => {
         await wrapper.get('[aria-label="Schedule menu"]').trigger('click');
         await wrapper.get(`[data-test="item-${action}"]`).trigger('click');
 
-        expect(wrapper.getComponent(component as never).props('payload')).toEqual(day());
+        expect(wrapper.getComponent(component as typeof AddWorkoutSheet).props('payload')).toEqual(day());
     });
 
     it('SCH-034 Copy day opens the copy sheet on this day', async () => {

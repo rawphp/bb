@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import type { TodayShowOutput } from '@/contracts/today_show';
 import ItemCard, { type ItemCardStatus } from '@/design/ItemCard.vue';
 import { toneText } from '@/design/toneText';
+import { useLongPress } from '@/design/useLongPress';
 
 // SCH-003: a workout with its Start button, or Done and the sets completed; SCH-053:
 // Skipped, with no Start. A long press opens its menu (SCH-050, SCH-051). Ported from
@@ -10,6 +11,7 @@ import { toneText } from '@/design/toneText';
 const props = withDefaults(defineProps<{ workout: TodayShowOutput['workouts'][number]; condensed: boolean; pending?: boolean }>(), { pending: false });
 
 const emit = defineEmits<{ start: []; menu: [] }>();
+const press = useLongPress(() => emit('menu'));
 
 const status = computed<ItemCardStatus>(() =>
     props.workout.status_text ? { kind: 'value', text: props.workout.status_text } : { kind: 'button', title: 'Start' },
@@ -17,7 +19,16 @@ const status = computed<ItemCardStatus>(() =>
 </script>
 
 <template>
-    <div data-test="workout-card" @contextmenu.prevent="emit('menu')">
+    <div
+        data-test="workout-card"
+        class="touch-pan-y"
+        @pointerdown="press.pointerDown"
+        @pointermove="press.pointerMove"
+        @pointerup="press.pointerEnd"
+        @pointercancel="press.pointerEnd"
+        @click.capture="press.click"
+        @contextmenu.prevent="emit('menu')"
+    >
         <ItemCard
             :title="condensed ? workout.name : workout.title"
             :time="condensed ? workout.condensed_time_text : workout.time_text"

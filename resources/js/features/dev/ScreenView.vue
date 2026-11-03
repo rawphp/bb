@@ -27,16 +27,23 @@ function fixture(name: string) {
     return fixtures[`/tests/fixtures/screens/${name}.json`];
 }
 
+// Each change of name starts a new load; an older one that answers late is ignored.
+let latest = 0;
+
 watchEffect(async () => {
+    const run = ++latest;
     const load = fixture(props.name);
     const state = props.name.includes('.') ? props.name.slice(props.name.indexOf('.')) : '';
     const second = Object.entries(screenFixtures(screenName.value, featureRoutes, props.view));
     payload.value = undefined;
+    others.value = {};
     missing.value = load === undefined;
     if (!load) return;
     const loaded = await Promise.all(second.map(async ([prop, read]) => [prop, await (fixture(`${read}${state}`) ?? fixture(read))?.()] as const));
+    const main = await load();
+    if (run !== latest) return;
     others.value = Object.fromEntries(loaded);
-    payload.value = await load();
+    payload.value = main;
 });
 </script>
 

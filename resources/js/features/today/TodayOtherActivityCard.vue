@@ -1,16 +1,27 @@
 <script setup lang="ts">
 import type { TodayShowOutput } from '@/contracts/today_show';
 import ItemCard from '@/design/ItemCard.vue';
+import { useLongPress } from '@/design/useLongPress';
 
 // SCH-032: an Other activity at its start time, with Edit and Delete on a long press.
 // Ported from rp-clone's TodayOtherActivityCard.
 defineProps<{ activity: TodayShowOutput['other_activities'][number] }>();
 
 const emit = defineEmits<{ menu: [] }>();
+const press = useLongPress(() => emit('menu'));
 </script>
 
 <template>
-    <div data-test="activity-card" @contextmenu.prevent="emit('menu')">
+    <div
+        data-test="activity-card"
+        class="touch-pan-y"
+        @pointerdown="press.pointerDown"
+        @pointermove="press.pointerMove"
+        @pointerup="press.pointerEnd"
+        @pointercancel="press.pointerEnd"
+        @click.capture="press.click"
+        @contextmenu.prevent="emit('menu')"
+    >
         <ItemCard :title="activity.name" :time="activity.time_text">
             <template #icon>
                 <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">

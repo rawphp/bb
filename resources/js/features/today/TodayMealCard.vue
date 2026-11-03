@@ -5,6 +5,7 @@ import ItemCard, { type ItemCardStatus } from '@/design/ItemCard.vue';
 import StatusPill from '@/design/StatusPill.vue';
 import { toneClasses } from '@/design/tones';
 import { toneIcons } from '@/design/toneIcons';
+import { useLongPress } from '@/design/useLongPress';
 import { useSwipeReveal } from '@/design/useSwipeReveal';
 
 // SCH-002, SCH-008, SCH-009, MEAL-047: a meal with its check-in box. A tap on the card
@@ -28,6 +29,22 @@ const emit = defineEmits<{ toggle: []; open: []; menu: []; edit: []; delete: [] 
 const TRAY = 176;
 const root = ref<HTMLElement | null>(null);
 const swipe = useSwipeReveal(root, () => TRAY);
+const press = useLongPress(() => emit('menu'));
+
+function down(event: PointerEvent): void {
+    swipe.pointerDown(event);
+    press.pointerDown(event);
+}
+
+function move(event: PointerEvent): void {
+    swipe.pointerMove(event);
+    press.pointerMove(event);
+}
+
+function end(event: PointerEvent): void {
+    swipe.pointerUp(event);
+    press.pointerEnd();
+}
 
 const status = computed<ItemCardStatus>(() =>
     props.pendingCheck === null
@@ -76,10 +93,14 @@ function act(name: 'edit' | 'delete'): void {
             :class="swipe.drag.value === null ? 'transition-transform' : ''"
             :style="{ transform: `translateX(${swipe.shift.value}px)` }"
             data-test="meal-card"
-            @pointerdown="swipe.pointerDown"
-            @pointermove="swipe.pointerMove"
-            @pointerup="swipe.pointerUp"
-            @pointercancel="swipe.pointerCancel"
+            @pointerdown="down"
+            @pointermove="move"
+            @pointerup="end"
+            @pointercancel="
+                swipe.pointerCancel();
+                press.pointerEnd();
+            "
+            @click.capture="press.click"
             @click="open"
             @contextmenu.prevent="emit('menu')"
         >

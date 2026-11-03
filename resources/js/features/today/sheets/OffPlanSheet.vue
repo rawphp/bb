@@ -4,6 +4,7 @@ import { now } from '@/app/clock';
 import { ulid } from '@/app/ulid';
 import type { OffPlanLogInput } from '@/contracts/off_plan_log';
 import BottomSheet from '@/design/BottomSheet.vue';
+import { amount } from './amount';
 import AmountRow from './AmountRow.vue';
 import { useSheet, type SheetListeners } from './useSheet';
 
@@ -33,18 +34,6 @@ const carbs = ref('');
 
 const { busy, error, locked, close, save } = useSheet(props);
 
-/**
- * A typed amount as a number of zero or more; an empty field is 0, and anything else is none.
- * A comma is the decimal point too: it is the only one on a comma-decimal region's keypad.
- * Either mark followed by three digits could be a thousands separator ("1,200", "1.200"),
- * so that is none.
- */
-function amount(text: string): number | null {
-    if (/[.,]\d{3}$/.test(text.trim())) return null;
-    const trimmed = text.trim().replace(',', '.');
-    if (trimmed === '') return 0;
-    return /^(\d+\.?\d*|\.\d+)$/.test(trimmed) ? Number(trimmed) : null;
-}
 
 const amounts = computed(() => ({ kcal: amount(kcal.value), protein_g: amount(protein.value), fat_g: amount(fat.value), carbs_g: amount(carbs.value) }));
 const valid = computed(() => Object.values(amounts.value).every((value) => value !== null) && /^\d{2}:\d{2}$/.test(time.value));
