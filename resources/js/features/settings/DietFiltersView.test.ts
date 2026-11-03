@@ -72,6 +72,13 @@ describe('DietFiltersView', () => {
         expect(wrapper.get('[role="alert"]').text()).toContain('No connection');
     });
 
+    it.each(['settings_show.empty', 'settings_show.warning'])('VIEW-001 renders the %s fixture', (name) => {
+        const payload = screenFixture<SettingsShowOutput>(name);
+        const wrapper = render(payload);
+
+        expect(wrapper.findAll('[data-test^="filter-"]').length).toBe(payload.diet_filters.choices.length);
+    });
+
     it('PWA-024 shows a skeleton while it loads', () => {
         readMock.mockReturnValueOnce(new Promise(() => {}));
 

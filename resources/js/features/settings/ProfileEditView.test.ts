@@ -142,6 +142,72 @@ describe('ProfileEditView', () => {
         expect(wrapper.get<HTMLInputElement>('[data-test="height-cm"]').element.value).toBe('20');
     });
 
+    it('OFF-003 follows the refresh of a cached copy until the user edits the form', async () => {
+        let refresh: (data: SettingsShowOutput) => void = () => {};
+        readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {
+            refresh = onUpdate as typeof refresh;
+            return settings;
+        });
+        writeMock.mockResolvedValueOnce({ invalidates: ['settings_show'] });
+        readMock.mockResolvedValueOnce(imperial);
+        const wrapper = render();
+        await flushPromises();
+
+        // The server's copy is newer: another device moved to ft and in and changed the name.
+        refresh(imperial);
+        await flushPromises();
+        expect(wrapper.get<HTMLInputElement>('[data-test="name"]').element.value).toBe('Alex');
+        expect(wrapper.get<HTMLInputElement>('[data-test="height-feet"]').element.value).toBe('5');
+
+        await save(wrapper);
+        expect(sent()).toMatchObject({ name: 'Alex', sex: 'female', height: { unit: 'feetInches', feet: 5, inches: 6 }, body_fat_bucket: 'high' });
+    });
+
+    it('OFF-003 keeps what the user typed when a refresh lands after it', async () => {
+        let refresh: (data: SettingsShowOutput) => void = () => {};
+        readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {
+            refresh = onUpdate as typeof refresh;
+            return settings;
+        });
+        const wrapper = render();
+        await flushPromises();
+
+        await wrapper.get('[data-test="name"]').setValue('Samantha');
+        refresh(imperial);
+        await flushPromises();
+
+        expect(wrapper.get<HTMLInputElement>('[data-test="name"]').element.value).toBe('Samantha');
+        // The height fields stay in the unit the form was filled in.
+        expect(wrapper.get<HTMLInputElement>('[data-test="height-cm"]').element.value).toBe('178');
+    });
+
+    it('SET-004 shows what the server holds after a save', async () => {
+        writeMock.mockResolvedValueOnce({ invalidates: ['settings_show'] });
+        readMock.mockResolvedValueOnce({ ...settings, profile: { ...settings.profile, name: 'Samantha' } });
+        const wrapper = render(settings);
+
+        await wrapper.get('[data-test="name"]').setValue('  Samantha  ');
+        await save(wrapper);
+
+        expect(wrapper.get<HTMLInputElement>('[data-test="name"]').element.value).toBe('Samantha');
+    });
+
+    it.each([
+        ['5,5', 5.5],
+        ['5.5', 5.5],
+        ['5.5.5', null],
+        ['five', null],
+    ])('SET-001 reads inches typed as %s as %s', async (typedInches, inches) => {
+        writeMock.mockResolvedValueOnce({ invalidates: ['settings_show'] });
+        readMock.mockResolvedValueOnce(imperial);
+        const wrapper = render(imperial);
+
+        await wrapper.get('[data-test="height-inches"]').setValue(typedInches);
+        await save(wrapper);
+
+        expect(sent()).toMatchObject({ height: { unit: 'feetInches', feet: 5, inches } });
+    });
+
     it('PWA-024 shows a skeleton while it loads', () => {
         readMock.mockReturnValueOnce(new Promise(() => {}));
         const wrapper = render();

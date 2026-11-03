@@ -140,6 +140,34 @@ describe('SettingsView', () => {
         expect(document.documentElement.dataset.appearance).toBeUndefined();
     });
 
+    it('CAP-012 puts a refused micro plates switch back', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('settings_update', 422, { error: { code: 'validation_failed', message: 'Micro plates could not be changed.' } }));
+        const wrapper = render(settings);
+
+        await wrapper.get('[data-test="micro_plates"]').setValue(true);
+        await flushPromises();
+
+        expect(wrapper.get<HTMLInputElement>('[data-test="micro_plates"]').element.checked).toBe(false);
+        expect(wrapper.get('[role="alert"]').text()).toBe('Micro plates could not be changed.');
+    });
+
+    it('SET-002 paints this device with the appearance the server holds', () => {
+        render({ ...settings, appearance: { ...settings.appearance, value: 'dark' } });
+
+        expect(document.documentElement.dataset.appearance).toBe('dark');
+    });
+
+    it('SET-002 paints the appearance the server took after a change with no final answer', async () => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('settings_update', 0, { reason: 'timeout' }));
+        readMock.mockResolvedValueOnce({ ...settings, appearance: { ...settings.appearance, value: 'light' } });
+        const wrapper = render(settings);
+
+        await wrapper.get('[data-test="appearance"]').setValue('light');
+        await flushPromises();
+
+        expect(document.documentElement.dataset.appearance).toBe('light');
+    });
+
     it('SET-006 links the diet filters with their summary', () => {
         expect(link(render(settings), '/settings/diet-filters')!.text()).toContain('Dairy free');
         expect(link(render(empty), '/settings/diet-filters')!.text()).toContain('None');

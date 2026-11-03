@@ -84,10 +84,11 @@ describe('ScheduleEditView', () => {
 
     it('SET-005 adds a training day at the server\'s default time and length, and removes one', async () => {
         saved();
-        const wrapper = render(settings);
+        const wrapper = render({ ...settings, schedule: { ...settings.schedule, new_training_day_start: '06:15', new_training_day_minutes: 45 } });
 
         await wrapper.get('[data-test="training-2"]').setValue(true);
-        expect(wrapper.get<HTMLInputElement>('[data-test="training-start-2"]').element.value).toBe('17:30');
+        expect(wrapper.get<HTMLInputElement>('[data-test="training-start-2"]').element.value).toBe('06:15');
+        expect(wrapper.text()).toContain('Length: 45 min');
         await wrapper.get('[data-test="training-1"]').setValue(false);
         expect(wrapper.find('[data-test="training-start-1"]').exists()).toBe(false);
         await wrapper.get('[data-test="training-start-2"]').setValue('06:00');
@@ -96,7 +97,7 @@ describe('ScheduleEditView', () => {
 
         const days = sent().training_days as { weekday: number }[];
         expect(days.map((day) => day.weekday)).not.toContain(1);
-        expect(days.find((day) => day.weekday === 2)).toEqual({ weekday: 2, start: '06:00', minutes: 65 });
+        expect(days.find((day) => day.weekday === 2)).toEqual({ weekday: 2, start: '06:00', minutes: 50 });
     });
 
     it('SET-005 adds a busy period from the server\'s template, edits it and removes the old one', async () => {
@@ -133,6 +134,54 @@ describe('ScheduleEditView', () => {
         const plan = sent().step_plan as { weekday: number; max: number }[];
         expect(plan.map((day) => day.weekday)).not.toContain(1);
         expect(plan.find((day) => day.weekday === 2)!.max).toBe(12000);
+    });
+
+    it.each(['8.000', '8,000', '8k', '-5'])('SET-005 sends a step count typed as %s as no number, for the server to refuse', async (typed) => {
+        writeMock.mockRejectedValueOnce(new CapabilityError('schedule_defaults_update', 422, { error: { code: 'validation_failed', message: 'Enter whole steps.' } }));
+        const wrapper = render(settings);
+
+        await wrapper.get('[data-test="steps-min-1"]').setValue(typed);
+        await save(wrapper);
+
+        const call = writeMock.mock.calls.find(([name]) => name === 'schedule_defaults_update')!;
+        expect((call[1].step_plan as { weekday: number; min: unknown }[])[0]).toEqual({ weekday: 1, min: null, max: 9000 });
+        expect(wrapper.get('[role="alert"]').text()).toBe('Enter whole steps.');
+    });
+
+    it('OFF-003 follows the refresh of a cached copy until the user edits the form', async () => {
+        let refresh: (data: SettingsShowOutput) => void = () => {};
+        readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {
+            refresh = onUpdate as typeof refresh;
+            return settings;
+        });
+        writeMock.mockResolvedValueOnce({ invalidates: ['settings_show'] });
+        readMock.mockResolvedValueOnce(empty);
+        const wrapper = render();
+        await flushPromises();
+
+        refresh({ ...empty, schedule: { ...empty.schedule, meal_count: 5 } });
+        await flushPromises();
+        expect(wrapper.text()).toContain('Meals a day: 5');
+
+        await save(wrapper);
+        expect(sent()).toMatchObject({ meal_count: 5, training_days: [], busy_periods: [], review_weekday: null });
+    });
+
+    it('OFF-003 keeps what the user changed when a refresh lands after it', async () => {
+        let refresh: (data: SettingsShowOutput) => void = () => {};
+        readMock.mockImplementationOnce(async (_name, _input, onUpdate) => {
+            refresh = onUpdate as typeof refresh;
+            return settings;
+        });
+        const wrapper = render();
+        await flushPromises();
+
+        await wrapper.get('[aria-label="More: Meals a day"]').trigger('click');
+        refresh(empty);
+        await flushPromises();
+
+        expect(wrapper.text()).toContain('Meals a day: 5');
+        expect(wrapper.find('[data-test="busy-label-0"]').exists()).toBe(true);
     });
 
     it('SET-005 holds Save while a day has only one end of its step range', async () => {

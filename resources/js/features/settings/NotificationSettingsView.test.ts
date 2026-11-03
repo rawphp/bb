@@ -118,6 +118,29 @@ describe('NotificationSettingsView', () => {
         expect(wrapper.get('[data-test="push-error"]').text()).toContain('could not be set up');
     });
 
+    it('NOTIF-007 holds every switch while one is being turned on, so no tap is lost', async () => {
+        let allow: (state: PushState) => void = () => {};
+        enable.mockReturnValueOnce(new Promise((resolve) => (allow = resolve)));
+        writeMock.mockResolvedValueOnce({ invalidates: ['settings_show'] });
+        readMock.mockResolvedValueOnce(withMeals(true));
+        const wrapper = render(settings);
+
+        await wrapper.get('[data-test="notify-meal"]').setValue(true);
+        expect(wrapper.get('[data-test="notify-workout"]').attributes('disabled')).toBeDefined();
+        allow('on');
+        await flushPromises();
+
+        expect(sent()).toEqual({ kind: 'meal', on: true });
+        expect(wrapper.get('[data-test="notify-workout"]').attributes('disabled')).toBeUndefined();
+    });
+
+    it.each(['settings_show.empty', 'settings_show.warning'])('VIEW-001 renders the %s fixture', (name) => {
+        const payload = screenFixture<SettingsShowOutput>(name);
+        const wrapper = render(payload);
+
+        expect(wrapper.findAll('[role="switch"]').length).toBe(payload.notifications.length);
+    });
+
     it('CAP-012 puts a refused switch back and says why', async () => {
         enable.mockResolvedValueOnce('on');
         writeMock.mockRejectedValueOnce(new CapabilityError('notification_prefs_set', 0, { reason: 'network' }));
