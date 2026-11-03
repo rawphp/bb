@@ -6,8 +6,8 @@ use App\Support\Env;
 | Per-user agent caps (AGT-005). Empty means no cap, the self-hosted default;
 | anything but a whole number stops the app from booting.
 | A day runs in the user's time zone (SET-012); a month runs in the app timezone.
-| A user can stretch the daily cap by changing time zone; the monthly token cap
-| is what bounds the bill.
+| A user can stretch the daily cap by changing time zone; set the monthly token
+| cap to bound the bill.
 */
 
 $cap = static function (string $key): ?int {
