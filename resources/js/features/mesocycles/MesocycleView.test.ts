@@ -73,18 +73,39 @@ describe('MesocycleView', () => {
         expect(wrapper.findAll('[data-test="day"]').at(-1)!.text()).toContain('Not planned');
     });
 
-    it('MESO-042 changes the length with + and −, sending a valid mesocycle_length_set', async () => {
+    it('MESO-042 changes the length with + and −, sending a valid mesocycle_length_set with the length shown', async () => {
+        // The read after the + answers 7 weeks, so the − that follows expects 7.
+        readMock.mockResolvedValue({ ...meso, saved: { ...meso.saved!, weeks_count: 7 } });
         const wrapper = show();
 
         await wrapper.find('[data-test="lengthen"]').trigger('click');
         await flushPromises();
-        expect(lastWrite()).toEqual(['mesocycle_length_set', { mesocycle_id: meso.id, weeks: 7 }]);
+        expect(lastWrite()).toEqual(['mesocycle_length_set', { mesocycle_id: meso.id, weeks: 7, expected_weeks: 6 }]);
         expect(inputViolations(...lastWrite())).toEqual([]);
 
         await wrapper.find('[data-test="shorten"]').trigger('click');
         await flushPromises();
-        expect(lastWrite()).toEqual(['mesocycle_length_set', { mesocycle_id: meso.id, weeks: 5 }]);
+        expect(lastWrite()).toEqual(['mesocycle_length_set', { mesocycle_id: meso.id, weeks: 6, expected_weeks: 7 }]);
+        expect(inputViolations(...lastWrite())).toEqual([]);
         expect(readMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id }, expect.any(Function), expect.any(Function));
+    });
+
+    it('MESO-042 reads the server\'s length again when a step is refused, so the next step expects it', async () => {
+        const moved = "This mesocycle's length changed to 7 weeks since the screen was loaded, so nothing was changed.";
+        readFreshMock.mockResolvedValue({ ...meso, saved: { ...meso.saved!, weeks_count: 7 } });
+        writeMock.mockRejectedValueOnce(new CapabilityError('mesocycle_length_set', 422, { error: { message: moved } }));
+        const wrapper = show();
+
+        await wrapper.find('[data-test="shorten"]').trigger('click');
+        await flushPromises();
+        expect(lastWrite()).toEqual(['mesocycle_length_set', { mesocycle_id: meso.id, weeks: 5, expected_weeks: 6 }]);
+        expect(wrapper.find('[data-test="error"]').text()).toContain(moved);
+        expect(readFreshMock).toHaveBeenCalledWith('mesocycle_show', { mesocycle_id: meso.id });
+        expect(wrapper.find('[aria-label="7 weeks"]').exists()).toBe(true);
+
+        await wrapper.find('[data-test="shorten"]').trigger('click');
+        await flushPromises();
+        expect(lastWrite()).toEqual(['mesocycle_length_set', { mesocycle_id: meso.id, weeks: 6, expected_weeks: 7 }]);
     });
 
     it('CAP-010 locks the stepper and the menu while a write is in flight, so a second tap sends nothing', async () => {
