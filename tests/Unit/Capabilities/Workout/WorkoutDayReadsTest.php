@@ -24,6 +24,7 @@ it('CAP-011 a day change reads the mesocycle, plan and profile once, whatever th
     $keys = WorkoutDayReads::keys($user, $session, 1);
     $log = DB::getQueryLog();
     DB::disableQueryLog();
+    DB::flushQueryLog();
 
     $selects = fn (string $table) => count(array_filter(
         $log,
