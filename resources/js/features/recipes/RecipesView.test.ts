@@ -161,7 +161,7 @@ describe('RecipesView', () => {
         expect(items.map((item) => item.text())).toEqual(['New recipe', 'Import from URL', 'Generate with AI']);
 
         for (const [index, path] of ['/nutrition/recipes/new', '/nutrition/recipes/import', '/nutrition/recipes/generate'].entries()) {
-            await view.get('button[aria-label="Add a recipe"]').trigger('click');
+            if (!view.find('[role="menu"]').exists()) await view.get('button[aria-label="Add a recipe"]').trigger('click');
             await view.findAll('[role="menuitem"]')[index]!.trigger('click');
             expect(push).toHaveBeenLastCalledWith(path);
         }

@@ -239,7 +239,7 @@ describe('RecipeEditorView', () => {
         await saveButton(view).trigger('click');
         await flushPromises();
 
-        const [, input] = lastWrite() as [string, RecipeSaveInput];
+        const input = lastWrite()[1] as unknown as RecipeSaveInput;
         expect(input.ingredients.map((i) => i.food_id)).toEqual(['01JBX5F0000000000000000002']);
         expect(input.steps).toEqual(['Grill the chicken and slice it.', 'Build the bowls.', 'Serve.']);
     });
@@ -274,7 +274,8 @@ describe('RecipeEditorView', () => {
             },
         });
 
-        expect(view.get('h1').text()).toBe('Chicken rice bowl');
+        expect(view.get('h1').text()).toBe('New recipe');
+        expect(field(view, 'Name').element.value).toBe('Chicken rice bowl');
         expect(view.find('[data-test="per-serving"]').exists()).toBe(false);
         expect(field(view, 'Chicken breast grams').element.value).toBe('300');
         expect(saveButton(view).attributes('disabled')).toBeDefined();
