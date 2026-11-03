@@ -10,7 +10,8 @@ type Feedback = WorkoutShowOutput['feedback'][number];
  * after is logged or skipped. The server's is_due stands for the sets it has seen. Offline, the sets the user logged,
  * unlogged or skipped since wait in the outbox: while one of that exercise's sets has a waiting change, the newest
  * waiting input of each set counts in place of the read. The server checks again when the answer replays, after those
- * sets (workout_feedback_answer).
+ * sets (workout_feedback_answer). This mirrors App\Domain\Progression\FeedbackSheets, the one rule the client keeps
+ * (docs/architecture.md, Client): a change to when a sheet falls due changes both.
  */
 export function isFeedbackDue(workout: WorkoutShowOutput, entry: Feedback): boolean {
     const sets = workout.exercises.find((exercise) => exercise.id === entry.due_after_exercise_id)?.sets ?? [];

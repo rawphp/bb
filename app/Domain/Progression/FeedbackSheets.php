@@ -7,7 +7,8 @@ use DateTimeImmutable;
 /**
  * Which Feedback sheets a session asks and when each falls due (FB-001, FB-002, FB-007, FB-008, rp-clone
  * WorkoutModel+Feedback), and when one is fully answered (WO-040). workout_show sends them ahead so the session can
- * be answered offline (OFF-020).
+ * be answered offline (OFF-020); resources/js/features/workout/feedbackDue.ts mirrors when one falls due from the sets
+ * waiting to sync (docs/architecture.md, Client).
  */
 final class FeedbackSheets
 {
