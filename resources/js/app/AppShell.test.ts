@@ -5,8 +5,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, nextTick } from 'vue';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
 import AppShell from './AppShell.vue';
-import { CapabilityError, writeNow } from './call';
-import { onReplayed } from './outbox';
 import { EDGE_ZONE_PX, SETTLE_MS, startsSwipeBack, swipeGoesBack, swipeIntent } from './edgeSwipe';
 import { trackHistory } from './history';
 import { SHEET_HOST, TOAST_HOST } from './hosts';
@@ -14,10 +12,11 @@ import { KEYPAD } from './keypad';
 import { attachNavigation, type Navigation } from './navigation';
 import { onScreenReturn } from './screenTop';
 import { TABS } from './tabs';
+import { syncTimeZone } from './timeZone';
 
-// SET-012: the shell sends the device's time zone on mount; every other test sees it succeed.
-vi.mock('./call', async (original) => ({ ...(await original<typeof import('./call')>()), writeNow: vi.fn(() => Promise.resolve({ invalidates: [] })) }));
-const writeNowMock = vi.mocked(writeNow);
+// SET-012: the shell syncs the device's time zone on mount (timeZone.test.ts has the rules).
+vi.mock('./timeZone', () => ({ syncTimeZone: vi.fn(() => Promise.resolve()) }));
+const syncTimeZoneMock = vi.mocked(syncTimeZone);
 
 const css = readFileSync(join(import.meta.dirname, 'shell.css'), 'utf8');
 const shellHtml = readFileSync(join(import.meta.dirname, '../../views/app.blade.php'), 'utf8');
@@ -366,48 +365,15 @@ describe('AppShell time zone', () => {
     afterEach(() => {
         wrapper?.unmount();
         wrapper = undefined;
-        writeNowMock.mockClear();
+        syncTimeZoneMock.mockClear();
     });
 
-    it('SET-012 sends the device time zone once on mount', async () => {
+    it('SET-012 syncs the device time zone once on mount', async () => {
         const { router, nav } = await mountShell();
         await router.push('/train');
         await nav.idle();
         await flushPromises();
 
-        expect(writeNowMock).toHaveBeenCalledTimes(1);
-        expect(writeNowMock).toHaveBeenCalledWith('time_zone_set', { time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone });
-    });
-
-    it('SET-012 tells mounted screens about the reads a changed zone dropped, and nothing when it is unchanged', async () => {
-        const heard: (readonly string[])[] = [];
-        const stop = onReplayed((keys) => heard.push(keys));
-        writeNowMock.mockResolvedValueOnce({ invalidates: ['today_show{}', 'week_show{}'] });
-        await mountShell();
-        await flushPromises();
-        wrapper?.unmount();
-        wrapper = undefined;
-
-        writeNowMock.mockResolvedValueOnce({ invalidates: [] });
-        await mountShell();
-        await flushPromises();
-        stop();
-
-        expect(heard).toEqual([['today_show{}', 'week_show{}']]);
-    });
-
-    it('SET-012 shows nothing when the time zone write is refused', async () => {
-        const unhandled = vi.fn();
-        process.on('unhandledRejection', unhandled);
-        writeNowMock.mockRejectedValueOnce(new CapabilityError('time_zone_set', 422, { error: { code: 'validation_failed' } }));
-
-        const { wrapper } = await mountShell();
-        await flushPromises();
-
-        expect(writeNowMock).toHaveBeenCalledTimes(1);
-        expect(document.querySelector(TOAST_HOST)?.textContent).toBe('');
-        expect(wrapper.find('[role="alert"]').exists()).toBe(false);
-        process.off('unhandledRejection', unhandled);
-        expect(unhandled).not.toHaveBeenCalled();
+        expect(syncTimeZoneMock).toHaveBeenCalledTimes(1);
     });
 });
