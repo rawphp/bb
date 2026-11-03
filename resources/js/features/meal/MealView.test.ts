@@ -43,7 +43,7 @@ function links(view: VueWrapper): unknown[] {
 }
 
 function row(view: VueWrapper, name: string): VueWrapper {
-    return [...view.findAllComponents(MealFoodRowView), ...view.findAllComponents(MealRecipeRowView)].find((r) => r.get('h3').text() === name)! as VueWrapper;
+    return [...view.findAllComponents(MealFoodRowView), ...view.findAllComponents(MealRecipeRowView)].find((r) => r.get('h2').text() === name)! as VueWrapper;
 }
 
 async function menu(view: VueWrapper, item: string): Promise<void> {
@@ -107,6 +107,18 @@ describe('MealView', () => {
             ]);
             expect(view.findAllComponents(MealRecipeRowView).map((r) => r.text())).toEqual([expect.stringContaining('Overnight oats')]);
             expect(readMock).not.toHaveBeenCalled();
+        });
+
+        it('PWA-051 headings step down one level at a time: the meal is the h1 and each food an h2', () => {
+            const view = show({ payload: content });
+
+            expect(view.findAll('h1, h2, h3, h4, h5, h6').map((heading) => `${heading.element.tagName} ${heading.text()}`)).toEqual([
+                'H1 Dinner',
+                'H2 Chicken breast',
+                'H2 White rice',
+                'H2 Olive oil',
+                'H2 Overnight oats',
+            ]);
         });
 
         it("MEAL-001 a food shows the server's amount and macros, and Cooked weight when it is weighed cooked", () => {

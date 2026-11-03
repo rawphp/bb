@@ -20,6 +20,7 @@ use LogicException;
 
 /**
  * @property bool $coach_on the user's own Coach switch (AGT-020)
+ * @property string $time_zone the IANA zone the user's days are counted in (SET-012), UTC until their device sends one
  */
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
@@ -38,6 +39,7 @@ class User extends Authenticatable
     /** The columns' defaults, so a user made in this request reads them before a refresh. */
     protected $attributes = [
         'coach_on' => true,
+        'time_zone' => 'UTC',
     ];
 
     /**

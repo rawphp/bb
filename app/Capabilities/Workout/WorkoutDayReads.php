@@ -8,7 +8,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Mesocycles\TrainSnapshot;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use Illuminate\Support\Collection;
 
 /**
@@ -33,10 +33,11 @@ final class WorkoutDayReads
         $mesocycle = Mesocycle::query()->where('user_id', $user->id)->findOrFail($session->mesocycle_id);
         // One calendar for every session's keys; domain() reads only the mesocycle, so slot names are not needed.
         $calendar = TrainSnapshot::calendarOnly(
-            TrainSnapshot::day(CarbonImmutable::now()),
+            UserDay::today($user),
             new Collection([$mesocycle]),
             Plan::query()->where('user_id', $user->id)->first(),
             Profile::query()->where('user_id', $user->id)->first(),
+            UserDay::zone($user),
         );
         $keys = WorkoutReads::keysIn($calendar, $mesocycle, $session, $planWeek);
         $rows = WorkoutSession::query()->where('user_id', $user->id)->where('mesocycle_id', $mesocycle->id)->get();

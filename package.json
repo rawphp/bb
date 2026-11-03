@@ -1,4 +1,5 @@
 {
+  "name": "bodybuilder",
   "private": true,
   "type": "module",
   "scripts": {
@@ -18,6 +19,7 @@
     "zxing-wasm": "^3.1.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.6",
@@ -29,6 +31,7 @@
     "jsdom": "^30.1.3",
     "json-schema-to-typescript": "^16.0.0",
     "laravel-vite-plugin": "^3.2.0",
+    "lighthouse": "^13.6.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1",

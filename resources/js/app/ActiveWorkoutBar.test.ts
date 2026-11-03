@@ -32,12 +32,24 @@ describe('ActiveWorkoutBar', () => {
 
         const bar = wrapper.get('[data-test="active-workout"]');
         expect(bar.text()).toContain('Upper A · 4 of 6 exercises');
-        expect(bar.attributes('aria-label')).toBe('Workout in progress, Upper A · 4 of 6 exercises');
+        expect(bar.get('.sr-only').text()).toBe('Workout in progress,');
         await bar.trigger('click');
         await flushPromises();
 
         expect(router.currentRoute.value.path).toBe(PATH);
         expect(wrapper.find('[data-test="active-workout"]').exists()).toBe(false);
+    });
+
+    it('PWA-051 the bar is named by the words it shows, after a spoken "Workout in progress", waiting to sync or not', async () => {
+        showWorkout('w1', PATH, 'Upper A · 4 of 6 exercises');
+        const bar = (await show()).get('[data-test="active-workout"]');
+
+        expect(bar.attributes('aria-label')).toBeUndefined();
+        expect(bar.element.textContent!.replace(/\s+/g, ' ').trim()).toBe('Workout in progress, Upper A · 4 of 6 exercises Open');
+
+        vi.mocked(isPending).mockReturnValue(true);
+        const waiting = (await show()).get('[data-test="active-workout"]');
+        expect(waiting.element.textContent!.replace(/\s+/g, ' ').trim()).toBe('Workout in progress, Upper A · 4 of 6 exercises Waiting to sync Open');
     });
 
     it('NAV-004 shows nothing with no workout under way, or once it is finished', async () => {

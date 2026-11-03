@@ -35,7 +35,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
-use Carbon\CarbonImmutable;
+use App\Support\UserDay;
 use Closure;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -89,6 +89,7 @@ final class TrainSnapshot
         public readonly Collection $planWeeks,
         private readonly Collection|Closure $dayTargets,
         private readonly Collection|Closure $exercises,
+        public readonly DateTimeZone $zone = new DateTimeZone('UTC'),
     ) {}
 
     /**
@@ -102,7 +103,7 @@ final class TrainSnapshot
     public static function load(User $user, ?string $mesocycleId = null, bool $locked = false): self
     {
         $base = new self(
-            today: self::day(CarbonImmutable::now()),
+            today: UserDay::today($user),
             plan: self::read(Plan::query()->where('user_id', $user->id), $locked)->first(),
             profile: self::read(Profile::query()->where('user_id', $user->id), $locked)->first(),
             mesocycles: self::read(Mesocycle::query()->where('user_id', $user->id), $locked)->get(),
@@ -113,6 +114,7 @@ final class TrainSnapshot
             planWeeks: self::read(PlanWeek::query()->where('user_id', $user->id), $locked)->get(),
             dayTargets: new Collection,
             exercises: new Collection,
+            zone: UserDay::zone($user),
         );
 
         $focus = $mesocycleId === null ? null : $base->findMesocycle($mesocycleId);
@@ -134,18 +136,31 @@ final class TrainSnapshot
             exercises: fn (?array $ids): Collection => Exercise::query()->visibleTo($user)
                 ->when($ids !== null, fn ($query) => $query->whereIn('id', $ids))
                 ->orderBy('name')->get(),
+            zone: $base->zone,
         );
+    }
+
+    /**
+     * SET-012: when a session started, as the user's wall-clock time labelled UTC, like every plan time; null before
+     * it started. The stored start is a real instant, so it is read in the user's zone before it names a day.
+     */
+    public function startedAt(?WorkoutSession $session): ?DateTimeImmutable
+    {
+        return $session?->actual_start_at === null ? null : UserDay::clockIn($this->zone, $session->actual_start_at);
     }
 
     /**
      * The light snapshot of a calendar only: today and the mesocycles, with the plan and the profile when the caller
      * read them, and nothing else. It answers {@see current()}, {@see calendar()}, {@see domain()} (every slot named
-     * "Exercise not chosen yet") and {@see trainingWeekdays()}. The caller gives today, so this reads no clock.
+     * "Exercise not chosen yet") and {@see trainingWeekdays()}. The caller gives today, so this reads no clock, and the
+     * user's zone, which {@see startedAt()} reads a session's start in (SET-012).
      *
      * @param  Collection<int, Mesocycle>  $mesocycles
      */
-    public static function calendarOnly(DateTimeImmutable $today, Collection $mesocycles, ?Plan $plan = null, ?Profile $profile = null): self
-    {
+    public static function calendarOnly(
+        DateTimeImmutable $today, Collection $mesocycles, ?Plan $plan = null, ?Profile $profile = null,
+        DateTimeZone $zone = new DateTimeZone('UTC'),
+    ): self {
         return new self(
             today: $today,
             plan: $plan,
@@ -158,6 +173,7 @@ final class TrainSnapshot
             planWeeks: new Collection,
             dayTargets: new Collection,
             exercises: new Collection,
+            zone: $zone,
         );
     }
 

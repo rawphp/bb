@@ -11,8 +11,8 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutSession;
 use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\UserDay;
 use App\Support\Workout\WorkoutSnapshot;
-use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
@@ -49,10 +49,11 @@ final class WorkoutReads
         }
 
         return self::keysIn(TrainSnapshot::calendarOnly(
-            TrainSnapshot::day(CarbonImmutable::now()),
+            UserDay::today($user),
             new Collection([$mesocycle]),
             Plan::query()->where('user_id', $user->id)->first(),
             Profile::query()->where('user_id', $user->id)->first(),
+            UserDay::zone($user),
         ), $mesocycle, $session, $planWeek);
     }
 
@@ -68,7 +69,8 @@ final class WorkoutReads
         $days = array_filter([
             WorkoutSnapshot::dateOf($calendar, $mesocycle, $session->week, $session->day),
             self::dayOf($session->planned_start_at),
-            self::dayOf($session->actual_start_at),
+            // SET-012: the start is a real instant, so its day is the user's local one.
+            self::dayOf($calendar->startedAt($session)),
         ]);
         $weekDates = [];
         foreach ($days as $day) {
@@ -79,7 +81,7 @@ final class WorkoutReads
         }
 
         $weekDates = array_values(array_unique($weekDates));
-        $today = TrainSnapshot::day(CarbonImmutable::now())->format('Y-m-d');
+        $today = $calendar->today->format('Y-m-d');
 
         return [
             self::workout($session),

@@ -8,7 +8,7 @@ use App\Domain\Weight\TrendWeight;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\WeighIn as WeighInRow;
-use DateTimeZone;
+use App\Support\UserDay;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -37,7 +37,7 @@ final class TodayWeight
         if ($summary === null || (int) $summary->n === 0) {
             return null;
         }
-        $key = 'today-weight:'.$user->id.':'.sha1(implode('|', [$summary->n, $summary->changed, $summary->total, $summary->moments]));
+        $key = 'today-weight:'.$user->id.':'.sha1(implode('|', [$summary->n, $summary->changed, $summary->total, $summary->moments, $user->time_zone]));
 
         /** @var float|null $trendKg */
         $trendKg = Cache::remember($key, self::KEEP_SECONDS, fn (): ?float => self::historyTrendKg($user));
@@ -51,6 +51,6 @@ final class TodayWeight
             ->map(fn (WeighInRow $row) => new WeighIn((string) $row->id, DayPlans::instant($row->weighed_at), (float) $row->weight_kg))
             ->values()->all();
 
-        return (new TrendWeight($weighIns, new DateTimeZone('UTC')))->currentKg();
+        return (new TrendWeight($weighIns, UserDay::zone($user)))->currentKg();
     }
 }

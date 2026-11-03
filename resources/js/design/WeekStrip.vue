@@ -127,7 +127,10 @@ function endSwipe(event: MouseEvent): void {
                 class="flex min-h-tap min-w-0 flex-1 flex-col items-center gap-1 disabled:opacity-60"
                 @click="readonly || emit('select', day.date)"
             >
+                <!-- The spaces keep the shown words apart in the text a voice command and Lighthouse
+                     read, so they match the spoken label (PWA-051). The flex layout ignores them. -->
                 <span class="text-xs font-semibold text-secondary-text">{{ day.letter }}</span>
+                {{ ' ' }}
                 <span
                     data-date
                     class="flex size-8 items-center justify-center rounded-full text-base font-semibold"
@@ -141,6 +144,7 @@ function endSwipe(event: MouseEvent): void {
                 >
                     {{ day.number }}
                 </span>
+                {{ ' ' }}
                 <span data-calories class="text-xs tabular-nums text-secondary-text" :class="{ 'opacity-60': pending }">
                     {{ day.calories_text }}
                 </span>

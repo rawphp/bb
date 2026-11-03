@@ -40,7 +40,7 @@ final class SkipWorkout
             }
 
             // The day Today shows it on: where it started, else where it was moved, else where Today places it.
-            $at = $row->actual_start_at ?? $row?->planned_start_at;
+            $at = $snapshot->train->startedAt($row) ?? $row?->planned_start_at;
             $date = $at !== null ? DayPlans::day($at) : self::shownOn($user, $snapshot);
             $retarget = $date === null ? null : self::retarget($user, $date->format('Y-m-d'), $snapshot);
 
