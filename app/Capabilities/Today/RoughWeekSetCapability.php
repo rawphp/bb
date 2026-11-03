@@ -19,7 +19,7 @@ final class RoughWeekSetCapability implements HostCapability
     {
         // SCH-063: the week strip shows the flag, and WorkoutSnapshot reads it to hold back the next occurrence.
         return HostDefinition::write('rough_week_set', affects: ['today_show', 'week_show'], reversible: true)
-            ->description('Mark the plan week in progress as a rough week, or unmark it. Only this plan week\'s start is accepted (as the week strip shows it, when the plan began mid-week), and a deload or an away week cannot be marked. It records the flag and shows it on the week strip. Training this week runs as planned. While the week is marked, its sessions hold back progression at their next occurrence: no added sets and no weekly rise in weight or reps. Set removals, recovery adjustments and a deload still apply.')
+            ->description('Mark the plan week in progress as a rough week, or unmark it. Only this plan week\'s start is accepted (as the week strip shows it, when the plan began mid-week), and a deload or an away week cannot be marked. It records the flag and shows it on the week strip. Training this week runs as planned. A session finished or re-answered while the week is marked adds no sets at its next occurrence; set removals still apply. While the week stays marked, next week\'s weights and reps do not rise over this week\'s logged sets, though recovery adjustments and a deload still apply.')
             ->cli('week', 'rough-set')
             ->input(RoughWeekSetInput::class)
             ->run(function (RoughWeekSetInput $input, CapabilityContext $context): WriteResult {

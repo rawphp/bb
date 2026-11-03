@@ -12,10 +12,10 @@ use DomainException;
 use Illuminate\Support\Facades\DB;
 
 /**
- * SCH-063: mark the plan week in progress as a rough week, or unmark it. The flag is stored and checked here, and
- * WorkoutSnapshot reads it to hold back progression from the week's sessions. The week is named by its plan start or
- * by the start the week strip shows; the row is stored at the plan start. A deload or an away week cannot be marked;
- * unmarking is always allowed.
+ * SCH-063: mark the plan week in progress as a rough week, or unmark it. The flag is stored and checked here.
+ * WorkoutSnapshot reads it: a session finished or re-answered while it is set saves no added sets, and next week's
+ * loads do not rise while it stays set. The week is named by its plan start or by the start the week strip shows; the
+ * row is stored at the plan start. A deload or an away week cannot be marked; unmarking is always allowed.
  */
 final class SetRoughWeek
 {
