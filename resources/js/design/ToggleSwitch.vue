@@ -1,20 +1,21 @@
 <script setup lang="ts">
 // A labelled on/off switch row, as a SwiftUI Toggle in a List. The caller's classes go on
 // the row, so it keeps its own padding and background; every other attribute and listener
-// goes on the checkbox itself. A screen that must show the server's answer after a refused
-// write sets the box back from its own change listener, as an uncontrolled input allows.
+// goes on the checkbox itself. There is no local copy of the model: the box is patched
+// only when the caller's value changes, so a screen that shows the server's answer after a
+// refused write can set the box back from its own change listener and it stays there.
 defineOptions({ inheritAttrs: false });
-withDefaults(defineProps<{ label: string; disabled?: boolean; busy?: boolean }>(), { disabled: false, busy: false });
+withDefaults(defineProps<{ label: string; modelValue: boolean; disabled?: boolean; busy?: boolean }>(), { disabled: false, busy: false });
 
-const on = defineModel<boolean>({ required: true });
+const emit = defineEmits<{ 'update:modelValue': [on: boolean] }>();
 </script>
 
 <template>
     <label class="flex min-h-tap items-center justify-between gap-3" :class="$attrs.class">
         <span>{{ label }}</span>
         <input
-            :checked="on"
-            @change="on = ($event.target as HTMLInputElement).checked"
+            :checked="modelValue"
+            @change="emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
             v-bind="{ ...$attrs, class: undefined }"
             type="checkbox"
             role="switch"

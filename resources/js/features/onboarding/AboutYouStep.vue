@@ -58,7 +58,7 @@ function typedWeight(value: number | null): void {
     if (value !== null) emit('answer', { weight: { unit: props.about.weight.unit, value } });
 }
 
-type Option = { value: string; title: string; is_enabled: boolean; is_selected: boolean };
+type Option = AboutYou['sex_options'][number];
 
 // The server's options as SegmentedPicker takes them, and the one it holds as chosen.
 function segments(options: Option[]): { value: string; label: string; disabled: boolean }[] {
