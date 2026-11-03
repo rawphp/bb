@@ -118,7 +118,7 @@ final class ReviewChoices
         return $kcal > 0 ? (float) $kcal : null;
     }
 
-    /** REV-011: the answer to "Make this your deload week too?" that applies; null when nothing is asked. */
+    /** REV-011: the answer to "Make this your deload week too?" that applies, the default when unanswered; null when nothing is asked. */
     public function deloadAnswer(): ?bool
     {
         $deload = $this->analysis->deload;
@@ -126,7 +126,7 @@ final class ReviewChoices
             return null;
         }
 
-        return $this->answers->deloadToo ?? ($this->selected() === 'drop_fatigue' ? $deload->defaultYes : null);
+        return $this->answers->deloadToo ?? $deload->defaultYes;
     }
 
     /** REV-011: the mesocycle shortened so its deload lands on next week, when Drop fatigue is chosen with it. */
