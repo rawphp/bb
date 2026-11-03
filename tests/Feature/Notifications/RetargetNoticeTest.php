@@ -131,3 +131,19 @@ it('NOTIF-006 a notice that fails is reported and never fails the re-target it f
     Exceptions::assertReported(fn (RuntimeException $e) => $e->getMessage() === 'push store down');
     expect(DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-23')->sole()->meals[0]['kcal'])->toEqual(900);
 });
+
+it('SET-012 the re-target notice is stamped with the user\'s clock, as every reminder is', function (string $zone, string $fireAt) {
+    $user = retargetUser();
+    $user->forceFill(['time_zone' => $zone])->save();
+    $row = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-09-23')->sole();
+    $before = $row->meals;
+    $meals = $before;
+    $meals[0]['kcal'] += 120;
+    $row->meals = $meals;
+
+    // 10:00 UTC is 20:00 in Brisbane.
+    expect(app(NotifyRetarget::class)->notice($row, $before)?->fireAt->format('Y-m-d H:i'))->toBe($fireAt);
+})->with([
+    'Australia/Brisbane' => ['Australia/Brisbane', '2026-09-23 20:00'],
+    'UTC' => ['UTC', '2026-09-23 10:00'],
+]);
