@@ -22,8 +22,6 @@ function row(change: (payload: WorkoutShowOutput) => void = () => {}, props: Rec
             exercise,
             unit: payload.weight_unit,
             editable: true,
-            rirInfo: payload.rir_info,
-            setTypeChoices: payload.set_type_choices,
             ...props,
         },
         global: { stubs: { teleport: true, RouterLink: true } },
@@ -54,12 +52,13 @@ describe('WorkoutSetRow', () => {
         expect(wrapper.get('[data-test="log"]').attributes('aria-checked')).toBe('false');
     });
 
-    it('UI-020 the set menu, at the left of the row, opens to the right so it stays on screen', async () => {
+    it('WO-020 the menu button asks the screen to open this set\'s menu sheet, and is off in a read-only session', async () => {
         const wrapper = row();
 
         await wrapper.get('[data-test="menu"]').trigger('click');
 
-        expect(wrapper.get('[role="menu"]').classes()).toContain('left-0');
+        expect(wrapper.emitted('open')).toEqual([[{ name: 'set-menu', setId: '01JB8W3Q000000000000000100' }]]);
+        expect(row((payload) => void payload, { editable: false }).get('[data-test="menu"]').attributes('disabled')).toBeDefined();
     });
 
     it('UI-020 weight opens the decimal pad and reps the number pad', () => {
@@ -259,11 +258,14 @@ describe('WorkoutSetRow', () => {
         expect(row().find('[data-test="pending"]').exists()).toBe(false);
     });
 
-    it('WO-007 the info icon explains the target and this week\'s RIR', () => {
+    it('WO-007 the info icon asks the screen to open the RIR info sheet, which explains the target and this week\'s RIR', async () => {
         const wrapper = row();
 
         const info = wrapper.get('[data-test="rir-info"]');
-        expect(info.attributes('aria-description')).toBe('Reps in reserve');
+        expect(info.attributes('aria-label')).toBe('What RIR means');
+        await info.trigger('click');
+
+        expect(wrapper.emitted('open')).toEqual([[{ name: 'rir' }]]);
     });
 
     it('WO-025 a logged set shows as logged', () => {
