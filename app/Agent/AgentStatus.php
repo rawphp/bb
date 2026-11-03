@@ -3,6 +3,8 @@
 namespace App\Agent;
 
 use App\Models\ClearedCoachTurn;
+use App\Models\User;
+use App\Support\UserDay;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
@@ -16,6 +18,7 @@ use Rawphp\CapabilitiesAi\Models\Turn;
  * caps a user has used. Every turn counts towards the day; the tokens of every
  * LLM round count towards the month, from `turns.tokens` (MeteredTurnClaim). The turns
  * of a conversation the user cleared still count, from ClearedCoachTurn (AGT-020).
+ * The day is the user's local day (SET-012); the month is the app's.
  */
 final class AgentStatus
 {
@@ -42,18 +45,24 @@ final class AgentStatus
             || $this->config->get('agent.tokens_per_month') !== null;
     }
 
-    public function allowance(int|string $userId): Allowance
+    public function allowance(User $user): Allowance
     {
         $now = CarbonImmutable::now();
         $turnsPerDay = $this->config->get('agent.turns_per_day');
         $tokensPerMonth = $this->config->get('agent.tokens_per_month');
+        // The user's zone moves this day, so changing zone can start a new one early. Accepted for now (#303): the
+        // monthly token cap bounds the bill, and #325 is to hold the allowance for 24 hours after a zone change.
+        [$dayStarts, $dayEnds] = UserDay::bounds($user, UserDay::today($user));
+        $userId = $user->getAuthIdentifier();
 
         return Allowance::check(
             $turnsPerDay,
             $tokensPerMonth,
-            turnsToday: $turnsPerDay === null ? 0 : $this->turnsSince($userId, $now->startOfDay()),
+            // created_at is stored in the app timezone, and a bound date is not converted.
+            turnsToday: $turnsPerDay === null ? 0 : $this->turnsSince($userId, CarbonImmutable::instance($dayStarts)->setTimezone($this->config->get('app.timezone'))),
             tokensThisMonth: $tokensPerMonth === null ? 0 : $this->tokensSince($userId, $now->startOfMonth()),
             now: $now,
+            dayEndsAt: CarbonImmutable::instance($dayEnds)->addSecond()->setTimezone(UserDay::zone($user)),
         );
     }
 
