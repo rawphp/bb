@@ -15,6 +15,7 @@ Bodybuilder: an open-source training and nutrition PWA. Laravel 13 holds every r
 - Tests are named after the requirement they prove. Unit tests first.
 - This is a public repo. Never commit secrets, real personal data or production dumps.
 - Commits and pull requests contain the change only. No tool bylines or co-author trailers.
+- Every screen works at 390 × 844 and at 1440 × 900; follow docs/architecture.md, "Wide screens".
 
 ## Sources this project was built from
 

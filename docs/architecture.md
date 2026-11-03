@@ -19,9 +19,18 @@ A Laravel 13 app owns every rule and exposes every action as a capability. A Vue
 
 ## Platforms
 
-- PWA, phone first: iOS 17.4+ Safari installed to the home screen, Android Chrome 120+, desktop browsers in a centred phone column (PLT-001, PLT-002).
+- PWA, phone first: iOS 17.4+ Safari installed to the home screen, Android Chrome 120+. Desktop browsers and iPad get the left-rail layout at 768 px and wider (PLT-001, PLT-002, NAV-003).
 - No native shell in v1.
 - The same code runs self-hosted (billing off) and as the paid hosted version (billing on). Hosted-only behaviour is configuration (SUB-023).
+
+## Wide screens
+
+- One breakpoint: 768 px. Script uses `WIDE_MIN_PX` / `WIDE_QUERY` from `resources/js/app/layout.ts`, Tailwind uses `md:`, CSS uses `@media (min-width: 768px)`.
+- At that width the shell (`resources/js/app/shell.css`) turns the tab bar into a left rail and gives every screen a centred 40rem column. A screen that needs more room (two columns, a wider table) widens its own root with `md:` classes and says why in a comment.
+- No screen uses `position: fixed`, `100dvh`/`100vh`/`min-h-dvh`/`h-screen`, or a fixed `max-w-*` cap on its root for page layout. A bar pinned to the bottom of a screen uses `sticky` inside the screen, not `fixed` to the viewport.
+- Sheets, menus and overlays go through the shared components in `resources/js/design/` and the sheet host, not their own `fixed` layers.
+- A new or changed screen is checked at 390 × 844 and at 1440 × 900 before it ships, and its issue says what it shows on a wide screen.
+- Adding a second breakpoint means editing this section first.
 
 ## Layout
 
@@ -131,10 +140,11 @@ The `~/EA/projects/AGENTS.md` testing rules apply: unit first, thin feature test
 - Pest for PHP. Domain and Actions are unit tests with mocked I/O. Feature tests cover the capability HTTP seam, cross-user 404s, token scopes, idempotency and the Stripe webhook.
 - Warp (`rawphp/warp`) with `WARP_MODE` and `WARP_DB` on, against MySQL, from M0.
 - Vitest for components and `call.ts` (cache, outbox order, retry, the 4xx tray, the user switch in OFF-012).
-- Playwright on a 390 × 844 viewport for three journeys, plus the screen audits below:
+- Playwright on a 390 × 844 viewport for three journeys and one layout check, plus the screen audits below:
   1. stepper onboarding to the first finished workout;
   2. the offline workout (OFF-050);
-  3. chat onboarding against the fake LLM driver.
+  3. chat onboarding against the fake LLM driver;
+  4. the shell layout at 390 × 844 and 1440 × 900 (PLT-002, NAV-003).
 
   `tests/e2e/` also holds the audits of Today, Workout and Meal: Lighthouse accessibility and best practices, the manifest's installability (PWA-051), and a cold start from cache on slow 4G with a 4× slower CPU (PWA-004). `scripts/e2e-server.sh` serves the built app on a throwaway MySQL (found as Warp finds it), seeded by `Tests\Support\AuditSeeder`.
 - Tests are named after the requirement they prove, for example `it('PROG-024 recalculates reps at equal effort')`.

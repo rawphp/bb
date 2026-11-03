@@ -38,7 +38,7 @@ With billing on, these apply:
 ## Platforms (PLT)
 
 - **PLT-001** [B] The app must be a PWA that installs to the home screen and runs in standalone mode on iPhone (iOS 17.4 or later, Safari) and Android (Chrome 120 or later). The phone is the primary target. A Laravel 13 server holds every rule, all data, food search and the AI calls.
-- **PLT-002** [H][B] The same app must run in a desktop browser with full features. On wide screens the phone layout sits in a centred column up to 480 px wide (NAV-003 stays Deferred).
+- **PLT-002** [H][B] The same app must run in a desktop browser with full features. In a window 768 px wide or more, the app fills the window with the left rail (NAV-003) and each screen in a centred 40rem column. Narrower windows keep the phone layout, centred up to 480 px. *Bodybuilder: was a centred phone column at every width, with NAV-003 deferred.*
 - **PLT-003** [G][B] Food logging by search and custom food must work everywhere. Camera scanning (barcode, label, photo) uses the device camera where there is one, and otherwise offers a photo upload.
 - **PLT-004** Dropped. [D] Covered by PLT-002: any device with a modern browser runs the app.
 - **PLT-005** [D] The app must support light and dark mode, following the system setting with a manual override.
