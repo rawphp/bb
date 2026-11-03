@@ -158,6 +158,18 @@ it('AGT-031 SAFE-001 refuses the Coach an Edit from before the review, so it can
         ->and(setupShown($user)['step']['key'])->toBe('about_you');
 });
 
+it('AGT-031 SAFE-001 refuses the Coach onboarding_complete before the review, even on the confirm line, so a plan never skips the health check', function () {
+    $user = User::factory()->create();
+    // Every answer saved, as the Coach can with move "stay", but setup never left step 2.
+    StartWorld::draft($user, ['step' => 2]);
+
+    $results = coachOnboards($user, 'confirm: onboarding_complete{}', [['onboarding_complete', []]]);
+
+    expect($results[0])->toMatchArray(['name' => 'onboarding_complete', 'ok' => false])
+        ->and(Phase::query()->where('user_id', $user->id)->exists())->toBeFalse()
+        ->and(OnboardingDraft::query()->where('user_id', $user->id)->exists())->toBeTrue();
+});
+
 it('AGT-032 lets the Coach go back from the review to edit a step', function () {
     $user = User::factory()->create();
     StartWorld::draft($user);

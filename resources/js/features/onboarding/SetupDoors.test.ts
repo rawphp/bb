@@ -144,6 +144,23 @@ describe('the setup doors', () => {
         expect(router.currentRoute.value.path).toBe('/');
     });
 
+    it('AGT-032 a plan the chat starts after it was closed opens Today', async () => {
+        const router = testRouter();
+        await router.push('/onboarding');
+        reads(goal, { enabled: true, on: true });
+        wrapper = mountView(router);
+        await flushPromises();
+        await door(wrapper, 'Talk it through with the Coach').trigger('click');
+
+        // Start my plan was pressed, then the chat closed before the turn came back.
+        wrapper.findComponent(CoachChat).vm.$emit('close');
+        await flushPromises();
+        wrapper.findComponent(CoachChat).vm.$emit('started');
+        await flushPromises();
+
+        expect(router.currentRoute.value.path).toBe('/');
+    });
+
     it('AGT-030 a setup fixture reads nothing, so it shows the stepper', () => {
         wrapper = mount(OnboardingView, { props: { payload: goal }, attachTo: document.body, global: { plugins: [testRouter()], stubs: { CoachChat } } });
 
