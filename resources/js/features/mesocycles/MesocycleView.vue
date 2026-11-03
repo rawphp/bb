@@ -45,8 +45,11 @@ const menuItems = computed<ActionMenuItem[]>(() => [
     { key: 'end', title: 'End meso', disabled: !data.value?.saved?.end, destructive: true },
 ]);
 
+// expected_weeks is the length on screen, so the server refuses the step if it has moved since (MESO-042).
 function setLength(weeksCount: number): Promise<unknown> {
-    return send('mesocycle_length_set', { mesocycle_id: data.value!.id, weeks: weeksCount } satisfies MesocycleLengthSetInput, 'The length could not be changed.');
+    const input = { mesocycle_id: data.value!.id, weeks: weeksCount, expected_weeks: data.value!.saved!.weeks_count } satisfies MesocycleLengthSetInput;
+
+    return send('mesocycle_length_set', input, 'The length could not be changed.');
 }
 
 // How many days the mesocycle has, as the server last said.
