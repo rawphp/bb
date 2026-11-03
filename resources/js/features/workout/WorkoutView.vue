@@ -3,7 +3,7 @@ import { computed, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { write } from '@/app/call';
 import { writeFailureMessage } from '@/app/errors';
-import { isPending, pendingInput } from '@/app/outbox';
+import { entries, isPending, pendingInput } from '@/app/outbox';
 import ReadState from '@/app/ReadState.vue';
 import { useScreenTop } from '@/app/screenTop';
 import { useHoldUpdates } from '@/app/updates';
@@ -61,9 +61,10 @@ async function store(change: WorkoutWrite): Promise<boolean> {
     if (!workout) return false;
     error.value = null;
     try {
-        if (workout.status === 'not_started' && !pendingInput<WorkoutStartInput>('workout_start', (input) => input.workout_id === workout.workout_id)) {
+        if (workout.status === 'not_started' && !started.value && !waiting('workout_start')) {
             const start: WorkoutStartInput = { workout_id: workout.workout_id };
             await write('workout_start', { ...start }, { label: `Started ${workout.day_label}` });
+            started.value = true;
         }
         await write(change.name, change.input, { label: change.label, creates: change.creates });
         if (change.haptic) haptic();
@@ -113,10 +114,30 @@ const waiting = (name: string) => {
     const workout = data.value;
     return workout !== undefined && pendingInput<WorkoutFinishInput>(name, (input) => input.workout_id === workout.workout_id) !== undefined;
 };
-// Finish tapped on this screen: from the tap, so a double tap sends one, until a new read,
-// as replay drops the sent entry before that read arrives.
+// Replay drops a sent entry before the read that follows it arrives, so what this screen
+// stored is kept until a new read says otherwise: Finish from the tap (a double tap sends
+// one), and the start until the session reads as begun. A refusal is followed by no read
+// (OFF-011), so a refused start or finish of this workout lets go of its mark.
 const finishing = ref(false);
-watch(data, () => (finishing.value = false));
+const started = ref(false);
+watch(data, (now) => {
+    finishing.value = false;
+    if (now?.status !== 'not_started') started.value = false;
+});
+const refused = (name: string) =>
+    entries.value.filter((entry) => entry.name === name && entry.refusal !== undefined && entry.input.workout_id === data.value?.workout_id).length;
+watch(
+    () => refused('workout_finish'),
+    (now, before) => {
+        if (now > before) finishing.value = false;
+    },
+);
+watch(
+    () => refused('workout_start'),
+    (now, before) => {
+        if (now > before) started.value = false;
+    },
+);
 const finishWaiting = computed(() => finishing.value || waiting('workout_finish'));
 const canFinish = computed(() => !finishWaiting.value && (data.value?.can_finish === true || pending.value));
 
@@ -137,7 +158,7 @@ const onShow = computed(() => top?.value ?? true);
 // A session under way, counting a start that waits to sync, and one over, counting a finish
 // that waits (OFF-021).
 const over = computed(() => data.value?.status === 'finished' || data.value?.status === 'skipped' || finishWaiting.value);
-const underWay = computed(() => !over.value && (data.value?.status === 'in_progress' || (data.value?.status === 'not_started' && waiting('workout_start'))));
+const underWay = computed(() => !over.value && (data.value?.status === 'in_progress' || (data.value?.status === 'not_started' && (started.value || waiting('workout_start')))));
 // PWA-035: no update reloads the app mid-workout.
 useHoldUpdates(() => live && underWay.value);
 watch(
