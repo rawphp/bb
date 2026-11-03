@@ -25,7 +25,7 @@ final class ReviewAnswerInput extends CapabilityData
         public readonly ?bool $deload_too = null,
         #[Field(description: 'REV-050: update the step plan to the walked average.')]
         public readonly bool $update_step_plan = false,
-        #[Field(description: 'REV-004: calorie moves, applied in order.', items: ReviewMoveInput::class)]
+        #[Field(description: 'REV-004: calorie moves, applied in order.', maxItems: 20, items: ReviewMoveInput::class)]
         public readonly array $moves = [],
     ) {}
 

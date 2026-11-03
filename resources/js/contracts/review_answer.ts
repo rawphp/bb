@@ -20,6 +20,8 @@ export interface ReviewAnswerInput {
   update_step_plan?: boolean;
   /**
    * REV-004: calorie moves, applied in order.
+   *
+   * @maxItems 20
    */
   moves?: {
     from_index: number;

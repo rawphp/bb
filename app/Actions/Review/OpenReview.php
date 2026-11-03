@@ -58,8 +58,8 @@ final class OpenReview
      * unanswered defaults when there are none, and `blocked`, the reason review_complete refuses them, which review_show
      * shows as the preview's error. A full review blocks a Choose my own draft with no amount (REV-010) and an answered
      * option it no longer offers. Stored moves that no longer build, though the option does (a day has passed since,
-     * NUT-024), are cut back to the longest run from the first that still builds, with the reason, as review_answer
-     * keeps out a refused move.
+     * NUT-024), are cut back to the run before the first that no longer builds ({@see buildingRun()}), with the
+     * reason, as review_answer keeps out a refused move.
      *
      * @return array{answers: ReviewAnswers, blocked: ?string}
      */
@@ -74,14 +74,8 @@ final class OpenReview
             $answers->option, $answers->ownKcal, $answers->deloadToo, $answers->updateStepPlan, $moves, $refusal,
         );
         $week = $answers->moves === [] ? null : (new ReviewChoices($analysis, $answers))->saveWeek();
-        if ($week instanceof WeekBuildRefusal) {
-            for ($count = count($answers->moves) - 1; $count >= 0; $count--) {
-                $kept = $with(array_slice($answers->moves, 0, $count), ReviewMessages::refusal($week));
-                if ((new ReviewChoices($analysis, $kept))->saveWeek() instanceof BuiltWeek) {
-                    $answers = $kept;
-                    break;
-                }
-            }
+        if ($week instanceof WeekBuildRefusal && ($count = self::buildingRun($analysis, $answers)) !== null) {
+            $answers = $with(array_slice($answers->moves, 0, $count), ReviewMessages::refusal($week));
         }
         $blocked = match (true) {
             $analysis->mode !== ReviewMode::Full => null,
@@ -91,6 +85,27 @@ final class OpenReview
         };
 
         return ['answers' => $blocked === null ? $answers : $with($answers->moves, $blocked), 'blocked' => $blocked];
+    }
+
+    /**
+     * NUT-024, REV-004: how many of the answers' moves, from the first, still build; null when the answers do not build
+     * even with none. Moves apply in order and a refused one refuses every run that holds it, so this is the run before
+     * the first move that no longer fits. review_show, review_complete and review_answer's refused-move fallback all cut
+     * stored moves back with it, so the three agree on the moves kept.
+     */
+    public static function buildingRun(ReviewAnalysis $analysis, ReviewAnswers $answers): ?int
+    {
+        for ($count = count($answers->moves); $count >= 0; $count--) {
+            $run = new ReviewAnswers(
+                $answers->option, $answers->ownKcal, $answers->deloadToo, $answers->updateStepPlan,
+                array_slice($answers->moves, 0, $count), null,
+            );
+            if ((new ReviewChoices($analysis, $run))->saveWeek() instanceof BuiltWeek) {
+                return $count;
+            }
+        }
+
+        return null;
     }
 
     /** The stored answers as review_show shows them ({@see stored()}). */

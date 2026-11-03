@@ -71,7 +71,8 @@
                     "kcal"
                 ]
             },
-            "description": "REV-004: calorie moves, applied in order."
+            "description": "REV-004: calorie moves, applied in order.",
+            "maxItems": 20
         }
     },
     "required": [

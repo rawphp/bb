@@ -78,9 +78,9 @@ final class AnswerReview
         if ($refusal === null && $sent !== []) {
             $refusal = self::refusal($analysis, $answers($sent));
             if ($refusal !== null) {
-                // The last moves that built, while they still build with this answer.
+                // The last stored moves, cut back as review_show shows them to the run that still builds with this answer.
                 $kept = $row->moves ?? [];
-                $moves = $kept !== [] && self::refusal($analysis, $answers($kept)) === null ? $kept : [];
+                $moves = array_slice($kept, 0, OpenReview::buildingRun($analysis, $answers($kept)) ?? 0);
             }
         }
 

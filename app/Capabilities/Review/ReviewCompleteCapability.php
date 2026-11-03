@@ -24,7 +24,7 @@ final class ReviewCompleteCapability implements HostCapability
         // Next week's days change Today and its sheets; a diet break or a moved deload changes the plan, its phases and
         // the mesocycle (PLAN-025, REV-011); the stamp closes the review on Progress.
         return HostDefinition::write('review_complete', affects: ['review_show', 'progress_show', ...TodayReads::SHEETS, ...PlanReads::AFFECTS])
-            ->description('Save the weekly review open for week_start as answered with review_answer, or as review_show first shows it when nothing was answered: next week\'s plan week and day targets, a diet break and moved deload for Drop fatigue, and any step plan change, then the week is marked reviewed. Use it once the user confirms the preview. Calorie moves that no longer fit, such as one from a day that has passed, are left out, as review_show shows; it answers 422 when the review is not open or its answers do not build.')
+            ->description('Save the weekly review open for week_start as answered with review_answer, or as review_show first shows it when nothing was answered: next week\'s plan week and day targets, a diet break and moved deload for Drop fatigue, and any step plan change, then the week is marked reviewed. Use it once the user confirms the preview. Calorie moves from the first that no longer fits (such as one from a day that has passed) onward are left out, as review_show shows; it answers 422 when the review is not open or its answers do not build.')
             ->cli('review', 'complete')
             ->input(ReviewCompleteInput::class)
             ->run(function (ReviewCompleteInput $input, CapabilityContext $context): WriteResult {
