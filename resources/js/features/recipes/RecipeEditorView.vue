@@ -25,7 +25,7 @@ import PendingMark from '@/design/PendingMark.vue';
 import StatusPill from '@/design/StatusPill.vue';
 import type { PickedFood } from '@/features/pantry/options';
 import PantryView from '@/features/pantry/PantryView.vue';
-import SegmentedPicker from '@/features/today/sheets/SegmentedPicker.vue';
+import SegmentedPicker from '@/design/SegmentedPicker.vue';
 import { isMealType, MEAL_TYPES, typedNumber, type RecipeMealType } from './options';
 
 // A recipe to read or change (RCP-001, RCP-021), ported from rp-clone's RecipeEditorView:

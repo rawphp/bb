@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Mesocycles\SetMusclePriority;
 use App\Domain\Model\Equipment;
 use App\Domain\Model\ExerciseLoadType;
 use App\Domain\Model\MuscleGroup;
@@ -197,4 +198,26 @@ it('WO-002 WO-009 FB-007 FB-009 another user\'s notes, load steps, day target an
         ->and($data['next_meal'])->toBe('Next: Meal 2 at 7:00 PM · 95 g carbs')
         ->and(array_column($back['questions'], 'kind'))->toBe(['joint', 'pump', 'volume'])
         ->and($back['can_edit'])->toBeTrue();
+});
+
+it('MESO-034 WO-001 a muscle set Off is left out of a session not started yet', function () {
+    [$user, $mesocycle] = showSeed();
+    app(SetMusclePriority::class)($user, $mesocycle->id, MuscleGroup::Chest, null);
+
+    // Week 4 day 1, Upper A on Monday 28 September, has not started: its bench (chest) is left out, its row stays.
+    $data = showOver($user, ['mesocycle_id' => $mesocycle->id, 'week' => 4, 'day' => 1])->assertOk()->json('data');
+
+    expect($data['status'])->toBe('not_started')
+        ->and(array_column($data['exercises'], 'name'))->toBe(['Barbell Row']);
+});
+
+it('MESO-034 a week that ran before a muscle went Off still shows its exercises', function () {
+    [$user, $mesocycle] = showSeed();
+    app(SetMusclePriority::class)($user, $mesocycle->id, MuscleGroup::Chest, null);
+
+    // Week 1 ran before chest went Off; it is stored in earlier_weeks as it ran, bench included.
+    expect($mesocycle->fresh()->earlierWeekRows())->toHaveKey(0);
+    $data = showOver($user, ['mesocycle_id' => $mesocycle->id, 'week' => 1, 'day' => 1])->assertOk()->json('data');
+
+    expect(array_column($data['exercises'], 'name'))->toBe(['Bench Press', 'Barbell Row']);
 });

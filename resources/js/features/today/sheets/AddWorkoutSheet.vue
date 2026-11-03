@@ -4,11 +4,11 @@ import { ulid } from '@/app/ulid';
 import type { OtherActivitySaveInput } from '@/contracts/other_activity_save';
 import type { WorkoutMoveInput } from '@/contracts/workout_move';
 import BottomSheet from '@/design/BottomSheet.vue';
+import SegmentedPicker from '@/design/SegmentedPicker.vue';
+import TimeField from '@/design/TimeField.vue';
 import Stepper from '@/features/onboarding/parts/Stepper.vue';
 import FormSection from './FormSection.vue';
-import SegmentedPicker from './SegmentedPicker.vue';
 import SheetBody from './SheetBody.vue';
-import TimeField from './TimeField.vue';
 import { useDaySheet, type DaySheetProps } from './useDaySheet';
 
 type Intensity = OtherActivitySaveInput['intensity'];

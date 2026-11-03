@@ -3,6 +3,7 @@
 namespace App\Domain\Recipe;
 
 use App\Domain\MealFit\Food;
+use App\Domain\MealFit\MealFit;
 use App\Domain\MealFit\MealFood;
 use App\Domain\Model\MealTarget;
 
@@ -43,6 +44,21 @@ final class RecipeServing
             ),
             grams: $servings * self::GRAMS_PER_SERVING,
             isLocked: $isLocked,
+        );
+    }
+
+    /**
+     * MEAL-005, RCP-002: `$foods` fitted to `$target`, in their order. The fit may leave an unlocked food or recipe
+     * serving at 0; it is planned at MIN_GRAMS, 1 g or a tenth of a serving.
+     *
+     * @param  list<MealFood>  $foods
+     * @return list<MealFood>
+     */
+    public static function fitted(MealFit $fit, array $foods, MealTarget $target): array
+    {
+        return array_map(
+            fn (MealFood $f) => ! $f->isLocked && $f->grams < self::MIN_GRAMS ? $f->withGrams(self::MIN_GRAMS) : $f,
+            $fit->fit($foods, $target)->foods,
         );
     }
 

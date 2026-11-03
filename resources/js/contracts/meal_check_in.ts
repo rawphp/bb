@@ -3,7 +3,7 @@
 export interface MealCheckInInput {
   meal_id: string;
   /**
-   * 24-hour "HH:MM"; defaults to now.
+   * 24-hour "HH:MM"; defaults to when the user acted.
    */
   time?: string | null;
   kcal?: number | null;

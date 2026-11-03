@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Today\Data;
 
+use Illuminate\Validation\Rule;
 use Rawphp\Capabilities\Support\CapabilityData;
 
 /** Copy a meal's foods to other meals (MEAL-060). */
@@ -20,8 +21,9 @@ final class MealCopyInput extends CapabilityData
 
     public static function rules(): array
     {
+        // A meal id may be a ULID or a UUID: the server makes UUIDs, a client-added meal brings its ULID.
         return [
-            'target_meal_ids.*' => ['ulid'],
+            'target_meal_ids.*' => [Rule::anyOf([['ulid'], ['uuid']])],
         ];
     }
 }

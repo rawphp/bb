@@ -31,10 +31,6 @@ final readonly class SavedMealLoad
             return [];
         }
 
-        // The fit may leave an unlocked food or recipe serving at 0; it is planned at 1 g, a tenth of a serving.
-        return array_map(
-            fn (MealFood $f) => ! $f->isLocked && $f->grams < RecipeServing::MIN_GRAMS ? $f->withGrams(RecipeServing::MIN_GRAMS) : $f,
-            $this->fit->fit([...$meal, ...$joined], $target)->foods,
-        );
+        return RecipeServing::fitted($this->fit, [...$meal, ...$joined], $target);
     }
 }
