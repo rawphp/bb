@@ -88,6 +88,15 @@ describe('PantryView for a recipe', () => {
 
             expect(wrapper.find('[data-test="basket"] h2').text()).toBe('Adding to recipe');
         });
+
+        it('RCP-001 RCP-003 the basket does not say Raw or Cooked: the recipe takes the food, not how it was weighed', async () => {
+            const wrapper = show({ payload: curated, purpose });
+
+            await row(wrapper, 'Chicken breast').find('[data-test="weighing-cooked"]').trigger('click');
+            await pick(wrapper, 'Chicken breast');
+
+            expect(wrapper.find('[data-test="basket"] li').text()).toBe('Chicken breast');
+        });
     });
 
     it('RCP-001 recipeIngredients takes several foods, and the button counts them', async () => {
