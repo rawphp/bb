@@ -234,7 +234,8 @@ const primaryButton = 'min-h-tap flex-1 rounded-full bg-accent px-4 font-medium 
                                 :disabled="busy"
                                 class="min-h-tap w-full bg-transparent text-base tabular-nums text-primary-text placeholder:text-secondary-text focus:outline-none"
                             />
-                            <span aria-hidden="true" class="text-secondary-text">{{ data.load_step.unit }}</span>
+                            <!-- The placeholder (the default) already names the unit. -->
+                            <span v-if="step" aria-hidden="true" class="text-secondary-text">{{ data.load_step.unit }}</span>
                         </label>
                         <button type="button" data-step-save :disabled="busy || typedStep === undefined" :class="primaryButton" @click="saveStep">Save</button>
                         <p class="text-sm text-secondary-text">Leave it empty to use the default, {{ data.load_step.default_text }}.</p>
