@@ -96,3 +96,10 @@ it('NUT-022 a stored option that will not build leaves review_show with no days 
         ->and($data['preview']['error'])->toBe('That is too few calories to fit your protein, fat and carbs. Choose a higher average.')
         ->and($data['can_save'])->toBeFalse();
 });
+
+it('REV-010 answers 422 naming own_kcal for an own amount of 0, and writes nothing', function () {
+    reviewAnswerAs((new ReviewSeed)->seed(), ['option' => 'choose_own', 'own_kcal' => 0])
+        ->assertStatus(422)
+        ->assertJsonPath('error.violations.0.field', 'own_kcal');
+    expect(ReviewAnswer::query()->count())->toBe(0);
+});

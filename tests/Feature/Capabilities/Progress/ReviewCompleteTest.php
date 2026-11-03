@@ -50,6 +50,8 @@ it('REV-001 saves the review once: next week\'s days and the stamp, then the rev
     expect($result['invalidates'])->toContain(
         ReadKey::for('review_show'),
         ReadKey::for('progress_show'),
+        ReadKey::for('progress_show', ['scope' => 'phase']),
+        ReadKey::for('progress_show', ['scope' => 'plan']),
         ReadKey::for('today_show'),
         ReadKey::for('today_show', ['date' => '2026-10-18']),
         ReadKey::for('week_show', ['date' => '2026-10-12']),

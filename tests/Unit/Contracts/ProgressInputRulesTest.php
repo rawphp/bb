@@ -106,6 +106,8 @@ it('CAP-012 refuses a Progress input and names the field', function (string $cas
     'steps on 30 February' => ['steps_log', ['date' => '2026-02-30'], 'date'],
     'negative steps' => ['steps_log', ['steps' => -1], 'steps'],
     'an unknown review option' => ['review_answer', ['option' => 'skip'], 'option'],
+    'an own amount of 0' => ['review_answer', ['own_kcal' => 0], 'own_kcal'],
+    'an own amount of 20,000 kcal a day' => ['review_answer', ['own_kcal' => 20000], 'own_kcal'],
     'a move of 10 kcal' => ['review_answer', ['moves' => [['from_index' => 0, 'to_index' => 1, 'kcal' => 10]]], 'moves.0.kcal'],
     'a move to day 7' => ['review_answer', ['moves' => [['from_index' => 0, 'to_index' => 7, 'kcal' => 100]]], 'moves.0.to_index'],
     'a review of 2026-02-30' => ['review_complete', ['week_start' => '2026-02-30'], 'week_start'],

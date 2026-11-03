@@ -3,6 +3,7 @@
 use App\Actions\Review\AnswerReview;
 use App\Actions\Review\CompleteReview;
 use App\Capabilities\Reads\Review\ReviewPreviewPayload;
+use App\Capabilities\Reads\Review\ReviewShowPayload;
 use App\Capabilities\Review\Data\ReviewAnswerInput;
 use App\Models\ReviewAnswer;
 use App\Models\User;
@@ -231,6 +232,31 @@ it('REV-010 an answer with no option is refused unless it sends an amount for a 
     $own = rqaUser();
     rqaAnswer($own, ['option' => 'choose_own']);
     rqaRefused($own, ['option' => null], AnswerReview::AMOUNT_ONLY);
+});
+
+it('REV-010 a draft stays a draft when another answer echoes the amount review_show filled in, and a typed amount ends it', function () {
+    $user = rqaUser();
+    rqaAnswer($user, ['option' => 'choose_own']);
+    $shown = ReviewShowPayload::build(ReviewAnalysis::for($user, ReviewSeed::TODAY), ReviewAnswer::answersFor($user, '2026-10-05'))->toArray()['calories']['own']['value'];
+
+    $echoed = rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown, 'update_step_plan' => true, 'moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
+    expect($shown)->toBeInt()
+        ->and($echoed->fresh()->needsAmount())->toBeTrue('the screen sent back its own pre-fill, not an amount the user typed')
+        ->and($echoed->fresh()->update_step_plan)->toBeTrue()
+        ->and($echoed->fresh()->moves)->toEqual([['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]);
+
+    expect(rqaAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown - 100])->fresh()->own_kcal)->toBe($shown - 100);
+});
+
+it('REV-010 an amount sent alone for a draft is taken as typed, even when it is the amount review_show filled in', function () {
+    $user = rqaUser();
+    rqaAnswer($user, ['option' => 'choose_own']);
+    $shown = ReviewShowPayload::build(ReviewAnalysis::for($user, ReviewSeed::TODAY), ReviewAnswer::answersFor($user, '2026-10-05'))->toArray()['calories']['own']['value'];
+
+    $row = rqaAnswer($user, ['option' => null, 'own_kcal' => $shown]);
+
+    expect($row->fresh()->own_kcal)->toBe($shown)
+        ->and($row->fresh()->needsAmount())->toBeFalse();
 });
 
 it('REV-010 refuses an own amount that is not a positive whole number, and writes nothing', function () {

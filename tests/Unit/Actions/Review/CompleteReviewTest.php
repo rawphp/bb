@@ -2,13 +2,16 @@
 
 use App\Actions\Review\AnswerReview;
 use App\Actions\Review\CompleteReview;
+use App\Capabilities\Reads\Review\ReviewShowPayload;
 use App\Capabilities\Review\Data\ReviewAnswerInput;
 use App\Domain\Review\DeloadMove;
 use App\Models\DayTarget;
 use App\Models\Mesocycle;
 use App\Models\PlanWeek;
 use App\Models\Profile;
+use App\Models\ReviewAnswer;
 use App\Models\User;
+use App\Models\WeighIn;
 use App\Support\Review\ReviewAnalysis;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -216,6 +219,31 @@ it('REV-010 refuses to save a Choose my own draft with no amount, and writes not
         ->and(ReviewAnalysis::for($user, ReviewSeed::TODAY))->not->toBeNull();
 });
 
+it('REV-010 a draft whose pre-filled amount the screen echoed with a move still needs an amount to save', function () {
+    $user = rqcUser();
+    rqcAnswer($user, ['option' => 'choose_own']);
+    $shown = ReviewShowPayload::build(ReviewAnalysis::for($user, ReviewSeed::TODAY), ReviewAnswer::answersFor($user, '2026-10-05'))->toArray()['calories']['own']['value'];
+    rqcAnswer($user, ['option' => 'choose_own', 'own_kcal' => $shown, 'moves' => [['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
+    $before = rqcStored($user);
+
+    expect(fn () => rqcSave($user))->toThrow(DomainException::class, CompleteReview::NEEDS_AMOUNT)
+        ->and(rqcStored($user))->toBe($before);
+});
+
+it('REV-027 an answered option the review no longer offers is refused at save, not swapped for another, and nothing is written', function () {
+    $user = rqcUser(fn (ReviewSeed $seed) => $seed->weight = fn (int $offset): float => 88.0);
+    rqcAnswer($user, ['option' => 'cut_calories']);
+    // The weigh-ins change after the answer, and the stall is gone: the plan's own rate, as ReviewSeed's default.
+    foreach (WeighIn::query()->where('user_id', $user->id)->get() as $weighIn) {
+        $offset = (int) Carbon::parse(ReviewSeed::NEXT_WEEK_START)->diffInDays(Carbon::parse($weighIn->weighed_at)->startOfDay(), false);
+        $weighIn->update(['weight_kg' => round(90 - 0.0643 * ($offset + 28), 2)]);
+    }
+    $before = rqcStored($user);
+
+    expect(fn () => rqcSave($user))->toThrow(DomainException::class, CompleteReview::OUT_OF_DATE)
+        ->and(rqcStored($user))->toBe($before);
+});
+
 it('REV-010 Choose my own in two steps: the option, then its amount, then Save applies the amount', function () {
     $user = rqcUser();
     rqcAnswer($user, ['option' => 'choose_own']);
@@ -374,15 +402,26 @@ it('SCH-061 an away review returns to the last ordinary week\'s calories', funct
 });
 
 it('SCH-061 REV-005 completing an away or training-only review answered under the only option it takes changes no calories', function () {
-    $awayWeek = fn (ReviewSeed $seed) => $seed->planWeekRows = [
-        ['start_date' => '2026-10-05', 'is_away' => true, 'away_training' => 'pause', 'away_calories' => 'maintenance'],
-    ];
+    // 10,000 steps a day, so a step offer exists for the answer to accept.
+    $walked = fn (ReviewSeed $seed) => $seed->steps = array_combine(
+        array_map(fn (int $offset) => ReviewSeed::day($offset), range(-7, -1)),
+        array_fill(0, 7, 10000),
+    );
+    $awayWeek = function (ReviewSeed $seed) use ($walked) {
+        $walked($seed);
+        $seed->planWeekRows = [
+            ['start_date' => '2026-10-05', 'is_away' => true, 'away_training' => 'pause', 'away_calories' => 'maintenance'],
+        ];
+    };
     $unanswered = rqcUser($awayWeek);
     rqcSave($unanswered);
     $answered = rqcUser($awayWeek);
     rqcAnswer($answered, ['option' => 'recommendation', 'update_step_plan' => true]);
     rqcSave($answered);
-    $trainingOnly = rqcUser(fn (ReviewSeed $seed) => $seed->trainingOnly = true);
+    $trainingOnly = rqcUser(function (ReviewSeed $seed) use ($walked) {
+        $walked($seed);
+        $seed->trainingOnly = true;
+    });
     rqcAnswer($trainingOnly, ['option' => 'recommendation', 'update_step_plan' => true]);
     rqcSave($trainingOnly);
 
@@ -456,7 +495,7 @@ it('REV-011 the default is No before three training weeks are done', function ()
         ->and(rqcWeek($user, '2026-10-12')->is_diet_break)->toBeTrue();
 });
 
-it('REV-011 TBL-023 the moved deload gives the remaining training weeks the RIR of the new length', function () {
+it('REV-011 TBL-023 the moved deload stores a length whose TBL-023 RIR runs 3, 2, 1, 0', function () {
     $user = rqcUser();
     rqcAnswer($user, ['option' => 'drop_fatigue']);
 
@@ -495,6 +534,18 @@ it('REV-027 cutting calories on a stall saves the cut and leaves the step plan',
 
     expect(rqcAverage($user))->toEqualWithDelta(2150, 1e-6)
         ->and(rqcStepPlan($user))->toBe(array_fill(0, 7, ['min' => 6000, 'max' => 8000]));
+});
+
+it('REV-027 REV-050 adding a stall\'s steps wins over an accepted step offer', function () {
+    $user = rqcUser(function (ReviewSeed $seed) {
+        $seed->weight = fn (int $offset): float => 88.0;
+        $seed->steps = array_combine(array_map(fn (int $offset) => ReviewSeed::day($offset), range(-7, -1)), array_fill(0, 7, 10000));
+    });
+    rqcAnswer($user, ['option' => 'add_steps', 'update_step_plan' => true]);
+
+    rqcSave($user);
+
+    expect(rqcStepPlan($user))->toBe(array_fill(0, 7, ['min' => 8000, 'max' => 10000]));
 });
 
 it('REV-050 accepting the step offer updates the step plan on save, and declining leaves it', function () {
