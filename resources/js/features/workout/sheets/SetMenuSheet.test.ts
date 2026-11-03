@@ -27,7 +27,7 @@ describe('SetMenuSheet', () => {
 
         expect(wrapper.get('[role="dialog"] h2').text()).toBe('Set 1 · Bench Press');
         expect(wrapper.findAll('[data-test="action"]').map((row) => row.text())).toEqual(['Add set below', 'Skip set', 'Delete set']);
-        expect(wrapper.get('[data-test="delete"]').classes().join(' ')).toContain('tone-warning');
+        expect(wrapper.get('[data-action="delete"]').classes().join(' ')).toContain('tone-warning');
         expect(wrapper.text()).toContain('Set type');
         expect(wrapper.get('[data-save]').text()).toBe('Done');
     });
@@ -35,7 +35,7 @@ describe('SetMenuSheet', () => {
     it('WO-020 Add set below adds a set of its own type after this one, under a new id (CAP-019), and closes', async () => {
         const wrapper = show();
 
-        await wrapper.get('[data-test="add"]').trigger('click');
+        await wrapper.get('[data-action="add"]').trigger('click');
 
         const change = sent(wrapper);
         expect(change.name).toBe('workout_set_add');
@@ -46,14 +46,14 @@ describe('SetMenuSheet', () => {
 
     it('WO-020 Skip set skips it, and a skipped set reads Unskip set and unskips', async () => {
         const wrapper = show();
-        await wrapper.get('[data-test="skip"]').trigger('click');
+        await wrapper.get('[data-action="skip"]').trigger('click');
         expect(sent(wrapper).input).toEqual({ set_id: SET_1, is_skipped: true });
 
         const data = payload();
         data.exercises[0]!.sets[0]!.is_skipped = true;
         const skipped = show(data);
-        expect(skipped.get('[data-test="skip"]').text()).toBe('Unskip set');
-        await skipped.get('[data-test="skip"]').trigger('click');
+        expect(skipped.get('[data-action="skip"]').text()).toBe('Unskip set');
+        await skipped.get('[data-action="skip"]').trigger('click');
 
         expect(sent(skipped).input).toEqual({ set_id: SET_1, is_skipped: false });
     });
@@ -61,7 +61,7 @@ describe('SetMenuSheet', () => {
     it('WO-020 Delete set asks first: the write carries its question', async () => {
         const wrapper = show();
 
-        await wrapper.get('[data-test="delete"]').trigger('click');
+        await wrapper.get('[data-action="delete"]').trigger('click');
 
         const change = sent(wrapper);
         expect(change.name).toBe('workout_set_delete');

@@ -36,7 +36,8 @@ describe('LookBackDetail', () => {
         expect(exercises.map((exercise) => exercise.get('h3').text())).toEqual(['Bench Press', 'Barbell Row']);
         const lines = exercises[0]!.findAll('[data-test="set"]');
         expect(lines).toHaveLength(2);
-        expect(lines[0]!.text()).toBe('Set 1 82.5 kg × 10');
+        expect(lines[0]!.get('[data-test="number"]').text()).toBe('Set 1');
+        expect(lines[0]!.get('[data-test="load"]').text()).toBe('82.5 kg × 10');
         expect(exercises[1]!.get('[data-test="nothing"]').text()).toBe('Nothing logged');
         expect(readMock).not.toHaveBeenCalled();
     });
