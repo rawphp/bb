@@ -8,7 +8,7 @@ import type { WorkoutShowOutput } from '@/contracts/workout_show';
 import ActionMenu, { type ActionMenuItem } from '@/design/ActionMenu.vue';
 import { toneClasses } from '@/design/tones';
 import WorkoutSetRow from './WorkoutSetRow.vue';
-import type { WorkoutWrite } from './workoutWrite';
+import type { WorkoutSheet, WorkoutWrite } from './workoutWrite';
 
 type Exercise = WorkoutShowOutput['exercises'][number];
 
@@ -24,11 +24,16 @@ const props = defineProps<{
     workout: WorkoutShowOutput;
 }>();
 
-const emit = defineEmits<{ send: [write: WorkoutWrite] }>();
+const emit = defineEmits<{ send: [write: WorkoutWrite]; open: [sheet: WorkoutSheet] }>();
 
 const editable = computed(() => props.workout.is_editable);
 const warmUp = computed(() => (props.workout.warm_up?.workout_exercise_id === props.exercise.id ? props.workout.warm_up : null));
 const warmUpDismissed = ref(false);
+
+// FB-001, FB-009: the feedback that is due after this exercise, while it is due or can still change.
+const feedback = computed(() =>
+    props.workout.feedback.find((entry) => entry.due_after_exercise_id === props.exercise.id && (entry.is_due || (entry.is_answered && entry.can_edit))),
+);
 
 // WO-006: the first set's weight as typed, shown on later sets that have none.
 const firstTyped = ref<string | null>(null);
@@ -38,13 +43,12 @@ const carried = computed(() => {
     return firstTyped.value ?? (first?.weight ? String(first.weight.value) : null);
 });
 
-// The swap and note sheets come with the workout sheets (V_WO2 in docs/plan/build-plan.md),
-// so their items show here and stay off until then.
+// Swap and the notes open their sheets through the screen.
 const items = computed<ActionMenuItem[]>(() => [
     ...props.workout.add_set_choices.map((choice) => ({ key: `add:${choice.value}`, title: `Add set: ${choice.label}`, detail: choice.note })),
-    { key: 'swap', title: 'Swap exercise', disabled: true },
-    { key: 'pin', title: 'Pin note', disabled: true },
-    { key: 'note', title: 'Add note', disabled: true },
+    { key: 'swap', title: 'Swap exercise' },
+    { key: 'pin', title: 'Pin note' },
+    { key: 'note', title: 'Add note' },
     { key: 'up', title: 'Move up', disabled: !props.exercise.can_move_up },
     { key: 'down', title: 'Move down', disabled: !props.exercise.can_move_down },
     { key: 'remove', title: 'Remove exercise', destructive: true },
@@ -67,6 +71,10 @@ function choose(key: string): void {
             set_type: choice.value as WorkoutSetAddInput['set_type'],
         };
         emit('send', { name: 'workout_set_add', input: { ...input }, label: `Added a ${choice.label} set to ${props.exercise.name}`, creates: [id] });
+    } else if (key === 'swap') {
+        emit('open', { name: 'swap', exerciseId: props.exercise.id });
+    } else if (key === 'pin' || key === 'note') {
+        emit('open', { name: 'note', exerciseId: props.exercise.id, pinned: key === 'pin' });
     } else if (key === 'up') {
         // Positions count from 1: one place up is the index it has now.
         reorder(props.index, 'up');
@@ -117,8 +125,15 @@ const iconButton = 'flex min-h-tap min-w-tap shrink-0 items-center justify-cente
         </p>
         <div v-if="exercise.swap_suggestion" class="flex items-center gap-2 rounded-[10px] pl-2" :class="toneClasses[exercise.swap_suggestion.tone]" data-test="swap-suggestion">
             <p class="flex-1 text-sm">{{ exercise.swap_suggestion.text }}</p>
-            <!-- The swap sheet comes with V_WO2. -->
-            <button type="button" class="min-h-tap min-w-tap px-2 text-sm font-semibold disabled:opacity-50" disabled :aria-label="`Swap ${exercise.name}`">Swap</button>
+            <button
+                type="button"
+                class="min-h-tap min-w-tap px-2 text-sm font-semibold disabled:opacity-50"
+                :disabled="!editable"
+                :aria-label="`Swap ${exercise.name}`"
+                @click="emit('open', { name: 'swap', exerciseId: exercise.id })"
+            >
+                Swap
+            </button>
         </div>
         <p v-if="exercise.session_note" class="text-sm text-secondary-text" data-test="session-note">{{ exercise.session_note }}</p>
 
@@ -148,11 +163,21 @@ const iconButton = 'flex min-h-tap min-w-tap shrink-0 items-center justify-cente
             :exercise="exercise"
             :unit="workout.weight_unit"
             :editable="editable"
-            :rir-info="workout.rir_info"
-            :set-type-choices="workout.set_type_choices"
             :carried-weight="set.number === 1 ? null : carried"
             @send="(write) => emit('send', write)"
+            @open="(sheet) => emit('open', sheet)"
             @weight-typed="(text) => (firstTyped = text)"
         />
+        <!-- FB-001, FB-009: the muscle's feedback, again after it was cancelled or answered. -->
+        <button
+            v-if="feedback"
+            type="button"
+            class="flex min-h-tap w-full items-center justify-center gap-2 rounded-xl border text-sm font-semibold"
+            :class="feedback.is_answered ? 'border-accent text-accent' : 'border-tone-warning text-tone-warning'"
+            data-test="feedback"
+            @click="emit('open', { name: 'feedback', muscle: feedback.muscle_group })"
+        >
+            {{ feedback.is_answered ? `${feedback.title} feedback` : `${feedback.title} feedback needed` }}
+        </button>
     </section>
 </template>
