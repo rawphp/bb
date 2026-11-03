@@ -46,7 +46,7 @@ describe('workout routes', () => {
         expect(featureRoutes.find((r) => r.meta?.screen === 'workout_show')?.name).toBe('workout');
     });
 
-    it.each(sheets)('VIEW-005 opens %s at /dev/screens/workout_show?view=%s from the workout fixture', (view, props, fixtures) => {
+    it.each(sheets)('VIEW-005 opens %s at /dev/screens/workout_show?view=<name> from the workout fixture', (view, props, fixtures) => {
         expect(findScreen('workout_show', featureRoutes, view), view).not.toBeNull();
         expect(takesFixture('workout_show', featureRoutes, view), view).toBe(true);
         expect(routeProps('workout_show', featureRoutes, view), view).toEqual(props);
