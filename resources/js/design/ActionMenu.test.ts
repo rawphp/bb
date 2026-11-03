@@ -37,6 +37,17 @@ describe('ActionMenu', () => {
         expect(focused()).toBe('item-c');
     });
 
+    it('UI-020 opens from the button\'s right edge, or its left with align start, so a menu at either side stays on screen', async () => {
+        const end = menu();
+        await end.find('[data-test="menu"]').trigger('click');
+        expect(end.get('[role="menu"]').classes()).toContain('right-0');
+
+        const start = mount(ActionMenu, { props: { label: 'Set menu', items, align: 'start' }, slots: { default: '…' }, attachTo: document.body });
+        await start.find('[data-test="menu"]').trigger('click');
+        expect(start.get('[role="menu"]').classes()).toContain('left-0');
+        expect(start.get('[role="menu"]').classes()).not.toContain('right-0');
+    });
+
     it('UI-030 closes on Escape and gives focus back to its button', async () => {
         const wrapper = menu();
         await wrapper.find('[data-test="menu"]').trigger('click');
