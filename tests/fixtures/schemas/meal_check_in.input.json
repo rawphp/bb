@@ -17,25 +17,29 @@
             "type": [
                 "number",
                 "null"
-            ]
+            ],
+            "minimum": 0
         },
         "protein_g": {
             "type": [
                 "number",
                 "null"
-            ]
+            ],
+            "minimum": 0
         },
         "fat_g": {
             "type": [
                 "number",
                 "null"
-            ]
+            ],
+            "minimum": 0
         },
         "carbs_g": {
             "type": [
                 "number",
                 "null"
-            ]
+            ],
+            "minimum": 0
         }
     },
     "required": [

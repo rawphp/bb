@@ -21,7 +21,7 @@ final class MealCheckInCapability implements HostCapability, OwnsInput
     {
         // UI-010, OFF-030: the check-in is queued offline and has Undo.
         return HostDefinition::write('meal_check_in', affects: MealReads::AFFECTS, reversible: true)
-            ->description('Check in a planned meal as eaten. With no amounts it records what the meal\'s planned foods and recipe servings add up to, or the meal\'s targets when it has none; a meal with the "Adjust foods" badge is refused until its foods are re-fitted or it is marked done planning. With calories, protein, fat and carbs it records those amounts as a manual check-in. Time is 24-hour "HH:MM", defaulting to when the user acted. It replaces a check-in already there.')
+            ->description('Check in a planned meal as eaten, replacing a check-in already there; the time is 24-hour "HH:MM" and defaults to when the user acted. With no amounts it records what the meal\'s planned foods and recipe servings add up to, or the meal\'s targets when it has none, and a meal with the "Adjust foods" badge is refused until its foods are re-fitted or it is marked done planning. With calories, protein, fat and carbs it records those amounts as a manual check-in, on any meal.')
             ->cli('meal', 'check-in')
             ->input(MealCheckInInput::class)
             ->run(function (MealCheckInInput $input, CapabilityContext $context): WriteResult {

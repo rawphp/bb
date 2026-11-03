@@ -21,7 +21,7 @@ final class MealDeleteCapability implements HostCapability, OwnsInput
     {
         // AGT-010: a delete needs the user's say-so before the Coach makes it. CAP-013: undo brings the meal back whole.
         return HostDefinition::write('meal_delete', affects: MealReads::AFFECTS, reversible: true, destructive: true)
-            ->description('Delete a meal from its day, with its planned foods, recipe servings, check-in and planning state. The day\'s other meals keep their targets, so the day\'s total drops by the meal\'s targets. Use it when the user will not eat that meal.')
+            ->description('Delete a meal from its day, with its planned foods, recipe servings, check-in and planning state. The day\'s other meals keep their targets; nothing is re-targeted. Use it when the user will not eat that meal.')
             ->cli('meal', 'delete')
             ->input(MealDeleteInput::class)
             ->run(function (MealDeleteInput $input, CapabilityContext $context): WriteResult {
