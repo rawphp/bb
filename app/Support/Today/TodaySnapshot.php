@@ -310,15 +310,7 @@ final class TodaySnapshot
 
         $records = $this->train->sessions
             ->filter(fn (WorkoutSession $s) => $mesocycle !== null && $s->mesocycle_id === $mesocycle->id)
-            ->map(fn (WorkoutSession $s) => new WorkoutSessionRecord(
-                id: (string) $s->id,
-                mesocycleId: $s->mesocycle_id,
-                week: $s->week,
-                day: $s->day,
-                isSkipped: $s->is_skipped,
-                plannedStartAt: self::instant($s->planned_start_at),
-                actualStartAt: $this->train->startedAt($s),
-            ))->values()->all();
+            ->map(fn (WorkoutSession $s) => $this->train->record($s))->values()->all();
         $logged = array_values(array_map(
             fn (WorkoutSessionRecord $r) => new LoggedDay($r->week, (int) $r->day),
             array_filter($records, fn (WorkoutSessionRecord $r) => $r->actualStartAt !== null && $r->day !== null),

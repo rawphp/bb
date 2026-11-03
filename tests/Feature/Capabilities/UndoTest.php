@@ -107,7 +107,7 @@ it('CAP-013 records a write tagged reversible for undo, and only such a write, w
 
 it('CAP-013 leaves recording to the registration of reversible writes: no capability calls UndoLog::record() itself', function () {
     $callers = collect(File::allFiles(app_path()))
-        ->filter(fn ($file) => str_contains($file->getContents(), '->record('))
+        ->filter(fn ($file) => str_contains($file->getContents(), 'UndoLog') && str_contains($file->getContents(), '->record('))
         ->map(fn ($file) => str_replace(app_path().'/', '', $file->getPathname()))
         ->values()->all();
 
