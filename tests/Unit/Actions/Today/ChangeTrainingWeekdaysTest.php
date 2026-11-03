@@ -2,6 +2,7 @@
 
 use App\Actions\Today\ChangeTrainingWeekdays;
 use App\Actions\Today\PlannedSession;
+use App\Capabilities\Reads\Train\TrainPayload;
 use App\Capabilities\Support\FieldRefused;
 use App\Capabilities\Today\Data\TrainingWeekdaysChangeInput;
 use App\Domain\Placement\ClockTime;
@@ -111,7 +112,9 @@ it('SCH-039 Train and Workout date next week\'s sessions on the new weekdays and
     $train = TrainSnapshot::load($user, $mesocycle->id);
     $stored = $train->mesocycle($mesocycle->id);
     $date = fn (int $week, int $day) => WorkoutSnapshot::dateOf($train, $stored, $week, $day)?->format('Y-m-d');
-    expect([$date(3, 1), $date(3, 2)])->toBe(['2026-09-21', '2026-09-24'])
+    // Today (Tuesday 22) is a rest day in Today, so Train shows no session for it either.
+    expect(TrainPayload::build(TrainSnapshot::load($user))->todays_session)->toBeNull()
+        ->and([$date(3, 1), $date(3, 2)])->toBe(['2026-09-21', '2026-09-24'])
         ->and([$date(1, 1), $date(1, 2)])->toBe(['2026-09-07', '2026-09-10'])
         ->and(array_map(fn (int $day) => $date(4, $day), array_keys($nextWeek)))->toBe(array_values($nextWeek));
 })->with([
