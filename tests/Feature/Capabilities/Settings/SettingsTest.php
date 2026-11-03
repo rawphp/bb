@@ -8,6 +8,7 @@ use App\Models\Plan;
 use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 
@@ -104,15 +105,14 @@ it('SET-006 diet_filters_set answers 422 naming the filter it does not know', fu
         ->assertStatus(422)->assertJsonPath('error.violations.0.field', 'filters.0.filter');
 });
 
-it('SET-005 schedule_defaults_update answers 422 naming review_weekday for a new review day, and saves nothing', function () {
+it('SET-005 PLAN-008 schedule_defaults_update answers 200 for a new review day and stores the change', function () {
     $user = settingsSam();
 
-    settingsPost($user, 'schedule_defaults_update', scheduleForm(['meal_count' => 3, 'review_weekday' => 3]))
-        ->assertStatus(422)
-        ->assertJsonPath('error.violations.0.field', 'review_weekday')
-        ->assertJsonPath('error.violations.0.message', "Changing the review day isn't supported yet.");
+    settingsPost($user, 'schedule_defaults_update', scheduleForm(['meal_count' => 3, 'review_weekday' => 3]))->assertOk();
 
-    expect(Profile::query()->where('user_id', $user->id)->value('meal_count'))->toBe(4);
+    expect(Profile::query()->where('user_id', $user->id)->value('meal_count'))->toBe(3)
+        ->and(DB::table('plan_review_day_changes')->get(['effective_on', 'review_weekday'])->map(fn ($row) => [substr($row->effective_on, 0, 10), $row->review_weekday])->all())
+        ->toBe([['2026-10-19', 3]]);
 });
 
 it('SCH-039 schedule_defaults_update answers 422 naming training_days for new weekdays while a mesocycle is under way', function () {
