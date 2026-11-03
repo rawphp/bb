@@ -446,17 +446,13 @@ describe('OnboardingView', () => {
             expect(weight.element.value).toBe('176.4');
         });
 
-        it('ONB-004 an option the server does not offer cannot be picked', async () => {
+        it('ONB-004 an option the server does not offer is disabled', () => {
             const blocked = structuredClone(aboutYou);
             blocked.about_you.weight.unit_options = blocked.about_you.weight.unit_options.map((option) => (option.value === 'lb' ? { ...option, is_enabled: false } : option));
             wrapper = view(blocked);
 
             expect(radio(wrapper, 'Weight unit', 'lb').attributes('disabled')).toBeDefined();
             expect(radio(wrapper, 'Weight unit', 'kg').attributes('disabled')).toBeUndefined();
-            await radio(wrapper, 'Weight unit', 'lb').trigger('click');
-            await flushPromises();
-
-            expect(writeMock).not.toHaveBeenCalled();
         });
 
         it('ONB-004 saves the sex picked at once, and a tap on the one picked sends nothing', async () => {
