@@ -3,6 +3,7 @@ import { createApp } from 'vue';
 import { createMemoryHistory } from 'vue-router';
 import { useNavigation } from './navigation';
 import { devRoutesEnabled, featureRoutes, makeRouter, routesFor } from './router';
+import TabRoot from './TabRoot.vue';
 
 describe('router', () => {
     afterEach(() => {
@@ -62,17 +63,10 @@ describe('router', () => {
         }
     });
 
-    it('NAV-001 links a tab\'s screens from its placeholder root until the tab has its own', () => {
-        const more = routesFor(false).find((route) => route.path === '/more');
+    it('NAV-001 every tab has its own root screen, so no tab falls back to the placeholder', () => {
+        const roots = routesFor(false).filter((route) => ['/today', '/train', '/nutrition', '/progress', '/more'].includes(route.path));
 
-        // Other features add More screens too, so this checks the rule rather than the full list.
-        expect(more?.props).toMatchObject({ label: 'More' });
-        const links = (more?.props as { links: string[] }).links;
-        expect(links).toEqual(expect.arrayContaining(['/account', '/learn', '/settings/tokens']));
-        expect(links).not.toContain('/learn/:slug');
-        // Dev routes stay out unless the server flags them on; the Coach only shows where the agent runs (AGT-002).
-        expect(links).not.toContain('/dev/clock');
-        expect(links).not.toContain('/settings/coach');
+        expect(roots.map((route) => route.component)).not.toContain(TabRoot);
     });
 
     it('PWA-025 gives each router its navigation', () => {

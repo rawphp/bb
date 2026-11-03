@@ -2,7 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 import { read } from '@/app/call';
-import { featureRoutes, routesFor } from '@/app/router';
+import { featureRoutes } from '@/app/router';
 import { findScreen } from '../dev/screens';
 import WeighInScheduleView from './WeighInScheduleView.vue';
 import WeighInsView from './WeighInsView.vue';
@@ -51,12 +51,5 @@ describe('weigh-ins routes', () => {
         const { wrapper } = await open('/weigh-ins/log');
 
         expect(wrapper.findComponent(WeighInsView).props('log')).toBe('');
-    });
-
-    it('NAV-001 the More placeholder links Weigh-ins until the More menu exists', () => {
-        const more = routesFor(false).find((route) => route.path === '/more');
-
-        expect((more?.props as { links: string[] }).links).toContain('/weigh-ins');
-        expect((more?.props as { links: string[] }).links).not.toContain('/weigh-ins/log');
     });
 });
