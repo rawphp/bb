@@ -1,20 +1,26 @@
+import 'fake-indexeddb/auto';
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { defineComponent, h, ref } from 'vue';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
 import { CapabilityError, read, write } from '@/app/call';
 import { isPending, pendingInput } from '@/app/outbox';
 import type { WorkoutShowOutput } from '@/contracts/workout_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
+import { provideScreenTop } from '@/app/screenTop';
 import { useHoldUpdates } from '@/app/updates';
 import { activeWorkout } from './activeWorkout';
 import { holdWakeLock, leaveWakeLock, releaseWakeLock } from './wakeLock';
 import WorkoutView from './WorkoutView.vue';
 
 vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn() }));
+// The outbox's entries, reactive, so a test can put a refused entry in after the screen mounts.
+const { tray } = await vi.hoisted(async () => ({ tray: (await import('vue')).ref<unknown[]>([]) }));
 vi.mock('@/app/outbox', async (original) => ({
     ...(await original<typeof import('@/app/outbox')>()),
     isPending: vi.fn(() => false),
     pendingInput: vi.fn(() => undefined),
+    entries: tray,
 }));
 vi.mock('./wakeLock', () => ({ holdWakeLock: vi.fn(), leaveWakeLock: vi.fn(), releaseWakeLock: vi.fn() }));
 vi.mock('@/app/updates', () => ({ useHoldUpdates: vi.fn() }));
@@ -63,6 +69,7 @@ describe('WorkoutView', () => {
         writeMock.mockReset().mockResolvedValue({} as never);
         vi.mocked(isPending).mockReturnValue(false);
         vi.mocked(pendingInput).mockReturnValue(undefined);
+        tray.value = [];
         vi.mocked(holdWakeLock).mockClear();
         vi.mocked(leaveWakeLock).mockClear();
         vi.mocked(releaseWakeLock).mockClear();
@@ -546,6 +553,83 @@ describe('WorkoutView', () => {
 
         await show({ payload: workout('warning') });
         expect(holding()).toBe(false);
+    });
+
+    it('OFF-011 a refused finish turns Finish back on and takes the wake lock again', async () => {
+        readMock.mockResolvedValue({ ...workout('warning'), can_finish: true });
+        const wrapper = await show({ mesocycleId: 'm', week: 3, day: 1 });
+
+        await wrapper.get('[data-test="finish"]').trigger('click');
+        await flushPromises();
+        expect(wrapper.get('[data-test="finish"]').attributes('disabled')).toBeDefined();
+
+        tray.value = [{ seq: 1, name: 'workout_finish', input: { workout_id: '01JB8W3Q000000000000000901' }, refusal: { status: 422, body: {} } }];
+        await flushPromises();
+
+        expect(wrapper.get('[data-test="finish"]').attributes('disabled')).toBeUndefined();
+        expect(holdWakeLock).toHaveBeenCalledTimes(2);
+    });
+
+    it('OFF-011 a refused finish of another workout leaves this one\'s Finish as it is', async () => {
+        readMock.mockResolvedValue({ ...workout('warning'), can_finish: true });
+        const wrapper = await show({ mesocycleId: 'm', week: 3, day: 1 });
+
+        await wrapper.get('[data-test="finish"]').trigger('click');
+        await flushPromises();
+        tray.value = [{ seq: 1, name: 'workout_finish', input: { workout_id: 'another' }, refusal: { status: 422, body: {} } }];
+        await flushPromises();
+
+        expect(wrapper.get('[data-test="finish"]').attributes('disabled')).toBeDefined();
+    });
+
+    it('WO-010 a start that synced before the next read is not sent again', async () => {
+        const wrapper = await show();
+
+        await setRow(wrapper, BENCH_SET_1).get('[data-test="log"]').trigger('click');
+        await flushPromises();
+        await setRow(wrapper, '01JB8W3Q000000000000000101').get('[data-test="log"]').trigger('click');
+        await flushPromises();
+
+        expect(sent().map(([name]) => name)).toEqual(['workout_start', 'workout_set_log', 'workout_set_log']);
+    });
+
+    it('WO-010 a refused start is sent again with the next change', async () => {
+        const wrapper = await show();
+
+        await setRow(wrapper, BENCH_SET_1).get('[data-test="log"]').trigger('click');
+        await flushPromises();
+        tray.value = [{ seq: 1, name: 'workout_start', input: { workout_id: '01JB8W3Q000000000000000901' }, refusal: { status: 422, body: {} } }];
+        await flushPromises();
+        await setRow(wrapper, '01JB8W3Q000000000000000101').get('[data-test="log"]').trigger('click');
+        await flushPromises();
+
+        expect(sent().map(([name]) => name)).toEqual(['workout_start', 'workout_set_log', 'workout_start', 'workout_set_log']);
+    });
+
+    it('PWA-030 a session covered by another screen leaves the wake lock, and takes it again on coming back', async () => {
+        readMock.mockResolvedValue(workout('warning'));
+        const top = ref(true);
+        const Framed = defineComponent({
+            setup() {
+                provideScreenTop(top);
+                return () => h(WorkoutView, { mesocycleId: 'm', week: 3, day: 1 });
+            },
+        });
+        router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:any(.*)*', component: { template: '<p />' } }] });
+        await router.push('/workouts/m/3/1');
+        mount(Framed, { attachTo: document.body, global: { plugins: [router], stubs: { teleport: true } } });
+        await flushPromises();
+        expect(holdWakeLock).toHaveBeenCalledTimes(1);
+
+        top.value = false;
+        await flushPromises();
+        expect(leaveWakeLock).toHaveBeenCalledWith('01JB8W3Q000000000000000901');
+        expect(holdWakeLock).toHaveBeenCalledTimes(1);
+
+        top.value = true;
+        await flushPromises();
+        expect(holdWakeLock).toHaveBeenCalledTimes(2);
+        expect(holdWakeLock).toHaveBeenLastCalledWith('01JB8W3Q000000000000000901');
     });
 
     it('NAV-004 a session under way puts its bar text up, and finishing it takes it down', async () => {
