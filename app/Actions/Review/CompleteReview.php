@@ -13,12 +13,10 @@ use App\Models\DayTarget;
 use App\Models\Mesocycle;
 use App\Models\PlanWeek;
 use App\Models\Profile;
-use App\Models\ReviewAnswer;
 use App\Models\User;
 use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Plan\DayTargetRow;
 use App\Support\Review\ReviewAnalysis;
-use App\Support\Review\ReviewAnswers;
 use App\Support\Review\ReviewChoices;
 use App\Support\Review\ReviewMessages;
 use Carbon\CarbonImmutable;
@@ -30,14 +28,15 @@ use Illuminate\Support\Facades\DB;
  * Saves the weekly review (REV-001, rp-clone WeeklyReviewModel+Save): applies the week's stored answers, or the
  * unanswered defaults, and writes in one transaction next week's plan week and days, the diet break and the moved
  * deload (REV-011), the step plan (REV-027, REV-050) and, last, the reviewed week's stamp. Nothing before it applies
- * an answer (REV-031). Choose my own with no amount yet is refused (REV-010), and so is an answered option the review
- * no longer offers. A refused save writes nothing; a row this save finds is updated, never added to.
+ * an answer (REV-031). The answers are read as review_show reads them ({@see OpenReview::stored()}), so a save is
+ * refused for the reason review_show shows. A refused save writes nothing; a row this save finds is updated, never added
+ * to.
  */
 final class CompleteReview
 {
     public const NOTHING_CHOSEN = 'Choose next week\'s calories first.';
 
-    public const NEEDS_AMOUNT = 'Enter how many calories a day you want for Choose my own before saving.';
+    public const NEEDS_AMOUNT = OpenReview::NEEDS_AMOUNT;
 
     public const OUT_OF_DATE = OpenReview::OUT_OF_DATE;
 
@@ -55,18 +54,11 @@ final class CompleteReview
     private function save(User $user, string $weekStart): array
     {
         $analysis = OpenReview::analysis($user, $weekStart);
-        $stored = ReviewAnswer::forWeek($user, $weekStart);
-        // Only a full review applies the answered option; an away or training-only one ignores it (REV-005, SCH-061).
-        if ($analysis->mode === ReviewMode::Full) {
-            if ($stored?->needsAmount()) {
-                throw new DomainException(self::NEEDS_AMOUNT);
-            }
-            // An option the review stopped offering (a stall that has cleared) is refused, not swapped for another.
-            if ($stored !== null && ! OpenReview::offers($analysis, $stored->option)) {
-                throw new DomainException(self::OUT_OF_DATE);
-            }
+        ['answers' => $answers, 'blocked' => $blocked] = OpenReview::stored($user, $analysis);
+        if ($blocked !== null) {
+            throw new DomainException($blocked);
         }
-        $choices = new ReviewChoices($analysis, $stored?->answers() ?? ReviewAnswers::defaults());
+        $choices = new ReviewChoices($analysis, $answers);
         $week = $choices->saveWeek();
         if (! $week instanceof BuiltWeek) {
             throw new DomainException($week instanceof WeekBuildRefusal ? ReviewMessages::refusal($week) : self::NOTHING_CHOSEN);

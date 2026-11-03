@@ -3,7 +3,7 @@
 export interface ReviewAnswerInput {
   week_start: string;
   /**
-   * The calorie option; left out, the answer only sets own_kcal on the stored choose_own.
+   * The calorie option; left out, the answer sets own_kcal on the stored choose_own and clears its moves, as a new amount does.
    */
   option?:
     ("recommendation" | "repeat_this_week" | "choose_own" | "drop_fatigue" | "cut_calories" | "add_steps") | null;

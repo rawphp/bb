@@ -17,7 +17,7 @@ final class ReviewAnswerInput extends CapabilityData
     public function __construct(
         #[Field(format: 'date')]
         public readonly string $week_start,
-        #[Field(description: 'The calorie option; left out, the answer only sets own_kcal on the stored choose_own.', enum: ['recommendation', 'repeat_this_week', 'choose_own', 'drop_fatigue', 'cut_calories', 'add_steps'])]
+        #[Field(description: 'The calorie option; left out, the answer sets own_kcal on the stored choose_own and clears its moves, as a new amount does.', enum: ['recommendation', 'repeat_this_week', 'choose_own', 'drop_fatigue', 'cut_calories', 'add_steps'])]
         public readonly ?string $option = null,
         #[Field(description: 'Average kcal a day for choose_own; null leaves it to be sent, and review_complete waits for it. While choose_own waits for it, the suggested amount sent with other changes is read as not yet chosen; send it alone, or with no other change, to choose it.', minimum: 1, maximum: 10000)]
         public readonly ?int $own_kcal = null,

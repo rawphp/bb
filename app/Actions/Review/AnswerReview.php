@@ -62,8 +62,9 @@ final class AnswerReview
         }
         $ownKcal = $input->own_kcal;
         // REV-010: review_show fills a draft's field with the suggested amount, and the screen sends the field back with
-        // every other answer: the deload answer, the step offer, a move. That echo is not an amount the user typed, so
-        // the draft stays one. The amount counts when it is the answer's only change, or when it is sent alone.
+        // its other answers (the step offer, a move; a caller may change the deload answer too). That echo is not an
+        // amount the user typed, so the draft stays one. The amount counts when it is the answer's only change, or when
+        // it is sent alone.
         $echo = $row !== null && ($deloadToo !== $row->deload_too || $updateStepPlan !== $row->update_step_plan || ($sent !== [] && $sent != $row->moves));
         if ($input->option === 'choose_own' && $row?->needsAmount() && $echo && $ownKcal === self::prefill($analysis, $row)) {
             $ownKcal = null;
