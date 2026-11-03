@@ -158,5 +158,6 @@
                 "steps": 10230
             }
         ]
-    }
+    },
+    "next_before": null
 }

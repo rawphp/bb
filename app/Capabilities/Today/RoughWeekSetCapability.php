@@ -7,6 +7,7 @@ use App\Capabilities\HostCapability;
 use App\Capabilities\Support\HostDefinition;
 use App\Capabilities\Support\WriteResult;
 use App\Capabilities\Today\Data\RoughWeekSetInput;
+use App\Capabilities\Workout\WorkoutReads;
 use App\Models\User;
 use Rawphp\Capabilities\Registry\CapabilityDefinitionBuilder;
 use Rawphp\Capabilities\Support\CapabilityContext;
@@ -17,9 +18,9 @@ final class RoughWeekSetCapability implements HostCapability
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        // SCH-063: the flag is stored and shown on the week strip; nothing else reads it yet.
-        return HostDefinition::write('rough_week_set', affects: ['today_show', 'week_show'], reversible: true)
-            ->description('Mark the plan week in progress as a rough week, or unmark it. Only this plan week\'s start is accepted (as the week strip shows it, when the plan began mid-week), and a deload or an away week cannot be marked. It records the flag and shows it on the week strip; it changes no targets and no training.')
+        // SCH-063: the week strip shows the flag, and WorkoutSnapshot reads it to hold back the next occurrence.
+        return HostDefinition::write('rough_week_set', affects: ['today_show', 'week_show', 'workout_show'], reversible: true)
+            ->description('Mark the plan week in progress as a rough week, or unmark it. Only this plan week\'s start is accepted (as the week strip shows it, when the plan began mid-week), and a deload or an away week cannot be marked. It shows on the week strip; a session of the week finished or re-answered while it is on gets no sets added from its feedback, and while it stays on next week\'s targets get no weekly rise in weight or reps (set removals, recovery adjustments and a deload still apply).')
             ->cli('week', 'rough-set')
             ->input(RoughWeekSetInput::class)
             ->run(function (RoughWeekSetInput $input, CapabilityContext $context): WriteResult {
@@ -28,7 +29,12 @@ final class RoughWeekSetCapability implements HostCapability
                 $saved = ($this->set)($user, $input);
 
                 return new WriteResult(
-                    invalidates: [...TodayReads::keys($saved['dates']), ...TodayReads::weekKeys($saved['dates'])],
+                    invalidates: [
+                        ...TodayReads::keys($saved['dates']),
+                        ...TodayReads::weekKeys($saved['dates']),
+                        // SCH-063: the next week's targets build on this one.
+                        ...($saved['mesocycle'] === null ? [] : WorkoutReads::everyWorkout($saved['mesocycle'])),
+                    ],
                     toast: $saved['toast'],
                 );
             });

@@ -16,6 +16,7 @@ use App\Domain\Model\UnitConversion;
 use App\Domain\Model\VolumeFeedback;
 use App\Domain\Model\WeightUnit;
 use App\Domain\Placement\ClockTime;
+use App\Domain\Plan\PlanRules;
 use App\Domain\Progression\Deload;
 use App\Domain\Progression\FeedbackSheet;
 use App\Domain\Progression\FeedbackSheets;
@@ -392,6 +393,7 @@ final class WorkoutSnapshot
             isFatLoss: $this->isFatLoss(),
             experience: $this->train->experience(),
             rules: $this->rules($exercise),
+            lastWeekWasRough: $this->isRoughWeek($this->week - 1),
         ));
     }
 
@@ -438,6 +440,23 @@ final class WorkoutSnapshot
             ->sortBy('position')
             ->map(fn (WorkoutSet $set) => new SetLoad($this->weightOf($set->actual_weight_kg, $exercise), (int) $set->actual_reps))
             ->values()->all();
+    }
+
+    /**
+     * SCH-063: whether the plan week mesocycle week `$week` falls in is marked rough, that week as Today places it
+     * (SCH-060: from where the mesocycle is placed, past paused away weeks, which are not mesocycle weeks). No row means
+     * it is not; week 1 has no week before it, and nothing is marked without a plan or before it starts.
+     */
+    private function isRoughWeek(int $week): bool
+    {
+        $grid = $this->train->grid();
+        $start = $this->train->placedStartWeek($this->mesocycle);
+        if ($week < 1 || $grid === null || $start === null) {
+            return false;
+        }
+        $planWeek = PlanRules::planWeek($week - 1, $start, $this->train->pausedWeeks());
+
+        return $planWeek >= 0 && $this->train->planWeekRow($grid->start($planWeek))?->is_rough === true;
     }
 
     // MARK: feedback (FB-007, FB-009)
@@ -594,6 +613,7 @@ final class WorkoutSnapshot
             jointPain: $this->jointAnswers(),
             held: Underperformance::flaggedMuscles([...$this->earlierLogged(), $this->logged($session)]),
             now: $this->start(),
+            isRoughWeek: $this->isRoughWeek($this->week),
         ));
     }
 

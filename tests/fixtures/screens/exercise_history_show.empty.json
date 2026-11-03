@@ -5,5 +5,6 @@
         "text": "Best e1RM",
         "tone": "good"
     },
-    "sessions": []
+    "sessions": [],
+    "next_before": null
 }

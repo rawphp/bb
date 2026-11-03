@@ -216,4 +216,11 @@ describe('HelpButton', () => {
         ]);
         expect(gallery.findAllComponents(HelpButton)).toHaveLength(6);
     });
+    it('UI-009 with opens set, a tap emits open for the screen\'s own sheet and shows none here', async () => {
+        mounted = mount(HelpButton, { props: { ...props, opens: true, label: 'What RIR means' }, attachTo: document.body });
+        await mounted.get('button[aria-label="What RIR means"]').trigger('click');
+
+        expect(mounted.emitted('open')).toHaveLength(1);
+        expect(dialog()).toBeNull();
+    });
 });
