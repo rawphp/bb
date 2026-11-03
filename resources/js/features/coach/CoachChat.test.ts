@@ -749,7 +749,6 @@ describe('CoachChat', () => {
 
             await vi.waitFor(() => expect(wrapper.findAll('[role="dialog"]')).toHaveLength(2));
             expect(wrapper.findAll('[role="dialog"]')[1]!.text()).toContain(screening.screening.prompt);
-            expect(lines(wrapper)).toEqual([]);
         });
 
         it('AGT-032 says the plan started once the turn\'s onboarding_complete comes back done', async () => {

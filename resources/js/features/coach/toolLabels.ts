@@ -32,6 +32,9 @@ export const toolLabels: Readonly<Record<string, string>> = {
     steps_log: 'Logging your steps…',
     shopping_item_add: 'Adding to your shopping list…',
     undo_apply: 'Undoing that…',
+    onboarding_show: 'Checking your setup…',
+    onboarding_answer: 'Saving your answers…',
+    onboarding_complete: 'Starting your plan…',
 };
 
 export function toolLine(name: string): string {

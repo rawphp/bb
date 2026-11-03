@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { read } from '@/app/call';
 import { offerInstall } from '@/app/install';
 import ReadState from '@/app/ReadState.vue';
 import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
+import type { AgentStatusShowOutput } from '@/contracts/agent_status_show';
 import type { OnboardingAnswerInput } from '@/contracts/onboarding_answer';
 import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
 import StepFlow, { type StepFlowStep } from '@/design/StepFlow.vue';
 import { toneClasses } from '@/design/tones';
+import CoachChat from '@/features/coach/CoachChat.vue';
 import AboutYouStep from './AboutYouStep.vue';
 import BodyFatStep from './BodyFatStep.vue';
 import CaloriesStep from './CaloriesStep.vue';
@@ -22,6 +25,7 @@ import OnboardingCallout from './parts/OnboardingCallout.vue';
 import RateLengthStep from './RateLengthStep.vue';
 import ReviewStep from './ReviewStep.vue';
 import ScreeningStep from './ScreeningStep.vue';
+import SetupDoors from './SetupDoors.vue';
 import StartingPlanView from './StartingPlanView.vue';
 import TrainingDaysStep from './TrainingDaysStep.vue';
 import TrainingPlanStep from './TrainingPlanStep.vue';
@@ -34,6 +38,9 @@ import WeighInsStep from './WeighInsStep.vue';
 // plan": onboarding_complete builds the plan behind StartingPlanView, then Today opens,
 // which decides whether its tour runs (ONB-020, ONB-030). `pending` marks the server's
 // numbers while a change waits to sync (OFF-008). Ported from rp-clone's OnboardingView.
+// With the Coach on (agent_status_show), it opens on two doors: the stepper, or the Coach
+// chat (AGT-030). Leaving the chat opens the stepper at the step the server now says, as
+// both read onboarding_show (AGT-033); leaving it once its turn started the plan opens Today.
 const props = withDefaults(defineProps<{ payload?: OnboardingShowOutput; pending?: boolean }>(), { pending: false });
 
 const router = useRouter();
@@ -42,6 +49,30 @@ const { send, error: answerError } = useWrite(load);
 // The plan is built once; after it the screen leaves, so nothing is read again.
 const { send: sendStart, error: startError } = useWrite(async () => undefined);
 const error = computed(() => startError.value ?? answerError.value);
+
+// The Coach's on-switches are the server's; a fixture reads nothing, so it has no doors.
+const coach = ref(false);
+const door = ref<'ask' | 'stepper' | 'chat'>('ask');
+const startedByChat = ref(false);
+
+onMounted(() => {
+    if (props.payload !== undefined) return;
+    read<AgentStatusShowOutput>('agent_status_show', {}).then(
+        (status) => (coach.value = status?.enabled === true && status.on === true),
+        () => {
+            // Offline with nothing cached: the stepper alone.
+        },
+    );
+});
+
+async function leaveChat(): Promise<void> {
+    if (startedByChat.value) {
+        await router.replace('/');
+        return;
+    }
+    door.value = 'stepper';
+    await load();
+}
 
 // One save at a time. A save is built from what the screen shows, so while one is out the
 // step is read-only (`locked`): its picks are off and its typed fields take no typing. A
@@ -132,7 +163,8 @@ function edit(step: number): void {
 
 <template>
     <main class="mx-auto w-full max-w-[560px] px-4 pb-6 pt-[max(1rem,env(safe-area-inset-top))]">
-        <StartingPlanView v-if="data && starting" :title="data.review.starting_title" :text="data.review.starting_text" />
+        <SetupDoors v-if="data && coach && door === 'ask'" @pick="door = $event" />
+        <StartingPlanView v-else-if="data && starting" :title="data.review.starting_title" :text="data.review.starting_text" />
         <StepFlow v-else-if="data && step" :key="data.step.number" :step="step" :pending="pending" @back="move('back')" @next="move('next')">
             <fieldset :key="fields" :disabled="moving" class="flex min-w-0 flex-col gap-4">
                 <OnboardingCallout v-for="notice in data.notices" :key="notice.text" :text="notice.text" :tone="notice.tone" />
@@ -154,5 +186,6 @@ function edit(step: number): void {
             </fieldset>
         </StepFlow>
         <ReadState v-else :failure="failure" what="Your setup" @retry="load" />
+        <CoachChat v-if="coach" :open="door === 'chat'" onboarding @close="leaveChat" @started="startedByChat = true" />
     </main>
 </template>
