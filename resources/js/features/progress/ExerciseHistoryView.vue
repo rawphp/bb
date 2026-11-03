@@ -30,12 +30,15 @@ const loadingMore = ref(false);
 const moreError = ref<string | null>(null);
 
 async function more() {
-    const shown = history.value;
-    if (!props.exerciseId || !shown?.next_before || loadingMore.value) return;
+    const before = history.value?.next_before;
+    if (!props.exerciseId || !before || loadingMore.value) return;
     loadingMore.value = true;
     moreError.value = null;
     try {
-        const page = await read<ExerciseHistoryShowOutput>('exercise_history_show', { exercise_id: props.exerciseId, before: shown.next_before });
+        const page = await read<ExerciseHistoryShowOutput>('exercise_history_show', { exercise_id: props.exerciseId, before });
+        // A refresh of the first page that landed meanwhile replaced what this page follows on from.
+        const shown = history.value;
+        if (shown?.next_before !== before) return;
         history.value = { ...shown, sessions: [...shown.sessions, ...page.sessions], next_before: page.next_before ?? null };
     } catch {
         moreError.value = 'Older sessions could not be loaded.';
