@@ -1,0 +1,20 @@
+{
+    "turn_ulid": "01JC0ACH00000000000000TRN1",
+    "events": [
+        { "kind": "status", "data": { "status": "queued" }, "at": "2026-11-03T08:00:00+00:00", "index": 0 },
+        { "kind": "status", "data": { "status": "running" }, "at": "2026-11-03T08:00:01+00:00", "index": 1 },
+        {
+            "kind": "tool",
+            "data": { "name": "week_show", "payload": {}, "ok": true, "error_code": null, "tool_call_id": "toolu_01" },
+            "at": "2026-11-03T08:00:03+00:00",
+            "index": 2
+        },
+        {
+            "kind": "tool",
+            "data": { "name": "meal_redistribute", "payload": { "date": "2026-11-03" }, "ok": true, "error_code": null, "tool_call_id": "toolu_02" },
+            "at": "2026-11-03T08:00:05+00:00",
+            "index": 3
+        },
+        { "kind": "terminal", "data": { "status": "completed" }, "at": "2026-11-03T08:00:07+00:00", "index": 4 }
+    ]
+}
