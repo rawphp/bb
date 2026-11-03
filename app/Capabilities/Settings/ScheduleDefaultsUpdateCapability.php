@@ -18,7 +18,7 @@ final class ScheduleDefaultsUpdateCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::write('schedule_defaults_update', affects: SettingsReads::REBUILDS)
-            ->description('Save the schedule defaults: the eating window, meals a day, training days with their start times and minutes, busy periods, and the daily step range for each weekday. Send every field. The targets are then recalculated from tomorrow. While a mesocycle covers next week, training on different weekdays is refused: use training_weekdays_change to move its sessions. The review day cannot be changed yet; send null, or the current one.')
+            ->description('Save the schedule defaults, sending every field: the eating window, meals a day, training days with their start times and minutes, busy periods and the step range for each weekday; the targets are then recalculated from tomorrow. While a mesocycle covers next week, training on different weekdays is refused, and training_weekdays_change moves its sessions instead. The review day cannot be changed yet, so send null or the current one.')
             ->cli('schedule', 'defaults-update')
             ->input(ScheduleDefaultsUpdateInput::class)
             ->run(function (ScheduleDefaultsUpdateInput $input, CapabilityContext $context): WriteResult {
