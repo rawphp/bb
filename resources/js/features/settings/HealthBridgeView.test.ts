@@ -109,8 +109,8 @@ describe('HealthBridgeView', () => {
         await flushPromises();
 
         const [first, second] = writeMock.mock.calls;
-        expect(second[1]).toEqual(first[1]);
-        expect(second[2]).toEqual(first[2]);
+        expect(second![1]).toEqual(first![1]);
+        expect(second![2]).toEqual(first![2]);
         expect(wrapper.get('[data-test="plain-text"]').text()).toBe('7|s3cr3t-token');
     });
 
