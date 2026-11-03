@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * In front of the package's chat routes. No route takes a personal access token.
  * A new message, which starts a turn, is
- * refused while the agent is off (AGT-002), the user's subscription has lapsed
+ * refused while the agent is off (AGT-002), the user has turned their own Coach off (AGT-020), the user's subscription has lapsed
  * (SUB-024, billing on only), the user is at a cap (AGT-005), or,
  * under a token cap, one of the user's turns is still queued or running.
  * Under a cap, the checks and the store run under one lock per user. Nothing is stored or queued then. Every other chat route and every screen keep working.
@@ -50,6 +50,10 @@ final class AgentGate
 
         if (! $this->status->enabled()) {
             return self::refuse(CapabilityResult::failure('forbidden', 'The Coach is off on this instance.'));
+        }
+
+        if ($user instanceof User && ! $user->coach_on) {
+            return self::refuse(CapabilityResult::failure('forbidden', 'Your Coach is off. Turn it on in Settings → Coach.'));
         }
 
         if ($user instanceof User && ! $this->billing->allowsCoach($user)) {

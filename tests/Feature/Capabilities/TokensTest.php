@@ -1,5 +1,6 @@
 <?php
 
+use App\Agent\CurrentTurn;
 use App\Agent\Exclusions;
 use App\Capabilities\HostAuthorizer;
 use App\Capabilities\Support\AgentPolicy;
@@ -422,7 +423,7 @@ it('INT-001 lets a Health bridge token post a weigh-in and steps, and nothing el
             ->register($registry);
     }
     $registry->withAuthorizerResolver(fn () => new HostAuthorizer($registry, new Ownership, new NoBilling, app(AgentPolicy::class)));
-    $bus = new HostBus($registry, new Ownership, app(IdempotencyKeys::class));
+    $bus = new HostBus($registry, new Ownership, app(IdempotencyKeys::class), new CurrentTurn);
     $invoke = fn (string $name) => $bus->invoke($name, ['amount' => 1], ['actor' => $bearer, 'caller' => 'http']);
 
     foreach (TokenScope::HEALTH_BRIDGE as $name) {

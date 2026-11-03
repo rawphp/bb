@@ -13,7 +13,7 @@ it('AGT-013 maps every write the agent can call to a tab root or null', function
 
     expect($writes)->not->toBe([]);
     foreach ($writes as $name) {
-        expect(ChangeScreens::SCREENS)->toHaveKey($name, "{$name} has no screen in ChangeScreens::SCREENS");
+        expect(array_key_exists($name, ChangeScreens::SCREENS))->toBeTrue("{$name} has no screen in ChangeScreens::SCREENS");
     }
 
     foreach (ChangeScreens::SCREENS as $name => $screen) {

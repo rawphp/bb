@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Rawphp\CapabilitiesAi\Contracts\ConversationStore;
 use Rawphp\CapabilitiesAi\Contracts\TurnClaim;
+use Rawphp\CapabilitiesAi\Models\Conversation;
 use Rawphp\CapabilitiesAi\Models\Turn;
 
 beforeEach(function () {
@@ -74,6 +75,8 @@ it('AGT-005 says how much is left near the cap, and the chat still takes the mes
         ->assertOk()
         ->assertJsonPath('data', [
             'enabled' => true,
+            'on' => true,
+            'conversation_ulid' => Conversation::query()->where('user_id', (string) $user->id)->value('ulid'),
             'turns_left' => 2,
             'tokens_left' => 992_000,
             'at_cap' => false,

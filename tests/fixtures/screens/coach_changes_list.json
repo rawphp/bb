@@ -1,0 +1,16 @@
+{
+    "changes": [
+        {
+            "id": "01JC0ACH000000000000CHNG01",
+            "title": "Meals updated for Run",
+            "screen": "/today",
+            "undo": "01JC0ACH000000000000UND001"
+        },
+        {
+            "id": "01JC0ACH000000000000CHNG02",
+            "title": "Weigh in log",
+            "screen": null,
+            "undo": null
+        }
+    ]
+}

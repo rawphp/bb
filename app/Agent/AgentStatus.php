@@ -24,6 +24,14 @@ final class AgentStatus
             && filled($this->config->get('capabilities-ai.llm.anthropic.api_key'));
     }
 
+    /** The ULID of the user's newest conversation, or null when they have none (AGT-024). */
+    public function conversationUlid(int|string $userId): ?string
+    {
+        $ulid = DB::table(TableNames::conversations())->where('user_id', (string) $userId)->orderByDesc('id')->value('ulid');
+
+        return is_string($ulid) ? $ulid : null;
+    }
+
     /** Whether the instance sets either AGT-005 cap. */
     public function capped(): bool
     {
