@@ -140,20 +140,20 @@ final class ReviewWeekPayload
         if ($analysis->phase?->type !== PhaseType::MuscleGain || $analysis->progress?->rateIsOnTarget !== true || ! ($reviewed[0]->trainingFatigueHigh ?? false)) {
             return [];
         }
-        // PROG-052's Muscle gain steps, when too few muscles underperformed for it to name them.
-        $steps = RecoveryStep::recommended($analysis->training->underperformingMuscles, PhaseType::MuscleGain)
-            ?: [RecoveryStep::HalfSessionsForRestOfWeek, RecoveryStep::EarlyDeload];
+        // PROG-052 names a step only when enough muscles underperformed.
+        $steps = RecoveryStep::recommended($analysis->training->underperformingMuscles, PhaseType::MuscleGain);
         $words = array_map(fn (RecoveryStep $step) => match ($step) {
             RecoveryStep::DietBreakWeek => 'a diet break week',
             RecoveryStep::HalfSessionsForRestOfWeek => 'half sessions for the rest of the week',
             RecoveryStep::EarlyDeload => 'an early deload',
         }, $steps);
+        $sentence = new Status('Your weight is on track. The lifts are a training problem, not a food one.', Tone::Info->value);
+        if ($words === []) {
+            return [$sentence];
+        }
         $last = array_pop($words);
         $list = $words === [] ? $last : implode(', ', $words).', or '.$last;
 
-        return [
-            new Status('Your weight is on track. The lifts are a training problem, not a food one.', Tone::Info->value),
-            new Status("Recovery step: {$list}.", Tone::Info->value),
-        ];
+        return [$sentence, new Status("Recovery step: {$list}.", Tone::Info->value)];
     }
 }
