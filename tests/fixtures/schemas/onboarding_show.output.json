@@ -636,7 +636,8 @@
                     ],
                     "enum": [
                         "male",
-                        "female"
+                        "female",
+                        null
                     ]
                 },
                 "options": {
@@ -699,7 +700,8 @@
             },
             "required": [
                 "help",
-                "options"
+                "options",
+                "sex"
             ]
         },
         "rate_length": {
