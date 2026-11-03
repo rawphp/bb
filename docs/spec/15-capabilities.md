@@ -35,7 +35,7 @@ Every product operation is one capability in `rawphp/laravel-capabilities`, defi
 - **CAP-016** [B] Where a screen must react to input faster than a round trip, or offline, the server must send a lookup table instead of a rule. The only v1 case is PROG-024 and WO-005. `workout_show` sends, for each set, the target reps at every weight the exercise's load steps allow within 15% of the planned weight. Outside that range it sends the PROG-025 "just log reps" text. The client looks the typed weight up in the table and does no arithmetic.
 - **CAP-017** [B] A read key is the capability name plus its input in canonical JSON (sorted keys), for example `today_show{"date":"2026-11-01"}`. The offline cache (OFF-003) and `invalidates` both use it.
 - **CAP-018** [B] Statuses must arrive decided. A pill or bar carries its text and a tone (`good`, `neutral`, `warning`, `info`, from UI-004). The client never picks a tone by comparing numbers.
-- **CAP-019** [B] Writes that create a row must accept a client-made ULID for it, so the offline outbox can queue a create and then an edit of the same row (OFF-006). A ULID that already belongs to another user returns 404.
+- **CAP-019** [B] Writes that create a row must accept a client-made ULID for it, so the offline outbox can queue a create and then an edit of the same row (OFF-006). A ULID that already belongs to another user returns 404. Exception: `custom_exercise_save` creates without an id and the server assigns the integer `exercises.id`, because exercise ids are integers across the training tables; a custom exercise created offline cannot be edited or noted until it syncs.
 
 ## Who may call what (CAP)
 

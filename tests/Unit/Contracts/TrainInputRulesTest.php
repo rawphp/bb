@@ -86,6 +86,26 @@ function trainExample(array $schema, string $key = ''): mixed
 }
 
 /**
+ * An input built from its schema, with an integer id in each field that has rules but no ULID rule: exercise ids are
+ * integers (custom_exercise_save.exercise_id), every other id a ULID.
+ *
+ * @param  class-string<CapabilityData>  $input
+ * @return array<string, mixed>
+ */
+function trainInputExample(string $input): array
+{
+    $data = trainExample($input::jsonSchema());
+
+    foreach ($input::rules() as $field => $rules) {
+        if (str_ends_with($field, 'id') && ! in_array('ulid', (array) $rules, true)) {
+            data_set($data, str_replace('*', '0', $field), '12');
+        }
+    }
+
+    return $data;
+}
+
+/**
  * @param  class-string<CapabilityData>  $input
  * @param  array<string, mixed>  $data
  * @return list<string> the fields the validation names, empty when it passes
@@ -104,15 +124,20 @@ function trainInputViolations(string $input, array $data): array
 }
 
 it('CAP-012 accepts an input of each train write and read built from its schema', function (string $input) {
-    expect(trainInputViolations($input, trainExample($input::jsonSchema())))->toBe([]);
+    expect(trainInputViolations($input, trainInputExample($input)))->toBe([]);
 })->with(trainInputs());
 
 it('CAP-019 refuses an id that is not a ULID in every train ULID rule, nested ones included', function () {
     $checked = [];
 
     foreach (trainInputs() as $name => $input) {
-        foreach (array_keys($input::rules()) as $field) {
-            $data = trainExample($input::jsonSchema());
+        foreach ($input::rules() as $field => $rules) {
+            // custom_exercise_save.exercise_id has no ULID rule: exercise ids are integers (CAP-019 exception).
+            if (! in_array('ulid', (array) $rules, true)) {
+                continue;
+            }
+
+            $data = trainInputExample($input);
             data_set($data, str_replace('*', '0', $field), 'not-a-ulid');
 
             expect(in_array(str_replace('*', '0', $field), trainInputViolations($input, $data), true))->toBeTrue("{$name} accepts a bad {$field}");
@@ -126,7 +151,18 @@ it('CAP-019 refuses an id that is not a ULID in every train ULID rule, nested on
         'workout_set_add.after_set_id',
         'exercise_swap.new_workout_exercise_id',
         // workout_show's mesocycle_id has no ULID rule: mesocycle ids are UUIDs, as in mesocycle_show.
-    )->and(count($checked))->toBeGreaterThanOrEqual(29);
+    )->and(count($checked))->toBeGreaterThanOrEqual(28);
+});
+
+it('CAP-019 EX-004 lets custom_exercise_save create without an id, and refuses an edit id that is not a number', function () {
+    $input = CustomExerciseSaveInput::class;
+    $create = trainInputExample($input);
+    unset($create['exercise_id']);
+
+    expect(trainInputViolations($input, $create))->toBe([])
+        ->and(trainInputViolations($input, [...$create, 'exercise_id' => null]))->toBe([])
+        ->and(trainInputViolations($input, [...$create, 'exercise_id' => '12']))->toBe([])
+        ->and(trainInputViolations($input, [...$create, 'exercise_id' => 'not-a-number']))->toBe(['exercise_id']);
 });
 
 it('CAP-012 lets a train input send null for a nullable enum, and leave it out only when it has a default', function () {
@@ -138,7 +174,7 @@ it('CAP-012 lets a train input send null for a nullable enum, and leave it out o
                 continue;
             }
 
-            $data = trainExample($input::jsonSchema());
+            $data = trainInputExample($input);
 
             expect(trainInputViolations($input, [...$data, $field => null]))->toBe([], "{$name} refuses {$field}: null");
 
@@ -153,7 +189,7 @@ it('CAP-012 lets a train input send null for a nullable enum, and leave it out o
 });
 
 it('CAP-012 refuses a train input outside its bounds and names the field', function (string $input, string $field, mixed $value) {
-    $data = trainExample($input::jsonSchema());
+    $data = trainInputExample($input);
     data_set($data, $field, $value);
 
     expect(trainInputViolations($input, $data))->toContain($field);
@@ -181,7 +217,7 @@ it('CAP-012 refuses a train input outside its bounds and names the field', funct
 ]);
 
 it('CAP-012 takes the values at a train input\'s bounds, and the null that clears or resets', function (string $input, string $field, mixed $value) {
-    $data = trainExample($input::jsonSchema());
+    $data = trainInputExample($input);
     data_set($data, $field, $value);
 
     expect(trainInputViolations($input, $data))->toBe([]);
@@ -209,7 +245,7 @@ it('CAP-012 refuses a train input that leaves out a nullable field with no defau
                 continue;
             }
 
-            $data = trainExample($input::jsonSchema());
+            $data = trainInputExample($input);
             unset($data[$parameter->getName()]);
 
             expect(trainInputViolations($input, $data))->toBe([$parameter->getName()], "{$name} accepts a missing {$parameter->getName()}");
@@ -275,4 +311,14 @@ it('CAP-002 uses the domain enums\' values in every train contract', function ()
     }
 
     expect($checked)->toBeGreaterThan(20);
+});
+
+it('EX-004 refuses a custom exercise name that is only whitespace, and still accepts a real one', function () {
+    $input = CustomExerciseSaveInput::class;
+    $create = trainInputExample($input);
+    unset($create['exercise_id']);
+
+    expect(trainInputViolations($input, [...$create, 'name' => '   ']))->toBe(['name'])
+        ->and(trainInputViolations($input, [...$create, 'name' => "\t\n "]))->toBe(['name'])
+        ->and(trainInputViolations($input, [...$create, 'name' => 'Landmine press']))->toBe([]);
 });
