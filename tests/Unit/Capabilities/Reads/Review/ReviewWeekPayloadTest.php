@@ -5,6 +5,7 @@ use App\Domain\Defaults\TBL012TrainingDefaults\Column;
 use App\Domain\Model\ExperienceLevel;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\PhaseType;
+use App\Domain\Progression\RecoveryStep;
 use App\Domain\Progression\VolumeProgression;
 use App\Models\DayTarget;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -164,6 +165,29 @@ it('REV-045 on target in Muscle gain with high training fatigue, the lifts are a
         ['text' => 'Your weight is on track. The lifts are a training problem, not a food one.', 'tone' => 'info'],
         ['text' => 'Recovery step: half sessions for the rest of the week, or an early deload.', 'tone' => 'info'],
     ]);
+});
+
+it('PROG-052 REV-045 high fatigue from feedback alone gives the sentence without a recovery step, which needs two underperforming muscles', function () {
+    $payload = rvTraining(function (ReviewSeed $seed) {
+        ReviewShowWorld::muscleGain($seed);
+        $seed->muscleFeedback = ReviewSeed::highFatigue(ReviewSeed::sessionKey(1));
+    });
+
+    expect(array_column($payload['notes'], 'text'))->toBe(['Your weight is on track. The lifts are a training problem, not a food one.']);
+});
+
+it('PROG-052 REV-045 the recovery step names the steps PROG-052 recommends for Muscle gain, and never a diet break', function () {
+    $payload = rvTraining(function (ReviewSeed $seed) {
+        ReviewShowWorld::muscleGain($seed);
+        $seed->chestUnderperforms = true;
+        $seed->backUnderperforms = true;
+    });
+    $steps = array_map(fn ($step) => $step->value, RecoveryStep::recommended([MuscleGroup::Chest, MuscleGroup::Back], PhaseType::MuscleGain));
+    $last = array_column($payload['notes'], 'text')[count($payload['notes']) - 1];
+
+    expect($steps)->toBe(['halfSessionsForRestOfWeek', 'earlyDeload'])
+        ->and($last)->toBe('Recovery step: half sessions for the rest of the week, or an early deload.')
+        ->and($last)->not->toContain('diet break');
 });
 
 it('REV-045 shows nothing of it in Fat loss, off target, or without high training fatigue', function () {
