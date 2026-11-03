@@ -49,6 +49,8 @@ export DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT="$db_port" DB_DATABASE=body
 export SESSION_DRIVER=file CACHE_STORE=file QUEUE_CONNECTION=sync MAIL_MAILER=array BILLING_ENABLED=false
 # A week: the file session's expiry reads the request clock, so a clock walked days ahead (X-BB-Now) would sign out.
 export SESSION_LIFETIME=10080
+# Rate-limit counters live for one request: a scripted user answers onboarding faster than the 30-a-minute limit.
+export CAPABILITIES_RATE_LIMITS_DRIVER=memory
 
 php artisan migrate --seed --force --no-interaction >/dev/null
 php artisan db:seed --class='Tests\Support\AuditSeeder' --force --no-interaction >/dev/null

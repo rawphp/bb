@@ -22,8 +22,10 @@ use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Tests\Support\TodaySeed;
 
@@ -297,6 +299,36 @@ it('MEAL-060 CAP-013 a failed write leaves every destination as it was', functio
 
     expect(copyActionHolds($thursday))->toBe(["food:{$kept->food_id}"])
         ->and(PlannedFood::query()->where('meal_id', copyActionMeal($user, '2026-09-25', 3))->count())->toBe(0);
+});
+
+it('MEAL-060 a copy reads the meals under their row lock inside its transaction, before it plans', function () {
+    $user = copyActionUser();
+    copyActionDinner($user);
+    [$source, $lunch, $thursday] = [copyActionMeal($user, '2026-09-23', 3), copyActionMeal($user, '2026-09-24', 2), copyActionMeal($user, '2026-09-24', 3)];
+    copyActionFood($thursday);
+    MealCheckIn::factory()->create(['meal_id' => $lunch]);
+    $level = DB::transactionLevel();
+    $queries = [];
+    DB::listen(function (QueryExecuted $query) use (&$queries) {
+        $queries[] = ['sql' => $query->sql, 'level' => DB::transactionLevel()];
+    });
+
+    $written = copyActionCopyFoods($user, $source, [$thursday, $lunch]);
+
+    // A check-in or a food added meanwhile waits for the copy or is seen by it: the plan is made from locked rows,
+    // read as they are now even inside UndoLog's transaction (CopyMealsRaceTest proves what that keeps).
+    $sql = array_column($queries, 'sql');
+    $selectsOn = fn (string $table) => array_values(preg_grep("/^select .* from `{$table}`/", $sql));
+    expect(array_map(fn (DayTargetMeal $m) => $m->id, $written))->toBe([$thursday])
+        ->and($queries[0]['level'])->toBeGreaterThan($level)
+        ->and($sql[0])->toContain('from `day_target_meals`')->toEndWith('for update')
+        ->and(array_filter($queries, fn (array $q) => $q['level'] <= $level))->toBe([]);
+    foreach (['meal_check_ins', 'planned_foods', 'planned_recipes'] as $table) {
+        expect($selectsOn($table))->not->toBe([]);
+        foreach ($selectsOn($table) as $select) {
+            expect($select)->toEndWith('for update');
+        }
+    }
 });
 
 // MARK: day_copy (SCH-034)
