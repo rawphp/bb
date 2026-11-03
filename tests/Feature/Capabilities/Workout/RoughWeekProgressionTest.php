@@ -1,5 +1,9 @@
 <?php
 
+use App\Domain\Model\Equipment;
+use App\Domain\Model\ExerciseLoadType;
+use App\Domain\Model\MuscleGroup;
+use App\Models\Exercise;
 use App\Models\PlanWeek;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -13,6 +17,10 @@ afterEach(fn () => Carbon::setTestNow());
 
 it('SCH-063 a session logged in a rough week keeps next week\'s targets and sets where it ran', function (bool $rough, int $sets, array $targets, string $toast) {
     Carbon::setTestNow('2026-09-07 19:00:00');
+    Exercise::factory()->create([
+        'name' => 'Bench Press', 'muscle_group' => MuscleGroup::Chest, 'equipment' => Equipment::Barbell,
+        'load_type' => ExerciseLoadType::Barbell, 'rep_range_min' => 5, 'rep_range_max' => 30,
+    ]);
     $user = TrainSeed::user();
     $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => TrainSeed::phase($user, 'muscleGain', '2026-08-31')->id]);
     PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-07', 'is_rough' => $rough]);
