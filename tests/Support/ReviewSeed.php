@@ -63,6 +63,9 @@ final class ReviewSeed
 
     public bool $trainingOnly = false;
 
+    /** The profile's weight unit: kg or lb. */
+    public string $weightUnit = 'kg';
+
     /** @var array{start: string, end: string} the profile's eating window */
     public array $eatingWindow = ['start' => '07:00', 'end' => '21:00'];
 
@@ -217,7 +220,7 @@ final class ReviewSeed
         Plan::factory()->for($user)->create(['start_date' => $start, 'review_weekday' => 1]);
         Profile::factory()->for($user)->create([
             'name' => 'Sam', 'sex' => 'male', 'birth_date' => '1990-06-15', 'height_cm' => $this->heightCm, 'weight_kg' => $this->profileKg,
-            'body_fat_bucket' => 'low', 'uses_glp1' => false, 'experience' => 'intermediate', 'weight_unit' => 'kg',
+            'body_fat_bucket' => 'low', 'uses_glp1' => false, 'experience' => 'intermediate', 'weight_unit' => $this->weightUnit,
             'height_unit' => 'cm', 'consumed_totals' => 'checked_in', 'eating_window' => $this->eatingWindow,
             'meal_count' => 4, 'busy_periods' => [],
             'training_days' => [

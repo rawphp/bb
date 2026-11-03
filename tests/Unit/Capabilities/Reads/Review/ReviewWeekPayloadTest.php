@@ -185,6 +185,22 @@ it('REV-045 shows nothing of it in Fat loss, off target, or without high trainin
         ->and($texts($rested))->toBe([]);
 });
 
+it('REV-003 a user who weighs in pounds reads the weigh-ins and the progress lines in pounds', function () {
+    $pounds = fn (ReviewSeed $seed) => $seed->weightUnit = 'lb';
+    $weighIns = rvWeighIns(function (ReviewSeed $seed) {
+        $seed->weightUnit = 'lb';
+        $seed->weight = fn (int $offset): ?float => 89.0;
+    });
+    $progress = rvProgress($pounds);
+    $kg = rvProgress();
+
+    expect($weighIns['rows'][0]['value_label'])->toBe('196.2 lb')
+        ->and($progress['lines'][0]['value'])->toMatch('/^\d{3}\.\d lb$/')
+        ->and($progress['lines'][1]['value'])->toMatch('/^\d{3}\.\d lb to \d{3}\.\d lb$/')
+        // Same trend, converted: kg x 2.20462.
+        ->and((float) $progress['lines'][0]['value'])->toEqualWithDelta((float) $kg['lines'][0]['value'] * 2.20462, 0.2);
+});
+
 // MARK: step 4
 
 it('REV-003 the progress step places the trend in the goal range and the rate against the target', function () {
