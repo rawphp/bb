@@ -12,8 +12,8 @@ use DomainException;
 use Illuminate\Support\Facades\DB;
 
 /**
- * SCH-063: mark the plan week in progress as a rough week, or unmark it. The flag is stored and checked here and
- * nothing else reads it yet. The week is named by its plan start or by the start the week strip shows; the row is
+ * SCH-063: mark the plan week in progress as a rough week, or unmark it. The flag is stored and checked here; workouts
+ * read it to hold back the next occurrence of a session logged in the week. The week is named by its plan start or by the start the week strip shows; the row is
  * stored at the plan start. A deload or an away week cannot be marked; unmarking is always allowed.
  */
 final class SetRoughWeek

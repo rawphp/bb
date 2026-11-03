@@ -42,7 +42,11 @@ final class SetPlan
         // logged, with no rise in weight or reps (PROG-021, PROG-022, PROG-027).
         if ($inputs->lastWeek !== []) {
             $targets = $inputs->lastWeekWasRough
-                ? array_map(fn (SetLoad $set) => new SetTarget($set->weight, $set->reps, $rir), $inputs->lastWeek)
+                ? array_map(function (SetLoad $set) use ($inputs, $rir): SetTarget {
+                    $held = LoadProgression::addedLoad($set, $inputs->rules);
+
+                    return new SetTarget($held->weight, $held->reps, $rir);
+                }, $inputs->lastWeek)
                 : LoadProgression::targets($inputs->lastWeek, $rir, $inputs->isFatLoss, $inputs->rules);
             $last = $targets[count($targets) - 1];
             $planned = [];

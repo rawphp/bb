@@ -17,9 +17,9 @@ final class RoughWeekSetCapability implements HostCapability
 
     public function definition(): CapabilityDefinitionBuilder
     {
-        // SCH-063: the flag is stored and shown on the week strip; nothing else reads it yet.
+        // SCH-063: the week strip shows the flag; sessions logged in the week raise nothing at their next occurrence.
         return HostDefinition::write('rough_week_set', affects: ['today_show', 'week_show'], reversible: true)
-            ->description('Mark the plan week in progress as a rough week, or unmark it. Only this plan week\'s start is accepted (as the week strip shows it, when the plan began mid-week), and a deload or an away week cannot be marked. It records the flag and shows it on the week strip; it changes no targets and no training.')
+            ->description('Mark the plan week in progress as a rough week, or unmark it. Only this plan week\'s start is accepted (as the week strip shows it, when the plan began mid-week), and a deload or an away week cannot be marked. It records the flag and shows it on the week strip. Training this week runs as planned; sessions logged in it add no sets and raise no weight or reps at their next occurrence, though set removals still apply.')
             ->cli('week', 'rough-set')
             ->input(RoughWeekSetInput::class)
             ->run(function (RoughWeekSetInput $input, CapabilityContext $context): WriteResult {
