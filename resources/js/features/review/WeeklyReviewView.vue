@@ -96,11 +96,19 @@ function pickOption(option: string): void {
     void answer({ option: option as ReviewAnswerInput['option'], own_kcal: null, deload_too: null, moves: [] });
 }
 
-/** REV-004: sends the answered moves with this one; null once the week took it, else why not. */
+/**
+ * REV-004: sends the answered moves with this one. Resolves null to close the sheet, or
+ * why the move did not go: a refusal, or the week's reason when it will not build with
+ * the move (the server keeps the last moves that built and says why in preview.error).
+ * With no final answer the sheet closes on the re-read week, which shows whether the move
+ * took, so a second tap cannot add it twice.
+ */
 async function move(next: ReviewMove): Promise<string | null> {
     const outcome = await answer({ moves: [...(data.value?.preview?.moves ?? []), next] });
+    if (outcome === 'done') return data.value?.preview?.error ?? null;
+    if (outcome === 'refused') return error.value ?? 'The move could not be saved.';
 
-    return outcome === 'done' ? null : (error.value ?? 'The move could not be saved.');
+    return null;
 }
 
 function addWeighIn(at?: string): void {
