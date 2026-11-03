@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AuditRecord;
+use App\Models\UndoToken;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -100,4 +101,22 @@ it('CAP-020 answers 404 for another user\'s turn and for an unknown one', functi
     changesFor($user, $theirs)->assertNotFound()->assertJsonPath('error.code', 'not_found');
     changesFor($user, (string) Str::ulid())->assertNotFound()->assertJsonPath('error.code', 'not_found');
     changesFor($other, $theirs)->assertOk()->assertJsonCount(1, 'data.changes');
+});
+
+it('AGT-013 CAP-013 gives a change no undo once its token has expired, or when the token is another user\'s', function () {
+    $user = User::factory()->create();
+    $turn = (string) Str::ulid();
+    $store = app(ConversationStore::class);
+    $store->createQueuedTurn($store->createConversation((string) Str::ulid(), null, (string) $user->id), $turn);
+    $live = UndoToken::factory()->for($user)->create(['expires_at' => now()->addMinute()]);
+    $expired = UndoToken::factory()->for($user)->create(['expires_at' => now()->subMinute()]);
+    $theirs = UndoToken::factory()->for(User::factory()->create())->create();
+    foreach ([$live, $expired, $theirs] as $token) {
+        AuditRecord::factory()->for($user)->create([
+            'turn_ulid' => $turn, 'event' => 'capability.invoked', 'channel' => 'agent', 'capability' => 'other_activity_save',
+            'result' => ['ok' => true, 'summary' => ['toast' => 'Meals updated for Run', 'undo' => $token->id]],
+        ]);
+    }
+
+    expect(array_column(changesFor($user, $turn)->assertOk()->json('data.changes'), 'undo'))->toBe([$live->id, null, null]);
 });
