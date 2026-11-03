@@ -138,3 +138,67 @@ it('REV-010 a ready review with Choose my own and no amount cannot be saved and 
         ->and($payload['preview']['error'])->toBeNull()
         ->and($payload['can_save'])->toBeFalse();
 });
+
+/** @param  array<string, mixed>  $payload */
+function reviewShownAverageKcal(array $payload): float
+{
+    $kcal = array_map(fn (array $day) => (int) $day['kcal_label'], $payload['preview']['days']);
+
+    return array_sum($kcal) / count($kcal);
+}
+
+it('REV-027 REV-004 an answered cut builds next week with the calories taken off, and it can be saved', function () {
+    $payload = reviewShown(
+        fn (ReviewSeed $seed) => $seed->weight = fn (int $offset): float => 88.0,
+        answers: new ReviewAnswers('cut_calories', null, null, false, [], null),
+    );
+    $selected = array_values(array_filter($payload['calories']['options'], fn (array $option) => $option['is_selected']));
+
+    expect(array_column($selected, 'id'))->toBe(['cut_calories'])
+        ->and($payload['preview']['days'])->toHaveCount(7)
+        ->and(reviewShownAverageKcal($payload))->toEqualWithDelta(2150, 1)
+        ->and($payload['preview']['error'])->toBeNull()
+        ->and($payload['can_save'])->toBeTrue();
+});
+
+it('REV-027 REV-004 answered added steps keep next week at this week\'s calories, and it can be saved', function () {
+    $payload = reviewShown(
+        fn (ReviewSeed $seed) => $seed->weight = fn (int $offset): float => 88.0,
+        answers: new ReviewAnswers('add_steps', null, null, false, [], null),
+    );
+    $selected = array_values(array_filter($payload['calories']['options'], fn (array $option) => $option['is_selected']));
+
+    expect(array_column($selected, 'id'))->toBe(['add_steps'])
+        ->and($payload['preview']['days'])->toHaveCount(7)
+        ->and(reviewShownAverageKcal($payload))->toEqualWithDelta(2400, 1)
+        ->and($payload['can_save'])->toBeTrue();
+});
+
+it('REV-010 REV-013 a reviewed week with no stored target shows the planned average as last week\'s target, with nothing checked in', function () {
+    $payload = reviewShown(function (ReviewSeed $seed) {
+        $seed->reviewedWeekHasTargets = false;
+    });
+
+    expect($payload['state'])->toBe('ready')
+        ->and($payload['calories']['lines'][0]['label'])->toBe('Last week\'s target')
+        ->and($payload['calories']['lines'][0]['value'])->toMatch('/^\d+ kcal$/')
+        ->and($payload['calories']['lines'][0]['value'])->not->toBe('0 kcal')
+        ->and($payload['calories']['lines'][1]['value'])->toBe('Nothing checked in');
+});
+
+it('REV-027 SAFE-012 a cut safety refuses is not offered, so an answered cut is never previewed or saved', function () {
+    // A stall on a reviewed week 800 kcal below the plan: the 250 kcal cut would breach the macro floors (SAFE-012).
+    $payload = reviewShown(
+        function (ReviewSeed $seed) {
+            $seed->weight = fn (int $offset): float => 88.0;
+            $seed->reviewedWeekShiftKcal = -800;
+        },
+        answers: new ReviewAnswers('cut_calories', null, null, false, [], null),
+    );
+    $selected = array_values(array_filter($payload['calories']['options'], fn (array $option) => $option['is_selected']));
+
+    expect(array_column($payload['calories']['options'], 'id'))->not->toContain('cut_calories')
+        ->and(array_column($selected, 'id'))->toBe(['add_steps'])
+        ->and(reviewShownAverageKcal($payload))->toEqualWithDelta(1600, 1)
+        ->and($payload['can_save'])->toBeTrue();
+});

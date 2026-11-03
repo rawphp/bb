@@ -95,6 +95,9 @@ final class ReviewSeed
     /** Day targets stored for the next week too. */
     public bool $nextWeekHasTargets = false;
 
+    /** Day targets stored for the reviewed week (5 to 11 October); false leaves that week without a stored target. */
+    public bool $reviewedWeekHasTargets = true;
+
     /** The reviewed week's sessions: how many were done, and how many skipped (the rest are missed). */
     public int $sessionsDone = 3;
 
@@ -154,8 +157,9 @@ final class ReviewSeed
     public function storedDays(): array
     {
         $last = $this->nextWeekHasTargets ? 6 : -1;
+        $offsets = array_filter(range(-7 * $this->weeksFinished, $last), fn (int $offset) => $this->reviewedWeekHasTargets || $offset < -7 || $offset > -1);
 
-        return array_map(fn (int $offset) => self::day($offset), range(-7 * $this->weeksFinished, $last));
+        return array_values(array_map(fn (int $offset) => self::day($offset), $offsets));
     }
 
     /** The reviewed week's session on mesocycle day 1, 2 or 3. */
