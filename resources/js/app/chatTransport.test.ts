@@ -75,6 +75,53 @@ describe('chatTransport', () => {
         expect(fetchMock.mock.calls[1]![1]?.headers).toMatchObject({ 'X-XSRF-TOKEN': 'fresh' });
     });
 
+    it('AGT-021 retries a chat POST once with a fresh CSRF token after a 419', async () => {
+        clearCookies();
+        document.cookie = 'XSRF-TOKEN=stale; path=/';
+        const ids = { conversation_ulid: CONVERSATION, message_ulid: '01JC0ACH0000000000000MSG01', turn_ulid: TURN };
+        fetchMock.mockResolvedValueOnce(json({ message: 'CSRF token mismatch.' }, 419));
+        fetchMock.mockImplementationOnce(async () => {
+            document.cookie = 'XSRF-TOKEN=fresh; path=/';
+            return new Response(null, { status: 204 });
+        });
+        fetchMock.mockResolvedValueOnce(json(ids, 201));
+
+        expect(await send('Swap my legs day', CONVERSATION)).toEqual(ids);
+        expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+            '/capabilities-ai/chat/messages',
+            '/sanctum/csrf-cookie',
+            '/capabilities-ai/chat/messages',
+        ]);
+        const [, first] = fetchMock.mock.calls[0]!;
+        const [, retry] = fetchMock.mock.calls[2]!;
+        expect(first?.headers).toMatchObject({ 'X-XSRF-TOKEN': 'stale' });
+        expect(retry?.headers).toMatchObject({ 'X-XSRF-TOKEN': 'fresh' });
+        expect(retry?.method).toBe('POST');
+        expect(JSON.parse(retry?.body as string)).toEqual(JSON.parse(first?.body as string));
+    });
+
+    it('AGT-021 gives up after a second 419 on a chat POST', async () => {
+        fetchMock.mockResolvedValueOnce(json({ message: 'CSRF token mismatch.' }, 419));
+        fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+        fetchMock.mockResolvedValueOnce(json({ message: 'CSRF token mismatch.' }, 419));
+
+        const error = await cancel(TURN).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(CapabilityError);
+        expect(error).toMatchObject({ status: 419 });
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('AGT-021 does not retry a chat GET answered 419', async () => {
+        fetchMock.mockResolvedValueOnce(json({ message: 'CSRF token mismatch.' }, 419));
+
+        const error = await history(CONVERSATION).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(CapabilityError);
+        expect(error).toMatchObject({ status: 419 });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
     it('AGT-021 cancels a turn', async () => {
         fetchMock.mockResolvedValueOnce(json({ turn_ulid: TURN, status: 'cancelled' }));
 
