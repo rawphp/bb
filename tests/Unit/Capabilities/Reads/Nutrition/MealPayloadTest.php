@@ -191,6 +191,21 @@ it('MEAL-001 FOOD-005 the amount shows grams with the household unit beside it, 
         ->and(array_column($entries, 'weighing'))->toBe(['cooked', 'raw']);
 });
 
+it('MEAL-001 a planned food whose food is gone shows at zero macros, as Today does', function () {
+    $snapshot = W::snapshot();
+    mealPlan($snapshot, MEAL_DINNER, [['food' => mealChicken(), 'grams' => 150], ['food' => mealOil(), 'grams' => 20]]);
+    mealRow($snapshot, MEAL_DINNER)->plannedFoods[0]->setRelation('food', null);
+    $payload = mealShow($snapshot, MEAL_DINNER);
+
+    expect($payload['entries'][0])->toMatchArray([
+        'name' => 'Food', 'amount_text' => '150 g', 'household_unit' => null,
+        'macros' => ['kcal' => '0 kcal', 'protein' => 'P 0', 'fat' => 'F 0', 'carbs' => 'C 0'],
+    ])
+        ->and(array_column($payload['entries'], 'name'))->toBe(['Food', 'Olive oil'])
+        ->and($payload['bars'][0]['value_text'])->toBe('177/1040')
+        ->and(collect(TodayPayload::build($snapshot)->toArray()['meals'])->firstWhere('id', MEAL_DINNER)['planned_text'])->toBe('Food 150 g · Olive oil 20 g');
+});
+
 it('MEAL-001 FOOD-005 a food without a household unit shows grams only', function () {
     $entry = mealShow(W::snapshot(), MEAL_BREAKFAST)['entries'][0];
 
