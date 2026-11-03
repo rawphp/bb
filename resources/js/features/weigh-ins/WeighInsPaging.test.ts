@@ -91,7 +91,8 @@ describe('WeighInsScreen Show older', () => {
 
 describe('WeighInsView paging', () => {
     beforeEach(() => {
-        readMock.mockReset().mockResolvedValue(newest);
+        // Each read answers with its own copy, as the server and the cache do.
+        readMock.mockReset().mockImplementation(async () => structuredClone(newest));
         readFreshMock.mockReset();
     });
     afterEach(() => {
