@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// tests/e2e: Chromium on a 390 × 844 viewport against the built app (vite build runs first in
-// scripts/check.sh), served by scripts/e2e-server.sh on a throwaway, seeded MySQL.
+// tests/e2e: Chromium against the built app (vite build runs first in scripts/check.sh), served by
+// scripts/e2e-server.sh on a throwaway, seeded MySQL. Every spec runs on the phone project at
+// 390 × 844. Tests tagged @desktop run on the desktop project at 1440 × 900 instead (PLT-002, NAV-003).
 const port = Number(process.env.E2E_PORT ?? 8125);
 
 export default defineConfig({
@@ -13,12 +14,22 @@ export default defineConfig({
     timeout: 120_000,
     reporter: 'list',
     use: {
-        ...devices['Pixel 7'],
         browserName: 'chromium',
-        viewport: { width: 390, height: 844 },
         baseURL: `http://127.0.0.1:${port}`,
         trace: 'retain-on-failure',
     },
+    projects: [
+        {
+            name: 'phone',
+            grepInvert: /@desktop/,
+            use: { ...devices['Pixel 7'], viewport: { width: 390, height: 844 } },
+        },
+        {
+            name: 'desktop',
+            grep: /@desktop/,
+            use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+        },
+    ],
     webServer: {
         command: `bash scripts/e2e-server.sh ${port}`,
         url: `http://127.0.0.1:${port}/up`,
