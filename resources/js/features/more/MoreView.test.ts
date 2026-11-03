@@ -67,11 +67,10 @@ describe('MoreView', () => {
         expect(rows(wrapper)).toEqual(built);
     });
 
-    it("SET-020 with the app's own routes, lists every row whose screen is built, Settings included", async () => {
+    it("SET-020 with the app's own routes, every row's screen is built, so the menu lists them all", async () => {
         const { wrapper } = await mountMore(createRouter({ history: createMemoryHistory(), routes: routesFor(false) }));
 
-        // Weigh-ins waits for its screen (V_WT). Add it here when that route lands.
-        expect(rows(wrapper)).toEqual(ROWS.filter(([title]) => title !== 'Weigh-ins'));
+        expect(rows(wrapper)).toEqual(ROWS);
     });
 
     it('SET-020 a tap on a row opens its screen', async () => {
