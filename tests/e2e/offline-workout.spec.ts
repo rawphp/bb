@@ -112,17 +112,34 @@ test('OFF-050 OFF-001 a workout started online is logged, answered and finished 
     await expect(dinner).toBeVisible();
     const dinnerBefore = await dinner.innerText();
 
-    // Start today's workout from Today, and let its screen load before the signal goes.
+    // Every write the app sends, by idempotency key, with the occurred_at it carried.
+    const sent = new Map<string, string | undefined>();
+    const starts: (string | undefined)[] = [];
+    page.on('request', (request) => {
+        const key = request.headers()['idempotency-key'];
+        if (!key) return;
+        sent.set(key, request.headers()['x-bb-occurred-at']);
+        if (request.url().endsWith('/capabilities/workout_start')) starts.push(request.headers()['x-bb-occurred-at']);
+    });
+
+    // Start today's workout from Today. The session starts on the server with its first change, set 1's weight typed
+    // while the signal holds; the signal goes once the screen has read the session back as under way.
     const workout = page.locator('[data-test="workout-card"]').filter({ hasText: 'Full Body' });
     await workout.getByRole('button', { name: 'Start' }).click();
     await page.waitForURL(`**${account.workout}`);
-    await expect(page.locator('[data-set]')).toHaveCount(TYPED.length);
+    const sets = page.locator('[data-set]');
+    await expect(sets).toHaveCount(TYPED.length);
+    await page.waitForLoadState('networkidle');
+    const underWay = page.waitForResponse((response) => response.url().endsWith('/capabilities/workout_show') && response.request().method() === 'POST');
+    await sets.first().locator('[data-test="weight"]').fill(String(TYPED[0]!.weight));
+    await sets.first().locator('[data-test="weight"]').blur();
+    expect(await (await underWay).json()).toMatchObject({ data: { status: 'in_progress' } });
+    await expect.poll(async () => (await outbox(page)).length).toBe(0);
     await page.waitForLoadState('networkidle');
 
     await context.setOffline(true);
 
     // Log every set; each muscle's feedback opens once its last set is in.
-    const sets = page.locator('[data-set]');
     for (const [index, typed] of TYPED.entries()) {
         const set = sets.nth(index);
         await set.locator('[data-test="weight"]').fill(String(typed.weight));
@@ -148,10 +165,11 @@ test('OFF-050 OFF-001 a workout started online is logged, answered and finished 
         await expect(sets.nth(index).locator('[data-test="weight"]')).toHaveValue(String(typed.weight));
         await expect(sets.nth(index).locator('[data-test="reps"]')).toHaveValue(String(typed.reps));
     }
-    // The outbox holds the start, each field as it was left and each Log tap, both muscles' answers and the finish.
+    // The outbox holds each field as it was left and each Log tap, both muscles' answers and the finish: the start
+    // reached the server before the signal went.
     const queued = await outbox(page);
     const names = queued.map((entry) => entry.name);
-    expect(names.at(0)).toBe('workout_start');
+    expect(names).not.toContain('workout_start');
     expect(names.at(-1)).toBe('workout_finish');
     expect(queued.filter((entry) => entry.name === 'workout_feedback_answer').map((entry) => entry.input.muscle_group)).toEqual(['chest', 'quads']);
     const logs = queued.filter((entry) => entry.name === 'workout_set_log');
@@ -163,16 +181,11 @@ test('OFF-050 OFF-001 a workout started online is logged, answered and finished 
     // Online again, two seconds on: a server that took its own clock would store other times than the user's. The
     // outbox replays, each entry with the time the user acted.
     await page.waitForTimeout(2_000);
-    const sent = new Map<string, string | undefined>();
-    page.on('request', (request) => {
-        const key = request.headers()['idempotency-key'];
-        if (key) sent.set(key, request.headers()['x-bb-occurred-at']);
-    });
     await context.setOffline(false);
     await expect.poll(async () => (await outbox(page)).length, { timeout: 60_000 }).toBe(0);
     for (const entry of queued) expect(sent.get(entry.idempotencyKey), entry.name).toBe(entry.occurredAt);
 
-    // The server holds one session, started and finished when the user did, and each set once, as typed.
+    // The server holds one session, started online and finished offline when the user did, and each set once, as typed.
     const [user] = rows<{ id: number }>('select id from users where email = ?', account.email);
     const sessions = rows<{ id: string; actual_start_at: string; actual_end_at: string }>(
         'select id, actual_start_at, actual_end_at from workout_sessions where user_id = ?',
@@ -180,9 +193,9 @@ test('OFF-050 OFF-001 a workout started online is logged, answered and finished 
     );
     expect(sessions).toHaveLength(1);
     const [session] = sessions;
-    const at = (name: string) => toSecond(queued.find((entry) => entry.name === name)!.occurredAt);
-    expect(instant(session.actual_start_at)).toBe(at('workout_start'));
-    expect(instant(session.actual_end_at)).toBe(at('workout_finish'));
+    expect(starts).toHaveLength(1);
+    expect(instant(session.actual_start_at)).toBe(toSecond(starts[0]!));
+    expect(instant(session.actual_end_at)).toBe(toSecond(queued.at(-1)!.occurredAt));
 
     const stored = rows<{ id: string; actual_weight_kg: number; actual_reps: number; is_logged: number; deleted_at: string | null }>(
         'select s.id, s.actual_weight_kg, s.actual_reps, s.is_logged, s.deleted_at from workout_sets s join workout_exercises e on e.id = s.workout_exercise_id where s.workout_session_id = ? order by e.position, s.position',

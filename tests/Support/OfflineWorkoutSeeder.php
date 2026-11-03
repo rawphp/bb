@@ -34,6 +34,7 @@ final class OfflineWorkoutSeeder extends Seeder
         // Week 1 of both, so Today does not ask about missed weeks (SCH-057).
         $start = $day->isSaturday() ? $day : $day->previous(CarbonImmutable::SATURDAY);
 
+        // Weekdays are stored ISO, 1 = Monday to 7 = Sunday (PlanWeekDays).
         $user = User::factory()->create(['name' => 'Offline User', 'email' => self::EMAIL]);
         Plan::factory()->for($user)->create(['start_date' => $start->toDateString(), 'review_weekday' => 6]);
         Profile::factory()->for($user)->create([
@@ -41,7 +42,7 @@ final class OfflineWorkoutSeeder extends Seeder
             'experience' => 'intermediate',
             'meal_count' => 3,
             'eating_window' => ['start' => '07:00', 'end' => '21:00'],
-            'training_days' => [['weekday' => $day->dayOfWeek, 'start' => '17:30', 'minutes' => 60]],
+            'training_days' => [['weekday' => $day->dayOfWeekIso, 'start' => '17:30', 'minutes' => 60]],
         ]);
         TrainSeed::phase($user, 'muscleGain', $start->toDateString());
         $mesocycle = TrainSeed::mesocycle($user, [
@@ -50,7 +51,7 @@ final class OfflineWorkoutSeeder extends Seeder
             'start_date' => $start->toDateString(),
             'days' => [[
                 'label' => 'Full Body',
-                'weekday' => $day->dayOfWeek,
+                'weekday' => $day->dayOfWeekIso,
                 'slots' => [
                     ['exercise_id' => TrainSeed::exercise('Bench Press', MuscleGroup::Chest)->id, 'muscle_group' => 'chest', 'sets' => 2],
                     ['exercise_id' => TrainSeed::exercise('Back Squat', MuscleGroup::Quads)->id, 'muscle_group' => 'quads', 'sets' => 2],
