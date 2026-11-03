@@ -16,45 +16,14 @@ use Tests\Support\TrainSeed;
 
 // A mesocycle write that waited on the row lock reads what the write before it saved. A reversible write runs inside
 // UndoLog's transaction, which has read before the action locks, and under MySQL's REPEATABLE READ a plain read keeps
-// that first view; the action reads with locks, which see the latest commit. The other write is committed through a
+// that first view; the locked row is a current read, so the action computes from it. It locks nothing else, so it
+// does not wait on a write that holds the plan or another of the user's mesocycles. The rows are committed through a
 // second connection, so this file runs without RefreshDatabase and removes what it made.
 // Meso 2 runs 5 weeks from Monday 7 September; Tuesday 22 September is week 3.
 
 afterEach(fn () => Carbon::setTestNow());
 
-it('MESO-032 MESO-034 a mesocycle write keeps the change another connection committed after the transaction\'s first read', function (array $attributes, Closure $race, Closure $write, Closure $kept) {
-    Carbon::setTestNow('2026-09-22 10:00:00');
-    $default = DB::getDefaultConnection();
-    config(['database.connections.racer' => config("database.connections.{$default}")]);
-    $racer = DB::connection('racer');
-    $exercisesBefore = (int) Exercise::query()->max('id');
-    DB::setDefaultConnection('racer');
-    try {
-        $user = TrainSeed::user();
-        // Friday is a free training day for the day added.
-        $user->profile()->update(['training_days' => array_map(fn (int $d) => ['weekday' => $d, 'start' => '17:30', 'minutes' => 60], [1, 4, 5])]);
-        TrainSeed::exercise('Standing Calf Raise', MuscleGroup::Calves);
-        $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => TrainSeed::phase($user, 'muscleGain', '2026-08-31')->id, ...$attributes]);
-    } finally {
-        DB::setDefaultConnection($default);
-    }
-    $owner = User::query()->findOrFail($user->id);
-
-    try {
-        DB::transaction(function () use ($racer, $owner, $mesocycle, $race, $write) {
-            DB::table('users')->count();
-            $race($racer, $mesocycle);
-            $write($owner, $mesocycle->id);
-        });
-        $saved = Mesocycle::query()->findOrFail($mesocycle->id);
-    } finally {
-        $racer->table('users')->where('id', $owner->id)->delete();
-        $racer->table('exercises')->where('id', '>', $exercisesBefore)->delete();
-        DB::purge('racer');
-    }
-
-    $kept($saved);
-})->with([
+dataset('mesocycle writes', [
     'priority_set keeps another muscle\'s priority' => [
         [],
         fn (Connection $racer, Mesocycle $m) => $racer->table('mesocycles')->where('id', $m->id)
@@ -85,3 +54,78 @@ it('MESO-032 MESO-034 a mesocycle write keeps the change another connection comm
             ->and($saved->days[0]['label'])->toBe('Push'),
     ],
 ]);
+
+/**
+ * The user, Meso 1 (ended) and Meso 2 with `$attributes`, committed through a second connection.
+ *
+ * @param  array<string, mixed>  $attributes
+ * @return array{Connection, User, Mesocycle, Mesocycle, int}
+ */
+function racedMesocycles(array $attributes): array
+{
+    Carbon::setTestNow('2026-09-22 10:00:00');
+    $default = DB::getDefaultConnection();
+    config(['database.connections.racer' => config("database.connections.{$default}")]);
+    $racer = DB::connection('racer');
+    $exercisesBefore = (int) Exercise::query()->max('id');
+    DB::setDefaultConnection('racer');
+    try {
+        $user = TrainSeed::user();
+        // Friday is a free training day for the day added.
+        $user->profile()->update(['training_days' => array_map(fn (int $d) => ['weekday' => $d, 'start' => '17:30', 'minutes' => 60], [1, 4, 5])]);
+        TrainSeed::exercise('Standing Calf Raise', MuscleGroup::Calves);
+        $phaseId = TrainSeed::phase($user, 'muscleGain', '2026-07-27')->id;
+        $other = TrainSeed::mesocycle($user, ['phase_id' => $phaseId, 'name' => 'Meso 1', 'start_date' => '2026-07-27']);
+        $mesocycle = TrainSeed::mesocycle($user, ['phase_id' => $phaseId, ...$attributes]);
+    } finally {
+        DB::setDefaultConnection($default);
+    }
+
+    return [$racer, User::query()->findOrFail($user->id), $mesocycle, $other, $exercisesBefore];
+}
+
+function removeRaced(Connection $racer, User $user, int $exercisesBefore): void
+{
+    $racer->table('users')->where('id', $user->id)->delete();
+    $racer->table('exercises')->where('id', '>', $exercisesBefore)->delete();
+    DB::purge('racer');
+}
+
+it('MESO-032 MESO-034 a mesocycle write keeps the change another connection committed after the transaction\'s first read', function (array $attributes, Closure $race, Closure $write, Closure $kept) {
+    [$racer, $owner, $mesocycle, , $exercisesBefore] = racedMesocycles($attributes);
+
+    try {
+        DB::transaction(function () use ($racer, $owner, $mesocycle, $race, $write) {
+            DB::table('users')->count();
+            $race($racer, $mesocycle);
+            $write($owner, $mesocycle->id);
+        });
+        $saved = Mesocycle::query()->findOrFail($mesocycle->id);
+    } finally {
+        removeRaced($racer, $owner, $exercisesBefore);
+    }
+
+    $kept($saved);
+})->with('mesocycle writes');
+
+it('MESO-032 MESO-034 a mesocycle write does not wait on a write that holds the plan or another of the user\'s mesocycles', function (array $attributes, Closure $race, Closure $write, Closure $kept) {
+    [$racer, $owner, $mesocycle, $other, $exercisesBefore] = racedMesocycles($attributes);
+
+    $thrown = null;
+    $racer->beginTransaction();
+    try {
+        $racer->table('plans')->where('user_id', $owner->id)->lockForUpdate()->first();
+        $racer->table('mesocycles')->where('id', $other->id)->lockForUpdate()->first();
+        DB::statement('SET SESSION innodb_lock_wait_timeout = 1');
+
+        DB::transaction(fn () => $write($owner, $mesocycle->id));
+    } catch (Throwable $waited) {
+        $thrown = $waited->getMessage();
+    } finally {
+        $racer->rollBack();
+        DB::statement('SET SESSION innodb_lock_wait_timeout = 50');
+        removeRaced($racer, $owner, $exercisesBefore);
+    }
+
+    expect($thrown)->toBeNull();
+})->with('mesocycle writes');
