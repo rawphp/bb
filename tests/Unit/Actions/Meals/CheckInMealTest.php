@@ -156,9 +156,32 @@ it('MEAL-043 checks in a meal whose foods are within 5 g of each target as on tr
     expect(MealCheckInState::of($eaten, new MealTarget(kcal: 700, proteinG: 30, fatG: 20, carbsG: 100), new MealFit))->toBe(MealCheckInState::OnTrack);
 });
 
-it('MEAL-040 never checks in another user\'s meal', function () {
+it('MEAL-040 MEAL-041 never checks in another user\'s meal, with one tap or at manual amounts', function (?array $amounts) {
     checkInMealUser();
 
-    expect(fn () => checkInMeal(User::factory()->create(), SheetSeed::BREAKFAST, '07:45'))->toThrow(ModelNotFoundException::class)
+    expect(fn () => checkInMeal(User::factory()->create(), SheetSeed::BREAKFAST, '07:45', $amounts))->toThrow(ModelNotFoundException::class)
+        ->and(MealCheckIn::query()->count())->toBe(0);
+})->with([
+    'one tap' => [null],
+    'manual' => [['kcal' => 650, 'protein_g' => 40, 'fat_g' => 18, 'carbs_g' => 80]],
+]);
+
+it('OFF-030 checks in a meal of last week with one tap, at its planned foods, when the outbox replays it days later', function () {
+    $user = User::factory()->create();
+    SheetSeed::day($user, '2026-09-15');
+    $breakfast = SheetSeed::id(SheetSeed::BREAKFAST, '260915');
+    checkInMealFood($breakfast, 300, 12, 8, 40);
+
+    expect(checkInMeal($user, $breakfast, '07:45')->only(['kcal', 'is_manual']))->toBe(['kcal' => 300.0, 'is_manual' => false]);
+});
+
+it('MEAL-045 refuses a one-tap check-in of a badged meal of last week', function () {
+    $user = User::factory()->create();
+    SheetSeed::day($user, '2026-09-15');
+    $breakfast = SheetSeed::id(SheetSeed::BREAKFAST, '260915');
+    checkInMealFood($breakfast, 300, 12, 8, 40);
+    MealPlanningState::factory()->create(['meal_id' => $breakfast, 'state' => 'still_planning']);
+
+    expect(fn () => checkInMeal($user, $breakfast))->toThrow(DomainException::class, TodayPayload::ADJUST_FIRST)
         ->and(MealCheckIn::query()->count())->toBe(0);
 });

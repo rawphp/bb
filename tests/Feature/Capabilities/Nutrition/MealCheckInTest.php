@@ -62,6 +62,25 @@ it('MEAL-041 answers 422 naming the time when it is not "HH:MM"', function () {
         ->assertJsonPath('error.violations.0.field', 'time');
 });
 
+it('MEAL-041 answers 422 naming an amount below 0, and saves nothing', function () {
+    mealCheckInCall(mealCheckInUser(), ['meal_id' => SheetSeed::BREAKFAST, 'kcal' => -2000, 'protein_g' => 40, 'fat_g' => 18, 'carbs_g' => 80])
+        ->assertStatus(422)
+        ->assertJsonPath('error.violations.0.field', 'kcal');
+
+    expect(MealCheckIn::query()->count())->toBe(0);
+});
+
+it('OFF-030 checks in a meal of last week that the outbox replays days later, at the planned foods and the time the user acted', function () {
+    $user = User::factory()->create();
+    SheetSeed::day($user, '2026-09-15');
+    $dinner = SheetSeed::id(SheetSeed::DINNER, '260915');
+    SheetSeed::food($dinner);
+
+    mealCheckInCall($user, ['meal_id' => $dinner], ['X-BB-Occurred-At' => '2026-09-16T19:20:00Z'])->assertOk();
+
+    expect(MealCheckIn::query()->sole()->only(['meal_id', 'time', 'kcal', 'is_manual']))->toBe(['meal_id' => $dinner, 'time' => '19:20', 'kcal' => 247.5, 'is_manual' => false]);
+});
+
 it('MEAL-040 OFF-030 checks a meal in at the time the user acted, and names the meal reads it changed with an undo', function () {
     $user = mealCheckInUser();
 
