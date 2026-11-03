@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { writeNow } from '@/app/call';
+import { readFresh, writeNow } from '@/app/call';
 import { writeFailureMessage } from '@/app/errors';
 import { offerInstall } from '@/app/install';
 import type { OnboardingAnswerInput } from '@/contracts/onboarding_answer';
@@ -12,8 +12,10 @@ import ScreeningStep from './ScreeningStep.vue';
 
 // Setup inside the Coach chat (AGT-031, AGT-032), for the two steps the Coach does not do
 // in conversation. The health check opens as a sheet when setup reaches it: the user's
-// ticks and its Done are sent from here, never by the model (SAFE-001), and Done then
-// tells the Coach. The review shows as a card whose Start my plan sends the confirm line
+// ticks and its Done are sent from here, never by the model (SAFE-001). Done then reads
+// setup again and tells the Coach the step it is now on, in the server's title, since the
+// answers may have sent it back to the goal (ONB-005); while setup is still on the check,
+// the sheet stays open and the Coach is told nothing. The review shows as a card whose Start my plan sends the confirm line
 // for onboarding_complete as the whole message (AGT-010). `busy`: the Coach is taking a
 // message, so nothing here sends one. `changed` asks the chat to read setup again.
 const props = defineProps<{ setup: OnboardingShowOutput; busy: boolean }>();
@@ -57,8 +59,15 @@ async function answer(answers: Answers): Promise<void> {
 async function done(): Promise<void> {
     if (saving.value || props.busy) return;
     if (!(await post({ answers: {}, move: 'next' }))) return;
+    let now: OnboardingShowOutput['step'] | null = null;
+    try {
+        now = (await readFresh<OnboardingShowOutput>('onboarding_show', {})).step;
+    } catch {
+        // Setup could not be read: the Coach reads it itself before it goes on.
+    }
+    if (now?.key === 'screening') return;
     open.value = false;
-    emit('say', SCREENED);
+    emit('say', now === null ? SCREENED : `${SCREENED} Setup is now at: ${now.title}`);
 }
 
 // The install is offered on this tap, as the stepper's Start my plan does (PWA-003).
