@@ -126,6 +126,14 @@ it('MEAL-060 update target macros off copies the source grams and servings', fun
         ->and(RecipeServing::servings($entries[1]))->toBe(1.3);
 });
 
+it('MEAL-060 update target macros off copies an unlocked food at 0 g as 0 g: the 1 g floor is the fit\'s', function () {
+    $source = [new MealFood('food:3', copyChicken(), 200), new MealFood('food:5', copyOil(), 0)];
+
+    $entries = copyPlanner()->entries($source, copyThursdayDinner(), new CopyOptions(updateTargetMacros: false));
+
+    expect(copyGrams($entries))->toBe(['food:3' => 200.0, 'food:5' => 0.0]);
+});
+
 it('MEAL-060 MEAL-005 locked foods keep their grams in every destination, whatever its targets', function () {
     foreach ([copyThursdayDinner(), copyFridayDinner()] as $target) {
         $entries = copyPlanner()->entries(copyDinner(), $target, new CopyOptions);
