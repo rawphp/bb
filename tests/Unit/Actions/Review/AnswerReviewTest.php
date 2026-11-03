@@ -152,6 +152,21 @@ it('NUT-024 REV-004 moves kept from earlier only stay when they still build: a d
         ->and(rqaPreview($user)['days'])->toHaveCount(7);
 });
 
+it('NUT-024 REV-004 a refused move keeps the stored moves review_show still shows: those before the first that no longer builds', function () {
+    $kept = ['from_index' => 3, 'to_index' => 4, 'kcal' => 100];
+    $user = rqaUser();
+    rqaAnswer($user, ['moves' => [$kept, ['from_index' => 0, 'to_index' => 5, 'kcal' => 100]]]);
+
+    Carbon::setTestNow('2026-10-14 10:00:00');
+    expect(rqaPreview($user)['moves'])->toBe([$kept]);
+    // The screen sends what it shows plus a move that breaks the 80% floor on day 3.
+    $row = rqaAnswer($user, ['moves' => [$kept, ['from_index' => 3, 'to_index' => 4, 'kcal' => 500], ['from_index' => 3, 'to_index' => 4, 'kcal' => 500]]]);
+
+    expect($row->fresh()->moves)->toEqual([$kept])
+        ->and($row->fresh()->refusal)->toBe(RQA_REFUSED_MOVE)
+        ->and(rqaPreview($user)['moves'])->toBe([$kept]);
+});
+
 it('REV-004 clearing the moves puts the days back and clears the refusal', function () {
     $user = rqaUser();
     $before = rqaKcal(rqaPreview($user));

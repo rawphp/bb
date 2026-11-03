@@ -326,8 +326,7 @@ it('REV-010 a typed amount stays the amount when the screen sends it back with a
     expect(rqcAverage($user))->toEqualWithDelta(2100, 1e-6);
 });
 
-it('NUT-024 REV-004 a save keeps the stored moves that still build, in order, and leaves out the rest', function () {
-    $moves = [['from_index' => 3, 'to_index' => 4, 'kcal' => 100], ['from_index' => 0, 'to_index' => 5, 'kcal' => 100]];
+it('NUT-024 REV-004 show and save keep the stored moves before the first that no longer builds, and leave out the rest', function (array $moves, int $kept) {
     $user = rqcUser();
     rqcAnswer($user, ['moves' => $moves]);
     $plain = rqcUser();
@@ -338,12 +337,22 @@ it('NUT-024 REV-004 a save keeps the stored moves that still build, in order, an
     rqcSave($user);
     rqcSave($plain);
 
-    expect($shown['preview']['moves'])->toBe([$moves[0]])
+    $expected = rqcKcal($plain);
+    foreach (array_slice($moves, 0, $kept) as $move) {
+        $expected[$move['from_index']] -= $move['kcal'];
+        $expected[$move['to_index']] += $move['kcal'];
+    }
+    expect($shown['preview']['moves'])->toBe(array_slice($moves, 0, $kept))
+        ->and($shown['preview']['days'])->toHaveCount(7)
         ->and($shown['preview']['error'])->toBe('A day stays between 80% and 125% of the week\'s average, and a day already past can\'t change.')
-        ->and(rqcKcal($user)[3])->toEqualWithDelta(rqcKcal($plain)[3] - 100, 1e-6)
-        ->and(rqcKcal($user)[4])->toEqualWithDelta(rqcKcal($plain)[4] + 100, 1e-6)
-        ->and(rqcKcal($user)[5])->toEqualWithDelta(rqcKcal($plain)[5], 1e-6);
-});
+        ->and(rqcKcal($user))->toEqualWithDelta($expected, 1e-6);
+})->with([
+    // Day 0 has passed by 14 October; days 3 to 6 have not.
+    'valid, stale' => [[['from_index' => 3, 'to_index' => 4, 'kcal' => 100], ['from_index' => 0, 'to_index' => 5, 'kcal' => 100]], 1],
+    'stale, valid' => [[['from_index' => 0, 'to_index' => 5, 'kcal' => 100], ['from_index' => 3, 'to_index' => 4, 'kcal' => 100]], 0],
+    'valid, stale, valid' => [[['from_index' => 3, 'to_index' => 4, 'kcal' => 100], ['from_index' => 0, 'to_index' => 5, 'kcal' => 100], ['from_index' => 5, 'to_index' => 6, 'kcal' => 100]], 1],
+    'valid, valid, stale' => [[['from_index' => 3, 'to_index' => 4, 'kcal' => 100], ['from_index' => 5, 'to_index' => 6, 'kcal' => 100], ['from_index' => 0, 'to_index' => 5, 'kcal' => 100]], 2],
+]);
 
 it('REV-010 NUT-024 a blocked draft with moves that no longer build shows the draft\'s reason with the week, as Save gives it', function () {
     $user = rqcUser();
