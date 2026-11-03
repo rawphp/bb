@@ -228,6 +228,28 @@ it('MEAL-060 a checked-in destination and the source meal itself are skipped and
         ->and(copyActionRows($source))->toBe($before);
 });
 
+it('MEAL-060 a destination meal on a day before the plan is skipped', function () {
+    $user = copyActionUser();
+    copyActionDinner($user);
+    // The plan now starts Tuesday 22nd; Monday 21st keeps its target but is not in the plan.
+    Plan::query()->where('user_id', $user->id)->update(['start_date' => '2026-09-22']);
+    $before = copyActionMeal($user, '2026-09-21', 3);
+    $inPlan = copyActionMeal($user, '2026-09-24', 3);
+
+    $written = copyActionCopyFoods($user, copyActionMeal($user, '2026-09-23', 3), [$before, $inPlan]);
+
+    expect(array_map(fn (DayTargetMeal $m) => $m->id, $written))->toBe([$inPlan])
+        ->and(copyActionHolds($before))->toBe([]);
+});
+
+it('MEAL-060 a user with no plan has no meal to copy to', function () {
+    $user = copyActionUser();
+    copyActionDinner($user);
+    Plan::query()->where('user_id', $user->id)->delete();
+
+    expect(copyActionCopyFoods($user, copyActionMeal($user, '2026-09-23', 3), [copyActionMeal($user, '2026-09-24', 3)]))->toBe([]);
+});
+
 it('MEAL-060 a source with nothing to copy writes nothing', function () {
     $user = copyActionUser();
     $thursday = copyActionMeal($user, '2026-09-24', 1);

@@ -110,6 +110,19 @@ it('MEAL-060 copy_show shows a day in another week with that week\'s strip and m
         ->and($sheet['source']['foods_text'])->toBe('Oats 80 g');
 });
 
+it('MEAL-060 copy_show lists no meals to copy into on a day before the plan', function () {
+    $user = copySeeded();
+    // The plan now starts Tuesday 22nd; Monday 21st keeps its target but is not in the plan.
+    $user->plan->update(['start_date' => '2026-09-22']);
+
+    $sheet = copyOver($user, 'copy_show', ['meal_id' => copySeededMeal($user, '2026-09-23', 1), 'shown_date' => '2026-09-21'])
+        ->assertOk()->json('data');
+
+    expect($sheet['meals'])->toBe([])
+        ->and($sheet['timeline'])->toBe([])
+        ->and($sheet['workouts'])->toBe([]);
+});
+
 it('MEAL-060 CAP-010 CAP-013 meal_copy copies, names the reads it changed, and its undo puts the meals back', function () {
     $user = copySeeded();
     $dinner = copySeededMeal($user, '2026-09-23', 3);
