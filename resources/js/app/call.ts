@@ -553,7 +553,7 @@ function isSuccess(body: unknown): body is { ok: true; data: unknown } {
 }
 
 /** The XSRF-TOKEN cookie, fetched first when missing, or always when `fresh`. */
-async function csrfToken(signal: AbortSignal, fresh = false): Promise<string> {
+export async function csrfToken(signal: AbortSignal, fresh = false): Promise<string> {
     let token = fresh ? null : cookie('XSRF-TOKEN');
 
     if (token === null) {

@@ -24,9 +24,4 @@ export default [
         files: ['resources/js/app/call.ts'],
         rules: { 'bb/no-business-rules': 'off' },
     },
-    {
-        // The chat's transport to the package's routes (AGT-021).
-        files: ['resources/js/app/chatTransport.ts'],
-        rules: { 'bb/no-business-rules': 'off' },
-    },
 ];
