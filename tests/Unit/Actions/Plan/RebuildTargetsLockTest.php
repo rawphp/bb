@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\Support\TodaySeed;
 use Tests\Support\TrainSeed;
 
-// SET-004: the rebuild reads the user's plan row with a lock first, so it waits for whatever else holds it and does not
-// write targets from an older view. The rows are committed through a second connection (as PlanWeekWriteLockTest
+// SET-004: the rebuild takes the plan row lock, so it waits for whatever else holds it and writes nothing meanwhile. The rows are committed through a second connection (as PlanWeekWriteLockTest
 // does), so this file runs without RefreshDatabase and removes what it made. Today is Wednesday 2026-09-23.
 
 afterEach(fn () => Carbon::setTestNow());
