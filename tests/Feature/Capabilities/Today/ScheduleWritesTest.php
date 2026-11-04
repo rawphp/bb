@@ -4,7 +4,9 @@ use App\Capabilities\Support\HostDefinition;
 use App\Models\Profile;
 use App\Models\User;
 use App\Models\WorkoutSession;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Rawphp\Capabilities\Registry\CapabilityRegistry;
 use Tests\Support\SheetSeed;
@@ -74,6 +76,29 @@ it('SCH-033 CAP-019 busy_period_set answers 404 for an id another user\'s busy p
 
     expect(Profile::query()->where('user_id', $them->id)->sole()->busy_periods[0]['label'])->toBe('Gym run')
         ->and(Profile::query()->where('user_id', $user->id)->sole()->busy_periods)->toEqual($mine);
+});
+
+it('SCH-033 CAP-019 busy_period_set finds another user\'s busy period id through the profiles_busy_period_ids index', function () {
+    Profile::factory()->count(30)->create()->each(fn (Profile $profile) => $profile->update(['busy_periods' => [
+        ['id' => strtolower((string) Str::ulid()), 'label' => 'Gym run', 'start' => '06:00', 'end' => '07:00', 'weekdays' => [1]],
+        ['id' => strtolower((string) Str::ulid()), 'label' => 'School run', 'start' => '15:00', 'end' => '15:45', 'weekdays' => [3]],
+    ]]));
+    Profile::factory()->create()->update(['busy_periods' => [['label' => 'Commute', 'start' => '08:00', 'end' => '09:00', 'weekdays' => [2]]]]);
+    Profile::factory()->create()->update(['busy_periods' => []]);
+    $user = TrainSeed::user();
+    $checks = [];
+    DB::listen(function (QueryExecuted $query) use (&$checks) {
+        if (str_contains($query->sql, 'exists') && str_contains($query->sql, 'busy_periods')) {
+            $checks[] = $query;
+        }
+    });
+
+    schedulePost($user, 'busy_period_set', scheduleInputs()['busy_period_set'])->assertOk();
+
+    expect($checks)->toHaveCount(1);
+    $plan = collect(DB::select('EXPLAIN '.$checks[0]->sql, $checks[0]->bindings))->firstWhere('table', 'profiles');
+    expect($plan->key)->toBe('profiles_busy_period_ids')
+        ->and($plan->type)->not->toBe('ALL');
 });
 
 it('SCH-037 SCH-039 schedule_update and training_weekdays_change change only the caller\'s schedule', function (string $name) {
