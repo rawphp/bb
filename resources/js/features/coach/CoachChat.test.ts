@@ -580,6 +580,23 @@ describe('CoachChat', () => {
             expect(new Set(keys()).size).toBe(3);
         });
 
+        it('CAP-014 sends the same words with a new key once the unanswered message landed', async () => {
+            const landed: ChatHistory = { conversation_ulid: CONVERSATION, messages: [...earlier.messages, { ulid: ids.message_ulid, role: 'user', content: 'Plan my week', created_at: null }] };
+            historyMock.mockResolvedValueOnce(earlier).mockResolvedValue(landed);
+            sendMock.mockRejectedValueOnce(new CapabilityError('chat.send', 0, { reason: 'timeout' }));
+            const wrapper = mountChat();
+            await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
+            await sendMessage(wrapper, 'Plan my week');
+            await vi.waitFor(() => expect(wrapper.find('[data-test="landed"]').exists()).toBe(true));
+
+            sendMock.mockResolvedValue(ids);
+            eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [] });
+            await sendMessage(wrapper, 'Plan my week');
+            await vi.waitFor(() => expect(sendMock).toHaveBeenCalledTimes(2));
+
+            expect(keys()[1]).not.toBe(keys()[0]);
+        });
+
         it('CAP-014 keeps the key and the draft when the first send is still being taken (409)', async () => {
             historyMock.mockResolvedValue(earlier);
             const wrapper = mountChat();
