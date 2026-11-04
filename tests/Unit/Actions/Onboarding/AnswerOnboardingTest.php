@@ -605,6 +605,10 @@ it('ONB-022 a done step opens from the track mid-setup, and a step to come is re
         ->and($ahead->field)->toBe('edit_step')->and($ahead->getMessage())->toBe(AnswerOnboarding::STEP_AHEAD);
 });
 
+it('ONB-022 opening the current step from the track stays on it and changes nothing', function () {
+    expect(onboardingAnswerDraft(F::atStep8(), ['move' => 'edit', 'edit_step' => 8]))->toEqual(F::atStep8());
+});
+
 it('ONB-020 entering the review moves a start date in the past to tomorrow and keeps the length', function () {
     $stale = F::atTrainingOnlyReview()->with(step: 12, startDate: F::date(2026, 10, 1));
     $draft = onboardingAnswerDraft($stale, ['move' => 'next']);

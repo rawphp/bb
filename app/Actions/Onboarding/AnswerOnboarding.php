@@ -113,15 +113,18 @@ final class AnswerOnboarding
         return self::moveTo($move->clearsGoal ? $draft->with(goal: null) : $draft, $move->step, $today);
     }
 
-    /** ONB-018, ONB-022: back to a step that is shown and done, from the review or the track. Every answer is kept. */
+    /** ONB-018, ONB-022: back to a step that is shown and done, from the review or the track; the current step stays put. Every answer is kept. */
     private static function edit(Draft $draft, OnboardingSteps $steps, ?int $step): Draft
     {
         if ($step === null) {
             throw new FieldRefused('edit_step', self::NO_EDIT_STEP);
         }
+        if ($step === $draft->step) {
+            return $draft;
+        }
         $target = $steps->edit($step);
         if ($target === null) {
-            $ahead = $step !== OnboardingSteps::REVIEW_STEP && in_array($step, $steps->visibleSteps(), true);
+            $ahead = $step > $draft->step && $step !== OnboardingSteps::REVIEW_STEP && in_array($step, $steps->visibleSteps(), true);
             throw new FieldRefused('edit_step', $ahead ? self::STEP_AHEAD : self::STEP_NOT_SHOWN);
         }
 
