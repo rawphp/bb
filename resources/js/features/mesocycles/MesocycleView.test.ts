@@ -49,6 +49,14 @@ describe('MesocycleView', () => {
         expect(readMock).not.toHaveBeenCalled();
     });
 
+    it('MESO-040 reads mesocycle_show with the UUID it was opened by, unchanged', async () => {
+        const uuid = '01a1a6a7-f219-7300-bc8e-11eb9724c24d';
+        show({ mesocycleId: uuid });
+        await flushPromises();
+
+        expect(readMock.mock.calls[0]!.slice(0, 2)).toEqual(['mesocycle_show', { mesocycle_id: uuid }]);
+    });
+
     it('MESO-041 shows the phase, each week\'s calories, the current week and the diet break', () => {
         const wrapper = show();
         const columns = wrapper.findAll('section[aria-label]');

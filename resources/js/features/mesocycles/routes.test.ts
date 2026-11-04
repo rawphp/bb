@@ -16,12 +16,29 @@ describe('Train routes', () => {
         expect(router.resolve('/train/mesocycles/01JB6Q3V8T2K9WZ4M5N7P1R3S5').meta.tab).toBe('train');
     });
 
+    it('MESO-040 MESO-032 opens a mesocycle and its progression rates by the UUID the server gives it', () => {
+        const router = makeRouter(false, createMemoryHistory());
+        const uuid = '01a1a6a7-f219-7300-bc8e-11eb9724c24d';
+
+        for (const [path, name] of [
+            [`/train/mesocycles/${uuid}`, 'mesocycle'],
+            [`/train/mesocycles/${uuid}/rates`, 'progression-rates'],
+        ] as const) {
+            const location = router.resolve(path);
+            expect(location.name).toBe(name);
+            expect(location.meta.tab).toBe('train');
+            // props: true hands the id over unchanged as the mesocycleId prop.
+            expect(location.matched[0]!.props.default).toBe(true);
+            expect(location.params.mesocycleId).toBe(uuid);
+        }
+    });
+
     it('MESO-002 opens the build flow at /train/mesocycles/build and never reads that path as a mesocycle id', () => {
         const router = makeRouter(false, createMemoryHistory());
 
         expect(router.resolve('/train/mesocycles/build').name).toBe('mesocycle-build');
         expect(router.resolve('/train/mesocycles/build').meta).toMatchObject({ screen: 'mesocycle_show', tab: 'train' });
-        for (const path of ['/train/mesocycles/build/rates', '/train/mesocycles/x']) {
+        for (const path of ['/train/mesocycles/build/rates', '/train/mesocycles/x', '/train/mesocycles/01a1a6a7-f219-7300-bc8e']) {
             expect(router.resolve(path).matched[0]?.path).toBe('/:pathMatch(.*)*');
         }
     });
