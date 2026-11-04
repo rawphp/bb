@@ -81,6 +81,8 @@ final class TodayWorld
         bool $withPlan = true,
         array $phases = [],
         string $zone = 'UTC',
+        string $nowTime = '10:00',
+        array $mealTimes = [],
     ): TodaySnapshot {
         $train = new TrainSnapshot(
             today: TrainSnapshot::day($today),
@@ -110,7 +112,7 @@ final class TodayWorld
             exercises: new Collection(self::exercises()),
             zone: new DateTimeZone($zone),
         );
-        $targets = array_map(fn (string $day) => self::dayTarget($day), self::planDays());
+        $targets = array_map(fn (string $day) => self::dayTarget($day, $mealTimes), self::planDays());
         $meals = [];
         foreach ($targets as $target) {
             foreach ($target->meals as $index => $meal) {
@@ -135,7 +137,7 @@ final class TodayWorld
                 (new WeighInScheduleEntry)->forceFill(['id' => 2, 'user_id' => 1, 'weekdays' => [6], 'time' => '07:30']),
             ]),
             steps: $steps === null ? null : (new Step)->forceFill(['id' => 's', 'user_id' => 1, 'date' => $day->format('Y-m-d'), 'count' => $steps]),
-            nowTime: '10:00',
+            nowTime: $nowTime,
         );
     }
 
@@ -169,12 +171,13 @@ final class TodayWorld
         return sprintf('%s-0000-4000-8000-%012d', str_replace('-', '', $date), $index);
     }
 
-    public static function dayTarget(string $date): DayTarget
+    /** @param  array<string, ?string>  $times  a meal's time by its name, in place of the usual one; null for none */
+    public static function dayTarget(string $date, array $times = []): DayTarget
     {
         [$type, $kcal, $protein, $fat, $carbs] = self::spec($date);
         $share = fn (float $value, int $index) => $index === 3 ? $value - 2 * intdiv((int) $value * 3, 10) : intdiv((int) $value * 3, 10);
         $meals = [];
-        foreach (['Breakfast' => '08:00', 'Lunch' => '12:30', 'Dinner' => '19:30'] as $name => $time) {
+        foreach (array_replace(['Breakfast' => '08:00', 'Lunch' => '12:30', 'Dinner' => '19:30'], $times) as $name => $time) {
             $index = count($meals) + 1;
             $meals[] = [
                 'id' => self::mealId($date, $index), 'name' => $name, 'time' => $time,

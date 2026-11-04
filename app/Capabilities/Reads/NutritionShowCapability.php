@@ -17,7 +17,7 @@ final class NutritionShowCapability implements HostCapability
     public function definition(): CapabilityDefinitionBuilder
     {
         return HostDefinition::read('nutrition_show')
-            ->description('Show the Nutrition tab for one day, today unless a date is given: the day\'s meals in time order, each with its time, planned against target calories and its check-in state. Use it to list the meals before opening one with meal_show. It changes nothing.')
+            ->description('Show the Nutrition tab for one day, today unless a date is given: the day\'s meals in time order, each with its time, planned against target calories, its check-in state, and bars for calories, protein, fat and carbs (eaten once checked in, else planned) against target. Use it to list the meals before opening one with meal_show. It changes nothing.')
             ->cli('nutrition', 'show')
             ->input(NutritionShowInput::class)
             ->output(NutritionShowOutput::class)

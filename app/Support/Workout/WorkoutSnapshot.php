@@ -235,6 +235,12 @@ final class WorkoutSnapshot
         return self::instant($this->session()?->actual_start_at) ?? $this->now;
     }
 
+    /** When the session ended; null until it is finished (WO-011). */
+    public function end(): ?DateTimeImmutable
+    {
+        return self::instant($this->session()?->actual_end_at);
+    }
+
     public function calendar(): MesocycleCalendar
     {
         return $this->train->calendar($this->mesocycle);

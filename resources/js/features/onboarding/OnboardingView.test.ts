@@ -100,6 +100,24 @@ describe('OnboardingView', () => {
             expect(wrapper.get('h2').text()).toBe(goal.step.title);
         });
 
+        it('ONB-022 shows the route as a track, and a done step on it goes back there with move edit', async () => {
+            wrapper = view(screening);
+            const rail = wrapper.get('nav[data-track-rail]');
+
+            expect(rail.findAll('li').map((li) => li.text())).toEqual(screening.step.track.map((mark) => mark.label));
+            await rail.get('button[aria-label^="About you"]').trigger('click');
+            await flushPromises();
+
+            expect(sent()).toEqual([{ answers: {}, move: 'edit', edit_step: 2 }]);
+        });
+
+        it('ONB-022 widens the screen on a wide screen only while the steps show, for the list beside them', () => {
+            wrapper = view(screening);
+
+            expect(wrapper.get('main').classes()).toContain('md:max-w-[56rem]');
+            expect(wrapper.get('main').classes()).not.toContain('max-w-[560px]');
+        });
+
         it('ONB-002 Back sends move back', async () => {
             wrapper = view(glp1);
 

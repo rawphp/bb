@@ -2,9 +2,13 @@
 
 namespace App\Capabilities\Reads\Workout;
 
+use App\Capabilities\Support\Status;
+use App\Capabilities\Support\Tone;
 use App\Capabilities\Workout\Data\WorkoutChoice;
 use App\Capabilities\Workout\Data\WorkoutHelpSection;
 use App\Domain\Model\WeightUnit;
+use App\Domain\Progression\BestSetChange;
+use App\Domain\Progression\SetLoad;
 use App\Domain\Progression\WorkoutSetType;
 
 /** What the workout screen says (rp-clone WorkoutHelp, WorkoutTypes), word for word. */
@@ -120,6 +124,53 @@ final class WorkoutWords
     public static function number(float $value): string
     {
         return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
+    }
+
+    /** WO-011. */
+    public const RECAP_TITLE = 'Workout done';
+
+    public const NO_SETS_LOGGED = 'No sets logged';
+
+    /** WO-011: "48 min", "1 h", "1 h 12 min". */
+    public static function duration(int $minutes): string
+    {
+        $hours = intdiv($minutes, 60);
+        $rest = $minutes % 60;
+
+        return match (true) {
+            $hours === 0 => "{$rest} min",
+            $rest === 0 => "{$hours} h",
+            default => "{$hours} h {$rest} min",
+        };
+    }
+
+    /** WO-011: "4,172 kg". */
+    public static function lifted(float $value, WeightUnit $unit): string
+    {
+        return number_format($value).' '.$unit->value;
+    }
+
+    /** WO-011: "82.5 kg × 10", "12 reps" for a set with no weight, or "No sets logged". */
+    public static function bestSet(?SetLoad $set, WeightUnit $unit): string
+    {
+        return match (true) {
+            $set === null => self::NO_SETS_LOGGED,
+            $set->weight === null => "{$set->reps} ".($set->reps === 1 ? 'rep' : 'reps'),
+            default => self::weight($set->weight, $unit)." × {$set->reps}",
+        };
+    }
+
+    /** WO-011: "+2.5 kg on last week", "−1 rep on last week" or "Same as last week"; good only when it went up. */
+    public static function recapChange(BestSetChange $change, WeightUnit $unit): Status
+    {
+        $sign = fn (float|int $delta) => $delta > 0 ? '+' : '−';
+        $text = match (true) {
+            $change->weight != 0 => $sign($change->weight).self::weight(abs($change->weight), $unit).' on last week',
+            $change->reps !== 0 => $sign($change->reps).abs($change->reps).' '.(abs($change->reps) === 1 ? 'rep' : 'reps').' on last week',
+            default => 'Same as last week',
+        };
+
+        return new Status($text, ($change->isUp() ? Tone::Good : Tone::Neutral)->value);
     }
 
     /** "82.5 kg". */

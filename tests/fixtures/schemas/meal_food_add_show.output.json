@@ -1,0 +1,130 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "entries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The entry id the basket sent"
+                    },
+                    "amount_text": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "\"210 g (about 1.4 fillets)\" or \"1.5 servings\"; null when the meal already holds this food or recipe, so Add skips it"
+                    }
+                },
+                "required": [
+                    "id"
+                ]
+            },
+            "description": "One per entry sent, in its order"
+        },
+        "bars": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "label": {
+                        "type": "string",
+                        "description": "Cal, P, F or C"
+                    },
+                    "value_text": {
+                        "type": "string",
+                        "description": "550/1040"
+                    },
+                    "fraction": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    },
+                    "tone": {
+                        "type": "string",
+                        "enum": [
+                            "good",
+                            "neutral",
+                            "warning",
+                            "info"
+                        ]
+                    }
+                },
+                "required": [
+                    "label",
+                    "value_text",
+                    "fraction",
+                    "tone"
+                ]
+            },
+            "description": "Calories, protein, fat and carbs after Add (MEAL-001)"
+        },
+        "targets_met": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "text": {
+                    "type": "string"
+                },
+                "tone": {
+                    "type": "string",
+                    "enum": [
+                        "good",
+                        "neutral",
+                        "warning",
+                        "info"
+                    ]
+                }
+            },
+            "required": [
+                "text",
+                "tone"
+            ],
+            "description": "MEAL-003, after Add"
+        },
+        "hints": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "group": {
+                        "type": "string",
+                        "enum": [
+                            "protein_recommended",
+                            "protein_sparingly",
+                            "protein_before_bed",
+                            "veggies",
+                            "carbs_recommended",
+                            "carbs_sparingly",
+                            "fat_recommended",
+                            "fat_sparingly"
+                        ]
+                    }
+                },
+                "required": [
+                    "text",
+                    "group"
+                ]
+            },
+            "description": "MEAL-007, after Add"
+        }
+    },
+    "required": [
+        "entries",
+        "bars",
+        "hints"
+    ]
+}

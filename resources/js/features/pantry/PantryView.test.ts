@@ -1,11 +1,12 @@
 import { enableAutoUnmount, flushPromises, mount, RouterLinkStub } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CapabilityError, read, writeNow } from '@/app/call';
+import { CapabilityError, read, readNow, writeNow } from '@/app/call';
 import type { FoodSearchInput, FoodSearchOutput } from '@/contracts/food_search';
+import type { MealFoodAddShowInput, MealFoodAddShowOutput } from '@/contracts/meal_food_add_show';
 import { inputViolations, screenFixture } from '@/testing/schemas';
 import PantryView from './PantryView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), readNow: vi.fn(), writeNow: vi.fn() }));
 const back = vi.fn();
 // The route on screen; a test changes it to leave the Pantry (another tab, a pushed screen).
 const currentRoute = { value: { fullPath: '/nutrition/pantry' } };
@@ -13,6 +14,9 @@ vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('v
 
 const readMock = vi.mocked(read);
 const writeMock = vi.mocked(writeNow);
+const previewMock = vi.mocked(readNow);
+const preview = screenFixture<MealFoodAddShowOutput>('meal_food_add_show');
+const previewMet = screenFixture<MealFoodAddShowOutput>('meal_food_add_show.met');
 const search = screenFixture<FoodSearchOutput>('food_search');
 const curated = screenFixture<FoodSearchOutput>('food_search.curated');
 const didYouMean = screenFixture<FoodSearchOutput>('food_search.did-you-mean');
@@ -51,6 +55,8 @@ describe('PantryView', () => {
     beforeEach(() => {
         readMock.mockReset().mockResolvedValue(curated);
         writeMock.mockReset().mockResolvedValue({});
+        // The basket's preview (FOOD-030) stays out unless a test answers it.
+        previewMock.mockReset().mockReturnValue(new Promise(() => {}));
         back.mockReset();
         currentRoute.value = { fullPath: '/nutrition/pantry' };
     });
@@ -396,6 +402,181 @@ describe('PantryView', () => {
         expect(back).toHaveBeenCalledOnce();
     });
 
+    describe('FOOD-030 the basket at the foot shows what Add makes of the picks', () => {
+        // The preview waits for the picks to settle (250 ms), as a search waits for typing.
+        beforeEach(() => vi.useFakeTimers());
+
+        async function settle(): Promise<void> {
+            await vi.advanceTimersByTimeAsync(300);
+            await flushPromises();
+        }
+
+        // Answers the preview for the entries sent, with the fixture's amounts in their order.
+        function answer(fixture: MealFoodAddShowOutput) {
+            return async (_name: string, input: Record<string, unknown> = {}) => {
+                const entries = (input as unknown as MealFoodAddShowInput).entries;
+                return { ...fixture, entries: entries.map((entry, index) => ({ id: entry.id, amount_text: fixture.entries[index]?.amount_text ?? null })) } as never;
+            };
+        }
+
+        function previewInput(): MealFoodAddShowInput {
+            return previewMock.mock.calls.at(-1)![1] as unknown as MealFoodAddShowInput;
+        }
+
+        it('FOOD-030 asks meal_food_add_show with the entries Add will send, and shows each pick\'s amount', async () => {
+            previewMock.mockImplementation(answer(preview));
+            const wrapper = show({ payload: search, mealId: MEAL });
+
+            await row(wrapper, 'Chicken breast').find('[data-test="weighing-cooked"]').trigger('click');
+            await row(wrapper, 'Chicken breast').find('[data-test="pick"]').trigger('click');
+            await row(wrapper, 'Chicken noodle soup').find('[data-test="pick"]').trigger('click');
+            await settle();
+
+            expect(previewMock.mock.calls.at(-1)![0]).toBe('meal_food_add_show');
+            expect(previewInput()).toMatchObject({
+                meal_id: MEAL,
+                entries: [
+                    { food_id: '01JBX5F0000000000000000002', weighing: 'cooked' },
+                    { food_id: '01JBX5F0000000000000000003', weighing: 'raw' },
+                ],
+            });
+            expect(inputViolations('meal_food_add_show', previewInput())).toEqual([]);
+            const basket = wrapper.find('[data-test="basket"]');
+            expect(basket.findAll('li').map((li) => li.text())).toEqual(['Chicken breastCooked · 160 g (about 1.1 fillets)', "Chicken noodle soupCampbell's · 305 g (about 1.6 cups)"]);
+
+            await wrapper.find('[data-test="confirm"]').trigger('click');
+            await settle();
+            // The preview named the very entries Add sent.
+            expect((writes()[0]![1] as { entries: { id: string }[] }).entries.map((entry) => entry.id)).toEqual(previewInput().entries.map((entry) => entry.id));
+        });
+
+        it('FOOD-030 stands at the foot beside Add, where it stays in view while the foods scroll', async () => {
+            const wrapper = show();
+
+            await row(wrapper, 'Broccoli').find('[data-test="pick"]').trigger('click');
+
+            const foot = wrapper.find('[data-test="confirm"]').element.parentElement!;
+            expect(foot.contains(wrapper.find('[data-test="basket"]').element)).toBe(true);
+            expect(wrapper.find('[data-test="pantry-content"] [data-test="basket"]').exists()).toBe(false);
+        });
+
+        it('FOOD-030 MEAL-001 MEAL-007 draws the meal\'s four bars after Add, and a short-macro hint opens its curated group', async () => {
+            previewMock.mockImplementation(answer(preview));
+            const wrapper = show();
+
+            await row(wrapper, 'Broccoli').find('[data-test="pick"]').trigger('click');
+            await settle();
+
+            const bars = wrapper.findAll('[data-test="basket-bars"] [role="progressbar"]');
+            expect(bars.map((bar) => bar.attributes('aria-label'))).toEqual(['Calories', 'Protein', 'Fat', 'Carbs']);
+            expect(bars[1]!.attributes('aria-valuetext')).toBe('58 of 68');
+            expect(wrapper.find('[data-test="basket"]').text()).not.toContain('Targets met');
+
+            // Two bars to a row at every width, as the Nutrition cards have: four in the 40rem column leaves the
+            // calorie track too short beside its value.
+            const grid = wrapper.get('[data-test="basket-bars"]').classes();
+            expect(grid).toContain('grid-cols-2');
+            expect(grid.filter((name) => /^md:grid-cols-/.test(name))).toEqual([]);
+
+            const hint = wrapper.find('[data-test="basket-hint"]');
+            expect(hint.text()).toBe('Short 21 g fat. Add a food from Fat · Recommended.');
+            // A full tap height, as the meal screen's hint has, clear of Add below it.
+            expect(hint.classes()).toContain('min-h-tap');
+            await hint.trigger('click');
+            await settle();
+            expect(lastRead()).toMatchObject({ group: 'fat_recommended' });
+        });
+
+        it('FOOD-030 MEAL-003 says Targets met when the picks reach the meal\'s targets', async () => {
+            previewMock.mockImplementation(answer(previewMet));
+            const wrapper = show();
+
+            await row(wrapper, 'Broccoli').find('[data-test="pick"]').trigger('click');
+            await settle();
+
+            expect(wrapper.find('[data-test="basket"]').text()).toContain('Targets met');
+            expect(wrapper.find('[data-test="basket-hint"]').exists()).toBe(false);
+        });
+
+        it('FOOD-030 asks again when a pick comes out or is weighed another way, and shows only the latest answer', async () => {
+            const answers: ((value: never) => void)[] = [];
+            previewMock.mockImplementation(() => new Promise((resolve) => answers.push(resolve)));
+            const wrapper = show();
+
+            await row(wrapper, 'Broccoli').find('[data-test="pick"]').trigger('click');
+            await settle();
+            await row(wrapper, 'Broccoli').find('[data-test="weighing-cooked"]').trigger('click');
+            await settle();
+            expect(previewMock).toHaveBeenCalledTimes(2);
+            expect(previewInput().entries[0]).toMatchObject({ weighing: 'cooked' });
+
+            const latest = { ...previewMet, entries: [{ id: previewInput().entries[0]!.id, amount_text: '90 g' }] };
+            const older = { ...preview, entries: [{ id: previewInput().entries[0]!.id, amount_text: '400 g' }] };
+            answers[1]!(latest as never);
+            await settle();
+            answers[0]!(older as never);
+            await settle();
+            expect(wrapper.find('[data-test="basket"] li').text()).toBe('BroccoliCooked · 90 g');
+
+            await wrapper.find('[data-test="basket"] button[aria-label="Remove Broccoli"]').trigger('click');
+            await settle();
+            expect(previewMock).toHaveBeenCalledTimes(2);
+            expect(wrapper.find('[data-test="basket"]').exists()).toBe(false);
+        });
+
+        it('FOOD-030 with a saved meal picked, or the preview not answering, lists the picks alone and Add still works', async () => {
+            previewMock.mockImplementation(answer(preview));
+            const wrapper = show();
+
+            await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+            await wrapper.find('select[aria-label="Show"]').setValue('saved_meals');
+            await settle();
+            await wrapper.find('[data-test="collection-row"]').trigger('click');
+            await settle();
+
+            // A saved meal loads on its own write, so the fit cannot show the meal after it.
+            expect(wrapper.find('[data-test="basket-bars"]').exists()).toBe(false);
+            expect(wrapper.find('[data-test="basket"]').findAll('li').map((li) => li.text())).toEqual(['Egg whites', 'Bulk dinnerSaved meal']);
+
+            await wrapper.find('[data-test="collection-row"]').trigger('click');
+            await wrapper.find('select[aria-label="Show"]').setValue('');
+            await settle();
+            previewMock.mockRejectedValue(new CapabilityError('meal_food_add_show', 0, { reason: 'network' }));
+            await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+            await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+            await settle();
+
+            expect(wrapper.find('[data-test="basket-bars"]').exists()).toBe(false);
+            expect(wrapper.find('[data-test="basket"] li').text()).toBe('Egg whites');
+            expect(wrapper.find('[data-test="confirm"]').attributes('disabled')).toBeUndefined();
+        });
+
+        it('FOOD-030 asks once for a run of quick changes, after they settle, so the picks do not spend the rate limit', async () => {
+            previewMock.mockImplementation(answer(preview));
+            const wrapper = show();
+
+            await row(wrapper, 'Broccoli').find('[data-test="pick"]').trigger('click');
+            await row(wrapper, 'Egg whites').find('[data-test="pick"]').trigger('click');
+            await row(wrapper, 'Broccoli').find('[data-test="weighing-cooked"]').trigger('click');
+            await vi.advanceTimersByTimeAsync(200);
+            expect(previewMock).not.toHaveBeenCalled();
+
+            await settle();
+            expect(previewMock).toHaveBeenCalledTimes(1);
+            expect(previewInput().entries).toHaveLength(2);
+            expect(previewInput().entries[0]).toMatchObject({ weighing: 'cooked' });
+        });
+
+        it('FOOD-030 browsing from the Nutrition tab asks for nothing', async () => {
+            const wrapper = show({ payload: curated });
+
+            await settle();
+
+            expect(previewMock).not.toHaveBeenCalled();
+            expect(wrapper.find('[data-test="basket"]').exists()).toBe(false);
+        });
+    });
+
     it('FOOD-028 tapping a food\'s name picks it too', async () => {
         const wrapper = show();
 
@@ -503,9 +684,11 @@ describe('PantryView', () => {
 
         const content = wrapper.find('[data-test="pantry-content"]');
         expect(content.attributes('inert')).toBeDefined();
-        for (const control of ['[data-test="cancel"]', '[data-test="basket"]', '[data-test="weighing-cooked"]', '[data-test="pick"]', '[role="tablist"]']) {
+        for (const control of ['[data-test="cancel"]', '[data-test="weighing-cooked"]', '[data-test="pick"]', '[role="tablist"]']) {
             expect(content.find(control).exists(), control).toBe(true);
         }
+        // The basket stands at the foot with Add (FOOD-030), and waits with the rest.
+        expect(wrapper.find('[data-test="basket"]').attributes('inert')).toBeDefined();
         expect(wrapper.find('[data-test="confirm"]').attributes('disabled')).toBeDefined();
         finish({});
         await flushPromises();

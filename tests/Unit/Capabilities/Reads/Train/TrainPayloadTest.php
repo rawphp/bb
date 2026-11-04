@@ -138,6 +138,29 @@ it('MESO-060 the current mesocycle\'s card shows its week, and no prompt before 
     ]);
 });
 
+/** @return list<string> "1 past", "5 upcoming deload" for each mark of the card's week track. */
+function weekTrack(TrainSnapshot $snapshot): array
+{
+    return array_map(
+        fn (array $mark) => trim("{$mark['number']} {$mark['state']}".($mark['deload'] ? ' deload' : '')),
+        train($snapshot)['current']['week_track'],
+    );
+}
+
+it('MESO-008 the card tracks every week: the ones done, this one, the ones to come, the deload last', function () {
+    expect(weekTrack(W::snapshot()))->toBe(['1 past', '2 past', '3 past', '4 current', '5 upcoming deload'])
+        ->and(weekTrack(W::snapshot(today: '2026-10-12')))->toBe(['1 past', '2 past', '3 past', '4 past', '5 current deload']);
+});
+
+it('MESO-008 once it is over the weeks are done, and the weeks an early end cut off are skipped', function () {
+    $ended = W::snapshot(today: '2026-10-07', mesocycles: [W::mesocycle(['ended_on' => '2026-10-06'])]);
+    $endedOnFirstDay = W::snapshot(today: '2026-10-07', mesocycles: [W::mesocycle(['ended_on' => '2026-09-14'])]);
+
+    expect(weekTrack(W::snapshot(today: '2026-10-20')))->toBe(['1 past', '2 past', '3 past', '4 past', '5 past deload'])
+        ->and(weekTrack($ended))->toBe(['1 past', '2 past', '3 past', '4 past', '5 skipped deload'])
+        ->and(weekTrack($endedOnFirstDay))->toBe(['1 skipped', '2 skipped', '3 skipped', '4 skipped', '5 skipped deload']);
+});
+
 it('MESO-060 from the deload week the card prompts to build the next mesocycle, copying this one by default', function () {
     $current = train(W::snapshot(today: '2026-10-12'))['current'];
 

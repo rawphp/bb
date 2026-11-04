@@ -78,6 +78,7 @@
         "delete_blocked_message": "Deleting this would leave fewer than 2 weigh-in days a week."
     },
     "rows": [],
+    "weeks": [],
     "missed": {
         "text": "Missed",
         "tone": "warning"

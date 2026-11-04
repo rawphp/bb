@@ -47,6 +47,21 @@ export interface ProgressShowOutput {
       value: number;
     }[];
     accessibility_label: string;
+    /**
+     * ANA-012: one per day in weights, in the same order.
+     */
+    readouts: {
+      date: string;
+      title: string;
+      lines: {
+        label: string;
+        value: string;
+        /**
+         * The value's colour; neutral for plain text.
+         */
+        tone: "good" | "neutral" | "warning" | "info";
+      }[];
+    }[];
   } | null;
   /**
    * ANA-002: start weight, change so far and goal weight.
@@ -162,4 +177,4 @@ export interface ProgressShowOutput {
   }[];
 }
 
-export const outputVersion = '7afe588d22a0';
+export const outputVersion = '58edb8807811';

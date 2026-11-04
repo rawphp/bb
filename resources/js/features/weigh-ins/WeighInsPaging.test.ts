@@ -130,6 +130,23 @@ describe('WeighInsView paging', () => {
         expect(page.find('[data-test="show-older"]').exists()).toBe(false);
     });
 
+    it('WT-008 a week a page boundary cut in two shows under one header, the first page\'s', async () => {
+        const week = content.weeks[1]!;
+        const older: WeighInsShowOutput = {
+            ...olderPage('Old'),
+            rows: olderPage('Old').rows.map((row) => ({ ...row, week: week.week })),
+            weeks: [{ ...week, title: 'Old title' }],
+        };
+        olderAnswers = [older];
+        const page = await view();
+
+        await showOlder(page);
+
+        const weeks = page.findAll('[data-test="week"]');
+        expect(weeks.map((header) => header.get('h2').text())).toEqual(['This week', '28 Sep – 4 Oct']);
+        expect(weeks[1]!.findAll('[data-test="weigh-in"]')).toHaveLength(1 + older.rows.length);
+    });
+
     it('WT-004 reads on from the page it last added', async () => {
         olderAnswers = [olderPage('Old', '2026-04-14'), olderPage('Older')];
         const page = await view();

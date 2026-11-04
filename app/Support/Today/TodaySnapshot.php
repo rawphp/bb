@@ -38,6 +38,7 @@ use App\Models\PlannedFood;
 use App\Models\PlannedRecipe;
 use App\Models\PlanWeek;
 use App\Models\Profile;
+use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Models\Step;
 use App\Models\User;
@@ -589,8 +590,12 @@ final class TodaySnapshot
     /** RCP-002: one serving's calories and macros, from the recipe's ingredients. */
     public static function perServing(PlannedRecipe $planned): MealTarget
     {
-        $recipe = $planned->sourceRecipe;
+        return self::recipePerServing($planned->sourceRecipe);
+    }
 
+    /** RCP-002: one serving of `$recipe` from its ingredients (loaded with their foods); none without a recipe. */
+    public static function recipePerServing(?Recipe $recipe): MealTarget
+    {
         return $recipe === null ? new MealTarget(0, 0, 0, 0) : RecipeMacros::perServing(
             $recipe->ingredients->map(fn (RecipeIngredient $i) => new MealFood(
                 id: (string) $i->id,

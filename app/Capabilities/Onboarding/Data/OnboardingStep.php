@@ -8,10 +8,12 @@ use Rawphp\Capabilities\Support\CapabilityData;
 /**
  * Where setup is (ONB-002, UI-007). `number` is the spec's step, 1 to 13, or
  * 14 for the review. `position` of `total` counts only the steps shown, so
- * training-only setup skips the nutrition steps (ONB-005).
+ * training-only setup skips the nutrition steps (ONB-005). `track` is the
+ * same route as marks (ONB-022).
  */
 final class OnboardingStep extends CapabilityData
 {
+    /** @param  list<OnboardingStepMark>  $track */
     public function __construct(
         #[Field(minimum: 1, maximum: 14)]
         public readonly int $number,
@@ -25,5 +27,7 @@ final class OnboardingStep extends CapabilityData
         public readonly bool $can_continue,
         public readonly ?string $continue_hint,
         public readonly bool $can_go_back,
+        #[Field(items: OnboardingStepMark::class, description: 'ONB-022: every step shown and the review, in order')]
+        public readonly array $track,
     ) {}
 }

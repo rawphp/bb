@@ -8,6 +8,7 @@ use App\Capabilities\Nutrition\Data\Macros;
 use App\Capabilities\Nutrition\Data\MealEmpty;
 use App\Capabilities\Nutrition\Data\MealEntry;
 use App\Capabilities\Nutrition\Data\MealHint;
+use App\Capabilities\Nutrition\Data\MealRepeat;
 use App\Capabilities\Nutrition\Data\MealShowOutput;
 use App\Capabilities\Nutrition\Data\MenuItem;
 use App\Capabilities\Nutrition\Data\PeriWorkout;
@@ -16,6 +17,8 @@ use App\Capabilities\Reads\Today\TodayPayload;
 use App\Capabilities\Reads\Today\TodayWords;
 use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
+use App\Domain\Copy\MealRepeats;
+use App\Domain\Copy\PastMeal;
 use App\Domain\MealFit\Food as FitFood;
 use App\Domain\MealFit\MealFit;
 use App\Domain\MealFit\MealFood;
@@ -32,6 +35,7 @@ use App\Models\PlannedFood;
 use App\Models\PlannedRecipe;
 use App\Support\Today\TodayMealItem;
 use App\Support\Today\TodaySnapshot;
+use Closure;
 use DateTimeImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -55,9 +59,11 @@ final class MealPayload
     public const PERI_WORKOUT_HELP = "These meals carry most of the day's carbs.";
 
     /**
+     * @param  ?Closure(): list<PastMeal>  $pastMeals  the meals of the days before `$day` (MEAL-061), asked only when the meal is empty and not checked in
+     *
      * @throws ModelNotFoundException when the meal is not one of `$day`'s meals
      */
-    public static function build(TodaySnapshot $snapshot, DateTimeImmutable $day, string $mealId): MealShowOutput
+    public static function build(TodaySnapshot $snapshot, DateTimeImmutable $day, string $mealId, ?Closure $pastMeals = null): MealShowOutput
     {
         $meals = $snapshot->meals($day);
         $meal = self::find($meals, $mealId);
@@ -87,8 +93,26 @@ final class MealPayload
             check_in: NutritionPayload::checkIn($meal->checkInState()),
             hints: $entries === [] ? [] : array_map(self::hint(...), $mealFit->fit($fit, $meal->target)->shortfalls),
             entries: array_map(fn (array $entry) => $entry['row'], $entries),
-            empty: $entries === [] ? new MealEmpty(self::EMPTY_TITLE, self::EMPTY_NOTE) : null,
+            empty: $entries === [] ? new MealEmpty(self::EMPTY_TITLE, self::EMPTY_NOTE, self::repeats($meal, $pastMeals)) : null,
             menu: array_map(fn (array $item) => new MenuItem($item['item'], $item['title'], $item['enabled']), MealMenu::items($meal)),
+        );
+    }
+
+    /**
+     * MEAL-061: the same meal on earlier days, to copy in. A checked-in meal takes no copy (MEAL-060), so it offers none.
+     *
+     * @param  ?Closure(): list<PastMeal>  $pastMeals
+     * @return list<MealRepeat>
+     */
+    private static function repeats(TodayMealItem $meal, ?Closure $pastMeals): array
+    {
+        if ($pastMeals === null || $meal->eaten !== null) {
+            return [];
+        }
+
+        return array_map(
+            fn (PastMeal $past) => new MealRepeat($past->mealId, $past->day->format('D j M'), implode(' · ', $past->entryNames)),
+            (new MealRepeats)->pick($meal->name, $pastMeals()),
         );
     }
 
@@ -105,7 +129,7 @@ final class MealPayload
     }
 
     /** MEAL-001: planned against target, in whole kcal and grams ("550/1040"), and how full to draw it. */
-    private static function bar(string $label, float $planned, float $target): MacroBar
+    public static function bar(string $label, float $planned, float $target): MacroBar
     {
         $value = round($planned);
         $goal = round($target);
@@ -130,7 +154,7 @@ final class MealPayload
     }
 
     /** MEAL-007: "Short 32 g carbs. Add a food from Carbs · Recommended." */
-    private static function hint(Shortfall $shortfall): MealHint
+    public static function hint(Shortfall $shortfall): MealHint
     {
         return new MealHint(
             text: sprintf('Short %d g %s. Add a food from %s.', (int) round($shortfall->shortG), $shortfall->macro->value, Pantry::groupTitle($shortfall->group)),
@@ -208,11 +232,8 @@ final class MealPayload
             weighing: $planned->is_cooked ? Weighing::Cooked : Weighing::Raw,
             isLocked: $planned->is_locked,
         );
+        $amount = self::gramsText($fit);
         $household = $fit->household();
-        $amount = ((int) round($planned->grams)).' g';
-        if ($household !== null) {
-            $amount .= ' (about '.TodaySnapshot::number($household->count).' '.$household->label.($household->count == 1.0 ? '' : 's').')';
-        }
         $ounces = $planned->unit === FoodUnit::Ounces->value;
 
         return ['fit' => $fit, 'row' => new MealEntry(
@@ -227,6 +248,18 @@ final class MealPayload
             macros: self::macros($fit->macros()),
             is_locked: $planned->is_locked,
         )];
+    }
+
+    /** MEAL-001: "210 g (about 1.4 fillets)": whole grams, and the household measure when the food has one. */
+    public static function gramsText(MealFood $fit): string
+    {
+        $household = $fit->household();
+        $amount = ((int) round($fit->grams)).' g';
+        if ($household !== null) {
+            $amount .= ' (about '.TodaySnapshot::number($household->count).' '.$household->label.($household->count == 1.0 ? '' : 's').')';
+        }
+
+        return $amount;
     }
 
     /** @return array{row: MealEntry, fit: MealFood} */

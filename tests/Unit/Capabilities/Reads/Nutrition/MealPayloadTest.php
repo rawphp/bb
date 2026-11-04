@@ -2,6 +2,7 @@
 
 use App\Capabilities\Reads\Nutrition\MealPayload;
 use App\Capabilities\Reads\Today\TodayPayload;
+use App\Domain\Copy\PastMeal;
 use App\Models\DayTargetMeal;
 use App\Models\Food;
 use App\Models\FoodServing;
@@ -526,11 +527,51 @@ it('MEAL-046 an empty meal shows the empty state, and a planned one does not', f
     expect(mealShow($snapshot, MEAL_DINNER)['empty'])->toBe([
         'title' => 'Your meal is empty',
         'note' => 'Because this meal has no foods in it, the app assumes you are eating this meal at target macros.',
+        'repeats' => [],
     ])
         ->and(mealShow($snapshot, MEAL_BREAKFAST)['empty'])->toBeNull();
 
     mealPlan($snapshot, MEAL_DINNER, recipes: [['servings' => 1, 'position' => 0]]);
     expect(mealShow($snapshot, MEAL_DINNER)['empty'])->toBeNull();
+});
+
+// MARK: MEAL-061
+
+/** @param  list<PastMeal>  $past */
+function mealShowWithPast(TodaySnapshot $snapshot, string $mealId, array $past): array
+{
+    return MealPayload::build($snapshot, TrainSnapshot::day(W::TODAY), $mealId, fn () => $past)->toArray();
+}
+
+function mealPast(string $id, string $date, string $name, array $names): PastMeal
+{
+    return new PastMeal($id, TrainSnapshot::day($date), $name, array_map(fn (string $n) => 'food:'.$n, $names), $names);
+}
+
+it('MEAL-061 an empty meal offers the same meal from earlier days, with its day and foods', function () {
+    $payload = mealShowWithPast(W::snapshot(), MEAL_DINNER, [
+        mealPast('mon-dinner', '2026-09-21', 'Dinner', ['Salmon', 'Potatoes']),
+        mealPast('tue-lunch', '2026-09-22', 'Lunch', ['Chicken breast']),
+        mealPast('tue-dinner', '2026-09-22', 'Dinner', ['Chicken breast', 'White rice', 'Broccoli']),
+    ]);
+
+    expect($payload['empty']['repeats'])->toBe([
+        ['meal_id' => 'tue-dinner', 'title' => 'Tue 22 Sep', 'foods_text' => 'Chicken breast · White rice · Broccoli'],
+        ['meal_id' => 'mon-dinner', 'title' => 'Mon 21 Sep', 'foods_text' => 'Salmon · Potatoes'],
+    ]);
+});
+
+it('MEAL-061 offers nothing to a planned or checked-in meal, and does not look', function () {
+    $snapshot = W::snapshot();
+    $look = fn () => throw new LogicException('looked for past meals');
+
+    expect(MealPayload::build($snapshot, TrainSnapshot::day(W::TODAY), MEAL_BREAKFAST, $look)->toArray()['empty'])->toBeNull()
+        ->and(MealPayload::build($snapshot, TrainSnapshot::day(W::TODAY), MEAL_LUNCH, $look)->toArray()['empty']['repeats'])->toBe([]);
+});
+
+it('MEAL-061 an empty meal with no earlier ones offers none', function () {
+    expect(mealShowWithPast(W::snapshot(), MEAL_DINNER, [])['empty']['repeats'])->toBe([])
+        ->and(mealShow(W::snapshot(), MEAL_DINNER)['empty']['repeats'])->toBe([]);
 });
 
 // MARK: MEAL-047

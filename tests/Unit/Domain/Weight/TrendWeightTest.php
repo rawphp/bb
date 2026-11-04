@@ -168,3 +168,14 @@ it('WT-012 charts need four weigh-ins', function () {
         ->and(trendOf([...$three, trendWeighIn(3, 79.5, hour: 20)])->hasEnoughDataForChart())->toBeFalse()
         ->and(trendOf(trendFixture())->hasEnoughDataForChart())->toBeTrue();
 });
+
+it('WT-008 the trend on or before a day holds the last trend after the last weigh-in, and has none before the first', function () {
+    $trend = trendOf([trendWeighIn(2, 80.0), trendWeighIn(4, 79.0)]);
+
+    expect($trend->kgOnOrBefore(trendDay(1)))->toBeNull()
+        ->and($trend->kgOnOrBefore(trendDay(2)))->toBe(80.0)
+        ->and($trend->kgOnOrBefore(trendDay(3, hour: 23)))->toBe(80.0)
+        ->and($trend->kgOnOrBefore(trendDay(4)))->toEqualWithDelta(79.9, 1e-9)
+        ->and($trend->kgOnOrBefore(trendDay(30)))->toEqualWithDelta(79.9, 1e-9)
+        ->and(trendOf([])->kgOnOrBefore(trendDay(4)))->toBeNull();
+});

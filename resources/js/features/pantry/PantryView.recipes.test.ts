@@ -2,12 +2,12 @@ import { enableAutoUnmount, flushPromises, mount, RouterLinkStub } from '@vue/te
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { provideScreenTop } from '@/app/screenTop';
-import { read, writeNow } from '@/app/call';
+import { read, readNow, writeNow } from '@/app/call';
 import type { FoodSearchInput, FoodSearchOutput } from '@/contracts/food_search';
 import { screenFixture } from '@/testing/schemas';
 import PantryView from './PantryView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), writeNow: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), readNow: vi.fn(), writeNow: vi.fn() }));
 const back = vi.fn();
 const currentRoute = { value: { fullPath: '/nutrition/recipes/new' } };
 vi.mock('vue-router', async (original) => ({ ...(await original<typeof import('vue-router')>()), useRouter: () => ({ back, currentRoute }) }));
@@ -104,6 +104,16 @@ describe('PantryView for a recipe', () => {
             await pick(wrapper, 'Broccoli');
 
             expect(wrapper.find('[data-test="basket"] h2').text()).toBe('Adding to recipe');
+        });
+
+        it('FOOD-030 RCP-001 asks for no meal fit: a recipe takes its ingredients by the grams the user types', async () => {
+            const wrapper = show({ payload: curated, purpose });
+
+            await pick(wrapper, 'Broccoli');
+            await flushPromises();
+
+            expect(vi.mocked(readNow)).not.toHaveBeenCalled();
+            expect(wrapper.find('[data-test="basket-bars"]').exists()).toBe(false);
         });
 
         it('RCP-001 RCP-003 the basket does not say Raw or Cooked: the recipe takes the food, not how it was weighed', async () => {

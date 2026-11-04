@@ -72,6 +72,14 @@
             "id": "01JBX0M1N2P3Q4R5S6T7V8W9X3"
         }
     ],
+    "now": {
+        "before": {
+            "kind": "meal",
+            "id": "01JBX0M1N2P3Q4R5S6T7V8W9X1"
+        },
+        "label": "Now",
+        "next_text": "Next: Lunch at 12:30 PM"
+    },
     "meals": [
         {
             "id": "01JBX0M1N2P3Q4R5S6T7V8W9X0",

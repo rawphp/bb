@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { write } from '@/app/call';
 import { writeFailureMessage } from '@/app/errors';
@@ -31,6 +31,7 @@ import SwapSheet from './sheets/SwapSheet.vue';
 import WorkoutHelpSheet from './sheets/WorkoutHelpSheet.vue';
 import ExercisePickerSheet from './sheets/ExercisePickerSheet.vue';
 import WorkoutExerciseCard from './WorkoutExerciseCard.vue';
+import WorkoutRecap from './WorkoutRecap.vue';
 import type { WorkoutSheet, WorkoutWrite } from './workoutWrite';
 
 // The workout screen for the gym (WO-001 to WO-025): the session title, each exercise with
@@ -44,7 +45,8 @@ import type { WorkoutSheet, WorkoutWrite } from './workoutWrite';
 // (WO-031); the set, exercise and feedback buttons open their sheets too. The screen owns
 // which sheet is open and sends what a sheet asks through the outbox. A due feedback opens
 // its sheet by itself (FB-001) until the user cancels it. The script holds which sheet and
-// question is open and what failed to store (VIEW-002). Ported from rp-clone's WorkoutView.
+// question is open and what failed to store (VIEW-002). A finished session opens on its
+// recap (WO-011). Ported from rp-clone's WorkoutView.
 const props = withDefaults(defineProps<{ payload?: WorkoutShowOutput; mesocycleId?: string; week?: number; day?: number; pending?: boolean }>(), {
     mesocycleId: '',
     week: 1,
@@ -254,6 +256,20 @@ onUnmounted(() => {
     if (live && data.value) leaveWakeLock(data.value.workout_id);
 });
 
+// WO-011: when the server's answer turns this session finished while the screen shows it, the
+// recap pops in at the top and the screen brings it into view. One that opens finished stays put.
+const recapCard = ref<InstanceType<typeof WorkoutRecap> | null>(null);
+watch(
+    () => data.value?.status,
+    (now, before) => {
+        if (now !== 'finished' || before === undefined || before === 'finished') return;
+        void nextTick(() => {
+            const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+            (recapCard.value?.$el as HTMLElement | undefined)?.scrollIntoView?.({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        });
+    },
+);
+
 const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-accent';
 </script>
 
@@ -284,6 +300,12 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
         <ReadState v-if="!data" :failure="failure" what="This workout" @retry="load().catch(() => undefined)" />
         <template v-else>
             <h1 class="text-xl font-bold text-primary-text">{{ data.title }}</h1>
+            <Transition
+                enter-active-class="transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.2,1.3,0.4,1)] motion-reduce:transition-opacity motion-reduce:duration-200"
+                enter-from-class="scale-90 opacity-0 motion-reduce:scale-100"
+            >
+                <WorkoutRecap v-if="data.recap" ref="recapCard" :recap="data.recap" class="origin-top" />
+            </Transition>
             <p v-if="data.deload_banner" class="rounded-xl p-2.5 text-sm" :class="toneClasses[data.deload_banner.tone]" data-test="deload">
                 {{ data.deload_banner.text }}
             </p>

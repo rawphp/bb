@@ -171,6 +171,46 @@ it('ONB-018 after an Edit, Next walks forward through the later steps back to th
         ->and(onboardingSteps($edited->with(step: 13))->next())->toEqual(new StepMove(14));
 });
 
+// ONB-022 the step track
+
+/** @return list<array{int, string, string, bool}> each mark as [step, label, state, can open] */
+function onboardingTrack(Draft $draft): array
+{
+    return array_map(fn ($mark) => [$mark->step, $mark->label, $mark->state, $mark->canOpen], onboardingSteps($draft)->track());
+}
+
+it('ONB-022 the track names every step shown and the review, done before the current step and to come after it', function () {
+    expect(onboardingTrack(F::atStep3()))->toBe([
+        [1, 'Goal', 'done', true], [2, 'About you', 'done', true], [3, 'Health check', 'current', false],
+        [4, 'Weight-loss drugs', 'todo', false], [5, 'Body fat', 'todo', false], [6, 'Rate and length', 'todo', false],
+        [7, 'Experience', 'todo', false], [8, 'Training days', 'todo', false], [9, 'Training plan', 'todo', false],
+        [10, 'Daily steps', 'todo', false], [11, 'Meals', 'todo', false], [12, 'Weigh-ins', 'todo', false],
+        [13, 'Calories', 'todo', false], [14, 'Review', 'todo', false],
+    ]);
+});
+
+it('ONB-022 ONB-005 a training-only track drops the nutrition steps, as the counter does', function () {
+    expect(array_column(onboardingTrack(F::atStep7TrainingOnly()), 0))->toBe([1, 2, 3, 7, 8, 9, 12, 14])
+        ->and(array_column(onboardingTrack(F::atStep7TrainingOnly()), 2))->toBe(['done', 'done', 'done', 'current', 'todo', 'todo', 'todo', 'todo']);
+});
+
+it('ONB-022 on the review every step is done and opens, and the review is current', function () {
+    $track = onboardingTrack(F::atReview());
+
+    expect(array_slice($track, 0, 13))->each->toMatchArray([2 => 'done', 3 => true])
+        ->and(end($track))->toBe([14, 'Review', 'current', false]);
+});
+
+it('ONB-022 a step opens only back from where setup is: the current step and the steps to come go nowhere', function () {
+    $atStep8 = F::atStep8();
+
+    expect(onboardingSteps($atStep8)->edit(2))->toBe(2)
+        ->and(onboardingSteps($atStep8)->edit(7))->toBe(7)
+        ->and(onboardingSteps($atStep8)->edit(8))->toBeNull()
+        ->and(onboardingSteps($atStep8)->edit(9))->toBeNull()
+        ->and(onboardingSteps(F::atStep2()->with(step: 1))->edit(3))->toBeNull();
+});
+
 // can_continue and continue_hint, one step at a time
 
 it('ONB-003 step 1 needs a goal and the recent-diet answer', function () {

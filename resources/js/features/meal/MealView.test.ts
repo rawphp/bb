@@ -216,6 +216,46 @@ describe('MealView', () => {
         it('MEAL-046 a meal with foods has no empty note', () => {
             expect(show({ payload: content }).find('[data-test="empty"]').exists()).toBe(false);
         });
+
+        it('MEAL-061 an empty meal offers the same meal from earlier days, each with its day and foods', () => {
+            const view = show({ payload: empty });
+
+            const section = view.get('[data-test="repeats"]');
+            expect(section.get('h2').text()).toBe(`Repeat a recent ${empty.title}`);
+            expect(section.findAll('[data-test="repeat"]').map((repeat) => repeat.text())).toEqual([
+                expect.stringMatching(/^Wed 23 Sep.*Chicken breast · White rice · Broccoli/),
+                expect.stringMatching(/^Mon 21 Sep.*Chili/),
+            ]);
+            // The list is the way in, so the note to search above goes.
+            expect(view.get('[data-test="empty"]').text()).not.toContain('Search above');
+        });
+
+        it('MEAL-061 one tap copies that day\'s foods into this meal, then reads the meal again', async () => {
+            const view = show({ payload: empty, mealId: empty.meal_id });
+            const [first] = empty.empty!.repeats;
+
+            await view.get('[data-test="repeat"]').trigger('click');
+            await flushPromises();
+
+            expect(sent('meal_copy')).toEqual({ meal_id: first!.meal_id, target_meal_ids: [empty.meal_id] });
+            expect(readMock).toHaveBeenCalledWith('meal_show', { meal_id: empty.meal_id }, expect.any(Function), expect.any(Function));
+        });
+
+        it('MEAL-061 a refused copy shows the server\'s words', async () => {
+            writeMock.mockRejectedValueOnce(new CapabilityError('meal_copy', 422, { ok: false, error: { message: 'Dinner is checked in.' } }));
+            const view = show({ payload: empty, mealId: empty.meal_id });
+
+            await view.get('[data-test="repeat"]').trigger('click');
+            await flushPromises();
+
+            expect(view.get('[data-test="error"]').text()).toContain('Dinner is checked in.');
+        });
+
+        it('MEAL-061 offers nothing when there is nothing earlier, or the meal has foods', () => {
+            expect(show({ payload: { ...empty, empty: { ...empty.empty!, repeats: [] } } }).find('[data-test="repeats"]').exists()).toBe(false);
+            wrapper?.unmount();
+            expect(show({ payload: content }).find('[data-test="repeats"]').exists()).toBe(false);
+        });
     });
 
     describe('short', () => {

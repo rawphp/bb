@@ -13,7 +13,8 @@ export type ItemCardStatus =
 
 <script setup lang="ts">
 import { computed, useId } from 'vue';
-import { checkInLook, checkMarks } from './checkInLook';
+import CheckInBox from './CheckInBox.vue';
+import { checkInLook, type CheckInShape } from './checkInLook';
 
 // Meals, workouts, weigh-ins and busy periods share this card (UI-002), ported
 // from rp-clone's ItemCard.swift. The icon and body are slots.
@@ -43,11 +44,12 @@ const titleId = useId();
 const checkBox = computed(() => {
     const status = props.status;
     if (status?.kind === 'checkbox') {
+        const shape: CheckInShape = status.isOn ? 'check' : 'empty';
         return {
             checked: status.isOn,
             label: status.label,
             description: undefined,
-            shape: status.isOn ? 'check' : 'empty',
+            shape,
             color: status.isOn ? 'text-accent' : 'text-secondary-text',
         };
     }
@@ -57,8 +59,6 @@ const checkBox = computed(() => {
     }
     return null;
 });
-
-const paths: Record<string, string> = checkMarks;
 
 const isReady = computed(() => !props.loading && !props.error);
 const isPending = computed(() => isReady.value && props.pending);
@@ -94,27 +94,7 @@ const isPending = computed(() => isReady.value && props.pending);
                     :class="checkBox.color"
                     @click="emit('action')"
                 >
-                    <svg viewBox="0 0 24 24" class="size-7" aria-hidden="true">
-                        <rect
-                            x="3.5"
-                            y="3.5"
-                            width="17"
-                            height="17"
-                            rx="3.5"
-                            stroke="currentColor"
-                            stroke-width="1.75"
-                            :fill="checkBox.shape === 'empty' ? 'none' : 'currentColor'"
-                        />
-                        <path
-                            v-if="checkBox.shape !== 'empty'"
-                            :d="paths[checkBox.shape]"
-                            class="stroke-on-accent"
-                            fill="none"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        />
-                    </svg>
+                    <CheckInBox :shape="checkBox.shape" />
                 </button>
 
                 <button

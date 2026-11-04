@@ -10,6 +10,7 @@ use App\Capabilities\Mesocycles\Data\TrainMesocycleSection;
 use App\Capabilities\Mesocycles\Data\TrainNextMesocycle;
 use App\Capabilities\Mesocycles\Data\TrainShowOutput;
 use App\Capabilities\Mesocycles\Data\TrainTodaySession;
+use App\Capabilities\Mesocycles\Data\TrainWeekMark;
 use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Mesocycle\MesocycleCalendar;
@@ -114,6 +115,7 @@ final class TrainPayload
             week_text: self::weekText($calendar),
             phase_title: TrainWords::phase($snapshot->phaseType($mesocycle)),
             dates_text: self::dates($calendar),
+            week_track: self::weekTrack($calendar),
             next_mesocycle: $next === null ? null : new TrainNextMesocycle(
                 starts_text: TrainWords::starts($next->start),
                 start_date: $next->start->format('Y-m-d'),
@@ -199,6 +201,35 @@ final class TrainPayload
         $week = $calendar->currentWeek();
 
         return "Week {$week} of {$calendar->weeks}".($week === $calendar->weeks ? ' · Deload' : '');
+    }
+
+    /**
+     * MESO-008: one mark per week, the deload last. While it runs, the weeks before this one are done and the rest are
+     * to come. Once it is over, the weeks up to its last day are done and those an early end cut off are skipped.
+     *
+     * @return list<TrainWeekMark>
+     */
+    private static function weekTrack(MesocycleCalendar $calendar): array
+    {
+        $running = $calendar->isRunning();
+        $lastDone = match (true) {
+            $running => $calendar->currentWeek() - 1,
+            $calendar->lastDay() < $calendar->start => 0,
+            default => $calendar->weekOf($calendar->lastDay()),
+        };
+
+        $marks = [];
+        for ($week = 1; $week <= $calendar->weeks; $week++) {
+            $state = match (true) {
+                $week <= $lastDone => 'past',
+                ! $running => 'skipped',
+                $week === $lastDone + 1 => 'current',
+                default => 'upcoming',
+            };
+            $marks[] = new TrainWeekMark($week, $state, $week === $calendar->weeks);
+        }
+
+        return $marks;
     }
 
     /** MESO-043: from the start to the last day, which is never before the start. */

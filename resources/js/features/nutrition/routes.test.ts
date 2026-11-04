@@ -24,4 +24,16 @@ describe('nutrition routes', () => {
         expect(read).toHaveBeenCalledWith('nutrition_show', {}, expect.any(Function), expect.any(Function));
         expect(routesFor(false).filter((route) => route.path === '/nutrition').map((route) => route.name)).toEqual(['nutrition']);
     });
+
+    it("NAV-005 /nutrition/<date> opens that day's meals in the Nutrition tab", async () => {
+        vi.mocked(read).mockReset().mockReturnValue(new Promise(() => {}));
+        const router = createRouter({ history: createMemoryHistory(), routes });
+        await router.push('/nutrition/2026-11-05');
+        mount(RouterView, { global: { plugins: [router] } });
+        await flushPromises();
+
+        expect(router.currentRoute.value.meta.tab).toBe('nutrition');
+        expect(read).toHaveBeenCalledWith('nutrition_show', { date: '2026-11-05' }, expect.any(Function), expect.any(Function));
+        expect(read).toHaveBeenCalledWith('week_show', { date: '2026-11-05' }, expect.any(Function), expect.any(Function));
+    });
 });

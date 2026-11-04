@@ -22,8 +22,26 @@ export interface NutritionShowOutput {
       text: string;
       tone: "good" | "neutral" | "warning" | "info";
     };
+    /**
+     * NAV-005: calories, protein, fat and carbs against target: what was eaten once checked in, else the planned food
+     */
+    bars: {
+      /**
+       * "Cal" or "P"
+       */
+      label: string;
+      /**
+       * "780/2600" or "51/170"
+       */
+      value_text: string;
+      /**
+       * 0 to 1.
+       */
+      fraction: number;
+      tone: "good" | "neutral" | "warning" | "info";
+    }[];
   }[];
   empty_text?: string | null;
 }
 
-export const outputVersion = '3828bfeb47a5';
+export const outputVersion = '0407f030ad6a';

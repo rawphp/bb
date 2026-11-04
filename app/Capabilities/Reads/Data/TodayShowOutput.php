@@ -13,6 +13,7 @@ use App\Capabilities\Reads\Data\Today\Steps;
 use App\Capabilities\Reads\Data\Today\TimelineEntry;
 use App\Capabilities\Reads\Data\Today\TodayBusy;
 use App\Capabilities\Reads\Data\Today\TodayMeal;
+use App\Capabilities\Reads\Data\Today\TodayNow;
 use App\Capabilities\Reads\Data\Today\TodayOtherActivity;
 use App\Capabilities\Reads\Data\Today\TodayWeighIn;
 use App\Capabilities\Reads\Data\Today\TodayWorkout;
@@ -21,7 +22,7 @@ use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
-/** Today: one day's timeline and the controls around it (SCH-001 to SCH-011, SCH-030, SCH-057, SCH-058, DAY, MESO-060, ONB-002, ONB-031). */
+/** Today: one day's timeline and the controls around it (SCH-001 to SCH-012, SCH-030, SCH-057, SCH-058, DAY, MESO-060, ONB-002, ONB-031). */
 final class TodayShowOutput extends CapabilityData
 {
     /**
@@ -45,6 +46,7 @@ final class TodayShowOutput extends CapabilityData
         #[Field(description: 'null on a day with no target.')] public readonly ?Totals $totals,
         public readonly ?Steps $steps,
         #[Field(items: TimelineEntry::class)] public readonly array $timeline,
+        #[Field(description: 'SCH-012: on today only; null on any other day and when the timeline is empty.')] public readonly ?TodayNow $now,
         #[Field(items: TodayMeal::class)] public readonly array $meals,
         #[Field(items: TodayWorkout::class)] public readonly array $workouts,
         #[Field(items: TodayWeighIn::class)] public readonly array $weigh_ins,

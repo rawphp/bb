@@ -313,6 +313,71 @@ describe('WorkoutView', () => {
         expect(releaseWakeLock).toHaveBeenCalledWith('01JB8W3Q000000000000000901');
     });
 
+    it('WO-011 a finished workout opens on its recap above the exercises: time, sets, weight lifted and each best set against last week', async () => {
+        const wrapper = await show({ payload: workout('finished') });
+        const recap = wrapper.get('[data-test="recap"]');
+
+        expect(recap.get('h2').text()).toBe('Workout done');
+        expect(recap.findAll('[data-test="recap-stat"]').map((stat) => [stat.get('dd').text(), stat.get('dt').text()])).toEqual([
+            ['52 min', 'Time'],
+            ['6', 'Sets'],
+            ['3,978 kg', 'Lifted'],
+        ]);
+        expect(recap.findAll('[data-test="recap-exercise"]').map((row) => row.text())).toEqual([
+            expect.stringMatching(/^Bench Press\s*82\.5 kg × 10.*\+2\.5 kg on last week$/),
+            expect.stringMatching(/^Barbell Row\s*62\.5 kg × 11.*\+1 rep on last week$/),
+        ]);
+        // Read before the exercises, at the top of the screen.
+        expect(recap.element.compareDocumentPosition(exercise(wrapper, BENCH).element) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('WO-011 an exercise with nothing to compare shows its best set and no pill', async () => {
+        const finished = workout('finished');
+        const recap = { ...finished.recap!, exercises: [{ ...finished.recap!.exercises[0], change: null }] };
+        const wrapper = await show({ payload: { ...finished, recap } });
+
+        const row = wrapper.get('[data-test="recap-exercise"]');
+        expect(row.text()).toBe('Bench Press82.5 kg × 10');
+        expect(row.find('[data-test="recap-change"]').exists()).toBe(false);
+    });
+
+    it('WO-011 a session not finished has no recap', async () => {
+        const wrapper = await show({ payload: workout('warning') });
+
+        expect(wrapper.find('[data-test="recap"]').exists()).toBe(false);
+    });
+
+    it('WO-011 once the server has the finish, the recap comes into view', async () => {
+        const scroll = vi.fn();
+        Element.prototype.scrollIntoView = scroll;
+        let fresh: (payload: WorkoutShowOutput) => void = () => undefined;
+        readMock.mockImplementation(((_name: string, _input: unknown, onFresh: (payload: WorkoutShowOutput) => void) => {
+            fresh = onFresh;
+            return Promise.resolve({ ...workout('warning'), can_finish: true, feedback_banner: null });
+        }) as never);
+        const wrapper = await show({ mesocycleId: 'm', week: 3, day: 1 });
+
+        await wrapper.get('[data-test="finish"]').trigger('click');
+        await flushPromises();
+        expect(wrapper.find('[data-test="recap"]').exists()).toBe(false);
+        expect(scroll).not.toHaveBeenCalled();
+
+        fresh(workout('finished'));
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="recap"]').exists()).toBe(true);
+        expect(scroll).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' }));
+    });
+
+    it('WO-011 a workout already finished when it opens does not scroll', async () => {
+        const scroll = vi.fn();
+        Element.prototype.scrollIntoView = scroll;
+        readMock.mockResolvedValueOnce(workout('finished'));
+        await show({ mesocycleId: 'm', week: 3, day: 1 });
+
+        expect(scroll).not.toHaveBeenCalled();
+    });
+
     it('OFF-006 says why a change could not be stored', async () => {
         writeMock.mockRejectedValue(new CapabilityError('workout_start', 401, null));
         const wrapper = await show();

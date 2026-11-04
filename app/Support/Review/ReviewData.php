@@ -2,6 +2,7 @@
 
 namespace App\Support\Review;
 
+use App\Domain\Model\MealTarget;
 use App\Domain\Progression\Underperformance;
 use App\Models\DayTarget;
 use App\Models\DayTargetMeal;
@@ -44,10 +45,10 @@ final readonly class ReviewData
      * @param  Collection<int, PlanWeek>  $planWeeks
      * @param  Collection<int, DayTarget>  $dayTargets  from a week before the oldest week the calorie rules read
      * @param  Collection<int, OtherActivity>  $otherActivities  over the same days
-     * @param  list<array{id: string, date: string, checkInKcal: ?float}>  $meals  every meal of a target from `MEAL_WEEKS`
-     *                                                                             weeks back (not before the plan start) to
-     *                                                                             today, by its lower-case id and Y-m-d date,
-     *                                                                             with the calories checked in
+     * @param  list<array{id: string, date: string, checkInKcal: ?float, eaten: ?MealTarget}>  $meals  every meal of a target from `MEAL_WEEKS`
+     *                                                                                                 weeks back (not before the plan start) to
+     *                                                                                                 today, by its lower-case id and Y-m-d date,
+     *                                                                                                 with the calories checked in
      * @param  Collection<int, WeighIn>  $weighIns  every one, oldest first: the trend weight (WT-010) runs from the
      *                                              first weigh-in, so a date bound would change it
      * @param  Collection<int, WeighInScheduleEntry>  $weighInSchedule
@@ -188,7 +189,7 @@ final readonly class ReviewData
      * The meals of the targets from `$from` to `$to`, with what was checked in.
      *
      * @param  Collection<int, DayTarget>  $dayTargets
-     * @return list<array{id: string, date: string, checkInKcal: ?float}>
+     * @return list<array{id: string, date: string, checkInKcal: ?float, eaten: ?MealTarget}>
      */
     private static function meals(User $user, Collection $dayTargets, DateTimeImmutable $from, DateTimeImmutable $to): array
     {
@@ -206,6 +207,7 @@ final readonly class ReviewData
             'id' => strtolower((string) $meal->id),
             'date' => $dates[$meal->day_target_id],
             'checkInKcal' => $meal->checkIn?->kcal,
+            'eaten' => $meal->checkIn === null ? null : new MealTarget($meal->checkIn->kcal, $meal->checkIn->protein_g, $meal->checkIn->fat_g, $meal->checkIn->carbs_g),
         ])->values()->all();
     }
 

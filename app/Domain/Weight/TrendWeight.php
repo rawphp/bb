@@ -71,6 +71,21 @@ final readonly class TrendWeight
         return $this->points === [] ? null : $this->points[array_key_last($this->points)]->trendKg;
     }
 
+    /**
+     * WT-008: the trend on every day from the first weigh-in to the last, keyed by the day's Y-m-d in the time zone.
+     *
+     * @return array<string, float>
+     */
+    public function byDay(): array
+    {
+        $byDay = [];
+        foreach ($this->points as $point) {
+            $byDay[$point->day->format('Y-m-d')] = $point->trendKg;
+        }
+
+        return $byDay;
+    }
+
     /** WT-012: false means the chart shows "not enough data". */
     public function hasEnoughDataForChart(): bool
     {
@@ -86,6 +101,20 @@ final readonly class TrendWeight
     public function trendKg(DateTimeImmutable $date): ?float
     {
         return $this->trendByDay[$this->startOfDay($date)->getTimestamp()] ?? null;
+    }
+
+    /**
+     * WT-008: the trend on $date's day, holding the last trend on any day after the last weigh-in. Null before the
+     * first weigh-in.
+     */
+    public function kgOnOrBefore(DateTimeImmutable $date): ?float
+    {
+        if ($this->points === []) {
+            return null;
+        }
+        $last = $this->points[array_key_last($this->points)];
+
+        return $this->startOfDay($date) > $last->day ? $last->trendKg : $this->trendKg($date);
     }
 
     /**

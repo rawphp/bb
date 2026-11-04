@@ -169,6 +169,71 @@
                         "tone"
                     ]
                 },
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "date": {
+                                "type": "string"
+                            },
+                            "weekday": {
+                                "type": "string",
+                                "description": "\"Sat\"."
+                            },
+                            "day_number": {
+                                "type": "string",
+                                "description": "\"24\"."
+                            },
+                            "meals": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "meal_id": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "is_checked": {
+                                            "type": "boolean"
+                                        },
+                                        "check_in": {
+                                            "type": "string",
+                                            "description": "MEAL-047: the check-in against the meal's target, drawn as Today's box draws it.",
+                                            "enum": [
+                                                "not_checked_in",
+                                                "on_track",
+                                                "under",
+                                                "over"
+                                            ]
+                                        },
+                                        "label": {
+                                            "type": "string",
+                                            "description": "\"Check in Lunch, Sat, 24 Oct\", or \"Lunch, Sat, 24 Oct: checked in, over target\"."
+                                        }
+                                    },
+                                    "required": [
+                                        "meal_id",
+                                        "name",
+                                        "is_checked",
+                                        "check_in",
+                                        "label"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "date",
+                            "weekday",
+                            "day_number",
+                            "meals"
+                        ]
+                    }
+                },
                 "unchecked": {
                     "type": "array",
                     "items": {
@@ -182,7 +247,8 @@
                                 "type": "string"
                             },
                             "date_label": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "\"Thu, 8 Oct\"."
                             }
                         },
                         "required": [
@@ -190,14 +256,17 @@
                             "name",
                             "date_label"
                         ]
-                    }
+                    },
+                    "description": "Deprecated, to be removed in the release after next: the meals of `days` not checked in. Read `days` instead."
                 },
                 "check_in_title": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Deprecated, to be removed in the release after next: \"Check in now\". Each meal of `days` has its own label."
                 }
             },
             "required": [
                 "message",
+                "days",
                 "unchecked",
                 "check_in_title"
             ]

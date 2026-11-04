@@ -35,6 +35,7 @@ const shown = computed<WeighInsShowOutput | undefined>(() => {
     return {
         ...newest,
         rows: [...newest.rows, ...pages.flatMap((page) => page.rows)],
+        weeks: [...newest.weeks, ...pages.flatMap((page) => page.weeks)],
         steps: { ...newest.steps, rows: [...newest.steps.rows, ...pages.flatMap((page) => page.steps.rows)] },
         next_before: pages[pages.length - 1]!.next_before ?? null,
     };

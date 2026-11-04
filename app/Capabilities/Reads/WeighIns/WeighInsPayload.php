@@ -14,15 +14,21 @@ use App\Capabilities\WeighIns\Data\WeighInSchedule as ScheduleData;
 use App\Capabilities\WeighIns\Data\WeighInScheduleEntry as ScheduleEntryData;
 use App\Capabilities\WeighIns\Data\WeighInsShowOutput;
 use App\Capabilities\WeighIns\Data\WeighInUnits;
+use App\Capabilities\WeighIns\Data\WeighInWeek;
 use App\Domain\Placement\ClockTime;
+use App\Domain\Plan\PlanWeekGrid;
+use App\Domain\Progress\PlanWeekDays;
 use App\Domain\WeighIns\BodyMeasures;
 use App\Domain\WeighIns\StepCounts;
 use App\Domain\WeighIns\WeighInSchedule;
+use App\Domain\WeighIns\WeighInWeeks;
+use App\Models\Plan;
 use App\Models\Profile;
 use App\Models\Step;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WeighInScheduleEntry;
+use App\Support\Today\DayPlans;
 use App\Support\Today\TodayWeight;
 use App\Support\UserDay;
 use Carbon\CarbonImmutable;
@@ -37,6 +43,9 @@ use DateTimeZone;
  * WT-004: the weigh-ins, missed days and step counts come a page of PAGE_DAYS calendar days at a time, newest first.
  * A page is the user's days [start, end): end is the `before` day, or tomorrow for the newest page, which also holds
  * anything dated later. Each day lands on one page. The trend, schedule and the rest are the whole set on every page.
+ *
+ * WT-008: each row names the week it falls in, and the page heads each of its weeks with the trend at the week's end
+ * and its change on the week before, from every weigh-in. A week a page boundary cuts in two heads both pages alike.
  */
 final class WeighInsPayload
 {
@@ -76,6 +85,11 @@ final class WeighInsPayload
         $entries = WeighInScheduleEntry::query()->where('user_id', $user->id)->orderBy('id')->get()->all();
         $weekdays = array_map(fn (WeighInScheduleEntry $entry) => array_map('intval', $entry->weekdays ?? []), $entries);
         $trendKg = TodayWeight::trendKg($user);
+        $plan = Plan::query()->with('reviewDayChanges')->where('user_id', $user->id)->first();
+        $grid = $plan === null ? null : new PlanWeekGrid(
+            DayPlans::day($plan->start_date), PlanWeekDays::calendarWeekdayFromIso($plan->review_weekday), $plan->domainReviewDayChanges(),
+        );
+        $rows = self::rows($zone, $weighIns, $entries, $weekdays, $firstDay?->max($start), $end->min($today), $weightUnit, $waistUnit, $grid);
 
         return new WeighInsShowOutput(
             title: 'Weigh-ins',
@@ -83,7 +97,8 @@ final class WeighInsPayload
             help: new WeighInHelp(self::HELP_TITLE, self::HELP),
             units: new WeighInUnits($weightUnit, $waistUnit),
             schedule: self::schedule($entries, $weekdays),
-            rows: self::rows($zone, $weighIns, $entries, $weekdays, $firstDay?->max($start), $end->min($today), $weightUnit, $waistUnit),
+            rows: $rows,
+            weeks: self::weeks($user, $rows, $grid, $today, $weightUnit),
             missed: new Status('Missed', 'warning'),
             empty_message: $firstDay === null ? 'No weigh-ins yet. Tap + to log your first.' : null,
             steps: self::steps($user, $now, $start, $until),
@@ -131,8 +146,9 @@ final class WeighInsPayload
      * @param  list<list<int>>  $weekdays  each entry's
      * @return list<WeighInRow>
      */
-    private static function rows(DateTimeZone $zone, array $weighIns, array $entries, array $weekdays, ?CarbonImmutable $from, CarbonImmutable $until, string $weightUnit, string $waistUnit): array
+    private static function rows(DateTimeZone $zone, array $weighIns, array $entries, array $weekdays, ?CarbonImmutable $from, CarbonImmutable $until, string $weightUnit, string $waistUnit, ?PlanWeekGrid $grid): array
     {
+        $weekOf = fn (DateTimeImmutable $day): string => WeighInWeeks::of($day, $grid)[0]->format('Y-m-d');
         $rows = [];
         $clocks = [];
         foreach ($weighIns as $weighIn) {
@@ -149,6 +165,7 @@ final class WeighInsPayload
                 weighed_at: $weighIn->weighed_at->toDateTimeImmutable()->setTimezone($zone)->format(DATE_ATOM),
                 weight_field: BodyMeasures::weightField((float) $weighIn->weight_kg, $weightUnit),
                 waist_field: $waist === null ? '' : BodyMeasures::waistField($waist, $waistUnit),
+                week: $weekOf($at),
             )];
         }
 
@@ -179,6 +196,7 @@ final class WeighInsPayload
                 weighed_at: (new DateTimeImmutable($at->format('Y-m-d H:i:s'), $zone))->format(DATE_ATOM),
                 weight_field: '',
                 waist_field: '',
+                week: $weekOf($day),
             )];
         }
 
@@ -186,6 +204,36 @@ final class WeighInsPayload
         usort($rows, fn (array $a, array $b) => $b[0] <=> $a[0]);
 
         return array_map(fn (array $row) => $row[1], $rows);
+    }
+
+    /**
+     * WT-008: a header for each week the page's rows fall in, newest first. The trend runs over every weigh-in, on the
+     * user's local days, as the rows are, and is kept until a weigh-in changes (TodayWeight).
+     *
+     * @param  list<WeighInRow>  $rows  newest first
+     * @return list<WeighInWeek>
+     */
+    private static function weeks(User $user, array $rows, ?PlanWeekGrid $grid, CarbonImmutable $today, string $weightUnit): array
+    {
+        if ($rows === []) {
+            return [];
+        }
+        $trend = TodayWeight::trendByDay($user);
+        $day = $today->toDateTimeImmutable();
+
+        $weeks = [];
+        foreach (array_unique(array_map(fn (WeighInRow $row) => $row->week, $rows)) as $week) {
+            [$start, $end] = WeighInWeeks::of(DayPlans::day($week), $grid);
+            [$kg, $change] = WeighInWeeks::trend($trend, $start, $end, $day);
+            $weeks[] = new WeighInWeek(
+                week: $week,
+                title: WeighInWeekWords::title($start, $end, $day),
+                trend_label: WeighInWeekWords::trend($kg, $weightUnit),
+                change: WeighInWeekWords::change($change, $weightUnit),
+            );
+        }
+
+        return $weeks;
     }
 
     /** WT-020: the page's days with a count, newest first. */

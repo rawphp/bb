@@ -4,6 +4,7 @@ namespace App\Capabilities\Reads\Today;
 
 use App\Capabilities\Reads\Data\Today\MacroLine;
 use App\Domain\Model\MealTarget;
+use App\Domain\Placement\ClockTime;
 use DateTimeImmutable;
 
 /** How Today words its dates, amounts and counts (CAP-015). */
@@ -78,5 +79,11 @@ final class TodayWords
     public static function weekday(DateTimeImmutable $day): string
     {
         return $day->format('l');
+    }
+
+    /** SCH-012: "Next: Dinner at 7:30 PM", or "Next: Meal 4" for an item with no time. */
+    public static function next(string $name, ?ClockTime $time): string
+    {
+        return $time === null ? "Next: {$name}" : "Next: {$name} at {$time->shortText()}";
     }
 }

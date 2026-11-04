@@ -11,6 +11,9 @@ use App\Capabilities\Workout\Data\WorkoutFeedback;
 use App\Capabilities\Workout\Data\WorkoutFeedbackQuestion;
 use App\Capabilities\Workout\Data\WorkoutHelpSection;
 use App\Capabilities\Workout\Data\WorkoutLookBackRow;
+use App\Capabilities\Workout\Data\WorkoutRecap;
+use App\Capabilities\Workout\Data\WorkoutRecapExercise;
+use App\Capabilities\Workout\Data\WorkoutRecapStat;
 use App\Capabilities\Workout\Data\WorkoutRepRow;
 use App\Capabilities\Workout\Data\WorkoutSet;
 use App\Capabilities\Workout\Data\WorkoutShowOutput;
@@ -26,6 +29,8 @@ use App\Domain\Placement\ClockTime;
 use App\Domain\Progression\FeedbackSheet;
 use App\Domain\Progression\RepTable;
 use App\Domain\Progression\RepTableRow;
+use App\Domain\Progression\SessionRecap;
+use App\Domain\Progression\SetLoad;
 use App\Domain\Progression\SetPlan;
 use App\Domain\Progression\WorkoutStatus;
 use App\Models\DayTarget;
@@ -92,7 +97,59 @@ final class WorkoutPayload
             help: WorkoutWords::help(),
             swap_advice: WorkoutWords::SWAP_ADVICE,
             look_back: self::lookBack($s),
+            recap: $status === WorkoutStatus::Finished ? self::recap($s, $blocks) : null,
         );
+    }
+
+    // MARK: recap (WO-011)
+
+    /**
+     * WO-011: the session's time, logged sets and weight lifted, then each exercise's best set against its best in
+     * the same session last week, all in the user's unit.
+     *
+     * @param  list<WorkoutBlock>  $blocks
+     */
+    private static function recap(WorkoutSnapshot $s, array $blocks): WorkoutRecap
+    {
+        $unit = $s->unit();
+        $all = [];
+        $exercises = [];
+        foreach ($blocks as $block) {
+            $logged = self::loggedLoads($s, $block);
+            $all = [...$all, ...$logged];
+            $best = SessionRecap::best($logged);
+            $before = SessionRecap::best($s->lastWeekLoads($block->exercise));
+            $exercises[] = new WorkoutRecapExercise(
+                workout_exercise_id: $block->id,
+                name: $block->exercise->name,
+                best_text: WorkoutWords::bestSet($best, $unit),
+                change: $best === null || $before === null ? null : WorkoutWords::recapChange(SessionRecap::change($best, $before), $unit),
+            );
+        }
+        $end = $s->end();
+        $stats = $end === null ? [] : [new WorkoutRecapStat('Time', WorkoutWords::duration(SessionRecap::minutes($s->start(), $end)))];
+        $stats[] = new WorkoutRecapStat('Sets', (string) count($all));
+        $stats[] = new WorkoutRecapStat('Lifted', WorkoutWords::lifted(SessionRecap::lifted($all), $unit));
+
+        return new WorkoutRecap(WorkoutWords::RECAP_TITLE, $stats, $exercises);
+    }
+
+    /**
+     * The block's working sets as lifted (WO-025), in the user's unit; a bodyweight exercise has no weight.
+     *
+     * @return list<SetLoad>
+     */
+    private static function loggedLoads(WorkoutSnapshot $s, WorkoutBlock $block): array
+    {
+        $bodyweight = $block->exercise->load_type === ExerciseLoadType::Bodyweight;
+        $loads = [];
+        foreach ($block->sets as $set) {
+            if ($set->isWorking() && $set->actualReps !== null) {
+                $loads[] = new SetLoad($bodyweight || $set->actualKg === null ? null : $s->display($set->actualKg), $set->actualReps);
+            }
+        }
+
+        return $loads;
     }
 
     // MARK: exercises and sets (WO-002 to WO-007, WO-021, WO-023)

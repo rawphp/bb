@@ -204,6 +204,11 @@
                     },
                     "waist_field": {
                         "type": "string"
+                    },
+                    "week": {
+                        "type": "string",
+                        "description": "The first day of the week the row falls in, as the screen's weeks name it (WT-008).",
+                        "format": "date"
                     }
                 },
                 "required": [
@@ -215,10 +220,65 @@
                     "waist_label",
                     "weighed_at",
                     "weight_field",
-                    "waist_field"
+                    "waist_field",
+                    "week"
                 ]
             },
             "description": "Newest first, missed scheduled days among them."
+        },
+        "weeks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "week": {
+                        "type": "string",
+                        "description": "The week's first day; each row's week names it.",
+                        "format": "date"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "\"This week\", or the week's days: \"24 – 30 Oct\"."
+                    },
+                    "trend_label": {
+                        "type": "string",
+                        "description": "\"Trend 81.8 kg\": the trend at the week's end, or today for this week; empty without one."
+                    },
+                    "change": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "additionalProperties": false,
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "tone": {
+                                "type": "string",
+                                "enum": [
+                                    "good",
+                                    "neutral",
+                                    "warning",
+                                    "info"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "tone"
+                        ],
+                        "description": "\"+0.3 kg on last week\": the change in trend from the week before; null for the first week of weigh-ins."
+                    }
+                },
+                "required": [
+                    "week",
+                    "title",
+                    "trend_label"
+                ]
+            },
+            "description": "WT-008: a header for each week the rows fall in, newest first."
         },
         "missed": {
             "type": "object",
@@ -320,6 +380,7 @@
         "units",
         "schedule",
         "rows",
+        "weeks",
         "missed",
         "steps"
     ]

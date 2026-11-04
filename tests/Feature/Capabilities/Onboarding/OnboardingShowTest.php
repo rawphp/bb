@@ -64,3 +64,15 @@ it('ONB-002 ONB-018 shows a saved setup on its review over HTTP, for its own use
         ->and($other['step']['number'])->toBe(1)
         ->and(OnboardingDraft::query()->count())->toBe(1);
 });
+
+it('ONB-022 shows the step track over HTTP: the done steps open, the current one and those to come do not', function () {
+    W::freezeClock();
+    $world = W::sam(8);
+
+    $track = $this->actingAs($world['user'])->postJson('/capabilities/onboarding_show')->assertOk()->json('data.step.track');
+
+    expect($track)->toHaveCount(14)
+        ->and($track[1])->toBe(['step' => 2, 'label' => 'About you', 'state' => 'done', 'can_open' => true])
+        ->and($track[7])->toBe(['step' => 8, 'label' => 'Training days', 'state' => 'current', 'can_open' => false])
+        ->and($track[13])->toBe(['step' => 14, 'label' => 'Review', 'state' => 'todo', 'can_open' => false]);
+});

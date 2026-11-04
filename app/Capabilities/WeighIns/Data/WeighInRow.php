@@ -26,5 +26,7 @@ final class WeighInRow extends CapabilityData
         #[Field(description: 'The weight as the edit field starts, in the user\'s unit: "82.5".')]
         public readonly string $weight_field,
         public readonly string $waist_field,
+        #[Field(description: 'The first day of the week the row falls in, as the screen\'s weeks name it (WT-008).', format: 'date')]
+        public readonly string $week,
     ) {}
 }

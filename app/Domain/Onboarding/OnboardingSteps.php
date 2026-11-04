@@ -10,7 +10,8 @@ use DateTimeImmutable;
 /**
  * The step sequence (ONB-002 to ONB-018, UI-007), from rp-clone's OnboardingModel: the 13 steps and the review, the
  * training-only skips (ONB-005), the counter, the button title, whether a step can continue and why not, and the
- * target of Next, Back and an Edit link. The targets are only named here; the write moves the draft.
+ * target of Next, Back and an Edit link, and the step track (ONB-022). The targets are only named here; the write moves
+ * the draft.
  */
 final class OnboardingSteps
 {
@@ -32,6 +33,13 @@ final class OnboardingSteps
         1 => "What's your goal?", 2 => 'About you', 3 => 'Health check', 4 => 'Weight-loss drugs', 5 => 'Body fat',
         6 => 'Rate and length', 7 => 'Training experience', 8 => 'Training days', 9 => 'Training plan',
         10 => 'Daily steps', 11 => 'Meals', 12 => 'Weigh-ins', 13 => 'Calories', 14 => 'Review your plan',
+    ];
+
+    /** ONB-022: each step's name on the track, in a word or two. */
+    private const LABELS = [
+        1 => 'Goal', 2 => 'About you', 3 => 'Health check', 4 => 'Weight-loss drugs', 5 => 'Body fat',
+        6 => 'Rate and length', 7 => 'Experience', 8 => 'Training days', 9 => 'Training plan', 10 => 'Daily steps',
+        11 => 'Meals', 12 => 'Weigh-ins', 13 => 'Calories', 14 => 'Review',
     ];
 
     private const HINTS = [
@@ -194,10 +202,36 @@ final class OnboardingSteps
         return self::move($this->draft->step, $this->visibleSteps(), -1);
     }
 
-    /** ONB-018: an Edit link goes back to a step that is shown. Next then walks forward and every answer is kept. */
+    /**
+     * ONB-018, ONB-022: an Edit link, or a done mark on the track, goes back to a step that is shown and comes before
+     * this one; from the review that is every step. Next then walks forward and every answer is kept, so no step is
+     * reached without Next through the ones before it.
+     */
     public function edit(int $step): ?int
     {
-        return $step < self::REVIEW_STEP && in_array($step, $this->visibleSteps(), true) ? $step : null;
+        return $step < $this->draft->step && in_array($step, $this->visibleSteps(), true) ? $step : null;
+    }
+
+    /**
+     * ONB-022: the route as a track, one mark per step shown (the review last), each done, current or to come. The
+     * marks follow the counter's list, so a training-only setup drops the nutrition steps once past the screening.
+     *
+     * @return list<StepMark>
+     */
+    public function track(): array
+    {
+        $current = $this->draft->step;
+
+        return array_map(fn (int $step) => new StepMark(
+            $step,
+            self::LABELS[$step],
+            match (true) {
+                $step < $current => StepMark::DONE,
+                $step === $current => StepMark::CURRENT,
+                default => StepMark::TODO,
+            },
+            $this->edit($step) !== null,
+        ), $this->visibleSteps());
     }
 
     /** @return list<int> */

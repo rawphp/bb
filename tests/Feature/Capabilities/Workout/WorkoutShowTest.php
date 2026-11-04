@@ -158,6 +158,23 @@ it('WO-040 NAV-004 shows a session under way whose due feedback blocks Finish', 
         ->and($data['can_finish'])->toBeFalse();
 });
 
+it('WO-011 WO-008 shows a finished session with its recap', function () {
+    [$user, $mesocycle] = showSeed();
+
+    // Week 2 day 1 ran 17:30 to 18:30 on 14 September: Bench Press 81 kg and 82 kg for 10.
+    $data = showOver($user, ['mesocycle_id' => $mesocycle->id, 'week' => 2, 'day' => 1])->assertOk()->json('data');
+
+    assertMatchesScreenFixture('workout_show', $data);
+    expect(ScreenFixture::differences(ScreenFixture::load('workout_show.finished'), $data))->toBe([])
+        ->and($data['status'])->toBe('finished')
+        ->and($data['recap']['stats'])->toBe([
+            ['label' => 'Time', 'value' => '1 h'],
+            ['label' => 'Sets', 'value' => '2'],
+            ['label' => 'Lifted', 'value' => '1,630 kg'],
+        ])
+        ->and($data['recap']['exercises'][0]['best_text'])->toBe('82 kg × 10');
+});
+
 it('WO-001 never shows another user\'s session rows', function () {
     [$user, $mesocycle] = showSeed();
     $stranger = User::factory()->create();
