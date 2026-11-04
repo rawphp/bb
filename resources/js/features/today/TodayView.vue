@@ -148,17 +148,19 @@ const nowBefore = computed(() => {
 
 // SCH-012: opened on today with the user still at the top, the screen scrolls a Now line that
 // sits below the fold into view with the item after it, so what is next shows first, as a
-// calendar's day view does. As little as that takes, once per screen, never after the user
-// has scrolled, and not under the tour.
+// calendar's day view does. As little as that takes, never after the user has scrolled, and
+// not under the tour. It is decided once, on the first copy shown, so fresh data replacing a
+// cached copy never moves the screen (PWA-004).
 const root = ref<HTMLElement | null>(null);
 const FOLD_MARGIN_PX = 96;
 let nowBrought = false;
 
 watch(
-    () => data.value?.now,
-    async (now) => {
-        if (nowBrought || !now || touring.value) return;
+    () => data.value,
+    async (shown) => {
+        if (nowBrought || !shown) return;
         nowBrought = true;
+        if (!shown.now || touring.value) return;
         await nextTick();
         const line = root.value?.querySelector<HTMLElement>('[data-test="now-line"]');
         const screen = root.value?.closest<HTMLElement>('.bb-screen');

@@ -201,6 +201,35 @@ describe('TodayView', () => {
         delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
     });
 
+    it('SCH-012 PWA-004 decides on the first copy shown: fresh data with a Now line does not scroll a cached copy without one', async () => {
+        const screen = document.createElement('div');
+        screen.className = 'bb-screen';
+        document.body.append(screen);
+        const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+            return { bottom: this.dataset.test === 'now-line' ? 1200 : 844 } as DOMRect;
+        });
+        const scrolled = vi.fn();
+        HTMLElement.prototype.scrollIntoView = scrolled;
+        let refresh: ((fresh: TodayShowOutput) => void) | undefined;
+        readMock.mockImplementation(((name: string, _input: unknown, onUpdate?: (fresh: TodayShowOutput) => void) => {
+            if (name !== 'today_show') return Promise.resolve(week());
+            refresh = onUpdate;
+            return Promise.resolve({ ...day(), now: null });
+        }) as never);
+        await router.push('/today');
+
+        const wrapper = mount(TodayView, { attachTo: screen, global: { plugins: [router], stubs: { teleport: true } } });
+        await flushPromises();
+        refresh!(day());
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="now-line"]').exists()).toBe(true);
+        expect(scrolled).not.toHaveBeenCalled();
+        wrapper.unmount();
+        rect.mockRestore();
+        delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    });
+
     it('SCH-012 reads the day again when the app comes back to the foreground, so the line moves', async () => {
         await show({});
         readMock.mockClear();
