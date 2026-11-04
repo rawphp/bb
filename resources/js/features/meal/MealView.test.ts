@@ -513,12 +513,29 @@ describe('MealView', () => {
             for (const entry of empty.menu.filter((e) => !e.is_enabled)) expect(view.get<HTMLButtonElement>(`[data-test="item-${entry.item}"]`).element.disabled).toBe(true);
         });
 
-        it('MEAL-009 Remove foods clears the meal', async () => {
+        it('MEAL-009 Remove foods asks first, then clears the meal', async () => {
             const view = show({ payload: content });
 
             await menu(view, 'remove_foods');
+            expect(dialog()!.querySelector('h2')!.textContent).toBe('Remove foods from Dinner?');
+            expect(writeMock).not.toHaveBeenCalled();
+
+            dialog()!.querySelector<HTMLButtonElement>('[data-test="confirm-clear"]')!.click();
+            await flushPromises();
 
             expect(sent('meal_foods_clear')).toEqual({ meal_id: MEAL });
+            expect(dialog()).toBeNull();
+        });
+
+        it('MEAL-009 Remove foods cancelled sends nothing', async () => {
+            const view = show({ payload: content });
+
+            await menu(view, 'remove_foods');
+            document.body.querySelector<HTMLButtonElement>('[role="dialog"] [data-cancel]')!.click();
+            await flushPromises();
+
+            expect(dialog()).toBeNull();
+            expect(writeMock).not.toHaveBeenCalled();
         });
 
         it('MEAL-040 Check in meal checks it in at its planned foods', async () => {
