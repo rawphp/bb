@@ -80,12 +80,13 @@ async function leaveChat(): Promise<void> {
     await load();
 }
 
-// One save at a time. A save is built from what the screen shows, so while one is out the
-// step is read-only (`locked`): its picks are off and its typed fields take no typing. A
-// Back or Next pressed meanwhile goes after the save, first press wins, unless the save is
-// refused or gets no answer. A failed save remounts the step's fields, so they show what
-// is saved, not what was refused; nothing can have been typed while it was out. While a
-// move is out the whole step is off (the fieldset).
+// One save at a time. While one is out the step's picks are off (`locked`), but its typed
+// fields still take typing (`readonly` is off): an answer typed meanwhile waits in `queued`
+// and is sent after it, in the order typed. A Back or Next pressed meanwhile goes after
+// them, first press wins. A save refused or with no answer drops what waits behind it and
+// remounts the step's fields, so they show what is saved, not what was refused or typed.
+// While a move is out the whole step is off (the fieldset).
+const queued: Answers[] = [];
 let wantsMove: 'next' | 'back' | null = null;
 const saving = ref(false);
 const moving = ref(false);
@@ -95,7 +96,8 @@ const starting = ref(false);
 // built from may change: the answers, Edit and Back stay off, and only the retry is left.
 const startUnsure = ref(false);
 const busy = computed(() => saving.value || moving.value || starting.value);
-const locked = computed(() => busy.value || startUnsure.value);
+const readonly = computed(() => moving.value || starting.value || startUnsure.value);
+const locked = computed(() => saving.value || readonly.value);
 const fields = ref(0);
 
 async function post(input: OnboardingAnswerInput): Promise<boolean> {
@@ -131,12 +133,17 @@ async function start(): Promise<void> {
 }
 
 async function answer(answers: Answers): Promise<void> {
-    if (locked.value) return;
+    if (readonly.value) return;
+    if (saving.value) {
+        queued.push(answers);
+        return;
+    }
     saving.value = true;
-    let saved = false;
+    let saved = true;
     try {
-        saved = await post({ answers, move: 'stay' });
+        for (let next: Answers | undefined = answers; saved && next; next = queued.shift()) saved = await post({ answers: next, move: 'stay' });
     } finally {
+        queued.length = 0;
         saving.value = false;
     }
     const to = wantsMove;
@@ -181,7 +188,7 @@ function edit(step: number): void {
             <fieldset :key="fields" :disabled="moving" class="flex min-w-0 flex-col gap-4">
                 <OnboardingCallout v-for="notice in data.notices" :key="notice.text" :text="notice.text" :tone="notice.tone" />
                 <GoalStep v-if="data.step.key === 'goal'" :goal="data.goal" :locked="locked" @answer="answer" />
-                <AboutYouStep v-else-if="data.step.key === 'about_you'" :about="data.about_you" :locked="locked" @answer="answer" />
+                <AboutYouStep v-else-if="data.step.key === 'about_you'" :about="data.about_you" :locked="locked" :readonly="readonly" @answer="answer" />
                 <ScreeningStep v-else-if="data.step.key === 'screening'" :screening="data.screening" :locked="locked" @answer="answer" />
                 <GLP1Step v-else-if="data.step.key === 'glp1'" :glp1="data.glp1" :locked="locked" @answer="answer" />
                 <BodyFatStep v-else-if="data.step.key === 'body_fat'" :body-fat="data.body_fat" :locked="locked" @answer="answer" />

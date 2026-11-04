@@ -192,7 +192,7 @@ describe('OnboardingView', () => {
         it.each([
             ['cm', 4],
             ['feet and inches', 5],
-        ] as const)('CAP-010 while an answer saves its step takes no typing, and takes it again once the save lands (height in %s)', async (layout, inputs) => {
+        ] as const)('CAP-010 while an answer saves its typed fields still take typing, and only its picks are off (height in %s)', async (layout, inputs) => {
             const dated = structuredClone(aboutYou);
             dated.about_you.birth_date = review.about_you.birth_date;
             if (layout === 'feet and inches') dated.about_you.height = review.about_you.height;
@@ -204,7 +204,8 @@ describe('OnboardingView', () => {
 
             await radio(wrapper, 'Sex', 'Male').trigger('click');
             expect(typed().length).toBe(inputs);
-            for (const input of typed()) expect(input.attributes('readonly'), input.html()).toBeDefined();
+            for (const input of typed()) expect(input.attributes('readonly'), input.html()).toBeUndefined();
+            expect(radio(wrapper, 'Sex', 'Female').attributes('disabled')).toBeDefined();
             finish({});
             await flushPromises();
 
@@ -581,6 +582,157 @@ describe('OnboardingView', () => {
             expect(wrapper.get('[role="alert"]').text()).toBe('Enter a weight under 400 kg.');
             expect(wrapper.get<HTMLInputElement>('input[aria-label="Weight in kg"]').element.value).toBe('75');
         });
+        it('ONB-002 a weight typed while the height save is out is kept, and saved once that save lands', async () => {
+            const heightSaved = structuredClone(aboutYou);
+            heightSaved.about_you.height = { ...heightSaved.about_you.height, cm: 175, text: '175 cm' };
+            const bothSaved = structuredClone(heightSaved);
+            bothSaved.about_you.weight = { ...bothSaved.about_you.weight, value: 80, text: '80 kg' };
+            readMock.mockResolvedValueOnce(heightSaved).mockResolvedValue(bothSaved);
+            let finish: (value: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+            wrapper = view(aboutYou);
+            const height = wrapper.get('input[aria-label="Height in cm"]');
+            const weight = wrapper.get<HTMLInputElement>('input[aria-label="Weight in kg"]');
+
+            await height.setValue('175');
+            await height.trigger('blur');
+            await weight.trigger('focus');
+            await weight.setValue('80');
+            await weight.trigger('blur');
+            expect(writeMock).toHaveBeenCalledOnce();
+            finish({});
+            await flushPromises();
+
+            expect(sent()).toEqual([
+                { answers: { height: { unit: 'cm', cm: 175 } }, move: 'stay' },
+                { answers: { weight: { unit: 'kg', value: 80 } }, move: 'stay' },
+            ]);
+            expect(weight.element.value).toBe('80');
+        });
+
+        it('CAP-010 answers typed while a save is out are sent after it, one at a time in the order typed, and a Next pressed behind them goes last', async () => {
+            const ready = structuredClone(aboutYou);
+            ready.step = { ...ready.step, can_continue: true };
+            readMock.mockResolvedValue(ready);
+            let finishHeight: (value: unknown) => void = () => {};
+            let finishWeight: (value: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((resolve) => (finishHeight = resolve))).mockReturnValueOnce(new Promise((resolve) => (finishWeight = resolve)));
+            wrapper = view(ready);
+
+            await wrapper.get('input[aria-label="Height in cm"]').setValue('175');
+            await wrapper.get('input[aria-label="Height in cm"]').trigger('blur');
+            await wrapper.get('input[aria-label="Weight in kg"]').setValue('80');
+            await wrapper.get('input[aria-label="Weight in kg"]').trigger('blur');
+            await wrapper.get('input[autocomplete="given-name"]').setValue('Al');
+            await next(wrapper).trigger('click');
+            expect(writeMock).toHaveBeenCalledOnce();
+            finishHeight({});
+            await flushPromises();
+            expect(writeMock).toHaveBeenCalledTimes(2);
+            finishWeight({});
+            await flushPromises();
+
+            expect(sent()).toEqual([
+                { answers: { height: { unit: 'cm', cm: 175 } }, move: 'stay' },
+                { answers: { weight: { unit: 'kg', value: 80 } }, move: 'stay' },
+                { answers: { name: 'Al' }, move: 'stay' },
+                { answers: {}, move: 'next' },
+            ]);
+        });
+
+        it.each([
+            ['Height unit', 'ft and in', 'input[aria-label="Height in cm"]'],
+            ['Weight unit', 'lb', 'input[aria-label="Weight in kg"]'],
+        ] as const)('CAP-010 while a %s switch saves, the field in the old unit takes no typing, so nothing queued can switch it back', async (group, option, field) => {
+            let finish: (value: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+            wrapper = view(aboutYou);
+
+            await radio(wrapper, group, option).trigger('click');
+            expect(wrapper.get(field).attributes('readonly')).toBeDefined();
+            expect(wrapper.get('input[autocomplete="given-name"]').attributes('readonly')).toBeUndefined();
+            await wrapper.get(field).setValue('80');
+            await wrapper.get(field).trigger('blur');
+            finish({});
+            await flushPromises();
+
+            expect(writeMock).toHaveBeenCalledOnce();
+            expect(wrapper.get(field).attributes('readonly')).toBeUndefined();
+        });
+
+        it('ONB-004 inches typed while the feet save is out are saved with the feet typed, not the feet saved before', async () => {
+            const feetInches = { ...aboutYou, about_you: review.about_you };
+            readMock.mockResolvedValue(feetInches);
+            let finish: (value: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+            wrapper = view(feetInches);
+
+            await wrapper.get('input[aria-label="Feet in ft"]').setValue('6');
+            await wrapper.get('input[aria-label="Feet in ft"]').trigger('blur');
+            await wrapper.get('input[aria-label="Inches in in"]').setValue('2');
+            await wrapper.get('input[aria-label="Inches in in"]').trigger('blur');
+            finish({});
+            await flushPromises();
+
+            expect(sent().map((input) => input.answers)).toEqual([
+                { height: { unit: 'feetInches', feet: 6, inches: 7 } },
+                { height: { unit: 'feetInches', feet: 6, inches: 2 } },
+            ]);
+        });
+
+        it('ONB-004 a read landing between queued saves does not pair a later half with a feet the user has since retyped', async () => {
+            const feetInches = { ...aboutYou, about_you: review.about_you };
+            const at = (feet: number) => ({ ...feetInches, about_you: { ...feetInches.about_you, height: { ...feetInches.about_you.height, feet } } });
+            readMock.mockResolvedValueOnce(at(6)).mockResolvedValue(at(7));
+            let finishSix: (value: unknown) => void = () => {};
+            let finishSeven: (value: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((resolve) => (finishSix = resolve))).mockReturnValueOnce(new Promise((resolve) => (finishSeven = resolve)));
+            wrapper = view(feetInches);
+            const feet = wrapper.get('input[aria-label="Feet in ft"]');
+
+            await feet.setValue('6');
+            await feet.trigger('blur');
+            await feet.setValue('7');
+            await feet.trigger('blur');
+            finishSix({});
+            await flushPromises();
+            await wrapper.get('input[aria-label="Inches in in"]').setValue('3');
+            await wrapper.get('input[aria-label="Inches in in"]').trigger('blur');
+            finishSeven({});
+            await flushPromises();
+
+            expect(sent().map((input) => input.answers)).toEqual([
+                { height: { unit: 'feetInches', feet: 6, inches: 7 } },
+                { height: { unit: 'feetInches', feet: 7, inches: 7 } },
+                { height: { unit: 'feetInches', feet: 7, inches: 3 } },
+            ]);
+        });
+
+        it.each([
+            ['refused', new CapabilityError('onboarding_answer', 422, { ok: false, error: { message: 'Enter a height under 250 cm.' } }), 'Enter a height under 250 cm.'],
+            ['unanswered', new CapabilityError('onboarding_answer', 0, { reason: 'timeout' }), 'may have worked'],
+        ])('CAP-012 a first save %s drops the answer typed behind it, and the fields show what is saved', async (_label, failure, message) => {
+            const saved = structuredClone(aboutYou);
+            saved.about_you.height = { ...saved.about_you.height, cm: 170, text: '170 cm' };
+            saved.about_you.weight = { ...saved.about_you.weight, value: 75, text: '75 kg' };
+            readMock.mockResolvedValue(saved);
+            let fail: (error: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((_resolve, reject) => (fail = reject)));
+            wrapper = view(saved);
+
+            await wrapper.get('input[aria-label="Height in cm"]').setValue('900');
+            await wrapper.get('input[aria-label="Height in cm"]').trigger('blur');
+            await wrapper.get('input[aria-label="Weight in kg"]').setValue('80');
+            await wrapper.get('input[aria-label="Weight in kg"]').trigger('blur');
+            fail(failure);
+            await flushPromises();
+
+            expect(writeMock).toHaveBeenCalledOnce();
+            expect(wrapper.get('[role="alert"]').text()).toContain(message);
+            expect(wrapper.get<HTMLInputElement>('input[aria-label="Height in cm"]').element.value).toBe('170');
+            expect(wrapper.get<HTMLInputElement>('input[aria-label="Weight in kg"]').element.value).toBe('75');
+        });
+
         it('ONB-004 after a unit switch, an inches edit is saved with the feet the server converted to', async () => {
             const converted = structuredClone(aboutYou);
             converted.about_you.height = { ...review.about_you.height, feet: 5, inches: 11, text: '5 ft 11 in' };
