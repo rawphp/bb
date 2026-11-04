@@ -32,6 +32,8 @@ test('NAV-003 the rail goes back from a pushed screen at 1440 × 900', { tag: '@
 test('NAV-003 shows no Back button in the bottom bar at 390 × 844', async ({ page }) => {
     await openFirstMeal(page);
 
+    // The stack has two screens, so the button is there and only the phone CSS hides it.
+    await expect(page.locator('[data-back]')).toHaveCount(1);
     await expect(page.locator('[data-back]')).toBeHidden();
     await expect(page.locator('nav[aria-label="Tabs"] [data-tab]')).toHaveCount(5);
 });
