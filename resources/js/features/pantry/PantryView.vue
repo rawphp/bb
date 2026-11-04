@@ -499,7 +499,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                         </button>
                     </li>
                 </TransitionGroup>
-                <div v-if="fitShown" data-test="basket-bars" class="grid grid-cols-2 gap-x-4 gap-y-1 md:grid-cols-4">
+                <div v-if="fitShown" data-test="basket-bars" class="grid grid-cols-2 gap-x-4 gap-y-1">
                     <MacroBar
                         v-for="bar in preview!.bars"
                         :key="bar.label"

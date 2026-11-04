@@ -472,6 +472,12 @@ describe('PantryView', () => {
             expect(bars[1]!.attributes('aria-valuetext')).toBe('58 of 68');
             expect(wrapper.find('[data-test="basket"]').text()).not.toContain('Targets met');
 
+            // Two bars to a row at every width, as the Nutrition cards have: four in the 40rem column leaves the
+            // calorie track too short beside its value.
+            const grid = wrapper.get('[data-test="basket-bars"]').classes();
+            expect(grid).toContain('grid-cols-2');
+            expect(grid.filter((name) => /^md:grid-cols-/.test(name))).toEqual([]);
+
             const hint = wrapper.find('[data-test="basket-hint"]');
             expect(hint.text()).toBe('Short 21 g fat. Add a food from Fat · Recommended.');
             // A full tap height, as the meal screen's hint has, clear of Add below it.
