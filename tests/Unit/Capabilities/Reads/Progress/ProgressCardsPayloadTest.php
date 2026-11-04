@@ -152,6 +152,17 @@ it('ANA-004 no review card with fewer than two weigh-ins in the week', function 
     expect(W::payload(W::snapshot(weighIns: W::weighIns('2026-09-10', 5)))['review_card'])->toBeNull();
 });
 
+it('ANA-004 SET-012 counts the week\'s weigh-ins on the user\'s local day', function (string $zone, bool $shown) {
+    // The week that ended runs Saturday 3 to Friday 9 October. 2026-10-02 20:30 UTC is Saturday the 3rd at 06:30 in
+    // Brisbane, and Friday the 2nd in UTC.
+    $weighIns = [W::weighIn('2026-10-02 20:30:00', 80), W::weighIn('2026-10-05 07:00:00', 80)];
+
+    expect(W::payload(W::snapshot(weighIns: $weighIns, zone: $zone))['review_card'] !== null)->toBe($shown);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', true],
+    'UTC' => ['UTC', false],
+]);
+
 // MARK: ANA-005 steps
 
 it('ANA-005 hides the steps without step data', function () {

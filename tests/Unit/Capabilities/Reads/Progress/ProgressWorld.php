@@ -19,6 +19,7 @@ use App\Models\WorkoutSet;
 use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Progress\ProgressSnapshot;
 use App\Support\Today\TodaySnapshot;
+use DateTimeZone;
 use Illuminate\Support\Collection;
 use stdClass;
 
@@ -62,6 +63,7 @@ final class ProgressWorld
      * @param  list<WorkoutSet>|null  $sets
      * @param  list<stdClass>|null  $rows  the loader rows themselves (see row()), in place of $sessions and $sets
      * @param  array<int, string>|null  $lastUsed  exercise id => last used
+     * @param  string  $zone  the user's time zone (SET-012)
      */
     public static function snapshot(
         string $today = self::TODAY,
@@ -81,6 +83,7 @@ final class ProgressWorld
         ?array $lastUsed = null,
         bool $withPlan = true,
         float $targetKcal = 2000,
+        string $zone = 'UTC',
     ): ProgressSnapshot {
         $targets = array_map(fn (string $day) => (new DayTarget)->forceFill([
             'id' => "dt-{$day}", 'user_id' => 1, 'date' => $day, 'day_type' => 'hard', 'kcal' => $targetKcal, 'protein_g' => 150,
@@ -110,6 +113,7 @@ final class ProgressWorld
             planWeeks: new Collection($planWeeks),
             dayTargets: new Collection,
             exercises: new Collection,
+            zone: new DateTimeZone($zone),
         );
         $week = new TodaySnapshot(
             train: $train,
