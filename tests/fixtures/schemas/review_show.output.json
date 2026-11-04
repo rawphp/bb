@@ -169,37 +169,64 @@
                         "tone"
                     ]
                 },
-                "unchecked": {
+                "days": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "additionalProperties": false,
                         "properties": {
-                            "meal_id": {
+                            "date": {
                                 "type": "string"
                             },
-                            "name": {
-                                "type": "string"
+                            "weekday": {
+                                "type": "string",
+                                "description": "\"Sat\"."
                             },
-                            "date_label": {
-                                "type": "string"
+                            "day_number": {
+                                "type": "string",
+                                "description": "\"24\"."
+                            },
+                            "meals": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "meal_id": {
+                                            "type": "string"
+                                        },
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "is_checked": {
+                                            "type": "boolean"
+                                        },
+                                        "label": {
+                                            "type": "string",
+                                            "description": "\"Check in Lunch, Sat, 24 Oct\", or \"Lunch, Sat, 24 Oct: checked in\"."
+                                        }
+                                    },
+                                    "required": [
+                                        "meal_id",
+                                        "name",
+                                        "is_checked",
+                                        "label"
+                                    ]
+                                }
                             }
                         },
                         "required": [
-                            "meal_id",
-                            "name",
-                            "date_label"
+                            "date",
+                            "weekday",
+                            "day_number",
+                            "meals"
                         ]
                     }
-                },
-                "check_in_title": {
-                    "type": "string"
                 }
             },
             "required": [
                 "message",
-                "unchecked",
-                "check_in_title"
+                "days"
             ]
         },
         "training": {

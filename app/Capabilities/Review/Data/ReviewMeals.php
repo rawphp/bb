@@ -6,14 +6,13 @@ use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
-/** Step 2: meals checked in, "Excellent work" when all were, and the rest to check in now. */
+/** Step 2: meals checked in, "Excellent work" when all were, and the week by day with each meal's mark (REV-006). */
 final class ReviewMeals extends CapabilityData
 {
-    /** @param  list<ReviewMeal>  $unchecked */
+    /** @param  list<ReviewMealDay>  $days */
     public function __construct(
         public readonly Status $message,
-        #[Field(items: ReviewMeal::class)]
-        public readonly array $unchecked,
-        public readonly string $check_in_title,
+        #[Field(items: ReviewMealDay::class)]
+        public readonly array $days,
     ) {}
 }

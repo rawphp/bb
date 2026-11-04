@@ -55,12 +55,26 @@ export interface ReviewShowOutput {
       text: string;
       tone: "good" | "neutral" | "warning" | "info";
     };
-    unchecked: {
-      meal_id: string;
-      name: string;
-      date_label: string;
+    days: {
+      date: string;
+      /**
+       * "Sat".
+       */
+      weekday: string;
+      /**
+       * "24".
+       */
+      day_number: string;
+      meals: {
+        meal_id: string;
+        name: string;
+        is_checked: boolean;
+        /**
+         * "Check in Lunch, Sat, 24 Oct", or "Lunch, Sat, 24 Oct: checked in".
+         */
+        label: string;
+      }[];
     }[];
-    check_in_title: string;
   } | null;
   training?: {
     lines: {
@@ -230,4 +244,4 @@ export interface ReviewShowOutput {
   save_title: string;
 }
 
-export const outputVersion = '625695843279';
+export const outputVersion = '68707ac4ed21';

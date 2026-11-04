@@ -225,21 +225,49 @@ describe('WeeklyReviewView', () => {
     });
 
     describe('meals', () => {
-        it('REV-003 says how many meals were checked in and lists the rest', () => {
+        it('REV-003 says how many meals were checked in', () => {
             const wrapper = show({ payload: review(), step: 'meals' });
 
             expect(wrapper.find('[data-test="note"]').text()).toBe('You checked in 24 of 28 meals.');
-            expect(texts(wrapper, 'unchecked')).toEqual(['Meal 3Tue, 6 OctCheck in now', 'Meal 4Thu, 8 OctCheck in now']);
         });
 
-        it('REV-003 checks a meal in now with meal_check_in, then reads the review again', async () => {
+        it('REV-006 lays the week out one row per day, with a mark for each meal', () => {
             const wrapper = show({ payload: review(), step: 'meals' });
 
-            await wrapper.findAll('[data-test="check-in"]')[1]!.trigger('click');
+            const days = wrapper.findAll('[data-test="meal-day"]');
+            expect(days.map((day) => day.find('[data-test="day-label"]').text())).toEqual(['Mon5', 'Tue6', 'Wed7', 'Thu8', 'Fri9', 'Sat10', 'Sun11']);
+            const tuesday = days[1]!.findAll('[data-test="meal-mark"]');
+            expect(tuesday.map((mark) => mark.text())).toEqual(['Meal 1', 'Meal 2', 'Meal 3', 'Meal 4']);
+            expect(tuesday.map((mark) => mark.attributes('data-checked'))).toEqual(['true', 'true', 'false', 'true']);
+            expect(tuesday[2]!.attributes('aria-label')).toBe('Check in Meal 3, Tue, 6 Oct');
+            expect(tuesday[0]!.attributes('aria-label')).toBe('Meal 1, Tue, 6 Oct: checked in');
+        });
+
+        it('REV-006 only an open mark is a button; a check-in is not removed from here', () => {
+            const wrapper = show({ payload: review(), step: 'meals' });
+
+            const marks = wrapper.findAll('[data-test="meal-mark"]');
+            expect(marks.filter((mark) => mark.element.tagName === 'BUTTON')).toHaveLength(4);
+            expect(marks.filter((mark) => mark.attributes('data-checked') === 'true').every((mark) => mark.element.tagName !== 'BUTTON')).toBe(true);
+        });
+
+        it('REV-006 tapping an open mark checks the meal in with meal_check_in, then reads the review again', async () => {
+            const wrapper = show({ payload: review(), step: 'meals' });
+
+            await wrapper.find('[aria-label="Check in Meal 4, Thu, 8 Oct"]').trigger('click');
             await flushPromises();
 
             expect(sent()).toEqual([['meal_check_in', { meal_id: '01JA0000000000000000MEAL02' }]]);
             expect(read).toHaveBeenCalledWith('review_show', {}, expect.any(Function), expect.any(Function));
+        });
+
+        it('REV-006 open marks wait while a write is in flight', async () => {
+            vi.mocked(writeNow).mockReturnValue(new Promise(() => undefined));
+            const wrapper = show({ payload: review(), step: 'meals' });
+
+            await wrapper.find('[aria-label="Check in Meal 3, Tue, 6 Oct"]').trigger('click');
+
+            expect(wrapper.find('[aria-label="Check in Meal 4, Thu, 8 Oct"]').attributes('disabled')).toBeDefined();
         });
     });
 
