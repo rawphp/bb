@@ -11,6 +11,9 @@ final readonly class MealFit implements MealFitRules
     /** MEAL-003: "Targets met" when every macro is within this many grams of target. */
     public const TOLERANCE = 5.0;
 
+    /** MEAL-002: the fit never gives one unlocked food more than this many grams, as shown. */
+    public const MAX_GRAMS = 600.0;
+
     /**
      * Ridge weight on the fit, in 100 g units. Small enough to leave the fit alone,
      * large enough that redundant foods share the load and the system stays solvable.
@@ -118,26 +121,39 @@ final readonly class MealFit implements MealFitRules
     }
 
     /**
+     * Fits the foods not held. A food the fit would put above MAX_GRAMS is held at the cap
+     * and the rest are fitted again; what the cap leaves short is a shortfall (MEAL-007).
+     *
      * @param  list<MealFood>  $foods
      * @param  list<string>  $held
      */
     private function solve(array $foods, array $held, MealTarget $target): MealFitResult
     {
-        $isHeld = fn (MealFood $f) => in_array($f->id, $held, true);
-        $free = array_keys(array_filter($foods, fn (MealFood $f) => ! $isHeld($f)));
+        do {
+            $isHeld = fn (MealFood $f) => in_array($f->id, $held, true);
+            $free = array_keys(array_filter($foods, fn (MealFood $f) => ! $isHeld($f)));
+            $capped = false;
 
-        if ($free !== []) {
-            $fixed = $this->totals(array_values(array_filter($foods, $isHeld)));
-            $b = [$target->proteinG - $fixed->proteinG, $target->fatG - $fixed->fatG, $target->carbsG - $fixed->carbsG];
-            $columns = array_map(fn (int $i) => [$foods[$i]->food->proteinG, $foods[$i]->food->fatG, $foods[$i]->food->carbsG], $free);
-            $units = $this->nonNegativeLeastSquares($columns, $b);
+            if ($free !== []) {
+                $fixed = $this->totals(array_values(array_filter($foods, $isHeld)));
+                $b = [$target->proteinG - $fixed->proteinG, $target->fatG - $fixed->fatG, $target->carbsG - $fixed->carbsG];
+                $columns = array_map(fn (int $i) => [$foods[$i]->food->proteinG, $foods[$i]->food->fatG, $foods[$i]->food->carbsG], $free);
+                $units = $this->nonNegativeLeastSquares($columns, $b);
 
-            foreach ($free as $k => $i) {
-                $food = $foods[$i];
-                $raw = max(0.0, $units[$k]) * 100;
-                $foods[$i] = $food->withGrams(round(MealFood::gramsForRaw($raw, $food->food, $food->weighing)));
+                foreach ($free as $k => $i) {
+                    $food = $foods[$i];
+                    $grams = round(MealFood::gramsForRaw(max(0.0, $units[$k]) * 100, $food->food, $food->weighing));
+
+                    if ($grams > self::MAX_GRAMS) {
+                        $grams = self::MAX_GRAMS;
+                        $held[] = $food->id;
+                        $capped = true;
+                    }
+
+                    $foods[$i] = $food->withGrams($grams);
+                }
             }
-        }
+        } while ($capped);
 
         return $this->result($foods, $target);
     }

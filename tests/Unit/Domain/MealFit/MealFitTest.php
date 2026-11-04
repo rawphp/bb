@@ -389,12 +389,12 @@ it('MEAL-007 no shortfall when the targets are met', function () {
 });
 
 it('MEAL-007 several shortfalls come in protein, fat, carbs order', function () {
-    // Only salsa: it can carry carbs, but protein and fat have no source.
+    // Only salsa: protein and fat have no source, and salsa capped at 600 g leaves carbs short too.
     $result = (new MealFit)->fit([mealFitFood(mealFitSalsa(), 100)], mealFitTarget());
 
-    expect(mealFitShortMacros($result->shortfalls))->toBe([Macro::Protein, Macro::Fat])
+    expect(mealFitShortMacros($result->shortfalls))->toBe([Macro::Protein, Macro::Fat, Macro::Carbs])
         ->and(array_map(fn (Shortfall $s) => $s->group, $result->shortfalls))
-        ->toBe([CuratedGroup::ProteinRecommended, CuratedGroup::FatRecommended]);
+        ->toBe([CuratedGroup::ProteinRecommended, CuratedGroup::FatRecommended, CuratedGroup::CarbsRecommended]);
 });
 
 it('MEAL-007 locked foods can cause a shortfall', function () {
@@ -422,6 +422,70 @@ it('MEAL-007 an empty meal is short of everything', function () {
     $result = (new MealFit)->fit([], mealFitTarget());
 
     expect(mealFitShortMacros($result->shortfalls))->toBe([Macro::Protein, Macro::Fat, Macro::Carbs]);
+});
+
+// MEAL-002, MEAL-007: no food is fitted above MealFit::MAX_GRAMS
+
+function mealFitChicken(): Food
+{
+    return new Food(
+        id: 'chicken', name: 'Chicken breast', kcal: 165, proteinG: 31, fatG: 3.6, carbsG: 0,
+        cookedRatio: 0.75, curatedGroup: CuratedGroup::ProteinRecommended,
+    );
+}
+
+function mealFitBroccoli(): Food
+{
+    return new Food(
+        id: 'broccoli', name: 'Broccoli', kcal: 34, proteinG: 2.8, fatG: 0.4, carbsG: 6.6,
+        cookedRatio: 0.9, curatedGroup: CuratedGroup::Veggies,
+    );
+}
+
+it('MEAL-002 MEAL-007 chicken and broccoli cap the broccoli and report carbs short', function () {
+    $foods = [mealFitFood(mealFitChicken(), 100), mealFitFood(mealFitBroccoli(), 100)];
+    $result = (new MealFit)->fit($foods, mealFitTargetOf(0, 40, 15, 60));
+
+    expect(MealFit::MAX_GRAMS)->toBe(600.0)
+        ->and(mealFitGrams($result, 'Broccoli'))->toBeLessThanOrEqual(600)
+        ->and(mealFitGrams($result, 'Chicken breast'))->toBeGreaterThan(0)
+        ->and(mealFitShortMacros($result->shortfalls))->toContain(Macro::Carbs)
+        ->and($result->targetsMet)->toBeFalse();
+
+    $carbs = array_values(array_filter($result->shortfalls, fn (Shortfall $s) => $s->macro === Macro::Carbs))[0];
+    expect($carbs->group)->toBe(CuratedGroup::CarbsRecommended)
+        ->and($carbs->shortG)->toEqualWithDelta(60 - $result->totals->carbsG, 1e-9);
+});
+
+it('MEAL-002 the cap is on the grams shown, cooked or raw', function () {
+    $foods = [mealFitFood(mealFitChicken(), 100), mealFitFood(mealFitBroccoli(), 100, Weighing::Cooked)];
+    $result = (new MealFit)->fit($foods, mealFitTargetOf(0, 40, 15, 60));
+
+    expect(mealFitGrams($result, 'Broccoli'))->toBe(600.0);
+});
+
+it('MEAL-002 the other foods still fit around a capped food', function () {
+    // Broccoli is capped; chicken carries the protein the capped broccoli leaves.
+    $foods = [mealFitFood(mealFitChicken(), 100), mealFitFood(mealFitBroccoli(), 100)];
+    $result = (new MealFit)->fit($foods, mealFitTargetOf(0, 40, 15, 60));
+    $protein = 31 * mealFitGrams($result, 'Chicken breast') / 100 + 2.8 * mealFitGrams($result, 'Broccoli') / 100;
+
+    expect($result->totals->proteinG)->toEqualWithDelta(40, MealFit::TOLERANCE)
+        ->and($protein)->toEqualWithDelta($result->totals->proteinG, 1e-9);
+});
+
+it('MEAL-005 a locked food above the cap keeps its amount', function () {
+    $foods = [mealFitFood(mealFitBroccoli(), 900, isLocked: true), mealFitFood(mealFitChicken(), 100)];
+    $result = (new MealFit)->fit($foods, mealFitTargetOf(0, 40, 15, 60));
+
+    expect(mealFitGrams($result, 'Broccoli'))->toBe(900.0);
+});
+
+it('MEAL-004 an amount the user types above the cap is kept', function () {
+    $foods = [mealFitFood(mealFitBroccoli(), 100), mealFitFood(mealFitChicken(), 100)];
+    $result = (new MealFit)->setAmount(800, $foods[0]->id, $foods, mealFitTargetOf(0, 40, 15, 60));
+
+    expect(mealFitGrams($result, 'Broccoli'))->toBe(800.0);
 });
 
 // FOOD-006
