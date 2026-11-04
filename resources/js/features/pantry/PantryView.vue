@@ -215,10 +215,14 @@ function sentPicks(): Exclude<Pick, { kind: 'saved_meal' }>[] {
     return basket.value.filter((pick): pick is Exclude<Pick, { kind: 'saved_meal' }> => pick.kind !== 'saved_meal');
 }
 
-// FOOD-030: what Add would make of the basket. Each change asks again; only the latest answer
-// shows. Offline, or with no answer, the basket lists the picks alone.
+// FOOD-030: what Add would make of the basket. A run of changes asks once, when it settles
+// (as a search waits for typing), so quick picking does not spend the rate limit Add shares;
+// only the latest answer shows. Offline, or with no answer, the basket lists the picks alone.
 const preview = ref<MealFoodAddShowOutput | null>(null);
+const PREVIEW_WAIT_MS = 250;
 let asked = 0;
+let settling: ReturnType<typeof setTimeout> | undefined;
+onUnmounted(() => clearTimeout(settling));
 const previewInput = computed<MealFoodAddShowInput | null>(() => {
     if (!forMeal.value) return null;
     const entries = sentPicks().map(entryOf);
@@ -229,18 +233,21 @@ watch(
     () => {
         const input = previewInput.value;
         const ask = ++asked;
+        clearTimeout(settling);
         if (input === null) {
             preview.value = null;
             return;
         }
-        readNow<MealFoodAddShowOutput>('meal_food_add_show', { ...input }).then(
-            (answer) => {
-                if (ask === asked) preview.value = answer;
-            },
-            () => {
-                if (ask === asked) preview.value = null;
-            },
-        );
+        settling = setTimeout(() => {
+            readNow<MealFoodAddShowOutput>('meal_food_add_show', { ...input }).then(
+                (answer) => {
+                    if (ask === asked) preview.value = answer;
+                },
+                () => {
+                    if (ask === asked) preview.value = null;
+                },
+            );
+        }, PREVIEW_WAIT_MS);
     },
 );
 // A saved meal loads on its own write, so the fit cannot say what the meal is after it.
