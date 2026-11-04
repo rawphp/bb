@@ -156,8 +156,10 @@ describe('ProgressScreen', () => {
         expect(wrapper.text()).toContain('No finished phases yet.');
         expect(wrapper.text()).toContain('No finished mesocycles yet.');
 
+        // WT-002: the empty state's button opens the weigh-in sheet, not a placeholder.
         await wrapper.get('[data-log-weigh-in]').trigger('click');
-        expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain('Log a weigh-in');
+        expect(push).toHaveBeenCalledWith('/weigh-ins/log');
+        expect(document.body.querySelector('[role="dialog"]')).toBeNull();
     });
 
     it('ANA-001 says why a scope has no chart', () => {
