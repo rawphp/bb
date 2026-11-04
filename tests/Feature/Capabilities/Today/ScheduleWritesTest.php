@@ -78,6 +78,18 @@ it('SCH-033 CAP-019 busy_period_set answers 404 for an id another user\'s busy p
         ->and(Profile::query()->where('user_id', $user->id)->sole()->busy_periods)->toEqual($mine);
 });
 
+it('SCH-033 CAP-019 busy_period_set saves the caller\'s own id again as an edit, not a 404 or a second period', function () {
+    $user = TrainSeed::user();
+
+    schedulePost($user, 'busy_period_set', scheduleInputs()['busy_period_set'])->assertOk();
+    schedulePost($user, 'busy_period_set', ['label' => 'Pickup'] + scheduleInputs()['busy_period_set'])->assertOk();
+
+    $periods = Profile::query()->where('user_id', $user->id)->sole()->busy_periods;
+    expect($periods)->toHaveCount(1)
+        ->and($periods[0]['id'])->toBe(strtolower(SCHEDULE_BUSY_ID))
+        ->and($periods[0]['label'])->toBe('Pickup');
+});
+
 it('SCH-033 CAP-019 busy_period_set finds another user\'s busy period id through the profiles_busy_period_ids index', function () {
     Profile::factory()->count(30)->create()->each(fn (Profile $profile) => $profile->update(['busy_periods' => [
         ['id' => strtolower((string) Str::ulid()), 'label' => 'Gym run', 'start' => '06:00', 'end' => '07:00', 'weekdays' => [1]],
