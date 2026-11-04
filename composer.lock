@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9f88d2af9c289f2ba2e612332721d3dd",
+    "content-hash": "8f08aac29ff7e79e0030ea227218db65",
     "packages": [
         {
             "name": "brick/math",
@@ -3810,16 +3810,16 @@
         },
         {
             "name": "rawphp/laravel-capabilities",
-            "version": "v0.10.0",
+            "version": "v0.11.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/rawphp/laravel-capabilities",
-                "reference": "ace2db2065d171a02f5313f39cdbf646aab84426"
+                "reference": "75a43fc4890797d4bcf3196519456f1cc6d22844"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/rawphp/laravel-capabilities/zipball/ace2db2065d171a02f5313f39cdbf646aab84426",
-                "reference": "ace2db2065d171a02f5313f39cdbf646aab84426",
+                "url": "https://api.github.com/repos/rawphp/laravel-capabilities/zipball/75a43fc4890797d4bcf3196519456f1cc6d22844",
+                "reference": "75a43fc4890797d4bcf3196519456f1cc6d22844",
                 "shasum": ""
             },
             "require": {
@@ -3876,20 +3876,20 @@
                 "laravel",
                 "mcp"
             ],
-            "time": "2026-10-17T14:14:44+00:00"
+            "time": "2026-11-03T23:01:27+00:00"
         },
         {
             "name": "rawphp/laravel-capabilities-ai",
-            "version": "v0.10.0",
+            "version": "v0.11.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/rawphp/laravel-capabilities-ai",
-                "reference": "3a0009e14f963c73fbeb89fe2cb534d381ee9b8d"
+                "reference": "d0713c04d92a7ca0c18b53f4cab263895e96f881"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/rawphp/laravel-capabilities-ai/zipball/3a0009e14f963c73fbeb89fe2cb534d381ee9b8d",
-                "reference": "3a0009e14f963c73fbeb89fe2cb534d381ee9b8d",
+                "url": "https://api.github.com/repos/rawphp/laravel-capabilities-ai/zipball/d0713c04d92a7ca0c18b53f4cab263895e96f881",
+                "reference": "d0713c04d92a7ca0c18b53f4cab263895e96f881",
                 "shasum": ""
             },
             "require": {
@@ -3932,7 +3932,7 @@
                 "laravel",
                 "llm"
             ],
-            "time": "2026-10-17T14:14:45+00:00"
+            "time": "2026-11-03T23:01:25+00:00"
         },
         {
             "name": "spomky-labs/base64url",

@@ -48,7 +48,7 @@ Issues ready at each depth: 1, 6, 26, 34, 28, 20, 5, 3, 2. D_MACROS, D_ENERGY an
 > Sources, read-only, pinned:
 > - rp-clone at `2aa1edeb1f9fd771376e1e4ec7ce6dfbe6a76566`: `gh api "repos/rawphp/rp-clone/contents/<path>?ref=2aa1edeb1f9fd771376e1e4ec7ce6dfbe6a76566" -H 'Accept: application/vnd.github.raw'`. List a folder by dropping the `Accept` header.
 > - mesoprep at `eab3e6dfc8d92573adfba101df530a66f57c9a61`, same command with `repos/original-solutions/mesoprep`.
-> - capability packages at tag `v0.10.0`: `rawphp/laravel-capabilities`, `rawphp/laravel-capabilities-ai`.
+> - capability packages at tag `v0.11.0`: `rawphp/laravel-capabilities`, `rawphp/laravel-capabilities-ai`.
 >
 > Stop needs-info if a source is unreadable.
 >
@@ -122,7 +122,7 @@ Key, title (`type: outcome`), blockers, requirements, and what is specific to th
 
 **SKEL_API.**
 1. A Laravel 13 app on PHP 8.5 sits at the repo root, with MySQL and Redis configured from `.env.example`. Pest is installed with Warp (`WARP_MODE`, `WARP_DB` on), and `phpunit.xml` pins `CAPABILITIES_AI_LLM_DRIVER=fake`.
-2. `rawphp/laravel-capabilities` and `rawphp/laravel-capabilities-ai` are required at `0.10.0` from their VCS repos and locked, along with `laravel/mcp` and `laravel/sanctum`.
+2. `rawphp/laravel-capabilities` and `rawphp/laravel-capabilities-ai` are required at `0.11.0` from their VCS repos and locked, along with `laravel/mcp` and `laravel/sanctum`. v0.11.0 adds the published migration `2026_11_04_000001_add_client_message_id_to_capabilities_ai_messages_table`; run `php artisan migrate` before code at this pin serves, because a chat send with `client_message_id` fails until its columns exist.
 3. `CapabilitiesHostProvider` is registered last. It loads every `app/Capabilities/*/*Capability.php` and fails boot on a duplicate name. It binds a host authorizer that only checks for a signed-in actor (CAP-020 step 1; RAIL and TOKENS add the rest).
 4. Email and password register and sign in work with Sanctum SPA cookie auth on the same domain. `account_show` is registered on all four surfaces and returns the user's name and email. A feature test calls it over `POST /capabilities/account_show` signed in (200) and signed out (401).
 5. `scripts/provision.sh` installs Composer packages and copies `.env.example`. `scripts/check.sh` runs the spec-ID check, `pint --test`, `phpstan` and `pest --parallel`, and skips the front-end steps while `package.json` is missing. The spec-ID check fails when a test names an ID that is not in `docs/spec/`.

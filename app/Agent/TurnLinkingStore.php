@@ -2,6 +2,7 @@
 
 namespace App\Agent;
 
+use Closure;
 use Rawphp\CapabilitiesAi\Contracts\ConversationStore;
 use Rawphp\CapabilitiesAi\Models\Conversation;
 use Rawphp\CapabilitiesAi\Models\Message;
@@ -21,14 +22,40 @@ final class TurnLinkingStore implements ConversationStore
 
     public function __construct(private readonly ConversationStore $inner) {}
 
-    public function createMessage(Conversation $conversation, string $ulid, string $role, string $content): Message
-    {
-        $message = $this->inner->createMessage($conversation, $ulid, $role, $content);
+    public function createMessage(
+        Conversation $conversation,
+        string $ulid,
+        string $role,
+        string $content,
+        ?string $clientMessageId = null,
+        ?string $turnUlid = null,
+    ): Message {
+        $message = $this->inner->createMessage($conversation, $ulid, $role, $content, $clientMessageId, $turnUlid);
         if ($role === 'user') {
             $this->pending[$conversation->getKey()] = $message;
         }
 
         return $message;
+    }
+
+    public function clientMessage(string $ownerId, string $clientMessageId): ?Message
+    {
+        return $this->inner->clientMessage($ownerId, $clientMessageId);
+    }
+
+    public function markClientMessageSent(Message $message): void
+    {
+        $this->inner->markClientMessageSent($message);
+    }
+
+    public function discardUnsentClientMessage(Message $message, Turn $turn, bool $withConversation): bool
+    {
+        return $this->inner->discardUnsentClientMessage($message, $turn, $withConversation);
+    }
+
+    public function transaction(Closure $callback): mixed
+    {
+        return $this->inner->transaction($callback);
     }
 
     public function createQueuedTurn(Conversation $conversation, string $ulid): Turn
