@@ -84,4 +84,28 @@ describe('ProgressChartView', () => {
         expect(inner.attributes('viewBox')).toBe('0 0 340 224');
         expect(inner.attributes('width')).toBe('340');
     });
+
+    it('ANA-012 picks the weigh-in under the pointer on a wide card', async () => {
+        vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+        const wrapper = mount(ProgressChartView, { props: { chart } });
+        laidOut(1000);
+        await nextTick();
+        const svg = wrapper.find('svg').element;
+        svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1000, height: 244, right: 1000, bottom: 244, x: 0, y: 0, toJSON: () => ({}) });
+
+        svg.dispatchEvent(new MouseEvent('pointerdown', { clientX: 1000, bubbles: true }));
+
+        expect(wrapper.emitted('pick')!.at(-1)).toEqual([chart.weights.at(-1)!.date]);
+    });
+
+    it('ANA-001 keeps its last width while the card is hidden', async () => {
+        vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+        const wrapper = mount(ProgressChartView, { props: { chart } });
+        laidOut(358);
+        await nextTick();
+        laidOut(0);
+        await nextTick();
+
+        expect(wrapper.find('svg').attributes('viewBox')).toBe('0 0 358 244');
+    });
 });
