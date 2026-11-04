@@ -25,6 +25,7 @@ use App\Capabilities\Reads\Data\Today\Steps;
 use App\Capabilities\Reads\Data\Today\TimelineEntry;
 use App\Capabilities\Reads\Data\Today\TodayBusy;
 use App\Capabilities\Reads\Data\Today\TodayMeal;
+use App\Capabilities\Reads\Data\Today\TodayNow;
 use App\Capabilities\Reads\Data\Today\TodayOtherActivity;
 use App\Capabilities\Reads\Data\Today\TodayWeighIn;
 use App\Capabilities\Reads\Data\Today\TodayWorkout;
@@ -130,6 +131,7 @@ final class TodayPayload
         $isPast = $day < $snapshot->today();
         $addMealTime = $isPast ? null : self::addMealTime($snapshot);
         $addWorkout = $isPast || ! $inPlan ? null : self::addWorkout($snapshot, $workout, $activity);
+        $items = self::items($weighIn, $meals, $workout, $activity, $busy);
 
         return new TodayShowOutput(
             date: $day->format('Y-m-d'),
@@ -140,7 +142,8 @@ final class TodayPayload
             next_mesocycle: self::nextMesocycle($snapshot),
             totals: self::totals($snapshot),
             steps: self::steps($snapshot),
-            timeline: self::timeline($weighIn, $meals, $workout, $activity, $busy),
+            timeline: array_map(fn (array $item) => new TimelineEntry($item['kind'], $item['id']), $items),
+            now: self::now($snapshot, $items),
             meals: array_map(fn (TodayMealItem $meal) => self::meal($meal, $snapshot), $meals),
             workouts: $workout === null ? [] : [self::workout($workout, $snapshot)],
             weigh_ins: $weighIn === null ? [] : [$weighIn['row']],
@@ -246,35 +249,65 @@ final class TodayPayload
     }
 
     /**
-     * SCH-001: the day's items in time order; at the same minute weigh-in, meal, workout, other activity, busy period.
+     * SCH-001: the day's items in time order, each with what the Now line names (SCH-012).
      *
      * @param  ?array{row: TodayWeighIn, time: ClockTime}  $weighIn
      * @param  list<TodayMealItem>  $meals
      * @param  list<array{row: TodayBusy, start: ClockTime}>  $busy
-     * @return list<TimelineEntry>
+     * @return list<array{kind: string, id: string, minute: int, name: string, time: ?ClockTime, done: bool}>
      */
-    private static function timeline(?array $weighIn, array $meals, ?TodayWorkoutItem $workout, ?OtherActivity $activity, array $busy): array
+    private static function items(?array $weighIn, array $meals, ?TodayWorkoutItem $workout, ?OtherActivity $activity, array $busy): array
     {
         $items = [];
         if ($weighIn !== null) {
-            $items[] = ['weigh_in', $weighIn['row']->id, $weighIn['time']->minuteOfDay];
+            $items[] = self::item('weigh_in', $weighIn['row']->id, 'Weigh-in', $weighIn['time'], $weighIn['row']->weight_text !== null);
         }
         foreach ($meals as $meal) {
-            $items[] = ['meal', $meal->id, MealOrder::minute($meal->time)];
+            $items[] = self::item('meal', $meal->id, $meal->name, $meal->time, $meal->isChecked());
         }
         if ($workout !== null) {
-            $items[] = ['workout', 'workout', $workout->time->minuteOfDay];
+            $items[] = self::item('workout', 'workout', $workout->session->name, $workout->time,
+                in_array($workout->state, [TodayWorkoutItem::DONE, TodayWorkoutItem::SKIPPED], true));
         }
         if ($activity !== null) {
-            $items[] = ['other_activity', (string) $activity->id, self::clock($activity->start_time)->minuteOfDay];
+            $items[] = self::item('other_activity', (string) $activity->id, $activity->name, self::clock($activity->start_time), false);
         }
         foreach ($busy as $period) {
-            $items[] = ['busy', $period['row']->id, $period['start']->minuteOfDay];
+            $items[] = self::item('busy', $period['row']->id, $period['row']->label, $period['start'], false);
         }
         $order = array_keys($items);
-        usort($order, fn (int $a, int $b) => [$items[$a][2], self::KIND_ORDER[$items[$a][0]], $a] <=> [$items[$b][2], self::KIND_ORDER[$items[$b][0]], $b]);
+        usort($order, fn (int $a, int $b) => [$items[$a]['minute'], self::KIND_ORDER[$items[$a]['kind']], $a] <=> [$items[$b]['minute'], self::KIND_ORDER[$items[$b]['kind']], $b]);
 
-        return array_map(fn (int $i) => new TimelineEntry($items[$i][0], $items[$i][1]), $order);
+        return array_map(fn (int $i) => $items[$i], $order);
+    }
+
+    /** @return array{kind: string, id: string, minute: int, name: string, time: ?ClockTime, done: bool} */
+    private static function item(string $kind, string $id, string $name, ?ClockTime $time, bool $done): array
+    {
+        return ['kind' => $kind, 'id' => $id, 'minute' => MealOrder::minute($time), 'name' => $name, 'time' => $time, 'done' => $done];
+    }
+
+    /**
+     * SCH-012: on today, the line sits before the first item at or after the clock, and names the first of those not
+     * yet done (a logged weigh-in, a checked-in meal, a finished or skipped workout are done).
+     *
+     * @param  list<array{kind: string, id: string, minute: int, name: string, time: ?ClockTime, done: bool}>  $items
+     */
+    private static function now(TodaySnapshot $snapshot, array $items): ?TodayNow
+    {
+        $clock = ClockTime::fromHhmm($snapshot->nowTime);
+        if ($items === [] || $clock === null || $snapshot->date->format('Y-m-d') !== $snapshot->today()->format('Y-m-d')) {
+            return null;
+        }
+        $later = array_values(array_filter($items, fn (array $item) => $item['minute'] >= $clock->minuteOfDay));
+        $first = $later[0] ?? null;
+        $next = array_values(array_filter($later, fn (array $item) => ! $item['done']))[0] ?? null;
+
+        return new TodayNow(
+            before: $first === null ? null : new TimelineEntry($first['kind'], $first['id']),
+            label: 'Now',
+            next_text: $next === null ? null : TodayWords::next($next['name'], $next['time']),
+        );
     }
 
     /** SCH-002, SCH-008, DAY-003, MEAL-043, MEAL-045, MEAL-009: a meal card. */

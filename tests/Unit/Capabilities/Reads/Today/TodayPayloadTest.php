@@ -319,6 +319,40 @@ it('SCH-011 the step row shows the actual steps when there are any', function ()
         ->and(todayPayload(W::snapshot(steps: 1))['steps']['actual_text'])->toBe('1 step');
 });
 
+it('SCH-012 on today the Now line sits before the first item still to come and names it', function () {
+    $payload = todayPayload(W::snapshot(nowTime: '07:30'));
+
+    expect($payload['now'])->toBe(['before' => $payload['timeline'][1], 'label' => 'Now', 'next_text' => 'Next: Breakfast at 8:00 AM'])
+        ->and(todayLabels($payload)[1])->toBe('Breakfast');
+});
+
+it('SCH-012 the Now line passes over what is already done: a logged weigh-in, a checked-in meal, a finished workout', function () {
+    $early = todayPayload(W::snapshot(nowTime: '06:00'));
+    $lunch = todayPayload(W::snapshot(nowTime: '10:00'));
+    $monday = todayPayload(W::snapshot(today: '2026-09-21', nowTime: '17:00'));
+
+    expect($early['now'])->toBe(['before' => $early['timeline'][0], 'label' => 'Now', 'next_text' => 'Next: Breakfast at 8:00 AM'])
+        ->and($lunch['now'])->toBe(['before' => $lunch['timeline'][3], 'label' => 'Now', 'next_text' => 'Next: Lower A at 5:30 PM'])
+        ->and($monday['now']['before'])->toBe(['kind' => 'workout', 'id' => 'workout'])
+        ->and($monday['workouts'][0]['state'])->toBe('done')
+        ->and($monday['now']['next_text'])->toBe('Next: Dinner at 7:30 PM');
+});
+
+it('SCH-012 an item due this minute is still to come, and after the last item the line names nothing', function () {
+    $due = todayPayload(W::snapshot(nowTime: '12:30'));
+    $late = todayPayload(W::snapshot(nowTime: '23:00'));
+
+    expect($due['now']['before'])->toBe($due['timeline'][3])
+        ->and(todayLabels($due)[3])->toBe('Lunch')
+        ->and($late['now'])->toBe(['before' => null, 'label' => 'Now', 'next_text' => null]);
+});
+
+it('SCH-012 other days, and a today with nothing planned, have no Now line', function () {
+    expect(todayPayload(W::snapshot(date: '2026-09-24'))['now'])->toBeNull()
+        ->and(todayPayload(W::snapshot(date: '2026-09-22'))['now'])->toBeNull()
+        ->and(todayPayload(W::snapshot(today: '2026-09-10'))['now'])->toBeNull();
+});
+
 it('SCH-030 NUT-024 a past day offers neither Add meal nor Optimize', function () {
     $future = todayPayload(W::snapshot());
     $past = todayPayload(W::snapshot(date: '2026-09-21'));

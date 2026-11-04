@@ -81,6 +81,7 @@ final class TodayWorld
         bool $withPlan = true,
         array $phases = [],
         string $zone = 'UTC',
+        string $nowTime = '10:00',
     ): TodaySnapshot {
         $train = new TrainSnapshot(
             today: TrainSnapshot::day($today),
@@ -135,7 +136,7 @@ final class TodayWorld
                 (new WeighInScheduleEntry)->forceFill(['id' => 2, 'user_id' => 1, 'weekdays' => [6], 'time' => '07:30']),
             ]),
             steps: $steps === null ? null : (new Step)->forceFill(['id' => 's', 'user_id' => 1, 'date' => $day->format('Y-m-d'), 'count' => $steps]),
-            nowTime: '10:00',
+            nowTime: $nowTime,
         );
     }
 

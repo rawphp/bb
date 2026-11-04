@@ -22,7 +22,7 @@ it('SCH-020 answers 422 for a date that is not a date', function () {
         ->assertJsonPath('error.violations.0.field', 'date');
 });
 
-it('SCH-001 SCH-002 SCH-003 SCH-004 SCH-005 SCH-006 SCH-011 shows a seeded day with the clock fixed', function () {
+it('SCH-001 SCH-002 SCH-003 SCH-004 SCH-005 SCH-006 SCH-011 SCH-012 shows a seeded day with the clock fixed', function () {
     Carbon::setTestNow('2026-09-23 10:00:00');
     $user = TodaySeed::user();
     $mesocycle = TodaySeed::mesocycle($user);
@@ -42,7 +42,8 @@ it('SCH-001 SCH-002 SCH-003 SCH-004 SCH-005 SCH-006 SCH-011 shows a seeded day w
         ->and($data['weigh_ins'][0]['weight_text'])->toBe('82.4 kg')
         ->and($data['steps'])->toBe(['target_text' => 'Step count target 6-8k', 'actual_text' => '5,432 steps'])
         ->and($data['totals']['calories']['value_text'])->toBe('1914/2600')
-        ->and($data['off_plan'][0]['name'])->toBe('Office cake');
+        ->and($data['off_plan'][0]['name'])->toBe('Office cake')
+        ->and($data['now'])->toBe(['before' => $data['timeline'][3], 'label' => 'Now', 'next_text' => 'Next: Lower A at 5:30 PM']);
 });
 
 it('SCH-003 SCH-020 opens the day the date names', function () {
@@ -57,7 +58,8 @@ it('SCH-003 SCH-020 opens the day the date names', function () {
     assertMatchesScreenFixture('today_show', $data);
     expect($data['date'])->toBe('2026-09-21')
         ->and($data['workouts'][0]['state'])->toBe('done')
-        ->and($data['workouts'][0]['completed']['text'])->toBe('1 of 4 sets completed');
+        ->and($data['workouts'][0]['completed']['text'])->toBe('1 of 4 sets completed')
+        ->and($data['now'])->toBeNull();
 });
 
 it('MESO-060 shows the next-mesocycle prompt in the deload week', function () {

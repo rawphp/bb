@@ -128,6 +128,26 @@ export interface TodayShowOutput {
     kind: "weigh_in" | "meal" | "workout" | "other_activity" | "busy";
     id: string;
   }[];
+  /**
+   * SCH-012: on today only; null on any other day and when the timeline is empty.
+   */
+  now?: {
+    /**
+     * The timeline entry the line sits before; null puts it after the last item.
+     */
+    before?: {
+      kind: "weigh_in" | "meal" | "workout" | "other_activity" | "busy";
+      id: string;
+    } | null;
+    /**
+     * "Now"
+     */
+    label: string;
+    /**
+     * "Next: Dinner at 7:30 PM"; null when nothing later is still to do.
+     */
+    next_text?: string | null;
+  } | null;
   meals: {
     id: string;
     name: string;
@@ -472,4 +492,4 @@ export interface TodayShowOutput {
   } | null;
 }
 
-export const outputVersion = '0e19c7e82b72';
+export const outputVersion = 'acb790f6748c';
