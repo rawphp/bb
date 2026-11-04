@@ -14,6 +14,7 @@ function setup(start = '/today', raw: RouterHistory = createMemoryHistory()): { 
         routes: [
             { path: '/', redirect: '/today' },
             ...TABS.map((tab) => ({ path: tab.path, component: Screen })),
+            { path: '/today/:date', component: Screen, meta: { tab: 'today' as const } },
             { path: '/meals/:id', component: Screen, meta: { tab: 'nutrition' as const } },
             { path: '/workouts/:id', component: Screen, meta: { tab: 'train' as const } },
             { path: '/dev/gallery', component: Screen, meta: { shell: false } },
@@ -80,6 +81,35 @@ describe('navigation', () => {
         expect(nav.state.scrollToTop).toBe(0);
 
         await nav.select('today');
+        expect(nav.state.scrollToTop).toBe(1);
+    });
+
+    it('PWA-020 goes to the tab\'s root when the active tab is tapped on a dated screen that replaced it, then asks to scroll to the top', async () => {
+        const { router, nav, ready } = setup();
+        await ready;
+        await router.replace('/today/2026-11-06');
+        expect(paths(nav)).toEqual(['/today/2026-11-06']);
+
+        await nav.select('today');
+        expect(paths(nav)).toEqual(['/today']);
+        expect(router.currentRoute.value.fullPath).toBe('/today');
+        expect(nav.state.scrollToTop).toBe(0);
+
+        await nav.select('today');
+        expect(paths(nav)).toEqual(['/today']);
+        expect(nav.state.scrollToTop).toBe(1);
+    });
+
+    it('PWA-020 scrolls a tab already at its root to the top without moving it', async () => {
+        const { router, nav, ready } = setup('/today?from=link');
+        await ready;
+        const before = nav.state.stacks.today[0]!.key;
+
+        await nav.select('today');
+
+        expect(paths(nav)).toEqual(['/today?from=link']);
+        expect(nav.state.stacks.today[0]!.key).toBe(before);
+        expect(router.currentRoute.value.fullPath).toBe('/today?from=link');
         expect(nav.state.scrollToTop).toBe(1);
     });
 
