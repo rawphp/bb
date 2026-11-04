@@ -29,7 +29,7 @@ final class BusyPeriodSetCapability implements HostCapability
                 $user = $context->user();
                 // CAP-019: an id another user's busy period holds is not found.
                 $theirs = Profile::query()->where('user_id', '!=', $user->id)
-                    ->whereJsonContains('busy_periods', [['id' => strtolower($input->id)]])->exists();
+                    ->whereRaw("? MEMBER OF (busy_periods->'$[*].id')", [strtolower($input->id)])->exists();
                 if ($theirs) {
                     throw (new ModelNotFoundException)->setModel(Profile::class, [$input->id]);
                 }
