@@ -41,8 +41,23 @@ function pickedBirthDate(event: Event): void {
     else input.value = props.about.birth_date.date ?? '';
 }
 
+// A unit switch that is saving: the fields in the old unit take no typing until it lands,
+// as a number typed meanwhile would be sent in the old unit after it and switch it back.
+const switching = ref<'height' | 'weight' | null>(null);
+watch(
+    () => props.locked,
+    (locked) => {
+        if (!locked) switching.value = null;
+    },
+);
+
+function switchUnit(answers: Answers, field: 'height' | 'weight'): void {
+    switching.value = field;
+    emit('answer', answers);
+}
+
 function typedCm(cm: number | null): void {
-    if (cm !== null) emit('answer', { height: { unit: 'cm', cm } });
+    if (cm !== null && switching.value !== 'height') emit('answer', { height: { unit: 'cm', cm } });
 }
 
 // A height saves both halves; the other half is the last one typed, which may still be
@@ -61,19 +76,19 @@ watch(
 );
 
 function typedFeet(typed: number | null): void {
-    if (typed === null) return;
+    if (typed === null || switching.value === 'height') return;
     feet.value = Math.trunc(typed);
     emit('answer', { height: { unit: 'feetInches', feet: feet.value, inches: inches.value ?? 0 } });
 }
 
 function typedInches(typed: number | null): void {
-    if (typed === null) return;
+    if (typed === null || switching.value === 'height') return;
     inches.value = typed;
     emit('answer', { height: { unit: 'feetInches', feet: feet.value ?? 0, inches: inches.value } });
 }
 
 function typedWeight(value: number | null): void {
-    if (value !== null) emit('answer', { weight: { unit: props.about.weight.unit, value } });
+    if (value !== null && switching.value !== 'weight') emit('answer', { weight: { unit: props.about.weight.unit, value } });
 }
 
 type Option = AboutYou['sex_options'][number];
@@ -140,23 +155,23 @@ function chosen(options: Option[]): string | undefined {
 
         <div class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold text-primary-text">Height</span>
-            <SegmentedPicker label="Height unit" :options="segments(about.height.unit_options)" :model-value="chosen(about.height.unit_options)" :disabled="locked" @update:model-value="(unit) => emit('answer', { height: { unit: unit as HeightUnit } })" />
-            <NumberField v-if="about.height.unit === 'cm'" label="Height" unit="cm" :model-value="about.height.cm" :commits-while-typing="false" :readonly="readonly" @update:model-value="typedCm" />
+            <SegmentedPicker label="Height unit" :options="segments(about.height.unit_options)" :model-value="chosen(about.height.unit_options)" :disabled="locked" @update:model-value="(unit) => switchUnit({ height: { unit: unit as HeightUnit } }, 'height')" />
+            <NumberField v-if="about.height.unit === 'cm'" label="Height" unit="cm" :model-value="about.height.cm" :commits-while-typing="false" :readonly="readonly || switching === 'height'" @update:model-value="typedCm" />
             <div v-else class="flex gap-2">
-                <NumberField class="flex-1" label="Feet" unit="ft" :model-value="about.height.feet" :commits-while-typing="false" :readonly="readonly" @update:model-value="typedFeet" />
-                <NumberField class="flex-1" label="Inches" unit="in" :model-value="about.height.inches" :commits-while-typing="false" :readonly="readonly" @update:model-value="typedInches" />
+                <NumberField class="flex-1" label="Feet" unit="ft" :model-value="about.height.feet" :commits-while-typing="false" :readonly="readonly || switching === 'height'" @update:model-value="typedFeet" />
+                <NumberField class="flex-1" label="Inches" unit="in" :model-value="about.height.inches" :commits-while-typing="false" :readonly="readonly || switching === 'height'" @update:model-value="typedInches" />
             </div>
         </div>
 
         <div class="flex flex-col gap-1.5">
             <span class="text-sm font-semibold text-primary-text">Weight</span>
-            <SegmentedPicker label="Weight unit" :options="segments(about.weight.unit_options)" :model-value="chosen(about.weight.unit_options)" :disabled="locked" @update:model-value="(unit) => emit('answer', { weight: { unit: unit as WeightUnit } })" />
+            <SegmentedPicker label="Weight unit" :options="segments(about.weight.unit_options)" :model-value="chosen(about.weight.unit_options)" :disabled="locked" @update:model-value="(unit) => switchUnit({ weight: { unit: unit as WeightUnit } }, 'weight')" />
             <NumberField
                 label="Weight"
                 :unit="about.weight.unit"
                 :model-value="about.weight.value"
                 :commits-while-typing="false"
-                :readonly="readonly"
+                :readonly="readonly || switching === 'weight'"
                 @update:model-value="typedWeight"
             />
         </div>
