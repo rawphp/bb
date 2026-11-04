@@ -2,10 +2,10 @@
 
 namespace App\Capabilities\Reads\Exercises;
 
-use App\Capabilities\Exercises\Data\ExerciseChoice;
 use App\Capabilities\Exercises\Data\ExerciseLibraryRow;
 use App\Capabilities\Exercises\Data\ExercisesShowOutput;
 use App\Capabilities\Reads\Train\TrainWords;
+use App\Capabilities\Support\Option;
 use App\Domain\Model\Equipment;
 use App\Domain\Model\ExerciseLoadType;
 use App\Domain\Model\MuscleGroup;
@@ -36,9 +36,9 @@ final class ExercisesPayload
                     has_video: self::videoUrl($exercise->video_url) !== null,
                 ))
                 ->all(),
-            muscle_groups: array_map(fn (MuscleGroup $case) => new ExerciseChoice($case->value, $case->title()), MuscleGroup::cases()),
-            equipment: array_map(fn (Equipment $case) => new ExerciseChoice($case->value, $case->title()), Equipment::cases()),
-            load_types: array_map(fn (ExerciseLoadType $case) => new ExerciseChoice($case->value, $case->title()), ExerciseLoadType::cases()),
+            muscle_groups: array_map(fn (MuscleGroup $case) => new Option($case->value, $case->title()), MuscleGroup::cases()),
+            equipment: array_map(fn (Equipment $case) => new Option($case->value, $case->title()), Equipment::cases()),
+            load_types: array_map(fn (ExerciseLoadType $case) => new Option($case->value, $case->title()), ExerciseLoadType::cases()),
         );
     }
 

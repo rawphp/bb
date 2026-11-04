@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Exercises\Data;
 
+use App\Capabilities\Support\Option;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -14,18 +15,18 @@ final class ExercisesShowOutput extends CapabilityData
 {
     /**
      * @param  list<ExerciseLibraryRow>  $exercises
-     * @param  list<ExerciseChoice>  $muscle_groups
-     * @param  list<ExerciseChoice>  $equipment
-     * @param  list<ExerciseChoice>  $load_types
+     * @param  list<Option>  $muscle_groups
+     * @param  list<Option>  $equipment
+     * @param  list<Option>  $load_types
      */
     public function __construct(
         #[Field(items: ExerciseLibraryRow::class)]
         public readonly array $exercises,
-        #[Field(items: ExerciseChoice::class)]
+        #[Field(items: Option::class)]
         public readonly array $muscle_groups,
-        #[Field(items: ExerciseChoice::class)]
+        #[Field(items: Option::class)]
         public readonly array $equipment,
-        #[Field(items: ExerciseChoice::class)]
+        #[Field(items: Option::class)]
         public readonly array $load_types,
     ) {}
 }

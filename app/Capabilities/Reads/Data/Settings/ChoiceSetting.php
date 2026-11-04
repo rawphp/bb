@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Reads\Data\Settings;
 
+use App\Capabilities\Support\Option;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -9,11 +10,11 @@ use Rawphp\Capabilities\Support\CapabilityData;
 final class ChoiceSetting extends CapabilityData
 {
     /**
-     * @param  list<Choice>  $choices
+     * @param  list<Option>  $choices
      */
     public function __construct(
         public readonly string $value,
-        #[Field(items: Choice::class)]
+        #[Field(items: Option::class)]
         public readonly array $choices,
     ) {}
 }
