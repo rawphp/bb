@@ -363,9 +363,10 @@ describe('outbox', () => {
 
         await m.call.write('weigh_in_log', { weight: -5 }, { label });
         await m.call.write('steps_log', { steps: 9000 }, { label });
-        await settle();
+        // Waits for the replay to reach the second entry, however slow the machine.
+        await vi.waitFor(() => expect(sent()).toHaveLength(2));
+        await vi.waitFor(() => expect(m.outbox.entries.value).toHaveLength(1));
 
-        expect(m.outbox.entries.value).toHaveLength(1);
         const [failed] = m.outbox.entries.value;
         expect(m.outbox.stateOf(failed!)).toBe('failed');
         expect(failed!.refusal).toMatchObject({ status: 422, body: { error: { message: 'Enter a weight above zero.' } } });
@@ -423,15 +424,14 @@ describe('outbox', () => {
         });
         await m.call.write('workout_set_add', { exercise_id: '', set_id: '01NEWSET' }, { label, creates: ['01NEWSET'] });
         await m.call.write('workout_set_log', { set_id: '01NEWSET', reps: 8 }, { label });
-        await settle();
-        expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['failed', 'held']);
+        await vi.waitFor(() => expect(m.outbox.entries.value.map((entry) => m.outbox.stateOf(entry))).toEqual(['failed', 'held']));
 
         fixedIt = true;
         await m.call.retryEntry(m.outbox.entries.value[0]!, { exercise_id: 'e', set_id: '01NEWSET' });
-        await settle();
+        // Waits for the fixed entry and the one held on it, however slow the machine.
+        await vi.waitFor(() => expect(m.outbox.entries.value).toEqual([]));
 
         expect(sent().map(([name]) => name)).toEqual(['workout_set_add', 'workout_set_add', 'workout_set_log']);
-        expect(m.outbox.entries.value).toEqual([]);
     });
 
     it('OFF-011 discards a failed entry, and sends what waited on it in its turn', async () => {
