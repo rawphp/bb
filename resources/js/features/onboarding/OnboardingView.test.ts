@@ -640,6 +640,26 @@ describe('OnboardingView', () => {
             ]);
         });
 
+        it.each([
+            ['Height unit', 'ft and in', 'input[aria-label="Height in cm"]'],
+            ['Weight unit', 'lb', 'input[aria-label="Weight in kg"]'],
+        ] as const)('CAP-010 while a %s switch saves, the field in the old unit takes no typing, so nothing queued can switch it back', async (group, option, field) => {
+            let finish: (value: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+            wrapper = view(aboutYou);
+
+            await radio(wrapper, group, option).trigger('click');
+            expect(wrapper.get(field).attributes('readonly')).toBeDefined();
+            expect(wrapper.get('input[autocomplete="given-name"]').attributes('readonly')).toBeUndefined();
+            await wrapper.get(field).setValue('80');
+            await wrapper.get(field).trigger('blur');
+            finish({});
+            await flushPromises();
+
+            expect(writeMock).toHaveBeenCalledOnce();
+            expect(wrapper.get(field).attributes('readonly')).toBeUndefined();
+        });
+
         it('ONB-004 inches typed while the feet save is out are saved with the feet typed, not the feet saved before', async () => {
             const feetInches = { ...aboutYou, about_you: review.about_you };
             readMock.mockResolvedValue(feetInches);
