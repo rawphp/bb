@@ -1,7 +1,11 @@
 import { flushPromises, mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createMemoryHistory, createRouter, type Router } from 'vue-router';
 import { CapabilityError, read } from '@/app/call';
 import type { NutritionShowOutput } from '@/contracts/nutrition_show';
+import type { WeekShowOutput } from '@/contracts/week_show';
+import ProgressBar from '@/design/ProgressBar.vue';
+import WeekStrip from '@/design/WeekStrip.vue';
 import { screenFixture } from '@/testing/schemas';
 import NutritionView from './NutritionView.vue';
 
@@ -10,9 +14,25 @@ vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@
 const readMock = vi.mocked(read);
 const content = screenFixture<NutritionShowOutput>('nutrition_show');
 const empty = screenFixture<NutritionShowOutput>('nutrition_show.empty');
+const week = screenFixture<WeekShowOutput>('week_show');
 
-function show(props: { payload?: NutritionShowOutput; pending?: boolean } = {}): VueWrapper {
-    return mount(NutritionView, { props, global: { stubs: { RouterLink: RouterLinkStub } } });
+let router: Router;
+
+type Props = { payload?: NutritionShowOutput; week?: WeekShowOutput; date?: string; pending?: boolean };
+
+function show(props: Props = {}): VueWrapper {
+    router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:any(.*)*', component: { template: '<p />' } }] });
+    void router.push('/nutrition');
+    return mount(NutritionView, { props: { week, ...props }, global: { plugins: [router], stubs: { RouterLink: RouterLinkStub } } });
+}
+
+// Reads answer from the fixtures by name, so the day and its week can arrive in either order.
+function serve(day: NutritionShowOutput | Error = content): void {
+    readMock.mockImplementation(async (name) => {
+        if (name === 'week_show') return week;
+        if (day instanceof Error) throw day;
+        return day;
+    });
 }
 
 function links(view: VueWrapper): unknown[] {
@@ -34,7 +54,7 @@ describe('NutritionView', () => {
             expect.stringContaining('Meal 4'),
         ]);
         expect(meals[0]!.text()).toContain('7:30 AM');
-        expect(meals[2]!.text()).toContain('550 / 1040 kcal');
+        expect(meals[2]!.text()).toContain('550/1040');
         expect(meals[3]!.text()).not.toContain('AM');
         expect(readMock).not.toHaveBeenCalled();
     });
@@ -68,8 +88,8 @@ describe('NutritionView', () => {
     });
 
     it("CAP-004 shows a skeleton while it reads nutrition_show, then today's meals", async () => {
-        readMock.mockResolvedValueOnce(content);
-        const view = show();
+        serve();
+        const view = show({ week: undefined });
 
         expect(view.find('[data-test="skeleton"]').exists()).toBe(true);
         expect(links(view)).toHaveLength(4);
@@ -81,7 +101,15 @@ describe('NutritionView', () => {
     });
 
     it("CAP-004 says why today's meals did not load, and Try again reads them again", async () => {
-        readMock.mockRejectedValueOnce(new CapabilityError('nutrition_show', 500, null)).mockResolvedValueOnce(content);
+        let fail = true;
+        readMock.mockImplementation(async (name) => {
+            if (name === 'week_show') return week;
+            if (fail) {
+                fail = false;
+                throw new CapabilityError('nutrition_show', 500, null);
+            }
+            return content;
+        });
         const view = show();
         await flushPromises();
 
@@ -91,14 +119,74 @@ describe('NutritionView', () => {
         expect(view.text()).toContain('Breakfast');
     });
 
-    it("OFF-008 marks each meal's calories as waiting to sync", () => {
+    it("OFF-008 marks each meal's bars as waiting to sync", () => {
         const view = show({ payload: content, pending: true });
 
         expect(view.findAll('[data-test="meal"]').every((meal) => meal.text().includes('Waiting to sync'))).toBe(true);
-        expect(view.get('[data-test="meal"] [data-value]').classes()).toContain('opacity-60');
+        expect(view.get('[data-test="meal"] [data-test="bars"]').element.parentElement!.classList).toContain('opacity-50');
     });
 
     it('OFF-008 marks nothing when nothing waits to sync', () => {
         expect(show({ payload: content }).text()).not.toContain('Waiting to sync');
+    });
+
+    it('NAV-005 UI-003 each meal shows four macro bars, its planned food against its target, from the server', () => {
+        const view = show({ payload: content });
+
+        // Lunch, the second meal: its bars are the fifth to the eighth.
+        const bars = view.findAllComponents(ProgressBar).slice(4, 8);
+        expect(bars.map((bar) => [bar.props('label'), bar.props('valueText'), bar.props('fraction'), bar.props('tint')])).toEqual([
+            ['Cal', '610/700', 0.871, 'calories'],
+            ['P', '44/51', 0.863, 'protein'],
+            ['F', '18/21', 0.857, 'fat'],
+            ['C', '66/82', 0.805, 'carbs'],
+        ]);
+        expect(bars.map((bar) => bar.props('title'))).toEqual(['Calories', 'Protein', 'Fat', 'Carbs']);
+    });
+
+    it('NAV-005 UI-001 shows the week strip, and a picked day opens its meals at /nutrition/<date>', async () => {
+        const view = show({ payload: content });
+        await flushPromises();
+
+        const strip = view.getComponent(WeekStrip);
+        expect(strip.props('days')).toEqual(week.days);
+        strip.vm.$emit('select', '2026-09-24');
+        await flushPromises();
+        expect(router.currentRoute.value.fullPath).toBe('/nutrition/2026-09-24');
+    });
+
+    it('NAV-005 a swipe on the strip opens the week before or after', async () => {
+        const view = show({ payload: content });
+        await flushPromises();
+
+        view.getComponent(WeekStrip).vm.$emit('swipe', 1);
+        await flushPromises();
+        expect(router.currentRoute.value.fullPath).toBe(`/nutrition/${week.next_week}`);
+
+        view.getComponent(WeekStrip).vm.$emit('swipe', -1);
+        await flushPromises();
+        expect(router.currentRoute.value.fullPath).toBe(`/nutrition/${week.previous_week}`);
+    });
+
+    it("NAV-005 reads the named day's meals and its week, and heads the list with the server's day", async () => {
+        serve({ ...content, date_text: 'Thursday, Sep 24' });
+        const view = show({ date: '2026-09-24', week: undefined });
+        await flushPromises();
+
+        expect(readMock).toHaveBeenCalledWith('nutrition_show', { date: '2026-09-24' }, expect.any(Function), expect.any(Function));
+        expect(readMock).toHaveBeenCalledWith('week_show', { date: '2026-09-24' }, expect.any(Function), expect.any(Function));
+        expect(view.get('#nutrition-day').text()).toBe('Thursday, Sep 24');
+    });
+
+    it('NAV-005 shows placeholder days while the week loads, and why it did not', async () => {
+        readMock.mockImplementation(async (name) => {
+            if (name === 'week_show') throw new CapabilityError('week_show', 500, null);
+            return content;
+        });
+        const view = show({ week: undefined });
+
+        expect(view.getComponent(WeekStrip).findAll('[data-placeholder]')).toHaveLength(7);
+        await flushPromises();
+        expect(view.getComponent(WeekStrip).props('error')).toBeTruthy();
     });
 });

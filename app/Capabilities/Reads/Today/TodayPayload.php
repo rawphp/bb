@@ -220,20 +220,10 @@ final class TodayPayload
         return new Totals(
             day_type: new Status($deload ? 'Deload' : ucfirst($target->day_type->value), Tone::Neutral->value),
             status: new Status($status->text, $status->onTrack ? Tone::Good->value : Tone::Warning->value),
-            calories: self::bar('Cal', $consumed->kcal, $target->kcal),
-            protein: self::bar('P', $consumed->proteinG, $target->protein_g),
+            calories: Bar::of('Cal', $consumed->kcal, $target->kcal),
+            protein: Bar::of('P', $consumed->proteinG, $target->protein_g),
             warnings: [],
             can_redistribute: false,
-        );
-    }
-
-    private static function bar(string $label, float $consumed, float $target): Bar
-    {
-        return new Bar(
-            label: $label,
-            value_text: (int) round($consumed).'/'.(int) round($target),
-            fraction: $target > 0 ? round(min(1.0, max(0.0, $consumed / $target)), 3) : 0.0,
-            tone: Tone::Neutral->value,
         );
     }
 
