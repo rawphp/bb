@@ -39,7 +39,13 @@ final readonly class MesocycleCalendar
     /** From 1: week 1 before the start, the last week once it is over. */
     public function currentWeek(): int
     {
-        $week = $this->grid->weekIndexCountingBack($this->today) - $this->startWeek() + 1;
+        return $this->weekOf($this->today);
+    }
+
+    /** The week, from 1, that a day falls in: week 1 before the start, the last week after the end. */
+    public function weekOf(DateTimeImmutable $day): int
+    {
+        $week = $this->grid->weekIndexCountingBack($day) - $this->startWeek() + 1;
 
         return max(1, min($week, $this->weeks));
     }

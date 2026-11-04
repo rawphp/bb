@@ -52,6 +52,35 @@
                 "dates_text": {
                     "type": "string"
                 },
+                "week_track": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "number": {
+                                "type": "integer"
+                            },
+                            "state": {
+                                "type": "string",
+                                "enum": [
+                                    "past",
+                                    "current",
+                                    "upcoming",
+                                    "skipped"
+                                ]
+                            },
+                            "deload": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "number",
+                            "state",
+                            "deload"
+                        ]
+                    }
+                },
                 "next_mesocycle": {
                     "type": [
                         "object",
@@ -122,7 +151,8 @@
                 "name",
                 "week_text",
                 "phase_title",
-                "dates_text"
+                "dates_text",
+                "week_track"
             ]
         },
         "draft": {
