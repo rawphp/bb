@@ -7,7 +7,6 @@ use App\Capabilities\Reads\BillingShowCapability;
 use App\Capabilities\Reads\Data\Settings\BodyFat;
 use App\Capabilities\Reads\Data\Settings\BodyFatChoices;
 use App\Capabilities\Reads\Data\Settings\BusyPeriod;
-use App\Capabilities\Reads\Data\Settings\Choice;
 use App\Capabilities\Reads\Data\Settings\ChoiceSetting;
 use App\Capabilities\Reads\Data\Settings\DietFilters;
 use App\Capabilities\Reads\Data\Settings\Height;
@@ -21,6 +20,7 @@ use App\Capabilities\Reads\Data\Settings\Units;
 use App\Capabilities\Reads\Data\Settings\Weekday;
 use App\Capabilities\Reads\Data\Settings\WeekdayChip;
 use App\Capabilities\Reads\Data\SettingsShowOutput;
+use App\Capabilities\Support\Option;
 use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Billing\Access;
@@ -95,14 +95,14 @@ final class ShowSettings
                 ? new Status('Training only', Tone::Info->value)
                 : new Status('Training and nutrition', Tone::Good->value),
             units: new Units(
-                weight: self::setting($profile->weight_unit, array_map(fn (WeightUnit $unit) => new Choice($unit->value, $unit->value), WeightUnit::cases())),
-                height: self::setting($profile->height_unit, [new Choice(HeightUnit::Cm->value, 'cm'), new Choice(HeightUnit::FeetInches->value, 'ft and in')]),
+                weight: self::setting($profile->weight_unit, array_map(fn (WeightUnit $unit) => new Option($unit->value, $unit->value), WeightUnit::cases())),
+                height: self::setting($profile->height_unit, [new Option(HeightUnit::Cm->value, 'cm'), new Option(HeightUnit::FeetInches->value, 'ft and in')]),
             ),
             appearance: self::setting($profile->appearance, array_map(
-                fn (string $value, string $label) => new Choice($value, $label), array_keys(self::APPEARANCES), self::APPEARANCES,
+                fn (string $value, string $label) => new Option($value, $label), array_keys(self::APPEARANCES), self::APPEARANCES,
             )),
             consumed_totals: self::setting($profile->consumed_totals, array_map(
-                fn (ConsumedTotals $totals) => new Choice($totals->value, $totals->title()), ConsumedTotals::cases(),
+                fn (ConsumedTotals $totals) => new Option($totals->value, $totals->title()), ConsumedTotals::cases(),
             )),
             diet_filters: self::dietFilters(TodaySnapshot::json($profile->diet_filters)),
             micro_plates: $profile->micro_plates,
@@ -123,7 +123,7 @@ final class ShowSettings
     {
         $sex = Sex::from($profile->sex);
         $bucket = BodyFatBucket::tryFrom((string) $profile->body_fat_bucket) ?? BodyFatBucket::Low;
-        $buckets = fn (Sex $sex) => array_map(fn (Row $row) => new Choice($row->bucket->value, $row->label), TBL001BodyFatBuckets::rows($sex));
+        $buckets = fn (Sex $sex) => array_map(fn (Row $row) => new Option($row->bucket->value, $row->label), TBL001BodyFatBuckets::rows($sex));
         $text = '';
         foreach (TBL001BodyFatBuckets::rows($sex) as $row) {
             $text = $row->bucket === $bucket ? $row->label : $text;
@@ -131,14 +131,14 @@ final class ShowSettings
 
         return new ProfileRow(
             name: (string) $profile->name,
-            sex: self::setting($sex->value, [new Choice(Sex::Male->value, 'Male'), new Choice(Sex::Female->value, 'Female')]),
+            sex: self::setting($sex->value, [new Option(Sex::Male->value, 'Male'), new Option(Sex::Female->value, 'Female')]),
             birth_date: PlanSnapshot::day($profile->birth_date)->format('Y-m-d'),
             birth_date_text: PlanSnapshot::day($profile->birth_date)->format('j F Y'),
             height: self::height((float) $profile->height_cm, HeightUnit::from($profile->height_unit)),
             body_fat: new BodyFat($bucket->value, $text, new BodyFatChoices(male: $buckets(Sex::Male), female: $buckets(Sex::Female))),
             uses_glp1: (bool) $profile->uses_glp1,
             experience: self::setting($profile->experience, array_map(
-                fn (ExperienceLevel $level) => new Choice($level->value, ucfirst($level->value)), ExperienceLevel::cases(),
+                fn (ExperienceLevel $level) => new Option($level->value, ucfirst($level->value)), ExperienceLevel::cases(),
             )),
         );
     }
@@ -159,7 +159,7 @@ final class ShowSettings
         return new Height($unit->value, OnboardingText::heightText($cm, $unit), null, $feet, $inches);
     }
 
-    /** @param  list<Choice>  $choices */
+    /** @param  list<Option>  $choices */
     private static function setting(string $value, array $choices): ChoiceSetting
     {
         return new ChoiceSetting($value, $choices);
