@@ -16,8 +16,12 @@ export function failureMessage(error: unknown, fallback: string): string {
     }
 
     const body = (error.body as { error?: { code?: unknown; message?: unknown } } | null)?.error;
-    // The capability pipeline's per-minute limit names itself ("Rate limit exceeded (per_minute).").
-    if (error.status === 429 && body?.code === 'rate_limited') return RATE_LIMITED;
+    // The capability pipeline's limiter names its limit ("Rate limit exceeded (per_minute)."), so
+    // that wording becomes words. A rate_limited refusal written for the user (the Coach's cap,
+    // AGT-005) keeps its own.
+    if (error.status === 429 && body?.code === 'rate_limited' && typeof body.message === 'string' && body.message.startsWith('Rate limit exceeded')) {
+        return RATE_LIMITED;
+    }
 
     return typeof body?.message === 'string' && body.message !== '' ? body.message : fallback;
 }

@@ -24,6 +24,25 @@ describe('failureMessage', () => {
         expect(writeFailureMessage(error, 'Could not save.')).toBe('That was a lot in a short time. Wait a moment, then try again.');
     });
 
+    it.each([
+        ['Rate limit exceeded (per_capability_per_minute).'],
+        ['Rate limit exceeded.'],
+    ])('CAP-012 every limit the capability pipeline names (%s) asks the user to wait, in words', (message) => {
+        const error = new CapabilityError('onboarding_answer', 429, { ok: false, error: { code: 'rate_limited', message, retryable: true } });
+
+        expect(failureMessage(error, 'Could not save.')).toBe('That was a lot in a short time. Wait a moment, then try again.');
+    });
+
+    it.each([
+        ["You've used today's Coach messages. They reset at 9:00."],
+        ['The Coach is still answering your last message.'],
+        ['Your last Coach message is still being sent. Try again in a moment.'],
+    ])('AGT-005 a rate_limited refusal the server wrote in words keeps them (%s)', (message) => {
+        const error = new CapabilityError('coach_message', 429, { ok: false, error: { code: 'rate_limited', message } });
+
+        expect(failureMessage(error, 'Could not send.')).toBe(message);
+    });
+
     it('OFF-031 says a write the user waits on was not sent because earlier changes still wait to sync', () => {
         const error = new CapabilityError('token_revoke', 0, { reason: 'waiting' });
 
