@@ -45,6 +45,17 @@ it('ANA-003 DAY-011 with totals set to checked in counts only check-ins and off-
     expect($calories['value_label'])->toBe('300/14000');
 });
 
+it('ANA-003 DAY-011 counts each earlier day of the week the same way, and no day after today', function () {
+    $snapshot = fn (array $profile) => W::snapshot(
+        today: '2026-10-12', targetDays: PROGRESS_WEEK, consumed: ['2026-10-10' => [300, 20]], profile: $profile,
+        targetMeals: [['id' => 'meal-1', 'name' => 'Lunch', 'kcal' => 700, 'protein_g' => 50, 'fat_g' => 20, 'carbs_g' => 80]],
+    );
+
+    // Monday 12 October: the lunches of 10, 11 and 12 October and the off-plan 300; 13 to 16 October not yet.
+    expect(W::payload($snapshot([]))['this_week']['calories']['value_label'])->toBe('2400/14000')
+        ->and(W::payload($snapshot(['consumed_totals' => 'checked_in']))['this_week']['calories']['value_label'])->toBe('300/14000');
+});
+
 it('ANA-003 targets outside the current week are not counted', function () {
     $calories = W::payload(W::snapshot(targetDays: ['2026-10-09', '2026-10-10', '2026-10-16', '2026-10-17']))['this_week']['calories'];
 
