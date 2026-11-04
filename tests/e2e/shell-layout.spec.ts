@@ -75,3 +75,78 @@ test('PLT-002 keeps the bottom tab bar and the phone column at 390 × 844', asyn
 
     await selectTrain(page);
 });
+
+// Today's missed-day and welcome-back questions, added to the real today_show answer. The service
+// worker is blocked so page.route sees the capability call.
+const MISSED = {
+    missed_session: {
+        mesocycle_id: '1',
+        week: 1,
+        day: 1,
+        title: 'You missed Monday',
+        text: 'What should happen to it?',
+        choices: [{ choice: 'skip', label: 'Skip it', date: null }],
+    },
+    missed_weeks: {
+        mesocycle_id: '1',
+        title: 'Welcome back',
+        text: 'You have been away a while.',
+        can_restart: true,
+        end_warning: 'Ending it keeps your history.',
+        offers_diet_break: false,
+    },
+};
+
+async function askMissed(page: Page, which: keyof typeof MISSED): Promise<void> {
+    await page.route('**/capabilities/today_show', async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        body.data = { ...body.data, missed_session: null, missed_weeks: null, [which]: MISSED[which] };
+        await route.fulfill({ response, json: body });
+    });
+}
+
+async function sheetBox(page: Page, title: string) {
+    const sheet = page.getByRole('dialog', { name: title });
+    await expect(sheet).toBeVisible();
+    // The sheet springs open; measure once it has settled.
+    await expect(async () => {
+        const first = (await sheet.boundingBox())!;
+        await page.waitForTimeout(100);
+        expect((await sheet.boundingBox())!).toEqual(first);
+    }).toPass();
+    return (await sheet.boundingBox())!;
+}
+
+test.describe('sheets', () => {
+    test.use({ serviceWorkers: 'block' });
+
+    for (const [which, title] of [
+        ['missed_session', 'You missed Monday'],
+        ['missed_weeks', 'Welcome back'],
+    ] as const) {
+        test(`PLT-002 puts Today's "${title}" sheet in the centred 40rem column at 1440 × 900`, { tag: '@desktop' }, async ({ page }) => {
+            await askMissed(page, which);
+            await openToday(page);
+            const viewport = page.viewportSize()!;
+            const rail = await box(page, 'nav[aria-label="Tabs"]');
+
+            const sheet = await sheetBox(page, title);
+            expect(sheet.width).toBeLessThanOrEqual(640);
+            const spaceCentre = (rail.x + rail.width + viewport.width) / 2;
+            expect(Math.abs(sheet.x + sheet.width / 2 - spaceCentre)).toBeLessThanOrEqual(1);
+            expect(Math.abs(sheet.y + sheet.height - viewport.height)).toBeLessThanOrEqual(1);
+        });
+    }
+
+    test('PLT-002 keeps sheets full width at 390 × 844', async ({ page }) => {
+        await askMissed(page, 'missed_session');
+        await openToday(page);
+        const viewport = page.viewportSize()!;
+
+        const sheet = await sheetBox(page, 'You missed Monday');
+        expect(sheet.x).toBe(0);
+        expect(sheet.width).toBe(390);
+        expect(Math.abs(sheet.y + sheet.height - viewport.height)).toBeLessThanOrEqual(1);
+    });
+});
