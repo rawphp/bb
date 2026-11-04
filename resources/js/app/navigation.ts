@@ -19,7 +19,7 @@ export interface NavigationState {
 
 export interface Navigation {
     readonly state: NavigationState;
-    /** A tab bar tap: switch tab, or pop to the root, or scroll to the top (PWA-020). */
+    /** A tab bar tap: switch tab, or go to the root, or scroll to the top (PWA-020). */
     select(tab: TabId): Promise<void>;
     /** In-app back. It goes through the browser's history, so both stay one stack (PWA-025). */
     back(options?: { animate?: boolean }): void;
@@ -126,10 +126,20 @@ export function createNavigation(router: Router, history: TrackedHistory): Navig
         await rewriting(() => go(-(depth - 1)));
     }
 
+    // A root screen that replaced itself with another path (Today on a picked day) is not the
+    // tab's root, so a tap goes there first.
+    async function replaceWithRoot(tab: TabId): Promise<void> {
+        state.animate = false;
+        await rewriting(() => router.replace(tabPath(tab)).then(() => undefined));
+        state.stacks[tab] = [screen(current())];
+    }
+
     function select(tab: TabId): Promise<void> {
         return enqueue(async () => {
             if (tab !== state.active) return switchTo(tab);
             if (stack().length > 1) return popToRoot();
+            const root = stack()[0];
+            if (root && root.route.path !== tabPath(tab)) return replaceWithRoot(tab);
             state.scrollToTop++;
         });
     }

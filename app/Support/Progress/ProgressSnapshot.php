@@ -16,7 +16,6 @@ use App\Models\Mesocycle;
 use App\Models\Phase;
 use App\Models\Plan;
 use App\Models\Profile;
-use App\Models\Step;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WorkoutSet;
@@ -41,7 +40,8 @@ final class ProgressSnapshot
     private ?TrendWeight $trend = null;
 
     /**
-     * @param  TodaySnapshot  $week  the plan, profile, phases, mesocycles and plan weeks, and the week around today
+     * @param  TodaySnapshot  $week  the plan, profile, phases, mesocycles and plan weeks, and the week around today with
+     *                               its meals' planned foods and recipes, which Calories this week counts (DAY-011)
      * @param  Collection<int, WeighIn>  $weighIns  all of them
      * @param  ?int  $steps  today's step count; null when none is stored
      * @param  Collection<int, stdClass>  $sets  the working sets (WO-025) of live mesocycle sessions, one row (mesocycle_id, week, exercise_id, sets) per mesocycle week and exercise
@@ -59,15 +59,14 @@ final class ProgressSnapshot
 
     public static function load(User $user): self
     {
-        $week = TodaySnapshot::loadWeek($user);
+        $week = TodaySnapshot::load($user);
         $sets = self::sets($user);
         $lastUsed = self::lastUsed($user);
-        $steps = Step::query()->where('user_id', $user->id)->whereDate('date', $week->today()->format('Y-m-d'))->value('count');
 
         return new self(
             week: $week,
             weighIns: WeighIn::query()->where('user_id', $user->id)->orderBy('weighed_at')->get(['id', 'weight_kg', 'waist_cm', 'weighed_at']),
-            steps: $steps === null ? null : (int) $steps,
+            steps: $week->steps === null ? null : (int) $week->steps->count,
             sets: $sets,
             exercises: Exercise::query()->visibleTo($user)
                 ->whereIn('id', $sets->pluck('exercise_id')->merge(array_keys($lastUsed))->unique()->values()->all())

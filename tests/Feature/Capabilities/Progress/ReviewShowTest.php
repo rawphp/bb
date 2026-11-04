@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Models\WeighIn;
 use Illuminate\Support\Carbon;
 use Tests\Support\ReviewSeed;
 use Tests\Support\ScreenFixture;
@@ -104,3 +105,45 @@ it('REV-003 two users with reviews in the same week never see each other\'s rows
         ->and($open($b))->toHaveCount(7)
         ->and(array_intersect(array_column($marks($a), 'meal_id'), array_column($marks($b), 'meal_id')))->toBe([]);
 });
+
+/**
+ * SET-012: a user in `$zone` who weighs in on Saturdays, reviewing on Monday 26 October the week of 19 to 25 October,
+ * with two readings that week: Monday 19 at 07:00 UTC and 2026-10-23 21:05 UTC, which is Saturday 24 at 07:05 in
+ * Brisbane and Friday 23 in UTC.
+ */
+function reviewLocalDayUser(string $zone): User
+{
+    $seed = new ReviewSeed;
+    $seed->weeksFinished = 6;
+    $seed->mesocycleWeeks = 10;
+    $seed->weighInWeekdays = [6];
+    $user = $seed->seed();
+    $user->forceFill(['time_zone' => $zone])->save();
+    foreach (['2026-10-19 07:00:00', '2026-10-23 21:05:00'] as $at) {
+        WeighIn::factory()->for($user)->create(['weighed_at' => $at, 'weight_kg' => 86.0]);
+    }
+    Carbon::setTestNow('2026-10-26 09:00:00');
+
+    return $user;
+}
+
+it('SET-012 REV-003 puts each of the week\'s weigh-ins on the user\'s local day', function (string $zone, array $rows) {
+    $data = reviewShowFor(reviewLocalDayUser($zone));
+
+    expect(array_map(fn (array $row) => [$row['date'], $row['value_label'], $row['is_missing']], $data['weigh_ins']['rows']))
+        ->toBe($rows);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', [['2026-10-19', '86.0 kg', false], ['2026-10-24', '86.0 kg', false]]],
+    'UTC' => ['UTC', [['2026-10-19', '86.0 kg', false], ['2026-10-23', '86.0 kg', false], ['2026-10-24', '', true]]],
+]);
+
+it('SET-012 REV-001 opens the review when two weigh-ins fall in the week on the user\'s local day', function (string $zone, string $state) {
+    $user = reviewLocalDayUser($zone);
+    // Monday 19 October at 07:00 in Brisbane; Sunday the 18th in UTC.
+    WeighIn::query()->where('user_id', $user->id)->where('weighed_at', '2026-10-19 07:00:00')->update(['weighed_at' => '2026-10-18 21:00:00']);
+
+    expect(reviewShowFor($user)['state'])->toBe($state);
+})->with([
+    'Brisbane' => ['Australia/Brisbane', 'ready'],
+    'UTC' => ['UTC', 'unavailable'],
+]);
