@@ -163,6 +163,33 @@ it('WT-008 heads each plan week of weigh-ins, from the review day, with its tren
     ]);
 });
 
+it('WT-008 SET-012 weeks a weigh-in on the user\'s local day, its trend on local days too, and a page cut mid-week heads it alike', function () {
+    Carbon::setTestNow('2026-11-04 12:00:00');
+    $user = User::factory()->create();
+    $user->forceFill(['time_zone' => 'Australia/Brisbane'])->save();
+    Profile::factory()->for($user)->create(['weight_unit' => 'kg', 'height_unit' => 'cm']);
+    // Plan weeks start on Saturday.
+    Plan::factory()->for($user)->create(['start_date' => '2026-10-24', 'review_weekday' => 6]);
+    // Friday 30 October 23:30 UTC is Saturday 31 October 09:30 in Brisbane, the first day of the next plan week.
+    foreach (['2026-10-26 07:00:00' => 82.0, '2026-10-29 07:00:00' => 82.0, '2026-10-30 23:30:00' => 84.0, '2026-11-02 07:00:00' => 83.0] as $at => $kg) {
+        WeighIn::factory()->for($user)->create(['weight_kg' => $kg, 'weighed_at' => $at]);
+    }
+
+    $newest = weighInCall($user, 'weigh_ins_show')->assertOk()->json('data');
+    $older = weighInCall($user, 'weigh_ins_show', ['before' => '2026-10-28'])->assertOk()->json('data');
+
+    expect(collect($newest['rows'])->map(fn (array $row) => [$row['date_label'], $row['week']])->all())->toBe([
+        ['Mon, 2 Nov', '2026-10-31'],
+        ['Sat, 31 Oct', '2026-10-31'],
+        ['Thu, 29 Oct', '2026-10-24'],
+        ['Mon, 26 Oct', '2026-10-24'],
+    ])->and($newest['weeks'])->toBe([
+        ['week' => '2026-10-31', 'title' => 'This week', 'trend_label' => 'Trend 82.4 kg', 'change' => ['text' => '+0.4 kg on last week', 'tone' => 'info']],
+        ['week' => '2026-10-24', 'title' => '24 – 30 Oct', 'trend_label' => 'Trend 82.0 kg', 'change' => null],
+    ])->and(array_column($older['rows'], 'date_label'))->toBe(['Mon, 26 Oct'])
+        ->and($older['weeks'])->toBe([$newest['weeks'][1]]);
+});
+
 it('WT-004 WT-010 shows no rows and no trend before the first weigh-in', function () {
     Carbon::setTestNow('2026-10-10 12:00:00');
 
