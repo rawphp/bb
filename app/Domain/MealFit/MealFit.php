@@ -121,41 +121,114 @@ final readonly class MealFit implements MealFitRules
     }
 
     /**
-     * Fits the foods not held. A food the fit would put above MAX_GRAMS is held at the cap
-     * and the rest are fitted again; what the cap leaves short is a shortfall (MEAL-007).
+     * Fits the foods not held, each between 0 and MAX_GRAMS as shown. A food the fit puts above
+     * the cap is held there and the rest are fitted again; a capped food the refit would rather
+     * have lower is let go again. What the cap leaves short is a shortfall (MEAL-007).
      *
      * @param  list<MealFood>  $foods
      * @param  list<string>  $held
      */
     private function solve(array $foods, array $held, MealTarget $target): MealFitResult
     {
-        do {
-            $isHeld = fn (MealFood $f) => in_array($f->id, $held, true);
-            $free = array_keys(array_filter($foods, fn (MealFood $f) => ! $isHeld($f)));
-            $capped = false;
+        $free = array_keys(array_filter($foods, fn (MealFood $f) => ! in_array($f->id, $held, true)));
 
-            if ($free !== []) {
-                $fixed = $this->totals(array_values(array_filter($foods, $isHeld)));
-                $b = [$target->proteinG - $fixed->proteinG, $target->fatG - $fixed->fatG, $target->carbsG - $fixed->carbsG];
-                $columns = array_map(fn (int $i) => [$foods[$i]->food->proteinG, $foods[$i]->food->fatG, $foods[$i]->food->carbsG], $free);
-                $units = $this->nonNegativeLeastSquares($columns, $b);
+        if ($free === []) {
+            return $this->result($foods, $target);
+        }
 
-                foreach ($free as $k => $i) {
-                    $food = $foods[$i];
-                    $grams = round(MealFood::gramsForRaw(max(0.0, $units[$k]) * 100, $food->food, $food->weighing));
+        $fixed = $this->totals(array_values(array_filter($foods, fn (MealFood $f) => in_array($f->id, $held, true))));
+        $b = [$target->proteinG - $fixed->proteinG, $target->fatG - $fixed->fatG, $target->carbsG - $fixed->carbsG];
+        $columns = array_map(fn (int $i) => [$foods[$i]->food->proteinG, $foods[$i]->food->fatG, $foods[$i]->food->carbsG], $free);
+        $caps = array_map(fn (int $i) => $foods[$i]->weighing->rawGrams(self::MAX_GRAMS, $foods[$i]->food->cookedRatio) / 100, $free);
+        $units = $this->boundedLeastSquares($columns, $b, $caps);
 
-                    if ($grams > self::MAX_GRAMS) {
-                        $grams = self::MAX_GRAMS;
-                        $held[] = $food->id;
-                        $capped = true;
-                    }
-
-                    $foods[$i] = $food->withGrams($grams);
-                }
-            }
-        } while ($capped);
+        foreach ($free as $k => $i) {
+            $food = $foods[$i];
+            $grams = round(MealFood::gramsForRaw($units[$k] * 100, $food->food, $food->weighing));
+            $foods[$i] = $food->withGrams(min($grams, self::MAX_GRAMS));
+        }
 
         return $this->result($foods, $target);
+    }
+
+    /**
+     * Minimises |A x - b|^2 + ridge |x|^2 over 0 <= x <= caps. Foods at their cap are held there
+     * while the others are fitted; one over its cap is moved to the cap, and one at its cap whose
+     * gradient points down is freed again, a step at a time.
+     *
+     * @param  list<list<float>>  $columns
+     * @param  list<float>  $b
+     * @param  list<float>  $caps
+     * @return list<float>
+     */
+    private function boundedLeastSquares(array $columns, array $b, array $caps): array
+    {
+        $n = count($columns);
+        $atCap = [];
+
+        for ($round = 0; $round < 10 * $n + 10; $round++) {
+            $rest = $b;
+            foreach ($atCap as $j) {
+                foreach ($rest as $r => $value) {
+                    $rest[$r] = $value - $columns[$j][$r] * $caps[$j];
+                }
+            }
+
+            $open = array_values(array_diff(range(0, $n - 1), $atCap));
+            $x = array_fill(0, $n, 0.0);
+            foreach ($atCap as $j) {
+                $x[$j] = $caps[$j];
+            }
+            foreach ($this->nonNegativeLeastSquares(array_map(fn (int $j) => $columns[$j], $open), $rest) as $k => $value) {
+                $x[$open[$k]] = max(0.0, $value);
+            }
+
+            $over = null;
+            foreach ($open as $j) {
+                if ($x[$j] > $caps[$j] + self::EPSILON && ($over === null || $x[$j] / $caps[$j] > $x[$over] / $caps[$over])) {
+                    $over = $j;
+                }
+            }
+            if ($over !== null) {
+                $atCap[] = $over;
+
+                continue;
+            }
+
+            $release = null;
+            $lowest = -self::EPSILON;
+            foreach ($atCap as $j) {
+                $gradient = $this->dot($columns[$j], $this->residual($columns, $b, $x)) - self::RIDGE * $x[$j];
+                if ($gradient < $lowest) {
+                    [$release, $lowest] = [$j, $gradient];
+                }
+            }
+            if ($release === null) {
+                return $x;
+            }
+            $atCap = array_values(array_diff($atCap, [$release]));
+        }
+
+        return array_map(fn (float $v, float $cap) => min($v, $cap), $x, $caps);
+    }
+
+    /**
+     * b - A x.
+     *
+     * @param  list<list<float>>  $columns
+     * @param  list<float>  $b
+     * @param  list<float>  $x
+     * @return list<float>
+     */
+    private function residual(array $columns, array $b, array $x): array
+    {
+        foreach ($columns as $j => $column) {
+            foreach ($b as $r => $value) {
+                $b[$r] = $value - $column[$r] * $x[$j];
+            }
+        }
+
+        return $b;
     }
 
     /** @param  list<MealFood>  $foods */
