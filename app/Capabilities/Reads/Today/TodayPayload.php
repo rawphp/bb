@@ -509,8 +509,8 @@ final class TodayPayload
         );
     }
 
-    /** "Week 3 · Day 2 · Upper A". */
-    private static function workoutTitle(TodayWorkoutItem $workout): string
+    /** "Week 3 · Day 2 · Upper A"; Train's today's session reads it too (NAV-002). */
+    public static function workoutTitle(TodayWorkoutItem $workout): string
     {
         return "Week {$workout->week} · Day {$workout->day} · {$workout->session->name}";
     }
