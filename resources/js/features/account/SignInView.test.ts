@@ -22,9 +22,9 @@ function refused(path: string, status: number, errors?: Record<string, string[]>
     return new CapabilityError(path, status, errors ? { message, errors } : { message });
 }
 
-async function view() {
+async function view(path = '/sign-in') {
     const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/:any(.*)*', component: { template: '<p />' } }] });
-    await router.push('/sign-in');
+    await router.push(path);
     const wrapper = mount(SignInView, { global: { plugins: [router] } });
     return { wrapper, router };
 }
@@ -396,6 +396,14 @@ describe('SignInView', () => {
             password_confirmation: 'long secret',
         });
         expect(router.currentRoute.value.path).toBe('/');
+    });
+
+    it('ONB-001 opened from the intro cards (?new=1), it starts on Create your account', async () => {
+        const { wrapper } = await view('/sign-in?new=1');
+
+        expect(wrapper.text()).toContain('Create your account');
+        expect(button(wrapper, 'submit').text()).toBe('Create account');
+        expect(button(wrapper, 'toggle-mode').text()).toBe('Have an account? Sign in');
     });
 
     it('ACC-001 a refused sign-up shows each field\'s first error under it', async () => {

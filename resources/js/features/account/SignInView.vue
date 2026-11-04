@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { postHost, sync } from '@/app/call';
 import { loadOutbox, othersWaiting, removeOthers } from '@/app/outbox';
 import { hostFailure } from '@/app/hostFailure';
@@ -18,7 +18,8 @@ const RESEND_AFTER_S = 30;
 const FIELDS: Field[] = ['name', 'email', 'password', 'code'];
 
 const router = useRouter();
-const mode = ref<Mode>('signIn');
+// ONB-001: the intro cards' Get started opens this screen with ?new=1, on Create account.
+const mode = ref<Mode>(useRoute().query.new === '1' ? 'createAccount' : 'signIn');
 const name = ref('');
 const email = ref('');
 const password = ref('');
@@ -103,6 +104,7 @@ async function enter(): Promise<void> {
 }
 
 // Replay the user's own outbox and fill the offline cache as them (OFF-004), then open the app.
+// Today sends a user with no plan yet, such as a new account, to setup (ONB-002).
 async function openApp(): Promise<void> {
     sync().catch(() => {
         // Offline or refused: the next reconnect syncs again.

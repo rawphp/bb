@@ -47,7 +47,7 @@ describe('IntroView', () => {
         wrapper.unmount();
     });
 
-    it('ONB-001 the last card opens sign-in, where a new user signs up', async () => {
+    it('ONB-001 the last card opens sign-up', async () => {
         const { wrapper, router } = await intro();
 
         await wrapper.get('[data-test="intro-next"]').trigger('click');
@@ -55,7 +55,15 @@ describe('IntroView', () => {
         await wrapper.get('[data-test="intro-next"]').trigger('click');
         await flushPromises();
 
-        expect(router.currentRoute.value.path).toBe('/sign-in');
+        expect(router.currentRoute.value.fullPath).toBe('/sign-in?new=1');
+        wrapper.unmount();
+    });
+
+    it('ONB-001 someone who already has an account can go straight to sign-in from any card', async () => {
+        const { wrapper } = await intro();
+
+        expect(wrapper.get('[data-test="intro-sign-in"]').text()).toBe('I have an account');
+        expect(wrapper.get('[data-test="intro-sign-in"]').attributes('href')).toBe('/sign-in');
         wrapper.unmount();
     });
 
