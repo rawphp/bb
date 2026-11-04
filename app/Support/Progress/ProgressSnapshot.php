@@ -41,7 +41,8 @@ final class ProgressSnapshot
     private ?TrendWeight $trend = null;
 
     /**
-     * @param  TodaySnapshot  $week  the plan, profile, phases, mesocycles and plan weeks, and the week around today
+     * @param  TodaySnapshot  $week  the plan, profile, phases, mesocycles and plan weeks, and the week around today with
+     *                               its meals' planned foods and recipes, which Calories this week counts (DAY-011)
      * @param  Collection<int, WeighIn>  $weighIns  all of them
      * @param  ?int  $steps  today's step count; null when none is stored
      * @param  Collection<int, stdClass>  $sets  the working sets (WO-025) of live mesocycle sessions, one row (mesocycle_id, week, exercise_id, sets) per mesocycle week and exercise
@@ -59,7 +60,7 @@ final class ProgressSnapshot
 
     public static function load(User $user): self
     {
-        $week = TodaySnapshot::loadWeek($user);
+        $week = TodaySnapshot::load($user);
         $sets = self::sets($user);
         $lastUsed = self::lastUsed($user);
         $steps = Step::query()->where('user_id', $user->id)->whereDate('date', $week->today()->format('Y-m-d'))->value('count');

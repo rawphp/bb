@@ -22,8 +22,8 @@
         "calories": {
             "title": "Calories this week",
             "short_label": "Cal",
-            "value_label": "2410/18550",
-            "fraction": 0.13
+            "value_label": "5010/18550",
+            "fraction": 0.27
         },
         "days": [
             {

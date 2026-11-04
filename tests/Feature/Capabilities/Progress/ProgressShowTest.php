@@ -47,7 +47,7 @@ it('ANA-001 ANA-002 ANA-003 ANA-004 ANA-005 ANA-006 ANA-007 ANA-009 ANA-010 show
         ->and(array_column($data['chart']['waist'], 'value'))->toEqual([88.0, 87.5, 87.5, 87.0])
         ->and(array_column($data['summary'], 'value'))->toBe(['80.0 kg', '+0.0 kg', '76.8 kg'])
         ->and($data['share']['message'])->toBe('Fat loss: 80.0 kg to 80.0 kg (+0.0 kg) over 5 weeks')
-        ->and($data['this_week']['calories']['value_label'])->toBe('2410/18550')
+        ->and($data['this_week']['calories']['value_label'])->toBe('5010/18550')
         ->and($data['this_week']['days'][0]['date'])->toBe('2026-10-10')
         ->and($data['review_card']['title'])->toBe('Weekly review available')
         ->and($data['steps']['bar']['value_label'])->toBe('6,240/10,000')

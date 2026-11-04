@@ -84,7 +84,7 @@ describe('ProgressScreen', () => {
         const week = wrapper.get('[data-this-week]');
 
         expect(week.text()).toContain('This week');
-        expect(week.text()).toContain('2410/18550');
+        expect(week.text()).toContain('5010/18550');
         // The strip only shows the week: its days are not buttons, and today is drawn as the selected day, as in rp-clone.
         const days = week.findAll('[role="list"] > [role="listitem"]');
         expect(days).toHaveLength(7);

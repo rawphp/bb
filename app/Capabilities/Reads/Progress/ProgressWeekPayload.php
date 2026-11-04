@@ -25,7 +25,7 @@ final class ProgressWeekPayload
 
     /**
      * ANA-003, SAFE-003: the 7 days of the plan week with the calories against target; null without a plan. A week
-     * with no calorie target has no calories line.
+     * with no calorie target has no calories line. Each day so far counts consumed as Today's totals bar does (DAY-011).
      */
     public static function thisWeek(ProgressSnapshot $snapshot): ?ThisWeek
     {
@@ -43,7 +43,7 @@ final class ProgressWeekPayload
             $row = $week->dayTarget($day);
             $target += $row->kcal ?? 0;
             if ($day <= $today) {
-                $consumed += $week->consumed($day)->kcal ?? 0;
+                $consumed += $week->consumedForTotals($day)->kcal;
             }
             $days[] = new ThisWeekDay(
                 date: $day->format('Y-m-d'),
