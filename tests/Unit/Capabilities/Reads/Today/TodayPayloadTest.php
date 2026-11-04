@@ -347,6 +347,17 @@ it('SCH-012 an item due this minute is still to come, and after the last item th
         ->and($late['now'])->toBe(['before' => null, 'label' => 'Now', 'next_text' => null]);
 });
 
+it('SCH-012 the Now line passes over a skipped workout, and names an untimed meal with no time', function () {
+    $sessions = [...array_filter(W::sessions(), fn ($session) => $session->id !== 'w2d2'), W::session('w2d2', 2, 2, skipped: true)];
+    $skipped = todayPayload(W::snapshot(sessions: $sessions, nowTime: '13:00'));
+    $untimed = todayPayload(W::snapshot(nowTime: '23:00', mealTimes: ['Dinner' => null]));
+
+    expect(todayPayload(W::snapshot(nowTime: '13:00'))['now']['next_text'])->toBe('Next: Lower A at 5:30 PM')
+        ->and($skipped['now']['next_text'])->toBe('Next: Dinner at 7:30 PM')
+        ->and($untimed['now'])->toBe(['before' => $untimed['timeline'][array_key_last($untimed['timeline'])], 'label' => 'Now', 'next_text' => 'Next: Dinner'])
+        ->and(todayLabels($untimed)[array_key_last($untimed['timeline'])])->toBe('Dinner');
+});
+
 it('SCH-012 other days, and a today with nothing planned, have no Now line', function () {
     expect(todayPayload(W::snapshot(date: '2026-09-24'))['now'])->toBeNull()
         ->and(todayPayload(W::snapshot(date: '2026-09-22'))['now'])->toBeNull()

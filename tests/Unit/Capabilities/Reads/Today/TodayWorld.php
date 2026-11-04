@@ -82,6 +82,7 @@ final class TodayWorld
         array $phases = [],
         string $zone = 'UTC',
         string $nowTime = '10:00',
+        array $mealTimes = [],
     ): TodaySnapshot {
         $train = new TrainSnapshot(
             today: TrainSnapshot::day($today),
@@ -111,7 +112,7 @@ final class TodayWorld
             exercises: new Collection(self::exercises()),
             zone: new DateTimeZone($zone),
         );
-        $targets = array_map(fn (string $day) => self::dayTarget($day), self::planDays());
+        $targets = array_map(fn (string $day) => self::dayTarget($day, $mealTimes), self::planDays());
         $meals = [];
         foreach ($targets as $target) {
             foreach ($target->meals as $index => $meal) {
@@ -170,12 +171,13 @@ final class TodayWorld
         return sprintf('%s-0000-4000-8000-%012d', str_replace('-', '', $date), $index);
     }
 
-    public static function dayTarget(string $date): DayTarget
+    /** @param  array<string, ?string>  $times  a meal's time by its name, in place of the usual one; null for none */
+    public static function dayTarget(string $date, array $times = []): DayTarget
     {
         [$type, $kcal, $protein, $fat, $carbs] = self::spec($date);
         $share = fn (float $value, int $index) => $index === 3 ? $value - 2 * intdiv((int) $value * 3, 10) : intdiv((int) $value * 3, 10);
         $meals = [];
-        foreach (['Breakfast' => '08:00', 'Lunch' => '12:30', 'Dinner' => '19:30'] as $name => $time) {
+        foreach (array_replace(['Breakfast' => '08:00', 'Lunch' => '12:30', 'Dinner' => '19:30'], $times) as $name => $time) {
             $index = count($meals) + 1;
             $meals[] = [
                 'id' => self::mealId($date, $index), 'name' => $name, 'time' => $time,
