@@ -97,11 +97,14 @@ class OnboardingDraft extends Model
         'chooses_own_calories' => false,
     ];
 
-    /** The user's draft, or an unsaved new one for a user with none. Reading never writes (ONB-002). */
+    /**
+     * The user's draft, or an unsaved new one for a user with none, which starts with the name they signed up with
+     * (ONB-004). Reading never writes (ONB-002).
+     */
     public static function for(User $user): self
     {
         return self::query()->where('user_id', $user->id)->first()
-            ?? (new self)->forceFill(['user_id' => $user->id]);
+            ?? (new self)->forceFill(['user_id' => $user->id, 'name' => $user->name]);
     }
 
     /** @return BelongsTo<Template, $this> */

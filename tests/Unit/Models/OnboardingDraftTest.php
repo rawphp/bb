@@ -95,14 +95,14 @@ it('ONB-002 keeps one draft per user and saving again updates it', function () {
         ->and(OnboardingDraft::for($user)->toDraft()->name)->toBe('Sam');
 });
 
-it('ONB-002 a user with no draft reads the defaults and reading writes nothing', function () {
-    $user = User::factory()->create();
+it('ONB-002 ONB-004 a user with no draft reads the defaults with their account name, and reading writes nothing', function () {
+    $user = User::factory()->create(['name' => 'Sam Fresh']);
 
     $draft = OnboardingDraft::for($user);
 
     expect($draft->exists)->toBeFalse()
         ->and($draft->user_id)->toBe($user->id)
-        ->and($draft->toDraft())->toEqual(new Draft)
+        ->and($draft->toDraft())->toEqual(new Draft(name: 'Sam Fresh'))
         ->and(OnboardingDraft::query()->count())->toBe(0);
 });
 
