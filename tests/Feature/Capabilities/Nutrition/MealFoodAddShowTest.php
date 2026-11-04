@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Meals\AddMealFoods;
 use App\Models\Food;
 use App\Models\PlannedFood;
 use App\Models\PlannedRecipe;
@@ -81,4 +82,46 @@ it('FOOD-030 CAP-020 answers 404 for another user\'s meal or a food or recipe th
     basketCall($user, 'meal_food_add_show', ['meal_id' => $mine, 'entries' => [$entry(['recipe_id' => Seed::stew(User::factory()->create())->id])]])->assertNotFound();
     basketCall($user, 'meal_food_add_show', ['meal_id' => $mine, 'entries' => [$entry(['food_id' => Seed::rice()->id, 'recipe_id' => Seed::stew()->id])]])->assertStatus(422);
     basketCall($user, 'meal_food_add_show', ['meal_id' => $mine, 'entries' => []])->assertStatus(422);
+});
+
+it('FOOD-030 shows what meal_food_add then plans for a basket Add joins with its own rules', function (Closure $basket) {
+    $user = User::factory()->create();
+    $meal = Seed::dinner($user);
+    $entries = array_map(fn (array $entry) => ['id' => strtolower((string) Str::ulid())] + $entry, $basket($meal));
+
+    $data = basketCall($user, 'meal_food_add_show', ['meal_id' => $meal, 'entries' => $entries])->assertOk()->json('data');
+    basketCall($user, 'meal_food_add', ['meal_id' => $meal, 'entries' => $entries])->assertOk();
+    $shown = basketCall($user, 'meal_show', ['meal_id' => $meal])->assertOk()->json('data');
+    $planned = array_column($shown['entries'], 'amount_text', 'id');
+
+    foreach ($data['entries'] as $entry) {
+        expect($entry['amount_text'])->toBe($planned[$entry['id']] ?? null);
+    }
+    expect($data['bars'])->toBe($shown['bars'])
+        ->and($data['targets_met'])->toBe($shown['targets_met'])
+        ->and($data['hints'])->toBe($shown['hints']);
+})->with([
+    'the same food twice' => [function () {
+        $rice = Seed::rice();
+
+        return [['food_id' => $rice->id], ['food_id' => $rice->id], ['food_id' => Seed::chicken()->id]];
+    }],
+    'a recipe the meal already holds' => [function (string $meal) {
+        $stew = Seed::stew();
+        Seed::planRecipe($meal, $stew, 1, 0);
+
+        return [['recipe_id' => $stew->id], ['food_id' => Seed::rice()->id]];
+    }],
+    'a food weighed cooked with no cooked value' => [fn () => [['food_id' => Seed::oil()->id, 'weighing' => 'cooked'], ['food_id' => Seed::rice()->id]]],
+]);
+
+it('FOOD-030 refuses a recipe given in grams, as meal_food_add does', function () {
+    $user = User::factory()->create();
+    $meal = Seed::dinner($user);
+    $entries = [['id' => (string) Str::ulid(), 'food_id' => Seed::rice()->id], ['id' => (string) Str::ulid(), 'recipe_id' => Seed::stew()->id, 'grams' => 200]];
+
+    $shown = basketCall($user, 'meal_food_add_show', ['meal_id' => $meal, 'entries' => $entries])->assertStatus(422);
+    $added = basketCall($user, 'meal_food_add', ['meal_id' => $meal, 'entries' => $entries])->assertStatus(422);
+
+    expect($shown->json('error'))->toBe($added->json('error'))->and($shown->json('error.message'))->toBe(AddMealFoods::RECIPE_IN_SERVINGS);
 });

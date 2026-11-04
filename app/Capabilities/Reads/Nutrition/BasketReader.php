@@ -7,6 +7,7 @@ use App\Actions\Meals\AddMealFoods;
 use App\Actions\Meals\MealEntries;
 use App\Capabilities\Nutrition\Data\MealFoodAddEntry;
 use App\Capabilities\Nutrition\Data\MealFoodAddShowOutput;
+use App\Capabilities\Support\FieldRefused;
 use App\Domain\MealFit\MealFood;
 use App\Domain\MealFit\Weighing;
 use App\Domain\Recipe\RecipeServing;
@@ -19,7 +20,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 /**
  * FOOD-030: the basket's entries as {@see AddMealFoods} would join them, read and not saved: a food
  * or recipe the meal (or an earlier entry) already holds is skipped, a food weighed cooked counts cooked when it has a
- * cooked value, and an entry with grams joins locked at them. Two queries for the picks, one for the meal.
+ * cooked value, an entry with grams joins locked at them, and a recipe given in grams is refused. Two queries for the picks, one for the meal.
  */
 final class BasketReader
 {
@@ -40,7 +41,10 @@ final class BasketReader
 
         $seen = [];
         $picks = [];
-        foreach ($entries as $entry) {
+        foreach ($entries as $index => $entry) {
+            if ($entry->recipe_id !== null && $entry->grams !== null) {
+                throw new FieldRefused("entries.{$index}.grams", AddMealFoods::RECIPE_IN_SERVINGS);
+            }
             $id = strtolower($entry->id);
             $key = $entry->recipe_id !== null ? 'recipe-'.strtolower($entry->recipe_id) : 'food-'.strtolower((string) $entry->food_id);
             $held = $meal->holds($id) || isset($seen[$key])

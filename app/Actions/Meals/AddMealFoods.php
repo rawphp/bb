@@ -22,6 +22,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class AddMealFoods
 {
+    public const RECIPE_IN_SERVINGS = 'A recipe is added in servings, not grams.';
+
     public function __construct(private readonly MealEdit $edit) {}
 
     /** @param  list<MealFoodAddEntry>  $entries */
@@ -47,7 +49,7 @@ final class AddMealFoods
     private function join(User $user, MealEntries $meal, MealFoodAddEntry $entry, int $index): void
     {
         if ($entry->recipe_id !== null && $entry->grams !== null) {
-            throw new FieldRefused("entries.{$index}.grams", 'A recipe is added in servings, not grams.');
+            throw new FieldRefused("entries.{$index}.grams", self::RECIPE_IN_SERVINGS);
         }
 
         $id = strtolower($entry->id);
