@@ -45,18 +45,19 @@ function typedCm(cm: number | null): void {
     if (cm !== null) emit('answer', { height: { unit: 'cm', cm } });
 }
 
-// A height saves both halves; the other half is what its field shows: the last one typed,
-// which may still be waiting to save, until the server's changes. An empty half is 0, as in
-// rp-clone's field. Whole feet, as rp-clone's field takes them; inches keep their decimals.
+// A height saves both halves; the other half is the last one typed, which may still be
+// waiting to save. The halves follow the server only once no save is out (`locked` off), so
+// a read landing between queued saves does not undo a half typed since. An empty half is
+// 0, as in rp-clone's field. Whole feet, as rp-clone's field takes them; inches keep their decimals.
 const feet = ref(props.about.height.feet);
 const inches = ref(props.about.height.inches);
 watch(
-    () => props.about.height.feet,
-    (saved) => (feet.value = saved),
-);
-watch(
-    () => props.about.height.inches,
-    (saved) => (inches.value = saved),
+    () => [props.about.height.feet, props.about.height.inches, props.locked] as const,
+    ([savedFeet, savedInches, locked]) => {
+        if (locked) return;
+        feet.value = savedFeet;
+        inches.value = savedInches;
+    },
 );
 
 function typedFeet(typed: number | null): void {
