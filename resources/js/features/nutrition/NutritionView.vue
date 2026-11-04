@@ -7,7 +7,7 @@ import { useRead } from '@/app/useRead';
 import type { NutritionShowOutput } from '@/contracts/nutrition_show';
 import type { WeekShowOutput } from '@/contracts/week_show';
 import ItemCard from '@/design/ItemCard.vue';
-import ProgressBar from '@/design/ProgressBar.vue';
+import MacroBar from '@/design/MacroBar.vue';
 import { toneIcons } from '@/design/toneIcons';
 import { toneClasses } from '@/design/tones';
 import WeekStrip from '@/design/WeekStrip.vue';
@@ -37,14 +37,6 @@ const weekPending = computed(() => props.pending || isPending('week_show'));
 function go(date: string | null | undefined): void {
     if (date) void router.replace(`/nutrition/${date}`);
 }
-
-// Each macro keeps its colour everywhere (UI-011) and its full name for a screen reader.
-const MACROS: Record<string, { title: string; tint: 'calories' | 'protein' | 'fat' | 'carbs' }> = {
-    Cal: { title: 'Calories', tint: 'calories' },
-    P: { title: 'Protein', tint: 'protein' },
-    F: { title: 'Fat', tint: 'fat' },
-    C: { title: 'Carbs', tint: 'carbs' },
-};
 
 // Recipes and the Shopping list are V_RECIPES' and V_SHOP's screens, at these paths.
 const LINKS = [
@@ -98,15 +90,10 @@ const LINKS = [
                                     </svg>
                                 </template>
                                 <div class="grid grid-cols-2 gap-x-4 gap-y-1.5" data-test="bars">
-                                    <ProgressBar
+                                    <MacroBar
                                         v-for="bar in meal.bars"
                                         :key="bar.label"
-                                        :title="MACROS[bar.label]?.title ?? bar.label"
-                                        :label="bar.label"
-                                        :value-text="bar.value_text"
-                                        :fraction="bar.fraction"
-                                        :tone="bar.tone"
-                                        :tint="MACROS[bar.label]?.tint ?? 'accent'"
+                                        :bar="bar"
                                     />
                                 </div>
                             </ItemCard>

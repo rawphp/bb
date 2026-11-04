@@ -13,7 +13,7 @@ import { screenRead, type ReadFailure } from '@/app/screenRead';
 import { onScreenReturn } from '@/app/screenTop';
 import { ulid } from '@/app/ulid';
 import { useWrite } from '@/app/useWrite';
-import ProgressBar from '@/design/ProgressBar.vue';
+import MacroBar from '@/design/MacroBar.vue';
 import StatusPill from '@/design/StatusPill.vue';
 import PantryFilterBar from './PantryFilterBar.vue';
 import PantryRowView, { type Weighing } from './PantryRowView.vue';
@@ -256,13 +256,6 @@ function pickLine(pick: Pick): string {
     return [pickDetail(pick), amountOf(pick)].filter((part) => part).join(' · ');
 }
 
-const MACROS: Record<string, { title: string; tint: 'calories' | 'protein' | 'fat' | 'carbs' }> = {
-    Cal: { title: 'Calories', tint: 'calories' },
-    P: { title: 'Protein', tint: 'protein' },
-    F: { title: 'Fat', tint: 'fat' },
-    C: { title: 'Carbs', tint: 'carbs' },
-};
-
 async function confirm(): Promise<void> {
     if (forRecipe.value) {
         if (basket.value.length > 0) emit('picked', basket.value.map((pick) => ({ food_id: pick.id, name: pick.name })));
@@ -500,15 +493,10 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                     </li>
                 </TransitionGroup>
                 <div v-if="fitShown" data-test="basket-bars" class="grid grid-cols-2 gap-x-4 gap-y-1 md:grid-cols-4">
-                    <ProgressBar
+                    <MacroBar
                         v-for="bar in preview!.bars"
                         :key="bar.label"
-                        :title="MACROS[bar.label]?.title ?? bar.label"
-                        :label="bar.label"
-                        :value-text="bar.value_text"
-                        :fraction="bar.fraction"
-                        :tone="bar.tone"
-                        :tint="MACROS[bar.label]?.tint ?? 'accent'"
+                        :bar="bar"
                     />
                 </div>
                 <button v-if="hint" type="button" data-test="basket-hint" class="flex min-h-tap items-center self-start text-left text-sm font-medium text-accent" @click="groupFilter = hint.group as PantryGroup">
