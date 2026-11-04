@@ -466,6 +466,8 @@ describe('PantryView', () => {
 
             const hint = wrapper.find('[data-test="basket-hint"]');
             expect(hint.text()).toBe('Short 21 g fat. Add a food from Fat · Recommended.');
+            // A full tap height, as the meal screen's hint has, clear of Add below it.
+            expect(hint.classes()).toContain('min-h-tap');
             await hint.trigger('click');
             await flushPromises();
             expect(lastRead()).toMatchObject({ group: 'fat_recommended' });

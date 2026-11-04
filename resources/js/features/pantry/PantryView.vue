@@ -511,7 +511,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                         :tint="MACROS[bar.label]?.tint ?? 'accent'"
                     />
                 </div>
-                <button v-if="hint" type="button" data-test="basket-hint" class="self-start text-left text-sm font-medium text-accent" @click="groupFilter = hint.group as PantryGroup">
+                <button v-if="hint" type="button" data-test="basket-hint" class="flex min-h-tap items-center self-start text-left text-sm font-medium text-accent" @click="groupFilter = hint.group as PantryGroup">
                     {{ hint.text }}
                 </button>
             </section>
