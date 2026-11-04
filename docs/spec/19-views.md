@@ -83,7 +83,7 @@ resources/js/
 | Onboarding/RateLengthStep.swift | RateLengthStep | `onboarding/` | |
 | Onboarding/ReviewStep.swift | ReviewStep, StartingPlanView | `onboarding/` | Also rendered as a chat card (AGT-032) |
 | Onboarding/ScreeningStep.swift | ScreeningStep, ScreeningRowView | `onboarding/` | Also opened as a sheet from chat (AGT-031) |
-| Onboarding/SetupGateView.swift | | `app/` router guard | Sends users without a plan to onboarding |
+| Onboarding/SetupGateView.swift | | `today/` TodayView, from `today_show.setup_needed` | Sends users without a plan to onboarding |
 | Onboarding/TrainingSteps.swift | ExperienceStep, TrainingDaysStep, TrainingPlanStep | `onboarding/` | |
 | Pantry/PantryView.swift, PantryFilterBar.swift, PantryRowView.swift | PantryView, PantryFilterBar, PantryChip, PantryRowView | `pantry/` | |
 | Plan/PlanView.swift | PlanView, CurrentPhaseView (PlanDestinations, PlanActions inline) | `plan/` | |

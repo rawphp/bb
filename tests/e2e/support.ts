@@ -34,7 +34,7 @@ export function rows<T>(sql: string, ...params: string[]): T[] {
     return JSON.parse(execFileSync('php', ['-r', php, '--', port, sql, ...params], { encoding: 'utf8' })) as T[];
 }
 
-/** ACC-001: a new account, after the signed-out page settles (signIn says why). Returns its id. */
+/** ACC-001: a new account, after the signed-out page settles (signIn says why). Today sends it to setup (ONB-002). Returns its id. */
 export async function createAccount(page: Page, email: string): Promise<string> {
     await page.goto('/sign-in', { waitUntil: 'networkidle' });
     await page.getByRole('button', { name: 'New here? Create an account' }).click();
@@ -43,7 +43,7 @@ export async function createAccount(page: Page, email: string): Promise<string> 
     await page.getByLabel('Password', { exact: true }).fill('a-long-password-1');
     await page.getByLabel('Confirm password').fill('a-long-password-1');
     await page.getByRole('button', { name: 'Create account', exact: true }).click();
-    await page.waitForURL('**/today');
+    await page.waitForURL('**/onboarding');
     return String(rows<{ id: number }>('select id from users where email = ?', email)[0]!.id);
 }
 

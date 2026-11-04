@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { write } from '@/app/call';
 import { writeFailureMessage } from '@/app/errors';
@@ -74,6 +74,26 @@ const weekPending = computed(() => props.pending || isPending('week_show'));
 function reload(): void {
     void loadBoth().catch(() => undefined);
 }
+
+// ONB-002: with no plan yet, setup is still open, so Today sends the user back to it. A
+// cached copy can predate setup finishing (on the Coach, or another device), so only the
+// server's own answer sends them.
+async function backToSetup(): Promise<void> {
+    try {
+        await load({ fresh: true });
+    } catch {
+        return;
+    }
+    if (data.value?.setup_needed) void router.replace('/onboarding');
+}
+
+watch(
+    () => data.value?.setup_needed,
+    (needed) => {
+        if (needed) void backToSetup();
+    },
+    { immediate: true },
+);
 
 // Device settings, kept like the appearance: the condensed view (SCH-007) and the tour,
 // which runs once (ONB-030).
@@ -520,7 +540,7 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
 
             <TodayMissedDaySheet v-if="askMissed" :payload="data" @close="closeMissed('day')" />
             <TodayMissedWeeksSheet v-else-if="askMissedWeeks" :payload="data" @close="closeMissed('weeks')" />
-            <TodayTourOverlay v-if="touring" @done="endTour" />
+            <TodayTourOverlay v-if="touring && !data?.setup_needed" @done="endTour" />
         </template>
     </main>
 </template>

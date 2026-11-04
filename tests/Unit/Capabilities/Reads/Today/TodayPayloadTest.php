@@ -72,6 +72,12 @@ it('SCH-001 ONB-031 plans nothing before the plan starts, and upcoming days can 
         ->and($upcoming['workouts'][0]['title'])->toBe('Week 1 · Day 1 · Upper A');
 });
 
+it('ONB-002 setup is needed until the user has a plan, so Today sends them back to it', function () {
+    expect(todayPayload(W::snapshot(withPlan: false))['setup_needed'])->toBeTrue()
+        ->and(todayPayload(W::snapshot())['setup_needed'])->toBeFalse()
+        ->and(todayPayload(W::snapshot(today: '2026-09-10'))['setup_needed'])->toBeFalse();
+});
+
 it('ONB-031 shows no banner once the plan has started', function () {
     expect(todayPayload(W::snapshot())['banners'])->toBe([])
         ->and(todayPayload(W::snapshot(today: '2026-09-12'))['banners'])->toBe([]);

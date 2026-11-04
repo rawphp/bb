@@ -41,6 +41,10 @@
             "type": "boolean",
             "description": "REV-001: the review card shows."
         },
+        "setup_needed": {
+            "type": "boolean",
+            "description": "ONB-002: the user has no plan yet, so Today opens setup, where they left it."
+        },
         "next_mesocycle": {
             "type": [
                 "object",
@@ -1281,6 +1285,7 @@
         "title",
         "banners",
         "review_available",
+        "setup_needed",
         "timeline",
         "meals",
         "workouts",

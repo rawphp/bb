@@ -8,6 +8,7 @@
         }
     ],
     "review_available": false,
+    "setup_needed": false,
     "next_mesocycle": null,
     "totals": {
         "day_type": {

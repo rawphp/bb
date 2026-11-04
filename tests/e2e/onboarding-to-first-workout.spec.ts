@@ -96,11 +96,10 @@ test('ONB-020 WO-010 SCH-052 SCH-054 a new account onboards, starts its first wo
     await page.getByLabel('Password', { exact: true }).fill('a-long-password-1');
     await page.getByLabel('Confirm password').fill('a-long-password-1');
     await page.getByRole('button', { name: 'Create account', exact: true }).click();
-    await page.waitForURL('**/today');
 
-    // ONB-002 to ONB-018: the thirteen steps, then the review. Nothing sends a new account to setup yet (the
-    // SetupGate in docs/spec/19-views.md), so the journey opens it.
-    await page.goto('/onboarding', { waitUntil: 'networkidle' });
+    // ONB-002 to ONB-018: Today sends a new account to setup, then the thirteen steps and the review.
+    await page.waitForURL('**/onboarding');
+    await page.waitForLoadState('networkidle');
     const visited: string[] = [];
     for (let step = 1; step <= 13; step++) {
         await expect(page.getByText(`Step ${step} of 13`, { exact: true })).toBeVisible();
