@@ -18,7 +18,7 @@ import { toolLine } from './toolLabels';
 // conversation, which agent_status_show names; the client never keeps the ULID itself.
 // A turn's progress is a poll of the package's events, about once a second, until its
 // terminal event. Each tool call adds a line when it comes back. The package does not
-// stream at v0.10.0, so the reply shows in one piece, from history, when the turn ends,
+// stream at v0.11.0, so the reply shows in one piece, from history, when the turn ends,
 // and the turn's writes follow as change cards (AGT-013). Offline it shows the history
 // it last loaded and needs a connection to send (AGT-023). No photo attach (AGT-022 is later).
 // Opened from setup (`onboarding`, AGT-030), it reads setup on open and after each turn, and
