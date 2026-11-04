@@ -97,6 +97,34 @@ export interface WeighInsShowOutput {
      */
     weight_field: string;
     waist_field: string;
+    /**
+     * The first day of the week the row falls in, as the screen's weeks name it (WT-008).
+     */
+    week: string;
+  }[];
+  /**
+   * WT-008: a header for each week the rows fall in, newest first.
+   */
+  weeks: {
+    /**
+     * The week's first day; each row's week names it.
+     */
+    week: string;
+    /**
+     * "This week", or the week's days: "24 – 30 Oct".
+     */
+    title: string;
+    /**
+     * "Trend 81.8 kg": the trend at the week's end, or today for this week; empty without one.
+     */
+    trend_label: string;
+    /**
+     * "+0.3 kg on last week": the change in trend from the week before; null for the first week of weigh-ins.
+     */
+    change?: {
+      text: string;
+      tone: "good" | "neutral" | "warning" | "info";
+    } | null;
   }[];
   /**
    * The pill on each row marked is_missed.
@@ -138,4 +166,4 @@ export interface WeighInsShowOutput {
   next_before?: string | null;
 }
 
-export const outputVersion = 'b0558b786eb2';
+export const outputVersion = '7dc48200bf44';

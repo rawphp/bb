@@ -89,6 +89,20 @@ final readonly class TrendWeight
     }
 
     /**
+     * WT-008: the trend on $date's day, holding the last trend on any day after the last weigh-in. Null before the
+     * first weigh-in.
+     */
+    public function kgOnOrBefore(DateTimeImmutable $date): ?float
+    {
+        if ($this->points === []) {
+            return null;
+        }
+        $last = $this->points[array_key_last($this->points)];
+
+        return $this->startOfDay($date) > $last->day ? $last->trendKg : $this->trendKg($date);
+    }
+
+    /**
      * Signed change in trend over the 7 days ending on $date, in percent of the trend
      * 7 days earlier: positive gains, negative loses (same as Phase). Without a date,
      * the 7 days ending on the last day.
