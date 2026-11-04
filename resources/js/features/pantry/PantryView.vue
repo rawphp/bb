@@ -5,12 +5,16 @@ import type { DietFiltersSetInput } from '@/contracts/diet_filters_set';
 import type { FoodFavoriteSetInput } from '@/contracts/food_favorite_set';
 import type { FoodSearchInput, FoodSearchOutput } from '@/contracts/food_search';
 import type { MealFoodAddInput } from '@/contracts/meal_food_add';
+import type { MealFoodAddShowInput, MealFoodAddShowOutput } from '@/contracts/meal_food_add_show';
 import type { MealSavedMealLoadInput } from '@/contracts/meal_saved_meal_load';
+import { readNow } from '@/app/call';
 import ReadState from '@/app/ReadState.vue';
 import { screenRead, type ReadFailure } from '@/app/screenRead';
 import { onScreenReturn } from '@/app/screenTop';
 import { ulid } from '@/app/ulid';
 import { useWrite } from '@/app/useWrite';
+import ProgressBar from '@/design/ProgressBar.vue';
+import StatusPill from '@/design/StatusPill.vue';
 import PantryFilterBar from './PantryFilterBar.vue';
 import PantryRowView, { type Weighing } from './PantryRowView.vue';
 import { CONFIRM_TITLES, TABS, type PantryCollection, type PantryGroup, type PantryPurpose, type PantrySource, type PickedFood, type PantryTab, type PantryUnit } from './options';
@@ -31,6 +35,8 @@ type Pick =
 // Nutrition tab's browser (NAV-001): favorites and filters, nothing to add to.
 // For a recipe (RCP-001, RCP-003, rp-clone's PantryPurpose) it picks foods only and hands
 // them back: several for the recipe's ingredients, or one to match a drafted item.
+// The basket stands at the foot beside Add. For a meal it asks meal_food_add_show what Add
+// would make of the picks (FOOD-030): each one's amount and the meal's bars after it.
 const props = withDefaults(
     defineProps<{
         payload?: FoodSearchOutput;
@@ -200,6 +206,63 @@ onUnmounted(() => (gone = true));
 // FOOD-028: the foods and recipes go in one write; each saved meal loads on its own.
 // Each pick leaves the basket once its write is done, so a retry sends only the rest.
 // The basket cannot change meanwhile: the screen is inert while Add runs.
+/** A food or recipe pick as meal_food_add takes it. */
+function entryOf(pick: Exclude<Pick, { kind: 'saved_meal' }>): MealFoodAddInput['entries'][number] {
+    return pick.kind === 'food' ? { id: pick.entryId, food_id: pick.id, weighing: weighingOf(pick.id, pick.hasCooked) } : { id: pick.entryId, recipe_id: pick.id };
+}
+
+function sentPicks(): Exclude<Pick, { kind: 'saved_meal' }>[] {
+    return basket.value.filter((pick): pick is Exclude<Pick, { kind: 'saved_meal' }> => pick.kind !== 'saved_meal');
+}
+
+// FOOD-030: what Add would make of the basket. Each change asks again; only the latest answer
+// shows. Offline, or with no answer, the basket lists the picks alone.
+const preview = ref<MealFoodAddShowOutput | null>(null);
+let asked = 0;
+const previewInput = computed<MealFoodAddShowInput | null>(() => {
+    if (!forMeal.value) return null;
+    const entries = sentPicks().map(entryOf);
+    return entries.length === 0 ? null : ({ meal_id: props.mealId!, entries: entries as MealFoodAddShowInput['entries'] } satisfies MealFoodAddShowInput);
+});
+watch(
+    () => JSON.stringify(previewInput.value),
+    () => {
+        const input = previewInput.value;
+        const ask = ++asked;
+        if (input === null) {
+            preview.value = null;
+            return;
+        }
+        readNow<MealFoodAddShowOutput>('meal_food_add_show', { ...input }).then(
+            (answer) => {
+                if (ask === asked) preview.value = answer;
+            },
+            () => {
+                if (ask === asked) preview.value = null;
+            },
+        );
+    },
+);
+// A saved meal loads on its own write, so the fit cannot say what the meal is after it.
+const fitShown = computed(() => preview.value !== null && !basket.value.some((pick) => pick.kind === 'saved_meal'));
+const hint = computed(() => (fitShown.value ? (preview.value!.hints[0] ?? null) : null));
+
+function amountOf(pick: Pick): string | null {
+    if (pick.kind === 'saved_meal' || !fitShown.value) return null;
+    return preview.value?.entries.find((entry) => entry.id === pick.entryId)?.amount_text ?? null;
+}
+
+function pickLine(pick: Pick): string {
+    return [pickDetail(pick), amountOf(pick)].filter((part) => part).join(' · ');
+}
+
+const MACROS: Record<string, { title: string; tint: 'calories' | 'protein' | 'fat' | 'carbs' }> = {
+    Cal: { title: 'Calories', tint: 'calories' },
+    P: { title: 'Protein', tint: 'protein' },
+    F: { title: 'Fat', tint: 'fat' },
+    C: { title: 'Carbs', tint: 'carbs' },
+};
+
 async function confirm(): Promise<void> {
     if (forRecipe.value) {
         if (basket.value.length > 0) emit('picked', basket.value.map((pick) => ({ food_id: pick.id, name: pick.name })));
@@ -208,10 +271,8 @@ async function confirm(): Promise<void> {
     if (!props.mealId || basket.value.length === 0) return;
     const here = router.currentRoute.value.fullPath;
     const shown = () => !gone && router.currentRoute.value.fullPath === here;
-    const sent = basket.value.filter((pick) => pick.kind !== 'saved_meal');
-    const entries = sent.map((pick): MealFoodAddInput['entries'][number] =>
-        pick.kind === 'food' ? { id: pick.entryId, food_id: pick.id, weighing: weighingOf(pick.id, pick.hasCooked) } : { id: pick.entryId, recipe_id: pick.id },
-    );
+    const sent = sentPicks();
+    const entries = sent.map(entryOf);
     if (entries.length > 0) {
         const input = { meal_id: props.mealId, entries: entries as MealFoodAddInput['entries'] } satisfies MealFoodAddInput;
         if ((await adding.send('meal_food_add', input, "Couldn't add the foods. Try again.")) !== 'done') return;
@@ -293,29 +354,6 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
         <p v-if="collection === null && source !== null && query.trim() === ''" class="text-sm text-secondary-text">The source filter narrows search results. Type to search.</p>
 
         <template v-if="data">
-            <section v-if="basket.length > 0" data-test="basket" aria-labelledby="pantry-basket">
-                <h2 id="pantry-basket" class="pb-1 text-lg font-semibold">Adding to {{ destination }}</h2>
-                <ul class="divide-y divide-secondary-text/15">
-                    <li v-for="pick in basket" :key="pick.key" class="flex min-h-tap items-center gap-2 py-1.5">
-                        <span class="min-w-0 flex-1">
-                            <span class="block text-primary-text">{{ pick.name }}</span>
-                            <span v-if="pickDetail(pick)" class="block text-sm text-secondary-text">{{ pickDetail(pick) }}</span>
-                        </span>
-                        <button
-                            type="button"
-                            class="flex min-h-tap min-w-tap items-center justify-center text-secondary-text"
-                            :aria-label="`Remove ${pick.name}`"
-                            @click="remove(pick.key)"
-                        >
-                            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-6">
-                                <circle cx="12" cy="12" r="10" fill="currentColor" />
-                                <path d="M7.5 12h9" stroke="var(--color-background)" stroke-width="2.2" stroke-linecap="round" />
-                            </svg>
-                        </button>
-                    </li>
-                </ul>
-            </section>
-
             <section v-if="!forRecipe && data.already_in_meal.length > 0" data-test="already-in-meal" aria-labelledby="pantry-in-meal">
                 <h2 id="pantry-in-meal" class="pb-1 text-lg font-semibold">Already in meal</h2>
                 <ul class="divide-y divide-secondary-text/15">
@@ -431,6 +469,52 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
         </div>
 
         <div v-if="picking" class="sticky bottom-0 -mx-4 mt-auto bg-background/90 px-4 py-2 backdrop-blur">
+            <!-- FOOD-028, FOOD-030: the basket stays in view while the foods scroll, and waits with the rest while Add runs. -->
+            <section v-if="basket.length > 0" data-test="basket" aria-labelledby="pantry-basket" class="flex flex-col gap-2 pb-2" :inert="adding.busy.value || undefined">
+                <div class="flex min-h-7 items-center justify-between gap-2">
+                    <h2 id="pantry-basket" class="text-base font-semibold">Adding to {{ destination }}</h2>
+                    <StatusPill v-if="fitShown && preview!.targets_met" :text="preview!.targets_met.text" :tone="preview!.targets_met.tone" />
+                </div>
+                <TransitionGroup
+                    tag="ul"
+                    class="-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0"
+                    enter-active-class="transition-transform duration-200 ease-[cubic-bezier(0.2,1.4,0.4,1)] motion-reduce:transition-opacity"
+                    enter-from-class="scale-75 motion-reduce:scale-100 motion-reduce:opacity-0"
+                >
+                    <li v-for="pick in basket" :key="pick.key" class="flex min-h-tap max-w-[18rem] shrink-0 items-center gap-1 rounded-2xl bg-surface py-1 pl-3 shadow-sm ring-1 ring-secondary-text/15">
+                        <span class="min-w-0 flex-1 leading-tight">
+                            <span class="block truncate text-sm font-medium text-primary-text">{{ pick.name }}</span>
+                            <span v-if="pickLine(pick)" data-test="basket-amount" class="block truncate text-xs text-secondary-text tabular-nums">{{ pickLine(pick) }}</span>
+                        </span>
+                        <button
+                            type="button"
+                            class="flex min-h-tap min-w-tap shrink-0 items-center justify-center text-secondary-text"
+                            :aria-label="`Remove ${pick.name}`"
+                            @click="remove(pick.key)"
+                        >
+                            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-5">
+                                <circle cx="12" cy="12" r="10" fill="currentColor" />
+                                <path d="M7.5 12h9" stroke="var(--color-background)" stroke-width="2.2" stroke-linecap="round" />
+                            </svg>
+                        </button>
+                    </li>
+                </TransitionGroup>
+                <div v-if="fitShown" data-test="basket-bars" class="grid grid-cols-2 gap-x-4 gap-y-1 md:grid-cols-4">
+                    <ProgressBar
+                        v-for="bar in preview!.bars"
+                        :key="bar.label"
+                        :title="MACROS[bar.label]?.title ?? bar.label"
+                        :label="bar.label"
+                        :value-text="bar.value_text"
+                        :fraction="bar.fraction"
+                        :tone="bar.tone"
+                        :tint="MACROS[bar.label]?.tint ?? 'accent'"
+                    />
+                </div>
+                <button v-if="hint" type="button" data-test="basket-hint" class="self-start text-left text-sm font-medium text-accent" @click="groupFilter = hint.group as PantryGroup">
+                    {{ hint.text }}
+                </button>
+            </section>
             <p v-if="adding.error.value" role="alert" data-test="confirm-error" class="pb-2 text-sm text-tone-warning">{{ adding.error.value }}</p>
             <button
                 type="button"

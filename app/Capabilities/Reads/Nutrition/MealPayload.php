@@ -129,7 +129,7 @@ final class MealPayload
     }
 
     /** MEAL-001: planned against target, in whole kcal and grams ("550/1040"), and how full to draw it. */
-    private static function bar(string $label, float $planned, float $target): MacroBar
+    public static function bar(string $label, float $planned, float $target): MacroBar
     {
         $value = round($planned);
         $goal = round($target);
@@ -154,7 +154,7 @@ final class MealPayload
     }
 
     /** MEAL-007: "Short 32 g carbs. Add a food from Carbs · Recommended." */
-    private static function hint(Shortfall $shortfall): MealHint
+    public static function hint(Shortfall $shortfall): MealHint
     {
         return new MealHint(
             text: sprintf('Short %d g %s. Add a food from %s.', (int) round($shortfall->shortG), $shortfall->macro->value, Pantry::groupTitle($shortfall->group)),
@@ -232,11 +232,8 @@ final class MealPayload
             weighing: $planned->is_cooked ? Weighing::Cooked : Weighing::Raw,
             isLocked: $planned->is_locked,
         );
+        $amount = self::gramsText($fit);
         $household = $fit->household();
-        $amount = ((int) round($planned->grams)).' g';
-        if ($household !== null) {
-            $amount .= ' (about '.TodaySnapshot::number($household->count).' '.$household->label.($household->count == 1.0 ? '' : 's').')';
-        }
         $ounces = $planned->unit === FoodUnit::Ounces->value;
 
         return ['fit' => $fit, 'row' => new MealEntry(
@@ -251,6 +248,18 @@ final class MealPayload
             macros: self::macros($fit->macros()),
             is_locked: $planned->is_locked,
         )];
+    }
+
+    /** MEAL-001: "210 g (about 1.4 fillets)": whole grams, and the household measure when the food has one. */
+    public static function gramsText(MealFood $fit): string
+    {
+        $household = $fit->household();
+        $amount = ((int) round($fit->grams)).' g';
+        if ($household !== null) {
+            $amount .= ' (about '.TodaySnapshot::number($household->count).' '.$household->label.($household->count == 1.0 ? '' : 's').')';
+        }
+
+        return $amount;
     }
 
     /** @return array{row: MealEntry, fit: MealFood} */

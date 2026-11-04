@@ -20,6 +20,7 @@ $contracts = [
     'shopping_show' => [Data\ShoppingShowInput::class, Data\ShoppingShowOutput::class],
     'custom_foods_show' => [Data\CustomFoodsShowInput::class, Data\CustomFoodsShowOutput::class],
     'meal_food_add' => [Data\MealFoodAddInput::class, null],
+    'meal_food_add_show' => [Data\MealFoodAddShowInput::class, Data\MealFoodAddShowOutput::class],
     'meal_food_remove' => [Data\MealFoodRemoveInput::class, null],
     'meal_foods_clear' => [Data\MealFoodsClearInput::class, null],
     'meal_food_amount_set' => [Data\MealFoodAmountSetInput::class, null],

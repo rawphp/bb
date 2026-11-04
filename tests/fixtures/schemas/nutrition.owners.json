@@ -2,6 +2,7 @@
     "nutrition_show": 71,
     "meal_show": 71,
     "meal_food_add": 238,
+    "meal_food_add_show": 238,
     "meal_food_remove": 238,
     "meal_foods_clear": 238,
     "meal_food_amount_set": 238,
