@@ -1,7 +1,9 @@
 <?php
 
 use App\Models\Mesocycle;
+use App\Models\PlanWeek;
 use App\Models\User;
+use App\Models\WorkoutSession;
 use Illuminate\Support\Carbon;
 use Tests\Support\ScreenFixture;
 use Tests\Support\TrainSeed;
@@ -9,6 +11,20 @@ use Tests\Support\TrainSeed;
 // The HTTP seam of train_show and its screen fixtures. The rules are unit tests (TrainPayloadTest).
 
 afterEach(fn () => Carbon::setTestNow());
+
+/** What train_show offers as today's session and what today_show's workout row names, side by side. */
+function trainAndToday(User $user): array
+{
+    $train = test()->actingAs($user)->postJson('/capabilities/train_show')->assertOk()->json('data.todays_session');
+    $workout = test()->actingAs($user)->postJson('/capabilities/today_show')->assertOk()->json('data.workouts.0');
+
+    return [
+        $train,
+        $workout === null ? null : [
+            'title' => $workout['title'], 'mesocycle_id' => $workout['mesocycle_id'], 'week' => $workout['week'], 'day' => $workout['day'],
+        ],
+    ];
+}
 
 it('NAV-002 refuses train_show when signed out', function () {
     $this->postJson('/capabilities/train_show')->assertUnauthorized();
@@ -77,4 +93,38 @@ it('MESO-001 lists only the user\'s own mesocycles', function () {
 
     expect($data['sections'])->toBe([])
         ->and(Mesocycle::query()->count())->toBe(1);
+});
+
+it('NAV-002 SCH-040 SCH-050 a session moved to today is the one Train and Today both name', function () {
+    Carbon::setTestNow('2026-09-23 10:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+    // Week 3's Lower A moved from Thursday 24 September to today, Wednesday 23 September.
+    WorkoutSession::factory()->for($user)->create(['mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 2, 'is_skipped' => false,
+        'planned_start_at' => '2026-09-23 17:30:00', 'planned_end_at' => '2026-09-23 18:30:00', 'actual_start_at' => null, 'actual_end_at' => null]);
+
+    [$train, $today] = trainAndToday($user);
+
+    expect($train)->toBe(['title' => 'Week 3 · Day 2 · Lower A', 'mesocycle_id' => $mesocycle->id, 'week' => 3, 'day' => 2])
+        ->and($today)->toBe($train);
+});
+
+it('NAV-002 SCH-060 after a paused week Train and Today both name the same mesocycle week', function () {
+    Carbon::setTestNow('2026-09-24 10:00:00');
+    $user = TrainSeed::user();
+    $mesocycle = TrainSeed::mesocycle($user);
+    PlanWeek::factory()->for($user)->create(['start_date' => '2026-09-14', 'is_away' => true, 'away_training' => 'pause']);
+
+    [$train, $today] = trainAndToday($user);
+
+    expect($train)->toBe(['title' => 'Week 2 · Day 2 · Lower A', 'mesocycle_id' => $mesocycle->id, 'week' => 2, 'day' => 2])
+        ->and($today)->toBe($train);
+});
+
+it('NAV-002 SCH-040 on a rest day neither Train nor Today names a session', function () {
+    Carbon::setTestNow('2026-09-22 10:00:00');
+    $user = TrainSeed::user();
+    TrainSeed::mesocycle($user);
+
+    expect(trainAndToday($user))->toBe([null, null]);
 });

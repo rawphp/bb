@@ -154,6 +154,17 @@ final class TodaySnapshot
     }
 
     /**
+     * What the plan puts on `$train`'s days, and nothing of the days' meals or targets: Train asks it for today's
+     * session (NAV-002), so Train and Today place sessions by the one rule {@see planning()}.
+     */
+    public static function placing(TrainSnapshot $train): self
+    {
+        $none = new Collection;
+
+        return new self($train, $train->today, null, $none, $none, $none, $none, $none, $none, null);
+    }
+
+    /**
      * The plan and mesocycles as TrainSnapshot reads them, with these sessions and their sets and feedback.
      *
      * @param  Collection<int, Mesocycle>  $mesocycles

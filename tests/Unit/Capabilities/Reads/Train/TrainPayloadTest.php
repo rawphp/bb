@@ -313,6 +313,26 @@ it('NAV-002 MESO-005 a floating split\'s days fall on the training weekdays in o
         ->toBe('Week 4 · Day 2 · Lower A');
 });
 
-it('NAV-002 without a plan the weeks run from the mesocycle\'s start', function () {
-    expect(train(W::snapshot(today: '2026-10-08', withPlan: false))['todays_session']['week'])->toBe(4);
+it('NAV-002 SCH-040 without a plan Train offers no session, as Today places none', function () {
+    expect(train(W::snapshot(today: '2026-10-08', withPlan: false))['todays_session'])->toBeNull();
+});
+
+it('NAV-002 SCH-040 SCH-050 a session moved to today is today\'s session, and its own weekday is left without one', function () {
+    // Week 4's Day 2 "Lower A" moved from Thursday 8 October to Wednesday 7 October.
+    $sessions = [...W::sessions(), W::session('m2w4d2', 4, 2, planned: '2026-10-07 17:30:00')];
+
+    expect(train(W::snapshot(today: '2026-10-07', sessions: $sessions))['todays_session'])->toBe([
+        'title' => 'Week 4 · Day 2 · Lower A',
+        'mesocycle_id' => W::MESO,
+        'week' => 4,
+        'day' => 2,
+    ])->and(train(W::snapshot(today: '2026-10-08', sessions: $sessions))['todays_session'])->toBeNull();
+});
+
+it('NAV-002 SCH-060 a paused away week before today is not a mesocycle week', function () {
+    // The plan week from Monday 21 September is paused, so Thursday 8 October is in the mesocycle's week 3.
+    $planWeeks = [W::planWeek('2026-09-21', awayTraining: 'pause')];
+
+    expect(train(W::snapshot(today: '2026-10-08', sessions: [], sets: [], planWeeks: $planWeeks))['todays_session']['title'])
+        ->toBe('Week 3 · Day 2 · Lower A');
 });
