@@ -240,7 +240,12 @@ textarea {
 /* Wide screens: 768 px and up (layout.ts, WIDE_MIN_PX). The tab bar becomes a left rail at
    full height (NAV-003), the stacks and the floating layer (toasts, Coach button,
    ActiveWorkoutBar) fill the column to its right, and the app fills the window (PLT-002).
-   The sheet host keeps covering the whole app. */
+   The sheet host keeps covering the whole app; a bottom sheet's panel sits in the screen column. */
+:root {
+    /* The rail's width, shared with design/BottomSheet.vue, whose sheets sit in the column to its right. */
+    --bb-rail-width: 5.5rem;
+}
+
 @media (min-width: 768px) {
     #app {
         max-width: none;
@@ -248,7 +253,7 @@ textarea {
 
     .bb-shell {
         display: grid;
-        grid-template-columns: 5.5rem minmax(0, 1fr);
+        grid-template-columns: var(--bb-rail-width) minmax(0, 1fr);
         grid-template-rows: minmax(0, 1fr) auto;
     }
 
