@@ -1,11 +1,12 @@
-import { CapabilityError, TIMEOUT_MS } from './call';
+import { CapabilityError, csrfToken, TIMEOUT_MS } from './call';
 
 // The chat's transport to capabilities-ai's own routes (AGT-021), the one other place
 // that calls fetch. The package answers these outside the capability rail, so there is
 // no capability to call: history, a new message, cancel and a turn's events, one
 // function per route. They go with call.ts's credentials and headers, and a failure is
 // the same CapabilityError call.ts throws: the package's error envelope as the body, or
-// status 0 when no answer came.
+// status 0 when no answer came. A POST answered 419 is sent once more with a fresh CSRF
+// token, inside the same deadline.
 
 const PREFIX = '/capabilities-ai/chat';
 
@@ -45,22 +46,9 @@ async function request<T>(label: string, path: string, body?: Record<string, unk
     const timer = setTimeout(() => deadline.abort(), TIMEOUT_MS);
 
     try {
-        let response: Response;
-        try {
-            const headers: Record<string, string> = { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
-            if (body !== undefined) {
-                headers['Content-Type'] = 'application/json';
-                headers['X-XSRF-TOKEN'] = await csrfToken(deadline.signal);
-            }
-            response = await fetch(`${PREFIX}/${path}`, {
-                method: body === undefined ? 'GET' : 'POST',
-                credentials: 'same-origin',
-                headers,
-                ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-                signal: deadline.signal,
-            });
-        } catch {
-            throw new CapabilityError(label, 0, { reason: deadline.signal.aborted ? 'timeout' : 'network' });
+        let response = await attempt(label, path, body, deadline.signal, false);
+        if (response.status === 419 && body !== undefined) {
+            response = await attempt(label, path, body, deadline.signal, true);
         }
         // Read before the deadline is cleared, so a stalled body can't hang the chat.
         const answer: unknown = await response.json().catch(() => null);
@@ -72,20 +60,24 @@ async function request<T>(label: string, path: string, body?: Record<string, unk
     }
 }
 
-/** Sanctum's XSRF-TOKEN cookie, fetched first when missing, as call.ts does. */
-async function csrfToken(signal: AbortSignal): Promise<string> {
-    let token = cookie('XSRF-TOKEN');
-
-    if (token === null) {
-        await fetch('/sanctum/csrf-cookie', { credentials: 'same-origin', signal });
-        token = cookie('XSRF-TOKEN');
+/** One fetch to the route: a GET without a body, else a POST with the CSRF header. */
+async function attempt(label: string, path: string, body: Record<string, unknown> | undefined, signal: AbortSignal, freshCsrf: boolean): Promise<Response> {
+    try {
+        const headers: Record<string, string> = { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' };
+        if (body !== undefined) {
+            headers['Content-Type'] = 'application/json';
+            headers['X-XSRF-TOKEN'] = await csrfToken(signal, freshCsrf);
+        }
+        // The capabilities-ai chat routes sit outside the capability rail (AGT-021).
+        // eslint-disable-next-line bb/no-business-rules
+        return await fetch(`${PREFIX}/${path}`, {
+            method: body === undefined ? 'GET' : 'POST',
+            credentials: 'same-origin',
+            headers,
+            ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+            signal,
+        });
+    } catch {
+        throw new CapabilityError(label, 0, { reason: signal.aborted ? 'timeout' : 'network' });
     }
-
-    return token ?? '';
-}
-
-function cookie(name: string): string | null {
-    const match = document.cookie.split('; ').find((part) => part.startsWith(`${name}=`));
-
-    return match === undefined ? null : decodeURIComponent(match.slice(name.length + 1));
 }
