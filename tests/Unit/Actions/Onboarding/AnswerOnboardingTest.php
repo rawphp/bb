@@ -597,6 +597,14 @@ it('ONB-018 refuses an Edit to a step that is not shown, or with no step', funct
     expect($hidden->field)->toBe('edit_step')->and($missing->field)->toBe('edit_step');
 });
 
+it('ONB-022 a done step opens from the track mid-setup, and a step to come is refused, saving nothing', function () {
+    $opened = onboardingAnswerDraft(F::atStep8(), ['move' => 'edit', 'edit_step' => 2]);
+    $ahead = onboardingAnswerRefusal(F::atStep8(), ['move' => 'edit', 'edit_step' => 12]);
+
+    expect($opened->step)->toBe(2)->and($opened->with(step: 8))->toEqual(F::atStep8())
+        ->and($ahead->field)->toBe('edit_step')->and($ahead->getMessage())->toBe(AnswerOnboarding::STEP_AHEAD);
+});
+
 it('ONB-020 entering the review moves a start date in the past to tomorrow and keeps the length', function () {
     $stale = F::atTrainingOnlyReview()->with(step: 12, startDate: F::date(2026, 10, 1));
     $draft = onboardingAnswerDraft($stale, ['move' => 'next']);

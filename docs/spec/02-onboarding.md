@@ -32,6 +32,7 @@ Setup shows a step counter ("Step 4 of 13") and a back button on every step.
 - **ONB-019** [D] The review screen must say that exact meal times and amounts can be fine-tuned after starting.
 - **ONB-020** [D] Pressing "Start my plan" must show a short loading screen while targets are generated. The plan starts on the chosen start date, by default tomorrow.
 - **ONB-021** [M][G] If the user's last diet ended in the past 8 weeks (asked on step 1 as "Have you finished a fat-loss diet recently?"), choosing Fat loss must recommend starting with Maintenance first and explain why. The user can override.
+- **ONB-022** [G] Setup must show the whole route as a step track: one mark per step shown (ONB-005 skips drop out), each done, current or to come, named in a word or two ("Body fat", "Training days", then "Review"). A done step opens from the track, every answer kept, as an Edit link does (ONB-018); a step to come does not, so every step is still reached by Next. On a phone the track is a segmented bar under the counter, and the counter opens the list of steps; on a wide screen the list stands beside the step.
 
 ## First-run tour (ONB)
 

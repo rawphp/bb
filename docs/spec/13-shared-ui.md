@@ -25,7 +25,7 @@ Where a component is shared, both meals and workouts must use it.
 - **UI-004** [I] **Status pill.** "on track", "315 under", "Targets met", "At your recovery limit", "Deload" and "Adjust foods" must use one pill component with four colours: good, neutral, warning, info.
 - **UI-005** [I] **Bottom sheet.** Copy foods, Add to schedule, the set menu, the meal menu, the Feedback sheet and the Adjust sheet must all be bottom sheets with Cancel on the left, the title in the middle and Save on the right.
 - **UI-006** [I] **Choice list.** Feedback answers, weekly review options, goal choices and setup choices must use the same single-choice list (full-width rows, one selected, "Recommended" tag where relevant).
-- **UI-007** [I] **Stepper flow.** Onboarding, the weekly review, the create-mesocycle flow and phase transition must use one step-flow layout: step counter, title, content, Back and Next.
+- **UI-007** [I] **Stepper flow.** Onboarding, the weekly review, the create-mesocycle flow and phase transition must use one step-flow layout: step counter, title, content, Back and Next. A flow that sends a step track (ONB-022) gets it drawn by the same layout.
 - **UI-008** [I] **Row with value fields.** A food row (name, raw/cooked, grams) and a set row (weight, reps, log) must share one row layout: label, then right-aligned numeric fields, swipe actions, a menu on the left.
 - **UI-009** [I] **Help icon.** One ? icon that opens a short sheet with a "Read more" link to Learn.
 - **UI-010** [I] **Toast with Undo.** Used for every automatic change: re-targeted meals, sets added, redistribution.

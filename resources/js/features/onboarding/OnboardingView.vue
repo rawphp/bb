@@ -162,16 +162,22 @@ const step = computed((): StepFlowStep | null => {
     return startUnsure.value ? { ...shown, can_go_back: false } : shown;
 });
 
+// The stepper shows: not the doors, not the plan being built (the template's StepFlow branch).
+const showsSteps = computed(() => !!data.value && !(coach.value && door.value === 'ask') && !starting.value);
+
+// An Edit link on the review, or a done step on the track (ONB-018, ONB-022).
 function edit(step: number): void {
     if (!locked.value) void go('edit', step);
 }
 </script>
 
 <template>
-    <main class="mx-auto w-full max-w-[560px] px-4 pb-6 pt-[max(1rem,env(safe-area-inset-top))]">
+    <!-- The bare screen's 40rem column, widened on a wide screen while the steps show, so the
+         list of steps stands beside the step (ONB-022). -->
+    <main class="w-full px-4 pb-6 pt-[max(1rem,env(safe-area-inset-top))]" :class="{ 'md:max-w-[56rem]': showsSteps }">
         <SetupDoors v-if="data && coach && door === 'ask'" @pick="door = $event" />
         <StartingPlanView v-else-if="data && starting" :title="data.review.starting_title" :text="data.review.starting_text" />
-        <StepFlow v-else-if="data && step" :key="data.step.number" :step="step" :pending="pending" @back="move('back')" @next="move('next')">
+        <StepFlow v-else-if="data && step" :key="data.step.number" :step="step" :pending="pending" @back="move('back')" @next="move('next')" @open="edit">
             <fieldset :key="fields" :disabled="moving" class="flex min-w-0 flex-col gap-4">
                 <OnboardingCallout v-for="notice in data.notices" :key="notice.text" :text="notice.text" :tone="notice.tone" />
                 <GoalStep v-if="data.step.key === 'goal'" :goal="data.goal" :locked="locked" @answer="answer" />

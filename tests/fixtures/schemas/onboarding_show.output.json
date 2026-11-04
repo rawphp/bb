@@ -57,6 +57,42 @@
                 },
                 "can_go_back": {
                     "type": "boolean"
+                },
+                "track": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "step": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 14
+                            },
+                            "label": {
+                                "type": "string",
+                                "description": "\"Body fat\"; \"Review\" for the review"
+                            },
+                            "state": {
+                                "type": "string",
+                                "enum": [
+                                    "done",
+                                    "current",
+                                    "todo"
+                                ]
+                            },
+                            "can_open": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "step",
+                            "label",
+                            "state",
+                            "can_open"
+                        ]
+                    },
+                    "description": "ONB-022: every step shown and the review, in order"
                 }
             },
             "required": [
@@ -68,7 +104,8 @@
                 "total",
                 "next_title",
                 "can_continue",
-                "can_go_back"
+                "can_go_back",
+                "track"
             ]
         },
         "training_only": {

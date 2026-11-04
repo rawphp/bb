@@ -29,6 +29,8 @@ final class AnswerOnboarding
 
     public const STEP_NOT_SHOWN = 'That step is not part of your setup.';
 
+    public const STEP_AHEAD = 'That step opens once the steps before it are done.';
+
     public const SCREENING_ON_SHEET = 'The health check is answered on its own sheet in the app, not in chat.';
 
     public const CHAT_EDITS_FROM_REVIEW = 'In chat, a step is edited from the review.';
@@ -111,7 +113,7 @@ final class AnswerOnboarding
         return self::moveTo($move->clearsGoal ? $draft->with(goal: null) : $draft, $move->step, $today);
     }
 
-    /** ONB-018: from the review back to a step that is shown. Every answer is kept. */
+    /** ONB-018, ONB-022: back to a step that is shown and done, from the review or the track. Every answer is kept. */
     private static function edit(Draft $draft, OnboardingSteps $steps, ?int $step): Draft
     {
         if ($step === null) {
@@ -119,7 +121,8 @@ final class AnswerOnboarding
         }
         $target = $steps->edit($step);
         if ($target === null) {
-            throw new FieldRefused('edit_step', self::STEP_NOT_SHOWN);
+            $ahead = $step !== OnboardingSteps::REVIEW_STEP && in_array($step, $steps->visibleSteps(), true);
+            throw new FieldRefused('edit_step', $ahead ? self::STEP_AHEAD : self::STEP_NOT_SHOWN);
         }
 
         return $draft->with(step: $target);
