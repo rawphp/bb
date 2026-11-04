@@ -793,7 +793,7 @@
         "options": [
             {
                 "value": "recommendation",
-                "title": "RP recommendation",
+                "title": "Our recommendation",
                 "detail": "1,546 kcal a day",
                 "is_recommended": true,
                 "is_selected": true,
@@ -1047,7 +1047,7 @@
                 "edit_step": 13,
                 "rows": [
                     {
-                        "label": "RP recommendation",
+                        "label": "Our recommendation",
                         "value": "1,546 kcal a day",
                         "badges": [
                             {

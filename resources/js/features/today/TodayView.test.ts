@@ -1,7 +1,7 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory, createRouter, type Router } from 'vue-router';
-import { CapabilityError, read, write, writeNow } from '@/app/call';
+import { CapabilityError, read, readFresh, write, writeNow } from '@/app/call';
 import { entries, isPending } from '@/app/outbox';
 import type { TodayShowOutput } from '@/contracts/today_show';
 import type { WeekShowOutput } from '@/contracts/week_show';
@@ -20,7 +20,7 @@ import TodayMoveDaySheet from './sheets/TodayMoveDaySheet.vue';
 import TodayWorkoutTimeSheet from './sheets/TodayWorkoutTimeSheet.vue';
 import TodayView from './TodayView.vue';
 
-vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), write: vi.fn(), writeNow: vi.fn() }));
+vi.mock('@/app/call', async (original) => ({ ...(await original<typeof import('@/app/call')>()), read: vi.fn(), readFresh: vi.fn(), write: vi.fn(), writeNow: vi.fn() }));
 vi.mock('@/app/outbox', async (original) => ({
     ...(await original<typeof import('@/app/outbox')>()),
     isPending: vi.fn(() => false),
@@ -29,6 +29,7 @@ vi.mock('@/app/outbox', async (original) => ({
 }));
 
 const readMock = vi.mocked(read);
+const readFreshMock = vi.mocked(readFresh);
 const writeMock = vi.mocked(write);
 const writeNowMock = vi.mocked(writeNow);
 const pendingEntries = entries as unknown as { value: unknown[] };
@@ -659,6 +660,32 @@ describe('TodayView', () => {
 
         wrapper = await show();
         expect(wrapper.find('[data-test="skip"]').exists()).toBe(false);
+    });
+
+    it('ONB-002 a user with no plan yet is sent to setup once the server says so, and the tour waits until after it (ONB-030)', async () => {
+        localStorage.removeItem('bb.today.tourSeen');
+        readFreshMock.mockResolvedValue({ ...day(), setup_needed: true });
+        const wrapper = await show({ payload: { ...day(), setup_needed: true }, week: week() });
+
+        expect(readFreshMock).toHaveBeenCalledWith('today_show', {});
+        expect(path()).toBe('/onboarding');
+        expect(wrapper.find('[data-test="skip"]').exists()).toBe(false);
+        expect(localStorage.getItem('bb.today.tourSeen')).toBeNull();
+    });
+
+    it('ONB-002 a cached copy from before setup finished (on the Coach, another device) does not send the user back', async () => {
+        localStorage.removeItem('bb.today.tourSeen');
+        readFreshMock.mockResolvedValue({ ...day(), setup_needed: false });
+        const wrapper = await show({ payload: { ...day(), setup_needed: true }, week: week() });
+
+        expect(path()).toBe('/today');
+        expect(wrapper.get('[role="dialog"] h2').text()).toBe('Days and calories');
+    });
+
+    it('ONB-002 a user with a plan stays on Today', async () => {
+        await show();
+
+        expect(path()).toBe('/today');
     });
 
     it('SCH-057 asks about a missed session once the tour is done', async () => {

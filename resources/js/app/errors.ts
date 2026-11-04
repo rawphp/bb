@@ -15,10 +15,18 @@ export function failureMessage(error: unknown, fallback: string): string {
         return 'No connection. Try again when you are online.';
     }
 
-    const message = (error.body as { error?: { message?: unknown } } | null)?.error?.message;
+    const body = (error.body as { error?: { code?: unknown; message?: unknown } } | null)?.error;
+    // The capability pipeline's limiter names its limit ("Rate limit exceeded (per_minute)."), so
+    // that wording becomes words. A rate_limited refusal written for the user (the Coach's cap,
+    // AGT-005) keeps its own.
+    if (error.status === 429 && body?.code === 'rate_limited' && typeof body.message === 'string' && body.message.startsWith('Rate limit exceeded')) {
+        return RATE_LIMITED;
+    }
 
-    return typeof message === 'string' && message !== '' ? message : fallback;
+    return typeof body?.message === 'string' && body.message !== '' ? body.message : fallback;
 }
+
+const RATE_LIMITED = 'That was a lot in a short time. Wait a moment, then try again.';
 
 /**
  * A failed write's message. A write past its deadline, or with no final answer from the

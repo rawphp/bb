@@ -136,6 +136,7 @@ final class TodayPayload
             title: TodayWords::title($day),
             banners: self::banners($snapshot),
             review_available: false,
+            setup_needed: $snapshot->train->plan === null,
             next_mesocycle: self::nextMesocycle($snapshot),
             totals: self::totals($snapshot),
             steps: self::steps($snapshot),

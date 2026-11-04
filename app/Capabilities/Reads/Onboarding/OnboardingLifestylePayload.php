@@ -36,7 +36,7 @@ final class OnboardingLifestylePayload
 
     public const REVIEW_DAY_NOTE = 'The day you look back on the week and set the next one. It is also the first day of every plan week. It starts as the day after your last weigh-in day.';
 
-    public const RECOMMENDATION = 'RP recommendation';
+    public const RECOMMENDATION = 'Our recommendation';
 
     public const OWN_CALORIES = 'Choose my own average daily calories';
 

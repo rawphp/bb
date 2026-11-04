@@ -8,7 +8,24 @@ it('CAP-004 serves the app shell for every non-API path', function (string $path
     $this->get($path)
         ->assertOk()
         ->assertSee('<div id="app"></div>', escape: false);
-})->with(['/', '/account', '/train/plan/week-2']);
+})->with(['/today', '/account', '/train/plan/week-2']);
+
+it('ONB-001 sends a signed-out visit to / to the intro cards, before sign-up', function () {
+    $this->get('/', ['Sec-Fetch-Mode' => 'navigate'])->assertRedirect('/welcome');
+});
+
+it('OFF-002 gives the service worker\'s signed-out fetch of / the shell it caches, not the intro redirect', function () {
+    $this->get('/', ['Sec-Fetch-Mode' => 'same-origin'])
+        ->assertOk()
+        ->assertSee('<div id="app"></div>', escape: false);
+});
+
+it('ONB-001 serves a signed-in visit to / the app shell', function () {
+    $this->actingAs(User::factory()->create())
+        ->get('/', ['Sec-Fetch-Mode' => 'navigate'])
+        ->assertOk()
+        ->assertSee('<div id="app"></div>', escape: false);
+});
 
 it('PWA-002 serves the manifest and iOS web app tags with the shell', function () {
     $this->get('/account')
@@ -51,4 +68,4 @@ it('CAP-004 serves the shell without the dev flag outside local and testing', fu
         ->assertOk()
         ->assertSee('<div id="app"></div>', escape: false)
         ->assertDontSee('bb-dev-routes');
-})->with(['/', '/devices']);
+})->with(['/today', '/devices']);

@@ -42,6 +42,15 @@ it('ONB-002 ONB-003 shows a user with no saved setup step 1 over HTTP, and saves
         ->and(OnboardingDraft::query()->count())->toBe(0);
 });
 
+it('ONB-004 a new setup starts with the name the user signed up with, and saves nothing', function () {
+    $user = User::factory()->create(['name' => 'Sam Fresh']);
+
+    $data = $this->actingAs($user)->postJson('/capabilities/onboarding_show')->assertOk()->json('data');
+
+    expect($data['about_you']['name'])->toBe('Sam Fresh')
+        ->and(OnboardingDraft::query()->count())->toBe(0);
+});
+
 it('ONB-002 ONB-018 shows a saved setup on its review over HTTP, for its own user only', function () {
     W::freezeClock();
     $world = W::sam(14);

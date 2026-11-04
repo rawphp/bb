@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 // The three intro cards before sign-up (ONB-001). Swipe or Next walks them; the last
-// card's Get started opens sign-in, where a new user creates an account. Static copy: it shows before there is an account
+// card's Get started opens sign-up, and I have an account opens sign-in. Static copy: it shows before there is an account
 // to read anything for. Ported from rp-clone's IntroView and OnboardingIntro.
 const cards = [
     {
@@ -31,7 +31,7 @@ const page = ref(0);
 const isLast = computed(() => page.value === cards.length - 1);
 
 function next(): void {
-    if (isLast.value) void router.push('/sign-in');
+    if (isLast.value) void router.push('/sign-in?new=1');
     else page.value += 1;
 }
 
@@ -83,7 +83,7 @@ function swiped(event: PointerEvent): void {
             </button>
         </div>
 
-        <div class="px-6">
+        <div class="flex flex-col gap-2 px-6">
             <button
                 type="button"
                 data-test="intro-next"
@@ -92,6 +92,7 @@ function swiped(event: PointerEvent): void {
             >
                 {{ isLast ? 'Get started' : 'Next' }}
             </button>
+            <RouterLink to="/sign-in" data-test="intro-sign-in" class="flex min-h-tap items-center justify-center text-accent active:opacity-70">I have an account</RouterLink>
         </div>
     </main>
 </template>

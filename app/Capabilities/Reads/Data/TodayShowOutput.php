@@ -21,7 +21,7 @@ use App\Capabilities\Support\Status;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
-/** Today: one day's timeline and the controls around it (SCH-001 to SCH-011, SCH-030, SCH-057, SCH-058, DAY, MESO-060, ONB-031). */
+/** Today: one day's timeline and the controls around it (SCH-001 to SCH-011, SCH-030, SCH-057, SCH-058, DAY, MESO-060, ONB-002, ONB-031). */
 final class TodayShowOutput extends CapabilityData
 {
     /**
@@ -40,6 +40,7 @@ final class TodayShowOutput extends CapabilityData
         #[Field(description: '"Monday, Nov 2"')] public readonly string $title,
         #[Field(description: 'ONB-031 "Your plan starts Thu, Apr 23".', items: Status::class)] public readonly array $banners,
         #[Field(description: 'REV-001: the review card shows.')] public readonly bool $review_available,
+        #[Field(description: 'ONB-002: the user has no plan yet, so Today opens setup, where they left it.')] public readonly bool $setup_needed,
         public readonly ?NextMesocycle $next_mesocycle,
         #[Field(description: 'null on a day with no target.')] public readonly ?Totals $totals,
         public readonly ?Steps $steps,

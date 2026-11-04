@@ -24,6 +24,10 @@ export interface TodayShowOutput {
    * REV-001: the review card shows.
    */
   review_available: boolean;
+  /**
+   * ONB-002: the user has no plan yet, so Today opens setup, where they left it.
+   */
+  setup_needed: boolean;
   next_mesocycle?: {
     mesocycle_id: string;
     /**
@@ -468,4 +472,4 @@ export interface TodayShowOutput {
   } | null;
 }
 
-export const outputVersion = '74229b27a956';
+export const outputVersion = '0e19c7e82b72';

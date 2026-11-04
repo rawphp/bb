@@ -136,7 +136,7 @@ it('AGT-031 SAFE-001 refuses the Coach a screening answer, and saves none of tha
     ]);
 
     expect($results[0])->toMatchArray(['name' => 'onboarding_answer', 'ok' => false])
-        ->and(setupShown($user)['about_you']['name'])->toBe('')
+        ->and(setupShown($user)['about_you']['name'])->toBe($user->name)
         ->and(collect(setupShown($user)['screening']['rows'])->firstWhere('item', 'diabetes')['is_on'])->toBeFalse();
 });
 
