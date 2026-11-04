@@ -22,7 +22,9 @@ use App\Models\WeighInScheduleEntry;
 use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\UserDay;
 use DateTimeImmutable;
+use DateTimeZone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +61,7 @@ final readonly class ReviewData
      * @param  Collection<int, MuscleFeedback>  $muscleFeedback
      * @param  Collection<int, ExerciseFeedback>  $exerciseFeedback
      * @param  Collection<int, Step>  $steps  over the same days as the targets
+     * @param  DateTimeZone  $zone  the user's time zone (SET-012), which a weigh-in's instant is read in
      */
     public function __construct(
         public DateTimeImmutable $today,
@@ -78,6 +81,7 @@ final readonly class ReviewData
         public Collection $muscleFeedback,
         public Collection $exerciseFeedback,
         public Collection $steps,
+        public DateTimeZone $zone,
     ) {}
 
     public static function load(User $user, DateTimeImmutable|string $today): self
@@ -127,6 +131,7 @@ final readonly class ReviewData
             muscleFeedback: $muscleFeedback,
             exerciseFeedback: $exerciseFeedback,
             steps: Step::query()->where('user_id', $user->id)->where('date', '>=', $from)->get(),
+            zone: UserDay::zone($user),
         );
     }
 

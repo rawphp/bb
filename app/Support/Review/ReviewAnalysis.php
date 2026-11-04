@@ -76,6 +76,7 @@ use App\Models\WorkoutSession;
 use App\Models\WorkoutSet;
 use App\Support\Mesocycles\TrainSnapshot;
 use App\Support\Today\TodaySnapshot;
+use App\Support\UserDay;
 use DateTimeImmutable;
 use DateTimeZone;
 
@@ -157,9 +158,15 @@ final readonly class ReviewAnalysis
             isAway: (bool) $row->is_away,
             reviewedAt: TodaySnapshot::instant($row->reviewed_at),
         ))->values()->all();
-        $times = $data->weighIns->map(fn (WeighIn $w) => TodaySnapshot::instant($w->weighed_at))->filter()->values()->all();
+        $times = $data->weighIns->map(fn (WeighIn $w) => self::weighedAt($data, $w))->values()->all();
 
         return ReviewTiming::status($data->today, $context->grid, $stored, $times);
+    }
+
+    /** SET-012: a weigh-in's stored instant as the user's clock time, labelled UTC, so it falls on the user's day. */
+    private static function weighedAt(ReviewData $data, WeighIn $weighIn): DateTimeImmutable
+    {
+        return UserDay::clockIn($data->zone, $weighIn->weighed_at);
     }
 
     /** The review the loaded data has open on its day; null when none is. */
@@ -188,8 +195,9 @@ final readonly class ReviewAnalysis
     {
         $data = $context->data;
         $weighIns = $data->weighIns->map(fn (WeighIn $w) => new DomainWeighIn(
-            (string) $w->id, TodaySnapshot::instant($w->weighed_at) ?? $data->today, (float) $w->weight_kg,
+            (string) $w->id, self::weighedAt($data, $w), (float) $w->weight_kg,
         ))->values()->all();
+        // The weigh-ins are the user's clock times labelled UTC, so the trend's days stay UTC.
         $trend = new TrendWeight($weighIns, new DateTimeZone('UTC'));
         $reviewedDays = $period->reviewed->days();
 
