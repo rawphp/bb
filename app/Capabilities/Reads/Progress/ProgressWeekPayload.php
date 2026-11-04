@@ -83,7 +83,7 @@ final class ProgressWeekPayload
             isAway: (bool) $row->is_away,
             reviewedAt: TodaySnapshot::instant($row->reviewed_at),
         ))->values()->all();
-        $times = $snapshot->weighIns->map(fn (WeighIn $weighIn) => TodaySnapshot::instant($weighIn->weighed_at))->values()->all();
+        $times = $snapshot->weighIns->map(fn (WeighIn $weighIn) => $snapshot->weighedAt($weighIn))->values()->all();
 
         return ReviewTiming::status($snapshot->today(), $grid, $stored, $times)->isAvailable()
             ? new ReviewCard(ReviewAvailability::CARD_TITLE, 'Open')
