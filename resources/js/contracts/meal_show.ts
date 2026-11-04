@@ -99,6 +99,23 @@ export interface MealShowOutput {
   empty?: {
     title: string;
     note: string;
+    /**
+     * MEAL-061: newest first; none once the meal is checked in
+     */
+    repeats: {
+      /**
+       * The earlier meal: meal_copy's meal_id
+       */
+      meal_id: string;
+      /**
+       * Its day, "Tue 3 Nov"
+       */
+      title: string;
+      /**
+       * The names of its foods and recipes, "Chicken breast · White rice"
+       */
+      foods_text: string;
+    }[];
   } | null;
   menu: {
     item:
@@ -118,4 +135,4 @@ export interface MealShowOutput {
   }[];
 }
 
-export const outputVersion = '32772e023355';
+export const outputVersion = 'b97bf95c1aad';

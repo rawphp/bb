@@ -102,6 +102,44 @@ it('ANA-001 ANA-002 a user with no plan and no phases has the whole plan start a
         ->and($payload['summary'][0]['value'])->toBe('80.0 kg');
 });
 
+it('ANA-012 words a readout for each weigh-in day: its date, the weigh-in, the trend and the goal range', function () {
+    $chart = W::payload(W::snapshot())['chart'];
+    $later = $chart['readouts'][10];
+
+    // 0.5% a week down from 80 kg, so by 11 September the range has opened to 79.26–79.60 kg.
+    expect(array_column($chart['readouts'], 'date'))->toBe(array_column($chart['weights'], 'date'))
+        ->and($later['date'])->toBe('2026-09-11')
+        ->and($later['title'])->toBe('Fri 11 Sep')
+        ->and($later['lines'])->toBe([
+            ['label' => 'Weigh-in', 'value' => '80.0 kg', 'tone' => 'neutral'],
+            ['label' => 'Trend', 'value' => '80.0 kg', 'tone' => 'neutral'],
+            ['label' => 'Goal range', 'value' => '79.3–79.6 kg', 'tone' => 'neutral'],
+        ]);
+});
+
+it('ANA-012 words a range with no width yet, on a phase\'s first day, as the goal alone', function () {
+    $first = W::payload(W::snapshot())['chart']['readouts'][0];
+
+    expect($first['title'])->toBe('Tue 1 Sep')
+        ->and($first['lines'][2])->toBe(['label' => 'Goal', 'value' => '80.0 kg', 'tone' => 'neutral']);
+});
+
+it('ANA-012 words the readout in pounds and adds the waist on a day that has one', function () {
+    $chart = W::payload(W::snapshot(weighIns: waistReadings([0 => 88.0, 14 => 87.5, 28 => 87.5, 39 => 87.0]), profile: ['weight_unit' => 'lb']))['chart'];
+
+    expect($chart['readouts'][0]['lines'][0])->toBe(['label' => 'Weigh-in', 'value' => '176.4 lb', 'tone' => 'neutral'])
+        ->and($chart['readouts'][0]['lines'][2]['value'])->toEndWith(' lb')
+        ->and($chart['readouts'][0]['lines'][3])->toBe(['label' => 'Waist', 'value' => '88.0 cm', 'tone' => 'neutral'])
+        ->and(array_column($chart['readouts'][1]['lines'], 'label'))->toBe(['Weigh-in', 'Trend', 'Goal range']);
+});
+
+it('ANA-012 leaves the goal range out of a day no phase covers', function () {
+    $chart = W::payload(W::snapshot(withPlan: false, phases: [], weighIns: W::weighIns('2026-09-03', 10)), ProgressScope::WholePlan)['chart'];
+
+    expect($chart['readouts'])->toHaveCount(10)
+        ->and(array_column($chart['readouts'][0]['lines'], 'label'))->toBe(['Weigh-in', 'Trend']);
+});
+
 it('ANA-002 the summary has start, change and goal', function () {
     $summary = W::payload(W::snapshot())['summary'];
 

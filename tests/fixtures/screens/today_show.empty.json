@@ -36,6 +36,7 @@
     },
     "steps": null,
     "timeline": [],
+    "now": null,
     "meals": [],
     "workouts": [],
     "weigh_ins": [],

@@ -5,10 +5,13 @@ namespace App\Support\Review;
 use App\Domain\Macros\DayTarget as DomainDayTarget;
 use App\Domain\Macros\MacroTargets;
 use App\Domain\Macros\WeekTargets;
+use App\Domain\MealFit\MealFit;
 use App\Domain\Model\ClosedRange;
 use App\Domain\Model\DayType;
 use App\Domain\Model\FeedbackAnswers;
 use App\Domain\Model\JointPain;
+use App\Domain\Model\MealCheckInState;
+use App\Domain\Model\MealTarget;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\Phase as DomainPhase;
 use App\Domain\Model\PhaseType;
@@ -381,16 +384,14 @@ final readonly class ReviewAnalysis
     }
 
     /**
-     * REV-003 step 2: the reviewed week's planned meals and whether each was checked in.
+     * REV-003 step 2, REV-006: the reviewed week's planned meals and each one's check-in against its target (MEAL-047).
      *
      * @param  list<DateTimeImmutable>  $days
      */
     private static function mealsSummary(ReviewData $data, array $days): ReviewMealsSummary
     {
-        $checked = [];
-        foreach ($data->meals as $meal) {
-            $checked[$meal['id']] = $meal['checkInKcal'] !== null;
-        }
+        $eaten = array_column($data->meals, 'eaten', 'id');
+        $fit = new MealFit;
         $items = [];
         foreach ($days as $day) {
             $target = $data->dayTargets->first(fn (DayTarget $t) => TrainSnapshot::day($t->date) == $day);
@@ -403,7 +404,9 @@ final readonly class ReviewAnalysis
                     id: $id,
                     day: $day,
                     name: ($meal['name'] ?? null) ?: 'Meal '.($index + 1),
-                    isChecked: $checked[$id] ?? false,
+                    checkIn: MealCheckInState::of($eaten[$id] ?? null, new MealTarget(
+                        (float) ($meal['kcal'] ?? 0), (float) ($meal['protein_g'] ?? 0), (float) ($meal['fat_g'] ?? 0), (float) ($meal['carbs_g'] ?? 0),
+                    ), $fit),
                 );
             }
         }

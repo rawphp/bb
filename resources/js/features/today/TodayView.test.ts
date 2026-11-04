@@ -135,6 +135,117 @@ describe('TodayView', () => {
         expect(path()).toBe('/today/2026-09-23/off-plan');
     });
 
+    it('SCH-012 draws the Now line before the item it names, and the next item still to do', async () => {
+        const wrapper = await show();
+
+        const rows = wrapper.findAll('[data-timeline], [data-test="now-line"]').map((row) => (row.attributes('data-test') === 'now-line' ? 'now' : row.get('h3').text()));
+        expect(rows).toEqual(['Weigh-in', 'Breakfast', 'Team meeting', 'now', 'Lunch', 'Pre-workout', 'Week 2 · Day 2 · Upper A', 'Tennis', 'Post-workout']);
+        const line = wrapper.get('[data-test="now-line"]');
+        expect(line.get('[data-test="now-label"]').text()).toBe('Now');
+        expect(line.get('[data-test="now-next"]').text()).toBe('Next: Lunch at 12:30 PM');
+        expect(line.attributes('role')).toBe('note');
+        expect(line.attributes('aria-label')).toBe('Now. Next: Lunch at 12:30 PM');
+    });
+
+    it('SCH-012 after the last item the line sits at the end and names nothing; other days have none', async () => {
+        const payload = day();
+        const late = await show({ payload: { ...payload, now: { before: null, label: 'Now', next_text: null } }, week: week() });
+
+        expect(late.findAll('[data-timeline], [data-test="now-line"]').at(-1)!.attributes('data-test')).toBe('now-line');
+        expect(late.get('[data-test="now-line"]').text()).toBe('Now');
+        expect(late.find('[data-test="now-next"]').exists()).toBe(false);
+
+        const other = await show({ payload: { ...payload, now: null }, week: week() });
+        expect(other.find('[data-test="now-line"]').exists()).toBe(false);
+    });
+
+    it('SCH-012 opened at the top with the Now line below the fold, the screen brings it and the next item into view once', async () => {
+        const screen = document.createElement('div');
+        screen.className = 'bb-screen';
+        document.body.append(screen);
+        const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+            return { bottom: this.dataset.test === 'now-line' ? 1200 : 844 } as DOMRect;
+        });
+        const scrolled = vi.fn();
+        HTMLElement.prototype.scrollIntoView = scrolled;
+        const mountIn = (payload: TodayShowOutput) =>
+            mount(TodayView, { props: { payload, week: week() }, attachTo: screen, global: { plugins: [router], stubs: { teleport: true } } });
+
+        await show();
+        const below = mountIn(day());
+        await flushPromises();
+        expect(scrolled).toHaveBeenCalledTimes(1);
+        // The line and the item it names: Lunch comes into view, as little as that takes.
+        expect(scrolled.mock.instances[0]).toBe(below.get(`[data-meal="${LUNCH}"]`).element.closest('[data-timeline]'));
+        expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
+        below.unmount();
+
+        // Already in view: left where it is.
+        rect.mockImplementation(function (this: HTMLElement) {
+            return { bottom: this.dataset.test === 'now-line' ? 400 : 844 } as DOMRect;
+        });
+        mountIn(day()).unmount();
+        await flushPromises();
+        expect(scrolled).toHaveBeenCalledTimes(1);
+
+        // Below the fold, but the user has scrolled: left where they put it.
+        rect.mockImplementation(function (this: HTMLElement) {
+            return { bottom: this.dataset.test === 'now-line' ? 1200 : 844 } as DOMRect;
+        });
+        Object.defineProperty(screen, 'scrollTop', { configurable: true, get: () => 300 });
+        mountIn(day());
+        await flushPromises();
+        expect(scrolled).toHaveBeenCalledTimes(1);
+
+        rect.mockRestore();
+        delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    });
+
+    it('SCH-012 PWA-004 decides on the first copy shown: fresh data with a Now line does not scroll a cached copy without one', async () => {
+        const screen = document.createElement('div');
+        screen.className = 'bb-screen';
+        document.body.append(screen);
+        const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+            return { bottom: this.dataset.test === 'now-line' ? 1200 : 844 } as DOMRect;
+        });
+        const scrolled = vi.fn();
+        HTMLElement.prototype.scrollIntoView = scrolled;
+        let refresh: ((fresh: TodayShowOutput) => void) | undefined;
+        readMock.mockImplementation(((name: string, _input: unknown, onUpdate?: (fresh: TodayShowOutput) => void) => {
+            if (name !== 'today_show') return Promise.resolve(week());
+            refresh = onUpdate;
+            return Promise.resolve({ ...day(), now: null });
+        }) as never);
+        await router.push('/today');
+
+        const wrapper = mount(TodayView, { attachTo: screen, global: { plugins: [router], stubs: { teleport: true } } });
+        await flushPromises();
+        refresh!(day());
+        await flushPromises();
+
+        expect(wrapper.find('[data-test="now-line"]').exists()).toBe(true);
+        expect(scrolled).not.toHaveBeenCalled();
+        wrapper.unmount();
+        rect.mockRestore();
+        delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    });
+
+    it('SCH-012 reads the day again when the app comes back to the foreground, so the line moves', async () => {
+        await show({});
+        readMock.mockClear();
+
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+        document.dispatchEvent(new Event('visibilitychange'));
+        expect(readMock).not.toHaveBeenCalled();
+
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+        document.dispatchEvent(new Event('visibilitychange'));
+        await flushPromises();
+        expect(readMock).toHaveBeenCalledWith('today_show', {}, expect.any(Function), expect.any(Function));
+        expect(readMock).toHaveBeenCalledWith('week_show', {}, expect.any(Function), expect.any(Function));
+        delete (document as { visibilityState?: unknown }).visibilityState;
+    });
+
     it("SCH-011 shows the day's step target with the actual steps", async () => {
         const wrapper = await show();
 

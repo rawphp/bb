@@ -15,6 +15,7 @@ Today is RP Diet's Schedule screen with RP Hypertrophy's workouts placed on it. 
 - **SCH-009** [D] Checking a meal must be one tap on its checkbox (MEAL-040).
 - **SCH-010** [D] Swiping a meal card left must show Edit macros and Delete. Long-pressing a meal card must open the meal menu (MEAL-009).
 - **SCH-011** [D] The timeline must show the day's step target as a row (for example "Step count target 0-8k") from the step plan, with actual steps when available.
+- **SCH-012** [G] On today only, the timeline must show a Now line before the first item at or after the current time (after the last item when none is left), naming the next item not yet done ("Next: Dinner at 7:30 PM"). A logged weigh-in, a checked-in meal and a finished or skipped workout are done; an item due this minute is still to come. Today reads the day again when the app returns to the foreground, so the line follows the clock.
 
 ## Week strip (SCH)
 

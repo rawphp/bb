@@ -4,6 +4,7 @@ namespace App\Capabilities\Reads\Onboarding;
 
 use App\Capabilities\Onboarding\Data\OnboardingShowOutput;
 use App\Capabilities\Onboarding\Data\OnboardingStep;
+use App\Capabilities\Onboarding\Data\OnboardingStepMark;
 use App\Capabilities\Support\Status;
 use App\Domain\Onboarding\Draft;
 use App\Domain\Onboarding\OnboardingCalories;
@@ -14,6 +15,7 @@ use App\Domain\Onboarding\OnboardingReview;
 use App\Domain\Onboarding\OnboardingSteps;
 use App\Domain\Onboarding\OnboardingTemplate;
 use App\Domain\Onboarding\OnboardingTraining;
+use App\Domain\Onboarding\StepMark;
 use App\Models\OnboardingDraft;
 use App\Models\User;
 use App\Support\Mesocycles\TrainSnapshot;
@@ -74,6 +76,10 @@ final class OnboardingShowPayload
             number: $draft->step, key: $steps->key(), title: $steps->title(), counter: $position->counter(),
             position: $position->current, total: $position->total, next_title: $steps->nextTitle(),
             can_continue: $steps->canContinue(), continue_hint: $steps->continueHint(), can_go_back: $steps->canGoBack(),
+            track: array_map(
+                fn (StepMark $mark) => new OnboardingStepMark(step: $mark->step, label: $mark->label, state: $mark->state, can_open: $mark->canOpen),
+                $steps->track(),
+            ),
         );
     }
 

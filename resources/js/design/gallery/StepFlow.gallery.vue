@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import StepFlow, { type StepFlowStep } from '../StepFlow.vue';
 
-// The step flow in each VIEW-004 state.
+// The step flow in each VIEW-004 state, and with a step track (ONB-022).
 const step: StepFlowStep = {
     counter: 'Step 2 of 4',
     title: 'About you',
@@ -34,6 +34,21 @@ const states = [
     { name: 'error', props: { step, error: "Couldn't load this step" }, content: true },
     { name: 'pending', props: { step, pending: true }, content: true },
     { name: 'disabled', props: { step, disabled: true }, content: true },
+    {
+        name: 'track',
+        props: {
+            step: {
+                ...step,
+                track: [
+                    { step: 1, label: 'Goal', state: 'done', can_open: true },
+                    { step: 2, label: 'About you', state: 'current', can_open: false },
+                    { step: 3, label: 'Health check', state: 'todo', can_open: false },
+                    { step: 4, label: 'Review', state: 'todo', can_open: false },
+                ],
+            } satisfies StepFlowStep,
+        },
+        content: true,
+    },
 ];
 </script>
 

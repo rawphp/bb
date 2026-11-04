@@ -6,6 +6,33 @@
         "week_text": "Week 5 of 5 · Deload",
         "phase_title": "Muscle gain",
         "dates_text": "7 Sep – 11 Oct 2026",
+        "week_track": [
+            {
+                "number": 1,
+                "state": "past",
+                "deload": false
+            },
+            {
+                "number": 2,
+                "state": "past",
+                "deload": false
+            },
+            {
+                "number": 3,
+                "state": "past",
+                "deload": false
+            },
+            {
+                "number": 4,
+                "state": "past",
+                "deload": false
+            },
+            {
+                "number": 5,
+                "state": "current",
+                "deload": true
+            }
+        ],
         "next_mesocycle": {
             "starts_text": "Starts Monday 12 Oct",
             "start_date": "2026-10-12",

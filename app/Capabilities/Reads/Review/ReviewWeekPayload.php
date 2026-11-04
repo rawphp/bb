@@ -2,10 +2,13 @@
 
 namespace App\Capabilities\Reads\Review;
 
+use App\Capabilities\Reads\Data\Today\MealCheckInState;
 use App\Capabilities\Review\Data\ReviewMeal;
+use App\Capabilities\Review\Data\ReviewMealDay;
 use App\Capabilities\Review\Data\ReviewMeals;
 use App\Capabilities\Review\Data\ReviewProgress;
 use App\Capabilities\Review\Data\ReviewTraining;
+use App\Capabilities\Review\Data\ReviewUncheckedMeal;
 use App\Capabilities\Review\Data\ReviewWeighInRow;
 use App\Capabilities\Review\Data\ReviewWeighIns;
 use App\Capabilities\Support\Line;
@@ -16,6 +19,8 @@ use App\Domain\Model\PhaseType;
 use App\Domain\Progression\RecoveryStep;
 use App\Domain\Review\JointPainFlag;
 use App\Domain\Review\NextWeekKind;
+use App\Domain\Review\ReviewMealItem;
+use App\Domain\Review\ReviewMealsSummary;
 use App\Domain\Review\ReviewProgress\Position;
 use App\Domain\Review\ReviewWeighInRow as DomainRow;
 use App\Support\Plan\PlanWords;
@@ -45,19 +50,50 @@ final class ReviewWeekPayload
         );
     }
 
-    /** REV-003 step 2: the summary's own words, and the meals not yet checked in. */
+    /** REV-003 step 2: the summary's own words, and the week by day with each meal's mark (REV-006). */
     public static function meals(ReviewAnalysis $analysis): ReviewMeals
     {
         $meals = $analysis->meals;
 
         return new ReviewMeals(
             message: new Status($meals->message(), ($meals->isExcellent() ? Tone::Good : Tone::Neutral)->value),
+            days: self::mealDays($meals),
+            // Deprecated, kept a release for token and CLI readers (REV-006).
             unchecked: array_map(
-                fn ($meal) => new ReviewMeal($meal->id, $meal->name, ReviewWords::day($meal->day)),
+                fn (ReviewMealItem $meal) => new ReviewUncheckedMeal($meal->id, $meal->name, ReviewWords::day($meal->day)),
                 $meals->unchecked(),
             ),
             check_in_title: 'Check in now',
         );
+    }
+
+    /**
+     * REV-006: one row per day of the week that has planned meals, in order, each meal checked in or not.
+     *
+     * @return list<ReviewMealDay>
+     */
+    public static function mealDays(ReviewMealsSummary $meals): array
+    {
+        /** @var array<string, list<ReviewMealItem>> $byDay */
+        $byDay = [];
+        foreach ($meals->meals as $meal) {
+            $byDay[$meal->day->format('Y-m-d')][] = $meal;
+        }
+
+        return array_values(array_map(fn (array $items) => new ReviewMealDay(
+            date: $items[0]->day->format('Y-m-d'),
+            weekday: $items[0]->day->format('D'),
+            day_number: $items[0]->day->format('j'),
+            meals: array_map(fn (ReviewMealItem $meal) => new ReviewMeal(
+                meal_id: $meal->id,
+                name: $meal->name,
+                is_checked: $meal->isChecked(),
+                check_in: MealCheckInState::wire($meal->checkIn),
+                label: $meal->isChecked()
+                    ? "{$meal->name}, ".ReviewWords::day($meal->day).': '.lcfirst($meal->checkIn->label())
+                    : "Check in {$meal->name}, ".ReviewWords::day($meal->day),
+            ), $items),
+        ), $byDay));
     }
 
     /** REV-003 step 3, with REV-045's recovery step. */

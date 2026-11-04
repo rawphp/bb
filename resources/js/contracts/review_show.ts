@@ -55,11 +55,44 @@ export interface ReviewShowOutput {
       text: string;
       tone: "good" | "neutral" | "warning" | "info";
     };
+    days: {
+      date: string;
+      /**
+       * "Sat".
+       */
+      weekday: string;
+      /**
+       * "24".
+       */
+      day_number: string;
+      meals: {
+        meal_id: string;
+        name: string;
+        is_checked: boolean;
+        /**
+         * MEAL-047: the check-in against the meal's target, drawn as Today's box draws it.
+         */
+        check_in: "not_checked_in" | "on_track" | "under" | "over";
+        /**
+         * "Check in Lunch, Sat, 24 Oct", or "Lunch, Sat, 24 Oct: checked in, over target".
+         */
+        label: string;
+      }[];
+    }[];
+    /**
+     * Deprecated, to be removed in the release after next: the meals of `days` not checked in. Read `days` instead.
+     */
     unchecked: {
       meal_id: string;
       name: string;
+      /**
+       * "Thu, 8 Oct".
+       */
       date_label: string;
     }[];
+    /**
+     * Deprecated, to be removed in the release after next: "Check in now". Each meal of `days` has its own label.
+     */
     check_in_title: string;
   } | null;
   training?: {
@@ -230,4 +263,4 @@ export interface ReviewShowOutput {
   save_title: string;
 }
 
-export const outputVersion = '625695843279';
+export const outputVersion = 'c1dac1db0c32';

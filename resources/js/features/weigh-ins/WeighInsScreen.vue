@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { findNavigation } from '@/app/navigation';
 import type { WeighInsShowOutput } from '@/contracts/weigh_ins_show';
@@ -17,8 +17,11 @@ import WeighInEntrySheet from './WeighInEntrySheet.vue';
 // server marks, and the step counts. A weigh-in opens to edit or delete; a missed day
 // opens a new one at the time the server gives for it. Display state only: which sheet
 // is open. `reload` is the screen's read, run after each write. When the server says
-// there is more (`next_before`), Show older under each list emits `more`.
+// there is more (`next_before`), Show older under each list emits `more`. WT-008: the rows
+// sit under the header of the week the server says each falls in; a week that two pages
+// both hold shows once, under the first page's header.
 type Row = WeighInsShowOutput['rows'][number];
+type Week = WeighInsShowOutput['weeks'][number];
 type StepRow = WeighInsShowOutput['steps']['rows'][number];
 
 const props = withDefaults(
@@ -37,6 +40,19 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{ more: [] }>();
+
+/** The rows in runs of one week each, under that week's header. */
+const weeks = computed<{ week: Week | undefined; key: string; rows: Row[] }[]>(() => {
+    const headers = new Map<string, Week>();
+    for (const week of props.data.weeks) if (!headers.has(week.week)) headers.set(week.week, week);
+    const runs: { week: Week | undefined; key: string; rows: Row[] }[] = [];
+    for (const row of props.data.rows) {
+        const last = runs[runs.length - 1];
+        if (last && last.week?.week === row.week) last.rows.push(row);
+        else runs.push({ week: headers.get(row.week), key: `${row.week}-${runs.length}`, rows: [row] });
+    }
+    return runs;
+});
 
 const router = useRouter();
 const nav = findNavigation(router);
@@ -105,35 +121,52 @@ function closeWeighIn(): void {
             </svg>
         </button>
 
-        <ul v-if="data.rows.length" class="flex flex-col gap-2">
-            <li v-for="row in data.rows" :key="row.id">
-                <button
-                    type="button"
-                    data-test="weigh-in"
-                    class="block w-full text-left active:opacity-70"
-                    :aria-label="row.is_missed ? `Log the missed weigh-in for ${row.date_label}` : `Edit the weigh-in on ${row.date_label}`"
-                    @click="openRow(row)"
+        <div v-if="data.rows.length" class="flex flex-col gap-4">
+            <section v-for="run in weeks" :key="run.key" data-test="week" class="flex flex-col gap-2">
+                <header
+                    v-if="run.week"
+                    class="sticky top-0 z-10 -mx-4 flex items-center justify-between gap-3 bg-background/90 px-5 py-2 backdrop-blur"
                 >
-                    <ItemCard
-                        :title="row.date_label"
-                        :time="row.time_label || undefined"
-                        :status="row.is_missed ? undefined : { kind: 'value', text: row.weight_label }"
-                        :pending="pending && !row.is_missed"
-                    >
-                        <template #icon>
-                            <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round">
-                                <path d="M5 4h14l2 16H3z" />
-                                <path d="M9 9a3 3 0 0 1 6 0M12 9l1.5-2" stroke-linecap="round" />
-                            </svg>
-                        </template>
-                        <template v-if="row.is_missed || row.waist_label" #default>
-                            <StatusPill v-if="row.is_missed" data-test="missed" :text="data.missed.text" :tone="data.missed.tone" />
-                            <p v-else data-test="waist" class="text-sm text-secondary-text">Waist {{ row.waist_label }}</p>
-                        </template>
-                    </ItemCard>
-                </button>
-            </li>
-        </ul>
+                    <div class="min-w-0">
+                        <h2 class="text-xl font-semibold">{{ run.week.title }}</h2>
+                        <p v-if="run.week.trend_label" data-test="week-trend" class="text-sm font-medium tabular-nums text-secondary-text">
+                            <PendingMark v-if="pending" derived>{{ run.week.trend_label }}</PendingMark>
+                            <template v-else>{{ run.week.trend_label }}</template>
+                        </p>
+                    </div>
+                    <StatusPill v-if="run.week.change" data-test="week-change" class="shrink-0" :text="run.week.change.text" :tone="run.week.change.tone" />
+                </header>
+                <ul class="flex flex-col gap-2">
+                    <li v-for="row in run.rows" :key="row.id">
+                        <button
+                            type="button"
+                            data-test="weigh-in"
+                            class="block w-full text-left active:opacity-70"
+                            :aria-label="row.is_missed ? `Log the missed weigh-in for ${row.date_label}` : `Edit the weigh-in on ${row.date_label}`"
+                            @click="openRow(row)"
+                        >
+                            <ItemCard
+                                :title="row.date_label"
+                                :time="row.time_label || undefined"
+                                :status="row.is_missed ? undefined : { kind: 'value', text: row.weight_label }"
+                                :pending="pending && !row.is_missed"
+                            >
+                                <template #icon>
+                                    <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round">
+                                        <path d="M5 4h14l2 16H3z" />
+                                        <path d="M9 9a3 3 0 0 1 6 0M12 9l1.5-2" stroke-linecap="round" />
+                                    </svg>
+                                </template>
+                                <template v-if="row.is_missed || row.waist_label" #default>
+                                    <StatusPill v-if="row.is_missed" data-test="missed" :text="data.missed.text" :tone="data.missed.tone" />
+                                    <p v-else data-test="waist" class="text-sm text-secondary-text">Waist {{ row.waist_label }}</p>
+                                </template>
+                            </ItemCard>
+                        </button>
+                    </li>
+                </ul>
+            </section>
+        </div>
         <p v-else-if="data.empty_message" class="px-1 text-secondary-text">{{ data.empty_message }}</p>
         <button
             v-if="data.next_before"

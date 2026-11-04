@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { MealShowOutput } from '@/contracts/meal_show';
-import ProgressBar from '@/design/ProgressBar.vue';
+import MacroBar from '@/design/MacroBar.vue';
 import StatusPill from '@/design/StatusPill.vue';
 import type { CheckInState } from '@/design/checkInLook';
 import { toneText } from '@/design/toneText';
@@ -25,12 +25,6 @@ const CHECK_IN_STATES: Record<MealShowOutput['check_in']['state'], CheckInState>
     over: 'over',
 };
 
-const MACROS: Record<string, { title: string; tint: 'calories' | 'protein' | 'fat' | 'carbs' }> = {
-    Cal: { title: 'Calories', tint: 'calories' },
-    P: { title: 'Protein', tint: 'protein' },
-    F: { title: 'Fat', tint: 'fat' },
-    C: { title: 'Carbs', tint: 'carbs' },
-};
 </script>
 
 <template>
@@ -53,15 +47,10 @@ const MACROS: Record<string, { title: string; tint: 'calories' | 'protein' | 'fa
         <p v-if="meal.check_in.state !== 'notCheckedIn'" class="text-sm font-semibold" :class="toneText[meal.check_in.tone]" data-test="check-in-text">
             {{ meal.check_in.text }}
         </p>
-        <ProgressBar
+        <MacroBar
             v-for="bar in meal.bars"
             :key="bar.label"
-            :title="MACROS[bar.label]?.title ?? bar.label"
-            :label="bar.label"
-            :value-text="bar.value_text"
-            :fraction="bar.fraction"
-            :tone="bar.tone"
-            :tint="MACROS[bar.label]?.tint ?? 'accent'"
+            :bar="bar"
             :pending="pending"
         />
         <div class="flex flex-wrap gap-2">

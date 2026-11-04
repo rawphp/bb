@@ -10,6 +10,7 @@ A mesocycle is 4 to 8 weeks of training whose last week is a deload. This follow
 - **MESO-004** [H] The create flow must ask for name, length in weeks including the deload (default from TBL-020, max 8), and start date.
 - **MESO-005** [H][I] Sessions must be ordered (Day 1, Day 2...). By default they map to the user's training weekdays (SCH-040). Users can label days with weekday names or "Day 1, Day 2" for a floating split. Days must be done in order.
 - **MESO-007** [H] An unfinished mesocycle build must be saved as a draft. Starting another build must warn that it replaces the draft.
+- **MESO-008** [G] The Train tab must show the current mesocycle as one card: its name, week ("Week 2 of 4"), phase and dates, a week track with one mark per week (done, this week, still to come, or skipped by an early end; the deload last and labelled), and today's session with an Open button (NAV-002). The card opens the current mesocycle.
 
 ## Templates (MESO)
 

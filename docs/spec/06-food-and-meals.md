@@ -26,6 +26,7 @@ The model is plan first, as in RP Diet. The user picks the foods for a meal and 
 - **FOOD-027** [D] Diet filters must hide foods that don't match: Dairy free, Gluten free, Grain free, Low FODMAP, Ovo-lacto vegetarian, Paleo, Vegan. When several are on, a food must match all of them. Filters persist per user.
 - **FOOD-028** [D] Selected foods must collect in a basket marked "Adding to meal", with foods already in the meal marked "Already in meal". Confirming adds them all at once.
 - **FOOD-029** [D] Search must return first results in under 300 ms for local matches [G].
+- **FOOD-030** [G] Picking for a meal, the basket must stay in view at the foot of the Pantry beside Add, and show what Add would make of it before anything is saved: each food or recipe at the amount the meal fit gives it (MEAL-002), and the meal's four bars after Add with "Targets met" (MEAL-003) or what is still short (MEAL-007), whose curated group a tap opens. The server works it out by meal_food_add's rules (`meal_food_add_show`). With a saved meal picked, or with no answer (offline), the basket lists the picks alone.
 
 ## Scanning (FOOD)
 
@@ -74,6 +75,7 @@ The model is plan first, as in RP Diet. The user picks the foods for a meal and 
   - Update destination target macros (on by default; the copied foods re-fit to the destination meal);
   - Update destination meal times (off by default; shakes keep their workout-relative time);
   - Copy locked state (off by default).
+- **MEAL-061** [D] An empty meal that is not checked in must offer the same meal (by name) from up to three of the 28 days before its day, newest first, each with its day and the names of its foods and recipes. Days that held the same foods show once. One tap copies that day's foods in, as Copy foods does with its defaults (MEAL-060).
 - **MEAL-070** [D] Users must be able to save a meal as a Saved Meal and load it into any meal. Locked foods load at their saved amounts and unlocked foods re-fit to the destination's targets.
 - **MEAL-071** [D] Saved Meals must be listable, renameable and deletable.
 

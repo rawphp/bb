@@ -1,0 +1,45 @@
+{
+    "entries": [
+        {
+            "id": "01JBX5E0000000000000000001",
+            "amount_text": "160 g (about 1.1 fillets)"
+        },
+        {
+            "id": "01JBX5E0000000000000000002",
+            "amount_text": "305 g (about 1.6 cups)"
+        }
+    ],
+    "bars": [
+        {
+            "label": "Cal",
+            "value_text": "660/1040",
+            "fraction": 0.63,
+            "tone": "neutral"
+        },
+        {
+            "label": "P",
+            "value_text": "58/68",
+            "fraction": 0.85,
+            "tone": "neutral"
+        },
+        {
+            "label": "F",
+            "value_text": "7/28",
+            "fraction": 0.25,
+            "tone": "neutral"
+        },
+        {
+            "label": "C",
+            "value_text": "85/128",
+            "fraction": 0.66,
+            "tone": "neutral"
+        }
+    ],
+    "targets_met": null,
+    "hints": [
+        {
+            "text": "Short 21 g fat. Add a food from Fat · Recommended.",
+            "group": "fat_recommended"
+        }
+    ]
+}

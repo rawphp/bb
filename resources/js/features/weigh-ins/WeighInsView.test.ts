@@ -94,6 +94,24 @@ describe('WeighInsView', () => {
         expect(rows[3]!.findAll('article > div')).toHaveLength(1);
     });
 
+    it('WT-008 heads each week of weigh-ins with the server\'s title, trend and change, its rows under it', () => {
+        const view = show({ payload: content });
+
+        const weeks = view.findAll('[data-test="week"]');
+        expect(weeks.map((week) => week.get('h2').text())).toEqual(['This week', '28 Sep – 4 Oct']);
+        expect(weeks[0]!.get('[data-test="week-trend"]').text()).toBe('Trend 83.0 kg');
+        expect(weeks[0]!.get('[data-test="week-change"]').text()).toBe('−0.2 kg on last week');
+        expect(weeks[1]!.get('[data-test="week-trend"]').text()).toBe('Trend 83.2 kg');
+        expect(weeks[1]!.find('[data-test="week-change"]').exists()).toBe(false);
+        expect(weeks.map((week) => week.findAll('[data-test="weigh-in"]').length)).toEqual([4, 1]);
+    });
+
+    it('WT-008 a week\'s header stays in view while its weigh-ins scroll under it', () => {
+        const view = show({ payload: content });
+
+        expect(view.get('[data-test="week"] header').classes()).toEqual(expect.arrayContaining(['sticky', 'top-0']));
+    });
+
     it('WT-001 the schedule row says the server\'s summary and opens the schedule', async () => {
         const view = show({ payload: content });
 
@@ -146,6 +164,7 @@ describe('WeighInsView', () => {
         const view = show({ payload: content, pending: true });
 
         expect(view.get('[data-test="trend"]').text()).toContain('Waiting to sync');
+        expect(view.findAll('[data-test="week-trend"]').every((trend) => trend.text().includes('Waiting to sync'))).toBe(true);
         const logged = view.findAll('[data-test="weigh-in"]').filter((row) => row.text().includes('kg'));
         expect(logged.every((row) => row.text().includes('Waiting to sync'))).toBe(true);
         expect(view.findAll('[data-test="steps-row"]').every((row) => row.text().includes('Waiting to sync'))).toBe(true);

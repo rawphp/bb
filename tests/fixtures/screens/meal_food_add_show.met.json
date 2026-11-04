@@ -1,0 +1,43 @@
+{
+    "entries": [
+        {
+            "id": "01JBX5E0000000000000000001",
+            "amount_text": "175 g (about 1.2 fillets)"
+        },
+        {
+            "id": "01JBX5E0000000000000000002",
+            "amount_text": null
+        }
+    ],
+    "bars": [
+        {
+            "label": "Cal",
+            "value_text": "1040/1040",
+            "fraction": 1.0,
+            "tone": "neutral"
+        },
+        {
+            "label": "P",
+            "value_text": "68/68",
+            "fraction": 1.0,
+            "tone": "neutral"
+        },
+        {
+            "label": "F",
+            "value_text": "28/28",
+            "fraction": 1.0,
+            "tone": "neutral"
+        },
+        {
+            "label": "C",
+            "value_text": "128/128",
+            "fraction": 1.0,
+            "tone": "neutral"
+        }
+    ],
+    "targets_met": {
+        "text": "Targets met",
+        "tone": "good"
+    },
+    "hints": []
+}

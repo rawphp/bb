@@ -74,5 +74,7 @@ final class WorkoutShowOutput extends CapabilityData
         /** WO-008: earlier sessions of the mesocycle, newest first. */
         #[Field(items: WorkoutLookBackRow::class)]
         public readonly array $look_back,
+        /** WO-011: what a finished session adds up to; null until it is finished. */
+        public readonly ?WorkoutRecap $recap,
     ) {}
 }

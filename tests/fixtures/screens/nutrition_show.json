@@ -10,7 +10,33 @@
                 "state": "onTrack",
                 "text": "Checked in",
                 "tone": "good"
-            }
+            },
+            "bars": [
+                {
+                    "label": "Cal",
+                    "value_text": "520/520",
+                    "fraction": 1,
+                    "tone": "neutral"
+                },
+                {
+                    "label": "P",
+                    "value_text": "38/38",
+                    "fraction": 1,
+                    "tone": "neutral"
+                },
+                {
+                    "label": "F",
+                    "value_text": "15/15",
+                    "fraction": 1,
+                    "tone": "neutral"
+                },
+                {
+                    "label": "C",
+                    "value_text": "58/58",
+                    "fraction": 1,
+                    "tone": "neutral"
+                }
+            ]
         },
         {
             "meal_id": "01JBX5M0000000000000000002",
@@ -21,7 +47,33 @@
                 "state": "under",
                 "text": "Checked in under target",
                 "tone": "warning"
-            }
+            },
+            "bars": [
+                {
+                    "label": "Cal",
+                    "value_text": "610/700",
+                    "fraction": 0.871,
+                    "tone": "neutral"
+                },
+                {
+                    "label": "P",
+                    "value_text": "44/51",
+                    "fraction": 0.863,
+                    "tone": "neutral"
+                },
+                {
+                    "label": "F",
+                    "value_text": "18/21",
+                    "fraction": 0.857,
+                    "tone": "neutral"
+                },
+                {
+                    "label": "C",
+                    "value_text": "66/82",
+                    "fraction": 0.805,
+                    "tone": "neutral"
+                }
+            ]
         },
         {
             "meal_id": "01JBX5M0000000000000000003",
@@ -32,7 +84,33 @@
                 "state": "notCheckedIn",
                 "text": "Not checked in",
                 "tone": "neutral"
-            }
+            },
+            "bars": [
+                {
+                    "label": "Cal",
+                    "value_text": "550/1040",
+                    "fraction": 0.529,
+                    "tone": "neutral"
+                },
+                {
+                    "label": "P",
+                    "value_text": "41/68",
+                    "fraction": 0.603,
+                    "tone": "neutral"
+                },
+                {
+                    "label": "F",
+                    "value_text": "20/28",
+                    "fraction": 0.714,
+                    "tone": "neutral"
+                },
+                {
+                    "label": "C",
+                    "value_text": "52/128",
+                    "fraction": 0.406,
+                    "tone": "neutral"
+                }
+            ]
         },
         {
             "meal_id": "01JBX5M0000000000000000004",
@@ -43,7 +121,33 @@
                 "state": "notCheckedIn",
                 "text": "Not checked in",
                 "tone": "neutral"
-            }
+            },
+            "bars": [
+                {
+                    "label": "Cal",
+                    "value_text": "0/380",
+                    "fraction": 0.0,
+                    "tone": "neutral"
+                },
+                {
+                    "label": "P",
+                    "value_text": "0/25",
+                    "fraction": 0.0,
+                    "tone": "neutral"
+                },
+                {
+                    "label": "F",
+                    "value_text": "0/10",
+                    "fraction": 0.0,
+                    "tone": "neutral"
+                },
+                {
+                    "label": "C",
+                    "value_text": "0/48",
+                    "fraction": 0.0,
+                    "tone": "neutral"
+                }
+            ]
         }
     ],
     "empty_text": null

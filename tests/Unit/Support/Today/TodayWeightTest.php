@@ -97,3 +97,22 @@ it('WT-011 trendKg is the cached trend kg() uses, one summary row once kept, and
         ->and(DB::getQueryLog())->toHaveCount(1)
         ->and(TodayWeight::trendKg($none))->toBeNull();
 });
+
+it('WT-008 trendByDay is the trend on each local day, kept as trendKg is: one summary row once kept, empty with no weigh-ins', function () {
+    $user = weighedUser();
+    $user->forceFill(['time_zone' => 'Australia/Brisbane'])->save();
+    WeighIn::factory()->for($user)->create(['weighed_at' => '2026-09-15 23:30:00', 'weight_kg' => 70.0]);
+    $byDay = TodayWeight::trendByDay($user);
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $kept = TodayWeight::trendByDay($user);
+    DB::disableQueryLog();
+
+    expect($kept)->toBe($byDay)
+        ->and(DB::getQueryLog())->toHaveCount(1)
+        ->and(array_key_first($byDay))->toBe('2026-09-01')
+        ->and(array_key_last($byDay))->toBe('2026-09-16')
+        ->and(end($byDay))->toBe(TodayWeight::trendKg($user))
+        ->and(TodayWeight::trendByDay(User::factory()->create()))->toBe([]);
+});

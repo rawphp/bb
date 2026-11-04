@@ -80,21 +80,54 @@ it('SCH-061 REV-003 an away week with nothing scheduled or logged says so and ma
 it('REV-003 checking in every meal is excellent work, with nothing to check in', function () {
     $payload = rvMeals();
 
+    $marks = array_merge(...array_map(fn (array $day) => $day['meals'], $payload['days']));
     expect($payload['message'])->toBe(['text' => 'Excellent work', 'tone' => 'good'])
-        ->and($payload['unchecked'])->toBe([])
-        ->and($payload['check_in_title'])->toBe('Check in now');
+        ->and($payload['days'])->toHaveCount(7)
+        ->and(array_unique(array_column($marks, 'is_checked')))->toBe([true]);
 });
 
-it('REV-003 meals not checked in are listed to check in now, by their id', function () {
+it('REV-003 REV-006 meals not checked in are marked to check in now, by their id, on their day', function () {
     $payload = rvMeals(fn (ReviewSeed $seed) => $seed->isChecked = fn (string $date, int $meal) => ! ($date === '2026-10-08' && $meal === 2)
         && ! ($date === '2026-10-10' && $meal === 4));
 
     $ids = fn (string $date, int $meal) => strtolower((string) DayTarget::query()->where('date', $date)->firstOrFail()->meals[$meal - 1]['id']);
+    $open = [];
+    foreach ($payload['days'] as $day) {
+        foreach ($day['meals'] as $meal) {
+            if (! $meal['is_checked']) {
+                $open[] = ['day' => $day['date'], 'meal_id' => $meal['meal_id'], 'label' => $meal['label']];
+            }
+        }
+    }
     expect($payload['message'])->toBe(['text' => '26 of 28 meals checked in', 'tone' => 'neutral'])
-        ->and($payload['unchecked'])->toBe([
-            ['meal_id' => $ids('2026-10-08', 2), 'name' => 'Meal 2', 'date_label' => 'Thu, 8 Oct'],
-            ['meal_id' => $ids('2026-10-10', 4), 'name' => 'Meal 4', 'date_label' => 'Sat, 10 Oct'],
+        ->and($open)->toBe([
+            ['day' => '2026-10-08', 'meal_id' => $ids('2026-10-08', 2), 'label' => 'Check in Meal 2, Thu, 8 Oct'],
+            ['day' => '2026-10-10', 'meal_id' => $ids('2026-10-10', 4), 'label' => 'Check in Meal 4, Sat, 10 Oct'],
         ]);
+});
+
+it('REV-006 MEAL-047 each meal\'s mark carries its check-in state, on track, under or over, and says it', function (float $share, string $state, string $words) {
+    $payload = rvMeals(function (ReviewSeed $seed) use ($share) {
+        $seed->eatenShare = $share;
+        $seed->isChecked = fn (string $date, int $meal) => ! ($date === '2026-10-08' && $meal === 2);
+    });
+
+    $marks = collect($payload['days'])->flatMap(fn (array $day) => $day['meals']);
+    expect($marks->firstWhere('label', 'Check in Meal 2, Thu, 8 Oct')['check_in'])->toBe('not_checked_in')
+        ->and($marks->where('is_checked', true)->pluck('check_in')->unique()->all())->toBe([$state])
+        ->and($marks->firstWhere('is_checked', true)['label'])->toEndWith(": {$words}");
+})->with([
+    'on track' => [1.0, 'on_track', 'checked in, on track'],
+    'under' => [0.5, 'under', 'checked in, under target'],
+    'over' => [1.5, 'over', 'checked in, over target'],
+]);
+
+it('REV-006 still sends the meals not checked in as unchecked, with check_in_title, for one release', function () {
+    $payload = rvMeals(fn (ReviewSeed $seed) => $seed->isChecked = fn (string $date, int $meal) => ! ($date === '2026-10-08' && $meal === 2));
+
+    $id = strtolower((string) DayTarget::query()->where('date', '2026-10-08')->firstOrFail()->meals[1]['id']);
+    expect($payload['unchecked'])->toBe([['meal_id' => $id, 'name' => 'Meal 2', 'date_label' => 'Thu, 8 Oct']])
+        ->and($payload['check_in_title'])->toBe('Check in now');
 });
 
 // MARK: step 3

@@ -59,13 +59,51 @@
                             "text",
                             "tone"
                         ]
+                    },
+                    "bars": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "label": {
+                                    "type": "string",
+                                    "description": "\"Cal\" or \"P\""
+                                },
+                                "value_text": {
+                                    "type": "string",
+                                    "description": "\"780/2600\" or \"51/170\""
+                                },
+                                "fraction": {
+                                    "type": "number",
+                                    "description": "0 to 1."
+                                },
+                                "tone": {
+                                    "type": "string",
+                                    "enum": [
+                                        "good",
+                                        "neutral",
+                                        "warning",
+                                        "info"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "label",
+                                "value_text",
+                                "fraction",
+                                "tone"
+                            ]
+                        },
+                        "description": "NAV-005: calories, protein, fat and carbs against target: what was eaten once checked in, else the planned food"
                     }
                 },
                 "required": [
                     "meal_id",
                     "name",
                     "kcal_text",
-                    "check_in"
+                    "check_in",
+                    "bars"
                 ]
             }
         },

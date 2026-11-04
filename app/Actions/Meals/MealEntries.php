@@ -37,7 +37,22 @@ final class MealEntries
     /** @throws ModelNotFoundException when the meal is not one of the user's live meals */
     public static function load(User $user, string $mealId): self
     {
-        $meal = DayTargetMeal::query()->liveOf($user)->lockForUpdate()
+        return self::of($user, $mealId, lock: true);
+    }
+
+    /**
+     * The meal as it stands, for a read that changes nothing (FOOD-030): not locked, so load() it to change it.
+     *
+     * @throws ModelNotFoundException when the meal is not one of the user's live meals
+     */
+    public static function read(User $user, string $mealId): self
+    {
+        return self::of($user, $mealId, lock: false);
+    }
+
+    private static function of(User $user, string $mealId, bool $lock): self
+    {
+        $meal = DayTargetMeal::query()->liveOf($user)->when($lock, fn ($query) => $query->lockForUpdate())
             ->with(['dayTarget', 'plannedFoods.food.servings', 'plannedRecipes.sourceRecipe.ingredients.food'])
             ->findOrFail($mealId);
 

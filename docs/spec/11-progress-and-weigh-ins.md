@@ -9,6 +9,7 @@
 - **WT-005** [D] Help text must say to weigh first thing in the morning, after the bathroom, in minimal clothing, and that single readings bounce around and only the trend matters.
 - **WT-006** [D] Users must be able to log weigh-ins on unscheduled days. Extra readings improve the trend.
 - **WT-007** [D] The weigh-in schedule must allow several entries, each a set of weekdays with a time. The entry sheet has Select all days and Delete schedule. Delete is blocked when it would leave fewer than 2 weigh-in days a week.
+- **WT-008** [B] The Weigh-ins list must group its rows by week, newest first: the plan week from the review day (PLAN-008), as Today's week strip runs; before the plan, weeks from its first review day; with no plan, Monday to Sunday. Each week is headed by "This week" or its days ("24 – 30 Oct"), the trend weight at its end (today, for this week) and the change in trend from the week before, worded by the server in the user's unit. The header stays pinned while its week scrolls under it. A week that two pages hold shows once.
 
 ## Steps and waist (WT)
 
@@ -36,3 +37,4 @@ From mesoprep. rp-clone read steps only from Apple Health.
 - **ANA-009** [H] Per-exercise history must show every session's sets with weight and reps, with the best estimated 1RM of each session marked.
 - **ANA-010** [D] Users must be able to share a progress image (weight chart, phase summary) to other apps.
 - **ANA-011** [D] Adherence must show per day as a green dot on the week strip, and per week in the review.
+- **ANA-012** [B] Touching or dragging across the weight chart, hovering it with a mouse, or pressing the arrow keys on it must pick the nearest weigh-in day and read it out above the chart: the date, that day's weigh-in, trend weight and goal range, and the waist when one was measured. The server words each readout. Before a pick, the readout shows the latest weigh-in. The chart is a slider for screen readers, its value the readout.

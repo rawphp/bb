@@ -16,6 +16,7 @@ RP has a nutrition review in the Diet app and nothing weekly in Hypertrophy. Her
   7. **Preview.** Next week's days, each with calories, day type and workout, then Save.
 - **REV-004** [D] Step 7 must let the user tap a day to move calories between days before saving (NUT-021).
 - **REV-005** [I] In training-only mode, the review must show steps 1, 3 and 4 only.
+- **REV-006** [B] The meals step must lay the week out as one row per day, with a mark for each planned meal: the meal's check-in box as Today draws it (on track, under or over, MEAL-047) when it was checked in, or an open box that checks it in with one tap (meal_check_in). A check-in is not removed from here. The user sees which days fell off at a glance instead of reading a list.
 
 ## Calorie choice (REV)
 

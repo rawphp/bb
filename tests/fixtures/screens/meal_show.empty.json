@@ -50,7 +50,19 @@
     "entries": [],
     "empty": {
         "title": "Your meal is empty",
-        "note": "Because this meal has no foods in it, the app assumes you are eating this meal at target macros."
+        "note": "Because this meal has no foods in it, the app assumes you are eating this meal at target macros.",
+        "repeats": [
+            {
+                "meal_id": "01jbx0m1n2p3q4r5s6t7v8w9a1",
+                "title": "Wed 23 Sep",
+                "foods_text": "Chicken breast · White rice · Broccoli"
+            },
+            {
+                "meal_id": "01jbx0m1n2p3q4r5s6t7v8w9a2",
+                "title": "Mon 21 Sep",
+                "foods_text": "Chili"
+            }
+        ]
     },
     "menu": [
         {

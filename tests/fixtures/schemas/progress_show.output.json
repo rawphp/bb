@@ -171,6 +171,58 @@
                 },
                 "accessibility_label": {
                     "type": "string"
+                },
+                "readouts": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "date": {
+                                "type": "string",
+                                "format": "date"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "lines": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "label": {
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "type": "string"
+                                        },
+                                        "tone": {
+                                            "type": "string",
+                                            "description": "The value's colour; neutral for plain text.",
+                                            "enum": [
+                                                "good",
+                                                "neutral",
+                                                "warning",
+                                                "info"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "label",
+                                        "value",
+                                        "tone"
+                                    ]
+                                }
+                            }
+                        },
+                        "required": [
+                            "date",
+                            "title",
+                            "lines"
+                        ]
+                    },
+                    "description": "ANA-012: one per day in weights, in the same order."
                 }
             },
             "required": [
@@ -180,7 +232,8 @@
                 "goal",
                 "waist_unit",
                 "waist",
-                "accessibility_label"
+                "accessibility_label",
+                "readouts"
             ]
         },
         "summary": {

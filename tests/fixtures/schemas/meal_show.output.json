@@ -324,11 +324,39 @@
                 },
                 "note": {
                     "type": "string"
+                },
+                "repeats": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "meal_id": {
+                                "type": "string",
+                                "description": "The earlier meal: meal_copy's meal_id"
+                            },
+                            "title": {
+                                "type": "string",
+                                "description": "Its day, \"Tue 3 Nov\""
+                            },
+                            "foods_text": {
+                                "type": "string",
+                                "description": "The names of its foods and recipes, \"Chicken breast · White rice\""
+                            }
+                        },
+                        "required": [
+                            "meal_id",
+                            "title",
+                            "foods_text"
+                        ]
+                    },
+                    "description": "MEAL-061: newest first; none once the meal is checked in"
                 }
             },
             "required": [
                 "title",
-                "note"
+                "note",
+                "repeats"
             ]
         },
         "menu": {

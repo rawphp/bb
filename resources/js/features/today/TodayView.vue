@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { write } from '@/app/call';
 import { writeFailureMessage } from '@/app/errors';
@@ -39,6 +39,7 @@ import TodayTourOverlay from './sheets/TodayTourOverlay.vue';
 import TodayWorkoutTimeSheet from './sheets/TodayWorkoutTimeSheet.vue';
 import TodayBusyCard from './TodayBusyCard.vue';
 import TodayMealCard from './TodayMealCard.vue';
+import TodayNowLine from './TodayNowLine.vue';
 import TodayOtherActivityCard from './TodayOtherActivityCard.vue';
 import TodayStepRow from './TodayStepRow.vue';
 import TodayTotalsBar from './TodayTotalsBar.vue';
@@ -74,6 +75,14 @@ const weekPending = computed(() => props.pending || isPending('week_show'));
 function reload(): void {
     void loadBoth().catch(() => undefined);
 }
+
+// SCH-012: back in the foreground (the installed app resumed, the tab shown again), the day
+// is read again, so the Now line and what is next follow the clock. A fixture never reads.
+function resumed(): void {
+    if (document.visibilityState === 'visible' && !props.payload) reload();
+}
+onMounted(() => document.addEventListener('visibilitychange', resumed));
+onUnmounted(() => document.removeEventListener('visibilitychange', resumed));
 
 // ONB-002: with no plan yet, setup is still open, so Today sends the user back to it. A
 // cached copy can predate setup finishing (on the Coach, or another device), so only the
@@ -113,12 +122,13 @@ function endTour(): void {
 }
 
 // The timeline in the server's order (SCH-001), each entry with the item it names.
-type Entry =
-    | { kind: 'meal'; key: string; item: Meal }
-    | { kind: 'workout'; key: string; item: TodayShowOutput['workouts'][number] }
-    | { kind: 'weigh_in'; key: string; item: TodayShowOutput['weigh_ins'][number] }
-    | { kind: 'other_activity'; key: string; item: TodayShowOutput['other_activities'][number] }
-    | { kind: 'busy'; key: string; item: TodayShowOutput['busy_periods'][number] };
+type Entry = { key: string } & (
+    | { kind: 'meal'; item: Meal }
+    | { kind: 'workout'; item: TodayShowOutput['workouts'][number] }
+    | { kind: 'weigh_in'; item: TodayShowOutput['weigh_ins'][number] }
+    | { kind: 'other_activity'; item: TodayShowOutput['other_activities'][number] }
+    | { kind: 'busy'; item: TodayShowOutput['busy_periods'][number] }
+);
 
 const timeline = computed<Entry[]>(() => {
     const day = data.value;
@@ -129,6 +139,38 @@ const timeline = computed<Entry[]>(() => {
         return item ? [{ kind, key: `${kind}:${id}`, item } as Entry] : [];
     });
 });
+
+// SCH-012: the Now line sits before the entry the server names, or after the last one.
+const nowBefore = computed(() => {
+    const before = data.value?.now?.before;
+    return before ? `${before.kind}:${before.id}` : null;
+});
+
+// SCH-012: opened on today with the user still at the top, the screen scrolls a Now line that
+// sits below the fold into view with the item after it, so what is next shows first, as a
+// calendar's day view does. As little as that takes, never after the user has scrolled, and
+// not under the tour. It is decided once, on the first copy shown, so fresh data replacing a
+// cached copy never moves the screen (PWA-004).
+const root = ref<HTMLElement | null>(null);
+const FOLD_MARGIN_PX = 96;
+let nowBrought = false;
+
+watch(
+    () => data.value,
+    async (shown) => {
+        if (nowBrought || !shown) return;
+        nowBrought = true;
+        if (!shown.now || touring.value) return;
+        await nextTick();
+        const line = root.value?.querySelector<HTMLElement>('[data-test="now-line"]');
+        const screen = root.value?.closest<HTMLElement>('.bb-screen');
+        if (!line || !screen || screen.scrollTop > 0) return;
+        if (line.getBoundingClientRect().bottom <= screen.getBoundingClientRect().bottom - FOLD_MARGIN_PX) return;
+        const next = line.nextElementSibling instanceof HTMLElement && line.nextElementSibling.matches('[data-timeline]') ? line.nextElementSibling : line;
+        next.scrollIntoView?.({ block: 'nearest' });
+    },
+    { immediate: true, flush: 'post' },
+);
 
 // OFF-009: the user's own check-in or its removal, newest first, while it waits to sync.
 function pendingCheck(meal: Meal): boolean | null {
@@ -372,7 +414,7 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
 </script>
 
 <template>
-    <main class="bb-screen-content">
+    <main ref="root" class="bb-screen-content">
         <div class="mb-3 flex items-center gap-1 px-1">
             <h1 class="flex-1 text-3xl font-bold">Today</h1>
             <ActionMenu v-if="data" label="Schedule menu" :items="scheduleItems" @select="scheduleAction">
@@ -453,33 +495,37 @@ const headerButton = 'flex min-h-tap min-w-tap items-center justify-center text-
 
                 <p v-if="error" role="alert" class="rounded-xl p-3 text-sm" :class="toneClasses.warning">{{ error }}</p>
 
-                <div v-for="entry in timeline" :key="entry.key" data-timeline :data-kind="entry.kind">
-                    <TodayWeighInRow v-if="entry.kind === 'weigh_in'" :weigh-in="entry.item" @add="open('/weigh-ins/log')" />
-                    <template v-else-if="entry.kind === 'meal'">
-                        <TodayMealCard
-                            :meal="entry.item"
+                <template v-for="entry in timeline" :key="entry.key">
+                    <TodayNowLine v-if="data.now && nowBefore === entry.key" :now="data.now" />
+                    <div data-timeline :data-kind="entry.kind">
+                        <TodayWeighInRow v-if="entry.kind === 'weigh_in'" :weigh-in="entry.item" @add="open('/weigh-ins/log')" />
+                        <template v-else-if="entry.kind === 'meal'">
+                            <TodayMealCard
+                                :meal="entry.item"
+                                :condensed="condensed"
+                                :pending="pending"
+                                :pending-check="pendingCheck(entry.item)"
+                                @toggle="toggle(entry.item)"
+                                @open="open(`/meals/${entry.item.id}`)"
+                                @menu="mealMenu(entry.item)"
+                                @edit="open(`/meals/${entry.item.id}?action=edit_macros_time`)"
+                                @delete="askDelete(entry.item)"
+                            />
+                            <p v-if="notice?.mealId === entry.item.id" role="alert" class="mt-1.5 px-1 text-sm text-tone-warning">{{ notice.text }}</p>
+                        </template>
+                        <TodayWorkoutCard
+                            v-else-if="entry.kind === 'workout'"
+                            :workout="entry.item"
                             :condensed="condensed"
                             :pending="pending"
-                            :pending-check="pendingCheck(entry.item)"
-                            @toggle="toggle(entry.item)"
-                            @open="open(`/meals/${entry.item.id}`)"
-                            @menu="mealMenu(entry.item)"
-                            @edit="open(`/meals/${entry.item.id}?action=edit_macros_time`)"
-                            @delete="askDelete(entry.item)"
+                            @start="open(`/workouts/${entry.item.mesocycle_id}/${entry.item.week}/${entry.item.day}`)"
+                            @menu="workoutMenu(entry.item)"
                         />
-                        <p v-if="notice?.mealId === entry.item.id" role="alert" class="mt-1.5 px-1 text-sm text-tone-warning">{{ notice.text }}</p>
-                    </template>
-                    <TodayWorkoutCard
-                        v-else-if="entry.kind === 'workout'"
-                        :workout="entry.item"
-                        :condensed="condensed"
-                        :pending="pending"
-                        @start="open(`/workouts/${entry.item.mesocycle_id}/${entry.item.week}/${entry.item.day}`)"
-                        @menu="workoutMenu(entry.item)"
-                    />
-                    <TodayOtherActivityCard v-else-if="entry.kind === 'other_activity'" :activity="entry.item" @menu="activityMenu(entry.item)" />
-                    <TodayBusyCard v-else :busy="entry.item" />
-                </div>
+                        <TodayOtherActivityCard v-else-if="entry.kind === 'other_activity'" :activity="entry.item" @menu="activityMenu(entry.item)" />
+                        <TodayBusyCard v-else :busy="entry.item" />
+                    </div>
+                </template>
+                <TodayNowLine v-if="data.now && !nowBefore" :now="data.now" />
                 <!-- DAY-001: food eaten off-plan has no meal slot; it sits under the day's items. -->
                 <OffPlanRow v-for="entry in data.off_plan" :key="entry.id" :entry="entry" :pending="pending" />
             </template>

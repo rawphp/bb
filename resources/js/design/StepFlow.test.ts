@@ -1,9 +1,9 @@
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import onboardingEmpty from '../../../tests/fixtures/screens/onboarding_show.empty.json';
-import StepFlow, { type StepFlowStep } from './StepFlow.vue';
+import StepFlow, { type StepFlowMark, type StepFlowStep } from './StepFlow.vue';
 import StepFlowGallery from './gallery/StepFlow.gallery.vue';
 
 const step: StepFlowStep = {
@@ -41,7 +41,7 @@ describe('StepFlow', () => {
     it("UI-007 takes the server's step payload as it is sent", () => {
         expectTypeOf<OnboardingShowOutput['step']>().toExtend<StepFlowStep>();
 
-        const wrapper = mount(StepFlow, { props: { step: onboardingEmpty.step } });
+        const wrapper = mount(StepFlow, { props: { step: onboardingEmpty.step as OnboardingShowOutput['step'] } });
 
         expect(wrapper.get('h2').text()).toBe(onboardingEmpty.step.title);
         expect(next(wrapper).text()).toBe(onboardingEmpty.step.next_title);
@@ -175,7 +175,81 @@ describe('StepFlow', () => {
         expect(wrapper.emitted('next')).toBeUndefined();
     });
 
-    it('VIEW-004 the gallery lists StepFlow with each state', () => {
+    describe('ONB-022 the step track', () => {
+        const track: StepFlowMark[] = [
+            { step: 1, label: 'Goal', state: 'done', can_open: true },
+            { step: 2, label: 'About you', state: 'current', can_open: false },
+            { step: 3, label: 'Health check', state: 'todo', can_open: false },
+            { step: 14, label: 'Review', state: 'todo', can_open: false },
+        ];
+
+        function tracked() {
+            return mount(StepFlow, { props: { step: { ...step, track } }, slots: { default: '<p>Height</p>' }, attachTo: document.body });
+        }
+
+        it('ONB-022 UI-007 a segmented bar under the counter marks each step done, current or to come', () => {
+            const wrapper = tracked();
+            const marks = wrapper.findAll('[data-track-bar] [data-mark]');
+
+            expect(marks.map((m) => m.attributes('data-mark'))).toEqual(['done', 'current', 'todo', 'todo']);
+            expect(marks[0]!.classes()).toContain('bg-accent');
+            expect(marks[2]!.classes()).toContain('bg-accent/15');
+            // The current mark is the long one, so "you are here" reads apart from the done marks.
+            expect(marks[1]!.classes()).toContain('flex-[3]');
+            expect(marks[0]!.classes()).not.toContain('flex-[3]');
+            // The current mark's fill grows in from the left as the step opens (a transform, PWA-021).
+            expect(marks[1]!.get('[data-fill]').classes()).toEqual(expect.arrayContaining(['origin-left', 'bg-accent']));
+            wrapper.unmount();
+        });
+
+        it('ONB-022 the list beside the step names every step; a done step opens it and the others are not buttons', async () => {
+            const wrapper = tracked();
+            const rail = wrapper.get('nav[data-track-rail]');
+            const items = rail.findAll('li');
+
+            expect(rail.attributes('aria-label')).toBe('Steps');
+            expect(items.map((li) => li.text())).toEqual(['Goal', 'About you', 'Health check', 'Review']);
+            expect(items[0]!.find('button').exists()).toBe(true);
+            expect(items[1]!.find('button').exists()).toBe(false);
+            expect(items[1]!.get('[aria-current]').attributes('aria-current')).toBe('step');
+            expect(items[2]!.find('button').exists()).toBe(false);
+            expect(items[0]!.get('button').attributes('aria-label')).toBe('Goal, done. Go back to this step');
+
+            await items[0]!.get('button').trigger('click');
+            expect(wrapper.emitted('open')).toEqual([[1]]);
+            wrapper.unmount();
+        });
+
+        it('ONB-022 on a phone, All steps opens the list in a sheet, and a done step there closes it and opens the step', async () => {
+            const wrapper = tracked();
+            const all = wrapper.get('button[data-track-all]');
+
+            expect(all.text()).toBe('All steps');
+            expect(all.classes()).toEqual(expect.arrayContaining(['md:hidden', 'min-h-tap']));
+            expect(wrapper.get('[data-track-bar]').classes()).toContain('md:hidden');
+            expect(wrapper.get('nav[data-track-rail]').classes()).toEqual(expect.arrayContaining(['hidden', 'md:block']));
+
+            await all.trigger('click');
+            const sheet = document.body.querySelector<HTMLElement>('[role="dialog"]');
+            expect(sheet?.textContent).toContain('Health check');
+            sheet!.querySelector<HTMLButtonElement>('li button')!.click();
+            await flushPromises();
+
+            expect(wrapper.emitted('open')).toEqual([[1]]);
+            expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+            wrapper.unmount();
+        });
+
+        it('UI-007 a flow with no track has no bar, no list and no All steps', () => {
+            const wrapper = flow();
+
+            expect(wrapper.find('[data-track-bar]').exists()).toBe(false);
+            expect(wrapper.find('nav[data-track-rail]').exists()).toBe(false);
+            expect(wrapper.find('button[data-track-all]').exists()).toBe(false);
+        });
+    });
+
+    it('VIEW-004 ONB-022 the gallery lists StepFlow with each state and a track', () => {
         expect(
             mount(GalleryView)
                 .findAll('h2')
@@ -191,7 +265,8 @@ describe('StepFlow', () => {
             'error',
             'pending',
             'disabled',
+            'track',
         ]);
-        expect(gallery.findAllComponents(StepFlow)).toHaveLength(7);
+        expect(gallery.findAllComponents(StepFlow)).toHaveLength(8);
     });
 });

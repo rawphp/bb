@@ -15,6 +15,11 @@ export interface TrainShowOutput {
     week_text: string;
     phase_title: string;
     dates_text: string;
+    week_track: {
+      number: number;
+      state: "past" | "current" | "upcoming" | "skipped";
+      deload: boolean;
+    }[];
     next_mesocycle?: {
       starts_text: string;
       start_date: string;
@@ -52,4 +57,4 @@ export interface TrainShowOutput {
   }[];
 }
 
-export const outputVersion = '11d37888c50e';
+export const outputVersion = '4caa0dd54023';

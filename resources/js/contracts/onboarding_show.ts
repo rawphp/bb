@@ -28,6 +28,18 @@ export interface OnboardingShowOutput {
     can_continue: boolean;
     continue_hint?: string | null;
     can_go_back: boolean;
+    /**
+     * ONB-022: every step shown and the review, in order
+     */
+    track: {
+      step: number;
+      /**
+       * "Body fat"; "Review" for the review
+       */
+      label: string;
+      state: "done" | "current" | "todo";
+      can_open: boolean;
+    }[];
   };
   training_only: boolean;
   notices: {
@@ -405,4 +417,4 @@ export interface OnboardingShowOutput {
   };
 }
 
-export const outputVersion = '6f248f96b1f1';
+export const outputVersion = '7364fb8cd897';

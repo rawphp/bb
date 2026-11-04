@@ -95,10 +95,12 @@ it('REV-003 two users with reviews in the same week never see each other\'s rows
 
     $a = reviewShowFor($one);
     $b = reviewShowFor($two);
+    $marks = fn (array $review) => array_merge(...array_map(fn (array $day) => $day['meals'], $review['meals']['days']));
+    $open = fn (array $review) => array_values(array_filter($marks($review), fn (array $meal) => ! $meal['is_checked']));
 
     expect($a['weigh_ins']['rows'][0]['value_label'])->toBe('89.0 kg')
         ->and($b['weigh_ins']['rows'][0]['value_label'])->toBe('71.0 kg')
-        ->and($a['meals']['unchecked'])->toBe([])
-        ->and($b['meals']['unchecked'])->toHaveCount(7)
-        ->and(array_intersect(array_column($a['meals']['unchecked'], 'meal_id'), array_column($b['meals']['unchecked'], 'meal_id')))->toBe([]);
+        ->and($open($a))->toBe([])
+        ->and($open($b))->toHaveCount(7)
+        ->and(array_intersect(array_column($marks($a), 'meal_id'), array_column($marks($b), 'meal_id')))->toBe([]);
 });

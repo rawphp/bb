@@ -9,7 +9,93 @@
         "next_title": "Next",
         "can_continue": false,
         "continue_hint": "Pick a goal and answer the question to continue.",
-        "can_go_back": false
+        "can_go_back": false,
+        "track": [
+            {
+                "step": 1,
+                "label": "Goal",
+                "state": "current",
+                "can_open": false
+            },
+            {
+                "step": 2,
+                "label": "About you",
+                "state": "todo",
+                "can_open": false
+            },
+            {
+                "step": 3,
+                "label": "Health check",
+                "state": "todo",
+                "can_open": false
+            },
+            {
+                "step": 4,
+                "label": "Weight-loss drugs",
+                "state": "todo",
+                "can_open": false
+            },
+            {
+                "step": 5,
+                "label": "Body fat",
+                "state": "todo",
+                "can_open": false
+            },
+            {
+                "step": 6,
+                "label": "Rate and length",
+                "state": "todo",
+                "can_open": false
+            },
+            {
+                "step": 7,
+                "label": "Experience",
+                "state": "todo",
+                "can_open": false
+            },
+            {
+                "step": 8,
+                "label": "Training days",
+                "state": "todo",
+                "can_open": false
+            },
+            {
+                "step": 9,
+                "label": "Training plan",
+                "state": "todo",
+                "can_open": false
+            },
+            {
+                "step": 10,
+                "label": "Daily steps",
+                "state": "todo",
+                "can_open": false
+            },
+            {
+                "step": 11,
+                "label": "Meals",
+                "state": "todo",
+                "can_open": false
+            },
+            {
+                "step": 12,
+                "label": "Weigh-ins",
+                "state": "todo",
+                "can_open": false
+            },
+            {
+                "step": 13,
+                "label": "Calories",
+                "state": "todo",
+                "can_open": false
+            },
+            {
+                "step": 14,
+                "label": "Review",
+                "state": "todo",
+                "can_open": false
+            }
+        ]
     },
     "training_only": false,
     "notices": [],

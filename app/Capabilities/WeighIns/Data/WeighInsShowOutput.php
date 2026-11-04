@@ -10,7 +10,10 @@ use Rawphp\Capabilities\Support\CapabilityData;
 /** The Weigh-ins screen in the More menu (WT-001 to WT-021). */
 final class WeighInsShowOutput extends CapabilityData
 {
-    /** @param  list<WeighInRow>  $rows */
+    /**
+     * @param  list<WeighInRow>  $rows
+     * @param  list<WeighInWeek>  $weeks
+     */
     public function __construct(
         public readonly string $title,
         #[Field(description: '"Trend weight" and its value, or "No weigh-ins yet" (WT-010).')]
@@ -20,6 +23,8 @@ final class WeighInsShowOutput extends CapabilityData
         public readonly WeighInSchedule $schedule,
         #[Field(description: 'Newest first, missed scheduled days among them.', items: WeighInRow::class)]
         public readonly array $rows,
+        #[Field(description: 'WT-008: a header for each week the rows fall in, newest first.', items: WeighInWeek::class)]
+        public readonly array $weeks,
         #[Field(description: 'The pill on each row marked is_missed.')]
         public readonly Status $missed,
         #[Field(description: 'Shown when there are no weigh-ins; null otherwise.')]

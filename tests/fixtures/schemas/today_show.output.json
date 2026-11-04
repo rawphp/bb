@@ -330,6 +330,57 @@
                 ]
             }
         },
+        "now": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "before": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "enum": [
+                                "weigh_in",
+                                "meal",
+                                "workout",
+                                "other_activity",
+                                "busy"
+                            ]
+                        },
+                        "id": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "kind",
+                        "id"
+                    ],
+                    "description": "The timeline entry the line sits before; null puts it after the last item."
+                },
+                "label": {
+                    "type": "string",
+                    "description": "\"Now\""
+                },
+                "next_text": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "\"Next: Dinner at 7:30 PM\"; null when nothing later is still to do."
+                }
+            },
+            "required": [
+                "label"
+            ],
+            "description": "SCH-012: on today only; null on any other day and when the timeline is empty."
+        },
         "meals": {
             "type": "array",
             "items": {
