@@ -398,6 +398,84 @@ it('WO-008 an earlier session opens read only', function () {
         ->and($payload['can_finish'])->toBeFalse();
 });
 
+// MARK: WO-011
+
+/** Week 3 day 1 finished at 18:23 after starting at 17:35, with each exercise's sets as given (kg, reps; null skips). */
+function woFinished(array $bench, array $row, array $curl): array
+{
+    $sets = [];
+    foreach (['slot-12' => [W::BENCH, $bench], 'slot-25' => [W::ROW, $row], 'slot-40' => [W::CURL, $curl]] as $slot => [$exercise, $done]) {
+        foreach ($done as $index => $set) {
+            $sets[] = woRow($slot, $index, $exercise, $set === null
+                ? ['is_skipped' => true]
+                : ['actual_weight_kg' => $set[0], 'actual_reps' => $set[1], 'is_logged' => true]);
+        }
+    }
+    $world = woStarted($sets, ['now' => '2026-09-28 18:30']);
+    $world['sessions'] = [...W::sessions(), W::session('m2w3d1', 3, 1, '2026-09-28 17:35:00', '2026-09-28 18:23:30')];
+
+    return $world;
+}
+
+it('WO-011 a finished session sums up its time, sets and weight lifted, and each exercise\'s best set against last week', function () {
+    $payload = woShow(...woFinished(
+        bench: [[82.5, 10], [82.5, 9], [82.5, 8]],
+        row: [[60, 11], [60, 9], [60, 8]],
+        curl: [[12, 12], [12, 10]],
+    ));
+    $workout = WorkoutIds::workout(W::MESO, 3, 1);
+
+    // 82.5 × 27 + 60 × 28 + 12 × 22 = 4171.5. Last week: Bench 80 × 10, Row 60 × 10, Curl 14 × 12.
+    expect($payload['status'])->toBe('finished')
+        ->and($payload['recap'])->toBe([
+            'title' => 'Workout done',
+            'stats' => [
+                ['label' => 'Time', 'value' => '48 min'],
+                ['label' => 'Sets', 'value' => '8'],
+                ['label' => 'Lifted', 'value' => '4,172 kg'],
+            ],
+            'exercises' => [
+                ['workout_exercise_id' => WorkoutIds::block($workout, 'slot-12'), 'name' => 'Bench Press', 'best_text' => '82.5 kg × 10', 'change' => ['text' => '+2.5 kg on last week', 'tone' => 'good']],
+                ['workout_exercise_id' => WorkoutIds::block($workout, 'slot-25'), 'name' => 'Barbell Row', 'best_text' => '60 kg × 11', 'change' => ['text' => '+1 rep on last week', 'tone' => 'good']],
+                ['workout_exercise_id' => WorkoutIds::block($workout, 'slot-40'), 'name' => 'Dumbbell Curl', 'best_text' => '12 kg × 12', 'change' => ['text' => '−2 kg on last week', 'tone' => 'neutral']],
+            ],
+        ]);
+});
+
+it('WO-011 the recap says when a best set matched last week, fewer reps, and an exercise whose sets were all skipped', function () {
+    $recap = woShow(...woFinished(
+        bench: [[80, 10], [80, 9], [80, 8]],
+        row: [[60, 9], [60, 9], null],
+        curl: [null, null],
+    ))['recap'];
+
+    expect(array_column($recap['exercises'], 'best_text'))->toBe(['80 kg × 10', '60 kg × 9', 'No sets logged'])
+        ->and(array_column($recap['exercises'], 'change'))->toBe([
+            ['text' => 'Same as last week', 'tone' => 'neutral'],
+            ['text' => '−1 rep on last week', 'tone' => 'neutral'],
+            null,
+        ])
+        ->and($recap['stats'][1])->toBe(['label' => 'Sets', 'value' => '5']);
+});
+
+it('WO-011 a session with no last week to beat shows no comparison, and an hour reads in hours', function () {
+    // Week 2 day 1 ran 17:30 to 18:30; there is no week 1 logged.
+    $recap = woShow(week: 2, day: 1)['recap'];
+
+    expect($recap['stats'])->toBe([
+        ['label' => 'Time', 'value' => '1 h'],
+        ['label' => 'Sets', 'value' => '8'],
+        ['label' => 'Lifted', 'value' => '4,088 kg'],
+    ])
+        ->and(array_column($recap['exercises'], 'best_text'))->toBe(['80 kg × 10', '60 kg × 10', '14 kg × 12'])
+        ->and(array_column($recap['exercises'], 'change'))->toBe([null, null, null]);
+});
+
+it('WO-011 a session not finished has no recap', function () {
+    expect(woShow()['recap'])->toBeNull()
+        ->and(woShow(...woStarted([woRow('slot-12', 0, W::BENCH, ['actual_weight_kg' => 80, 'actual_reps' => 10, 'is_logged' => true])]))['recap'])->toBeNull();
+});
+
 // MARK: WO-009
 
 it('WO-009 the footer names the first meal after the session ends', function () {

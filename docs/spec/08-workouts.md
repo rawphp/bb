@@ -12,6 +12,7 @@
 - **WO-008** [H] The header calendar icon must let the user look back at any earlier week and session of the mesocycle.
 - **WO-009** [I] The workout screen must show the post-workout meal's time and carbs at the bottom ("Next: Meal 3 at 7:00 PM · 95 g carbs").
 - **WO-010** [I] Finishing a workout must record its actual start and end time and send it to the schedule (SCH-052, SCH-054).
+- **WO-011** [G] A finished workout must open on a recap above its exercises: how long it took, the sets logged and the weight lifted (weight × reps over the logged sets), then each exercise's best set (the heaviest, then the most reps) against its best in the same session last week ("+2.5 kg on last week", "+2 reps on last week", "Same as last week"), in a status pill that is good when it went up. An exercise with no logged set last week shows no comparison. Tapping Finish brings the recap into view once the server has the finish; offline it shows after sync. Looking back at a finished session (WO-008) shows its recap too.
 
 ## Sets (WO)
 

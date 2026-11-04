@@ -696,6 +696,90 @@
                     "status"
                 ]
             }
+        },
+        "recap": {
+            "type": [
+                "object",
+                "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "title": {
+                    "type": "string"
+                },
+                "stats": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "label": {
+                                "type": "string"
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "label",
+                            "value"
+                        ]
+                    }
+                },
+                "exercises": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "workout_exercise_id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "best_text": {
+                                "type": "string"
+                            },
+                            "change": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "additionalProperties": false,
+                                "properties": {
+                                    "text": {
+                                        "type": "string"
+                                    },
+                                    "tone": {
+                                        "type": "string",
+                                        "enum": [
+                                            "good",
+                                            "neutral",
+                                            "warning",
+                                            "info"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "text",
+                                    "tone"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "workout_exercise_id",
+                            "name",
+                            "best_text"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "title",
+                "stats",
+                "exercises"
+            ]
         }
     },
     "required": [

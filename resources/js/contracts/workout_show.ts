@@ -166,6 +166,22 @@ export interface WorkoutShowOutput {
       tone: "good" | "neutral" | "warning" | "info";
     };
   }[];
+  recap?: {
+    title: string;
+    stats: {
+      label: string;
+      value: string;
+    }[];
+    exercises: {
+      workout_exercise_id: string;
+      name: string;
+      best_text: string;
+      change?: {
+        text: string;
+        tone: "good" | "neutral" | "warning" | "info";
+      } | null;
+    }[];
+  } | null;
 }
 
-export const outputVersion = '9313c0411597';
+export const outputVersion = 'f207b1195330';
