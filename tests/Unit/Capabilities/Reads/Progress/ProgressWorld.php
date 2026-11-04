@@ -54,6 +54,7 @@ final class ProgressWorld
      * @param  list<WeighIn>|null  $weighIns  40 days of 80 kg when null
      * @param  list<string>  $targetDays  days with a $targetKcal, 150 g protein target
      * @param  array<string, array{0: float, 1: float}>  $consumed  kcal and protein eaten by day (as off-plan entries)
+     * @param  list<array<string, mixed>>  $targetMeals  the meals of every target day, none checked in
      * @param  list<PlanWeek>  $planWeeks
      * @param  array<string, mixed>  $profile  replaces profile attributes
      * @param  list<Phase>|null  $phases
@@ -70,6 +71,7 @@ final class ProgressWorld
         int $reviewWeekday = 6,
         array $targetDays = [],
         array $consumed = [],
+        array $targetMeals = [],
         array $planWeeks = [],
         array $profile = [],
         ?int $steps = null,
@@ -84,7 +86,7 @@ final class ProgressWorld
     ): ProgressSnapshot {
         $targets = array_map(fn (string $day) => (new DayTarget)->forceFill([
             'id' => "dt-{$day}", 'user_id' => 1, 'date' => $day, 'day_type' => 'hard', 'kcal' => $targetKcal, 'protein_g' => 150,
-            'fat_g' => 60, 'carbs_g' => 200, 'meals' => [],
+            'fat_g' => 60, 'carbs_g' => 200, 'meals' => $targetMeals,
         ]), $targetDays);
         $offPlan = [];
         foreach ($consumed as $day => [$kcal, $protein]) {

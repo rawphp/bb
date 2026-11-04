@@ -1,7 +1,12 @@
 <?php
 
 use App\Domain\Model\MuscleGroup;
+use App\Models\DayTarget;
 use App\Models\Exercise;
+use App\Models\Food;
+use App\Models\MealCheckIn;
+use App\Models\PlannedFood;
+use App\Models\Profile;
 use App\Models\Step;
 use App\Models\User;
 use App\Models\WeighIn;
@@ -89,6 +94,28 @@ it('ANA-001 says the phase has no weigh-ins in the scope-empty fixture\'s shape'
     expect(ScreenFixture::differences(ScreenFixture::load('progress_show.scope_empty'), $data))->toBe([])
         ->and($data['scope_message'])->toBe('No weigh-ins in this phase yet')
         ->and($data['chart'])->toBeNull();
+});
+
+it('ANA-003 DAY-011 counts this week\'s calories as Today\'s totals bar does, planned meals included unless set to checked in', function () {
+    ['user' => $user] = ProgressSeed::world();
+    // Today, 10 October, the first day of the week: 2410 off-plan, breakfast checked in at 500, lunch planned as 80 g
+    // of oats (304, not its 780 target) and dinner not planned or checked in (its 1040 target).
+    $day = DayTarget::query()->where('user_id', $user->id)->whereDate('date', '2026-10-10')->firstOrFail();
+    [$breakfast, $lunch] = array_column($day->meals, 'id');
+    MealCheckIn::factory()->create(['meal_id' => $breakfast, 'time' => '08:10', 'kcal' => 500, 'protein_g' => 30, 'fat_g' => 15, 'carbs_g' => 60, 'is_manual' => false]);
+    $oats = Food::factory()->createOne(['name' => 'Oats', 'kcal' => 380, 'protein' => 13, 'fat' => 7, 'carbs' => 66]);
+    PlannedFood::factory()->create(['meal_id' => $lunch, 'food_id' => $oats->getKey(), 'grams' => 80]);
+    $this->actingAs($user);
+
+    $week = $this->postJson('/capabilities/progress_show')->assertOk()->json('data.this_week.calories.value_label');
+    $today = $this->postJson('/capabilities/today_show')->assertOk()->json('data.totals.calories.value_text');
+
+    expect($week)->toBe('4254/18550')
+        ->and(explode('/', $week)[0])->toBe(explode('/', $today)[0]);
+
+    Profile::query()->where('user_id', $user->id)->update(['consumed_totals' => 'checked_in']);
+
+    expect($this->postJson('/capabilities/progress_show')->assertOk()->json('data.this_week.calories.value_label'))->toBe('2910/18550');
 });
 
 it('ANA-003 shows a user with no plan the empty fixture\'s shape without a week card', function () {
