@@ -124,3 +124,38 @@ it('CAP-019 MEAL-001 RCP-002 gives a food entry and a recipe entry the row\'s ow
         ->and($entries['recipe']['id'])->toBe($recipe->getKey())
         ->and(Str::isUlid($entries['recipe']['id']))->toBeTrue();
 });
+
+it('MEAL-061 an empty meal offers the user\'s own same meal from the 28 days before, and meal_copy fills it from one', function () {
+    $user = mealShowUser();
+    $chicken = mealShowChicken();
+    $dinner = fn (User $owner, string $date) => mealShowIds($owner, $date)[2];
+    $plan = fn (string $mealId) => PlannedFood::factory()->create(['meal_id' => $mealId, 'food_id' => $chicken->getKey(), 'grams' => 200]);
+    foreach (['2026-08-26', '2026-08-27'] as $date) {
+        DayTarget::factory()->for($user)->create([
+            'date' => $date, 'day_type' => 'hard', 'kcal' => 2600, 'protein_g' => 170, 'fat_g' => 70, 'carbs_g' => 320,
+            'meals' => [
+                ['name' => 'Breakfast', 'kcal' => 780, 'protein_g' => 51, 'fat_g' => 21, 'carbs_g' => 96],
+                ['name' => 'Lunch', 'kcal' => 780, 'protein_g' => 51, 'fat_g' => 21, 'carbs_g' => 96],
+                ['name' => 'Dinner', 'kcal' => 1040, 'protein_g' => 68, 'fat_g' => 28, 'carbs_g' => 128],
+            ],
+        ]);
+        $plan($dinner($user, $date));
+    }
+    // After the meal's day, and another user's: neither is offered.
+    $plan($dinner($user, '2026-09-25'));
+    $plan($dinner(TodaySeed::stranger(), '2026-09-22'));
+    $thursday = $dinner($user, '2026-09-24');
+
+    $data = $this->actingAs($user)->postJson('/capabilities/meal_show', ['meal_id' => $thursday])->assertOk()->json('data');
+
+    assertMatchesScreenFixture('meal_show', $data);
+    // Wednesday's dinner holds TodaySeed's chili; 26 Aug is 29 days before.
+    expect($data['empty']['repeats'])->toBe([
+        ['meal_id' => $dinner($user, '2026-09-23'), 'title' => 'Wed 23 Sep', 'foods_text' => 'Chili'],
+        ['meal_id' => $dinner($user, '2026-08-27'), 'title' => 'Thu 27 Aug', 'foods_text' => 'Chicken breast'],
+    ]);
+
+    $this->postJson('/capabilities/meal_copy', ['meal_id' => $data['empty']['repeats'][1]['meal_id'], 'target_meal_ids' => [$thursday]])->assertOk();
+
+    expect(array_column($this->postJson('/capabilities/meal_show', ['meal_id' => $thursday])->json('data.entries'), 'name'))->toBe(['Chicken breast']);
+});

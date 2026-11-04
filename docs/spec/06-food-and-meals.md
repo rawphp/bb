@@ -74,6 +74,7 @@ The model is plan first, as in RP Diet. The user picks the foods for a meal and 
   - Update destination target macros (on by default; the copied foods re-fit to the destination meal);
   - Update destination meal times (off by default; shakes keep their workout-relative time);
   - Copy locked state (off by default).
+- **MEAL-061** [D] An empty meal that is not checked in must offer the same meal (by name) from up to three of the 28 days before its day, newest first, each with its day and the names of its foods and recipes. Days that held the same foods show once. One tap copies that day's foods in, as Copy foods does with its defaults (MEAL-060).
 - **MEAL-070** [D] Users must be able to save a meal as a Saved Meal and load it into any meal. Locked foods load at their saved amounts and unlocked foods re-fit to the destination's targets.
 - **MEAL-071** [D] Saved Meals must be listable, renameable and deletable.
 

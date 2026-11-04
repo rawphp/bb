@@ -7,6 +7,7 @@ import { useRead } from '@/app/useRead';
 import { useWrite } from '@/app/useWrite';
 import type { MealCheckInInput } from '@/contracts/meal_check_in';
 import type { MealCheckInUndoInput } from '@/contracts/meal_check_in_undo';
+import type { MealCopyInput } from '@/contracts/meal_copy';
 import type { MealDeleteInput } from '@/contracts/meal_delete';
 import type { MealFoodAmountSetInput } from '@/contracts/meal_food_amount_set';
 import type { MealFoodLockSetInput } from '@/contracts/meal_food_lock_set';
@@ -36,6 +37,7 @@ import MealSummaryCard from './MealSummaryCard.vue';
 // keeps only what is open and what was typed (VIEW-002). `pending` marks the server's
 // numbers as waiting to sync (OFF-008).
 type Entry = MealShowOutput['entries'][number];
+type Repeat = NonNullable<MealShowOutput['empty']>['repeats'][number];
 type MenuKey = MealShowOutput['menu'][number]['item'];
 
 const props = withDefaults(defineProps<{ payload?: MealShowOutput; mealId?: string; action?: string; pending?: boolean }>(), { pending: false });
@@ -149,6 +151,13 @@ async function setAmount(value: number, unit: MealFoodAmountSetInput['unit']): P
     if ((await amountWrite.send('meal_food_amount_set', { ...input }, 'The amount could not be changed.')) === 'done') editing.value = null;
 }
 
+// MEAL-061: the same meal from an earlier day, copied in as Copy foods does by default
+// (MEAL-060): its foods re-fit to this meal's targets. The meal is empty, so nothing is replaced.
+function repeat(earlier: Repeat): void {
+    const input: MealCopyInput = { meal_id: earlier.meal_id, target_meal_ids: [mealId] };
+    void send('meal_copy', { ...input }, 'The foods could not be copied.');
+}
+
 function rebalance(): void {
     void send('meal_rebalance', { meal_id: mealId } satisfies MealRebalanceInput, 'The meal could not be rebalanced.');
 }
@@ -251,7 +260,30 @@ function closeScanner(added: boolean): void {
             <section v-if="data.empty" class="flex flex-col gap-1.5 py-1" data-test="empty">
                 <h2 class="font-semibold text-primary-text">{{ data.empty.title }}</h2>
                 <p class="text-sm text-secondary-text">{{ data.empty.note }}</p>
-                <p class="text-sm text-secondary-text">Search above to add foods, and they scale to hit this meal's targets.</p>
+                <p v-if="!data.empty.repeats.length" class="text-sm text-secondary-text">Search above to add foods, and they scale to hit this meal's targets.</p>
+            </section>
+
+            <!-- MEAL-061: one tap has an earlier day's meal again. -->
+            <section v-if="data.empty?.repeats.length" class="flex flex-col gap-2 pt-1" data-test="repeats">
+                <h2 class="px-1 text-sm font-semibold text-secondary-text">Repeat a recent {{ data.title }}</h2>
+                <ul class="overflow-hidden rounded-2xl bg-surface">
+                    <li v-for="earlier in data.empty.repeats" :key="earlier.meal_id" class="[&+&]:border-t [&+&]:border-secondary-text/15">
+                        <button
+                            type="button"
+                            class="flex min-h-tap w-full items-center gap-3 px-4 py-3 text-left active:opacity-70 disabled:opacity-40"
+                            :disabled="busy"
+                            aria-description="Copies these foods into this meal"
+                            data-test="repeat"
+                            @click="repeat(earlier)"
+                        >
+                            <span class="flex min-w-0 flex-1 flex-col">
+                                <span class="font-semibold text-primary-text">{{ earlier.title }}</span>
+                                <span class="line-clamp-2 text-sm text-secondary-text">{{ earlier.foods_text }}</span>
+                            </span>
+                            <span class="shrink-0 rounded-full bg-accent/15 px-3.5 py-1.5 text-sm font-semibold text-accent" aria-hidden="true">Use</span>
+                        </button>
+                    </li>
+                </ul>
             </section>
 
             <ul v-if="data.entries.length" class="flex flex-col gap-2.5" aria-label="Foods">
