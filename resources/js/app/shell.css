@@ -242,13 +242,20 @@ textarea {
    ActiveWorkoutBar) fill the column to its right, and the app fills the window (PLT-002).
    The sheet host keeps covering the whole app; a bottom sheet's panel sits in the screen column. */
 :root {
-    /* The rail's width, shared with design/BottomSheet.vue, whose sheets sit in the column to its right. */
     --bb-rail-width: 5.5rem;
+    /* Where the screens' column starts: design/BottomSheet.vue centres its panel between this and
+       the window's right edge. Right of the rail when the shell is on the page (wide-screen block). */
+    --bb-column-left: 0px;
 }
 
 @media (min-width: 768px) {
     #app {
         max-width: none;
+    }
+
+    /* A screen outside the shell (sign-in, onboarding) has no rail, so its column starts at 0. */
+    :root:has(.bb-shell) {
+        --bb-column-left: var(--bb-rail-width);
     }
 
     .bb-shell {
