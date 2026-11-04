@@ -27,9 +27,17 @@ export function history(conversationUlid: string): Promise<ChatHistory> {
     return request('chat.history', `conversations/${encodeURIComponent(conversationUlid)}`);
 }
 
-/** A new user message, which starts a turn. Without a conversation, the package starts one. */
-export function send(content: string, conversationUlid: string | null): Promise<SentMessage> {
-    return request('chat.send', 'messages', { content, ...(conversationUlid === null ? {} : { conversation_ulid: conversationUlid }) });
+/**
+ * A new user message, which starts a turn. Without a conversation, the package starts one.
+ * `clientMessageId` is the message's key (CAP-014): sent again with the same content, the
+ * package answers with the first send's ids and stores nothing new.
+ */
+export function send(content: string, conversationUlid: string | null, clientMessageId: string): Promise<SentMessage> {
+    return request('chat.send', 'messages', {
+        content,
+        ...(conversationUlid === null ? {} : { conversation_ulid: conversationUlid }),
+        client_message_id: clientMessageId,
+    });
 }
 
 export function cancel(turnUlid: string): Promise<CancelledTurn> {

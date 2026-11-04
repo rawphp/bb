@@ -4,6 +4,7 @@ import { cached, readKey, store } from '@/app/cache';
 import { CapabilityError, read, readFresh, TIMEOUT_MS } from '@/app/call';
 import { cancel, events, history, send, type ChatHistory, type ChatMessage } from '@/app/chatTransport';
 import { failureMessage, writeFailureMessage } from '@/app/errors';
+import { useRetryKey } from '@/app/retryKey';
 import type { AgentStatusShowOutput } from '@/contracts/agent_status_show';
 import type { CoachChangesListInput, CoachChangesListOutput } from '@/contracts/coach_changes_list';
 import type { OnboardingShowOutput } from '@/contracts/onboarding_show';
@@ -61,6 +62,11 @@ const landed = ref(false);
 // failure); until then a conversation without it means "not yet", not "not sent".
 type Unanswered = { content: string; before: Set<string>; failure: CapabilityError; graceOver: boolean };
 let unanswered: Unanswered | null = null;
+// One key per message (CAP-014): a resend of the same content after no answer reuses it, so
+// the package answers with the first send's ids instead of storing it twice. `keyed` is the
+// content the key belongs to; anything else, or any send after an answer, gets a new key.
+const messageKey = useRetryKey('chat.send');
+let keyed: string | null = null;
 let graceTimer: ReturnType<typeof setTimeout> | undefined;
 // Twice the client's deadline: a request the server is still working on past the
 // deadline has landed by then or will not land.
@@ -175,10 +181,16 @@ async function submit(line?: string): Promise<void> {
         }
         error.value = null;
     }
+    if (content !== keyed) {
+        messageKey.reset();
+        keyed = content;
+    }
     let sent;
     try {
-        sent = await send(content, conversation.value);
+        sent = await send(content, conversation.value, messageKey.key.value);
     } catch (failed) {
+        // 409: the first send with this key is still being taken, so the key stays.
+        if (!(failed instanceof CapabilityError && failed.status === 409)) settleKey(failed);
         if (failed instanceof CapabilityError && failed.status === 0) {
             const message: Unanswered = { content, before: new Set(messages.value.map((m) => m.ulid)), failure: failed, graceOver: false };
             clearTimeout(graceTimer);
@@ -193,6 +205,7 @@ async function submit(line?: string): Promise<void> {
         sending.value = false;
         return;
     }
+    settleKey();
     sends++;
     historyAsked++;
     if (typed) draft.value = '';
@@ -236,6 +249,7 @@ async function settle(message: Unanswered): Promise<'landed' | 'absent' | 'waiti
         clearTimeout(graceTimer);
     }
     if (outcome === 'landed') {
+        settleKey();
         sends++;
         error.value = null;
         landed.value = true;
@@ -244,6 +258,12 @@ async function settle(message: Unanswered): Promise<'landed' | 'absent' | 'waiti
     if (outcome === 'waiting') error.value = WAITING;
     if (outcome === 'unknown') error.value = UNCHECKED;
     return outcome;
+}
+
+/** The message key after a send: kept while it may have run, else the next send gets a new one. */
+function settleKey(error?: unknown): void {
+    messageKey.settle(error);
+    if (!messageKey.unsure.value) keyed = null;
 }
 
 /** The grace period ended: check once more, unless a Send has settled it meanwhile. */
