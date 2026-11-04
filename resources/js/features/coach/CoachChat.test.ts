@@ -137,7 +137,7 @@ describe('CoachChat', () => {
         await sendMessage(wrapper, 'I ran this morning, fix my meals');
 
         // The first message starts the conversation, then the next one carries it (AGT-024).
-        expect(sendMock).toHaveBeenCalledWith('I ran this morning, fix my meals', null);
+        expect(sendMock).toHaveBeenCalledWith('I ran this morning, fix my meals', null, expect.any(String));
         expect(readFreshMock).toHaveBeenCalledWith('agent_status_show', {});
         expect(wrapper.text()).toContain('I ran this morning, fix my meals');
         expect(lines(wrapper)).toEqual([]);
@@ -173,7 +173,7 @@ describe('CoachChat', () => {
         // The next message carries the conversation agent_status_show now names.
         eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [] });
         await sendMessage(wrapper, 'Thanks');
-        expect(sendMock).toHaveBeenLastCalledWith('Thanks', CONVERSATION);
+        expect(sendMock).toHaveBeenLastCalledWith('Thanks', CONVERSATION, expect.any(String));
     });
 
     it('AGT-021 cancels a running turn and shows it cancelled', async () => {
@@ -245,7 +245,7 @@ describe('CoachChat', () => {
         expect(wrapper.text()).toContain('I ran this morning, fix my meals');
         eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [] });
         await sendMessage(wrapper, 'Thanks');
-        expect(sendMock).toHaveBeenLastCalledWith('Thanks', CONVERSATION);
+        expect(sendMock).toHaveBeenLastCalledWith('Thanks', CONVERSATION, expect.any(String));
     });
 
     it('AGT-021 keeps polling through a server error until the terminal event', async () => {
@@ -527,7 +527,75 @@ describe('CoachChat', () => {
             eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [] });
             await wrapper.get('form').trigger('submit');
             await vi.waitFor(() => expect(sendMock).toHaveBeenCalledTimes(2));
-            expect(sendMock).toHaveBeenLastCalledWith('Plan my week', CONVERSATION);
+            expect(sendMock).toHaveBeenLastCalledWith('Plan my week', CONVERSATION, expect.any(String));
+        });
+
+        /** The message key each send carried, in order. */
+        function keys(): string[] {
+            return sendMock.mock.calls.map(([, , key]) => key);
+        }
+
+        /** Sends `text` with no answer, then lets the grace period pass with history lacking it. */
+        async function unansweredSend(wrapper: ReturnType<typeof mountChat>, text: string): Promise<void> {
+            sendMock.mockRejectedValueOnce(new CapabilityError('chat.send', 0, { reason: 'network' }));
+            await sendMessage(wrapper, text);
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').text()).toBe(waiting));
+            await vi.advanceTimersByTimeAsync(30_000);
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').text()).toBe('No connection. Try again when you are online.'));
+        }
+
+        it('CAP-014 sends an unanswered message again with the same key', async () => {
+            historyMock.mockResolvedValue(earlier);
+            const wrapper = mountChat();
+            await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
+
+            await unansweredSend(wrapper, 'Plan my week');
+            sendMock.mockResolvedValue(ids);
+            eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [] });
+            await wrapper.get('form').trigger('submit');
+            await vi.waitFor(() => expect(sendMock).toHaveBeenCalledTimes(2));
+
+            expect(keys()[0]).toMatch(/^chat\.send:/);
+            expect(keys()[1]).toBe(keys()[0]);
+        });
+
+        it('CAP-014 sends an edited message with a new key, and the next message after an answer with another', async () => {
+            historyMock.mockResolvedValue(earlier);
+            eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [{ kind: 'terminal', data: { status: 'completed' }, index: 0 }] });
+            const wrapper = mountChat();
+            await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
+
+            await unansweredSend(wrapper, 'Plan my week');
+            sendMock.mockResolvedValue(ids);
+            await sendMessage(wrapper, 'Plan my week, no squats');
+            await vi.waitFor(() => expect(sendMock).toHaveBeenCalledTimes(2));
+            await vi.advanceTimersByTimeAsync(1000);
+
+            // The server answered, so the same words again are a new message.
+            await wrapper.get('textarea').setValue('Plan my week, no squats');
+            await vi.waitFor(() => expect(wrapper.get('[data-test="send"]').attributes('disabled')).toBeUndefined());
+            await wrapper.get('form').trigger('submit');
+            await vi.waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
+
+            expect(new Set(keys()).size).toBe(3);
+        });
+
+        it('CAP-014 keeps the key and the draft when the first send is still being taken (409)', async () => {
+            historyMock.mockResolvedValue(earlier);
+            const wrapper = mountChat();
+            await vi.waitFor(() => expect(wrapper.text()).toContain('Four of five sessions done.'));
+
+            sendMock.mockRejectedValueOnce(new CapabilityError('chat.send', 409, { error: { code: 'conflict', message: 'A message with client_message_id is already stored', http_status: 409 } }));
+            await sendMessage(wrapper, 'Plan my week');
+            await vi.waitFor(() => expect(wrapper.find('[role="alert"]').exists()).toBe(true));
+            expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('Plan my week');
+
+            sendMock.mockResolvedValue(ids);
+            eventsMock.mockResolvedValue({ turn_ulid: TURN, events: [] });
+            await wrapper.get('form').trigger('submit');
+            await vi.waitFor(() => expect(sendMock).toHaveBeenCalledTimes(2));
+
+            expect(keys()[1]).toBe(keys()[0]);
         });
 
         it('AGT-021 does not send an unanswered message again once the conversation shows it landed', async () => {
@@ -725,7 +793,7 @@ describe('CoachChat', () => {
             await wrapper.get('[data-test="start-plan"]').trigger('click');
             await flushPromises();
 
-            expect(sendMock).toHaveBeenCalledWith('confirm: onboarding_complete{}', CONVERSATION);
+            expect(sendMock).toHaveBeenCalledWith('confirm: onboarding_complete{}', CONVERSATION, expect.any(String));
             expect(wrapper.text()).toContain('confirm: onboarding_complete{}');
             // What the user was typing stays theirs.
             expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('Can I train on Sunday');

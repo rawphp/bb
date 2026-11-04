@@ -15,6 +15,7 @@ function clearCookies(): void {
 
 const CONVERSATION = '01JC0ACH00000000000000C0NV';
 const TURN = '01JC0ACH00000000000000TRN1';
+const KEY = 'chat.send:01JC0ACH00000000000000KEY1';
 
 describe('chatTransport', () => {
     const fetchMock = vi.fn<typeof fetch>();
@@ -41,13 +42,13 @@ describe('chatTransport', () => {
     });
 
     it.each([
-        [CONVERSATION, { content: 'Swap my legs day', conversation_ulid: CONVERSATION }],
-        [null, { content: 'Swap my legs day' }],
+        [CONVERSATION, { content: 'Swap my legs day', conversation_ulid: CONVERSATION, client_message_id: KEY }],
+        [null, { content: 'Swap my legs day', client_message_id: KEY }],
     ])('AGT-021 posts a message with the CSRF header, naming the conversation only when there is one', async (conversation, sent) => {
         const ids = { conversation_ulid: CONVERSATION, message_ulid: '01JC0ACH0000000000000MSG01', turn_ulid: TURN };
         fetchMock.mockResolvedValueOnce(json(ids, 201));
 
-        expect(await send('Swap my legs day', conversation)).toEqual(ids);
+        expect(await send('Swap my legs day', conversation, KEY)).toEqual(ids);
         const [url, init] = fetchMock.mock.calls[0]!;
         expect(url).toBe('/capabilities-ai/chat/messages');
         expect(init?.method).toBe('POST');
@@ -59,6 +60,14 @@ describe('chatTransport', () => {
             'X-Requested-With': 'XMLHttpRequest',
             'X-XSRF-TOKEN': 'abc==',
         });
+    });
+
+    it('CAP-014 sends the message key with a new chat message', async () => {
+        fetchMock.mockResolvedValueOnce(json({ conversation_ulid: CONVERSATION, message_ulid: '01JC0ACH0000000000000MSG01', turn_ulid: TURN }, 201));
+
+        await send('Swap my legs day', CONVERSATION, KEY);
+
+        expect(JSON.parse(fetchMock.mock.calls[0]![1]?.body as string)).toMatchObject({ client_message_id: KEY });
     });
 
     it('AGT-021 fetches the CSRF cookie first when it is missing', async () => {
@@ -86,7 +95,8 @@ describe('chatTransport', () => {
         });
         fetchMock.mockResolvedValueOnce(json(ids, 201));
 
-        expect(await send('Swap my legs day', CONVERSATION)).toEqual(ids);
+        expect(await send('Swap my legs day', CONVERSATION, KEY)).toEqual(ids);
+        expect(JSON.parse(fetchMock.mock.calls[2]![1]?.body as string)).toMatchObject({ client_message_id: KEY });
         expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
             '/capabilities-ai/chat/messages',
             '/sanctum/csrf-cookie',
