@@ -273,8 +273,8 @@ describe('lifestyle steps', () => {
         it('ONB-017 shows the recommendation picked with its daily average, and the week it gives', () => {
             wrapper = view(calories);
 
-            expect(radio(wrapper, 'Calories', 'RP recommendation').attributes('aria-checked')).toBe('true');
-            expect(radio(wrapper, 'Calories', 'RP recommendation').attributes('aria-label')).toBe('RP recommendation, recommended');
+            expect(radio(wrapper, 'Calories', 'Our recommendation').attributes('aria-checked')).toBe('true');
+            expect(radio(wrapper, 'Calories', 'Our recommendation').attributes('aria-label')).toBe('Our recommendation, recommended');
             expect(wrapper.text()).toContain('1,546 kcal a day');
             expect(wrapper.text()).toContain('Your week');
             for (const day of calories.calories.week) expect(wrapper.text()).toContain(day.kcal_text);

@@ -27,7 +27,7 @@ Setup shows a step counter ("Step 4 of 13") and a back button on every step.
 - **ONB-014** [D] Step 11, meals. Eating window (first and last meal time), number of meals (2 to 6, default 5) and optional busy periods. The same window can apply to every day or be set per day.
 - **ONB-015** [D] Step 12, weigh-ins. Days and a time for each. At least 2 days a week are required to continue ("Too few weigh-ins to continue"). A hint must recommend 4 or more. Help text must say the time only sets the reminder.
 - **ONB-016** [I][G] Step 12 must also ask which day the weekly review happens. The default is the day after the last weigh-in day of the week. The review day is also the first day of every plan week (PLAN-008).
-- **ONB-017** [D] Step 13, calories. "RP recommendation" (default) or "Choose my own average daily calories". The recommendation shows its daily average and the week's split.
+- **ONB-017** [D] Step 13, calories. "Our recommendation" (default) or "Choose my own average daily calories". The recommendation shows its daily average and the week's split.
 - **ONB-018** [D][I] The review screen must summarise the plan before starting: goal, phase length, start and end weight, weekly rate, stats, steps, training days and times, meals, and the first mesocycle (name, length, days, deload week). It also shows the weigh-in days and times, and the calorie target marked "Selected" next to "Recommended". Each section has an Edit link back to its step.
 - **ONB-019** [D] The review screen must say that exact meal times and amounts can be fine-tuned after starting.
 - **ONB-020** [D] Pressing "Start my plan" must show a short loading screen while targets are generated. The plan starts on the chosen start date, by default tomorrow.

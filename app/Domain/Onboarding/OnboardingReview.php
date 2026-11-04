@@ -217,7 +217,7 @@ final class OnboardingReview
         $recommended = $this->calories->recommended();
         if ($recommended !== null) {
             $own = $this->draft->choosesOwnCalories;
-            $rows[] = new ReviewRow('RP recommendation', OnboardingText::kcalText($recommended->averageKcal),
+            $rows[] = new ReviewRow('Our recommendation', OnboardingText::kcalText($recommended->averageKcal),
                 $own ? ['Recommended'] : ['Recommended', 'Selected']);
             $selected = $this->calories->selected();
             if ($own && $selected !== null) {

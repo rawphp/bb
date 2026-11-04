@@ -12,7 +12,7 @@ use App\Domain\WeekBuilder\WeekDay;
 use DateTimeImmutable;
 
 /**
- * Step 13, calories (ONB-017), the calorie state of rp-clone's OnboardingModel+Plan: "RP recommendation" (the
+ * Step 13, calories (ONB-017), the calorie state of rp-clone's OnboardingModel+Plan: "Our recommendation" (the
  * default) or "Choose my own average daily calories". The recommendation shows its daily average and the split of a
  * plan week; a short first week would split only a few days, so it shows the first full week then (the targets are
  * the same weekday by weekday). A chosen average moves every day by its difference from the recommendation.

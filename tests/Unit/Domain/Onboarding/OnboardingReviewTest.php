@@ -117,7 +117,7 @@ it('ONB-018 marks the recommendation as Recommended and Selected when it is the 
     $rows = onboardingBlocks($draft)['Calories']->rows;
 
     expect($rows)->toHaveCount(1)
-        ->and($rows[0]->label)->toBe('RP recommendation')
+        ->and($rows[0]->label)->toBe('Our recommendation')
         ->and($rows[0]->value)->toBe(OnboardingText::kcalText($average))
         ->and($rows[0]->badges)->toBe(['Recommended', 'Selected']);
 });

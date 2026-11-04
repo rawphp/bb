@@ -731,7 +731,7 @@
         "options": [
             {
                 "value": "recommendation",
-                "title": "RP recommendation",
+                "title": "Our recommendation",
                 "detail": "",
                 "is_recommended": true,
                 "is_selected": true,
