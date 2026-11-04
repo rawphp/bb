@@ -140,6 +140,15 @@ test.describe('sheets', () => {
         }
     });
 
+    // Sign-in has no shell and no rail, so its 40rem column is centred on the window. Its only
+    // sheet is iPhone's install sheet, so this reads the column's left edge that BottomSheet.vue uses.
+    test('PLT-002 starts the sheet column at the window edge over a screen without the rail at 1440 × 900', { tag: '@desktop' }, async ({ page }) => {
+        const columnLeft = () => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bb-column-left').trim());
+        await page.goto('/sign-in', { waitUntil: 'networkidle' });
+        await expect(page.getByLabel('Email')).toBeVisible();
+        expect(await columnLeft()).toBe('0px');
+    });
+
     test('PLT-002 keeps sheets full width at 390 × 844', async ({ page }) => {
         await askMissed(page);
         await openToday(page);
