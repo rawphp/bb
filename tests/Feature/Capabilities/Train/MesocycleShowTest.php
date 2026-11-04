@@ -4,6 +4,7 @@ use App\Models\DayTarget;
 use App\Models\Exercise;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Tests\Support\ScreenFixture;
 use Tests\Support\TrainSeed;
 
@@ -17,6 +18,7 @@ it('MESO-040 refuses mesocycle_show when signed out', function () {
 
 it('MESO-040 answers 404 for another user\'s mesocycle', function () {
     $theirs = TrainSeed::mesocycle(User::factory()->create());
+    expect(Str::isUuid($theirs->id))->toBeTrue();
 
     $this->actingAs(User::factory()->create())
         ->postJson('/capabilities/mesocycle_show', ['mesocycle_id' => $theirs->id])

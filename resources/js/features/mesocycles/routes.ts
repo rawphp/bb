@@ -2,9 +2,10 @@ import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 
 // Train's mesocycle screens (MESO-001 to MESO-045). The ones that read train_show or
 // mesocycle_show share it, so each route is named: /dev/screens/<fixture>?view=<name>.
-// :mesocycleId takes only a ULID, so /train/mesocycles/build (the build flow, #109)
-// is never read as a mesocycle id; it is the build flow's own route.
-const ULID = '([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26})';
+// :mesocycleId takes a ULID (a client-made id, CAP-019) or a UUID (one the server made),
+// so /train/mesocycles/build (the build flow, #109) is never read as a mesocycle id, and a
+// malformed id is not found.
+const ID = '([0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})';
 
 // A single-valued query key, or undefined.
 function text(value: unknown): string | undefined {
@@ -14,9 +15,9 @@ function text(value: unknown): string | undefined {
 export default [
     { path: '/train/current', name: 'current-mesocycle', component: () => import('./CurrentMesocycleView.vue'), meta: { screen: 'train_show', tab: 'train' } },
     { path: '/train/mesocycles', name: 'mesocycles', component: () => import('./MesocyclesView.vue'), meta: { screen: 'train_show', tab: 'train' } },
-    { path: `/train/mesocycles/:mesocycleId${ULID}`, name: 'mesocycle', component: () => import('./MesocycleView.vue'), props: true, meta: { screen: 'mesocycle_show', tab: 'train' } },
+    { path: `/train/mesocycles/:mesocycleId${ID}`, name: 'mesocycle', component: () => import('./MesocycleView.vue'), props: true, meta: { screen: 'mesocycle_show', tab: 'train' } },
     {
-        path: `/train/mesocycles/:mesocycleId${ULID}/rates`,
+        path: `/train/mesocycles/:mesocycleId${ID}/rates`,
         name: 'progression-rates',
         component: () => import('./ProgressionRatesView.vue'),
         props: true,
