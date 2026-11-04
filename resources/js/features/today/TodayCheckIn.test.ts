@@ -9,11 +9,11 @@ const meal = () => screenFixture<TodayShowOutput>('today_show').meals[0]!;
 
 describe('CheckInButton', () => {
     it.each([
-        ['not_checked_in', 'false', 'text-secondary-text'],
-        ['on_track', 'true', 'text-tone-good'],
-        ['under', 'true', 'text-tone-warning'],
-        ['over', 'true', 'text-tone-warning'],
-    ] as const)('MEAL-047 shows %s with its own icon and colour', (state, checked, colour) => {
+        ['not_checked_in', 'false', 'text-secondary-text', 'empty'],
+        ['on_track', 'true', 'text-tone-good', 'check'],
+        ['under', 'true', 'text-tone-warning', 'down'],
+        ['over', 'true', 'text-tone-warning', 'up'],
+    ] as const)('MEAL-047 shows %s with its own icon and colour', (state, checked, colour, shape) => {
         const wrapper = mount(CheckInButton, { props: { state, label: 'Checked in', mealName: 'Lunch' } });
 
         const box = wrapper.get('[role="checkbox"]');
@@ -21,7 +21,7 @@ describe('CheckInButton', () => {
         expect(box.attributes('aria-label')).toBe('Lunch eaten');
         expect(box.attributes('aria-description')).toBe('Checked in');
         expect(box.classes()).toContain(colour);
-        expect(wrapper.find(`[data-shape="${state}"]`).exists()).toBe(true);
+        expect(wrapper.get('[data-test="check-in-box"]').attributes('data-shape')).toBe(shape);
     });
 
     it('MEAL-040 a tap checks the meal in or removes the check-in', async () => {

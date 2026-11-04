@@ -2,11 +2,13 @@
 
 namespace App\Capabilities\Reads\Review;
 
+use App\Capabilities\Reads\Data\Today\MealCheckInState;
 use App\Capabilities\Review\Data\ReviewMeal;
 use App\Capabilities\Review\Data\ReviewMealDay;
 use App\Capabilities\Review\Data\ReviewMeals;
 use App\Capabilities\Review\Data\ReviewProgress;
 use App\Capabilities\Review\Data\ReviewTraining;
+use App\Capabilities\Review\Data\ReviewUncheckedMeal;
 use App\Capabilities\Review\Data\ReviewWeighInRow;
 use App\Capabilities\Review\Data\ReviewWeighIns;
 use App\Capabilities\Support\Line;
@@ -56,6 +58,12 @@ final class ReviewWeekPayload
         return new ReviewMeals(
             message: new Status($meals->message(), ($meals->isExcellent() ? Tone::Good : Tone::Neutral)->value),
             days: self::mealDays($meals),
+            // Deprecated, kept a release for token and CLI readers (REV-006).
+            unchecked: array_map(
+                fn (ReviewMealItem $meal) => new ReviewUncheckedMeal($meal->id, $meal->name, ReviewWords::day($meal->day)),
+                $meals->unchecked(),
+            ),
+            check_in_title: 'Check in now',
         );
     }
 
@@ -79,9 +87,10 @@ final class ReviewWeekPayload
             meals: array_map(fn (ReviewMealItem $meal) => new ReviewMeal(
                 meal_id: $meal->id,
                 name: $meal->name,
-                is_checked: $meal->isChecked,
-                label: $meal->isChecked
-                    ? "{$meal->name}, ".ReviewWords::day($meal->day).': checked in'
+                is_checked: $meal->isChecked(),
+                check_in: MealCheckInState::wire($meal->checkIn),
+                label: $meal->isChecked()
+                    ? "{$meal->name}, ".ReviewWords::day($meal->day).': '.lcfirst($meal->checkIn->label())
                     : "Check in {$meal->name}, ".ReviewWords::day($meal->day),
             ), $items),
         ), $byDay));

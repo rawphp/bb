@@ -240,7 +240,20 @@ describe('WeeklyReviewView', () => {
             expect(tuesday.map((mark) => mark.text())).toEqual(['Meal 1', 'Meal 2', 'Meal 3', 'Meal 4']);
             expect(tuesday.map((mark) => mark.attributes('data-checked'))).toEqual(['true', 'true', 'false', 'true']);
             expect(tuesday[2]!.attributes('aria-label')).toBe('Check in Meal 3, Tue, 6 Oct');
-            expect(tuesday[0]!.attributes('aria-label')).toBe('Meal 1, Tue, 6 Oct: checked in');
+            expect(tuesday[0]!.attributes('aria-label')).toBe('Meal 1, Tue, 6 Oct: checked in, on track');
+        });
+
+        it('REV-006 MEAL-047 a checked-in mark is drawn in its check-in look, so an over or under meal stands out', () => {
+            const wrapper = show({ payload: review(), step: 'meals' });
+
+            const tuesday = wrapper.findAll('[data-test="meal-day"]')[1]!.findAll('[data-test="meal-mark"]');
+            const box = (index: number) => tuesday[index]!.find('[data-test="check-in-box"]');
+            expect(box(0).attributes('data-shape')).toBe('check');
+            expect(box(0).classes()).toContain('text-tone-good');
+            expect(box(1).attributes('data-shape')).toBe('up');
+            expect(box(1).classes()).toContain('text-tone-warning');
+            expect(tuesday[1]!.attributes('aria-label')).toBe('Meal 2, Tue, 6 Oct: checked in, over target');
+            expect(box(2).attributes('data-shape')).toBe('empty');
         });
 
         it('REV-006 only an open mark is a button; a check-in is not removed from here', () => {

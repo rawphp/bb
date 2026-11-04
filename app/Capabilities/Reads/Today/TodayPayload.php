@@ -37,7 +37,6 @@ use App\Capabilities\Reads\Data\TodayShowOutput;
 use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Model\DayType;
-use App\Domain\Model\MealCheckInState as CheckIn;
 use App\Domain\Model\MealTarget;
 use App\Domain\Model\UnitConversion;
 use App\Domain\Placement\ClockTime;
@@ -333,12 +332,7 @@ final class TodayPayload
             plan_banner: $meal->showsPlanBanner() ? self::PLAN_BANNER : null,
             badges: $badge ? [new Status(self::ADJUST_BADGE, Tone::Warning->value)] : [],
             check_in: new MealCheckInState(
-                state: match ($state) {
-                    CheckIn::NotCheckedIn => 'not_checked_in',
-                    CheckIn::OnTrack => 'on_track',
-                    CheckIn::Under => 'under',
-                    CheckIn::Over => 'over',
-                },
+                state: MealCheckInState::wire($state),
                 label: $state->label(),
                 blocked_message: $badge && ! $meal->isChecked() ? self::ADJUST_FIRST : null,
                 manual: new ManualCheckIn(

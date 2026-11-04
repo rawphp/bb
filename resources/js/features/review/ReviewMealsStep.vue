@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import type { ReviewShowOutput } from '@/contracts/review_show';
-import { checkInLook, checkMarks } from '@/design/checkInLook';
+import CheckInBox from '@/design/CheckInBox.vue';
+import { checkInLook } from '@/design/checkInLook';
 import ReviewNote from './ReviewNote.vue';
 
 type Meals = NonNullable<ReviewShowOutput['meals']>;
 
 // Step 2 (REV-003, REV-006): how many meals were checked in, then the week as one row per
-// day with a mark for each meal, drawn like Today's check-in box. An open mark checks the
+// day with a mark for each meal, Today's check-in box in the state the server sends, so an
+// under or over meal shows as it does on Today (MEAL-047). An open mark checks the
 // meal in with one tap; a check-in is not removed from here. `pending` dims the server's
 // count (OFF-008). A mark that turns into a check pops in; reduced motion fades it.
 defineProps<{ meals: Meals; pending: boolean; busy: boolean }>();
 const emit = defineEmits<{ checkIn: [mealId: string] }>();
-
-const checked = checkInLook.on_track.color;
-const open = checkInLook.not_checked_in.color;
 </script>
 
 <template>
@@ -41,10 +40,7 @@ const open = checkInLook.not_checked_in.color;
                             :aria-label="meal.label"
                             class="flex min-h-tap min-w-11 flex-1 basis-0 flex-col items-center justify-center gap-0.5"
                         >
-                            <svg viewBox="0 0 24 24" class="size-7" :class="checked" aria-hidden="true">
-                                <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" stroke="currentColor" stroke-width="1.75" fill="currentColor" />
-                                <path :d="checkMarks.check" class="stroke-on-accent" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
+                            <CheckInBox :shape="checkInLook[meal.check_in].shape" :class="checkInLook[meal.check_in].color" />
                             <span aria-hidden="true" class="max-w-full truncate text-xs text-secondary-text">{{ meal.name }}</span>
                         </span>
                         <button
@@ -57,9 +53,7 @@ const open = checkInLook.not_checked_in.color;
                             class="flex min-h-tap min-w-11 flex-1 basis-0 flex-col items-center justify-center gap-0.5 rounded-xl active:opacity-70 disabled:opacity-50"
                             @click="emit('checkIn', meal.meal_id)"
                         >
-                            <svg viewBox="0 0 24 24" class="size-7" :class="open" aria-hidden="true">
-                                <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" stroke="currentColor" stroke-width="1.75" fill="none" />
-                            </svg>
+                            <CheckInBox :shape="checkInLook[meal.check_in].shape" :class="checkInLook[meal.check_in].color" />
                             <span aria-hidden="true" class="max-w-full truncate text-xs font-medium text-accent">{{ meal.name }}</span>
                         </button>
                     </Transition>

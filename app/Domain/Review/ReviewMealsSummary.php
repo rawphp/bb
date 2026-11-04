@@ -23,7 +23,7 @@ final readonly class ReviewMealsSummary
     /** @return list<ReviewMealItem> */
     public function unchecked(): array
     {
-        return array_values(array_filter($this->meals, fn (ReviewMealItem $meal) => ! $meal->isChecked));
+        return array_values(array_filter($this->meals, fn (ReviewMealItem $meal) => ! $meal->isChecked()));
     }
 
     /** "Excellent work" when every meal was checked in. */

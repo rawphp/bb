@@ -2,6 +2,7 @@
 
 namespace App\Domain\Review;
 
+use App\Domain\Model\MealCheckInState;
 use DateTimeImmutable;
 
 final readonly class ReviewMealItem
@@ -10,6 +11,11 @@ final readonly class ReviewMealItem
         public string $id,
         public DateTimeImmutable $day,
         public string $name,
-        public bool $isChecked,
+        public MealCheckInState $checkIn,
     ) {}
+
+    public function isChecked(): bool
+    {
+        return $this->checkIn->isCheckedIn();
+    }
 }

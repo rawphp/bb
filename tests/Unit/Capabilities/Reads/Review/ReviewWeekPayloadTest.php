@@ -106,6 +106,30 @@ it('REV-003 REV-006 meals not checked in are marked to check in now, by their id
         ]);
 });
 
+it('REV-006 MEAL-047 each meal\'s mark carries its check-in state, on track, under or over, and says it', function (float $share, string $state, string $words) {
+    $payload = rvMeals(function (ReviewSeed $seed) use ($share) {
+        $seed->eatenShare = $share;
+        $seed->isChecked = fn (string $date, int $meal) => ! ($date === '2026-10-08' && $meal === 2);
+    });
+
+    $marks = collect($payload['days'])->flatMap(fn (array $day) => $day['meals']);
+    expect($marks->firstWhere('label', 'Check in Meal 2, Thu, 8 Oct')['check_in'])->toBe('not_checked_in')
+        ->and($marks->where('is_checked', true)->pluck('check_in')->unique()->all())->toBe([$state])
+        ->and($marks->firstWhere('is_checked', true)['label'])->toEndWith(": {$words}");
+})->with([
+    'on track' => [1.0, 'on_track', 'checked in, on track'],
+    'under' => [0.5, 'under', 'checked in, under target'],
+    'over' => [1.5, 'over', 'checked in, over target'],
+]);
+
+it('REV-006 still sends the meals not checked in as unchecked, with check_in_title, for one release', function () {
+    $payload = rvMeals(fn (ReviewSeed $seed) => $seed->isChecked = fn (string $date, int $meal) => ! ($date === '2026-10-08' && $meal === 2));
+
+    $id = strtolower((string) DayTarget::query()->where('date', '2026-10-08')->firstOrFail()->meals[1]['id']);
+    expect($payload['unchecked'])->toBe([['meal_id' => $id, 'name' => 'Meal 2', 'date_label' => 'Thu, 8 Oct']])
+        ->and($payload['check_in_title'])->toBe('Check in now');
+});
+
 // MARK: step 3
 
 it('REV-003 the training step counts sessions done, skipped and missed and the sets against the plan', function () {

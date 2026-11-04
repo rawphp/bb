@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { checkInLook, checkMarks, type CheckInState } from '@/design/checkInLook';
+import CheckInBox from '@/design/CheckInBox.vue';
+import { checkInLook, type CheckInState } from '@/design/checkInLook';
 
 // MEAL-040, MEAL-047: a meal's check-in box, for the meal screen; Today's cards draw the
 // same box through ItemCard, from the same look (design/checkInLook). Its icon shows the
@@ -22,17 +23,6 @@ const emit = defineEmits<{ toggle: [] }>();
         :class="checkInLook[state].color"
         @click="emit('toggle')"
     >
-        <svg viewBox="0 0 24 24" class="size-7" aria-hidden="true" :data-shape="state">
-            <rect x="3.5" y="3.5" width="17" height="17" rx="3.5" stroke="currentColor" stroke-width="1.75" :fill="state === 'not_checked_in' ? 'none' : 'currentColor'" />
-            <path
-                v-if="checkInLook[state].shape !== 'empty'"
-                :d="checkMarks[checkInLook[state].shape as keyof typeof checkMarks]"
-                class="stroke-on-accent"
-                fill="none"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            />
-        </svg>
+        <CheckInBox :shape="checkInLook[state].shape" />
     </button>
 </template>

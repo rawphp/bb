@@ -3,6 +3,7 @@
 // The same tests as rp-clone's ReviewStepSummaryTests.swift (pin 2aa1edeb), one for one.
 
 use App\Domain\Model\JointPain;
+use App\Domain\Model\MealCheckInState;
 use App\Domain\Model\MuscleGroup;
 use App\Domain\Model\Phase;
 use App\Domain\Model\PhaseType;
@@ -58,7 +59,7 @@ it('REV-003 an away week has no missing weigh-ins', function () {
 
 function reviewMeal(string $id, int $dayNumber, bool $checked): ReviewMealItem
 {
-    return new ReviewMealItem($id, F::day($dayNumber), "Meal {$id}", $checked);
+    return new ReviewMealItem($id, F::day($dayNumber), "Meal {$id}", $checked ? MealCheckInState::OnTrack : MealCheckInState::NotCheckedIn);
 }
 
 it('REV-003 checking in every meal is excellent work', function () {

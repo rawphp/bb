@@ -2,6 +2,7 @@
 
 namespace App\Capabilities\Reads\Data\Today;
 
+use App\Domain\Model\MealCheckInState as CheckIn;
 use Rawphp\Capabilities\Attributes\Field;
 use Rawphp\Capabilities\Support\CapabilityData;
 
@@ -14,4 +15,15 @@ final class MealCheckInState extends CapabilityData
         #[Field(description: 'Why the box cannot be ticked yet (MEAL-045); null when it can.')] public readonly ?string $blocked_message,
         public readonly ManualCheckIn $manual,
     ) {}
+
+    /** The state as `state` names it. */
+    public static function wire(CheckIn $state): string
+    {
+        return match ($state) {
+            CheckIn::NotCheckedIn => 'not_checked_in',
+            CheckIn::OnTrack => 'on_track',
+            CheckIn::Under => 'under',
+            CheckIn::Over => 'over',
+        };
+    }
 }

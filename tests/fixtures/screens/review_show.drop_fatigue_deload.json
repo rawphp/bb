@@ -86,25 +86,29 @@
                         "meal_id": "01JA000000000000000000D1M1",
                         "name": "Meal 1",
                         "is_checked": true,
-                        "label": "Meal 1, Mon, 5 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 1, Mon, 5 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D1M2",
                         "name": "Meal 2",
                         "is_checked": true,
-                        "label": "Meal 2, Mon, 5 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 2, Mon, 5 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D1M3",
                         "name": "Meal 3",
                         "is_checked": true,
-                        "label": "Meal 3, Mon, 5 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 3, Mon, 5 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D1M4",
                         "name": "Meal 4",
                         "is_checked": true,
-                        "label": "Meal 4, Mon, 5 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 4, Mon, 5 Oct: checked in, on track"
                     }
                 ]
             },
@@ -117,25 +121,29 @@
                         "meal_id": "01JA000000000000000000D2M1",
                         "name": "Meal 1",
                         "is_checked": true,
-                        "label": "Meal 1, Tue, 6 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 1, Tue, 6 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D2M2",
                         "name": "Meal 2",
                         "is_checked": true,
-                        "label": "Meal 2, Tue, 6 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 2, Tue, 6 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA0000000000000000MEAL01",
                         "name": "Meal 3",
                         "is_checked": false,
+                        "check_in": "not_checked_in",
                         "label": "Check in Meal 3, Tue, 6 Oct"
                     },
                     {
                         "meal_id": "01JA000000000000000000D2M4",
                         "name": "Meal 4",
                         "is_checked": true,
-                        "label": "Meal 4, Tue, 6 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 4, Tue, 6 Oct: checked in, on track"
                     }
                 ]
             },
@@ -148,25 +156,29 @@
                         "meal_id": "01JA000000000000000000D3M1",
                         "name": "Meal 1",
                         "is_checked": true,
-                        "label": "Meal 1, Wed, 7 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 1, Wed, 7 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D3M2",
                         "name": "Meal 2",
                         "is_checked": true,
-                        "label": "Meal 2, Wed, 7 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 2, Wed, 7 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D3M3",
                         "name": "Meal 3",
                         "is_checked": true,
-                        "label": "Meal 3, Wed, 7 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 3, Wed, 7 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D3M4",
                         "name": "Meal 4",
                         "is_checked": true,
-                        "label": "Meal 4, Wed, 7 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 4, Wed, 7 Oct: checked in, on track"
                     }
                 ]
             },
@@ -179,24 +191,28 @@
                         "meal_id": "01JA000000000000000000D4M1",
                         "name": "Meal 1",
                         "is_checked": true,
-                        "label": "Meal 1, Thu, 8 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 1, Thu, 8 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D4M2",
                         "name": "Meal 2",
                         "is_checked": true,
-                        "label": "Meal 2, Thu, 8 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 2, Thu, 8 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D4M3",
                         "name": "Meal 3",
                         "is_checked": true,
-                        "label": "Meal 3, Thu, 8 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 3, Thu, 8 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA0000000000000000MEAL02",
                         "name": "Meal 4",
                         "is_checked": false,
+                        "check_in": "not_checked_in",
                         "label": "Check in Meal 4, Thu, 8 Oct"
                     }
                 ]
@@ -210,25 +226,29 @@
                         "meal_id": "01JA000000000000000000D5M1",
                         "name": "Meal 1",
                         "is_checked": true,
-                        "label": "Meal 1, Fri, 9 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 1, Fri, 9 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D5M2",
                         "name": "Meal 2",
                         "is_checked": true,
-                        "label": "Meal 2, Fri, 9 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 2, Fri, 9 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D5M3",
                         "name": "Meal 3",
                         "is_checked": true,
-                        "label": "Meal 3, Fri, 9 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 3, Fri, 9 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D5M4",
                         "name": "Meal 4",
                         "is_checked": true,
-                        "label": "Meal 4, Fri, 9 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 4, Fri, 9 Oct: checked in, on track"
                     }
                 ]
             },
@@ -241,24 +261,28 @@
                         "meal_id": "01JA000000000000000000D6M1",
                         "name": "Meal 1",
                         "is_checked": true,
-                        "label": "Meal 1, Sat, 10 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 1, Sat, 10 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D6M2",
                         "name": "Meal 2",
                         "is_checked": true,
-                        "label": "Meal 2, Sat, 10 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 2, Sat, 10 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D6M3",
                         "name": "Meal 3",
                         "is_checked": false,
+                        "check_in": "not_checked_in",
                         "label": "Check in Meal 3, Sat, 10 Oct"
                     },
                     {
                         "meal_id": "01JA000000000000000000D6M4",
                         "name": "Meal 4",
                         "is_checked": false,
+                        "check_in": "not_checked_in",
                         "label": "Check in Meal 4, Sat, 10 Oct"
                     }
                 ]
@@ -272,29 +296,56 @@
                         "meal_id": "01JA000000000000000000D7M1",
                         "name": "Meal 1",
                         "is_checked": true,
-                        "label": "Meal 1, Sun, 11 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 1, Sun, 11 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D7M2",
                         "name": "Meal 2",
                         "is_checked": true,
-                        "label": "Meal 2, Sun, 11 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 2, Sun, 11 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D7M3",
                         "name": "Meal 3",
                         "is_checked": true,
-                        "label": "Meal 3, Sun, 11 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 3, Sun, 11 Oct: checked in, on track"
                     },
                     {
                         "meal_id": "01JA000000000000000000D7M4",
                         "name": "Meal 4",
                         "is_checked": true,
-                        "label": "Meal 4, Sun, 11 Oct: checked in"
+                        "check_in": "on_track",
+                        "label": "Meal 4, Sun, 11 Oct: checked in, on track"
                     }
                 ]
             }
-        ]
+        ],
+        "unchecked": [
+            {
+                "meal_id": "01JA0000000000000000MEAL01",
+                "name": "Meal 3",
+                "date_label": "Tue, 6 Oct"
+            },
+            {
+                "meal_id": "01JA0000000000000000MEAL02",
+                "name": "Meal 4",
+                "date_label": "Thu, 8 Oct"
+            },
+            {
+                "meal_id": "01JA000000000000000000D6M3",
+                "name": "Meal 3",
+                "date_label": "Sat, 10 Oct"
+            },
+            {
+                "meal_id": "01JA000000000000000000D6M4",
+                "name": "Meal 4",
+                "date_label": "Sat, 10 Oct"
+            }
+        ],
+        "check_in_title": "Check in now"
     },
     "training": {
         "lines": [

@@ -2,6 +2,7 @@
 
 namespace App\Support\Review;
 
+use App\Domain\Model\MealTarget;
 use App\Domain\Model\Mesocycle as DomainMesocycle;
 use App\Domain\Model\Phase as DomainPhase;
 use App\Domain\Model\PhaseType;
@@ -109,7 +110,7 @@ final class ReviewPlanContext
      * Intake is the calories checked in on each day with a check-in (REV-021). SCH-064: each week carries its row's
      * rough mark.
      *
-     * @param  list<array{id: string, date: string, checkInKcal: ?float}>  $meals
+     * @param  list<array{id: string, date: string, checkInKcal: ?float, eaten: ?MealTarget}>  $meals
      * @param  ?Closure(DomainPlanWeek): bool  $trainingFatigueHigh  REV-040: whether a week's training fatigue was high
      * @return list<ReviewWeek>
      */
