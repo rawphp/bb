@@ -660,6 +660,34 @@ describe('OnboardingView', () => {
             ]);
         });
 
+        it('ONB-004 a read landing between queued saves does not pair a later half with a feet the user has since retyped', async () => {
+            const feetInches = { ...aboutYou, about_you: review.about_you };
+            const at = (feet: number) => ({ ...feetInches, about_you: { ...feetInches.about_you, height: { ...feetInches.about_you.height, feet } } });
+            readMock.mockResolvedValueOnce(at(6)).mockResolvedValue(at(7));
+            let finishSix: (value: unknown) => void = () => {};
+            let finishSeven: (value: unknown) => void = () => {};
+            writeMock.mockReturnValueOnce(new Promise((resolve) => (finishSix = resolve))).mockReturnValueOnce(new Promise((resolve) => (finishSeven = resolve)));
+            wrapper = view(feetInches);
+            const feet = wrapper.get('input[aria-label="Feet in ft"]');
+
+            await feet.setValue('6');
+            await feet.trigger('blur');
+            await feet.setValue('7');
+            await feet.trigger('blur');
+            finishSix({});
+            await flushPromises();
+            await wrapper.get('input[aria-label="Inches in in"]').setValue('3');
+            await wrapper.get('input[aria-label="Inches in in"]').trigger('blur');
+            finishSeven({});
+            await flushPromises();
+
+            expect(sent().map((input) => input.answers)).toEqual([
+                { height: { unit: 'feetInches', feet: 6, inches: 7 } },
+                { height: { unit: 'feetInches', feet: 7, inches: 7 } },
+                { height: { unit: 'feetInches', feet: 7, inches: 3 } },
+            ]);
+        });
+
         it.each([
             ['refused', new CapabilityError('onboarding_answer', 422, { ok: false, error: { message: 'Enter a height under 250 cm.' } }), 'Enter a height under 250 cm.'],
             ['unanswered', new CapabilityError('onboarding_answer', 0, { reason: 'timeout' }), 'may have worked'],
