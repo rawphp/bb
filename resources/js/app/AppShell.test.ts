@@ -463,7 +463,10 @@ describe('AppShell', () => {
         expect(inside).toMatch(/#app\s*{[^}]*max-width: none;/);
         expect(inside).not.toContain('480px');
         // The rail on the left at full height; the stacks and the floating layer to its right.
-        expect(inside).toMatch(/\.bb-shell\s*{[^}]*display: grid;[^}]*grid-template-columns: 5\.5rem minmax\(0, 1fr\);/);
+        expect(outside).toMatch(/:root\s*{[^}]*--bb-rail-width: 5\.5rem;[^}]*--bb-column-left: 0px;/);
+        expect(inside).toMatch(/\.bb-shell\s*{[^}]*display: grid;[^}]*grid-template-columns: var\(--bb-rail-width\) minmax\(0, 1fr\);/);
+        // Sheets sit in the column right of the rail, only while the shell (and so the rail) is on the page.
+        expect(inside).toMatch(/:root:has\(\.bb-shell\)\s*{[^}]*--bb-column-left: var\(--bb-rail-width\);/);
         expect(inside).toMatch(/\.bb-tab-bar\s*{[^}]*grid-column: 1;[^}]*grid-row: 1 \/ -1;[^}]*flex-direction: column;/);
         expect(inside).toMatch(/\.bb-tab-bar\s*{[^}]*padding-left: env\(safe-area-inset-left\);[^}]*border-top: 0;[^}]*border-right: 1px solid/);
         expect(inside).toMatch(/\.bb-stacks\s*{[^}]*grid-column: 2;[^}]*grid-row: 1;/);
