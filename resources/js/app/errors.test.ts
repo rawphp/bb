@@ -17,6 +17,13 @@ describe('failureMessage', () => {
         expect(failureMessage(error, 'Could not save.')).toBe('Could not save.');
     });
 
+    it('CAP-012 a call refused by the per-minute limit asks the user to wait, in words rather than the limit\'s name', () => {
+        const error = new CapabilityError('onboarding_answer', 429, { ok: false, error: { code: 'rate_limited', message: 'Rate limit exceeded (per_minute).', retryable: true } });
+
+        expect(failureMessage(error, 'Could not save.')).toBe('That was a lot in a short time. Wait a moment, then try again.');
+        expect(writeFailureMessage(error, 'Could not save.')).toBe('That was a lot in a short time. Wait a moment, then try again.');
+    });
+
     it('OFF-031 says a write the user waits on was not sent because earlier changes still wait to sync', () => {
         const error = new CapabilityError('token_revoke', 0, { reason: 'waiting' });
 

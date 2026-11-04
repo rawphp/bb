@@ -15,10 +15,14 @@ export function failureMessage(error: unknown, fallback: string): string {
         return 'No connection. Try again when you are online.';
     }
 
-    const message = (error.body as { error?: { message?: unknown } } | null)?.error?.message;
+    const body = (error.body as { error?: { code?: unknown; message?: unknown } } | null)?.error;
+    // The capability pipeline's per-minute limit names itself ("Rate limit exceeded (per_minute).").
+    if (error.status === 429 && body?.code === 'rate_limited') return RATE_LIMITED;
 
-    return typeof message === 'string' && message !== '' ? message : fallback;
+    return typeof body?.message === 'string' && body.message !== '' ? body.message : fallback;
 }
+
+const RATE_LIMITED = 'That was a lot in a short time. Wait a moment, then try again.';
 
 /**
  * A failed write's message. A write past its deadline, or with no final answer from the
