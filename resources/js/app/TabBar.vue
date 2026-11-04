@@ -3,8 +3,11 @@ import { useNavigation } from './navigation';
 import { TABS, type TabId } from './tabs';
 
 // The bottom bar (NAV-001), above the home indicator (PWA-010). From 768 px wide,
-// shell.css lays the same bar out as a left rail (NAV-003).
+// shell.css lays the same bar out as a left rail (NAV-003), topped by a Back button
+// while the active tab has a screen to go back to. Phones go back by the edge swipe
+// (PWA-022), so shell.css hides it below 768 px.
 const nav = useNavigation();
+const BACK_ICON = 'm15 18-6-6 6-6';
 
 // Outline icons after rp-clone's SF Symbols: sun.max, dumbbell, fork.knife,
 // chart.line.uptrend.xyaxis, ellipsis.
@@ -19,6 +22,19 @@ const ICONS: Record<TabId, string> = {
 
 <template>
     <nav class="bb-tab-bar" aria-label="Tabs">
+        <button
+            v-if="nav.state.stacks[nav.state.active].length > 1"
+            type="button"
+            class="bb-tab bb-tab-back"
+            aria-label="Back"
+            data-back
+            @click="nav.back()"
+        >
+            <svg class="bb-tab-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path :d="BACK_ICON" />
+            </svg>
+            <span class="bb-tab-label">Back</span>
+        </button>
         <button
             v-for="tab in TABS"
             :key="tab.id"

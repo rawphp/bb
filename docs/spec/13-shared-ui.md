@@ -11,7 +11,7 @@ The two RP apps look and behave differently. Here, training and nutrition use th
   - **Progress**: weight, phases, mesocycles and the review card.
   - **More**: the menu in SET-020.
 - **NAV-002** [I] Tapping a workout card on Today and opening today's session from Train must reach the same workout screen. Tapping a meal on Today or Nutrition must reach the same meal screen.
-- **NAV-003** [H] On wide screens (web, iPad; a window 768 px wide or more), the bottom bar must become a left rail with the same tabs in the same order. Narrower windows keep the bottom bar.
+- **NAV-003** [H] On wide screens (web, iPad; a window 768 px wide or more), the bottom bar must become a left rail with the same tabs in the same order. Narrower windows keep the bottom bar. On wide screens the rail shows a Back button above the tabs while the tab has a screen to go back to, and it goes back as the edge swipe does (PWA-022, PWA-025).
 - **NAV-004** [G] An active workout must show a pinned bar above the tab bar ("Upper A · 4 of 6 exercises") so the user can leave the workout and come back.
 - **NAV-005** [G] The Nutrition tab must open on today and walk the plan's days with the week strip (UI-001): picking a day, or swiping to another week, opens that day's meals at `/nutrition/<date>`. Each meal shows four macro bars (UI-003) against its target for calories, protein, fat and carbs: what was eaten once the meal is checked in, else its planned food, so the user sees which meals still need food planned.
 
