@@ -759,6 +759,7 @@ describe('MealView', () => {
 
             expect(empty.menu.find((e) => e.item === 'remove_foods')!.is_enabled).toBe(false);
             expect(writeMock).not.toHaveBeenCalled();
+            expect(dialog()).toBeNull();
             expect(replace).toHaveBeenCalled();
         });
 
