@@ -175,14 +175,15 @@ function toggleHeight(): void {
         >
             <div v-if="open" data-scrim aria-hidden="true" class="fixed inset-0 z-40 bg-scrim" @click="dismiss" />
         </Transition>
-        <!-- The wrapper springs in and out; the panel inside follows the finger and changes height. -->
+        <!-- The wrapper springs in and out; the panel inside follows the finger and changes height.
+             From 768 px the panel sits in the screen's centred 40rem column (PLT-002; shell.css, --bb-column-left). -->
         <Transition
             enter-active-class="transition-transform duration-500 ease-[cubic-bezier(0.2,1.15,0.4,1)] motion-reduce:transition-none"
             leave-active-class="transition-transform duration-200 ease-in motion-reduce:transition-none"
             enter-from-class="translate-y-full"
             leave-to-class="translate-y-full"
         >
-            <div v-if="open" class="fixed inset-x-0 bottom-0 z-50">
+            <div v-if="open" class="fixed inset-x-0 bottom-0 z-50 md:left-(--bb-column-left)">
                 <div
                     ref="panel"
                     role="dialog"
@@ -190,7 +191,7 @@ function toggleHeight(): void {
                     :aria-labelledby="titleId"
                     :data-height="height"
                     tabindex="-1"
-                    class="flex flex-col rounded-t-2xl bg-surface pb-[env(safe-area-inset-bottom)] text-primary-text shadow-2xl outline-none"
+                    class="flex flex-col rounded-t-2xl bg-surface md:mx-auto md:max-w-[40rem] pb-[env(safe-area-inset-bottom)] text-primary-text shadow-2xl outline-none"
                     :class="[
                         height === 'half' ? 'h-[50dvh]' : 'h-[calc(100dvh_-_env(safe-area-inset-top)_-_0.75rem)]',
                         dragging ? '' : 'transition-[height,transform] duration-300 motion-reduce:transition-none',
