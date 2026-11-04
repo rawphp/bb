@@ -3,7 +3,6 @@
 namespace App\Domain\WeighIns;
 
 use App\Domain\Plan\PlanWeekGrid;
-use App\Domain\Weight\TrendWeight;
 use DateTimeImmutable;
 
 /**
@@ -42,13 +41,30 @@ final class WeighInWeeks
      * The trend weight at the week's end (today, for the week under way), and its change from the day before the
      * week starts. The change is null before the first weigh-in; the trend too, when the week ends before it.
      *
+     * @param  array<string, float>  $trendByDay  the trend on each day from the first weigh-in to the last, keyed Y-m-d (TrendWeight::byDay)
      * @return array{0: ?float, 1: ?float} [trend kg, change kg]
      */
-    public static function trend(TrendWeight $trend, DateTimeImmutable $start, DateTimeImmutable $end, DateTimeImmutable $today): array
+    public static function trend(array $trendByDay, DateTimeImmutable $start, DateTimeImmutable $end, DateTimeImmutable $today): array
     {
-        $kg = $trend->kgOnOrBefore(min($end, $today));
-        $before = $trend->kgOnOrBefore($start->modify('-1 day'));
+        $kg = self::kgOnOrBefore($trendByDay, min($end, $today));
+        $before = self::kgOnOrBefore($trendByDay, $start->modify('-1 day'));
 
         return [$kg, $kg === null || $before === null ? null : $kg - $before];
+    }
+
+    /**
+     * The trend on $day, holding the last one on any day after the last weigh-in. Null before the first.
+     *
+     * @param  array<string, float>  $trendByDay
+     */
+    private static function kgOnOrBefore(array $trendByDay, DateTimeImmutable $day): ?float
+    {
+        $last = array_key_last($trendByDay);
+        if ($last === null) {
+            return null;
+        }
+        $key = $day->format('Y-m-d');
+
+        return $key > $last ? $trendByDay[$last] : ($trendByDay[$key] ?? null);
     }
 }

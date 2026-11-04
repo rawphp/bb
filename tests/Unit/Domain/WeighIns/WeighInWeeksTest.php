@@ -64,14 +64,18 @@ it('WT-008 a week\'s trend is the trend on its last day, or today in the week un
         new WeighIn('c', weighInWeekDay('2026-10-10 08:35'), 82.5),
     ], new DateTimeZone('UTC'));
     $today = weighInWeekDay('2026-10-10');
+    $byDay = $trend->byDay();
 
-    [$kg, $change] = WeighInWeeks::trend($trend, weighInWeekDay('2026-10-05'), weighInWeekDay('2026-10-11'), $today);
+    [$kg, $change] = WeighInWeeks::trend($byDay, weighInWeekDay('2026-10-05'), weighInWeekDay('2026-10-11'), $today);
     expect($kg)->toBe($trend->kgOnOrBefore($today))
         ->and($change)->toEqualWithDelta($kg - 83.2, 1e-9);
 
-    [$firstKg, $firstChange] = WeighInWeeks::trend($trend, weighInWeekDay('2026-09-28'), weighInWeekDay('2026-10-04'), $today);
+    [$firstKg, $firstChange] = WeighInWeeks::trend($byDay, weighInWeekDay('2026-09-28'), weighInWeekDay('2026-10-04'), $today);
     expect($firstKg)->toBe(83.2)
         ->and($firstChange)->toBeNull();
 
-    expect(WeighInWeeks::trend($trend, weighInWeekDay('2026-09-21'), weighInWeekDay('2026-09-27'), $today))->toBe([null, null]);
+    expect(WeighInWeeks::trend($byDay, weighInWeekDay('2026-09-21'), weighInWeekDay('2026-09-27'), $today))->toBe([null, null])
+        ->and(WeighInWeeks::trend($byDay, weighInWeekDay('2026-10-12'), weighInWeekDay('2026-10-18'), weighInWeekDay('2026-10-14')))
+        ->toBe([$trend->kgOnOrBefore($today), 0.0])
+        ->and(WeighInWeeks::trend([], weighInWeekDay('2026-10-05'), weighInWeekDay('2026-10-11'), $today))->toBe([null, null]);
 });

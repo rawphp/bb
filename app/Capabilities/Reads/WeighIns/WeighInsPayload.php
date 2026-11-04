@@ -15,7 +15,6 @@ use App\Capabilities\WeighIns\Data\WeighInScheduleEntry as ScheduleEntryData;
 use App\Capabilities\WeighIns\Data\WeighInsShowOutput;
 use App\Capabilities\WeighIns\Data\WeighInUnits;
 use App\Capabilities\WeighIns\Data\WeighInWeek;
-use App\Domain\Model\WeighIn as WeighInPoint;
 use App\Domain\Placement\ClockTime;
 use App\Domain\Plan\PlanWeekGrid;
 use App\Domain\Progress\PlanWeekDays;
@@ -23,7 +22,6 @@ use App\Domain\WeighIns\BodyMeasures;
 use App\Domain\WeighIns\StepCounts;
 use App\Domain\WeighIns\WeighInSchedule;
 use App\Domain\WeighIns\WeighInWeeks;
-use App\Domain\Weight\TrendWeight;
 use App\Models\Plan;
 use App\Models\Profile;
 use App\Models\Step;
@@ -100,7 +98,7 @@ final class WeighInsPayload
             units: new WeighInUnits($weightUnit, $waistUnit),
             schedule: self::schedule($entries, $weekdays),
             rows: $rows,
-            weeks: self::weeks($user, $zone, $rows, $grid, $today, $weightUnit),
+            weeks: self::weeks($user, $rows, $grid, $today, $weightUnit),
             missed: new Status('Missed', 'warning'),
             empty_message: $firstDay === null ? 'No weigh-ins yet. Tap + to log your first.' : null,
             steps: self::steps($user, $now, $start, $until),
@@ -210,20 +208,17 @@ final class WeighInsPayload
 
     /**
      * WT-008: a header for each week the page's rows fall in, newest first. The trend runs over every weigh-in, on the
-     * user's local days, as the rows are.
+     * user's local days, as the rows are, and is kept until a weigh-in changes (TodayWeight).
      *
      * @param  list<WeighInRow>  $rows  newest first
      * @return list<WeighInWeek>
      */
-    private static function weeks(User $user, DateTimeZone $zone, array $rows, ?PlanWeekGrid $grid, CarbonImmutable $today, string $weightUnit): array
+    private static function weeks(User $user, array $rows, ?PlanWeekGrid $grid, CarbonImmutable $today, string $weightUnit): array
     {
         if ($rows === []) {
             return [];
         }
-        $points = WeighIn::query()->where('user_id', $user->id)->get(['id', 'weighed_at', 'weight_kg'])
-            ->map(fn (WeighIn $row) => new WeighInPoint((string) $row->id, UserDay::clockIn($zone, $row->weighed_at), (float) $row->weight_kg))
-            ->values()->all();
-        $trend = new TrendWeight($points, new DateTimeZone('UTC'));
+        $trend = TodayWeight::trendByDay($user);
         $day = $today->toDateTimeImmutable();
 
         $weeks = [];
