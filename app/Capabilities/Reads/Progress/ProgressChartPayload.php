@@ -3,12 +3,14 @@
 namespace App\Capabilities\Reads\Progress;
 
 use App\Capabilities\Progress\Data\ChartPoint;
+use App\Capabilities\Progress\Data\ChartReadout;
 use App\Capabilities\Progress\Data\GoalPoint;
 use App\Capabilities\Progress\Data\ProgressChart;
 use App\Capabilities\Progress\Data\ProgressShare;
 use App\Capabilities\Support\Line;
 use App\Capabilities\Support\Tone;
 use App\Domain\Model\UnitConversion;
+use App\Domain\Model\WeightUnit;
 use App\Domain\Progress\ChartGoalPoint;
 use App\Domain\Progress\ChartWeightPoint;
 use App\Domain\Progress\ProgressChartData;
@@ -38,6 +40,8 @@ final class ProgressChartPayload
         $unit = $snapshot->weightUnit();
         $first = $data->trend[0];
         $last = $data->trend[array_key_last($data->trend)];
+        $waistUnit = $snapshot->usesCentimetres() ? 'cm' : 'in';
+        $waist = self::waist($snapshot, $first->day->format('Y-m-d'), $last->day->format('Y-m-d'));
 
         return new ProgressChart(
             unit: $unit->value,
@@ -49,10 +53,52 @@ final class ProgressChartPayload
                 round(ProgressWords::inUnit($point->goalKg, $unit), 2),
                 round(ProgressWords::inUnit($point->upperKg, $unit), 2),
             ), $data->goal),
-            waist_unit: $snapshot->usesCentimetres() ? 'cm' : 'in',
-            waist: self::waist($snapshot, $first->day->format('Y-m-d'), $last->day->format('Y-m-d')),
+            waist_unit: $waistUnit,
+            waist: $waist,
             accessibility_label: 'Weight chart. Trend weight from '.PlanWords::weight($first->kg, $unit).' to '.PlanWords::weight($last->kg, $unit).'.',
+            readouts: self::readouts($data, $unit, $waist, $waistUnit),
         );
+    }
+
+    /**
+     * ANA-012: each weigh-in day worded as the chart reads it out: the weigh-in, that day's
+     * trend, the goal range when a phase covers the day, and the waist when one was measured.
+     *
+     * @param  list<ChartPoint>  $waist
+     * @return list<ChartReadout>
+     */
+    private static function readouts(ProgressChartData $data, WeightUnit $unit, array $waist, string $waistUnit): array
+    {
+        $trend = [];
+        foreach ($data->trend as $point) {
+            $trend[$point->day->format('Y-m-d')] = $point->kg;
+        }
+        $goal = [];
+        foreach ($data->goal as $point) {
+            $goal[$point->day->format('Y-m-d')] = $point;
+        }
+        $waistByDay = array_column(array_map(fn (ChartPoint $point) => [$point->date, $point->value], $waist), 1, 0);
+
+        return array_map(function (ChartWeightPoint $point) use ($unit, $trend, $goal, $waistByDay, $waistUnit) {
+            $day = $point->day->format('Y-m-d');
+            $lines = [
+                new Line('Weigh-in', PlanWords::weight($point->kg, $unit), Tone::Neutral->value),
+                new Line('Trend', PlanWords::weight($trend[$day], $unit), Tone::Neutral->value),
+            ];
+            if (isset($goal[$day])) {
+                $low = number_format(ProgressWords::inUnit($goal[$day]->lowerKg, $unit), 1);
+                $high = PlanWords::weight($goal[$day]->upperKg, $unit);
+                // A phase's first day has no range around the goal yet.
+                $lines[] = $low.' '.$unit->value === $high
+                    ? new Line('Goal', $high, Tone::Neutral->value)
+                    : new Line('Goal range', "{$low}–{$high}", Tone::Neutral->value);
+            }
+            if (isset($waistByDay[$day])) {
+                $lines[] = new Line('Waist', number_format($waistByDay[$day], 1).' '.$waistUnit, Tone::Neutral->value);
+            }
+
+            return new ChartReadout($day, $point->day->format('D j M'), $lines);
+        }, $data->weights);
     }
 
     /**

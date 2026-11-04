@@ -7,7 +7,7 @@ import PendingMark from '@/design/PendingMark.vue';
 import Skeleton from '@/design/Skeleton.vue';
 import MesocycleHistoryCard from './MesocycleHistoryCard.vue';
 import PhaseHistoryCard from './PhaseHistoryCard.vue';
-import ProgressChartView from './ProgressChartView.vue';
+import ProgressChartPicker from './ProgressChartPicker.vue';
 import ProgressPlaceholderView from './ProgressPlaceholderView.vue';
 import ProgressShareCard from './ProgressShareCard.vue';
 import ProgressSummaryView from './ProgressSummaryView.vue';
@@ -115,7 +115,7 @@ function pickScope(scope: ProgressShowOutput['scopes'][number]): void {
                 </div>
                 <p v-if="scopeError" role="alert" class="text-sm text-tone-warning">{{ scopeError }}</p>
                 <div :class="{ 'opacity-50': pending }">
-                    <ProgressChartView v-if="payload.chart" :chart="payload.chart" />
+                    <ProgressChartPicker v-if="payload.chart" :chart="payload.chart" />
                     <p v-else class="flex min-h-30 items-center justify-center text-secondary-text">{{ payload.scope_message }}</p>
                 </div>
                 <ProgressSummaryView v-if="payload.summary.length" :summary="payload.summary" :pending="pending" />

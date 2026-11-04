@@ -301,7 +301,492 @@
                 "value": 87.0
             }
         ],
-        "accessibility_label": "Weight chart. Trend weight from 83.2 kg to 84.3 kg."
+        "accessibility_label": "Weight chart. Trend weight from 83.2 kg to 84.3 kg.",
+        "readouts": [
+            {
+                "date": "2026-08-31",
+                "title": "Mon 31 Aug",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "83.8 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.3 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Goal",
+                        "value": "83.2 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Waist",
+                        "value": "88.0 cm",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-01",
+                "title": "Tue 1 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "83.7 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.3 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-03",
+                "title": "Thu 3 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.0 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.4 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-04",
+                "title": "Fri 4 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "83.6 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.4 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-06",
+                "title": "Sun 6 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "83.2 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.4 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-07",
+                "title": "Mon 7 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "83.8 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.4 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Goal range",
+                        "value": "83.3–83.5 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-09",
+                "title": "Wed 9 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.1 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.5 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-10",
+                "title": "Thu 10 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "83.3 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.5 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-12",
+                "title": "Sat 12 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.1 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.5 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-13",
+                "title": "Sun 13 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.1 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.6 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-15",
+                "title": "Tue 15 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "83.6 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.6 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-16",
+                "title": "Wed 16 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "83.8 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.6 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-18",
+                "title": "Fri 18 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.0 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.6 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-19",
+                "title": "Sat 19 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.1 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.7 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-21",
+                "title": "Mon 21 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.4 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.8 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Goal range",
+                        "value": "83.5–84.2 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-22",
+                "title": "Tue 22 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.0 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.8 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-24",
+                "title": "Thu 24 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.3 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.8 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-25",
+                "title": "Fri 25 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.4 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "83.9 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-27",
+                "title": "Sun 27 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.6 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "84.0 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-28",
+                "title": "Mon 28 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.0 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "84.0 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Goal range",
+                        "value": "83.5–84.5 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Waist",
+                        "value": "87.5 cm",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-09-30",
+                "title": "Wed 30 Sep",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.7 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "84.0 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-10-01",
+                "title": "Thu 1 Oct",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.4 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "84.1 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-10-03",
+                "title": "Sat 3 Oct",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.2 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "84.1 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-10-04",
+                "title": "Sun 4 Oct",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.8 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "84.2 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-10-06",
+                "title": "Tue 6 Oct",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.3 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "84.2 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-10-07",
+                "title": "Wed 7 Oct",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.4 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "84.2 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-10-09",
+                "title": "Fri 9 Oct",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "85.0 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "84.3 kg",
+                        "tone": "neutral"
+                    }
+                ]
+            },
+            {
+                "date": "2026-10-10",
+                "title": "Sat 10 Oct",
+                "lines": [
+                    {
+                        "label": "Weigh-in",
+                        "value": "84.8 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Trend",
+                        "value": "84.3 kg",
+                        "tone": "neutral"
+                    },
+                    {
+                        "label": "Waist",
+                        "value": "87.0 cm",
+                        "tone": "neutral"
+                    }
+                ]
+            }
+        ]
     },
     "summary": [
         {

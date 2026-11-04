@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { ProgressShowOutput } from '@/contracts/progress_show';
 import { linePath, timeAxis, valueAxis } from './chartGeometry';
 
@@ -8,7 +8,10 @@ type Chart = NonNullable<ProgressShowOutput['chart']>;
 // Daily weights and trend weight against the phase goal range (ANA-001), drawn
 // from the server's series, with the optional waist line on its own scale (WT-021).
 // One <svg>, legend included, so the share card can draw it into a picture.
-const props = withDefaults(defineProps<{ chart: Chart; plotHeight?: number }>(), { plotHeight: 220 });
+// With `picked`, it marks that weigh-in day and asks for the weigh-in under the
+// pointer (ANA-012); the share card passes neither, so its picture has no mark.
+const props = withDefaults(defineProps<{ chart: Chart; plotHeight?: number; picked?: string | null }>(), { plotHeight: 220, picked: null });
+const emit = defineEmits<{ pick: [date: string] }>();
 
 const WIDTH = 340;
 const LEFT = 4;
@@ -51,6 +54,47 @@ const shapes = computed(() => {
     };
 });
 
+// The picked day's guide, weigh-in dot and trend ring, in chart units.
+const mark = computed(() => {
+    if (!props.picked) return null;
+    const dot = shapes.value.weights.find((p) => p.key === props.picked);
+    const trend = props.chart.trend.find((p) => p.date === props.picked);
+    if (!dot) return null;
+    return { x: dot.x, y: dot.y, trendY: trend ? weight.value.y(trend.value) : null };
+});
+
+// The weigh-in dot nearest the pointer along x. Drawing only: which dot sits under a finger.
+const svg = ref<SVGSVGElement | null>(null);
+let pressed = false;
+
+function pickAt(clientX: number): void {
+    const box = svg.value?.getBoundingClientRect();
+    const dots = shapes.value.weights;
+    if (!box || box.width === 0 || dots.length === 0) return;
+    const x = ((clientX - box.left) / box.width) * WIDTH;
+    const nearest = dots.reduce((best, p) => (Math.abs(p.x - x) < Math.abs(best.x - x) ? p : best));
+    if (nearest.key !== props.picked) emit('pick', nearest.key);
+}
+
+function onDown(event: PointerEvent): void {
+    pressed = true;
+    pickAt(event.clientX);
+    // Keeps the drag picking when the finger leaves the chart; a pointer that is no longer down throws.
+    try {
+        svg.value?.setPointerCapture?.(event.pointerId);
+    } catch {
+        // The pick above still stands.
+    }
+}
+
+function onMove(event: PointerEvent): void {
+    if (pressed || event.pointerType === 'mouse') pickAt(event.clientX);
+}
+
+function onUp(): void {
+    pressed = false;
+}
+
 const legend = computed(() => {
     const entries = [
         { text: 'Daily weight', color: 'fill-secondary-text' },
@@ -69,11 +113,16 @@ const legend = computed(() => {
 
 <template>
     <svg
+        ref="svg"
         role="img"
         :aria-label="chart.accessibility_label"
         :viewBox="`0 0 ${WIDTH} ${plotHeight + 24}`"
         class="block w-full font-sans"
         xmlns="http://www.w3.org/2000/svg"
+        @pointerdown="onDown"
+        @pointermove="onMove"
+        @pointerup="onUp"
+        @pointercancel="onUp"
     >
         <g aria-hidden="true">
             <g v-for="tick in weight.ticks" :key="tick">
@@ -100,6 +149,24 @@ const legend = computed(() => {
             <path v-if="shapes.waist" data-waist :d="shapes.waist" class="stroke-tone-info" fill="none" stroke-width="1.25" stroke-opacity="0.8" />
             <circle v-for="p in shapes.weights" :key="p.key" data-weight :cx="p.x" :cy="p.y" r="2.6" class="fill-secondary-text" fill-opacity="0.7" />
             <path data-trend :d="shapes.trend" class="stroke-accent" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+            <!-- ANA-012: the picked day. It slides to a new day by transform (PWA-021). -->
+            <g v-if="mark" data-picked class="pointer-events-none">
+                <g class="transition-transform duration-150 ease-out motion-reduce:transition-none" :style="{ transform: `translateX(${mark.x}px)` }">
+                    <line :x1="0" :x2="0" :y1="TOP" :y2="bottom" class="stroke-primary-text/40" stroke-width="1" />
+                </g>
+                <g
+                    v-if="mark.trendY !== null"
+                    data-picked-trend
+                    class="transition-transform duration-150 ease-out motion-reduce:transition-none"
+                    :style="{ transform: `translate(${mark.x}px, ${mark.trendY}px)` }"
+                >
+                    <circle r="4.5" class="fill-surface stroke-accent" stroke-width="2.5" />
+                </g>
+                <g class="transition-transform duration-150 ease-out motion-reduce:transition-none" :style="{ transform: `translate(${mark.x}px, ${mark.y}px)` }">
+                    <circle r="4" class="fill-primary-text stroke-surface" stroke-width="1.5" />
+                </g>
+            </g>
 
             <g v-for="entry in legend" :key="entry.text">
                 <circle :cx="entry.x + 4" :cy="plotHeight + 12" r="4" :class="entry.color" />

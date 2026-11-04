@@ -36,3 +36,4 @@ From mesoprep. rp-clone read steps only from Apple Health.
 - **ANA-009** [H] Per-exercise history must show every session's sets with weight and reps, with the best estimated 1RM of each session marked.
 - **ANA-010** [D] Users must be able to share a progress image (weight chart, phase summary) to other apps.
 - **ANA-011** [D] Adherence must show per day as a green dot on the week strip, and per week in the review.
+- **ANA-012** [B] Touching or dragging across the weight chart, hovering it with a mouse, or pressing the arrow keys on it must pick the nearest weigh-in day and read it out above the chart: the date, that day's weigh-in, trend weight and goal range, and the waist when one was measured. The server words each readout. Before a pick, the readout shows the latest weigh-in. The chart is a slider for screen readers, its value the readout.
