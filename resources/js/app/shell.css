@@ -225,6 +225,12 @@ textarea {
     overflow-wrap: anywhere;
 }
 
+/* The rail's Back button (NAV-003). Phones go back by the edge swipe (PWA-022), so the
+   bottom bar keeps its five tabs; the wide-screen block shows it. */
+.bb-tab-back {
+    display: none;
+}
+
 /* Sheets cover the whole column, tab bar included (UI-005). */
 .bb-sheet-host {
     position: absolute;
@@ -291,6 +297,10 @@ textarea {
     .bb-tab {
         flex: none;
         padding: 0.625rem 0.25rem;
+    }
+
+    .bb-tab-back {
+        display: flex;
     }
 
     /* Each screen's root sits in a centred 40rem column; the screen's own background
