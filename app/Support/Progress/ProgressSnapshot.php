@@ -16,7 +16,6 @@ use App\Models\Mesocycle;
 use App\Models\Phase;
 use App\Models\Plan;
 use App\Models\Profile;
-use App\Models\Step;
 use App\Models\User;
 use App\Models\WeighIn;
 use App\Models\WorkoutSet;
@@ -63,12 +62,11 @@ final class ProgressSnapshot
         $week = TodaySnapshot::load($user);
         $sets = self::sets($user);
         $lastUsed = self::lastUsed($user);
-        $steps = Step::query()->where('user_id', $user->id)->whereDate('date', $week->today()->format('Y-m-d'))->value('count');
 
         return new self(
             week: $week,
             weighIns: WeighIn::query()->where('user_id', $user->id)->orderBy('weighed_at')->get(['id', 'weight_kg', 'waist_cm', 'weighed_at']),
-            steps: $steps === null ? null : (int) $steps,
+            steps: $week->steps === null ? null : (int) $week->steps->count,
             sets: $sets,
             exercises: Exercise::query()->visibleTo($user)
                 ->whereIn('id', $sets->pluck('exercise_id')->merge(array_keys($lastUsed))->unique()->values()->all())
