@@ -123,6 +123,11 @@ async function sheetBox(page: Page, title: string) {
 test.describe('sheets', () => {
     test.use({ serviceWorkers: 'block' });
 
+    // Today may still be asking today_show when a test ends; that late answer must not fail the next test.
+    test.afterEach(async ({ page }) => {
+        await page.unrouteAll({ behavior: 'ignoreErrors' });
+    });
+
     test('PLT-002 puts Today\'s "You missed" and "Welcome back" sheets in the centred 40rem column at 1440 × 900', { tag: '@desktop' }, async ({ page }) => {
         await askMissed(page);
         await openToday(page);
@@ -134,7 +139,8 @@ test.describe('sheets', () => {
             const sheet = await sheetBox(page, title);
             expect(sheet.width, title).toBeLessThanOrEqual(640);
             expect(Math.abs(sheet.x + sheet.width / 2 - spaceCentre), title).toBeLessThanOrEqual(1);
-            expect(Math.abs(sheet.y + sheet.height - viewport.height), title).toBeLessThanOrEqual(1);
+            // A centred dialog from 768 px (PWA-023), not a bar on the window's bottom edge.
+            expect(Math.abs(sheet.y + sheet.height / 2 - viewport.height / 2), title).toBeLessThanOrEqual(1);
             await page.getByRole('dialog', { name: title }).getByRole('button', { name: 'Not now' }).click();
             await expect(page.getByRole('dialog', { name: title })).toBeHidden();
         }
@@ -156,6 +162,32 @@ test.describe('sheets', () => {
 
         const sheet = await sheetBox(page, 'You missed Monday');
         expect(sheet.x).toBe(0);
+        expect(sheet.width).toBe(390);
+        expect(Math.abs(sheet.y + sheet.height - viewport.height)).toBeLessThanOrEqual(1);
+    });
+
+    test('PWA-023 opens the Log weigh-in sheet as a dialog centred over the screen column at 1440 × 900', { tag: '@desktop' }, async ({ page }) => {
+        await signIn(page);
+        await page.goto('/weigh-ins/log');
+        const viewport = page.viewportSize()!;
+        const rail = await box(page, 'nav[aria-label="Tabs"]');
+        const columnCentre = (rail.x + rail.width + viewport.width) / 2;
+
+        const sheet = await sheetBox(page, 'Log weigh-in');
+        expect(sheet.width).toBeLessThanOrEqual(640);
+        expect(Math.abs(sheet.x + sheet.width / 2 - columnCentre)).toBeLessThanOrEqual(1);
+        expect(sheet.y).toBeGreaterThanOrEqual(32);
+        expect(viewport.height - (sheet.y + sheet.height)).toBeGreaterThanOrEqual(32);
+        expect(Math.abs(sheet.y + sheet.height / 2 - viewport.height / 2)).toBeLessThanOrEqual(1);
+        await expect(page.getByRole('dialog', { name: 'Log weigh-in' }).locator('[data-grabber]')).toHaveCount(0);
+    });
+
+    test('PWA-023 keeps the Log weigh-in sheet a full-width bottom sheet at 390 × 844', async ({ page }) => {
+        await signIn(page);
+        await page.goto('/weigh-ins/log');
+        const viewport = page.viewportSize()!;
+
+        const sheet = await sheetBox(page, 'Log weigh-in');
         expect(sheet.width).toBe(390);
         expect(Math.abs(sheet.y + sheet.height - viewport.height)).toBeLessThanOrEqual(1);
     });
