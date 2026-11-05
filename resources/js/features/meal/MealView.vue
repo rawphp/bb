@@ -88,7 +88,7 @@ function onMenu(key: string): void {
     if (key === 'load_saved_meal') picking.value = true;
     else if (key === 'save_as_saved_meal') startNaming();
     else if (key === 'copy_foods') copying.value = true;
-    else if (key === 'remove_foods') void send('meal_foods_clear', { ...id } satisfies MealFoodsClearInput, 'The foods could not be removed.');
+    else if (key === 'remove_foods') confirmingClear.value = true;
     else if (key === 'check_in_meal') void send('meal_check_in', { ...id } satisfies MealCheckInInput, 'The meal could not be checked in.');
     else if (key === 'remove_check_in') void send('meal_check_in_undo', { ...id } satisfies MealCheckInUndoInput, 'The check-in could not be removed.');
     else if (key === 'still_planning' || key === 'done_planning')
@@ -100,7 +100,7 @@ function onMenu(key: string): void {
 // as rp-clone opens the meal with the item to run. Once the meal has loaded the item runs
 // as a menu tap would, if the server has it on, and the address drops it so a reload or a
 // return does not run it again. An address must not destroy anything by itself: Remove foods
-// from the address asks first, and Delete is never run from here.
+// asks first, as it does from the menu, and Delete is never run from here.
 const ON_ARRIVAL: MenuKey[] = ['edit_macros_time', 'load_saved_meal', 'save_as_saved_meal', 'remove_foods'];
 
 let arrival = props.action;
@@ -115,8 +115,7 @@ watch(
         void router.replace({ path: route.path, query });
         const item = menuItems.value.find((entry) => entry.key === action);
         if (!ON_ARRIVAL.includes(action as MenuKey) || !item || item.disabled) return;
-        if (action === 'remove_foods') confirmingClear.value = true;
-        else onMenu(action);
+        onMenu(action);
     },
     { immediate: true },
 );
@@ -188,7 +187,7 @@ async function deleteMeal(): Promise<void> {
 
 function clearFoods(): void {
     confirmingClear.value = false;
-    onMenu('remove_foods');
+    void send('meal_foods_clear', { meal_id: mealId } satisfies MealFoodsClearInput, 'The foods could not be removed.');
 }
 
 function closeScanner(added: boolean): void {
