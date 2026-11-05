@@ -501,6 +501,22 @@ describe('BottomSheet', () => {
             expect(fixed.emitted('cancel')).toBeUndefined();
         });
 
+        it('PWA-023 a wide sheet fades in and scales up from 0.96, and with reduced motion only fades', async () => {
+            const wrapper = mount(BottomSheet, {
+                props: { open: false, title: 'Copy foods' },
+                attachTo: document.body,
+                global: { stubs: { transition: false } },
+            });
+            mounted = wrapper;
+            await wrapper.setProps({ open: true });
+            const entering = get('[data-sheet-layer]').classes();
+
+            expect(entering).toEqual(expect.arrayContaining(['opacity-0', 'scale-[0.96]', 'motion-reduce:scale-100', 'duration-200']));
+            // Tailwind v4's scale-* sets the CSS scale property, so the transition must list it, not only transform.
+            expect(entering).toContain('transition-[opacity,scale]');
+            expect(entering).toContain('motion-reduce:transition-opacity');
+        });
+
         it('PWA-023 a click beside a wide sheet reaches the scrim, not the layer that centres it', () => {
             sheet();
 
