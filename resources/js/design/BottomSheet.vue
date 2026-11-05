@@ -199,7 +199,7 @@ function toggleHeight(): void {
         <Transition
             :enter-active-class="
                 wide
-                    ? 'transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-opacity'
+                    ? 'transition-[opacity,scale] duration-200 ease-out motion-reduce:transition-opacity'
                     : 'transition-transform duration-500 ease-[cubic-bezier(0.2,1.15,0.4,1)] motion-reduce:transition-none'
             "
             :leave-active-class="wide ? 'transition-opacity duration-150 ease-in' : 'transition-transform duration-200 ease-in motion-reduce:transition-none'"
