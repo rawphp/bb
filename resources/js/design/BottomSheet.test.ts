@@ -1,8 +1,9 @@
 import { DOMWrapper, mount, type VueWrapper } from '@vue/test-utils';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { h, nextTick } from 'vue';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { WIDE_QUERY } from '@/app/layout';
 import GalleryView from '@/features/dev/GalleryView.vue';
 import BottomSheet from './BottomSheet.vue';
 import HelpButton from './HelpButton.vue';
@@ -439,6 +440,85 @@ describe('BottomSheet', () => {
         expect(html).toContain('bg-surface');
         expect(css).toMatch(/--bb-scrim:/);
         expect(css).toContain('--color-scrim: var(--bb-scrim);');
+    });
+
+    describe('from 768 px wide (NAV-003)', () => {
+        beforeEach(() => {
+            vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === WIDE_QUERY }));
+        });
+
+        afterEach(() => {
+            vi.unstubAllGlobals();
+        });
+
+        it('PWA-023 a wide sheet is a centred dialog with no grabber', () => {
+            sheet({ heights: ['half', 'full'] });
+
+            expect(find('[data-grabber]').exists()).toBe(false);
+            expect(get('[role="dialog"]').classes()).toContain('rounded-2xl');
+            expect(get('[role="dialog"]').classes()).toContain('max-w-[40rem]');
+            expect(get('[data-sheet-layer]').classes()).toContain('items-center');
+            sheet();
+            expect(find('[data-grabber]').exists()).toBe(false);
+        });
+
+        it('PWA-023 a wide sheet fits its content up to the window less 4rem, and a full-only sheet takes that whole height', () => {
+            sheet({ heights: ['half', 'full'] });
+            const classes = () => get('[role="dialog"]').classes();
+            // The cap is a share of the fixed layer, not a viewport unit (docs/architecture.md, "Wide screens").
+            const viewportUnit = /\d(d|s|l)?vh\b/;
+            expect(classes()).toContain('max-h-[calc(100%_-_4rem)]');
+            expect(classes().filter((c) => c.startsWith('h-'))).toEqual([]);
+            expect(classes().join(' ')).not.toMatch(viewportUnit);
+
+            sheet();
+            expect(classes()).toContain('h-[calc(100%_-_4rem)]');
+            expect(classes().join(' ')).not.toMatch(viewportUnit);
+        });
+
+        it('PWA-023 a drag on a wide sheet neither moves nor closes it', async () => {
+            const wrapper = sheet({ heights: ['half', 'full'] });
+
+            await pointer('pointerdown', 100);
+            await pointer('pointermove', 300);
+            expect(get('[role="dialog"]').attributes('style')).toBeUndefined();
+            await pointer('pointerup', 300);
+            await drag(-200);
+
+            expect(wrapper.emitted('cancel')).toBeUndefined();
+            expect(get('[role="dialog"]').attributes('data-height')).toBe('half');
+        });
+
+        it('PWA-023 UI-022 Escape and a click outside close a dismissible wide sheet and not a no-dismiss one', async () => {
+            const wrapper = sheet();
+            press('Escape');
+            await get('[data-scrim]').trigger('click');
+            expect(wrapper.emitted('cancel')).toHaveLength(2);
+
+            const fixed = sheet({ dismissible: false });
+            press('Escape');
+            await get('[data-scrim]').trigger('click');
+            expect(fixed.emitted('cancel')).toBeUndefined();
+        });
+
+        it('PWA-023 a click beside a wide sheet reaches the scrim, not the layer that centres it', () => {
+            sheet();
+
+            expect(get('[data-sheet-layer]').classes()).toContain('pointer-events-none');
+            expect(get('[role="dialog"]').classes()).toContain('pointer-events-auto');
+        });
+    });
+
+    it('PWA-023 below 768 px the sheet stays pinned to the bottom with its grabber', () => {
+        vi.stubGlobal('matchMedia', () => ({ matches: false }));
+        try {
+            sheet();
+            expect(get('[data-grabber]').exists()).toBe(true);
+            expect(get('[role="dialog"]').classes()).toContain('rounded-t-2xl');
+            expect(get('[data-sheet-layer]').classes()).toContain('bottom-0');
+        } finally {
+            vi.unstubAllGlobals();
+        }
     });
 
     it('VIEW-004 the gallery lists BottomSheet with every state', () => {
