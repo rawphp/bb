@@ -83,6 +83,25 @@ describe('PantryView', () => {
         expect(wrapper.findAll('[role="tab"]')[1]!.attributes('aria-selected')).toBe('true');
     });
 
+    it("UI-021 opened from a meal's search field, the cursor waits in the search box", async () => {
+        const searchBox = (wrapper: ReturnType<typeof show>) => wrapper.get('input[type="search"]').element;
+
+        const fromMeal = show();
+        await flushPromises();
+        expect(document.activeElement).toBe(searchBox(fromMeal));
+        fromMeal.unmount();
+
+        // A short-macro hint opens a group to browse, and the Nutrition tab's browser has no meal: no focus.
+        const fromHint = show({ payload: curated, mealId: MEAL, group: 'fat_recommended' });
+        await flushPromises();
+        expect(document.activeElement).not.toBe(searchBox(fromHint));
+        fromHint.unmount();
+
+        const browsing = show({ payload: curated });
+        await flushPromises();
+        expect(document.activeElement).not.toBe(searchBox(browsing));
+    });
+
     it('FOOD-020 shows Recipes and Saved Meals as a filter, in place of the tabs', async () => {
         const wrapper = show();
 
