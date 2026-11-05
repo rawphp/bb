@@ -246,7 +246,7 @@ textarea {
 /* Wide screens: 768 px and up (layout.ts, WIDE_MIN_PX). The tab bar becomes a left rail at
    full height (NAV-003), the stacks and the floating layer (toasts, Coach button,
    ActiveWorkoutBar) fill the column to its right, and the app fills the window (PLT-002).
-   The sheet host keeps covering the whole app; a bottom sheet's panel sits in the screen column. */
+   The sheet host keeps covering the whole app; a sheet is a dialog centred over the screen column (PWA-023). */
 :root {
     --bb-rail-width: 5.5rem;
     /* Where the screens' column starts: design/BottomSheet.vue centres its panel between this and
