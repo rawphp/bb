@@ -123,6 +123,11 @@ async function sheetBox(page: Page, title: string) {
 test.describe('sheets', () => {
     test.use({ serviceWorkers: 'block' });
 
+    // Today may still be asking today_show when a test ends; that late answer must not fail the next test.
+    test.afterEach(async ({ page }) => {
+        await page.unrouteAll({ behavior: 'ignoreErrors' });
+    });
+
     test('PLT-002 puts Today\'s "You missed" and "Welcome back" sheets in the centred 40rem column at 1440 × 900', { tag: '@desktop' }, async ({ page }) => {
         await askMissed(page);
         await openToday(page);
