@@ -515,6 +515,55 @@ describe('BottomSheet', () => {
             // Tailwind v4's scale-* sets the CSS scale property, so the transition must list it, not only transform.
             expect(entering).toContain('transition-[opacity,scale]');
             expect(entering).toContain('motion-reduce:transition-opacity');
+
+            // jsdom computes no transition, so Vue would end the leave at once; give the layer one to watch.
+            const real = window.getComputedStyle;
+            const style = vi.spyOn(window, 'getComputedStyle').mockImplementation((el, pseudo) =>
+                el instanceof HTMLElement && el.hasAttribute('data-sheet-layer')
+                    ? ({ transitionDelay: '0s', transitionDuration: '1s', animationDelay: '0s', animationDuration: '0s' } as CSSStyleDeclaration)
+                    : real(el, pseudo),
+            );
+            try {
+                await wrapper.setProps({ open: false });
+                await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                const leaving = get('[data-sheet-layer]').classes();
+                expect(leaving).toEqual(expect.arrayContaining(['transition-opacity', 'duration-150', 'opacity-0']));
+                expect(leaving.filter((c) => c.includes('scale'))).toEqual([]);
+
+                get('[data-sheet-layer]').element.dispatchEvent(new Event('transitionend'));
+                await nextTick();
+                expect(find('[data-sheet-layer]').exists()).toBe(false);
+            } finally {
+                style.mockRestore();
+            }
+        });
+
+        it('PWA-023 a sheet left open while the window crosses 768 px follows it, and stops listening when it unmounts', async () => {
+            let listener: ((event: { matches: boolean }) => void) | null = null;
+            const remove = vi.fn();
+            vi.stubGlobal('matchMedia', (query: string) => ({
+                matches: false,
+                addEventListener: (_: string, fn: typeof listener) => {
+                    if (query === WIDE_QUERY) listener = fn;
+                },
+                removeEventListener: remove,
+            }));
+            const wrapper = sheet({ heights: ['half', 'full'] });
+            expect(get('button[data-grabber]').exists()).toBe(true);
+
+            listener!({ matches: true });
+            await nextTick();
+            expect(find('[data-grabber]').exists()).toBe(false);
+            expect(get('[data-sheet-layer]').classes()).toContain('items-center');
+
+            listener!({ matches: false });
+            await nextTick();
+            expect(get('button[data-grabber]').exists()).toBe(true);
+
+            const handler = listener;
+            wrapper.unmount();
+            mounted = null;
+            expect(remove).toHaveBeenCalledWith('change', handler);
         });
 
         it('PWA-023 a click beside a wide sheet reaches the scrim, not the layer that centres it', () => {

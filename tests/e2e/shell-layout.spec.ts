@@ -178,6 +178,7 @@ test.describe('sheets', () => {
         expect(Math.abs(sheet.x + sheet.width / 2 - columnCentre)).toBeLessThanOrEqual(1);
         expect(sheet.y).toBeGreaterThanOrEqual(32);
         expect(viewport.height - (sheet.y + sheet.height)).toBeGreaterThanOrEqual(32);
+        expect(Math.abs(sheet.y + sheet.height / 2 - viewport.height / 2)).toBeLessThanOrEqual(1);
         await expect(page.getByRole('dialog', { name: 'Log weigh-in' }).locator('[data-grabber]')).toHaveCount(0);
     });
 
