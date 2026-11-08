@@ -11,6 +11,7 @@ use App\Capabilities\Mesocycles\Data\TrainNextMesocycle;
 use App\Capabilities\Mesocycles\Data\TrainShowOutput;
 use App\Capabilities\Mesocycles\Data\TrainTodaySession;
 use App\Capabilities\Mesocycles\Data\TrainWeekMark;
+use App\Capabilities\Reads\Today\TodayPayload;
 use App\Capabilities\Support\Status;
 use App\Capabilities\Support\Tone;
 use App\Domain\Mesocycle\MesocycleCalendar;
@@ -18,6 +19,7 @@ use App\Domain\Model\PhaseType;
 use App\Enums\MesocycleRoute;
 use App\Models\Mesocycle;
 use App\Support\Mesocycles\TrainSnapshot;
+use App\Support\Today\TodaySnapshot;
 
 /**
  * The Train tab (NAV-002, MESO-001, MESO-002, MESO-007, MESO-060, MESO-064, MESO-065), from a {@see TrainSnapshot}.
@@ -63,40 +65,20 @@ final class TrainPayload
         return $phase === null ? null : "Priorities reset for {$phase->type->title()}. Your old priorities can be kept.";
     }
 
-    /** NAV-002: today's planned session of the running mesocycle, done or not; none on a rest day. */
+    /**
+     * NAV-002: today's session, done or not, as Today's workout row names it ({@see TodaySnapshot::workout()}); none on
+     * a rest day.
+     */
     private static function todaysSession(TrainSnapshot $snapshot): ?TrainTodaySession
     {
-        $mesocycle = $snapshot->current();
-        if ($mesocycle === null) {
-            return null;
-        }
-        $calendar = $snapshot->calendar($mesocycle);
-        if (! $calendar->isRunning()) {
-            return null;
-        }
+        $workout = TodaySnapshot::placing($snapshot)->workout($snapshot->today);
 
-        $week = $calendar->currentWeek();
-        $sessions = $snapshot->domain($mesocycle)->sessionsInWeek($week - 1);
-        $weekdays = $snapshot->weekdays($mesocycle, $week - 1);
-        $dates = MesocycleCalendar::dayDates(
-            $calendar->planWeek($week - 1),
-            array_map(fn ($session) => $weekdays[$session->id] ?? null, $sessions),
-            $snapshot->trainingWeekdays(),
-            $snapshot->reviewIsoWeekday($calendar->grid),
+        return $workout === null ? null : new TrainTodaySession(
+            title: TodayPayload::workoutTitle($workout),
+            mesocycle_id: (string) $workout->mesocycle->id,
+            week: $workout->week,
+            day: $workout->day,
         );
-
-        foreach ($dates as $index => $date) {
-            if ($date == $snapshot->today) {
-                return new TrainTodaySession(
-                    title: sprintf('Week %d · Day %d · %s', $week, $index + 1, $sessions[$index]->name),
-                    mesocycle_id: (string) $mesocycle->id,
-                    week: $week,
-                    day: $index + 1,
-                );
-            }
-        }
-
-        return null;
     }
 
     /** The running mesocycle's card; once it is over, kept while the next-mesocycle prompt is up (MESO-060). */

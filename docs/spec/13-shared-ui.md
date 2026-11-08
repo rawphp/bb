@@ -11,7 +11,7 @@ The two RP apps look and behave differently. Here, training and nutrition use th
   - **Progress**: weight, phases, mesocycles and the review card.
   - **More**: the menu in SET-020.
 - **NAV-002** [I] Tapping a workout card on Today and opening today's session from Train must reach the same workout screen. Tapping a meal on Today or Nutrition must reach the same meal screen.
-- **NAV-003** [H] On wide screens (web, iPad; a window 768 px wide or more), the bottom bar must become a left rail with the same tabs in the same order. Narrower windows keep the bottom bar.
+- **NAV-003** [H] On wide screens (web, iPad; a window 768 px wide or more), the bottom bar must become a left rail with the same tabs in the same order. Narrower windows keep the bottom bar. On wide screens the rail shows a Back button above the tabs while the tab has a screen to go back to, and it goes back as the edge swipe does (PWA-022, PWA-025).
 - **NAV-004** [G] An active workout must show a pinned bar above the tab bar ("Upper A · 4 of 6 exercises") so the user can leave the workout and come back.
 - **NAV-005** [G] The Nutrition tab must open on today and walk the plan's days with the week strip (UI-001): picking a day, or swiping to another week, opens that day's meals at `/nutrition/<date>`. Each meal shows four macro bars (UI-003) against its target for calories, protein, fat and carbs: what was eaten once the meal is checked in, else its planned food, so the user sees which meals still need food planned.
 
@@ -23,7 +23,7 @@ Where a component is shared, both meals and workouts must use it.
 - **UI-002** [I] **Item card.** Meals, workouts, weigh-ins and busy periods use one card layout: an icon, a title, a time on the right, a status control (checkbox for meals, Start/Done for workouts, value for weigh-ins), and a body. The meal body is four macro bars. The workout body is the exercise list with set counts.
 - **UI-003** [I] **Progress bars.** Macro bars (calories, P, F, C) and set bars (sets done against planned) must use the same bar component with value/target labels like "45/40".
 - **UI-004** [I] **Status pill.** "on track", "315 under", "Targets met", "At your recovery limit", "Deload" and "Adjust foods" must use one pill component with four colours: good, neutral, warning, info.
-- **UI-005** [I] **Bottom sheet.** Copy foods, Add to schedule, the set menu, the meal menu, the Feedback sheet and the Adjust sheet must all be bottom sheets with Cancel on the left, the title in the middle and Save on the right.
+- **UI-005** [I] **Bottom sheet.** Copy foods, Add to schedule, the set menu, the meal menu, the Feedback sheet and the Adjust sheet must all be bottom sheets, shown as centred dialogs on wide screens (PWA-023), with Cancel on the left, the title in the middle and Save on the right.
 - **UI-006** [I] **Choice list.** Feedback answers, weekly review options, goal choices and setup choices must use the same single-choice list (full-width rows, one selected, "Recommended" tag where relevant).
 - **UI-007** [I] **Stepper flow.** Onboarding, the weekly review, the create-mesocycle flow and phase transition must use one step-flow layout: step counter, title, content, Back and Next. A flow that sends a step track (ONB-022) gets it drawn by the same layout.
 - **UI-008** [I] **Row with value fields.** A food row (name, raw/cooked, grams) and a set row (weight, reps, log) must share one row layout: label, then right-aligned numeric fields, swipe actions, a menu on the left.

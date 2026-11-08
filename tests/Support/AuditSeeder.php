@@ -8,6 +8,7 @@ use App\Models\Food;
 use App\Models\MealCheckIn;
 use App\Models\Mesocycle;
 use App\Models\OffPlanEntry;
+use App\Models\Phase;
 use App\Models\Plan;
 use App\Models\PlannedFood;
 use App\Models\Profile;
@@ -19,8 +20,8 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 
 /**
- * The account tests/e2e signs in to (PWA-004, PWA-051), on dates around the server's today: a plan and a 4-week
- * mesocycle from a Saturday at least a week back, training Monday, Wednesday and Friday, 3 meals a day for two weeks
+ * The account tests/e2e signs in to (PWA-004, PWA-051), on dates around the server's today: a plan, a 12-week
+ * phase and a 4-week mesocycle from a Saturday at least a week back, training Monday, Wednesday and Friday, 3 meals a day for two weeks
  * either side of today, and today with a planned breakfast, lunch eaten, a weigh-in, cake and steps. Today's
  * week's first workout is under way with its sets to do. It writes the paths of that workout and of today's
  * breakfast to storage/framework/testing/e2e.json for the Playwright tests.
@@ -43,6 +44,7 @@ final class AuditSeeder extends Seeder
 
         $user = User::factory()->create(['name' => 'Audit User', 'email' => self::EMAIL]);
         Plan::factory()->for($user)->create(['start_date' => $start->toDateString(), 'review_weekday' => 6]);
+        Phase::factory()->for($user)->create(['start_date' => $start->toDateString(), 'end_date' => $start->addWeeks(12)->toDateString()]);
         Profile::factory()->for($user)->create([
             'name' => 'Sam',
             'meal_count' => 3,

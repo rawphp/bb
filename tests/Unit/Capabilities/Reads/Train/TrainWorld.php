@@ -142,11 +142,12 @@ final class TrainWorld
         return (new Phase)->forceFill(['id' => $id, 'user_id' => 1, 'type' => $type, 'start_date' => $start, 'end_date' => $end]);
     }
 
-    public static function planWeek(string $start, bool $deload = false, bool $dietBreak = false, bool $dietBreakOff = false): PlanWeek
+    public static function planWeek(string $start, bool $deload = false, bool $dietBreak = false, bool $dietBreakOff = false, ?string $awayTraining = null): PlanWeek
     {
         return (new PlanWeek)->forceFill([
             'id' => "pw-{$start}", 'user_id' => 1, 'start_date' => $start, 'is_deload' => $deload,
-            'is_diet_break' => $dietBreak, 'diet_break_off' => $dietBreakOff, 'is_away' => false,
+            'is_diet_break' => $dietBreak, 'diet_break_off' => $dietBreakOff, 'is_away' => $awayTraining !== null,
+            'away_training' => $awayTraining,
         ]);
     }
 
@@ -155,11 +156,11 @@ final class TrainWorld
         return (new DayTarget)->forceFill(['id' => "dt-{$date}", 'user_id' => 1, 'date' => $date, 'kcal' => $kcal]);
     }
 
-    public static function session(string $id, int $week, int $day, ?string $start = null, ?string $end = null, bool $skipped = false, string $mesocycle = self::MESO): WorkoutSession
+    public static function session(string $id, int $week, int $day, ?string $start = null, ?string $end = null, bool $skipped = false, string $mesocycle = self::MESO, ?string $planned = null): WorkoutSession
     {
         return (new WorkoutSession)->forceFill([
             'id' => $id, 'user_id' => 1, 'mesocycle_id' => $mesocycle, 'week' => $week, 'day' => $day,
-            'actual_start_at' => $start, 'actual_end_at' => $end, 'is_skipped' => $skipped,
+            'actual_start_at' => $start, 'actual_end_at' => $end, 'is_skipped' => $skipped, 'planned_start_at' => $planned,
         ]);
     }
 

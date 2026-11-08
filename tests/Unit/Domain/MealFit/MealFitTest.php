@@ -389,12 +389,12 @@ it('MEAL-007 no shortfall when the targets are met', function () {
 });
 
 it('MEAL-007 several shortfalls come in protein, fat, carbs order', function () {
-    // Only salsa: it can carry carbs, but protein and fat have no source.
+    // Only salsa: protein and fat have no source, and salsa capped at 600 g leaves carbs short too.
     $result = (new MealFit)->fit([mealFitFood(mealFitSalsa(), 100)], mealFitTarget());
 
-    expect(mealFitShortMacros($result->shortfalls))->toBe([Macro::Protein, Macro::Fat])
+    expect(mealFitShortMacros($result->shortfalls))->toBe([Macro::Protein, Macro::Fat, Macro::Carbs])
         ->and(array_map(fn (Shortfall $s) => $s->group, $result->shortfalls))
-        ->toBe([CuratedGroup::ProteinRecommended, CuratedGroup::FatRecommended]);
+        ->toBe([CuratedGroup::ProteinRecommended, CuratedGroup::FatRecommended, CuratedGroup::CarbsRecommended]);
 });
 
 it('MEAL-007 locked foods can cause a shortfall', function () {
@@ -422,6 +422,97 @@ it('MEAL-007 an empty meal is short of everything', function () {
     $result = (new MealFit)->fit([], mealFitTarget());
 
     expect(mealFitShortMacros($result->shortfalls))->toBe([Macro::Protein, Macro::Fat, Macro::Carbs]);
+});
+
+// MEAL-002, MEAL-007: no food is fitted above MealFit::MAX_GRAMS
+
+function mealFitChicken(): Food
+{
+    return new Food(
+        id: 'chicken', name: 'Chicken breast', kcal: 165, proteinG: 31, fatG: 3.6, carbsG: 0,
+        cookedRatio: 0.75, curatedGroup: CuratedGroup::ProteinRecommended,
+    );
+}
+
+function mealFitBroccoli(): Food
+{
+    return new Food(
+        id: 'broccoli', name: 'Broccoli', kcal: 34, proteinG: 2.8, fatG: 0.4, carbsG: 6.6,
+        cookedRatio: 0.9, curatedGroup: CuratedGroup::Veggies,
+    );
+}
+
+it('MEAL-002 MEAL-007 chicken and broccoli cap the broccoli and report carbs short', function () {
+    $foods = [mealFitFood(mealFitChicken(), 100), mealFitFood(mealFitBroccoli(), 100)];
+    $result = (new MealFit)->fit($foods, mealFitTargetOf(0, 40, 15, 60));
+
+    expect(MealFit::MAX_GRAMS)->toBe(600.0)
+        ->and(mealFitGrams($result, 'Broccoli'))->toBeLessThanOrEqual(600)
+        ->and(mealFitGrams($result, 'Chicken breast'))->toBeGreaterThan(0)
+        ->and(mealFitShortMacros($result->shortfalls))->toContain(Macro::Carbs)
+        ->and($result->targetsMet)->toBeFalse();
+
+    $carbs = array_values(array_filter($result->shortfalls, fn (Shortfall $s) => $s->macro === Macro::Carbs))[0];
+    expect($carbs->group)->toBe(CuratedGroup::CarbsRecommended)
+        ->and($carbs->shortG)->toEqualWithDelta(60 - $result->totals->carbsG, 1e-9);
+});
+
+it('MEAL-002 the cap is on the grams shown, cooked or raw', function () {
+    $foods = [mealFitFood(mealFitChicken(), 100), mealFitFood(mealFitBroccoli(), 100, Weighing::Cooked)];
+    $result = (new MealFit)->fit($foods, mealFitTargetOf(0, 40, 15, 60));
+
+    expect(mealFitGrams($result, 'Broccoli'))->toBe(600.0);
+});
+
+it('MEAL-002 the cap counts cooked grams when cooking adds weight', function () {
+    // 300 g raw rice weighs 750 g cooked: shown grams pass the cap while raw grams do not.
+    $rice = new Food(
+        id: 'rice', name: 'White rice', kcal: 365, proteinG: 7.1, fatG: 0.7, carbsG: 80,
+        cookedRatio: 2.5, curatedGroup: CuratedGroup::CarbsRecommended,
+    );
+    $result = (new MealFit)->fit([mealFitFood($rice, 100, Weighing::Cooked)], mealFitTargetOf(0, 21.3, 2.1, 240));
+
+    expect(mealFitGrams($result, 'White rice'))->toBe(600.0)
+        ->and(mealFitShortMacros($result->shortfalls))->toBe([Macro::Carbs]);
+});
+
+it('MEAL-002 the other foods still fit around a capped food', function () {
+    // Broccoli is capped; chicken alone carries the protein it would have closed.
+    $foods = [mealFitFood(mealFitChicken(), 100), mealFitFood(mealFitBroccoli(), 100)];
+    $result = (new MealFit)->fit($foods, mealFitTargetOf(0, 40, 15, 60));
+
+    expect(mealFitGrams($result, 'Broccoli'))->toBe(600.0)
+        ->and($result->totals->proteinG)->toEqualWithDelta(40, MealFit::TOLERANCE)
+        ->and(mealFitShortMacros($result->shortfalls))->not->toContain(Macro::Protein);
+});
+
+it('MEAL-002 a capped food comes back down when the refit no longer needs it', function () {
+    // Unbounded, berries and spinach both pass 600 g. Held at 600 g together they leave protein
+    // 15.8 g short; the best bounded fit drops the berries, gives pasta the carbs, and protein is met.
+    $berries = new Food(id: 'berries', name: 'Berries', kcal: 57, proteinG: 0.7, fatG: 0.3, carbsG: 14, curatedGroup: CuratedGroup::Veggies);
+    $spinach = new Food(id: 'spinach', name: 'Spinach', kcal: 23, proteinG: 2.9, fatG: 0.4, carbsG: 3.6, curatedGroup: CuratedGroup::Veggies);
+    $pasta = new Food(id: 'pasta', name: 'Pasta', kcal: 158, proteinG: 5.8, fatG: 0.9, carbsG: 31, curatedGroup: CuratedGroup::CarbsRecommended);
+    $foods = [mealFitFood($berries, 100), mealFitFood($spinach, 100), mealFitFood($pasta, 100)];
+    $result = (new MealFit)->fit($foods, mealFitTargetOf(0, 52, 33, 180));
+
+    expect(mealFitGrams($result, 'Berries'))->toBeLessThan(600)
+        ->and(mealFitGrams($result, 'Spinach'))->toBe(600.0)
+        ->and(mealFitGrams($result, 'Pasta'))->toBeLessThanOrEqual(600)
+        ->and(mealFitShortMacros($result->shortfalls))->toBe([Macro::Fat]);
+});
+
+it('MEAL-005 a locked food above the cap keeps its amount', function () {
+    $foods = [mealFitFood(mealFitBroccoli(), 900, isLocked: true), mealFitFood(mealFitChicken(), 100)];
+    $result = (new MealFit)->fit($foods, mealFitTargetOf(0, 40, 15, 60));
+
+    expect(mealFitGrams($result, 'Broccoli'))->toBe(900.0);
+});
+
+it('MEAL-004 an amount the user types above the cap is kept', function () {
+    $foods = [mealFitFood(mealFitBroccoli(), 100), mealFitFood(mealFitChicken(), 100)];
+    $result = (new MealFit)->setAmount(800, $foods[0]->id, $foods, mealFitTargetOf(0, 40, 15, 60));
+
+    expect(mealFitGrams($result, 'Broccoli'))->toBe(800.0);
 });
 
 // FOOD-006

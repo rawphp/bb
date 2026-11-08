@@ -5,11 +5,14 @@ export type SheetHeight = 'half' | 'full';
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, useId, watch } from 'vue';
+import { WIDE_QUERY } from '@/app/layout';
 import { openSheets } from './openSheets';
 import { useModalFocus } from './useModalFocus';
 
 // Bottom sheet frame: Cancel left, title middle, Save right (UI-005), ported from rp-clone's SheetScaffold.swift.
 // It springs open over a dimmed screen and drags down to close (PWA-023), unless `dismissible` is off (UI-022).
+// From 768 px (NAV-003) it is a dialog centred over the screen's column instead: it fades in, has no grabber
+// and no drag, and fits its content; Escape and a click outside still close it unless `dismissible` is off.
 const props = withDefaults(
     defineProps<{
         open: boolean;
@@ -44,6 +47,15 @@ const props = withDefaults(
 
 const emit = defineEmits<{ cancel: []; save: [] }>();
 
+// A grabber, a drag and two snap heights assume a thumb; a wide window gets a centred dialog.
+const wideMedia = typeof window.matchMedia === 'function' ? window.matchMedia(WIDE_QUERY) : null;
+const wide = ref(wideMedia?.matches ?? false);
+const onWideChange = (event: MediaQueryListEvent): void => {
+    wide.value = event.matches;
+    resetDrag();
+};
+wideMedia?.addEventListener?.('change', onWideChange);
+
 const titleId = useId();
 const panel = ref<HTMLElement | null>(null);
 const level = ref(0);
@@ -76,7 +88,10 @@ watch(
     { immediate: true },
 );
 
-onBeforeUnmount(close);
+onBeforeUnmount(() => {
+    close();
+    wideMedia?.removeEventListener?.('change', onWideChange);
+});
 
 function close(): void {
     const index = openSheets.indexOf(token);
@@ -112,6 +127,9 @@ function dismiss(): void {
 }
 
 function onPointerDown(event: PointerEvent): void {
+    if (wide.value) {
+        return;
+    }
     startY = event.clientY;
 }
 
@@ -175,14 +193,29 @@ function toggleHeight(): void {
         >
             <div v-if="open" data-scrim aria-hidden="true" class="fixed inset-0 z-40 bg-scrim" @click="dismiss" />
         </Transition>
-        <!-- The wrapper springs in and out; the panel inside follows the finger and changes height. -->
+        <!-- The layer springs in and out; the panel inside follows the finger and changes height.
+             From 768 px the layer fills the screen's column (right of the rail; shell.css, --bb-column-left)
+             and centres the panel in it; the layer lets clicks through to the scrim around the panel. -->
         <Transition
-            enter-active-class="transition-transform duration-500 ease-[cubic-bezier(0.2,1.15,0.4,1)] motion-reduce:transition-none"
-            leave-active-class="transition-transform duration-200 ease-in motion-reduce:transition-none"
-            enter-from-class="translate-y-full"
-            leave-to-class="translate-y-full"
+            :enter-active-class="
+                wide
+                    ? 'transition-[opacity,scale] duration-200 ease-out motion-reduce:transition-opacity'
+                    : 'transition-transform duration-500 ease-[cubic-bezier(0.2,1.15,0.4,1)] motion-reduce:transition-none'
+            "
+            :leave-active-class="wide ? 'transition-opacity duration-150 ease-in' : 'transition-transform duration-200 ease-in motion-reduce:transition-none'"
+            :enter-from-class="wide ? 'opacity-0 scale-[0.96] motion-reduce:scale-100' : 'translate-y-full'"
+            :leave-to-class="wide ? 'opacity-0' : 'translate-y-full'"
         >
-            <div v-if="open" class="fixed inset-x-0 bottom-0 z-50">
+            <div
+                v-if="open"
+                data-sheet-layer
+                class="fixed z-50"
+                :class="
+                    wide
+                        ? 'pointer-events-none inset-y-0 right-0 left-(--bb-column-left) flex items-center justify-center px-4'
+                        : 'inset-x-0 bottom-0'
+                "
+            >
                 <div
                     ref="panel"
                     role="dialog"
@@ -190,11 +223,19 @@ function toggleHeight(): void {
                     :aria-labelledby="titleId"
                     :data-height="height"
                     tabindex="-1"
-                    class="flex flex-col rounded-t-2xl bg-surface pb-[env(safe-area-inset-bottom)] text-primary-text shadow-2xl outline-none"
-                    :class="[
-                        height === 'half' ? 'h-[50dvh]' : 'h-[calc(100dvh_-_env(safe-area-inset-top)_-_0.75rem)]',
-                        dragging ? '' : 'transition-[height,transform] duration-300 motion-reduce:transition-none',
-                    ]"
+                    class="flex flex-col bg-surface text-primary-text shadow-2xl outline-none"
+                    :class="
+                        wide
+                            ? [
+                                  'pointer-events-auto w-full max-w-[40rem] rounded-2xl max-h-[calc(100%_-_4rem)]',
+                                  heights.length === 1 && heights[0] === 'full' ? 'h-[calc(100%_-_4rem)]' : '',
+                              ]
+                            : [
+                                  'rounded-t-2xl pb-[env(safe-area-inset-bottom)]',
+                                  height === 'half' ? 'h-[50dvh]' : 'h-[calc(100dvh_-_env(safe-area-inset-top)_-_0.75rem)]',
+                                  dragging ? '' : 'transition-[height,transform] duration-300 motion-reduce:transition-none',
+                              ]
+                    "
                     :style="dragging ? { transform: `translateY(${offset}px)` } : undefined"
                 >
                     <div
@@ -205,8 +246,9 @@ function toggleHeight(): void {
                         @pointerup="onPointerUp"
                         @pointercancel="resetDrag"
                     >
+                        <div v-if="wide" aria-hidden="true" class="h-2" />
                         <button
-                            v-if="adjustable"
+                            v-else-if="adjustable"
                             data-grabber
                             type="button"
                             :aria-label="level === 0 ? 'Expand sheet' : 'Shrink sheet'"

@@ -225,6 +225,12 @@ textarea {
     overflow-wrap: anywhere;
 }
 
+/* The rail's Back button (NAV-003). Phones go back by the edge swipe (PWA-022), so the
+   bottom bar keeps its five tabs; the wide-screen block shows it. */
+.bb-tab-back {
+    display: none;
+}
+
 /* Sheets cover the whole column, tab bar included (UI-005). */
 .bb-sheet-host {
     position: absolute;
@@ -240,15 +246,27 @@ textarea {
 /* Wide screens: 768 px and up (layout.ts, WIDE_MIN_PX). The tab bar becomes a left rail at
    full height (NAV-003), the stacks and the floating layer (toasts, Coach button,
    ActiveWorkoutBar) fill the column to its right, and the app fills the window (PLT-002).
-   The sheet host keeps covering the whole app. */
+   The sheet host keeps covering the whole app; a sheet is a dialog centred over the screen column (PWA-023). */
+:root {
+    --bb-rail-width: 5.5rem;
+    /* Where the screens' column starts: design/BottomSheet.vue centres its panel between this and
+       the window's right edge. Right of the rail when the shell is on the page (wide-screen block). */
+    --bb-column-left: 0px;
+}
+
 @media (min-width: 768px) {
     #app {
         max-width: none;
     }
 
+    /* A screen outside the shell (sign-in, onboarding) has no rail, so its column starts at 0. */
+    :root:has(.bb-shell) {
+        --bb-column-left: var(--bb-rail-width);
+    }
+
     .bb-shell {
         display: grid;
-        grid-template-columns: 5.5rem minmax(0, 1fr);
+        grid-template-columns: var(--bb-rail-width) minmax(0, 1fr);
         grid-template-rows: minmax(0, 1fr) auto;
     }
 
@@ -291,6 +309,10 @@ textarea {
     .bb-tab {
         flex: none;
         padding: 0.625rem 0.25rem;
+    }
+
+    .bb-tab-back {
+        display: flex;
     }
 
     /* Each screen's root sits in a centred 40rem column; the screen's own background

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { ProgressShowOutput } from '@/contracts/progress_show';
 import { linePath, timeAxis, valueAxis } from './chartGeometry';
 
@@ -10,12 +10,34 @@ type Chart = NonNullable<ProgressShowOutput['chart']>;
 // One <svg>, legend included, so the share card can draw it into a picture.
 // With `picked`, it marks that weigh-in day and asks for the weigh-in under the
 // pointer (ANA-012); the share card passes neither, so its picture has no mark.
-const props = withDefaults(defineProps<{ chart: Chart; plotHeight?: number; picked?: string | null }>(), { plotHeight: 220, picked: null });
+// The share card also passes `width`, the size it draws the chart at; without it
+// the chart takes the width it is laid out at, so one unit is one CSS pixel and
+// its 11-unit text stays 11 px on any card.
+const props = withDefaults(defineProps<{ chart: Chart; plotHeight?: number; picked?: string | null; width?: number }>(), {
+    plotHeight: 220,
+    picked: null,
+    width: undefined,
+});
 const emit = defineEmits<{ pick: [date: string] }>();
 
-const WIDTH = 340;
+const svg = ref<SVGSVGElement | null>(null);
+// The width before the browser reports one, and the share card's.
+const laidOut = ref(340);
+const width = computed(() => props.width ?? laidOut.value);
+
+let resize: ResizeObserver | null = null;
+onMounted(() => {
+    if (props.width !== undefined || typeof ResizeObserver === 'undefined' || !svg.value) return;
+    resize = new ResizeObserver(([entry]) => {
+        // Hidden or not yet laid out: keep the last width.
+        if (entry && entry.contentRect.width > 0) laidOut.value = entry.contentRect.width;
+    });
+    resize.observe(svg.value);
+});
+onBeforeUnmount(() => resize?.disconnect());
+
 const LEFT = 4;
-const RIGHT = WIDTH - 30;
+const right = computed(() => width.value - 30);
 const TOP = 8;
 // The waist has its own scale; padding keeps a centimetre from filling the chart's height.
 const WAIST_PAD = 2;
@@ -28,7 +50,7 @@ const dayLabel = (date: string) => `${day.format(new Date(date))} ${month.format
 
 const time = computed(() => {
     const c = props.chart;
-    return timeAxis([...c.weights, ...c.trend, ...c.goal, ...c.waist].map((p) => p.date), LEFT, RIGHT);
+    return timeAxis([...c.weights, ...c.trend, ...c.goal, ...c.waist].map((p) => p.date), LEFT, right.value);
 });
 
 const weight = computed(() => {
@@ -64,14 +86,13 @@ const mark = computed(() => {
 });
 
 // The weigh-in dot nearest the pointer along x. Drawing only: which dot sits under a finger.
-const svg = ref<SVGSVGElement | null>(null);
 let pressed = false;
 
 function pickAt(clientX: number): void {
     const box = svg.value?.getBoundingClientRect();
     const dots = shapes.value.weights;
     if (!box || box.width === 0 || dots.length === 0) return;
-    const x = ((clientX - box.left) / box.width) * WIDTH;
+    const x = ((clientX - box.left) / box.width) * width.value;
     const nearest = dots.reduce((best, p) => (Math.abs(p.x - x) < Math.abs(best.x - x) ? p : best));
     if (nearest.key !== props.picked) emit('pick', nearest.key);
 }
@@ -116,7 +137,8 @@ const legend = computed(() => {
         ref="svg"
         role="img"
         :aria-label="chart.accessibility_label"
-        :viewBox="`0 0 ${WIDTH} ${plotHeight + 24}`"
+        :viewBox="`0 0 ${width} ${plotHeight + 24}`"
+        :width="props.width"
         class="block w-full font-sans"
         xmlns="http://www.w3.org/2000/svg"
         @pointerdown="onDown"
@@ -126,8 +148,8 @@ const legend = computed(() => {
     >
         <g aria-hidden="true">
             <g v-for="tick in weight.ticks" :key="tick">
-                <line :x1="LEFT" :x2="RIGHT" :y1="weight.y(tick)" :y2="weight.y(tick)" class="stroke-secondary-text/30" stroke-width="0.5" />
-                <text :x="RIGHT + 6" :y="weight.y(tick) + 4" class="fill-secondary-text" font-size="11">{{ tick }}</text>
+                <line :x1="LEFT" :x2="right" :y1="weight.y(tick)" :y2="weight.y(tick)" class="stroke-secondary-text/30" stroke-width="0.5" />
+                <text :x="right + 6" :y="weight.y(tick) + 4" class="fill-secondary-text" font-size="11">{{ tick }}</text>
             </g>
             <g v-for="tick in time.ticks" :key="tick">
                 <line
