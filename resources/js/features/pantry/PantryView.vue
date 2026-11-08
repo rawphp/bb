@@ -125,8 +125,12 @@ watch(query, () => {
 });
 watch([tab, collection, source, groupFilter, unit, expandedGroups], () => void load(), { deep: true });
 
+// The meal screen's search field is a link to here (UI-021), so the cursor waits in the
+// search box as if the user had clicked into it. A short-macro hint opens a group to browse.
+const searchField = ref<HTMLInputElement>();
 onMounted(() => {
     if (!data.value) void load();
+    if (props.mealId && props.purpose === 'meal' && !props.group) searchField.value?.focus();
 });
 onUnmounted(() => clearTimeout(typing));
 // Back on top after a screen it opened (a recipe made from its Recipes list, say), it reads
@@ -312,6 +316,7 @@ const error = computed(() => favorites.error.value ?? diets.error.value ?? searc
                 <path d="m16.5 16.5 4 4" />
             </svg>
             <input
+                ref="searchField"
                 v-model="query"
                 type="search"
                 aria-label="Search foods"

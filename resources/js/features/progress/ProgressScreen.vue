@@ -33,9 +33,9 @@ const emit = defineEmits<{ scope: [scope: ProgressShowOutput['scopes'][number]['
 
 const router = useRouter();
 
-// The weigh-in sheet and the schedule editor are built by their own issues.
+// The schedule editor this card opens is built by its own issue. Log a weigh-in opens the
+// weigh-in sheet at /weigh-ins/log, as Today does (WT-002).
 const placeholders = {
-    weighIn: { title: 'Log a weigh-in', message: 'Logging a weigh-in arrives with the weigh-ins screens.' },
     schedule: { title: 'Edit schedule', message: 'Editing the schedule arrives with the schedule menu.' },
 } as const;
 type Placeholder = keyof typeof placeholders;
@@ -93,7 +93,7 @@ function pickScope(scope: ProgressShowOutput['scopes'][number]): void {
                     <path d="M3 3v18h18M7 15l4-4 3 3 6-6M15 8h5v5" />
                 </svg>
                 <p class="text-lg font-semibold">{{ payload.empty.message }}</p>
-                <button data-log-weigh-in type="button" class="min-h-tap rounded-xl bg-accent px-4 text-on-accent" @click="openPlaceholder('weighIn')">
+                <button data-log-weigh-in type="button" class="min-h-tap rounded-xl bg-accent px-4 text-on-accent" @click="router.push('/weigh-ins/log')">
                     {{ payload.empty.action_title }}
                 </button>
             </section>
